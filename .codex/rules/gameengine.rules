@@ -61,7 +61,7 @@ prefix_rule(
     justification = "GitHub pull request publishing or state changes require explicit review of target branch, title, body, and validation evidence.",
     match = [
         "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
-        "gh pr merge --squash",
+        "gh pr merge --merge --delete-branch",
         "gh pr ready",
     ],
     not_match = [
