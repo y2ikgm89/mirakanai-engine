@@ -164,7 +164,7 @@
 - Commit and push task-owned changes at coherent, validated checkpoints without asking for per-action confirmation. Before committing, inspect `git status --short --branch`, review the staged diff, and stage only task-owned files. Never include secrets, credential files, generated scratch output, or unrelated user changes.
 - Treat Codex command policy as session-scoped: after editing `.codex/rules/*.rules`, do not assume the active session has reloaded newly allowed commands. If the active policy still requires a prompt and approvals are unavailable (for example `Approval policy: never`), record the blocker and finish in a reloaded or new session instead of retrying or weakening rules.
 - Prefer topic branches plus GitHub pull requests for shared or release-facing work. Do not push directly to the default/protected branch, do not force-push unless the user explicitly requests it and branch ownership is clear, and do not bypass GitHub branch protection or required review/status checks.
-- For GitHub publishing, push the current topic branch with a reviewed remote/branch target, then create or update a pull request with a concise title/body and actual validation evidence. If credentials, branch protection, or required checks block push/PR work, report the blocker instead of weakening repository policy.
+- For GitHub publishing, push the current topic branch with a reviewed remote/branch target, then create or update a pull request through GitHub Web, `gh`, or GitHub Desktop with a concise title/body and actual validation evidence. If credentials, branch protection, or required checks block push/PR work, report the blocker instead of weakening repository policy.
 
 ## AI Tool Integration
 

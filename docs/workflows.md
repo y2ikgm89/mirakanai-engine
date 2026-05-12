@@ -149,9 +149,11 @@ If the task edits `.codex/rules/*.rules`, treat Codex command policy as session-
 gh pr create --base <base-branch> --head <branch> --title "<title>" --body "<validation summary>"
 ```
 
-The PR body should include actual validation evidence or blockers. If authentication, branch protection, required reviews, required status checks, or remote permissions block the push or PR, report the blocker and stop instead of bypassing policy or asking to weaken safeguards.
+The PR can be created or updated through GitHub Web, `gh`, or GitHub Desktop. The PR body should include actual validation evidence or blockers. If authentication, branch protection, required reviews, required status checks, or remote permissions block the push or PR, report the blocker and stop instead of bypassing policy or asking to weaken safeguards.
 
-These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests and protected branches.
+Push and PR publishing depend on host-local GitHub authentication such as Git Credential Manager, GitHub CLI, SSH agent, or a browser session. This repository must not require or store `GITHUB_TOKEN`, personal access tokens, or credential helper state for routine publishing.
+
+These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests and protected branches. For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow).
 
 ## Windows Diagnostics Toolchain
 

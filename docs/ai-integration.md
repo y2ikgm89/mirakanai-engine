@@ -85,6 +85,8 @@ Use Codex project skills for repeatable workflows and custom agents for focused 
 
 Project-local Codex rules are intentionally narrow and prompt-biased. They should cover commands that often need local trust, network access, user caches, signing state, destructive review, or repository history rewriting, including Windows PowerShell deletion/network/host-servicing commands, forced Git pushes, and PR state changes through `gh pr`. Routine `git commit` and non-forced `git push` are allowed after task-owned validation checkpoints. Every rule should include `match` / `not_match` examples. Do not add broad allow rules for shells, package managers, network tools, destructive commands, or publishing shortcuts. Treat command policy as session-scoped: `.codex/rules` edits may need policy reload or a new session before newly allowed commands are available, and `Approval policy: never` cannot satisfy prompt-gated commands.
 
+Git/GitHub authentication remains host-local. Agents rely on the operator's configured Git Credential Manager, GitHub CLI, SSH agent, or browser session and must not add repository requirements for `GITHUB_TOKEN`, personal access tokens, or checked-in credential helper state.
+
 Read-only review, exploration, architecture, and rendering-audit agents must set `sandbox_mode = "read-only"` so their tool surface matches their purpose. Builder and fixer agents may keep write-capable permissions when their role is expected to edit files. Codex subagents should be spawned only when the user explicitly asks for subagent delegation or parallel agent work.
 
 ## Claude Code
@@ -107,6 +109,8 @@ Cursor loads workspace rules (including imports of `AGENTS.md`) and Cursor Agent
 
 - **Cursor-only summaries:** `gameengine-cursor-baseline` (PowerShell wrappers, validation shorthand, manifest alignment) and `gameengine-plan-registry` (dated plans under `docs/superpowers/plans/`).
 - **Thin pointers:** each `.cursor/skills/gameengine-*` folder (except the two above) must match a `.claude/skills/gameengine-*` name and point readers at the full Claude/Codex bodies—`gameengine-agent-integration`, `gameengine-cmake-build-system`, `gameengine-debugging`, `gameengine-editor`, `gameengine-feature`, `gameengine-game-development`, `gameengine-license-audit`, `gameengine-rendering`.
+
+For this repository, `AGENTS.md` Git Workflow is the intended workspace policy. If Cursor global instructions conflict with it, such as a blanket "do not commit until explicitly requested" rule, align the global instruction or add a workspace override before relying on automation.
 
 `tools/check-agents.ps1` validates Cursor skill frontmatter and enforces thin-pointer names against Claude. New shared topics require updating `claudeToCodexSkillMap` in that script; see **Repository consistency checklist** in `docs/workflows.md`.
 
