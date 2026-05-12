@@ -20,20 +20,51 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["git", ["push", "reset", "restore", "checkout", "clean"]],
+    pattern = ["git", ["reset", "restore", "checkout", "clean"]],
     decision = "prompt",
-    justification = "Publishing or worktree-mutating Git operations require explicit review so user changes are not overwritten.",
+    justification = "Worktree-mutating Git operations require explicit review so user changes are not overwritten.",
     match = [
-        "git push",
         "git reset --hard",
         "git restore .",
         "git checkout -- engine/core/include/mirakana/core/application.hpp",
         "git clean -fdx",
     ],
     not_match = [
+        "git commit -m \"Implement focused slice\"",
+        "git push -u origin codex/example",
         "git status --short",
         "git diff",
         "git show --stat",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "--force-with-lease"]],
+    decision = "prompt",
+    justification = "History rewriting pushes require explicit review of branch ownership and remote state.",
+    match = [
+        "git push --force",
+        "git push --force-with-lease origin codex/example",
+    ],
+    not_match = [
+        "git push -u origin codex/example",
+        "git push origin codex/example",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["create", "edit", "merge", "ready", "close", "reopen"]],
+    decision = "prompt",
+    justification = "GitHub pull request publishing or state changes require explicit review of target branch, title, body, and validation evidence.",
+    match = [
+        "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
+        "gh pr merge --squash",
+        "gh pr ready",
+    ],
+    not_match = [
+        "gh pr status",
+        "gh pr view --json url,state",
+        "gh auth status",
     ],
 )
 

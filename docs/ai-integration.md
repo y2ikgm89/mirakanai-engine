@@ -83,7 +83,7 @@ Codex reads:
 
 Use Codex project skills for repeatable workflows and custom agents for focused parallel work.
 
-Project-local Codex rules are intentionally narrow and prompt-biased. They should cover commands that often need local trust, network access, user caches, signing state, or destructive review, including Windows PowerShell deletion/network/host-servicing commands. Every rule should include `match` / `not_match` examples. Do not add broad allow rules for shells, package managers, network tools, or destructive commands.
+Project-local Codex rules are intentionally narrow and prompt-biased. They should cover commands that often need local trust, network access, user caches, signing state, destructive review, or repository history rewriting, including Windows PowerShell deletion/network/host-servicing commands, forced Git pushes, and PR state changes through `gh pr`. Routine `git commit` and non-forced `git push` are allowed after task-owned validation checkpoints. Every rule should include `match` / `not_match` examples. Do not add broad allow rules for shells, package managers, network tools, destructive commands, or publishing shortcuts.
 
 Read-only review, exploration, architecture, and rendering-audit agents must set `sandbox_mode = "read-only"` so their tool surface matches their purpose. Builder and fixer agents may keep write-capable permissions when their role is expected to edit files. Codex subagents should be spawned only when the user explicitly asks for subagent delegation or parallel agent work.
 
@@ -97,7 +97,7 @@ Claude Code reads:
 - `.claude/skills/`
 - `.claude/agents/`
 
-`CLAUDE.md` imports `AGENTS.md` and the project rule files with official memory imports so the baseline instructions stay shared. `.claude/settings.json` keeps shared permissions in the official settings surface with the published JSON schema: secret-bearing files are denied, and destructive, network, dependency-bootstrap, and mobile signing/smoke commands require approval. Keep `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md` out of source control unless project governance explicitly accepts a shared override.
+`CLAUDE.md` imports `AGENTS.md` and the project rule files with official memory imports so the baseline instructions stay shared. `.claude/settings.json` keeps shared permissions in the official settings surface with the published JSON schema: secret-bearing files are denied, and destructive, network, dependency-bootstrap, mobile signing/smoke, force-push, and GitHub PR publishing/state-change commands require approval. Routine commits and non-forced pushes rely on `AGENTS.md` / `docs/workflows.md` validation checkpoints instead of per-action prompts. Keep `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md` out of source control unless project governance explicitly accepts a shared override.
 
 Read-only review, exploration, architecture, and rendering-audit subagents must declare read-only tools in frontmatter. Builder and fixer subagents may keep write-capable tools when their role is expected to edit files.
 

@@ -109,7 +109,47 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 git diff --cached --check
 ```
 
-These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`.
+### Commit, Push, And Pull Request Workflow
+
+Use commits and pushes at coherent, validated checkpoints without asking for per-action confirmation once a task is underway. Publish only task-owned changes and keep branch selection conservative.
+
+1. Inspect the branch and worktree before staging:
+
+```powershell
+git status --short --branch
+git diff --stat
+git diff
+```
+
+2. Stage only task-owned files, then review the staged patch:
+
+```powershell
+git add <task-owned-files>
+git diff --cached --stat
+git diff --cached --check
+```
+
+3. Commit only a coherent, validated slice. Do not include unrelated user changes, ignored scratch output, generated logs, credentials, signing keys, local overrides, `.claude/settings.local.json`, `.mcp.json`, or `AGENTS.override.md`. Use a concise imperative commit subject and avoid AI-generated trailers unless the user asks for them.
+
+4. Push only a reviewed topic branch. Prefer `codex/<topic>` for Codex-created branches unless the user asks for another name:
+
+```powershell
+git branch --show-current
+git remote -v
+git push -u origin <branch>
+```
+
+5. Do not push directly to the default branch or protected branches. Do not use `--force`; use `--force-with-lease` only when the user explicitly requests history rewriting and the branch is known to be task-owned.
+
+6. Prefer a GitHub pull request for shared or release-facing work:
+
+```powershell
+gh pr create --base <base-branch> --head <branch> --title "<title>" --body "<validation summary>"
+```
+
+The PR body should include actual validation evidence or blockers. If authentication, branch protection, required reviews, required status checks, or remote permissions block the push or PR, report the blocker and stop instead of bypassing policy or asking to weaken safeguards.
+
+These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests and protected branches.
 
 ## Windows Diagnostics Toolchain
 

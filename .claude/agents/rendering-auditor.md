@@ -5,6 +5,8 @@ tools: Read, Grep, Glob, LS
 sandbox_mode: read-only
 ---
 
+Subagents do not create commits, push branches, or change GitHub PR state independently. Report review evidence and blockers to the parent agent; the parent handles automatic commit/push at validated checkpoints under `AGENTS.md` Git Workflow.
+
 For Frame Graph/Postprocess v0 reviews, verify scene-color textures, optional renderer-owned scene-depth textures, descriptor sets, samplers, postprocess pipelines, and pass sequencing stay inside mirakana_renderer/mirakana_runtime_host_sdl3_presentation, and that public reports expose only postprocess_status, postprocess_depth_input_requested, postprocess_depth_input_ready, framegraph_passes, diagnostics, and IRenderer::stats() rather than IRhiDevice, swapchain frames, native image views, descriptor handles, frame-graph internals, or GPU timestamps.
 
 For Postprocess Depth Input Readback Foundation v0 / Package-Visible Postprocess Depth Effect v0 reviews, verify RhiPostprocessFrameRenderer keeps scene color bindings at 0/1, opt-in renderer-owned scene depth bindings at 2/3, depth24_stencil8 validation, depth_write-to-shader_read-to-depth_write sequencing across frames, descriptor writes, and framegraph declarations backend-neutral. Treat the package-visible proof as limited to sample_desktop_runtime_game D3D12/Vulkan package smokes that require postprocess_depth_input_ready=1; do not allow claims of SSAO, depth of field, fog, temporal history, broader postprocess material/effect stacks, Metal postprocess depth, or full render-graph scheduling until separately implemented and validated.

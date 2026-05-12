@@ -161,6 +161,9 @@
 - If sandboxed Git reports an unreadable default global ignore such as `$HOME/.config/git/ignore`, do not weaken repository permissions or add host-specific paths to `.gitignore`. Prefer a repository-local `core.excludesFile` pointing at the absolute `.git/info/exclude` path, stored only in `.git/config`.
 - If Git author identity is missing, configure `user.name` and `user.email` with `git config --local` for this repository instead of changing global user settings unless the user explicitly asks for a global identity.
 - Implementation plans should include validated commit checkpoints. Prefer small commits after coherent, passing slices; do not commit known-broken work, generated scratch output, or unrelated user changes. For a slice-closing commit, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` first, or record the exact blocker in the plan and completion report.
+- Commit and push task-owned changes at coherent, validated checkpoints without asking for per-action confirmation. Before committing, inspect `git status --short --branch`, review the staged diff, and stage only task-owned files. Never include secrets, credential files, generated scratch output, or unrelated user changes.
+- Prefer topic branches plus GitHub pull requests for shared or release-facing work. Do not push directly to the default/protected branch, do not force-push unless the user explicitly requests it and branch ownership is clear, and do not bypass GitHub branch protection or required review/status checks.
+- For GitHub publishing, push the current topic branch with a reviewed remote/branch target, then create or update a pull request with a concise title/body and actual validation evidence. If credentials, branch protection, or required checks block push/PR work, report the blocker instead of weakening repository policy.
 
 ## AI Tool Integration
 
