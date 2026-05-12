@@ -117,8 +117,25 @@ if (Test-Path $codexRuleRoot) {
         if ($content -notmatch "prefix_rule\(" -or $content -notmatch "match\s*=" -or $content -notmatch "not_match\s*=") {
             Write-Error "Codex rule files must use prefix_rule with match and not_match examples: $($_.FullName)"
         }
-        if ($content -match 'decision\s*=\s*"allow"') {
-            Write-Error "Project Codex rules must not add broad allow decisions: $($_.FullName)"
+        $allowRuleBlocks = [System.Text.RegularExpressions.Regex]::Matches(
+            $content,
+            'prefix_rule\([\s\S]*?decision\s*=\s*"allow"[\s\S]*?\)'
+        )
+        $approvedAllowPatterns = @(
+            'pattern\s*=\s*\["gh",\s*"pr",\s*"create"\]',
+            'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--delete-branch"\]'
+        )
+        foreach ($allowRuleBlock in $allowRuleBlocks) {
+            $approvedAllow = $false
+            foreach ($approvedAllowPattern in $approvedAllowPatterns) {
+                if ($allowRuleBlock.Value -match $approvedAllowPattern) {
+                    $approvedAllow = $true
+                    break
+                }
+            }
+            if (-not $approvedAllow) {
+                Write-Error "Project Codex rules must not add broad allow decisions: $($_.FullName)"
+            }
         }
     }
 }

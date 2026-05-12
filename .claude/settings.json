@@ -1,16 +1,24 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
+    "allow": [
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge --auto --merge --delete-branch:*)"
+    ],
     "ask": [
       "Bash(git checkout:*)",
       "Bash(git reset:*)",
       "Bash(git restore:*)",
       "Bash(git clean:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push origin master:*)",
       "Bash(git push --force:*)",
       "Bash(git push --force-with-lease:*)",
-      "Bash(gh pr create:*)",
       "Bash(gh pr edit:*)",
-      "Bash(gh pr merge:*)",
+      "Bash(gh pr merge --merge:*)",
+      "Bash(gh pr merge --squash:*)",
+      "Bash(gh pr merge --rebase:*)",
+      "Bash(gh pr merge --admin:*)",
       "Bash(gh pr ready:*)",
       "Bash(gh pr close:*)",
       "Bash(gh pr reopen:*)",

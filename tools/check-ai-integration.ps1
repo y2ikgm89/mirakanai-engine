@@ -599,6 +599,7 @@ Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
 Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
 Assert-ContainsText $agentsContent "credential-manager-core" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr create" "AGENTS.md"
+Assert-ContainsText $agentsContent "gh pr merge --auto --merge --delete-branch" "AGENTS.md"
 Assert-ContainsText $agentsContent '`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`' "AGENTS.md"
 Assert-ContainsText $agentsContent "documentation-only/non-runtime slices" "AGENTS.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit")) {
@@ -622,7 +623,8 @@ Assert-ContainsText $workflowsContent ".mcp.json" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "AGENTS.override.md" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Commit, Push, And Pull Request Workflow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr create" "docs/workflows.md"
-Assert-ContainsText $workflowsContent "gh pr merge <pr-number-or-url> --merge --delete-branch" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "gh pr merge --auto --merge --delete-branch" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Documentation-only or similarly narrow non-runtime slices" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
@@ -676,6 +678,7 @@ $aiIntegrationContent = Get-Content -LiteralPath (Assert-Exists "docs/ai-integra
 Assert-ContainsText $aiIntegrationContent "Codex rules: https://developers.openai.com/codex/rules" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "git commit" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "gh pr merge --auto --merge --delete-branch" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "policy reload" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "GITHUB_TOKEN" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-integration.md"
@@ -13006,6 +13009,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "PIX on Windows" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Git/GitHub publishing workflow changes" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "merge/delete-branch" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "auto-merge registration" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "post-merge remote-tracking cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
@@ -13022,19 +13026,21 @@ Assert-ContainsText $codexRuleText "match =" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "not_match =" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git commit" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git push" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "git push origin main" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git push --force" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "policy reload" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git restore" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText 'decision = "allow"' ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr create" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge --merge --delete-branch" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "gh pr merge --auto --merge --delete-branch" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Remove-Item" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-WebRequest" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-RestMethod" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Add-WindowsCapability" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "msiexec" ".codex/rules/gameengine.rules"
-Assert-DoesNotContainText $codexRuleText 'decision = "allow"' ".codex/rules/gameengine.rules"
 
 $claudeSettingsFile = Assert-Exists ".claude/settings.json"
 $claudeSettings = Get-Content -LiteralPath $claudeSettingsFile -Raw | ConvertFrom-Json
@@ -13044,12 +13050,17 @@ if (-not $claudeSettings.PSObject.Properties.Name.Contains('$schema')) {
 if (-not $claudeSettings.PSObject.Properties.Name.Contains("permissions")) {
     Write-Error ".claude/settings.json must define permissions"
 }
-foreach ($askRule in @("Bash(git push --force:*)", "Bash(git push --force-with-lease:*)", "Bash(git restore:*)", "Bash(git checkout:*)", "Bash(gh pr create:*)", "Bash(gh pr merge:*)", "Bash(Remove-Item:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1:*)", "Bash(curl:*)", "Bash(Invoke-WebRequest:*)", "Bash(Invoke-RestMethod:*)", "Bash(Add-WindowsCapability:*)", "Bash(dism:*)", "Bash(msiexec:*)")) {
+foreach ($allowRule in @("Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)")) {
+    if (@($claudeSettings.permissions.allow) -notcontains $allowRule) {
+        Write-Error ".claude/settings.json permissions.allow missing $allowRule"
+    }
+}
+foreach ($askRule in @("Bash(git push origin main:*)", "Bash(git push origin master:*)", "Bash(git push --force:*)", "Bash(git push --force-with-lease:*)", "Bash(git restore:*)", "Bash(git checkout:*)", "Bash(gh pr edit:*)", "Bash(gh pr merge --merge:*)", "Bash(gh pr merge --squash:*)", "Bash(gh pr merge --rebase:*)", "Bash(gh pr merge --admin:*)", "Bash(gh pr ready:*)", "Bash(gh pr close:*)", "Bash(gh pr reopen:*)", "Bash(Remove-Item:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1:*)", "Bash(curl:*)", "Bash(Invoke-WebRequest:*)", "Bash(Invoke-RestMethod:*)", "Bash(Add-WindowsCapability:*)", "Bash(dism:*)", "Bash(msiexec:*)")) {
     if (@($claudeSettings.permissions.ask) -notcontains $askRule) {
         Write-Error ".claude/settings.json permissions.ask missing $askRule"
     }
 }
-foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)")) {
+foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)")) {
     if (@($claudeSettings.permissions.ask) -contains $automaticGitRule) {
         Write-Error ".claude/settings.json permissions.ask should not prompt routine automatic checkpoint command $automaticGitRule"
     }

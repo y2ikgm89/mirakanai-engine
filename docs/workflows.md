@@ -160,19 +160,19 @@ For documentation-only or other narrow non-runtime slices, use the narrower tier
 gh pr create --base <base-branch> --head <branch> --title "<title>" --body "<validation summary>"
 ```
 
-GitHub PR publishing and state changes through `gh pr create`, `edit`, `merge`, `ready`, `close`, or `reopen` are prompt-gated. If the active agent session cannot request approval, such as `Approval policy: never`, do not retry those commands or weaken rules; keep the branch pushed and create/update the PR through GitHub Web/Desktop or in an approval-capable session.
+In unattended Codex sessions, `gh pr create` may run automatically after the branch is pushed and the validation evidence is ready. The PR body must include actual validation evidence or blockers, and the head branch must be task-owned.
 
-The PR can be created or updated through GitHub Web, `gh`, or GitHub Desktop. The PR body should include actual validation evidence or blockers. If authentication, branch protection, required reviews, required status checks, or remote permissions block the push or PR, report the blocker and stop instead of bypassing policy or asking to weaken safeguards.
+The PR can also be created or updated through GitHub Web or GitHub Desktop. If authentication, branch protection, required reviews, required status checks, or remote permissions block the push or PR, report the blocker and stop instead of bypassing policy or asking to weaken safeguards.
 
 Push and PR publishing depend on host-local GitHub authentication such as Git Credential Manager, GitHub CLI, SSH agent, or a browser session. This repository must not require or store `GITHUB_TOKEN`, personal access tokens, or credential helper state for routine publishing.
 
-8. Merge only after branch protection, required checks, and required reviews are satisfied. Use GitHub UI when that is the clearest review surface. With GitHub CLI, one safe task-owned branch pattern is a merge commit plus remote head branch deletion:
+8. Merge only after branch protection, required checks, and required reviews are satisfied. For unattended Codex sessions, prefer GitHub auto-merge registration so GitHub performs the final `main` merge only after required checks and reviews pass:
 
 ```powershell
-gh pr merge <pr-number-or-url> --merge --delete-branch
+gh pr merge --auto --merge --delete-branch
 ```
 
-Use the repository's required merge strategy if it differs, such as `--squash` when that is the protected-branch policy. Use `--delete-branch` only for a task-owned head branch that is no longer needed. This does not bypass branch protection; `gh` must fail rather than merge when required checks or reviews are missing.
+Use `--delete-branch` only for a task-owned head branch that is no longer needed. This does not bypass branch protection; `gh` must fail or leave auto-merge pending when required checks or reviews are missing. Immediate merge commands such as `gh pr merge --merge --delete-branch` remain prompt-gated unless the user explicitly requests them in an approval-capable session.
 
 9. After GitHub deletes a merged head branch, optionally prune stale remote-tracking refs in local workspaces:
 
@@ -228,8 +228,8 @@ Use subagents only when the user explicitly asks for subagent delegation or para
 - Keep Codex and Claude Code behavior synchronized through `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.codex/agents/`, `.codex/rules/`, `.claude/settings.json`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/`, `engine/agent/manifest.fragments/` + composed `engine/agent/manifest.json`, and `tools/check-ai-integration.ps1`.
 - Use the OpenAI developer documentation MCP, or official OpenAI documentation when MCP is unavailable, for OpenAI API, Codex, ChatGPT Apps SDK, OpenAI agent, and OpenAI model behavior. Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagents.
 - Keep always-loaded instructions specific, concise, verifiable, and durable. Put long procedures in skills/docs, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the composed `engine/agent/manifest.json` (edit `engine/agent/manifest.fragments/*.json`, then `tools/compose-agent-manifest.ps1 -Write`).
-- Keep Codex project rules narrow and prompt-biased with `match` / `not_match` examples. Cover Windows PowerShell deletion/network/host-servicing commands as well as POSIX-like spellings. Do not add broad allow rules for shells, package managers, network tools, or destructive commands.
-- Keep Claude Code shared project permissions in `.claude/settings.json` with the official JSON schema: deny secret-bearing files and require approval for destructive, network, dependency-bootstrap, and mobile signing/smoke commands.
+- Keep Codex project rules narrow with `match` / `not_match` examples. Cover Windows PowerShell deletion/network/host-servicing commands as well as POSIX-like spellings. Do not add broad allow rules for shells, package managers, network tools, destructive commands, direct default-branch pushes, force-pushes, or immediate PR merges.
+- Keep Claude Code shared project permissions in `.claude/settings.json` with the official JSON schema: deny secret-bearing files, allow task-owned PR creation and auto-merge registration after validation checkpoints, and require approval for destructive, network, dependency-bootstrap, mobile signing/smoke, force-push, and non-auto PR state-change commands.
 - Keep local override and credential-bearing config uncommitted: `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md`.
 
 ## Repository consistency checklist (recommended)
