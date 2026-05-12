@@ -597,6 +597,7 @@ foreach ($productionPromptNeedle in @("Production Completion Execution", "curren
 Assert-ContainsText $agentsContent "validated commit checkpoints" "AGENTS.md"
 Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
 Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
+Assert-ContainsText $agentsContent "credential-manager-core" "AGENTS.md"
 Assert-ContainsText $agentsContent '`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`' "AGENTS.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit")) {
     Assert-ContainsText $agentsContent $windowsDiagnosticsNeedle "AGENTS.md"
@@ -623,6 +624,8 @@ Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GitHub flow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GITHUB_TOKEN" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "credential-manager-core" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "git config --show-origin --get-all credential.helper" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "specific, concise, verifiable" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "machine-readable capability/status claims" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "direct-clang-format-status" "docs/workflows.md"
@@ -669,6 +672,7 @@ Assert-ContainsText $aiIntegrationContent "git commit" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "policy reload" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "GITHUB_TOKEN" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Cursor global instructions" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "OpenAI developer docs MCP" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Claude Code settings and permissions: https://docs.anthropic.com/en/docs/claude-code/settings" "docs/ai-integration.md"
@@ -12996,6 +13000,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Git/GitHub publishing workflow changes" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "credential-manager-core" $agentIntegrationSkill
 }
 
 $codexRuleFile = Assert-Exists ".codex/rules/gameengine.rules"
@@ -13067,6 +13072,7 @@ foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down
 Assert-ContainsText $aiAgentRuleText ".codex/rules" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "policy reload" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "GITHUB_TOKEN" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "credential-manager-core" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.local.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integration.md"

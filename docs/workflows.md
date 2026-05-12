@@ -153,7 +153,16 @@ The PR can be created or updated through GitHub Web, `gh`, or GitHub Desktop. Th
 
 Push and PR publishing depend on host-local GitHub authentication such as Git Credential Manager, GitHub CLI, SSH agent, or a browser session. This repository must not require or store `GITHUB_TOKEN`, personal access tokens, or credential helper state for routine publishing.
 
-These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests and protected branches. For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow).
+If Git prints credential helper warnings such as `git: 'credential-manager-core' is not a git command`, inspect all helper sources first:
+
+```powershell
+git config --show-origin --get-all credential.helper
+git credential-manager --version
+```
+
+On Git for Windows, the current Git Credential Manager helper is `manager`. Remove stale user-level helper entries such as `manager-core` only after confirming `manager` is still configured by system or user Git config. Do not commit repository-level `credential.helper` overrides, token requirements, or checked-in credential state to hide host configuration drift.
+
+These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests and protected branches. For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html).
 
 ## Windows Diagnostics Toolchain
 

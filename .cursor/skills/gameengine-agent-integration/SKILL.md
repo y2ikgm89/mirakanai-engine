@@ -34,7 +34,7 @@ Full workflow lives in shared skills. Read these canonical files (ASCII paths):
 
 Machine-readable **canonical** contract: `engine/agent/manifest.json` (compose output from `engine/agent/manifest.fragments/` via `tools/compose-agent-manifest.ps1`). New `.claude/skills/gameengine-*` topics require a Codex twin registered in `tools/check-agents.ps1` (`claudeToCodexSkillMap`) and a matching thin `.cursor/skills/gameengine-*` folder unless intentionally Cursor-only (`gameengine-cursor-baseline`, `gameengine-plan-registry`). Keep Codex/Claude/Cursor surfaces aligned when workflow commands change, including Git/GitHub commit, push, force-push, and PR publishing gates. Treat Codex command policy as session-scoped: `.codex/rules` edits may need policy reload or a new session before newly allowed commands are available.
 
-Git/GitHub authentication stays host-local through Git Credential Manager, GitHub CLI, SSH agent, or a browser session; do not add repository requirements for `GITHUB_TOKEN` or personal access tokens.
+Git/GitHub authentication stays host-local through Git Credential Manager, GitHub CLI, SSH agent, or a browser session; do not add repository requirements for `GITHUB_TOKEN` or personal access tokens. If warnings mention missing helpers such as `credential-manager-core`, inspect `git config --show-origin --get-all credential.helper`, prefer current Git for Windows GCM helper `manager`, and fix host/user Git config rather than adding repository overrides.
 
 When adding retained editor UI ids or literals enforced by `tools/check-ai-integration.ps1`, extend scoped Needles and sibling skill/manifest text together (see canonical skill §When Changing Integration item 17).
 
