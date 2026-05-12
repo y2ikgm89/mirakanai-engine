@@ -1,5 +1,5 @@
-# Prompt before commands that commonly need local trust, network access,
-# user caches, signing state, or out-of-sandbox execution.
+# Prompt or narrowly allow commands that commonly need local trust, network
+# access, user caches, signing state, or out-of-sandbox execution.
 # Rule edits are not guaranteed to relax the active Codex command policy in
 # the same session; rely on policy reload or a new session before running
 # newly allowed commands.
@@ -42,6 +42,20 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["git", "push", "origin", ["main", "master"]],
+    decision = "prompt",
+    justification = "Direct pushes to default or protected branches bypass the topic-branch PR workflow and require explicit review.",
+    match = [
+        "git push origin main",
+        "git push origin master",
+    ],
+    not_match = [
+        "git push -u origin codex/example",
+        "git push origin codex/example",
+    ],
+)
+
+prefix_rule(
     pattern = ["git", "push", ["--force", "--force-with-lease"]],
     decision = "prompt",
     justification = "History rewriting pushes require explicit review of branch ownership and remote state.",
@@ -56,18 +70,47 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["gh", "pr", ["create", "edit", "merge", "ready", "close", "reopen"]],
-    decision = "prompt",
-    justification = "GitHub pull request publishing or state changes require explicit review of target branch, title, body, and validation evidence.",
+    pattern = ["gh", "pr", "create"],
+    decision = "allow",
+    justification = "After task-owned validation checkpoints, PR creation is allowed so unattended sessions can publish a reviewed topic branch.",
     match = [
         "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
+    ],
+    not_match = [
+        "gh pr edit --base main",
         "gh pr merge --merge --delete-branch",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", "merge", "--auto", "--merge", "--delete-branch"],
+    decision = "allow",
+    justification = "Registering GitHub auto-merge for a task-owned PR preserves branch protection and required checks while allowing unattended completion.",
+    match = [
+        "gh pr merge --auto --merge --delete-branch",
+    ],
+    not_match = [
+        "gh pr merge --merge --delete-branch",
+        "gh pr merge --squash --delete-branch",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["edit", "merge", "ready", "close", "reopen"]],
+    decision = "prompt",
+    justification = "GitHub pull request state changes outside the approved create plus auto-merge path require explicit review of target branch, title, body, and validation evidence.",
+    match = [
+        "gh pr merge --merge --delete-branch",
+        "gh pr merge --squash --delete-branch",
+        "gh pr edit --base main",
         "gh pr ready",
     ],
     not_match = [
         "gh pr status",
         "gh pr view --json url,state",
         "gh auth status",
+        "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
+        "gh pr merge --auto --merge --delete-branch",
     ],
 )
 
