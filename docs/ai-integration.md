@@ -4,9 +4,10 @@
 
 1. **Engine manifest SSOT:** edit `engine/agent/manifest.fragments/*.json`, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` to refresh `engine/agent/manifest.json`. CI validates with `compose-agent-manifest.ps1 -Verify` (via `tools/check-json-contracts.ps1`).
 2. **Agent context size:** `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` defaults to `-ContextProfile Full` (prior behavior). Use `-ContextProfile Standard` to truncate long `modules[].purpose` text, or `-ContextProfile Minimal` for a slim `manifest` object (recipes, command-surface ids, module name/path/status only). Full module headers remain in `publicHeaders` / `moduleOwnership`.
-3. **Schemas:** `schemas/engine-agent.schema.json` (with `schemas/engine-agent/ai-operable-production-loop.schema.json` via `$ref`) and `schemas/game-agent.schema.json` describe manifest shapes; see `tools/check-json-contracts.ps1` for enforced fields.
-4. **ADR:** `docs/adr/0002-agent-manifest-fragments-compose.md` records the fragment + compose decision.
-5. **Repository layout (`MK_tools`):** `docs/adr/0003-directory-layout-clean-break.md` and `docs/specs/2026-05-11-directory-layout-target-v1.md` define the target tree. `MK_tools` implementation `.cpp` files live under `engine/tools/{shader,gltf,asset,scene}/`; public headers stay `engine/tools/include/mirakana/tools/*.hpp`. If you move tool sources, update path-based Needles in `tools/check-json-contracts.ps1` and `tools/check-ai-integration.ps1` (and any CMake fragment needles such as `engine/tools/gltf/CMakeLists.txt`) in the same task.
+3. **Always-loaded instruction budget:** Codex's documented default `project_doc_max_bytes` for `AGENTS.md` is 32 KiB. Keep root `AGENTS.md` below that cap, enforced by `tools/check-agents.ps1`; move detail to skills, subagents, manifest fragments, or this doc.
+4. **Schemas:** `schemas/engine-agent.schema.json` (with `schemas/engine-agent/ai-operable-production-loop.schema.json` via `$ref`) and `schemas/game-agent.schema.json` describe manifest shapes; see `tools/check-json-contracts.ps1` for enforced fields.
+5. **ADR:** `docs/adr/0002-agent-manifest-fragments-compose.md` records the fragment + compose decision.
+6. **Repository layout (`MK_tools`):** `docs/adr/0003-directory-layout-clean-break.md` and `docs/specs/2026-05-11-directory-layout-target-v1.md` define the target tree. `MK_tools` implementation `.cpp` files live under `engine/tools/{shader,gltf,asset,scene}/`; public headers stay `engine/tools/include/mirakana/tools/*.hpp`. If you move tool sources, update path-based Needles in `tools/check-json-contracts.ps1` and `tools/check-ai-integration.ps1` (and any CMake fragment needles such as `engine/tools/gltf/CMakeLists.txt`) in the same task.
 
 GameEngine is designed so Codex, Claude Code, and similar AI coding agents can discover the same project rules, engine API surface, and validation commands.
 
@@ -70,7 +71,7 @@ Some operator environments inject Superpowers guidance that references a Claude 
 
 ## Instruction Hygiene
 
-Keep always-loaded instructions specific, concise, verifiable, and durable. `AGENTS.md` is for repository-wide standards; `CLAUDE.md` imports it for Claude Code parity. Long procedures belong in skills or docs (including [`docs/agent-operational-reference.md`](agent-operational-reference.md)), path-specific guidance belongs in rules, specialized work belongs in subagents, and capability/status claims belong in `engine/agent/manifest.json`. Personal preferences, credentials, API keys, MCP connection state, and machine-specific paths must stay in user/local configuration rather than tracked instructions.
+Keep always-loaded instructions specific, concise, verifiable, and durable. `AGENTS.md` is for repository-wide standards, must stay below the official Codex default 32 KiB project-doc budget, and is checked by `tools/check-agents.ps1`; `CLAUDE.md` imports it for Claude Code parity. Long procedures belong in skills or docs (including [`docs/agent-operational-reference.md`](agent-operational-reference.md)), path-specific guidance belongs in rules, specialized work belongs in subagents, and capability/status claims belong in `engine/agent/manifest.json`. Personal preferences, credentials, API keys, MCP connection state, and machine-specific paths must stay in user/local configuration rather than tracked instructions.
 
 ## Codex
 
@@ -81,7 +82,7 @@ Codex reads:
 - `.codex/agents/`
 - `.codex/rules/`
 
-Use Codex project skills for repeatable workflows and custom agents for focused parallel work.
+Use Codex project skills for repeatable workflows; keep skill descriptions precise because full skill bodies are loaded only when selected. Use custom agents for focused parallel work only when delegation is explicitly requested, because each subagent adds a separate context and token cost.
 
 Project-local Codex rules are intentionally narrow. They should cover commands that often need local trust, network access, user caches, signing state, destructive review, or repository history rewriting, including Windows PowerShell deletion/network/host-servicing commands, forced Git pushes, and PR state changes through `gh pr`. Routine `git commit`, non-forced `git push`, task-owned `gh pr create`, and `gh pr merge --auto --merge --delete-branch` are allowed after validation checkpoints so GitHub branch protection controls the final `main` merge. Every rule should include `match` / `not_match` examples. Do not add broad allow rules for shells, package managers, network tools, destructive commands, direct default-branch pushes, force-pushes, or immediate PR merge shortcuts. Treat command policy as session-scoped: `.codex/rules` edits may need policy reload or a new session before newly allowed commands are available. If prompt-gated PR state changes such as `gh pr edit` or immediate `gh pr merge` are blocked, keep the branch pushed and hand off to GitHub Web/Desktop or an approval-capable session.
 
@@ -165,3 +166,9 @@ The engine manifest also declares `aiOperableProductionLoop`: recipe ids, struct
 - Claude Code settings and permissions: https://docs.anthropic.com/en/docs/claude-code/settings
 - Claude Code hooks: https://docs.anthropic.com/en/docs/claude-code/hooks
 - Claude Code subagents: https://docs.anthropic.com/en/docs/claude-code/sub-agents
+- Cursor rules: https://cursor.com/docs/rules
+- Cursor Agent Skills: https://cursor.com/docs/skills
+- PowerShell approved verbs: https://learn.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands
+- PSScriptAnalyzer ShouldProcess rule: https://learn.microsoft.com/en-us/powershell/utility-modules/psscriptanalyzer/rules/shouldprocess
+- PowerShell ShouldProcess guidance: https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/everything-about-shouldprocess
+- PowerShell Write-Information: https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/write-information

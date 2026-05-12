@@ -7,6 +7,15 @@ $ErrorActionPreference = "Stop"
 
 $root = Get-RepoRoot
 
+$agentsPath = Join-Path $root "AGENTS.md"
+if (Test-Path -LiteralPath $agentsPath) {
+    $agentsBytes = [System.IO.File]::ReadAllBytes($agentsPath).Length
+    $maxAgentsBytes = 32 * 1024
+    if ($agentsBytes -gt $maxAgentsBytes) {
+        Write-Error ("AGENTS.md is {0} bytes, exceeding Codex default project_doc_max_bytes budget ({1} bytes). Move long procedures to skills/docs/subagents/manifest." -f $agentsBytes, $maxAgentsBytes)
+    }
+}
+
 $toolsScriptRoot = Join-Path $root "tools"
 foreach ($script in Get-ChildItem -LiteralPath $toolsScriptRoot -Filter "*.ps1" -File | Sort-Object Name) {
     $bytes = [System.IO.File]::ReadAllBytes($script.FullName)
@@ -291,4 +300,4 @@ if (Test-Path $claudeAgentRoot) {
     }
 }
 
-Write-Host "agent-config-check: ok"
+Write-Information "agent-config-check: ok" -InformationAction Continue
