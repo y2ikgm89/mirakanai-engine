@@ -109,7 +109,62 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 git diff --cached --check
 ```
 
-These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`.
+### Commit, Push, And Pull Request Workflow
+
+Use commits and pushes at coherent, validated checkpoints without asking for per-action confirmation once a task is underway. Publish only task-owned changes and keep branch selection conservative.
+
+1. Inspect the branch and worktree before staging:
+
+```powershell
+git status --short --branch
+git diff --stat
+git diff
+```
+
+2. Stage only task-owned files, then review the staged patch:
+
+```powershell
+git add <task-owned-files>
+git diff --cached --stat
+git diff --cached --check
+```
+
+3. Commit only a coherent, validated slice. Do not include unrelated user changes, ignored scratch output, generated logs, credentials, signing keys, local overrides, `.claude/settings.local.json`, `.mcp.json`, or `AGENTS.override.md`. Use a concise imperative commit subject and avoid AI-generated trailers unless the user asks for them.
+
+4. Push only a reviewed topic branch. Prefer `codex/<topic>` for Codex-created branches unless the user asks for another name:
+
+```powershell
+git branch --show-current
+git remote -v
+git push -u origin <branch>
+```
+
+If the task edits `.codex/rules/*.rules`, treat Codex command policy as session-scoped. Do not assume newly allowed commands are available until policy reload or a new session; when the active policy still requires a prompt and approvals are unavailable (for example `Approval policy: never`), record the blocker instead of retrying or weakening rules.
+
+5. Do not push directly to the default branch or protected branches. Do not use `--force`; use `--force-with-lease` only when the user explicitly requests history rewriting and the branch is known to be task-owned.
+
+6. Prefer a GitHub pull request for shared or release-facing work:
+
+```powershell
+gh pr create --base <base-branch> --head <branch> --title "<title>" --body "<validation summary>"
+```
+
+GitHub PR publishing and state changes through `gh pr create`, `edit`, `merge`, `ready`, `close`, or `reopen` are prompt-gated. If the active agent session cannot request approval, such as `Approval policy: never`, do not retry those commands or weaken rules; keep the branch pushed and create/update the PR through GitHub Web/Desktop or in an approval-capable session.
+
+The PR can be created or updated through GitHub Web, `gh`, or GitHub Desktop. The PR body should include actual validation evidence or blockers. If authentication, branch protection, required reviews, required status checks, or remote permissions block the push or PR, report the blocker and stop instead of bypassing policy or asking to weaken safeguards.
+
+Push and PR publishing depend on host-local GitHub authentication such as Git Credential Manager, GitHub CLI, SSH agent, or a browser session. This repository must not require or store `GITHUB_TOKEN`, personal access tokens, or credential helper state for routine publishing.
+
+If Git prints credential helper warnings such as `git: 'credential-manager-core' is not a git command`, inspect all helper sources first:
+
+```powershell
+git config --show-origin --get-all credential.helper
+git credential-manager --version
+```
+
+On Git for Windows, the current Git Credential Manager helper is `manager`. Remove stale user-level helper entries such as `manager-core` only after confirming `manager` is still configured by system or user Git config. Do not commit repository-level `credential.helper` overrides, token requirements, or checked-in credential state to hide host configuration drift.
+
+These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests and protected branches. For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html).
 
 ## Windows Diagnostics Toolchain
 

@@ -595,6 +595,10 @@ foreach ($productionPromptNeedle in @("Production Completion Execution", "curren
     Assert-ContainsText $agentsContent $productionPromptNeedle "AGENTS.md"
 }
 Assert-ContainsText $agentsContent "validated commit checkpoints" "AGENTS.md"
+Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
+Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
+Assert-ContainsText $agentsContent "credential-manager-core" "AGENTS.md"
+Assert-ContainsText $agentsContent "gh pr create" "AGENTS.md"
 Assert-ContainsText $agentsContent '`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`' "AGENTS.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit")) {
     Assert-ContainsText $agentsContent $windowsDiagnosticsNeedle "AGENTS.md"
@@ -615,6 +619,15 @@ Assert-ContainsText $workflowsContent ".claude/settings.json" "docs/workflows.md
 Assert-ContainsText $workflowsContent ".claude/settings.local.json" "docs/workflows.md"
 Assert-ContainsText $workflowsContent ".mcp.json" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "AGENTS.override.md" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "Commit, Push, And Pull Request Workflow" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "gh pr create" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "GitHub flow" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "GITHUB_TOKEN" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "credential-manager-core" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "git config --show-origin --get-all credential.helper" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "approval-capable session" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "specific, concise, verifiable" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "machine-readable capability/status claims" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "direct-clang-format-status" "docs/workflows.md"
@@ -657,6 +670,13 @@ foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "b
 
 $aiIntegrationContent = Get-Content -LiteralPath (Assert-Exists "docs/ai-integration.md") -Raw
 Assert-ContainsText $aiIntegrationContent "Codex rules: https://developers.openai.com/codex/rules" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "git commit" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "policy reload" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "GITHUB_TOKEN" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "approval-capable session" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "Cursor global instructions" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "OpenAI developer docs MCP" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Claude Code settings and permissions: https://docs.anthropic.com/en/docs/claude-code/settings" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "windowsDiagnosticsToolchain" "docs/ai-integration.md"
@@ -665,6 +685,11 @@ Assert-ContainsText $aiIntegrationContent "Windows Performance Toolkit" "docs/ai
 Assert-ContainsText $aiIntegrationContent ".claude/settings.local.json" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent ".mcp.json" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "AGENTS.override.md" "docs/ai-integration.md"
+
+$cursorBaselineSkillText = Get-Content -LiteralPath (Assert-Exists ".cursor/skills/gameengine-cursor-baseline/SKILL.md") -Raw
+Assert-ContainsText $cursorBaselineSkillText "Cursor global instructions" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "workspace override" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+
 Assert-ContainsText $aiIntegrationContent "normalized-build-environment" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'Path`/`PATH' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Instruction Hygiene" "docs/ai-integration.md"
@@ -12975,6 +13000,11 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Windows host diagnostics guidance" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Debugging Tools for Windows" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "PIX on Windows" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "Git/GitHub publishing workflow changes" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "credential-manager-core" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "approval-capable session" $agentIntegrationSkill
 }
 
 $codexRuleFile = Assert-Exists ".codex/rules/gameengine.rules"
@@ -12984,8 +13014,14 @@ Assert-ContainsText $codexRuleText 'decision = "prompt"' ".codex/rules/gameengin
 Assert-ContainsText $codexRuleText 'decision = "forbidden"' ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "match =" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "not_match =" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "git commit" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "git push" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "git push --force" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "policy reload" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git restore" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "gh pr create" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "gh pr merge" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Remove-Item" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-WebRequest" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-RestMethod" ".codex/rules/gameengine.rules"
@@ -13001,9 +13037,14 @@ if (-not $claudeSettings.PSObject.Properties.Name.Contains('$schema')) {
 if (-not $claudeSettings.PSObject.Properties.Name.Contains("permissions")) {
     Write-Error ".claude/settings.json must define permissions"
 }
-foreach ($askRule in @("Bash(git push:*)", "Bash(git restore:*)", "Bash(git checkout:*)", "Bash(Remove-Item:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1:*)", "Bash(curl:*)", "Bash(Invoke-WebRequest:*)", "Bash(Invoke-RestMethod:*)", "Bash(Add-WindowsCapability:*)", "Bash(dism:*)", "Bash(msiexec:*)")) {
+foreach ($askRule in @("Bash(git push --force:*)", "Bash(git push --force-with-lease:*)", "Bash(git restore:*)", "Bash(git checkout:*)", "Bash(gh pr create:*)", "Bash(gh pr merge:*)", "Bash(Remove-Item:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1:*)", "Bash(curl:*)", "Bash(Invoke-WebRequest:*)", "Bash(Invoke-RestMethod:*)", "Bash(Add-WindowsCapability:*)", "Bash(dism:*)", "Bash(msiexec:*)")) {
     if (@($claudeSettings.permissions.ask) -notcontains $askRule) {
         Write-Error ".claude/settings.json permissions.ask missing $askRule"
+    }
+}
+foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)")) {
+    if (@($claudeSettings.permissions.ask) -contains $automaticGitRule) {
+        Write-Error ".claude/settings.json permissions.ask should not prompt routine automatic checkpoint command $automaticGitRule"
     }
 }
 foreach ($denyRule in @("Read(./.env)", "Read(./.env.*)", "Read(./.mcp.json)", "Read(./secrets/**)", "Read(./.claude/settings.local.json)", "Read(./**/*.p12)")) {
@@ -13033,6 +13074,10 @@ foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down
     Assert-ContainsText $aiAgentRuleText $planVolumeNeedle ".claude/rules/ai-agent-integration.md"
 }
 Assert-ContainsText $aiAgentRuleText ".codex/rules" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "policy reload" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "GITHUB_TOKEN" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "credential-manager-core" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "approval-capable session" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.local.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integration.md"

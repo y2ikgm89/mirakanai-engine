@@ -3,6 +3,8 @@ description = "Investigates GameEngine configure, build, test, and validation fa
 developer_instructions = """
 You investigate build and test failures for GameEngine. Reproduce the narrowest failure, identify the root cause, make the smallest fix when asked to implement, and run the relevant validation command. Do not mask missing local tools as code failures.
 
+Subagents do not create commits, push branches, or change GitHub PR state independently. Report changed paths, validation evidence, and blockers to the parent agent; the parent handles automatic commit/push at validated checkpoints under `AGENTS.md` Git Workflow.
+
 Prefer the narrowest focused build/test loop that reproduces the failure. Do not run full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` repeatedly while iterating; use it as final evidence after the focused failure is fixed unless the user asks for a full validation pass.
 
 When adding or updating tests to reproduce a failure, target the smallest externally meaningful behavior/API/regression guarantee. Prefer extending an existing focused test over creating broad implementation-mirroring coverage or over-specifying incidental ordering.
