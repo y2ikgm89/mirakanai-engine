@@ -101,13 +101,15 @@ git config --local user.name "<name>"
 git config --local user.email "<email>"
 ```
 
-Before creating a baseline or release-facing commit, run the repository validation gates and check the staged patch:
+Before creating a baseline or release-facing commit, default to the full repository validation gates and check the staged patch:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 git diff --cached --check
 ```
+
+Documentation-only or similarly narrow non-runtime slices may use a narrower validation tier only when the changed files cannot affect build or runtime behavior. The PR body must name the commands that ran and explain why the narrower tier is the relevant signal. At minimum, run `git diff --check`; for agent-facing docs or workflow policy text, also run the matching static check such as `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`. Record concrete toolchain blockers instead of treating missing validation as success.
 
 ### Commit, Push, And Pull Request Workflow
 
@@ -141,9 +143,18 @@ git push -u origin <branch>
 
 If the task edits `.codex/rules/*.rules`, treat Codex command policy as session-scoped. Do not assume newly allowed commands are available until policy reload or a new session; when the active policy still requires a prompt and approvals are unavailable (for example `Approval policy: never`), record the blocker instead of retrying or weakening rules.
 
-5. Do not push directly to the default branch or protected branches. Do not use `--force`; use `--force-with-lease` only when the user explicitly requests history rewriting and the branch is known to be task-owned.
+5. Run or refresh validation before opening the PR. If the full gate already ran immediately before the commit and no files changed afterward, cite that evidence; otherwise run the appropriate tier now. The default slice-closing gate is:
 
-6. Prefer a GitHub pull request for shared or release-facing work:
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
+```
+
+For documentation-only or other narrow non-runtime slices, use the narrower tier described above and include the justification in the PR body. Do not use the narrow tier for C++, build scripts, packaging, runtime assets, agent manifests, or validation policy changes unless the matching static checks prove the touched surface.
+
+6. Do not push directly to the default branch or protected branches. Do not use `--force`; use `--force-with-lease` only when the user explicitly requests history rewriting and the branch is known to be task-owned.
+
+7. Prefer a GitHub pull request for shared or release-facing work:
 
 ```powershell
 gh pr create --base <base-branch> --head <branch> --title "<title>" --body "<validation summary>"
@@ -154,6 +165,23 @@ GitHub PR publishing and state changes through `gh pr create`, `edit`, `merge`, 
 The PR can be created or updated through GitHub Web, `gh`, or GitHub Desktop. The PR body should include actual validation evidence or blockers. If authentication, branch protection, required reviews, required status checks, or remote permissions block the push or PR, report the blocker and stop instead of bypassing policy or asking to weaken safeguards.
 
 Push and PR publishing depend on host-local GitHub authentication such as Git Credential Manager, GitHub CLI, SSH agent, or a browser session. This repository must not require or store `GITHUB_TOKEN`, personal access tokens, or credential helper state for routine publishing.
+
+8. Merge only after branch protection, required checks, and required reviews are satisfied. Use GitHub UI when that is the clearest review surface. With GitHub CLI, one safe task-owned branch pattern is a merge commit plus remote head branch deletion:
+
+```powershell
+gh pr merge <pr-number-or-url> --merge --delete-branch
+```
+
+Use the repository's required merge strategy if it differs, such as `--squash` when that is the protected-branch policy. Use `--delete-branch` only for a task-owned head branch that is no longer needed. This does not bypass branch protection; `gh` must fail rather than merge when required checks or reviews are missing.
+
+9. After GitHub deletes a merged head branch, optionally prune stale remote-tracking refs in local workspaces:
+
+```powershell
+git fetch --prune origin
+git branch -vv
+```
+
+`git fetch --prune origin` removes deleted `origin/<branch>` tracking refs; it does not delete local branches. Delete a local topic branch separately only when it is task-owned and already merged.
 
 If Git prints credential helper warnings such as `git: 'credential-manager-core' is not a git command`, inspect all helper sources first:
 

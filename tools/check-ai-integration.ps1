@@ -600,6 +600,7 @@ Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
 Assert-ContainsText $agentsContent "credential-manager-core" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr create" "AGENTS.md"
 Assert-ContainsText $agentsContent '`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`' "AGENTS.md"
+Assert-ContainsText $agentsContent "documentation-only/non-runtime slices" "AGENTS.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit")) {
     Assert-ContainsText $agentsContent $windowsDiagnosticsNeedle "AGENTS.md"
 }
@@ -621,6 +622,9 @@ Assert-ContainsText $workflowsContent ".mcp.json" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "AGENTS.override.md" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Commit, Push, And Pull Request Workflow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr create" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "gh pr merge <pr-number-or-url> --merge --delete-branch" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "Documentation-only or similarly narrow non-runtime slices" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GitHub flow" "docs/workflows.md"
@@ -13001,6 +13005,8 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Debugging Tools for Windows" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "PIX on Windows" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Git/GitHub publishing workflow changes" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "merge/delete-branch" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "post-merge remote-tracking cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "credential-manager-core" $agentIntegrationSkill
@@ -13022,6 +13028,7 @@ Assert-ContainsText $codexRuleText "git restore" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr create" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "gh pr merge --merge --delete-branch" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Remove-Item" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-WebRequest" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-RestMethod" ".codex/rules/gameengine.rules"
