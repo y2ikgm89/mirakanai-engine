@@ -1,0 +1,13 @@
+format=GameEngine.Material.v1
+material.id=5514279199260054295
+material.name=Desktop Runtime Lit Material
+material.shading=lit
+material.surface=opaque
+material.double_sided=false
+factor.base_color=0.8,0.35,0.15,1
+factor.emissive=0,0,0
+factor.metallic=0
+factor.roughness=1
+texture.count=1
+texture.1.slot=base_color
+texture.1.id=5904496411938941653

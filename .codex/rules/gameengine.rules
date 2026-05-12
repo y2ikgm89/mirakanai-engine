@@ -1,0 +1,96 @@
+# Prompt before commands that commonly need local trust, network access,
+# user caches, signing state, or out-of-sandbox execution.
+prefix_rule(
+    pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ["tools/bootstrap-deps.ps1", "tools/build-mobile-android.ps1", "tools/check-android-release-package.ps1", "tools/smoke-android-package.ps1", "tools/build-mobile-apple.ps1", "tools/smoke-ios-package.ps1"]],
+    decision = "prompt",
+    justification = "Dependency bootstrap and mobile package lanes can touch user caches, SDKs, emulators, or signing material; review the host action first.",
+    match = [
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-android.ps1 -Game sample_headless -Configuration Debug",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1 -Game sample_headless -UseLocalValidationKey",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-android-package.ps1 -Game sample_headless -Configuration Release -SkipBuild -StartEmulator -AvdName Mirakanai_API36",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-apple.ps1 -Game sample_headless -Configuration Debug -Platform Simulator",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug",
+    ],
+    not_match = [
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", ["push", "reset", "restore", "checkout", "clean"]],
+    decision = "prompt",
+    justification = "Publishing or worktree-mutating Git operations require explicit review so user changes are not overwritten.",
+    match = [
+        "git push",
+        "git reset --hard",
+        "git restore .",
+        "git checkout -- engine/core/include/mirakana/core/application.hpp",
+        "git clean -fdx",
+    ],
+    not_match = [
+        "git status --short",
+        "git diff",
+        "git show --stat",
+    ],
+)
+
+prefix_rule(
+    pattern = ["rm"],
+    decision = "forbidden",
+    justification = "Use reviewed PowerShell Remove-Item with resolved in-workspace paths, or git rm for tracked files.",
+    match = [
+        "rm -rf out",
+        "rm -rf .",
+    ],
+    not_match = [
+        "git rm -r games/example",
+    ],
+)
+
+prefix_rule(
+    pattern = ["Remove-Item"],
+    decision = "prompt",
+    justification = "PowerShell deletion can remove repository or generated files; review resolved paths and scope before running it.",
+    match = [
+        "Remove-Item -LiteralPath out -Recurse -Force",
+        "Remove-Item -LiteralPath . -Recurse -Force",
+    ],
+    not_match = [
+        "Get-Item -LiteralPath out",
+        "Test-Path -LiteralPath out",
+    ],
+)
+
+prefix_rule(
+    pattern = [["curl", "wget", "Invoke-WebRequest", "Invoke-RestMethod"]],
+    decision = "prompt",
+    justification = "Network downloads must be reviewed for source trust, prompt injection, and license impact.",
+    match = [
+        "curl https://example.com/file.txt",
+        "wget https://example.com/file.txt",
+        "Invoke-WebRequest -Uri https://example.com/file.txt -OutFile file.txt",
+        "Invoke-RestMethod -Uri https://example.com/api",
+    ],
+    not_match = [
+        "Get-Command Invoke-WebRequest",
+        "Get-Command Invoke-RestMethod",
+    ],
+)
+
+prefix_rule(
+    pattern = [["Add-WindowsCapability", "dism", "msiexec"]],
+    decision = "prompt",
+    justification = "Windows optional feature, DISM, and MSI servicing commands can modify host toolchain or diagnostics state; review the host action first.",
+    match = [
+        "Add-WindowsCapability -Online -Name Tools.Graphics.DirectX~~~~0.0.1.0",
+        "dism /online /Add-Capability /CapabilityName:Tools.Graphics.DirectX~~~~0.0.1.0",
+        "msiexec /qn /p Windows_ADK_10.1.26100.2454_Update_KB5079391.msp",
+    ],
+    not_match = [
+        "Get-WindowsCapability -Online -Name Tools.Graphics.DirectX~~~~0.0.1.0",
+        "Get-Command cdb",
+    ],
+)

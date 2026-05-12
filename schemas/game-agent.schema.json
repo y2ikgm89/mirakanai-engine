@@ -1,0 +1,683 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/game-agent.schema.json",
+  "title": "GameEngine Game Manifest",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "name",
+    "displayName",
+    "language",
+    "entryPoint",
+    "target",
+    "engineModules",
+    "aiWorkflow",
+    "gameplayContract",
+    "backendReadiness",
+    "importerRequirements",
+    "packagingTargets",
+    "validationRecipes"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "language": {
+      "type": "string",
+      "const": "C++23"
+    },
+    "entryPoint": {
+      "type": "string"
+    },
+    "target": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "engineModules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "aiWorkflow": {
+      "type": "object",
+      "required": ["spec", "validate", "allowedEditRoots"]
+    },
+    "gameplayContract": {
+      "type": "object",
+      "required": ["currentRuntime"]
+    },
+    "backendReadiness": {
+      "type": "object",
+      "required": ["platform", "graphics", "audio", "ui"]
+    },
+    "importerRequirements": {
+      "type": "object",
+      "required": ["sourceFormats", "cookedOnlyRuntime", "externalImportersRequired"]
+    },
+    "packagingTargets": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "runtimePackageFiles": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|/)\\.\\.($|/)).+"
+      }
+    },
+    "runtimeSceneValidationTargets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["id", "packageIndexPath", "sceneAssetKey"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "packageIndexPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+          },
+          "sceneAssetKey": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+          },
+          "contentRoot": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+          },
+          "validateAssetReferences": {
+            "type": "boolean"
+          },
+          "requireUniqueNodeNames": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "materialShaderAuthoringTargets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["id", "sourceMaterialPath", "runtimeMaterialPath", "packageIndexPath", "shaderSourcePaths"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "sourceMaterialPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.material$"
+          },
+          "runtimeMaterialPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.material$"
+          },
+          "packageIndexPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+          },
+          "shaderSourcePaths": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.hlsl$"
+            }
+          },
+          "d3d12ShaderArtifactPaths": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.dxil$"
+            }
+          },
+          "vulkanShaderArtifactPaths": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.spv$"
+            }
+          },
+          "validateMaterialTextures": {
+            "type": "boolean"
+          },
+          "validateShaderArtifacts": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "atlasTilemapAuthoringTargets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "packageIndexPath",
+          "tilemapPath",
+          "atlasTexturePath",
+          "tilemapAssetKey",
+          "atlasTextureAssetKey",
+          "mode",
+          "sourceDecoding",
+          "atlasPacking",
+          "nativeGpuSpriteBatching"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "packageIndexPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+          },
+          "tilemapPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.tilemap$"
+          },
+          "atlasTexturePath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geasset$"
+          },
+          "tilemapAssetKey": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+          },
+          "atlasTextureAssetKey": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+          },
+          "mode": {
+            "type": "string",
+            "const": "deterministic-package-data"
+          },
+          "sourceDecoding": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "atlasPacking": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "nativeGpuSpriteBatching": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "preflightRecipeIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        }
+      }
+    },
+    "prefabScenePackageAuthoringTargets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "mode",
+          "sceneAuthoringPath",
+          "prefabAuthoringPath",
+          "sourceRegistryPath",
+          "packageIndexPath",
+          "outputScenePath",
+          "sceneAssetKey",
+          "runtimeSceneValidationTargetId",
+          "authoringCommandRows",
+          "selectedSourceAssetKeys",
+          "sourceCookMode",
+          "sceneMigration",
+          "runtimeSceneValidation",
+          "hostGatedSmokeRecipeIds",
+          "broadImporterExecution",
+          "broadDependencyCooking",
+          "runtimeSourceParsing",
+          "materialGraph",
+          "shaderGraph",
+          "liveShaderGeneration",
+          "skeletalAnimation",
+          "gpuSkinning",
+          "publicNativeRhiHandles",
+          "metalReadiness",
+          "rendererQuality"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "mode": {
+            "type": "string",
+            "const": "deterministic-3d-prefab-scene-package-data"
+          },
+          "sceneAuthoringPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.scene$"
+          },
+          "prefabAuthoringPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.prefab$"
+          },
+          "sourceRegistryPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geassets$"
+          },
+          "packageIndexPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+          },
+          "outputScenePath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.scene$"
+          },
+          "sceneAssetKey": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+          },
+          "runtimeSceneValidationTargetId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "authoringCommandRows": {
+            "type": "array",
+            "minItems": 5,
+            "maxItems": 5,
+            "items": {
+              "type": "object",
+              "required": ["id", "surface", "operation"],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                "surface": {
+                  "enum": ["GameEngine.Scene.v2", "GameEngine.Prefab.v2"]
+                },
+                "operation": {
+                  "enum": [
+                    "create-scene",
+                    "add-scene-node",
+                    "add-or-update-component",
+                    "create-prefab",
+                    "instantiate-prefab"
+                  ]
+                }
+              }
+            }
+          },
+          "selectedSourceAssetKeys": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+            }
+          },
+          "sourceCookMode": {
+            "type": "string",
+            "const": "selected-source-registry-rows"
+          },
+          "sceneMigration": {
+            "type": "string",
+            "const": "migrate-scene-v2-runtime-package"
+          },
+          "runtimeSceneValidation": {
+            "type": "string",
+            "const": "validate-runtime-scene-package"
+          },
+          "hostGatedSmokeRecipeIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          },
+          "broadImporterExecution": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "broadDependencyCooking": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "runtimeSourceParsing": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "materialGraph": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "shaderGraph": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "liveShaderGeneration": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "skeletalAnimation": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "gpuSkinning": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "publicNativeRhiHandles": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "metalReadiness": {
+            "type": "string",
+            "const": "host-gated"
+          },
+          "rendererQuality": {
+            "type": "string",
+            "const": "unsupported"
+          }
+        }
+      }
+    },
+    "registeredSourceAssetCookTargets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "mode",
+          "cookCommandId",
+          "prefabScenePackageAuthoringTargetId",
+          "sourceRegistryPath",
+          "packageIndexPath",
+          "selectedAssetKeys",
+          "dependencyExpansion",
+          "dependencyCooking",
+          "externalImporterExecution",
+          "rendererRhiResidency",
+          "packageStreaming",
+          "materialGraph",
+          "shaderGraph",
+          "liveShaderGeneration",
+          "editorProductization",
+          "metalReadiness",
+          "publicNativeRhiHandles",
+          "generalProductionRendererQuality",
+          "arbitraryShell",
+          "freeFormEdit"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "mode": {
+            "type": "string",
+            "const": "descriptor-only-cook-registered-source-assets"
+          },
+          "cookCommandId": {
+            "type": "string",
+            "const": "cook-registered-source-assets"
+          },
+          "prefabScenePackageAuthoringTargetId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "sourceRegistryPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geassets$"
+          },
+          "packageIndexPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+          },
+          "selectedAssetKeys": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+            }
+          },
+          "dependencyExpansion": {
+            "type": "string",
+            "enum": [
+              "explicit_dependency_selection",
+              "registered_source_registry_closure"
+            ]
+          },
+          "dependencyCooking": {
+            "type": "string",
+            "enum": ["unsupported", "registry_closure"]
+          },
+          "externalImporterExecution": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "rendererRhiResidency": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "packageStreaming": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "materialGraph": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "shaderGraph": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "liveShaderGeneration": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "editorProductization": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "metalReadiness": {
+            "type": "string",
+            "const": "host-gated"
+          },
+          "publicNativeRhiHandles": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "generalProductionRendererQuality": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "arbitraryShell": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "freeFormEdit": {
+            "type": "string",
+            "const": "unsupported"
+          }
+        }
+      }
+    },
+    "packageStreamingResidencyTargets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "packageIndexPath",
+          "runtimeSceneValidationTargetId",
+          "mode",
+          "residentBudgetBytes",
+          "safePointRequired"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "packageIndexPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+          },
+          "runtimeSceneValidationTargetId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "mode": {
+            "type": "string",
+            "const": "host-gated-safe-point"
+          },
+          "residentBudgetBytes": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "safePointRequired": {
+            "type": "boolean",
+            "const": true
+          },
+          "contentRoot": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+          },
+          "maxResidentPackages": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "preloadAssetKeys": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+            }
+          },
+          "residentResourceKinds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": ["texture", "mesh", "material", "scene", "audio", "ui_atlas", "tilemap"]
+            }
+          },
+          "preflightRecipeIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        }
+      }
+    },
+    "validationRecipes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "command"]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "packagingTargets": {
+            "contains": {
+              "const": "desktop-runtime-release"
+            }
+          }
+        },
+        "required": ["packagingTargets"]
+      },
+      "then": {
+        "properties": {
+          "packagingTargets": {
+            "contains": {
+              "const": "desktop-game-runtime"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,384 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 30,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "dev-core",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/out/build/dev",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview"
+      }
+    },
+    {
+      "name": "dev-windows-gui",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "MK_ENABLE_DESKTOP_GUI": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "Developer build",
+      "binaryDir": "${sourceDir}/out/build/dev",
+      "inherits": ["dev-core", "dev-windows-gui"],
+      "cacheVariables": {
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview"
+      }
+    },
+    {
+      "name": "cpp23-eval",
+      "displayName": "C++23 verification build",
+      "binaryDir": "${sourceDir}/out/build/cpp23-eval",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview"
+      }
+    },
+    {
+      "name": "cpp23-release-eval",
+      "displayName": "C++23 release package verification build",
+      "binaryDir": "${sourceDir}/out/build/cpp23-release-preset-eval",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview"
+      }
+    },
+    {
+      "name": "desktop-runtime",
+      "displayName": "Desktop runtime build",
+      "binaryDir": "${sourceDir}/out/build/desktop-runtime",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_ENABLE_DESKTOP_RUNTIME": "ON",
+        "MK_ENABLE_DESKTOP_GUI": "OFF",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
+      "name": "desktop-gui",
+      "displayName": "Desktop GUI build",
+      "binaryDir": "${sourceDir}/out/build/desktop-gui",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_ENABLE_DESKTOP_GUI": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
+      "name": "asset-importers",
+      "displayName": "Asset importer dependency build",
+      "binaryDir": "${sourceDir}/out/build/asset-importers",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_ENABLE_ASSET_IMPORTERS": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
+      "name": "cpp23-desktop-gui-eval",
+      "displayName": "C++23 desktop GUI verification build",
+      "binaryDir": "${sourceDir}/out/build/cpp23-desktop-gui-eval",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_ENABLE_DESKTOP_GUI": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release package build",
+      "binaryDir": "${sourceDir}/out/build/release",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview"
+      }
+    },
+    {
+      "name": "desktop-runtime-release",
+      "displayName": "Desktop runtime release package build",
+      "binaryDir": "${sourceDir}/out/build/desktop-runtime-release",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_ENABLE_DESKTOP_RUNTIME": "ON",
+        "MK_ENABLE_DESKTOP_GUI": "OFF",
+        "MK_REQUIRE_DESKTOP_RUNTIME_DXIL": "OFF",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
+      "name": "clang-asan-ubsan",
+      "displayName": "Clang Address/Undefined sanitizer build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/clang-asan-ubsan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_ENABLE_SANITIZERS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "normalized-build-environment",
+      "hidden": true,
+      "environment": {
+        "Path": "$penv{PATH}${pathListSep}$penv{Path}"
+      }
+    },
+    {
+      "name": "dev",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "dev",
+      "configuration": "Debug"
+    },
+    {
+      "name": "cpp23-eval",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "cpp23-eval",
+      "configuration": "Debug"
+    },
+    {
+      "name": "cpp23-release-eval",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "cpp23-release-eval",
+      "configuration": "Release"
+    },
+    {
+      "name": "desktop-runtime",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "desktop-runtime",
+      "configuration": "Debug"
+    },
+    {
+      "name": "desktop-gui",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "desktop-gui",
+      "configuration": "Debug"
+    },
+    {
+      "name": "asset-importers",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "asset-importers",
+      "configuration": "Debug"
+    },
+    {
+      "name": "cpp23-desktop-gui-eval",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "cpp23-desktop-gui-eval",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "release",
+      "configuration": "Release"
+    },
+    {
+      "name": "desktop-runtime-release",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "desktop-runtime-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "clang-asan-ubsan",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "clang-asan-ubsan",
+      "configuration": "Debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "cpp23-eval",
+      "configurePreset": "cpp23-eval",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "cpp23-release-eval",
+      "configurePreset": "cpp23-release-eval",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "desktop-runtime",
+      "configurePreset": "desktop-runtime",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "desktop-gui",
+      "configurePreset": "desktop-gui",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "asset-importers",
+      "configurePreset": "asset-importers",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "cpp23-desktop-gui-eval",
+      "configurePreset": "cpp23-desktop-gui-eval",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "desktop-runtime-release",
+      "configurePreset": "desktop-runtime-release",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "clang-asan-ubsan",
+      "configurePreset": "clang-asan-ubsan",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "generators": [
+        "ZIP"
+      ],
+      "configurations": [
+        "Release"
+      ]
+    },
+    {
+      "name": "desktop-runtime-release",
+      "configurePreset": "desktop-runtime-release",
+      "generators": [
+        "ZIP"
+      ],
+      "configurations": [
+        "Release"
+      ]
+    },
+    {
+      "name": "cpp23-release-eval",
+      "configurePreset": "cpp23-release-eval",
+      "generators": [
+        "ZIP"
+      ],
+      "configurations": [
+        "Release"
+      ]
+    }
+  ]
+}
+

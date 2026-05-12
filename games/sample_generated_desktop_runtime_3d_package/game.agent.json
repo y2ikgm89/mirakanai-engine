@@ -1,0 +1,351 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-generated-desktop-runtime-3d-package",
+  "displayName": "sample-generated-desktop-runtime-3d-package",
+  "language": "C++23",
+  "entryPoint": "games/sample_generated_desktop_runtime_3d_package/main.cpp",
+  "target": "sample_generated_desktop_runtime_3d_package",
+  "engineModules": [
+    "MK_ai",
+    "MK_animation",
+    "MK_audio",
+    "MK_core",
+    "MK_math",
+    "MK_navigation",
+    "MK_platform",
+    "MK_platform_sdl3",
+    "MK_physics",
+    "MK_renderer",
+    "MK_runtime",
+    "MK_runtime_rhi",
+    "MK_runtime_scene",
+    "MK_runtime_scene_rhi",
+    "MK_runtime_host",
+    "MK_runtime_host_sdl3",
+    "MK_runtime_host_sdl3_presentation",
+    "MK_scene",
+    "MK_scene_renderer",
+    "MK_ui",
+    "MK_ui_renderer"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_generated_desktop_runtime_3d_package/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
+    "allowedEditRoots": [
+      "games/sample_generated_desktop_runtime_3d_package",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "productionRecipe": "3d-playable-desktop-package",
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::SdlDesktopGameHost",
+    "input": "mirakana::VirtualInput deterministic right-key camera/controller movement over the cooked primary camera node",
+    "scene": "GameEngine.Scene.v1 loaded from a cooked package with static mesh, primary perspective camera, and directional light metadata",
+    "sceneRenderer": "mirakana::submit_scene_render_packet with material instance intent through first-party scene/material contracts",
+    "renderer": "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback and host-gated scene GPU binding when selected",
+    "currentRuntime": "generated host-gated SDL3 desktop runtime package proof for 3D gameplay with camera/controller movement, transform/quaternion animation, morph and compute morph package smokes, selected host-gated package streaming safe-point smoke, selected generated 3D renderer quality smoke over scene GPU + depth-aware postprocess + framegraph=2 counters, selected generated 3D postprocess depth-input smoke through postprocess_depth_input_ready=1 and renderer_quality_postprocess_depth_input_ready=1, selected generated 3D playable package smoke through playable_3d_* counters, selected generated 3D directional shadow package smoke through directional_shadow_* counters with fixed_pcf_3x3 filtering, selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke through --require-shadow-morph-composition, selected generated 3D gameplay systems package smoke through gameplay_systems_* counters over deterministic public physics, navigation, AI, audio, animation, and lifecycle APIs, selected generated 3D scene collision package smoke through --require-scene-collision-package, collision_package_status=ready, collision_package_bodies=3, collision_package_trigger_overlaps=1, and gameplay_systems_collision_package_ready=1, selected D3D12 visible generated 3D production-style package proof through --require-visible-3d-production-proof and visible_3d_* counters, selected D3D12 generated 3D native UI overlay HUD box package smoke through --require-native-ui-overlay, hud_boxes=2, ui_overlay_ready=1, ui_overlay_sprites_submitted=2, and ui_overlay_draws=2, selected D3D12 generated 3D cooked UI atlas image sprite package smoke through --require-native-ui-textured-sprite-atlas, hud_images=2, ui_atlas_metadata_status=ready, ui_texture_overlay_atlas_ready=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2, and selected D3D12 generated 3D cooked UI atlas text glyph package smoke through --require-native-ui-text-glyph-atlas, hud_text_glyphs=2, text_glyphs_resolved=2, text_glyphs_missing=0, ui_atlas_metadata_glyphs=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2; runtime source asset parsing remains unsupported; broad dependency cooking remains unsupported; broad async/background package streaming remains unsupported; scene/physics perception integration remains unsupported; navmesh/crowd remains unsupported; middleware remains unsupported; production physics middleware/native backend readiness, CCD, and joints remain unsupported; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, material graph, and live shader generation remain unsupported; broad directional shadow production quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, and broad shadow+morph composition remain unsupported for this generated sample; public native or RHI handle access remains unsupported; Vulkan/Metal parity for the visible proof remains unsupported; Metal readiness remains unsupported; broad generated 3D production readiness remains unsupported"
+  },
+  "backendReadiness": {
+    "platform": "sdl3-desktop-host-gated",
+    "graphics": "host-built D3D12 DXIL shader artifacts for selected package validation with optional generated 3D renderer quality counters for scene GPU + depth-aware postprocess + framegraph=2, selected visible generated 3D production-style counters, selected directional shadow smoke counters, selected D3D12 graphics morph + directional shadow receiver counters, selected D3D12 native UI overlay HUD box counters, selected D3D12 cooked UI atlas image sprite and text glyph texture overlay counters, and selected playable_3d_* package counters; Vulkan SPIR-V artifacts are toolchain-gated for generated 3D quality, shadow, playable, and native UI overlay artifacts, while visible proof, shadow-morph composition, native UI overlay readiness, and generated 3D cooked UI atlas texture overlay readiness remain D3D12-selected until separate Vulkan recipes land; NullRenderer fallback remains available; Metal readiness, broad shadow quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, production text/font UI, runtime source image decoding, source image atlas packing, GPU timestamps, backend-native stats, broad renderer quality, and broad generated 3D readiness remain unsupported",
+    "audio": "device-independent gameplay systems package smoke plus deterministic NullRenderer fallback",
+    "ui": "mirakana_ui HUD box submission plus one cooked GameEngine.UiAtlas.v1 image sprite and one cooked GameEngine.UiAtlas.v1 text glyph are validated through selected D3D12 host-owned native UI overlay package smokes; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, native accessibility bridges, Metal overlay readiness, and broad UI renderer quality remain unsupported",
+    "physics": "first-party deterministic authored-collision/controller package smoke plus selected GameEngine.PhysicsCollisionScene3D.v1 package collision smoke only; no middleware, native physics backend, joints, CCD, or scene/physics perception integration"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "GameEngine.TextureSource.v1",
+      "GameEngine.MeshSource.v2",
+      "GameEngine.MorphMeshCpuSource.v1",
+      "GameEngine.AnimationFloatClipSource.v1",
+      "GameEngine.AnimationQuaternionClipSource.v1",
+      "GameEngine.Material.v1",
+      "GameEngine.SourceAssetRegistry.v1",
+      "GameEngine.Scene.v2",
+      "GameEngine.Prefab.v2",
+      "first-party-material-source",
+      "hlsl-source",
+      "first-party-cooked-fixture"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "desktop-game-runtime",
+    "desktop-runtime-release"
+  ],
+  "runtimePackageFiles": [
+    "runtime/sample_generated_desktop_runtime_3d_package.config",
+    "runtime/sample_generated_desktop_runtime_3d_package.geindex",
+    "runtime/assets/3d/base_color.texture.geasset",
+    "runtime/assets/3d/triangle.mesh",
+    "runtime/assets/3d/packaged_mesh.morph_mesh_cpu",
+    "runtime/assets/3d/lit.material",
+    "runtime/assets/3d/packaged_mesh_bob.animation_float_clip",
+    "runtime/assets/3d/packaged_mesh_morph_weights.animation_float_clip",
+    "runtime/assets/3d/packaged_pose.animation_quaternion_clip",
+    "runtime/assets/3d/skinned_triangle.skinned_mesh",
+    "runtime/assets/3d/packaged_scene.scene",
+    "runtime/assets/3d/hud.uiatlas",
+    "runtime/assets/3d/hud_text.uiatlas",
+    "runtime/assets/3d/collision.collision3d"
+  ],
+  "runtimeSceneValidationTargets": [
+    {
+      "id": "packaged-3d-scene",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_3d_package.geindex",
+      "sceneAssetKey": "sample-generated-desktop-runtime-3d-package/scenes/packaged-3d-scene",
+      "validateAssetReferences": true,
+      "requireUniqueNodeNames": true
+    }
+  ],
+  "packageStreamingResidencyTargets": [
+    {
+      "id": "packaged-3d-residency-budget",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_3d_package.geindex",
+      "runtimeSceneValidationTargetId": "packaged-3d-scene",
+      "mode": "host-gated-safe-point",
+      "residentBudgetBytes": 67108864,
+      "safePointRequired": true,
+      "maxResidentPackages": 1,
+      "preloadAssetKeys": [
+        "sample-generated-desktop-runtime-3d-package/scenes/packaged-3d-scene"
+      ],
+      "residentResourceKinds": [
+        "texture",
+        "mesh",
+        "skinned_mesh",
+        "morph_mesh_cpu",
+        "material",
+        "animation_float_clip",
+        "animation_quaternion_clip",
+        "ui_atlas",
+        "scene",
+        "physics_collision_scene"
+      ],
+      "preflightRecipeIds": [
+        "desktop-game-runtime",
+        "desktop-runtime-release-target",
+        "installed-d3d12-3d-package-smoke",
+        "installed-d3d12-3d-directional-shadow-smoke",
+        "installed-d3d12-3d-shadow-morph-composition-smoke",
+        "installed-d3d12-3d-native-ui-overlay-smoke",
+        "installed-d3d12-3d-visible-production-proof-smoke",
+        "installed-d3d12-3d-scene-collision-package-smoke",
+        "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
+        "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke"
+      ]
+    }
+  ],
+  "materialShaderAuthoringTargets": [
+    {
+      "id": "packaged-3d-lit-material-shaders",
+      "sourceMaterialPath": "source/materials/lit.material",
+      "runtimeMaterialPath": "runtime/assets/3d/lit.material",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_3d_package.geindex",
+      "shaderSourcePaths": [
+        "shaders/runtime_scene.hlsl",
+        "shaders/runtime_postprocess.hlsl",
+        "shaders/runtime_shadow.hlsl",
+        "shaders/runtime_ui_overlay.hlsl"
+      ],
+      "d3d12ShaderArtifactPaths": [
+        "shaders/sample_generated_desktop_runtime_3d_package_scene.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_morph.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph.cs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_tangent_frame.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_tangent_frame.cs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_skinned.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_skinned.cs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene.ps.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_postprocess.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_postprocess.ps.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_ui_overlay.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_ui_overlay.ps.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_shadow_receiver.ps.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_shadow_receiver_shifted.ps.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_shadow.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_3d_package_shadow.ps.dxil"
+      ],
+      "vulkanShaderArtifactPaths": [
+        "shaders/sample_generated_desktop_runtime_3d_package_scene.vs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_morph.vs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph.vs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph.cs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_tangent_frame.vs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_tangent_frame.cs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_skinned.vs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_skinned.cs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_scene.ps.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_postprocess.vs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_postprocess.ps.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_ui_overlay.vs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_ui_overlay.ps.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_shadow_receiver.ps.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_shadow_receiver_shifted.ps.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_shadow.vs.spv",
+        "shaders/sample_generated_desktop_runtime_3d_package_shadow.ps.spv"
+      ],
+      "validateMaterialTextures": true,
+      "validateShaderArtifacts": true
+    }
+  ],
+  "prefabScenePackageAuthoringTargets": [
+    {
+      "id": "packaged-3d-prefab-scene",
+      "mode": "deterministic-3d-prefab-scene-package-data",
+      "sceneAuthoringPath": "source/scenes/packaged_scene.scene",
+      "prefabAuthoringPath": "source/prefabs/static_prop.prefab",
+      "sourceRegistryPath": "source/assets/package.geassets",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_3d_package.geindex",
+      "outputScenePath": "runtime/assets/3d/packaged_scene.scene",
+      "sceneAssetKey": "sample-generated-desktop-runtime-3d-package/scenes/packaged-3d-scene",
+      "runtimeSceneValidationTargetId": "packaged-3d-scene",
+      "authoringCommandRows": [
+        {
+          "id": "create-packaged-scene",
+          "surface": "GameEngine.Scene.v2",
+          "operation": "create-scene"
+        },
+        {
+          "id": "add-static-mesh-node",
+          "surface": "GameEngine.Scene.v2",
+          "operation": "add-scene-node"
+        },
+        {
+          "id": "add-static-mesh-renderer",
+          "surface": "GameEngine.Scene.v2",
+          "operation": "add-or-update-component"
+        },
+        {
+          "id": "create-static-prop-prefab",
+          "surface": "GameEngine.Prefab.v2",
+          "operation": "create-prefab"
+        },
+        {
+          "id": "instantiate-static-prop-prefab",
+          "surface": "GameEngine.Scene.v2",
+          "operation": "instantiate-prefab"
+        }
+      ],
+      "selectedSourceAssetKeys": [
+        "sample-generated-desktop-runtime-3d-package/textures/base-color",
+        "sample-generated-desktop-runtime-3d-package/meshes/triangle",
+        "sample-generated-desktop-runtime-3d-package/morphs/packaged-mesh",
+        "sample-generated-desktop-runtime-3d-package/materials/lit",
+        "sample-generated-desktop-runtime-3d-package/animations/packaged-mesh-bob",
+        "sample-generated-desktop-runtime-3d-package/animations/packaged-mesh-morph-weights",
+        "sample-generated-desktop-runtime-3d-package/animations/packaged-pose"
+      ],
+      "sourceCookMode": "selected-source-registry-rows",
+      "sceneMigration": "migrate-scene-v2-runtime-package",
+      "runtimeSceneValidation": "validate-runtime-scene-package",
+      "hostGatedSmokeRecipeIds": [
+        "desktop-game-runtime",
+        "desktop-runtime-release-target",
+        "installed-d3d12-3d-package-smoke",
+        "installed-d3d12-3d-directional-shadow-smoke",
+        "installed-d3d12-3d-native-ui-overlay-smoke",
+        "installed-d3d12-3d-visible-production-proof-smoke",
+        "installed-d3d12-3d-scene-collision-package-smoke",
+        "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
+        "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke"
+      ],
+      "broadImporterExecution": "unsupported",
+      "broadDependencyCooking": "unsupported",
+      "runtimeSourceParsing": "unsupported",
+      "materialGraph": "unsupported",
+      "shaderGraph": "unsupported",
+      "liveShaderGeneration": "unsupported",
+      "skeletalAnimation": "unsupported",
+      "gpuSkinning": "unsupported",
+      "publicNativeRhiHandles": "unsupported",
+      "metalReadiness": "host-gated",
+      "rendererQuality": "unsupported"
+    }
+  ],
+  "registeredSourceAssetCookTargets": [
+    {
+      "id": "packaged-3d-registered-source-cook",
+      "mode": "descriptor-only-cook-registered-source-assets",
+      "cookCommandId": "cook-registered-source-assets",
+      "prefabScenePackageAuthoringTargetId": "packaged-3d-prefab-scene",
+      "sourceRegistryPath": "source/assets/package.geassets",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_3d_package.geindex",
+      "selectedAssetKeys": [
+        "sample-generated-desktop-runtime-3d-package/materials/lit"
+      ],
+      "dependencyExpansion": "registered_source_registry_closure",
+      "dependencyCooking": "registry_closure",
+      "externalImporterExecution": "unsupported",
+      "rendererRhiResidency": "unsupported",
+      "packageStreaming": "unsupported",
+      "materialGraph": "unsupported",
+      "shaderGraph": "unsupported",
+      "liveShaderGeneration": "unsupported",
+      "editorProductization": "unsupported",
+      "metalReadiness": "host-gated",
+      "publicNativeRhiHandles": "unsupported",
+      "generalProductionRendererQuality": "unsupported",
+      "arbitraryShell": "unsupported",
+      "freeFormEdit": "unsupported"
+    }
+  ],
+  "validationRecipes": [
+    {
+      "name": "desktop-game-runtime",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
+    },
+    {
+      "name": "desktop-runtime-release-target",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package"
+    },
+    {
+      "name": "installed-d3d12-3d-package-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice"
+    },
+    {
+      "name": "installed-d3d12-3d-native-ui-overlay-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-native-ui-overlay"
+    },
+    {
+      "name": "installed-d3d12-3d-visible-production-proof-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-native-ui-overlay --require-visible-3d-production-proof"
+    },
+    {
+      "name": "installed-d3d12-3d-scene-collision-package-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-scene-collision-package"
+    },
+    {
+      "name": "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-native-ui-overlay --require-native-ui-textured-sprite-atlas"
+    },
+    {
+      "name": "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-native-ui-overlay --require-native-ui-text-glyph-atlas"
+    },
+    {
+      "name": "installed-d3d12-3d-directional-shadow-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-directional-shadow --require-directional-shadow-filtering --require-renderer-quality-gates"
+    },
+    {
+      "name": "installed-d3d12-3d-shadow-morph-composition-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-shadow-morph-composition"
+    },
+    {
+      "name": "desktop-runtime-release-target-vulkan-toolchain-gated",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/sample_generated_desktop_runtime_3d_package.config', '--require-scene-package', 'runtime/sample_generated_desktop_runtime_3d_package.geindex', '--require-primary-camera-controller', '--require-transform-animation', '--require-morph-package', '--require-compute-morph', '--require-compute-morph-normal-tangent', '--require-quaternion-animation', '--require-package-streaming-safe-point', '--require-gameplay-systems', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-postprocess-depth-input', '--require-renderer-quality-gates', '--require-playable-3d-slice')"
+    },
+    {
+      "name": "desktop-runtime-release-target-vulkan-directional-shadow-toolchain-gated",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/sample_generated_desktop_runtime_3d_package.config', '--require-scene-package', 'runtime/sample_generated_desktop_runtime_3d_package.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-postprocess-depth-input', '--require-directional-shadow', '--require-directional-shadow-filtering', '--require-renderer-quality-gates')"
+    },
+    {
+      "name": "desktop-runtime-release-target-vulkan-skin-toolchain-gated",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/sample_generated_desktop_runtime_3d_package.config', '--require-scene-package', 'runtime/sample_generated_desktop_runtime_3d_package.geindex', '--require-primary-camera-controller', '--require-transform-animation', '--require-morph-package', '--require-compute-morph', '--require-compute-morph-skin', '--require-quaternion-animation', '--require-package-streaming-safe-point', '--require-gameplay-systems', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-postprocess-depth-input', '--require-renderer-quality-gates', '--require-playable-3d-slice')"
+    }
+  ]
+}
+

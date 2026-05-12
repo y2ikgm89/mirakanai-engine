@@ -1,0 +1,6 @@
+*.config text eol=lf
+*.geindex text eol=lf
+*.geasset text eol=lf
+*.material text eol=lf
+*.scene text eol=lf
+*.sprite_animation text eol=lf

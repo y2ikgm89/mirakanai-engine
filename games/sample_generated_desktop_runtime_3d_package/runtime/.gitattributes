@@ -1,0 +1,15 @@
+# Generated cooked package files are hashed byte-for-byte by the runtime.
+*.geindex text eol=lf
+*.geasset text eol=lf
+*.mesh text eol=lf
+*.skinned_mesh text eol=lf
+*.morph_mesh_cpu text eol=lf
+*.morph_mesh_cpu_source text eol=lf
+*.material text eol=lf
+*.scene text eol=lf
+*.collision3d text eol=lf
+*.uiatlas text eol=lf
+*.animation_float_clip text eol=lf
+*.animation_float_clip_source text eol=lf
+*.animation_quaternion_clip text eol=lf
+*.animation_quaternion_clip_source text eol=lf

@@ -1,0 +1,40 @@
+{
+  "importerCapabilities": {
+    "runtimePolicy": "Game runtime code consumes cooked artifacts and must not parse external source formats directly.",
+    "defaultSourceDocuments": [
+      "GameEngine.TextureSource.v1",
+      "GameEngine.MeshSource.v2",
+      "GameEngine.AudioSource.v1",
+      "GameEngine.Material.v1",
+      "GameEngine.Scene.v1"
+    ],
+    "cookedArtifacts": [
+      "GameEngine.CookedTexture.v1",
+      "GameEngine.CookedMesh.v2",
+      "GameEngine.CookedAudio.v1",
+      "GameEngine.Material.v1",
+      "GameEngine.Scene.v1"
+    ],
+    "optionalDependencyFeature": "asset-importers",
+    "plannedExternalImporters": [
+      {
+        "format": "png",
+        "dependency": "libspng",
+        "status": "implemented-optional-adapter",
+        "ownerModule": "MK_tools"
+      },
+      {
+        "format": "gltf",
+        "dependency": "fastgltf",
+        "status": "implemented-optional-adapter",
+        "ownerModule": "MK_tools"
+      },
+      {
+        "format": "common-audio",
+        "dependency": "miniaudio",
+        "status": "implemented-optional-adapter",
+        "ownerModule": "MK_tools"
+      }
+    ]
+  }
+}

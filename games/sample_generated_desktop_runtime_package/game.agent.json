@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-generated-desktop-runtime-package",
+  "displayName": "sample-generated-desktop-runtime-package",
+  "language": "C++23",
+  "entryPoint": "games/sample_generated_desktop_runtime_package/main.cpp",
+  "target": "sample_generated_desktop_runtime_package",
+  "engineModules": [
+    "MK_core",
+    "MK_math",
+    "MK_platform",
+    "MK_platform_sdl3",
+    "MK_renderer",
+    "MK_runtime_host",
+    "MK_runtime_host_sdl3",
+    "MK_runtime_host_sdl3_presentation"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_generated_desktop_runtime_package/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
+    "allowedEditRoots": [
+      "games/sample_generated_desktop_runtime_package",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::SdlDesktopGameHost",
+    "currentRuntime": "desktop-windowed-sdl3-host-with-null-fallback-packaged-config-smoke"
+  },
+  "backendReadiness": {
+    "platform": "sdl3-desktop",
+    "graphics": "null-fallback; generated scaffold does not create D3D12/Vulkan shader artifacts",
+    "audio": "device-independent",
+    "ui": "mirakana_ui-headless",
+    "physics": "not-required"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "desktop-game-runtime",
+    "desktop-runtime-release"
+  ],
+  "runtimePackageFiles": [
+    "runtime/sample_generated_desktop_runtime_package.config"
+  ],
+  "validationRecipes": [
+    {
+      "name": "desktop-game-runtime",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
+    },
+    {
+      "name": "desktop-runtime-release-target",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_package"
+    },
+    {
+      "name": "installed-config-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_package.config"
+    }
+  ]
+}

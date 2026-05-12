@@ -1,0 +1,16 @@
+format=GameEngine.CookedSpriteAnimation.v1
+asset.id=11755882508838935962
+asset.kind=sprite_animation
+target.node=Player
+playback.loop=true
+frame.count=2
+frame.0.duration_seconds=0.25
+frame.0.sprite=7223550242185374713
+frame.0.material=11460315010553722633
+frame.0.size=1.5,2
+frame.0.tint=0.2,0.7,1,1
+frame.1.duration_seconds=0.25
+frame.1.sprite=7223550242185374713
+frame.1.material=11460315010553722633
+frame.1.size=2,1.25
+frame.1.tint=1,0.4,0.2,1

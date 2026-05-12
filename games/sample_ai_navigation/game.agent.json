@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-ai-navigation",
+  "displayName": "Sample AI Navigation",
+  "language": "C++23",
+  "entryPoint": "games/sample_ai_navigation/main.cpp",
+  "target": "sample_ai_navigation",
+  "engineModules": [
+    "MK_core",
+    "MK_ai",
+    "MK_navigation"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_ai_navigation/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+    "allowedEditRoots": [
+      "games/sample_ai_navigation",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::HeadlessRunner",
+    "ai": "mirakana::build_ai_perception_snapshot_2d -> mirakana::write_ai_perception_blackboard -> mirakana::evaluate_behavior_tree with blackboard conditions",
+    "navigation": "mirakana::NavigationGrid -> mirakana::plan_navigation_grid_agent_path -> mirakana::update_navigation_agent",
+    "currentRuntime": "headless perception blackboard navigation sample proof"
+  },
+  "backendReadiness": {
+    "platform": "headless",
+    "graphics": "null",
+    "audio": "device-independent",
+    "ui": "mirakana_ui-headless",
+    "physics": "not-required",
+    "ai": "behavior-tree-blackboard-perception-services-v1",
+    "navigation": "first-party-deterministic"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "source-tree-default"
+  ],
+  "validationRecipes": [
+    {
+      "name": "default",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1"
+    }
+  ]
+}
+

@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-generated-desktop-runtime-material-shader-package",
+  "displayName": "sample-generated-desktop-runtime-material-shader-package",
+  "language": "C++23",
+  "entryPoint": "games/sample_generated_desktop_runtime_material_shader_package/main.cpp",
+  "target": "sample_generated_desktop_runtime_material_shader_package",
+  "engineModules": [
+    "MK_core",
+    "MK_math",
+    "MK_platform",
+    "MK_platform_sdl3",
+    "MK_renderer",
+    "MK_runtime",
+    "MK_runtime_rhi",
+    "MK_runtime_host",
+    "MK_runtime_host_sdl3",
+    "MK_runtime_host_sdl3_presentation",
+    "MK_scene",
+    "MK_scene_renderer"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_generated_desktop_runtime_material_shader_package/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
+    "allowedEditRoots": [
+      "games/sample_generated_desktop_runtime_material_shader_package",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::SdlDesktopGameHost",
+    "currentRuntime": "desktop-windowed-sdl3-host-with-host-built-d3d12-vulkan-shader-artifacts-and-null-fallback"
+  },
+  "backendReadiness": {
+    "platform": "sdl3-desktop",
+    "graphics": "host-built D3D12 DXIL shader artifacts; Vulkan SPIR-V artifacts are toolchain-gated; NullRenderer fallback remains available",
+    "audio": "device-independent",
+    "ui": "mirakana_ui-headless",
+    "physics": "not-required"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party-material-source",
+      "hlsl-source",
+      "first-party-cooked-fixture"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "desktop-game-runtime",
+    "desktop-runtime-release"
+  ],
+  "runtimePackageFiles": [
+    "runtime/sample_generated_desktop_runtime_material_shader_package.config",
+    "runtime/sample_generated_desktop_runtime_material_shader_package.geindex",
+    "runtime/assets/generated/base_color.texture.geasset",
+    "runtime/assets/generated/triangle.mesh",
+    "runtime/assets/generated/lit.material",
+    "runtime/assets/generated/packaged_scene.scene"
+  ],
+  "runtimeSceneValidationTargets": [
+    {
+      "id": "packaged-scene",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_material_shader_package.geindex",
+      "sceneAssetKey": "sample-generated-desktop-runtime-material-shader-package/scenes/packaged-scene",
+      "validateAssetReferences": true,
+      "requireUniqueNodeNames": true
+    }
+  ],
+  "packageStreamingResidencyTargets": [
+    {
+      "id": "packaged-scene-residency-budget",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_material_shader_package.geindex",
+      "runtimeSceneValidationTargetId": "packaged-scene",
+      "mode": "host-gated-safe-point",
+      "residentBudgetBytes": 67108864,
+      "safePointRequired": true,
+      "maxResidentPackages": 1,
+      "preloadAssetKeys": [
+        "sample-generated-desktop-runtime-material-shader-package/scenes/packaged-scene"
+      ],
+      "residentResourceKinds": [
+        "texture",
+        "mesh",
+        "material",
+        "scene"
+      ],
+      "preflightRecipeIds": [
+        "desktop-game-runtime",
+        "desktop-runtime-release-target",
+        "installed-d3d12-scene-gpu-postprocess-smoke"
+      ]
+    }
+  ],
+  "materialShaderAuthoringTargets": [
+    {
+      "id": "generated-lit-material-shaders",
+      "sourceMaterialPath": "source/materials/lit.material",
+      "runtimeMaterialPath": "runtime/assets/generated/lit.material",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_material_shader_package.geindex",
+      "shaderSourcePaths": [
+        "shaders/runtime_scene.hlsl",
+        "shaders/runtime_postprocess.hlsl"
+      ],
+      "d3d12ShaderArtifactPaths": [
+        "shaders/sample_generated_desktop_runtime_material_shader_package_scene.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_material_shader_package_scene.ps.dxil",
+        "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.vs.dxil",
+        "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.ps.dxil"
+      ],
+      "vulkanShaderArtifactPaths": [
+        "shaders/sample_generated_desktop_runtime_material_shader_package_scene.vs.spv",
+        "shaders/sample_generated_desktop_runtime_material_shader_package_scene.ps.spv",
+        "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.vs.spv",
+        "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.ps.spv"
+      ],
+      "validateMaterialTextures": true,
+      "validateShaderArtifacts": true
+    }
+  ],
+  "validationRecipes": [
+    {
+      "name": "desktop-game-runtime",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
+    },
+    {
+      "name": "desktop-runtime-release-target",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package"
+    },
+    {
+      "name": "installed-d3d12-scene-gpu-postprocess-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_material_shader_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_material_shader_package.config --require-scene-package runtime/sample_generated_desktop_runtime_material_shader_package.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess"
+    },
+    {
+      "name": "desktop-runtime-release-target-vulkan-toolchain-gated",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/sample_generated_desktop_runtime_material_shader_package.config', '--require-scene-package', 'runtime/sample_generated_desktop_runtime_material_shader_package.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess')"
+    }
+  ]
+}
+

@@ -1,0 +1,28 @@
+# Fallback flags for clangd when this TU is missing from compile_commands.json (paths are
+# relative to this directory: editor/src/).
+-std=c++23
+-DWIN32
+-D_WINDOWS
+-DMK_EDITOR_ENABLE_D3D12=1
+-DMK_EDITOR_ENABLE_VULKAN=1
+-I../include
+-I../core/include
+-I../../engine/animation/include
+-I../../engine/math/include
+-I../../engine/assets/include
+-I../../engine/core/include
+-I../../engine/platform/include
+-I../../engine/runtime/include
+-I../../engine/physics/include
+-I../../engine/scene/include
+-I../../engine/tools/include
+-I../../engine/runtime_scene/include
+-I../../engine/ui/include
+-I../../engine/platform/sdl3/include
+-I../../engine/renderer/include
+-I../../engine/rhi/include
+-I../../engine/runtime_rhi/include
+-I../../engine/scene_renderer/include
+-I../../engine/rhi/d3d12/include
+-I../../engine/rhi/vulkan/include
+-I../../vcpkg_installed/x64-windows/include

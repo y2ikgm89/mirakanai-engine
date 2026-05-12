@@ -1,0 +1,164 @@
+{
+  "runtimeBackendReadiness": {
+    "graphics": [
+      {
+        "name": "null",
+        "module": "MK_renderer",
+        "status": "validated-headless",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+        "notes": "Use NullRenderer and NullRhiDevice for deterministic generated-game and engine tests without GPU or window dependencies, including backend-neutral runtime texture upload, mesh vertex/index buffer upload, and material descriptor binding coverage."
+      },
+      {
+        "name": "d3d12",
+        "module": "MK_rhi_d3d12",
+        "status": "validated-windows-visible-backend",
+        "hosts": [
+          "windows"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
+        "notes": "Visible clear/draw/readback, swapchain lifecycle, shared texture export, editor viewport display, SDL3 desktop game-window RhiFrameRenderer creation from host-supplied precompiled shader bytecode, installed packaged cooked-scene GPU binding validation with target-specific scene DXIL artifacts, installed depth-aware Frame Graph/Postprocess v0 validation with target-specific postprocess DXIL artifacts and postprocess_depth_input_ready=1, installed package-visible Directional Shadow Filtering v0 validation with target-specific shadow receiver/shadow DXIL artifacts, directional_shadow_status=ready, directional_shadow_ready=1, directional_shadow_filter_mode=fixed_pcf_3x3, directional_shadow_filter_taps=9, directional_shadow_filter_radius_texels=1, and framegraph_passes=3, plus Renderer Package Quality Gates v1 validation with --require-renderer-quality-gates, renderer_quality_status=ready, and renderer_quality_framegraph_execution_budget_ok=1 are implemented through backend-private Direct3D 12 ownership."
+      },
+      {
+        "name": "vulkan",
+        "module": "MK_rhi_vulkan",
+        "status": "validated-windows-visible-game-window-proof",
+        "hosts": [
+          "windows"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1; out\\build\\desktop-runtime\\games\\Debug\\sample_desktop_runtime_shell.exe --smoke --video-driver windows --require-vulkan-shaders --require-vulkan-renderer; configure MK_VULKAN_TEST_VERTEX_SPV and MK_VULKAN_TEST_FRAGMENT_SPV for real SPIR-V draw/readback proof; configure MK_VULKAN_TEST_TEXTURE_VERTEX_SPV and MK_VULKAN_TEST_TEXTURE_FRAGMENT_SPV for real SPIR-V texture-sampling proof; configure MK_VULKAN_TEST_DEPTH_VERTEX_SPV, MK_VULKAN_TEST_DEPTH_FRAGMENT_SPV, MK_VULKAN_TEST_DEPTH_SAMPLE_VERTEX_SPV, and MK_VULKAN_TEST_DEPTH_SAMPLE_FRAGMENT_SPV for real SPIR-V sampled-depth readback proof; configure MK_VULKAN_TEST_DEPTH_VERTEX_SPV, MK_VULKAN_TEST_DEPTH_FRAGMENT_SPV, MK_VULKAN_TEST_POSTPROCESS_DEPTH_VERTEX_SPV, and MK_VULKAN_TEST_POSTPROCESS_DEPTH_FRAGMENT_SPV for real SPIR-V postprocess-depth readback proof; configure MK_VULKAN_TEST_DEPTH_VERTEX_SPV, MK_VULKAN_TEST_DEPTH_FRAGMENT_SPV, MK_VULKAN_TEST_SHADOW_RECEIVER_VERTEX_SPV, and MK_VULKAN_TEST_SHADOW_RECEIVER_FRAGMENT_SPV for real SPIR-V shadow receiver readback proof; configure MK_VULKAN_TEST_COMPUTE_SPV for real SPIR-V compute dispatch readback proof; configure MK_VULKAN_TEST_COMPUTE_MORPH_SPV for Runtime RHI compute morph POSITION readback proof; configure MK_VULKAN_TEST_COMPUTE_MORPH_RENDER_VERTEX_SPV and MK_VULKAN_TEST_COMPUTE_MORPH_RENDER_FRAGMENT_SPV for Runtime RHI compute morph renderer-consumption proof; configure MK_VULKAN_TEST_COMPUTE_MORPH_TANGENT_FRAME_SPV for Runtime RHI compute morph NORMAL/TANGENT readback proof; configure MK_VULKAN_TEST_RUNTIME_SCENE_VERTEX_SPV and MK_VULKAN_TEST_RUNTIME_SCENE_FRAGMENT_SPV for cooked scene GPU palette proof",
+        "notes": "Runtime owners and the IRhiDevice bridge cover backend-neutral resource/shader/descriptor/pipeline/swapchain creation, standalone texture draw/readback, swapchain clear/present, command submission, fence stats, readback-domain buffer reads, private depth image-view/layout/barrier/dynamic-rendering depth attachments, required synchronization2 feature enablement, D24S8 depth|stencil image-barrier aspects, and actual surface capability/format/present-mode queries before native swapchain creation. SDL3/Vulkan game-window RhiFrameRenderer creation, host-owned cooked-scene GPU binding injection, depth-aware Frame Graph/Postprocess v0 package proof from precompiled SPIR-V artifacts with postprocess_depth_input_ready=1, package-visible Directional Shadow Filtering v0 proof with target-specific shadow receiver/shadow SPIR-V artifacts, directional_shadow_status=ready, directional_shadow_ready=1, directional_shadow_filter_mode=fixed_pcf_3x3, directional_shadow_filter_taps=9, directional_shadow_filter_radius_texels=1, and framegraph_passes=3, plus Renderer Package Quality Gates v1 validation with --require-renderer-quality-gates, renderer_quality_status=ready, and renderer_quality_framegraph_execution_budget_ok=1 is validated on this Windows host when Vulkan runtime, surface support, DXC SPIR-V CodeGen, and spirv-val are available; Linux and generated-game Vulkan availability remain host/toolchain gated. The visible draw/readback, texture-sampling, runtime material sampling, cooked-scene palette, depth-ordered draw/readback, sampled-depth readback, postprocess-depth readback, and shadow receiver readback proofs are environment-gated by local Vulkan runtime plus real SPIR-V artifacts."
+      },
+      {
+        "name": "metal",
+        "module": "MK_rhi_metal",
+        "status": "apple-native-ownership-gated",
+        "hosts": [
+          "macos",
+          "ios"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1",
+        "notes": "Native MTLDevice, command queue, command buffer, render encoder, texture target, CAMetalLayer drawable acquisition, drawable present scheduling, command-buffer submission, and texture readback ownership are implemented behind Apple-only Objective-C\u002B\u002B PIMPL boundaries; shader library creation and visible backend integration remain Apple-toolchain-gated roadmap work."
+      }
+    ],
+    "audio": [
+      {
+        "name": "device-independent",
+        "module": "MK_audio",
+        "status": "validated-device-streaming-baseline",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+        "notes": "Mixer scheduling, spatial voice/listener attenuation and pan metadata, decoded streaming queue append/consume/starvation state, streaming buffer state, format conversion intent, underrun diagnostics, selectable nearest/linear resampling, deterministic interleaved float PCM generation, and bounded device queue-fill planning through plan_audio_device_stream / render_audio_device_stream_interleaved_float are validated without opening an OS audio device."
+      },
+      {
+        "name": "sdl3-desktop",
+        "module": "MK_audio_sdl3",
+        "status": "validated-optional-desktop-runtime",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
+        "notes": "Optional adapter opens SDL3 default playback streams and queues silence or interleaved float PCM while SDL handles remain private."
+      }
+    ],
+    "ui": [
+      {
+        "name": "MK_ui",
+        "module": "MK_ui",
+        "status": "validated-headless-contract",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+        "notes": "Generated runtime HUD/menu code must target first-party retained-mode mirakana::ui contracts, including the headless layout solver, build_renderer_submission payload path, host-independent text shaping request validation through plan_text_shaping_request / shape_text_run before ITextShapingAdapter dispatch, host-independent font rasterization request validation through plan_font_rasterization_request / rasterize_font_glyph, host-independent platform text-input session begin/end validation through plan_platform_text_input_session / begin_platform_text_input / plan_platform_text_input_end / end_platform_text_input before IPlatformIntegrationAdapter dispatch, host-independent committed text edit validation through plan_committed_text_input / apply_committed_text_input, host-independent text edit command validation through plan_text_edit_command / apply_text_edit_command for scalar-boundary cursor movement and backward/forward deletion, host-independent text edit clipboard command validation through plan_text_edit_clipboard_command / apply_text_edit_clipboard_command for copy/cut/paste command application over caller-owned selection state through IClipboardTextAdapter, host-independent clipboard text validation through plan_clipboard_text_write / write_clipboard_text / plan_clipboard_text_read / read_clipboard_text before IClipboardTextAdapter dispatch, optional SDL3 key-row command conversion through sdl3_text_edit_command_from_window_event / apply_sdl3_text_edit_command_event outside MK_ui, optional SDL3 Ctrl/GUI \u002B C/X/V clipboard shortcut conversion through sdl3_text_edit_clipboard_command_from_window_event / apply_sdl3_text_edit_clipboard_command_event and IClipboardTextAdapter outside MK_ui, host-independent image decode request validation through plan_image_decode_request / decode_image_request before IImageDecodingAdapter dispatch, and MK_ui_renderer UiRendererImagePalette colored sprite placeholder adapter with deterministic resource_id-first and asset_uri-fallback lookup for image-row smoke tests; production text shaping implementation, real fonts, native IME sessions, platform key mapping beyond the narrow SDL3 text-edit command and clipboard-shortcut bridges, key repeat policy, full text editing widgets, selection UI, full copy/cut/paste shortcut/widget behavior, rich clipboard formats, accessibility bridges, runtime image decoding, source image codecs, SVG/vector parsing, renderer texture upload, concrete texture/material renderer adapters, and platform integration remain adapter boundaries."
+      },
+      {
+        "name": "native-gpu-runtime-ui-overlay",
+        "module": "MK_ui_renderer",
+        "status": "host-gated-desktop-overlay-proof",
+        "hosts": [
+          "windows",
+          "D3D12 primary package lane",
+          "Vulkan runtime plus DXC SPIR-V CodeGen plus spirv-val for strict parity"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1; tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game; strict Vulkan package smoke with --require-native-ui-overlay on a ready host",
+        "notes": "First-party MK_ui_renderer box/image-placeholder sprite submissions can be routed through public mirakana::IRenderer::draw_sprite into a renderer-owned final native GPU overlay in the sample desktop runtime scene/postprocess/shadow package path. This is a colored rectangle/sprite-placeholder proof with backend-private shader/pipeline/buffer ownership and status fields, not production text shaping, font rasterization, glyph atlases, image decoding, real texture atlases, IME, OS accessibility bridges, Metal readiness, or general production renderer quality."
+      },
+      {
+        "name": "MK_editor_ui",
+        "module": "MK_editor_core",
+        "status": "validated-editor-model-contract",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
+        "notes": "GUI-independent editor models back selected Dear ImGui shell panels without making Dear ImGui the production UI foundation."
+      }
+    ],
+    "physics": [
+      {
+        "name": "first-party-deterministic",
+        "module": "MK_physics",
+        "status": "validated-physics-1-0-ready-surface",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+        "notes": "2D/3D broadphase, circle/sphere/capsule contacts, layers/masks, collision-bounds raycasts, trigger overlaps, conservative bounds-based shape sweeps, exact 3D AABB/sphere/vertical-capsule shape sweeps against current AABB/sphere/capsule targets through PhysicsWorld3D::exact_shape_sweep, exact sphere convenience casts, deterministic contact manifolds through PhysicsContactPoint3D, PhysicsContactManifold3D, and PhysicsWorld3D::contact_manifolds with stable feature ids, warm-start-safe point rows, trigger/disabled exclusion, and solver consumption for current AABB/sphere/vertical-capsule contacts, conservative 3D capsule character-controller movement, first-party in-memory and package-authored collision rows, iterative solver configuration, stacked-body coverage, replay tests, host-independent PhysicsReplaySignature3D rows, and count-based PhysicsDeterminismGate3DResult budget diagnostics through make_physics_replay_signature_3d and evaluate_physics_determinism_gate_3d plus opt-in deterministic PhysicsWorld3D::step_continuous CCD rows, pure generated-game character/dynamic policy rows through PhysicsCharacterDynamicPolicy3DDesc, PhysicsCharacterDynamicPolicy3DRow, PhysicsCharacterDynamicPolicy3DResult, and evaluate_physics_character_dynamic_policy_3d, and explicit distance-joint solving through PhysicsJointSolve3DDesc, PhysicsJointSolve3DResult, and solve_physics_joints_3d define the validated first-party Physics 1.0 ready surface; dynamic-vs-dynamic TOI, rotational CCD, 2D CCD, persistent joint assets, vehicles, ragdolls, Jolt/native backends outside the 1.0 ready surface, middleware, oriented boxes, mesh/convex casts, timing benchmarks, and broad physics beyond the first-party Physics 1.0 ready surface are future work."
+      }
+    ],
+    "platform": [
+      {
+        "name": "headless",
+        "module": "MK_platform",
+        "status": "validated",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+        "notes": "Virtual input, lifecycle, mobile lifecycle/touch/orientation/safe-area/storage/permission contracts, filesystem, process, file watcher selection, and deterministic memory/rooted services are the generated-game baseline."
+      },
+      {
+        "name": "sdl3-desktop",
+        "module": "MK_platform_sdl3",
+        "status": "validated-optional-desktop-runtime",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
+        "notes": "Optional desktop window/input/clipboard/file-dialog/cursor/lifecycle adapter for the editor and the first desktop game runtime shell. Game runtime event polling should go through MK_runtime_host_sdl3 so SDL_PollEvent stays out of game code."
+      },
+      {
+        "name": "mobile-contracts",
+        "module": "MK_platform",
+        "status": "validated-headless-contract",
+        "hosts": [
+          "android",
+          "ios"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1",
+        "notes": "SDK-independent mobile lifecycle, touch, orientation, safe-area, storage, and permission contracts are implemented; Android GameActivity and Apple package templates adapt into these contracts without exposing native handles."
+      }
+    ]
+  }
+}

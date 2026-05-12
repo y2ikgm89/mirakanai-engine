@@ -1,0 +1,218 @@
+# Workflows
+
+## Standard Task Prompt
+
+Every AI task should include:
+
+- Goal
+- Context
+- Constraints
+- Done when
+
+Extended validation, editor-shell, plan lifecycle, production-completion, and game-lane checklists live in [`docs/agent-operational-reference.md`](agent-operational-reference.md) (indexed from `AGENTS.md`).
+
+## Default Implementation Flow
+
+1. Read relevant docs and AGENTS instructions.
+2. Update or create a spec for non-trivial changes.
+3. Update or create a plan for multi-step work.
+4. Add tests first when the local toolchain can run them.
+5. Implement the smallest coherent change.
+6. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
+7. For production-readiness changes, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1`; Production 1.0 Readiness Audit v1 verifies manifest `unsupportedProductionGaps` rows are well-formed, reports `production-readiness-audit-check: ok`, and does not treat known non-ready gaps as complete.
+8. For release-facing SDK changes, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1`; it also validates a clean installed consumer example. For editor-independent desktop runtime release changes, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1` for the default sample shell or `tools/package-desktop-runtime.ps1 -GameTarget <target>` for a registered desktop runtime game target; registered targets must declare `GAME_MANIFEST` and source-tree smoke args, package smoke args and package files come from the registered CMake metadata unless `-SmokeArgs` is supplied, shader-artifact requirements come from metadata, explicit `-RequireD3d12Shaders` and `-RequireVulkanShaders` are only valid for targets whose metadata declares those shader artifacts, and installed validation rejects metadata selected-target mismatches while verifying the selected installed game manifest, package files, declared shader artifacts, and the required selected-game status line and presentation report smoke fields. When a selected smoke includes `--require-postprocess-depth-input`, installed validation also requires `postprocess_depth_input_ready=1` on a ready scene GPU path. When a selected smoke includes `--require-directional-shadow`, installed validation also requires `directional_shadow_status=ready`, `directional_shadow_ready=1`, and `framegraph_passes=3`. When a selected smoke includes `--require-directional-shadow-filtering`, installed validation also requires `directional_shadow_filter_mode=fixed_pcf_3x3`, `directional_shadow_filter_taps=9`, and `directional_shadow_filter_radius_texels=1`; this proves only the current package-visible fixed sampled-depth 3x3 PCF shadow smoke, not hardware comparison samplers, cascades, atlases, Metal presentation, or production shadow authoring. When a selected smoke includes `--require-native-ui-overlay`, installed validation requires `ui_overlay_requested=1`, `ui_overlay_status=ready`, `ui_overlay_ready=1`, and positive `ui_overlay_sprites_submitted` / `ui_overlay_draws`; this proves only the renderer-owned colored box/image-placeholder overlay path, not production text shaping, font rasterization, image decoding, real atlases, IME, OS accessibility bridges, Metal overlay readiness, or general renderer quality. Source-tree desktop runtime builds stage each registered target beside a target-specific executable directory so generated package payloads and shader artifacts cannot overwrite another target's smoke inputs. For `DesktopRuntimeMaterialShaderPackage` targets, keep `source/materials/*.material` and `shaders/*.hlsl` as authoring inputs outside `runtimePackageFiles`; when DXC is available the source-tree lane also runs a target-specific shader-artifact smoke, while the installed package lane remains the real renderer/GPU proof and installs only runtime package files plus host-built selected shader artifacts. After package draft review, use the editor Assets panel `Apply Package Registration` button or `tools/register-runtime-package-files.ps1 -GameManifest games/<game_name>/game.agent.json -RuntimePackageFile <game-relative-file>` to add safe game-relative `runtimePackageFiles` entries. For Editor Playtest Package Review Loop v1, then select the package/scene pair from `game.agent.json.runtimeSceneValidationTargets`, run `validate-runtime-scene-package`, and only after that run the selected host-gated desktop smoke; package validation remains the final authority.
+9. For mobile-facing changes, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1`; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-android.ps1 -Game <game_name> -Configuration Debug`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1 -Game <game_name> -UseLocalValidationKey`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-android-package.ps1 -Game <game_name> -Configuration Release -SkipBuild -StartEmulator -AvdName Mirakanai_API36` on Android-ready hosts, and use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-apple.ps1 -Game <game_name> -Configuration Debug -Platform Simulator` or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game <game_name> -Configuration Debug` only on macOS/Xcode hosts.
+10. Record validation blockers explicitly.
+
+## Documentation And Plan Lifecycle
+
+- Start documentation navigation from `docs/README.md`.
+- Use English for current-truth docs, agent-facing guidance, public API explanations, build and validation procedures, and new documentation. Historical dated specs and plans may retain their original language unless they are promoted to current truth, actively edited, or named by the active manifest/registry pointers.
+- Use `docs/current-capabilities.md` for a concise human-readable capability summary. The machine-readable source of truth remains the composed `engine/agent/manifest.json` (maintain via `engine/agent/manifest.fragments/` + `tools/compose-agent-manifest.ps1 -Write`).
+- Use `docs/roadmap.md` for current status and priorities. Do not use it as a detailed task log.
+- Use `docs/superpowers/plans/README.md` as the implementation plan registry.
+- Use `docs/specs/README.md` to classify design records. Specs are design context, not live task lists.
+- Keep completed plans as historical implementation evidence. Do not append unrelated follow-up tasks to completed plans.
+- Keep the live plan stack shallow: one active roadmap, one active gap burn-down or milestone, and at most one active child/phase plan selected by `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
+- Create a new dated focused plan only for a distinct production slice with its own behavior/API/validation boundary. Link it from the plan registry when work starts, then update its status after completion.
+- **Date prefix:** use the authoritative authoring `YYYY-MM-DD` (session `Today's date`, operator confirmation, or local `Get-Date -Format yyyy-MM-dd`); keep filename and heading aligned. See `docs/superpowers/plans/README.md` § Dated plan and spec filenames.
+- Do not create new plan files for validation-only follow-up, docs/manifest/static-check synchronization, small mechanical cleanup, or substeps that fit the current active plan checklist.
+- Prefer a gap-level burn-down or phase-gated milestone when one production-readiness gap needs several linked phases; create child plans only when a phase is too large to execute safely in one context.
+- For **generated static 3D desktop package** operator sequencing (`DesktopRuntime3DPackage`, recipe `3d-playable-desktop-package`), follow the **3D Desktop Package Foundation** section in [ai-game-development.md](ai-game-development.md), the committed `games/sample_generated_desktop_runtime_3d_package` proof, and the active plan registry. The local record [2026-05-05-generated-static-3d-production-game-recipe-v1.md](superpowers/plans/2026-05-05-generated-static-3d-production-game-recipe-v1.md) is preserved for traceability only; current readiness comes from `engine/agent/manifest.json`, the plan registry, and validation evidence for the selected target.
+- Use a phase-gated milestone plan when multiple tightly related production slices share one end-to-end objective and repeated tiny active-plan hops would hide the decision. Each phase still needs Goal, Context, Constraints, Done When, RED -> GREEN evidence for behavior changes, and validation evidence. Do not use a milestone to append unrelated work, weaken host gates, or broaden ready claims.
+- This is a greenfield engine: prefer clean replacement, consolidation, or retirement of obsolete planned slices over compatibility shims unless a future release policy explicitly requires compatibility.
+- Keep host-gated work explicit. A task blocked by macOS/Xcode, Android devices/signing, Vulkan shader tools, Metal tools, or missing local clang-tidy/CMake tooling remains blocked until a local or CI lane proves it.
+- After a plan completes, update subsystem docs, `docs/roadmap.md`, `docs/superpowers/plans/README.md`, and the engine agent manifest (fragments + `compose-agent-manifest.ps1 -Write`) in the same task when capabilities changed.
+- **`MK_tools` source paths:** Implementation translation units live under `engine/tools/{shader,gltf,asset,scene}/` (see `docs/specs/2026-05-11-directory-layout-target-v1.md` and `docs/adr/0003-directory-layout-clean-break.md`). Relocating those `.cpp` files requires updating `tools/check-json-contracts.ps1` and `tools/check-ai-integration.ps1` path strings and the relevant `engine/tools/*/CMakeLists.txt` fragments together; public `#include <mirakana/tools/...>` paths do not move with this v1 split.
+
+## Production Completion Prompt
+
+When executing [Production Completion Master Plan v1](superpowers/plans/2026-05-03-production-completion-master-plan-v1.md), keep the operating prompt short and evidence-driven:
+
+- Use `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps` as the execution index.
+- Each `unsupportedProductionGaps` row includes `oneDotZeroCloseoutTier` (`foundation-follow-up`, `package-evidence`, or `closeout-wedge`) for 1.0 closeout grouping; change it through `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` plus `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, not by editing `engine/agent/manifest.json` directly.
+- The production-completion master plan may end with an HTML comment archive serving `tools/check-ai-integration.ps1` substring checks; removing or shrinking it requires `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` green afterward.
+- Re-read the master plan, registry, and manifest after user edits or context resumes before changing files.
+- Burn down one selected production gap at a time until it is implemented, host-gated, blocked with evidence, or explicitly excluded from the 1.0 ready surface.
+- Prefer official documentation, Context7, project skills, and clean breaking greenfield designs over compatibility shims, broad ready claims, or undocumented shortcuts.
+- Use focused build/test/static checks during implementation, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the coherent slice-closing gate.
+- Use subagents only for bounded independent investigation, review, build-failure triage, or disjoint implementation that improves speed or confidence; keep immediate blocking work local.
+- Before completion, reconcile code, tests, docs, plans, manifest, static checks, completed gap, remaining gaps, next active plan, and host-gated blockers against actual validation evidence.
+
+## Static Analysis And API Boundaries
+
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` for clang-tidy. The default validation path verifies `.clang-tidy`, uses CMake File API codemodel data to synthesize `compile_commands.json` for the Windows Visual Studio `dev` preset when the generator does not emit one, runs a `-MaxFiles 1` smoke analysis in `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and reports explicit CMake/clang-tidy tool blockers instead of silently skipping analysis. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/physics/src/physics3d.cpp` for wrapper-owned changed-file analysis when a full repository run is too broad for the current slice. GitHub Actions also has a reviewed `static-analysis` lane that runs `tools/check-tidy.ps1 -Strict` on `ubuntu-latest`; local `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` verifies that lane exists but does not execute CI locally.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1` for coverage. Coverage is currently enforced only on Linux GCC/Clang CI where gcov coverage is stable; other hosts report an explicit blocker instead of producing partial data.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` after touching public headers or backend interop. Public engine/editor headers must not expose native D3D12/DXGI/Win32 symbols, COM pointers, or native graphics headers.
+- Use backend PIMPL types or first-party opaque handles for native OS/GPU interop until a written interop design accepts a narrower exception.
+
+## Toolchain Preflight
+
+- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` to report the CMake, CTest, optional CPack, `clang-format`, Visual Studio, and MSBuild paths that repository wrappers will use.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `toolchain-check` before CMake configure/build/test work.
+- Direct `cmake --preset ...` commands assume CMake is available on `PATH`. On Windows, prefer Visual Studio Developer PowerShell/Command Prompt for direct CMake use, or install official CMake 3.30+ on `PATH`. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` to make that precondition fail-fast.
+- Checked-in CMake build presets inherit `normalized-build-environment`, which collapses parent `PATH`/`Path` variants into one child `Path` for Windows MSBuild tool tasks; keep this hidden preset inherited by every visible build preset.
+- Direct `clang-format --dry-run ...` commands assume `clang-format` is available on `PATH`. Use the repository `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` / `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1` wrappers when `toolchain-check` reports a resolved `clang-format` path but `direct-clang-format-status=unavailable`, or add the reported `clang-format` directory to `PATH`.
+- Keep project-wide build settings in `CMakePresets.json`; keep local developer overrides in ignored `CMakeUserPresets.json`.
+
+## Git Local Configuration
+
+Follow Git's ignore-file ownership model instead of mixing host-specific rules into tracked project files:
+
+- Commit shared project ignore rules in `.gitignore`.
+- Keep repository-local, unshared ignore rules in `.git/info/exclude`; this file is not committed.
+- Keep user-wide editor, backup, and temporary-file patterns in `core.excludesFile`. Git defaults that setting to `$XDG_CONFIG_HOME/git/ignore`, or `$HOME/.config/git/ignore` when `XDG_CONFIG_HOME` is unset or empty.
+
+If sandboxed Git cannot read the default user-wide ignore file and reports `Permission denied` for `$HOME/.config/git/ignore`, leave `.gitignore` unchanged and configure this repository to use the local exclude file instead:
+
+```powershell
+$excludeFile = git rev-parse --path-format=absolute --git-path info/exclude
+git config --local core.excludesFile $excludeFile
+git config --show-origin --get-all core.excludesFile
+git status --short --branch
+```
+
+This setting belongs in `.git/config` and must not be committed. It removes the sandbox-only warning without loosening host permissions, changing global Git state, or adding machine-specific paths to shared ignore rules.
+
+If Git author identity is missing on a local workspace, set it locally unless the user asks for a global identity:
+
+```powershell
+git config --local user.name "<name>"
+git config --local user.email "<email>"
+```
+
+Before creating a baseline or release-facing commit, run the repository validation gates and check the staged patch:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
+git diff --cached --check
+```
+
+These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`.
+
+## Windows Diagnostics Toolchain
+
+- Use Debugging Tools for Windows from the official Windows SDK for native crash, dump, and debugger PATH investigations. Verify with `cdb -version`; configure Microsoft public symbols through `_NT_SYMBOL_PATH=srv*C:\Symbols*https://msdl.microsoft.com/download/symbols`.
+- Use Windows Graphics Tools (`Tools.Graphics.DirectX~~~~0.0.1.0`) when a D3D12 task depends on the debug layer. Verify `d3d12SDKLayers.dll` under both `C:\Windows\System32` and `C:\Windows\SysWOW64` on Windows hosts.
+- Use PIX on Windows for D3D12 GPU captures, timing, and counter work. Verify the command-line tool with `pixtool --help`. Optional repository helper: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/launch-pix-host-helper.ps1` creates a non-repository `%LocalAppData%` scratch directory and starts the PIX UI (`WinPix.exe` under `Program Files\Microsoft PIX\<version>\`, or legacy `PIX.exe`) when installed; use `-SkipLaunch` to verify resolution only (see `docs/superpowers/plans/2026-05-11-editor-resource-capture-pix-launch-helper-v1.md`). **Default AI + operator split:** follow `docs/ai-integration.md` § **Recommended workflow (operator PIX, AI analysis)**—agent bundles CLI check and helper steps; operator runs capture; agent analyzes pasted or attached evidence.
+- Use Windows Performance Toolkit for ETW, CPU, and system performance work. Verify with `wpr -help` and `xperf -help`; open traces in `wpa.exe` when a GUI trace review is required.
+- For first-party diagnostics operations handoff, use `mirakana::build_diagnostics_ops_plan` over a `DiagnosticCapture` to produce a `DiagnosticsOpsPlan`: summary and Chrome Trace Event JSON rows are ready through `summarize_diagnostics` and `export_diagnostics_trace_json`, pasted supported Trace Event JSON can be reviewed through `review_diagnostics_trace_json`, native crash dump review is host-gated by Debugging Tools for Windows, and telemetry upload stays unsupported unless a caller-provided backend is explicitly configured.
+- Treat Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit as host diagnostics. They are not required for the default build, are not installed by CMake configure, and are blockers only for tasks that explicitly need native debugging, D3D12 debug-layer validation, GPU capture, or ETW/performance evidence.
+- After Machine `PATH` or Machine `_NT_SYMBOL_PATH` changes, open a new terminal before rerunning PATH-based checks. Existing shells can keep stale environment blocks.
+
+## C++ Standard
+
+- The required language baseline is C++23.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` after changing CMake standard policy, manifests, schemas, or AI guidance.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release -Gui` when release packaging or the optional SDL3/Dear ImGui editor path is affected.
+- Add C++ modules through CMake `FILE_SET CXX_MODULES`; do not bypass CMake module scanning.
+- Use `import std;` only when CMake reports C++23 standard-library module support for the active generator/toolchain.
+
+## Subagent Use
+
+Use subagents only when the user explicitly asks for subagent delegation or parallel agent work. Use them for independent work:
+
+- `explorer`: read-only codebase exploration
+- `cpp-reviewer`: C++ lifetime, ownership, and API review
+- `build-fixer`: build/test failure triage
+- `engine-architect`: read-only architecture exploration and scoped design review
+- `gameplay-builder`: C++ sample game or gameplay implementation against public APIs
+- `rendering-auditor`: rendering/RHI/shader changes
+
+## Agent Surface Governance
+
+- Keep Codex and Claude Code behavior synchronized through `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.codex/agents/`, `.codex/rules/`, `.claude/settings.json`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/`, `engine/agent/manifest.fragments/` + composed `engine/agent/manifest.json`, and `tools/check-ai-integration.ps1`.
+- Use the OpenAI developer documentation MCP, or official OpenAI documentation when MCP is unavailable, for OpenAI API, Codex, ChatGPT Apps SDK, OpenAI agent, and OpenAI model behavior. Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagents.
+- Keep always-loaded instructions specific, concise, verifiable, and durable. Put long procedures in skills/docs, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the composed `engine/agent/manifest.json` (edit `engine/agent/manifest.fragments/*.json`, then `tools/compose-agent-manifest.ps1 -Write`).
+- Keep Codex project rules narrow and prompt-biased with `match` / `not_match` examples. Cover Windows PowerShell deletion/network/host-servicing commands as well as POSIX-like spellings. Do not add broad allow rules for shells, package managers, network tools, or destructive commands.
+- Keep Claude Code shared project permissions in `.claude/settings.json` with the official JSON schema: deny secret-bearing files and require approval for destructive, network, dependency-bootstrap, and mobile signing/smoke commands.
+- Keep local override and credential-bearing config uncommitted: `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md`.
+
+## Repository consistency checklist (recommended)
+
+Run these periodically—especially before merge or after touching agent surfaces, public headers, manifests, or validation scripts—to keep Cursor, Codex, Claude Code, and machine-readable contracts aligned:
+
+1. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` when CMake, formatters, or PATH resolution is in doubt.
+2. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` — validates `tools/*.ps1` UTF-8 no BOM and `#requires` pairs, skill/agent frontmatter, **Codex ↔ Claude `gameengine-*` skill folder twins**, and **Cursor thin-pointer folders** that mirror `.claude/skills/` names (see `claudeToCodexSkillMap` in `tools/check-agents.ps1`). When adding `.claude/skills/gameengine-<topic>/`, register the matching `.agents/skills/<codex-folder>/` name in that map and add or update the thin `.cursor/skills/gameengine-<topic>/SKILL.md` pointer unless the skill is Cursor-only (`gameengine-cursor-baseline`, `gameengine-plan-registry`). When authoring or refactoring `tools/*.ps1`, name `function` cmdlets with [PowerShell approved verbs](https://learn.microsoft.com/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands) so local **PSScriptAnalyzer** rules such as `PSAvoidUsingUnapprovedVerbs` stay satisfied; also follow **`AGENTS.md` → Repository command entrypoints** for automatic-variable hygiene (`$input`, `$matches`, `$Is*`), including **never using `$input` as a `foreach` iterator name** and **never binding `[Regex]::Matches` results to `$matches`**, plus **`$null =`** discard-only calls, **`Write-Information -InformationAction Continue`** instead of **`Write-Host`** for non-pipeline status, non-empty **`catch`**, and **`ShouldProcess`** on host-mutating helpers. Optionally run **`Invoke-ScriptAnalyzer`** on touched scripts when the module is installed.
+3. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` after manifest, schema, game agent JSON, shared skill content, or **new Needles** enforced there change (including retained editor UI ids, manifest slices, editor-shell literals, or other strings added to `check-ai-integration.ps1`). Durable changes to `engine/agent/manifest.json` must go through `engine/agent/manifest.fragments/` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; `tools/check-json-contracts.ps1` enforces semantic parity via `compose-agent-manifest.ps1 -Verify`.
+4. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` after editing public headers or backend interop.
+5. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at coherent slice boundaries (full gate including build and tests when the host can run them).
+6. After documenting or automating **worktree cleanup**, keep guidance aligned with `AGENTS.md`: **`external/vcpkg` is a required vcpkg tool checkout** (preset toolchain path)—do not treat it like `out/` or `vcpkg_installed/` when reclaiming disk space.
+
+This checklist does not replace subsystem-specific validation (packaging, mobile, shaders); combine it with **Default Implementation Flow** above.
+
+## Dependency Flow
+
+1. Confirm the dependency is necessary.
+2. Prefer permissive licenses.
+3. Record the dependency in `THIRD_PARTY_NOTICES.md`.
+4. Keep third-party code isolated.
+5. Add validation for the integration.
+
+## CI
+
+See [testing.md](testing.md) for the **CI validation matrix** (job ids, runners, sanitizer env). Summary:
+
+GitHub Actions runs:
+
+- Windows: `tools/validate.ps1` and `tools/evaluate-cpp23.ps1 -Release`
+- Linux: CMake configure/build/CTest plus `tools/check-coverage.ps1 -Strict`
+- Linux sanitizers: `cmake --preset clang-asan-ubsan`, build, and CTest
+- macOS: Ninja + Xcode `clang` CMake configure/build/CTest, including Apple-only Metal Objective-C++ sources
+- iOS Validate: `tools/smoke-ios-package.ps1` on a pinned macOS hosted runner, building the iOS Simulator bundle and running `xcrun simctl install`, `get_app_container`, `launch`, and cleanup for `sample_headless`
+
+Local Linux validation on WSL should use a toolchain that CMake supports for C++ module dependency scanning, such as Clang 18 with Ninja:
+
+```bash
+cmake -S . -B out/build/dev-linux-clang -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DMK_CXX_STANDARD=23 -DCMAKE_CXX_COMPILER=clang++-18
+cmake --build out/build/dev-linux-clang
+ctest --test-dir out/build/dev-linux-clang --output-on-failure
+```
+
+CI uploads test logs for every job, Linux coverage output, and Windows release package ZIP artifacts. The Windows release evaluation installs the package and builds `examples/installed_consumer` against the installed `mirakana::` CMake targets before publishing the ZIP.
+
+C++23 verification must stay covered by default validation, `tools/check-generated-msvc-cxx23-mode.ps1`, and release/editor-specific checks.
+
+macOS CI is defined for Metal host coverage. Local macOS validation should mirror the hosted lane:
+
+```bash
+cmake -S . -B out/build/dev-macos -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DCMAKE_C_COMPILER="$(xcrun --find clang)" -DCMAKE_CXX_COMPILER="$(xcrun --find clang++)"
+cmake --build out/build/dev-macos
+ctest --test-dir out/build/dev-macos --output-on-failure
+```
+
+## Mobile Packaging
+
+`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` is included in default validation as a diagnostic-only gate. It verifies Android/iOS template presence and reports Android SDK, Android NDK, JDK, Gradle, `adb`, `apksigner`, Android Emulator, configured Android AVDs, connected device/emulator smoke readiness, macOS, full Xcode selection, `xcrun`, iPhoneOS/iPhone Simulator SDK availability, iOS Simulator runtime availability, Android Release signing, and Apple signing diagnostics without claiming package readiness. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1` adds the Apple Metal iOS Host Evidence v1 view over the same boundary plus Xcode-resolved `metal`/`metallib` readiness and repository iOS/macOS workflow coverage; on non-Apple hosts it should report `apple-host-evidence-check: host-gated` without failing default validation.
+
+Android package attempts use `tools/build-mobile-android.ps1`, the `platform/android` Gradle template, Android Gradle Plugin 9.1.0, Gradle 9.3.1, JDK 17, Android SDK Platform 36.1, Build Tools 36.0.0, NDK 28.2.13676358, Android SDK CMake 4.1.2, Prefab, AndroidX AppCompat, AndroidX Core, GameActivity, the NDK Vulkan loader, and the NDK AAudio platform library. The template packages `games/<game_name>/game.agent.json` under app assets, copies `games/<game_name>/assets` when present, restricts the native package build to `mirakanai_android`, creates Android Vulkan surfaces through a private `VK_KHR_android_surface` entry point, and starts/stops a private low-latency AAudio float32 output stream with lifecycle events. Release builds require `MK_ANDROID_KEYSTORE`, `MK_ANDROID_KEYSTORE_PASSWORD`, `MK_ANDROID_KEY_ALIAS`, and `MK_ANDROID_KEY_PASSWORD`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1 -UseLocalValidationKey` can generate a local non-repository PKCS12 upload key, build Release, export the upload certificate, and verify the APK with `apksigner`. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-android-package.ps1 -Configuration Release -SkipBuild -StartEmulator -AvdName Mirakanai_API36` normalizes `ANDROID_AVD_HOME` to the user Android AVD directory when needed, starts the local API 36 emulator, installs the APK, launches `MirakanaiActivity`, verifies the app process, and stops the app/emulator. Gradle and emulator lanes write user SDK/cache/AVD state, so sandboxed agents must run those commands with the appropriate local approval rather than treating user-cache write failures as engine failures.
+
+Android Release Device Matrix v1 current evidence uses `sample_headless` on the Windows Android-ready host: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-android.ps1 -Game sample_headless -Configuration Debug`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1 -Game sample_headless -UseLocalValidationKey`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-android-package.ps1 -Game sample_headless -Configuration Release -SkipBuild -StartEmulator -AvdName Mirakanai_API36` passed. This proves the template can build Debug/Release APKs, verify a locally signed Release APK, export the upload certificate, and install/launch on the API 36 emulator; it does not claim Play upload, production signing material, physical-device coverage, broader ABI/device matrix coverage, Apple/iOS readiness, or repository-owned keys.
+
+Apple package attempts use `tools/build-mobile-apple.ps1` and the `platform/ios` CMake/Xcode bundle template. The template packages `games/<game_name>/game.agent.json` into bundle resources, creates a Metal-backed UIKit view, maps Application Support/Caches/Documents into first-party save/cache/shared storage roots, supports `-Platform Simulator|Device`, disables simulator signing when no team is supplied, and accepts `MK_IOS_BUNDLE_IDENTIFIER`, `MK_IOS_DEVELOPMENT_TEAM`, and `MK_IOS_CODE_SIGN_IDENTITY` or the matching script parameters for Xcode signing. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug` builds the Simulator bundle, selects an available iPhone Simulator, boots it when needed, installs the app, verifies the app container, launches the bundle, terminates it, and shuts down only the simulator booted by the script. These scripts validate `games/<game_name>/game.agent.json` before building.
+
+Apple Metal iOS Host Evidence v1 current Windows evidence is host-gated: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1` reports `host=windows`, `xcode=blocked`, `ios-simulator=blocked`, `metal-library=blocked`, missing `xcodebuild`, missing `xcrun`, missing iOS SDK/runtime access, missing `metal`, missing `metallib`, and present iOS Simulator/macOS Metal workflow coverage. Run `tools/check-apple-host-evidence.ps1 -RequireReady` only on a macOS/full-Xcode host when the task requires hard Apple-ready evidence.
+
+
+

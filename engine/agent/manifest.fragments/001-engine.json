@@ -1,0 +1,26 @@
+{
+  "engine": {
+    "name": "GameEngine",
+    "stage": "core-first-mvp",
+    "stageStatus": "mvp-closed-not-commercial-complete",
+    "stageCompletion": "100% for the current core-first-mvp scope; not a commercial-engine completion claim.",
+    "stageClosurePlan": "docs/superpowers/plans/2026-05-01-core-first-mvp-closure.md",
+    "stageClosureNotes": [
+      "MVP closure is validated through the source-tree default build/test/agent contract plus documented optional desktop runtime and package lanes.",
+      "Apple/iOS/Metal validation remains host-gated and is not counted as complete without macOS/Xcode or CI evidence.",
+      "Generated-game, sample-game, desktop runtime, and desktop package readiness are limited to the validation recipes listed in this manifest."
+    ],
+    "language": "C\u002B\u002B23",
+    "languagePolicy": {
+      "requiredStandard": "C\u002B\u002B23",
+      "msvcMode": "/std:c\u002B\u002B23preview",
+      "msvcModeCacheVariable": "MK_MSVC_CXX23_STANDARD_OPTION",
+      "msvcLatestMode": "forbidden-by-default",
+      "cmakeMinimum": "3.30",
+      "modules": "Use CMake FILE_SET CXX_MODULES for project modules.",
+      "importStd": "Allowed only when CMake reports C\u002B\u002B23 standard-library module support for the active generator/toolchain."
+    },
+    "namespace": "mirakana",
+    "license": "LicenseRef-Proprietary"
+  }
+}

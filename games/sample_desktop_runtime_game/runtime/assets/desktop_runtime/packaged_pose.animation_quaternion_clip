@@ -1,0 +1,16 @@
+format=GameEngine.CookedAnimationQuaternionClip.v1
+asset.id=5695298831954023444
+asset.kind=animation_quaternion_clip
+source.path=source/animations/packaged_pose.animation_quaternion_clip_source
+clip.track_count=1
+clip.track.0.target=sample/desktop-runtime/pose/root
+clip.track.0.joint_index=0
+clip.track.0.translation_keyframe_count=0
+clip.track.0.translation_times_hex=
+clip.track.0.translations_xyz_hex=
+clip.track.0.rotation_keyframe_count=2
+clip.track.0.rotation_times_hex=000000000000803f
+clip.track.0.rotations_xyzw_hex=0000000000000000000000000000803f00000000000000000000803f00000000
+clip.track.0.scale_keyframe_count=0
+clip.track.0.scale_times_hex=
+clip.track.0.scales_xyz_hex=

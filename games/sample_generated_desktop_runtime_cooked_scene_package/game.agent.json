@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-generated-desktop-runtime-cooked-scene-package",
+  "displayName": "sample-generated-desktop-runtime-cooked-scene-package",
+  "language": "C++23",
+  "entryPoint": "games/sample_generated_desktop_runtime_cooked_scene_package/main.cpp",
+  "target": "sample_generated_desktop_runtime_cooked_scene_package",
+  "engineModules": [
+    "MK_core",
+    "MK_math",
+    "MK_platform",
+    "MK_platform_sdl3",
+    "MK_renderer",
+    "MK_runtime",
+    "MK_runtime_rhi",
+    "MK_runtime_host",
+    "MK_runtime_host_sdl3",
+    "MK_runtime_host_sdl3_presentation",
+    "MK_scene",
+    "MK_scene_renderer"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_generated_desktop_runtime_cooked_scene_package/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
+    "allowedEditRoots": [
+      "games/sample_generated_desktop_runtime_cooked_scene_package",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::SdlDesktopGameHost",
+    "currentRuntime": "desktop-windowed-sdl3-host-with-null-fallback-packaged-config-cooked-scene-smoke"
+  },
+  "backendReadiness": {
+    "platform": "sdl3-desktop",
+    "graphics": "null-fallback; generated scaffold does not create D3D12/Vulkan/Metal shader artifacts or scene GPU bindings",
+    "audio": "device-independent",
+    "ui": "mirakana_ui-headless",
+    "physics": "not-required"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party-cooked-fixture"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "desktop-game-runtime",
+    "desktop-runtime-release"
+  ],
+  "runtimePackageFiles": [
+    "runtime/sample_generated_desktop_runtime_cooked_scene_package.config",
+    "runtime/sample_generated_desktop_runtime_cooked_scene_package.geindex",
+    "runtime/assets/generated/base_color.texture.geasset",
+    "runtime/assets/generated/triangle.mesh",
+    "runtime/assets/generated/lit.material",
+    "runtime/assets/generated/packaged_scene.scene"
+  ],
+  "runtimeSceneValidationTargets": [
+    {
+      "id": "packaged-scene",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_cooked_scene_package.geindex",
+      "sceneAssetKey": "sample-generated-desktop-runtime-cooked-scene-package/scenes/packaged-scene",
+      "validateAssetReferences": true,
+      "requireUniqueNodeNames": true
+    }
+  ],
+  "packageStreamingResidencyTargets": [
+    {
+      "id": "packaged-scene-residency-budget",
+      "packageIndexPath": "runtime/sample_generated_desktop_runtime_cooked_scene_package.geindex",
+      "runtimeSceneValidationTargetId": "packaged-scene",
+      "mode": "host-gated-safe-point",
+      "residentBudgetBytes": 33554432,
+      "safePointRequired": true,
+      "maxResidentPackages": 1,
+      "preloadAssetKeys": [
+        "sample-generated-desktop-runtime-cooked-scene-package/scenes/packaged-scene"
+      ],
+      "residentResourceKinds": [
+        "texture",
+        "mesh",
+        "material",
+        "scene"
+      ],
+      "preflightRecipeIds": [
+        "desktop-game-runtime",
+        "desktop-runtime-release-target",
+        "installed-scene-package-smoke"
+      ]
+    }
+  ],
+  "validationRecipes": [
+    {
+      "name": "desktop-game-runtime",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
+    },
+    {
+      "name": "desktop-runtime-release-target",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_cooked_scene_package"
+    },
+    {
+      "name": "installed-scene-package-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_cooked_scene_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_cooked_scene_package.config --require-scene-package runtime/sample_generated_desktop_runtime_cooked_scene_package.geindex"
+    }
+  ]
+}
+

@@ -1,0 +1,64 @@
+---
+paths:
+  - "AGENTS.md"
+  - "CLAUDE.md"
+  - ".agents/**"
+  - ".codex/**"
+  - ".claude/**"
+  - ".cursor/**"
+  - ".clangd"
+  - "engine/agent/**"
+  - "tools/agent-context.ps1"
+  - "tools/compose-agent-manifest.ps1"
+  - "engine/agent/manifest.fragments/**"
+  - "tools/check-agents.ps1"
+  - "tools/check-ai-integration.ps1"
+  - "tools/check-json-contracts.ps1"
+  - "tools/check-tidy.ps1"
+  - "tools/common.ps1"
+  - "tools/manifest-command-surface-legacy-guard.ps1"
+  - "tools/new-game-helpers.ps1"
+  - "docs/README.md"
+  - "docs/roadmap.md"
+  - "docs/workflows.md"
+  - "docs/superpowers/plans/README.md"
+---
+
+# AI Agent Integration Rules
+
+- Keep Codex and Claude Code instructions behaviorally equivalent.
+- `AGENTS.md` is the shared baseline. `CLAUDE.md` must import it.
+- Cursor loads `.cursor/skills/` and optional `.cursor/rules/` in addition to workspace rules. Keep `.cursor/skills/gameengine-*` as thin pointers whose folder names match `.claude/skills/gameengine-*`, except Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`. Register new shared topics in `tools/check-agents.ps1` (`claudeToCodexSkillMap`) and follow **Repository consistency checklist** in `docs/workflows.md`. Tracked `.clangd` points clangd at `out/build/dev` after `cmake --preset dev`.
+- `CLAUDE.md` must import project rule files with official memory imports; do not rely on undocumented automatic `.claude/rules/` loading.
+- `engine/agent/manifest.json` is the machine-readable **canonical** engine contract for AI tools (runtime backend readiness, importer capabilities, packaging targets, validation recipes). It is **compose output only**: edit source JSON under `engine/agent/manifest.fragments/` (see `engine/agent/manifest.fragments/README.md` and `docs/adr/0002-agent-manifest-fragments-compose.md`), then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`. `tools/check-json-contracts.ps1` verifies the tree matches compose output.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` exposes public headers, module ownership, sample games, assets/importers, platform targets, and validation recipes; use optional `-ContextProfile Full|Standard|Minimal` (default `Full`) to shrink JSON when summaries suffice.
+- Start documentation navigation from `docs/README.md`, then use `docs/roadmap.md` for current status and `docs/superpowers/plans/README.md` as the plan registry.
+- Codex project-local rules live in `.codex/rules/*.rules`. Keep them narrow, prompt-biased, and covered by `match` / `not_match` examples; align examples with **PowerShell 7** (`pwsh`) for `tools/*.ps1` (each declares `#requires -Version 7.0` on the line immediately before `#requires -PSEdition Core`; Windows PowerShell 5.1 is not supported). `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` rejects UTF-8 BOM prefixes and out-of-order `#requires` lines. Name `function` cmdlets in `tools/*.ps1` with [PowerShell approved verbs](https://learn.microsoft.com/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands) so local **PSScriptAnalyzer** (`PSAvoidUsingUnapprovedVerbs`) stays satisfied when enabled. When editing validation scripts, also follow **`AGENTS.md` → Repository command entrypoints** PSScriptAnalyzer hygiene: no **`$input` / `$matches`** (automatic variables), no shadowing **`$Is*`** platform automatics, **`$null =`** for discard-only calls, **`Write-Information -InformationAction Continue`** instead of **`Write-Host`** for non-pipeline status, non-empty **`catch`**, **`ShouldProcess`** on host-mutating helpers. Never add broad allow rules for shells, package managers, network tools, or destructive commands.
+- Claude Code shared project permissions live in `.claude/settings.json` with the official JSON schema. Deny secret-bearing files and ask before destructive, network, dependency-bootstrap, or mobile signing/smoke commands. Keep `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md` uncommitted unless project governance intentionally changes that.
+- Host-modifying Windows diagnostics commands such as `Add-WindowsCapability`, `dism`, and `msiexec`, plus PowerShell network downloads through `Invoke-WebRequest`, should stay approval-gated. Use official Microsoft sources for Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, Windows Performance Toolkit, and ADK servicing.
+- Use Context7 for live library, SDK, build-system, and toolchain documentation. Use the OpenAI developer documentation MCP or official OpenAI docs for OpenAI/Codex behavior, and official Anthropic docs for Claude Code memory, settings, permissions, hooks, skills, and subagents.
+- Keep game naming guidance synchronized: `game_name` and `new-game -Name` values match `^[a-z][a-z0-9_]*$`, source-tree game directories and `runtimePackageFiles` path segments stay lowercase snake_case, and JSON manifest IDs, display names, or external package identifiers may keep ecosystem formats including kebab-case.
+- Optimize context and rate use with targeted reads, targeted manifest fragments, `agent-context -ContextProfile Minimal|Standard`, focused tests, and concise active-plan notes; load full manifests, broad docs, or historical plans only when the current decision needs them.
+- Keep the live plan stack shallow: one active roadmap, one active gap burn-down or milestone, and at most one active child/phase plan selected by `currentActivePlan`.
+- Create new dated focused plans only for distinct production slices with their own behavior/API/validation boundary; do not create new plan files for validation-only follow-up, docs/manifest/static-check synchronization, small cleanup, or substeps that fit the current active plan checklist.
+- Do not append unrelated work to completed historical plans, and do not delete completed plan evidence merely to reduce file count. Reduce navigation noise through `docs/superpowers/plans/README.md` and evidence indexes.
+- Use a phase-gated milestone plan when tightly related production slices share one end-to-end objective and repeated tiny active-plan hops would hide the decision. Keep each phase focused and validated; do not use milestones to broaden ready claims or weaken host gates.
+- Prefer a slightly larger gap-level burn-down or phase plan over many tiny dated plans when work shares one architecture decision and validation surface; avoid copying long completed-slice prose into active sections or `recommendedNextPlan.completedContext`.
+- Keep development loops efficient by running focused target builds/tests and file-owned static checks during implementation; reserve full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` for coherent slice-closing evidence unless later edits invalidate that evidence.
+- Keep tests scoped to the smallest externally meaningful behavior/API/regression guarantee; prefer existing-test updates when they already cover the contract, and avoid implementation-mirroring, duplicate, or incidentally order-sensitive tests.
+- Validate agent-facing files with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` (via `validate.ps1`) also enforces `.agents/skills/`, `.claude/skills/`, and `.cursor/skills/` frontmatter, Codex ↔ Claude `gameengine-*` skill twins via `claudeToCodexSkillMap`, and Cursor thin-pointer directory names against `.claude/skills/`. When `check-ai-integration.ps1` gains new Needles for retained editor ids or manifest/editor-shell literals, update the scoped skill/manifest needles in the same task so each needle matches intended files (avoid duplicate ambiguous substrings).
+- Keep always-loaded instruction files specific, concise, verifiable, and durable. Avoid long procedures, stale status snapshots, personal preferences, credentials, API keys, MCP connection state, or machine-specific paths; use skills, path-scoped rules, subagents, and the composed `engine/agent/manifest.json` (maintained via `engine/agent/manifest.fragments/` + `tools/compose-agent-manifest.ps1`) instead.
+- Keep `AGENTS.md` small enough for Codex's default project-doc budget when practical; put reusable workflows in skills and detailed operating procedures in docs.
+- When engine work reveals missing or stale agent guidance, proactively update the relevant `AGENTS.md`, `CLAUDE.md`, skills (`.agents/`, `.claude/`, `.cursor/`), rules, settings, subagents, manifests, validation checks, and tracked `.clangd` when compile-database defaults change in the same task.
+- When reviewed AI-operable content mutation surfaces change, such as source asset registration, scene/prefab authoring, runtime package registration, material instance package updates, or UI atlas package updates, keep `docs/ai-game-development.md`, game-development skills, relevant subagents, the engine agent manifest (fragments + `compose-agent-manifest.ps1 -Write`), schema/static checks, and validation recipes synchronized. Do not claim arbitrary shell, free-form edit/eval, importer execution, cooked package writes, renderer/RHI residency, or package streaming unless the reviewed surface implements and validates it.
+- Keep dependency bootstrap guidance synchronized: optional vcpkg package installation belongs to `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1`; CMake configure lanes must keep `VCPKG_MANIFEST_INSTALL=OFF` and must not restore or download vcpkg packages.
+- Keep worktree cleanup guidance synchronized with `AGENTS.md`: `out/` and Android generator dirs under `.gitignore` are safe to delete for a clean rebuild; **`external/vcpkg` is the required Microsoft vcpkg checkout** (toolchain path for presets) and must not be treated as disposable cache—recreate with `git clone https://github.com/microsoft/vcpkg.git external/vcpkg` plus `bootstrap-vcpkg` when absent; remove `vcpkg_installed/` only when followed by `tools/bootstrap-deps.ps1`.
+- Keep CMake/toolchain preflight guidance synchronized: use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` for wrapper CMake, CTest, CPack, `clang-format`, Visual Studio, MSBuild discovery, and visible build-preset inheritance of `normalized-build-environment`; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only when direct `cmake --preset ...` commands must be available on `PATH`; treat raw `clang-format --dry-run ...` lookup as a separate PATH precondition reported by `direct-clang-format-status`.
+- Keep clang-tidy guidance synchronized: use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` (native `compile_commands.json` or File API synthesis under the `dev` preset `binaryDir`) instead of ad-hoc `clang-tidy` invocations; use `-Files` for narrow TU runs after `cmake --preset dev`.
+- Keep `tools/common.ps1` contract synchronized: `Get-RepoRoot` returns a string path; tooling must not use `$root.Path`.
+- Keep Windows host diagnostics guidance synchronized: Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit are host-local diagnostics, not default build dependencies, and their absence is a blocker only for native debugging, D3D12 debug-layer, GPU capture, or ETW/performance tasks. For PIX, prefer the **operator capture + agent analysis** recipe in `docs/ai-integration.md` § **Recommended workflow (operator PIX, AI analysis)** instead of implying unattended GPU capture inside `MK_editor` or CI.
+- Keep reviewer, explorer, architect, and auditor subagents read-only by default in both `.codex/agents/` and `.claude/agents/`; give write-capable tools only to builder/fixer roles that are expected to change files.
+- Codex subagents should be spawned only when the user explicitly asks for subagent delegation or parallel agent work.
+- Do not broaden Codex rules or Claude permissions to improve speed; keep command trust narrow and get speed from focused validation and smaller slices.
+- Keep reusable procedures in skills and specialized review/build/debug behavior in subagents.
+- Keep mobile guidance split by host gate: Android GameActivity has host-validated Debug/Release/signing/emulator smoke lanes on configured hosts; Apple/iOS remains macOS/Xcode gated.

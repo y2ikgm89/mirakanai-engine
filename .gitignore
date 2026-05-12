@@ -1,0 +1,22 @@
+out/
+build/
+# Microsoft vcpkg tool checkout at external/vcpkg (CMake toolchain); do not delete as disposable cache—see AGENTS.md Repository Hygiene.
+external/
+vcpkg_installed/
+.cache/
+.vs/
+.vscode/
+compile_commands.json
+CMakeUserPresets.json
+imgui.ini
+platform/android/.gradle/
+platform/android/build/
+platform/android/app/.cxx/
+platform/android/app/build/
+*.user
+*.suo
+*.log
+AGENTS.override.md
+CLAUDE.local.md
+.claude/settings.local.json
+.mcp.json

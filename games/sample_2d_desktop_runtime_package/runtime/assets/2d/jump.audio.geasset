@@ -1,0 +1,10 @@
+format=GameEngine.CookedAudio.v1
+asset.id=12959726139531902455
+asset.kind=audio
+source.path=source/sample_2d_desktop_runtime_package/jump.audio
+audio.sample_rate=48000
+audio.channel_count=1
+audio.frame_count=4
+audio.sample_format=float32
+audio.source_bytes=16
+audio.data_hex=0000803e0000003f0000803e00000000

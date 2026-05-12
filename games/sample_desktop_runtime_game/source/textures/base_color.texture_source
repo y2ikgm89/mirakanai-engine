@@ -1,0 +1,5 @@
+format=GameEngine.TextureSource.v1
+texture.width=1
+texture.height=1
+texture.pixel_format=rgba8_unorm
+texture.data_hex=cc5926ff

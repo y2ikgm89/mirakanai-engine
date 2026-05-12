@@ -1,0 +1,9 @@
+format=GameEngine.CookedTexture.v1
+asset.id=5904496411938941653
+asset.kind=texture
+source.path=source/desktop_runtime/base_color.texture
+texture.width=1
+texture.height=1
+texture.pixel_format=rgba8_unorm
+texture.source_bytes=4
+texture.data_hex=cc5926ff

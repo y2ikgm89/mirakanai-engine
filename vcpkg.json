@@ -1,0 +1,39 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "gameengine",
+  "version-string": "0.1.0",
+  "description": "Clean C++ game engine with AI-driven game development workflow.",
+  "license": "LicenseRef-Proprietary",
+  "builtin-baseline": "3909e67a639d426ea939d9bff77bfe1d10443476",
+  "dependencies": [],
+  "features": {
+    "asset-importers": {
+      "description": "Optional production asset importer dependencies for PNG, glTF, and common audio source decoding.",
+      "dependencies": [
+        "libspng",
+        "fastgltf",
+        "miniaudio"
+      ]
+    },
+    "desktop-runtime": {
+      "description": "Optional desktop game runtime dependencies for SDL3 window, input, presentation, and audio adapters.",
+      "dependencies": [
+        "sdl3"
+      ]
+    },
+    "desktop-gui": {
+      "description": "Desktop window/editor dependencies for SDL3 and Dear ImGui integration.",
+      "dependencies": [
+        "sdl3",
+        {
+          "name": "imgui",
+          "features": [
+            "docking-experimental",
+            "sdl3-binding",
+            "sdl3-renderer-binding"
+          ]
+        }
+      ]
+    }
+  }
+}

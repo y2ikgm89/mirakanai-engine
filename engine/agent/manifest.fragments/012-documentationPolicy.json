@@ -1,0 +1,58 @@
+{
+  "documentationPolicy": {
+    "entrypoints": {
+      "entrypoint": "docs/README.md",
+      "currentStatus": "docs/roadmap.md",
+      "currentCapabilities": "docs/current-capabilities.md",
+      "workflows": "docs/workflows.md",
+      "planRegistry": "docs/superpowers/plans/README.md",
+      "specRegistry": "docs/specs/README.md",
+      "superpowersSpecRegistry": "docs/specs/README.md",
+      "activeRoadmap": "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+    },
+    "preferredMcp": "context7",
+    "officialAiToolDocs": {
+      "openai": {
+        "preferredMcp": "OpenAI developer documentation MCP",
+        "fallback": "Official OpenAI documentation only.",
+        "useFor": [
+          "OpenAI API",
+          "Codex",
+          "ChatGPT Apps SDK",
+          "OpenAI agents",
+          "OpenAI models"
+        ]
+      },
+      "anthropic": {
+        "fallback": "Official Anthropic documentation.",
+        "useFor": [
+          "Claude Code memory",
+          "Claude Code settings",
+          "Claude Code permissions",
+          "Claude Code hooks",
+          "Claude Code skills",
+          "Claude Code subagents"
+        ]
+      }
+    },
+    "useFor": [
+      "library documentation",
+      "SDK documentation",
+      "build-system documentation",
+      "toolchain documentation"
+    ],
+    "priorityTargets": [
+      "CMake",
+      "vcpkg",
+      "SDL3",
+      "Dear ImGui",
+      "Direct3D 12",
+      "Vulkan",
+      "Metal",
+      "C\u002B\u002B tooling"
+    ],
+    "secretStorage": "User-level MCP configuration only.",
+    "doNotStoreApiKeysInRepo": true,
+    "copyingPolicy": "Use documentation for guidance; do not copy external code unless the license is explicit and recorded."
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-desktop-runtime-shell",
+  "displayName": "Sample Desktop Runtime Shell",
+  "language": "C++23",
+  "entryPoint": "games/sample_desktop_runtime_shell/main.cpp",
+  "target": "sample_desktop_runtime_shell",
+  "engineModules": [
+    "MK_core",
+    "MK_math",
+    "MK_platform",
+    "MK_platform_sdl3",
+    "MK_rhi",
+    "MK_renderer",
+    "MK_runtime_host",
+    "MK_runtime_host_sdl3",
+    "MK_runtime_host_sdl3_presentation"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_desktop_runtime_shell/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
+    "allowedEditRoots": [
+      "games/sample_desktop_runtime_shell",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::DesktopGameRunner",
+    "currentRuntime": "desktop-windowed-sdl3-presentation-with-build-output-d3d12-dxil-vulkan-spirv-and-null-fallback"
+  },
+  "backendReadiness": {
+    "platform": "sdl3-desktop",
+    "graphics": "build-output-d3d12-dxil-and-vulkan-spirv-with-null-fallback",
+    "audio": "device-independent",
+    "ui": "mirakana_ui-headless",
+    "physics": "not-required"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "desktop-game-runtime",
+    "desktop-runtime-release"
+  ],
+  "validationRecipes": [
+    {
+      "name": "desktop-game-runtime",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
+    },
+    {
+      "name": "desktop-runtime-release",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1"
+    },
+    {
+      "name": "desktop-d3d12-window-smoke",
+      "command": "out\\build\\desktop-runtime\\games\\Debug\\sample_desktop_runtime_shell.exe --smoke --video-driver windows --require-d3d12-shaders --require-d3d12-renderer"
+    },
+    {
+      "name": "desktop-vulkan-window-smoke",
+      "command": "out\\build\\desktop-runtime\\games\\Debug\\sample_desktop_runtime_shell.exe --smoke --video-driver windows --require-vulkan-shaders --require-vulkan-renderer"
+    }
+  ]
+}
+

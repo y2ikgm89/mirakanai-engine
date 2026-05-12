@@ -1,0 +1,428 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/engine-agent/ai-operable-production-loop.schema.json",
+  "title": "aiOperableProductionLoop",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "design",
+    "foundationPlan",
+    "currentActivePlan",
+    "recommendedNextPlan",
+    "recipeStatusEnum",
+    "recipes",
+    "commandSurfaces",
+    "authoringSurfaces",
+    "packageSurfaces",
+    "unsupportedProductionGaps",
+    "hostGates",
+    "validationRecipeMap",
+    "reviewLoops",
+    "resourceExecutionLoops",
+    "materialShaderAuthoringLoops",
+    "atlasTilemapAuthoringLoops",
+    "prefabScenePackageAuthoringLoops",
+    "packageStreamingResidencyLoops",
+    "safePointPackageReplacementLoops"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "design": {
+      "type": "string",
+      "minLength": 1
+    },
+    "foundationPlan": {
+      "type": "string",
+      "minLength": 1
+    },
+    "currentActivePlan": {
+      "type": "string",
+      "minLength": 1
+    },
+    "recommendedNextPlan": {
+      "type": "object",
+      "required": ["id", "title", "status", "reason"]
+    },
+    "recipeStatusEnum": {
+      "type": "array",
+      "contains": { "const": "ready" },
+      "items": {
+        "enum": ["ready", "host-gated", "planned", "blocked"]
+      }
+    },
+    "recipes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "summary",
+          "requiredModules",
+          "allowedTemplates",
+          "allowedPackagingTargets",
+          "importerAssumptions",
+          "cookedRuntimeAssumptions",
+          "rendererBackendAssumptions",
+          "validationRecipes",
+          "unsupportedClaims",
+          "followUpCapability"
+        ],
+        "properties": {
+          "status": {
+            "enum": ["ready", "host-gated", "planned", "blocked"]
+          }
+        }
+      }
+    },
+    "commandSurfaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "schemaVersion",
+          "status",
+          "owner",
+          "summary",
+          "requestModes",
+          "requestShape",
+          "resultShape",
+          "requiredModules",
+          "capabilityGates",
+          "hostGates",
+          "validationRecipes",
+          "unsupportedGapIds",
+          "undoToken",
+          "notes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "schemaVersion": {
+            "type": "integer",
+            "const": 1
+          },
+          "status": {
+            "enum": ["ready", "host-gated", "planned", "blocked"]
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requestModes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "status", "mutates", "requiresDryRun", "notes"],
+              "properties": {
+                "id": {
+                  "enum": ["dry-run", "apply"]
+                },
+                "status": {
+                  "enum": ["ready", "host-gated", "planned", "blocked"]
+                },
+                "mutates": {
+                  "type": "boolean"
+                },
+                "requiresDryRun": {
+                  "type": "boolean"
+                },
+                "notes": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "requestShape": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["schema", "requiredFields", "optionalFields", "pathPolicy", "nativeHandlePolicy"],
+            "properties": {
+              "schema": {
+                "type": "string",
+                "minLength": 1
+              },
+              "requiredFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "optionalFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "pathPolicy": {
+                "type": "string",
+                "minLength": 1
+              },
+              "nativeHandlePolicy": {
+                "const": "forbidden"
+              }
+            }
+          },
+          "resultShape": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["schema", "requiredFields", "diagnosticFields", "dryRunFields", "applyFields"],
+            "properties": {
+              "schema": {
+                "type": "string",
+                "minLength": 1
+              },
+              "requiredFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "diagnosticFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "dryRunFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "applyFields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "requiredModules": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "capabilityGates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "source", "requiredStatus", "notes"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "source": {
+                  "enum": [
+                    "module",
+                    "recipe",
+                    "authoring-surface",
+                    "package-surface",
+                    "unsupported-gap",
+                    "host-gate",
+                    "validation-recipe"
+                  ]
+                },
+                "requiredStatus": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "notes": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          },
+          "hostGates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "validationRecipes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unsupportedGapIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "undoToken": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "notes"],
+            "properties": {
+              "status": {
+                "const": "placeholder-only"
+              },
+              "notes": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "authoringSurfaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "owner", "notes"]
+      }
+    },
+    "packageSurfaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "targets", "validationRecipes", "notes"]
+      }
+    },
+    "unsupportedProductionGaps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "oneDotZeroCloseoutTier",
+          "status",
+          "requiredBeforeReadyClaim",
+          "notes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "oneDotZeroCloseoutTier": {
+            "type": "string",
+            "enum": [
+              "foundation-follow-up",
+              "package-evidence",
+              "closeout-wedge"
+            ],
+            "description": "1.0 closeout grouping: foundation-follow-up = engine contracts not blocking narrow 1.0 recipes alone; package-evidence = 2D/3D desktop package proof lanes; closeout-wedge = editor productization, production UI/importer/platform, or repo-wide quality gate."
+          },
+          "status": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requiredBeforeReadyClaim": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "notes": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "hostGates": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "hosts", "validationRecipes", "notes"]
+      }
+    },
+    "validationRecipeMap": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["recipeId", "validationRecipes"]
+      }
+    },
+    "reviewLoops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "owner", "orderedSteps", "requiredManifestFields", "unsupportedClaims"]
+      }
+    },
+    "resourceExecutionLoops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "owner", "orderedSteps", "requiredManifestFields", "unsupportedClaims"]
+      }
+    },
+    "materialShaderAuthoringLoops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "owner", "orderedSteps", "requiredManifestFields", "descriptorFields", "unsupportedClaims"]
+      }
+    },
+    "atlasTilemapAuthoringLoops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "owner", "orderedSteps", "requiredManifestFields", "descriptorFields", "unsupportedClaims"]
+      }
+    },
+    "prefabScenePackageAuthoringLoops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "owner", "orderedSteps", "requiredManifestFields", "descriptorFields", "unsupportedClaims"]
+      }
+    },
+    "packageStreamingResidencyLoops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "owner", "orderedSteps", "requiredManifestFields", "descriptorFields", "blockedExecution", "unsupportedClaims"]
+      }
+    },
+    "safePointPackageReplacementLoops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "owner", "orderedSteps", "requiredModules", "resultFields", "blockedExecution", "unsupportedClaims"]
+      }
+    }
+  }
+}

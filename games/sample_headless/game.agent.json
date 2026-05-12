@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-headless",
+  "displayName": "Sample Headless Game",
+  "language": "C++23",
+  "entryPoint": "games/sample_headless/main.cpp",
+  "target": "sample_headless",
+  "engineModules": [
+    "MK_core",
+    "MK_assets",
+    "MK_math",
+    "MK_platform",
+    "MK_renderer",
+    "MK_scene"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_headless/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+    "allowedEditRoots": [
+      "games/sample_headless",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::HeadlessRunner",
+    "currentRuntime": "headless"
+  },
+  "backendReadiness": {
+    "platform": "headless",
+    "graphics": "null",
+    "audio": "device-independent",
+    "ui": "mirakana_ui-headless",
+    "physics": "not-required"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "source-tree-default"
+  ],
+  "validationRecipes": [
+    {
+      "name": "default",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1"
+    }
+  ]
+}
+

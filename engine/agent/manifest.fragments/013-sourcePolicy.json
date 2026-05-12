@@ -1,0 +1,13 @@
+{
+  "sourcePolicy": {
+    "copyingExternalCodeWithoutExplicitLicense": "forbidden",
+    "thirdPartyRecord": "THIRD_PARTY_NOTICES.md",
+    "licensePolicy": "docs/legal-and-licensing.md",
+    "vcpkgManifest": "vcpkg.json",
+    "vcpkgBaseline": "3909e67a639d426ea939d9bff77bfe1d10443476",
+    "vcpkgBootstrapCommand": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1",
+    "vcpkgConfigurePolicy": "CMake configure must not install, restore, or download vcpkg packages; vcpkg-enabled presets use VCPKG_MANIFEST_INSTALL=OFF and VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed.",
+    "styleGuide": "docs/cpp-style.md",
+    "dependencyPolicy": "docs/dependencies.md"
+  }
+}

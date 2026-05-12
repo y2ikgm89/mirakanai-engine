@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-2d-playable-foundation",
+  "displayName": "Sample 2D Playable Foundation",
+  "language": "C++23",
+  "entryPoint": "games/sample_2d_playable_foundation/main.cpp",
+  "target": "sample_2d_playable_foundation",
+  "engineModules": [
+    "MK_core",
+    "MK_math",
+    "MK_platform",
+    "MK_runtime",
+    "MK_scene",
+    "MK_scene_renderer",
+    "MK_ui",
+    "MK_ui_renderer",
+    "MK_audio",
+    "MK_renderer"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_2d_playable_foundation/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+    "allowedEditRoots": [
+      "games/sample_2d_playable_foundation",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "productionRecipe": "2d-playable-source-tree",
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::HeadlessRunner",
+    "input": "mirakana::runtime::RuntimeInputActionMap over mirakana::VirtualInput",
+    "scene": "mirakana::Scene with mirakana::CameraProjectionMode::orthographic and mirakana::SpriteRendererComponent",
+    "sceneValidation": "mirakana::validate_playable_2d_scene",
+    "sceneRenderer": "mirakana::submit_scene_render_packet",
+    "ui": "mirakana::ui::UiDocument through mirakana::submit_ui_renderer_submission",
+    "audio": "mirakana::AudioMixer device-independent cue rendering",
+    "renderer": "mirakana::NullRenderer",
+    "currentRuntime": "source-tree headless 2D playable foundation"
+  },
+  "backendReadiness": {
+    "platform": "headless",
+    "graphics": "null",
+    "audio": "device-independent",
+    "ui": "mirakana_ui-headless",
+    "physics": "not-required"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party scene/component data",
+      "cooked-only runtime payload references"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "source-tree-default"
+  ],
+  "validationRecipes": [
+    {
+      "name": "default",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1"
+    }
+  ]
+}
+

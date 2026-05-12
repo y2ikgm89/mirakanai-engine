@@ -1,0 +1,178 @@
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  windows:
+    name: Windows MSVC
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
+        shell: pwsh
+        run: ./tools/bootstrap-deps.ps1
+
+      - name: Validate
+        shell: pwsh
+        run: ./tools/validate.ps1
+
+      - name: C++23 Release Evaluation
+        shell: pwsh
+        run: ./tools/evaluate-cpp23.ps1 -Release
+
+      - name: Upload Windows test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-test-logs
+          path: |
+            out/build/dev/Testing/**/*.log
+            out/build/cpp23-eval/Testing/**/*.log
+            out/build/cpp23-release-preset-eval/Testing/**/*.log
+          if-no-files-found: warn
+
+      - name: Upload Windows packages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: |
+            out/build/cpp23-release-preset-eval/*.zip
+            out/build/cpp23-release-preset-eval/*.zip.sha256
+          if-no-files-found: warn
+
+  linux:
+    name: Linux CMake
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+
+      - name: Configure
+        run: cmake -S . -B out/build/dev -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build out/build/dev
+
+      - name: Test
+        run: ctest --test-dir out/build/dev --output-on-failure
+
+      - name: Coverage
+        shell: pwsh
+        run: ./tools/check-coverage.ps1 -Strict
+
+      - name: Upload Linux test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-logs
+          path: |
+            out/build/dev/Testing/**/*.log
+            out/build/coverage/Testing/**/*.log
+          if-no-files-found: warn
+
+      - name: Upload Linux coverage output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-coverage
+          path: |
+            out/build/coverage/Testing/**
+            out/build/coverage/coverage*.info
+          if-no-files-found: warn
+
+  linux-sanitizers:
+    name: Linux Clang ASan/UBSan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Configure
+        run: cmake --preset clang-asan-ubsan
+
+      - name: Build
+        run: cmake --build --preset clang-asan-ubsan
+
+      - name: Test
+        env:
+          UBSAN_OPTIONS: print_stacktrace=1
+        run: ctest --preset clang-asan-ubsan --output-on-failure
+
+      - name: Upload sanitizer test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-sanitizer-test-logs
+          path: out/build/clang-asan-ubsan/Testing/**/*.log
+          if-no-files-found: warn
+
+  static-analysis:
+    name: Full Repository Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-tidy
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy
+
+      - name: Run clang-tidy
+        shell: pwsh
+        run: ./tools/check-tidy.ps1 -Strict
+
+      - name: Upload static analysis logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-analysis-tidy-logs
+          path: |
+            out/build/dev/compile_commands.json
+            out/build/dev/.cmake/api/v1/reply/*.json
+          if-no-files-found: warn
+
+  macos:
+    name: macOS Metal CMake
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: brew install ninja
+
+      - name: Configure
+        run: >
+          cmake -S . -B out/build/dev-macos -G Ninja
+          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          -DBUILD_TESTING=ON
+          -DCMAKE_C_COMPILER="$(xcrun --find clang)"
+          -DCMAKE_CXX_COMPILER="$(xcrun --find clang++)"
+
+      - name: Build
+        run: cmake --build out/build/dev-macos
+
+      - name: Test
+        run: ctest --test-dir out/build/dev-macos --output-on-failure
+
+      - name: Upload macOS test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-test-logs
+          path: out/build/dev-macos/Testing/**/*.log
+          if-no-files-found: warn

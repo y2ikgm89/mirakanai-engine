@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "minLineCoveragePercent": 10.0,
+  "lcovRemovePatterns": [
+    "*/vcpkg_installed/*",
+    "*CMakeCXXCompilerABI.cpp"
+  ],
+  "notes": "Line percentage is from lcov --summary after gcc --coverage runs (see tools/check-coverage.ps1). Raise minLineCoveragePercent when Linux CI/lcov output stabilizes; never lower without documenting the regression in docs/superpowers/plans/2026-05-03-coverage-threshold-policy-v1.md."
+}

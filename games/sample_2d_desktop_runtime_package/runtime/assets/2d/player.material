@@ -1,0 +1,13 @@
+format=GameEngine.Material.v1
+material.id=11460315010553722633
+material.name=Sample 2D Player Material
+material.shading=unlit
+material.surface=transparent
+material.double_sided=true
+factor.base_color=0.2,0.7,1,1
+factor.emissive=0,0,0
+factor.metallic=0
+factor.roughness=1
+texture.count=1
+texture.1.slot=base_color
+texture.1.id=7223550242185374713

@@ -1,0 +1,13 @@
+format=GameEngine.Material.v1
+material.id=16402748845073726916
+material.name=sample-generated-desktop-runtime-cooked-scene-package Lit Material
+material.shading=lit
+material.surface=opaque
+material.double_sided=false
+factor.base_color=0.35,0.75,0.45,1
+factor.emissive=0,0,0
+factor.metallic=0
+factor.roughness=1
+texture.count=1
+texture.1.slot=base_color
+texture.1.id=12846987554490174586

@@ -1,0 +1,13 @@
+---
+description: Dear ImGui MK_editor shell and editor/include public API hygiene.
+globs: editor/src/main.cpp,editor/src/material_preview_gpu_cache.cpp,editor/src/sdl_viewport_texture.cpp,editor/include/mirakana/editor/**/*.hpp
+alwaysApply: false
+---
+
+# Editor / ImGui shell (Cursor rule)
+
+- Do not pass `std::string_view::data()` into ImGui varargs (`Text`, `SetTooltip`, etc.). Prefer `ImGui::TextUnformatted(begin, end)` or a null-terminated `std::string`.
+- Prefer `std::array` for scratch buffers and combo item tables; avoid raw C arrays and `IM_ARRAYSIZE` where `std::array` fits.
+- Include `<windows.h>` once on `_WIN32` before D3D12-related includes; use `GetEnvironmentVariableA`/`W` instead of `_dupenv_s` for env reads.
+- Keep `MaterialPreviewGpuCache` and related shell caches behind explicit APIs; do not add new public mutable cache fields without an architecture decision.
+- Extend `editor/src/compile_flags.txt` and `editor/include/compile_flags.txt` when clangd needs new include roots. Full checklist: [`docs/agent-operational-reference.md`](../../docs/agent-operational-reference.md).

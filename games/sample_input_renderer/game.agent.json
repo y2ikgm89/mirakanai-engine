@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-input-renderer",
+  "displayName": "Sample Input Renderer Game",
+  "language": "C++23",
+  "entryPoint": "games/sample_input_renderer/main.cpp",
+  "target": "sample_input_renderer",
+  "engineModules": [
+    "MK_core",
+    "MK_assets",
+    "MK_math",
+    "MK_platform",
+    "MK_renderer",
+    "MK_scene"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_input_renderer/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+    "allowedEditRoots": [
+      "games/sample_input_renderer",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::HeadlessRunner",
+    "input": "mirakana::VirtualInput",
+    "renderer": "mirakana::NullRenderer",
+    "currentRuntime": "headless"
+  },
+  "backendReadiness": {
+    "platform": "headless",
+    "graphics": "null",
+    "audio": "device-independent",
+    "ui": "mirakana_ui-headless",
+    "physics": "not-required"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "source-tree-default"
+  ],
+  "validationRecipes": [
+    {
+      "name": "default",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1"
+    }
+  ]
+}
+

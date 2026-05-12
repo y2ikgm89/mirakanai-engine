@@ -1,0 +1,5 @@
+All rights reserved.
+
+No license is granted to copy, modify, distribute, sublicense, or sell this software unless a separate written license explicitly grants those rights.
+
+This repository uses the SPDX identifier LicenseRef-Proprietary for first-party files until the project owner chooses a public license.

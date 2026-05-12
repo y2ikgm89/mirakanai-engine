@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-2d-desktop-runtime-package",
+  "displayName": "Sample 2D Desktop Runtime Package",
+  "language": "C++23",
+  "entryPoint": "games/sample_2d_desktop_runtime_package/main.cpp",
+  "target": "sample_2d_desktop_runtime_package",
+  "engineModules": [
+    "MK_core",
+    "MK_math",
+    "MK_platform",
+    "MK_platform_sdl3",
+    "MK_renderer",
+    "MK_runtime",
+    "MK_runtime_scene",
+    "MK_runtime_host",
+    "MK_runtime_host_sdl3",
+    "MK_runtime_host_sdl3_presentation",
+    "MK_scene",
+    "MK_scene_renderer",
+    "MK_ui",
+    "MK_ui_renderer",
+    "MK_audio"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_2d_desktop_runtime_package/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
+    "allowedEditRoots": [
+      "games/sample_2d_desktop_runtime_package",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "productionRecipe": "2d-desktop-runtime-package",
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::SdlDesktopGameHost",
+    "input": "mirakana::runtime::RuntimeInputActionMap over mirakana::VirtualInput",
+    "scene": "GameEngine.Scene.v1 loaded from a cooked package and validated by mirakana::validate_playable_2d_scene",
+    "sceneRenderer": "mirakana::submit_scene_render_packet",
+    "ui": "mirakana::ui::UiDocument through mirakana::submit_ui_renderer_submission",
+    "audio": "mirakana::AudioMixer using a cooked audio payload",
+    "renderer": "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback or host-owned RHI-backed presentation when packaged shader artifacts are present",
+    "currentRuntime": "host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package window smoke uses packaged DXIL shader bytecode and --require-d3d12-shaders --require-d3d12-renderer through host-owned presentation; the native 2D sprite package proof adds --require-native-2d-sprites so cooked scene sprite texture/material identity and HUD submission flow through the host-owned native RHI sprite overlay path with renderer-owned native sprite batch execution counters. The sprite animation package proof adds a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic frame sampling and sprite frame application emit sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming production atlas packing or full tilemap editor UX. Vulkan package window smoke uses toolchain/host-gated SPIR-V shader bytecode and --require-vulkan-shaders --require-vulkan-renderer. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
+  },
+  "backendReadiness": {
+    "platform": "sdl3-desktop-host-gated",
+    "graphics": "NullRenderer fallback plus host-gated D3D12 package window smoke, native 2D sprite package proof with renderer-owned native sprite batch execution counters, and Vulkan package window smoke through packaged shader artifacts. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported.",
+    "audio": "device-independent cooked audio payload mixed through mirakana_audio",
+    "ui": "mirakana_ui-headless renderer submission",
+    "physics": "not-required"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party-cooked-fixture"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "desktop-game-runtime",
+    "desktop-runtime-release"
+  ],
+  "runtimePackageFiles": [
+    "runtime/sample_2d_desktop_runtime_package.config",
+    "runtime/sample_2d_desktop_runtime_package.geindex",
+    "runtime/assets/2d/player.texture.geasset",
+    "runtime/assets/2d/player.material",
+    "runtime/assets/2d/jump.audio.geasset",
+    "runtime/assets/2d/level.tilemap",
+    "runtime/assets/2d/player.sprite_animation",
+    "runtime/assets/2d/playable.scene"
+  ],
+  "atlasTilemapAuthoringTargets": [
+    {
+      "id": "packaged-2d-tilemap",
+      "packageIndexPath": "runtime/sample_2d_desktop_runtime_package.geindex",
+      "tilemapPath": "runtime/assets/2d/level.tilemap",
+      "atlasTexturePath": "runtime/assets/2d/player.texture.geasset",
+      "tilemapAssetKey": "sample/2d-desktop-runtime-package/tilemap",
+      "atlasTextureAssetKey": "sample/2d-desktop-runtime-package/player-sprite",
+      "mode": "deterministic-package-data",
+      "sourceDecoding": "unsupported",
+      "atlasPacking": "unsupported",
+      "nativeGpuSpriteBatching": "unsupported",
+      "preflightRecipeIds": [
+        "desktop-game-runtime",
+        "desktop-runtime-release-target",
+        "installed-2d-package-smoke",
+        "installed-native-2d-sprite-smoke",
+        "installed-2d-sprite-animation-smoke",
+        "installed-2d-tilemap-runtime-ux-smoke",
+        "installed-d3d12-window-smoke",
+        "installed-vulkan-window-smoke"
+      ]
+    }
+  ],
+  "runtimeSceneValidationTargets": [
+    {
+      "id": "packaged-2d-scene",
+      "packageIndexPath": "runtime/sample_2d_desktop_runtime_package.geindex",
+      "sceneAssetKey": "sample/2d-desktop-runtime-package/scene",
+      "validateAssetReferences": true,
+      "requireUniqueNodeNames": true
+    }
+  ],
+  "packageStreamingResidencyTargets": [
+    {
+      "id": "packaged-2d-residency-budget",
+      "packageIndexPath": "runtime/sample_2d_desktop_runtime_package.geindex",
+      "runtimeSceneValidationTargetId": "packaged-2d-scene",
+      "mode": "host-gated-safe-point",
+      "residentBudgetBytes": 33554432,
+      "safePointRequired": true,
+      "maxResidentPackages": 1,
+      "preloadAssetKeys": [
+        "sample/2d-desktop-runtime-package/scene",
+        "sample/2d-desktop-runtime-package/tilemap",
+        "sample/2d-desktop-runtime-package/player-sprite-animation"
+      ],
+      "residentResourceKinds": [
+        "texture",
+        "material",
+        "scene",
+        "audio",
+        "tilemap",
+        "sprite_animation"
+      ],
+      "preflightRecipeIds": [
+        "desktop-game-runtime",
+        "desktop-runtime-release-target",
+        "installed-2d-package-smoke",
+        "installed-2d-sprite-animation-smoke",
+        "installed-2d-tilemap-runtime-ux-smoke",
+        "installed-native-2d-sprite-smoke",
+        "installed-d3d12-window-smoke",
+        "installed-vulkan-window-smoke"
+      ]
+    }
+  ],
+  "validationRecipes": [
+    {
+      "name": "desktop-game-runtime",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
+    },
+    {
+      "name": "desktop-runtime-release-target",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package"
+    },
+    {
+      "name": "installed-2d-package-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex"
+    },
+    {
+      "name": "installed-2d-sprite-animation-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-sprite-animation"
+    },
+    {
+      "name": "installed-2d-tilemap-runtime-ux-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-tilemap-runtime-ux"
+    },
+    {
+      "name": "installed-d3d12-window-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer"
+    },
+    {
+      "name": "installed-native-2d-sprite-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux"
+    },
+    {
+      "name": "installed-vulkan-window-smoke",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -RequireVulkanShaders -SmokeArgs @('--smoke','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-vulkan-shaders','--video-driver','windows','--require-vulkan-renderer')\""
+    }
+  ]
+}
+

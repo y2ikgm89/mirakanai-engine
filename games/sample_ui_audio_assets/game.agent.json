@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "name": "sample-ui-audio-assets",
+  "displayName": "Sample UI Audio Assets",
+  "language": "C++23",
+  "entryPoint": "games/sample_ui_audio_assets/main.cpp",
+  "target": "sample_ui_audio_assets",
+  "engineModules": [
+    "MK_core",
+    "MK_assets",
+    "MK_audio",
+    "MK_math",
+    "MK_platform",
+    "MK_renderer",
+    "MK_runtime",
+    "MK_scene",
+    "MK_scene_renderer",
+    "MK_ui"
+  ],
+  "aiWorkflow": {
+    "spec": "games/sample_ui_audio_assets/README.md",
+    "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+    "allowedEditRoots": [
+      "games/sample_ui_audio_assets",
+      "tests"
+    ]
+  },
+  "gameplayContract": {
+    "appType": "mirakana::GameApp",
+    "runner": "mirakana::HeadlessRunner",
+    "ui": "mirakana::ui::UiDocument",
+    "audio": "mirakana::AudioMixer",
+    "assets": "mirakana::AssetRegistry",
+    "runtimeAssets": "mirakana::runtime::RuntimeAssetPackage",
+    "scene": "mirakana::Scene",
+    "sceneRenderer": "mirakana::load_runtime_scene_render_data",
+    "currentRuntime": "headless cooked-package scene/material proof"
+  },
+  "backendReadiness": {
+    "platform": "headless",
+    "graphics": "null",
+    "audio": "device-independent",
+    "ui": "mirakana_ui-headless",
+    "physics": "not-required"
+  },
+  "importerRequirements": {
+    "sourceFormats": [
+      "first-party"
+    ],
+    "cookedOnlyRuntime": true,
+    "externalImportersRequired": []
+  },
+  "packagingTargets": [
+    "source-tree-default",
+    "windows-cpack-zip"
+  ],
+  "validationRecipes": [
+    {
+      "name": "default",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1"
+    },
+    {
+      "name": "release-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1"
+    }
+  ]
+}
+

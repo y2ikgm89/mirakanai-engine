@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/gameengine/engine-agent.schema.json",
+  "title": "GameEngine Agent Manifest",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "engine",
+    "commands",
+    "windowsDiagnosticsToolchain",
+    "modules",
+    "runtimeBackendReadiness",
+    "importerCapabilities",
+    "packagingTargets",
+    "validationRecipes",
+    "aiOperableProductionLoop",
+    "aiSurfaces",
+    "documentationPolicy",
+    "sourcePolicy",
+    "gameCodeGuidance",
+    "aiDrivenGameWorkflow"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "engine": {
+      "type": "object",
+      "required": [
+        "name",
+        "stage",
+        "stageStatus",
+        "stageCompletion",
+        "stageClosurePlan",
+        "stageClosureNotes",
+        "language",
+        "namespace",
+        "license"
+      ]
+    },
+    "commands": {
+      "type": "object",
+      "required": ["validate", "toolchainCheck", "directToolchainCheck", "build", "buildGui", "buildAssetImporters", "test", "agentContext", "agentCheck", "composeAgentManifest", "newGame"]
+    },
+    "windowsDiagnosticsToolchain": {
+      "type": "object",
+      "required": [
+        "policy",
+        "debuggingToolsForWindows",
+        "graphicsTools",
+        "pixOnWindows",
+        "windowsPerformanceToolkit",
+        "hostGatePolicy"
+      ]
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "path", "status", "dependencies", "publicHeaders", "purpose"]
+      }
+    },
+    "applications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "path", "status", "buildCommand", "dependencies", "purpose"]
+      }
+    },
+    "runtimeBackendReadiness": {
+      "type": "object",
+      "required": ["graphics", "audio", "ui", "physics", "platform"],
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["name", "module", "status", "hosts", "validation", "notes"]
+        }
+      }
+    },
+    "importerCapabilities": {
+      "type": "object",
+      "required": [
+        "runtimePolicy",
+        "defaultSourceDocuments",
+        "cookedArtifacts",
+        "optionalDependencyFeature",
+        "plannedExternalImporters"
+      ]
+    },
+    "packagingTargets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "platform", "status", "command", "notes"]
+      }
+    },
+    "validationRecipes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "command", "purpose"]
+      }
+    },
+    "aiOperableProductionLoop": {
+      "$ref": "engine-agent/ai-operable-production-loop.schema.json"
+    },
+    "aiSurfaces": {
+      "type": "object",
+      "required": ["codex", "claudeCode"]
+    },
+    "documentationPolicy": {
+      "type": "object",
+      "required": ["preferredMcp", "useFor", "secretStorage", "doNotStoreApiKeysInRepo"]
+    },
+    "sourcePolicy": {
+      "type": "object",
+      "required": ["copyingExternalCodeWithoutExplicitLicense", "thirdPartyRecord", "licensePolicy"]
+    },
+    "gameCodeGuidance": {
+      "type": "object",
+      "required": ["entryPoint", "gameRoot", "gameManifest", "scaffoldCommand", "currentRuntime"]
+    },
+    "aiDrivenGameWorkflow": {
+      "type": "object",
+      "required": ["steps", "templateSpec", "validationScenarios", "promptPack", "sampleGame"]
+    }
+  }
+}

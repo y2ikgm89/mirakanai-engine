@@ -1,0 +1,30 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+set_and_check(Mirakanai_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+set_and_check(Mirakanai_LIBRARY_DIR "@PACKAGE_CMAKE_INSTALL_LIBDIR@")
+set_and_check(Mirakanai_SHARE_DIR "@PACKAGE_CMAKE_INSTALL_DATADIR@/Mirakanai")
+set_and_check(Mirakanai_SCHEMA_DIR "${Mirakanai_SHARE_DIR}/schemas")
+set_and_check(Mirakanai_TOOL_DIR "${Mirakanai_SHARE_DIR}/tools")
+set_and_check(Mirakanai_EXAMPLE_DIR "${Mirakanai_SHARE_DIR}/examples")
+set_and_check(Mirakanai_SAMPLE_DIR "${Mirakanai_SHARE_DIR}/samples")
+set_and_check(Mirakanai_DOC_DIR "@PACKAGE_CMAKE_INSTALL_DOCDIR@")
+set_and_check(Mirakanai_AGENT_MANIFEST "${Mirakanai_SHARE_DIR}/manifest.json")
+set_and_check(Mirakanai_THIRD_PARTY_NOTICES "${Mirakanai_SHARE_DIR}/THIRD_PARTY_NOTICES.md")
+
+set(Mirakanai_HAS_SDL3 @MK_PACKAGE_HAS_SDL3@)
+if(Mirakanai_HAS_SDL3)
+    find_dependency(SDL3 CONFIG)
+endif()
+
+set(Mirakanai_HAS_ASSET_IMPORTERS @MK_PACKAGE_HAS_ASSET_IMPORTERS@)
+if(Mirakanai_HAS_ASSET_IMPORTERS)
+    find_dependency(SPNG CONFIG)
+    find_dependency(fastgltf CONFIG)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/MirakanaiTargets.cmake")
+
+check_required_components(Mirakanai)
+

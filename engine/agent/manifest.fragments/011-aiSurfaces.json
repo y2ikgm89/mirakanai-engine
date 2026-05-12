@@ -1,0 +1,70 @@
+{
+  "aiSurfaces": {
+    "codex": {
+      "instructions": "AGENTS.md",
+      "skills": ".agents/skills",
+      "agents": ".codex/agents",
+      "rules": ".codex/rules",
+      "requiredSkills": [
+        "cmake-build-system",
+        "cpp-engine-debugging",
+        "editor-change",
+        "gameengine-agent-integration",
+        "gameengine-feature",
+        "gameengine-game-development",
+        "license-audit",
+        "rendering-change"
+      ],
+      "requiredAgents": [
+        "build-fixer",
+        "cpp-reviewer",
+        "engine-architect",
+        "explorer",
+        "gameplay-builder",
+        "rendering-auditor"
+      ],
+      "readOnlyAgents": [
+        "cpp-reviewer",
+        "engine-architect",
+        "explorer",
+        "rendering-auditor"
+      ]
+    },
+    "claudeCode": {
+      "instructions": "CLAUDE.md",
+      "settings": ".claude/settings.json",
+      "rules": ".claude/rules",
+      "skills": ".claude/skills",
+      "agents": ".claude/agents",
+      "memoryImports": [
+        "AGENTS.md",
+        ".claude/rules/ai-agent-integration.md",
+        ".claude/rules/cpp-engine.md"
+      ],
+      "requiredSkills": [
+        "gameengine-agent-integration",
+        "gameengine-cmake-build-system",
+        "gameengine-debugging",
+        "gameengine-editor",
+        "gameengine-feature",
+        "gameengine-game-development",
+        "gameengine-license-audit",
+        "gameengine-rendering"
+      ],
+      "requiredAgents": [
+        "build-fixer",
+        "cpp-reviewer",
+        "engine-architect",
+        "explorer",
+        "gameplay-builder",
+        "rendering-auditor"
+      ],
+      "readOnlyAgents": [
+        "cpp-reviewer",
+        "engine-architect",
+        "explorer",
+        "rendering-auditor"
+      ]
+    }
+  }
+}

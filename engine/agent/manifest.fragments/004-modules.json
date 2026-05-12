@@ -1,0 +1,509 @@
+{
+  "modules": [
+    {
+      "name": "MK_assets",
+      "path": "engine/assets",
+      "status": "implemented-asset-identity-v2-foundation",
+      "dependencies": [],
+      "publicHeaders": [
+        "engine/assets/include/mirakana/assets/asset_dependency_graph.hpp",
+        "engine/assets/include/mirakana/assets/asset_hot_reload.hpp",
+        "engine/assets/include/mirakana/assets/asset_identity.hpp",
+        "engine/assets/include/mirakana/assets/asset_import_metadata.hpp",
+        "engine/assets/include/mirakana/assets/asset_import_pipeline.hpp",
+        "engine/assets/include/mirakana/assets/asset_package.hpp",
+        "engine/assets/include/mirakana/assets/asset_registry.hpp",
+        "engine/assets/include/mirakana/assets/asset_source_format.hpp",
+        "engine/assets/include/mirakana/assets/material.hpp",
+        "engine/assets/include/mirakana/assets/material_graph.hpp",
+        "engine/assets/include/mirakana/assets/material_graph_shader_export.hpp",
+        "engine/assets/include/mirakana/assets/shader_metadata.hpp",
+        "engine/assets/include/mirakana/assets/shader_pipeline.hpp",
+        "engine/assets/include/mirakana/assets/source_asset_registry.hpp",
+        "engine/assets/include/mirakana/assets/sprite_atlas_packing.hpp",
+        "engine/assets/include/mirakana/assets/tilemap_metadata.hpp",
+        "engine/assets/include/mirakana/assets/ui_atlas_metadata.hpp"
+      ],
+      "purpose": "Logical asset ids, asset records, asset registry, and Asset Identity v2 foundation through AssetKeyV2 rows, deterministic validation diagnostics, stable AssetId derivation from keys, and deterministic GameEngine.AssetIdentity.v2 text IO. Also provides GameEngine.SourceAssetRegistry.v1 source asset registry validation, deterministic text IO, Asset Identity v2 projection, and texture/mesh/audio/material/scene import metadata projection without importer execution, cooked artifact writes, .geindex package updates, renderer/RHI residency, or package streaming. Also provides asset dependency graph, hot reload snapshot/event tracking, debounce-based recook request scheduling with dependency invalidation, failed-reload rollback state, runtime asset replacement staging with safe-point commits, recook import plan extraction, cooked package index serialization with content hashes, dependency edges, and deterministic recook decisions including ui_atlas package records and ui_atlas_texture dependency edges, canonical cooked GameEngine.UiAtlas.v1 metadata validation/serialization through UiAtlasMetadataDocument and UiAtlasMetadataGlyph without source image decoding, real font loading/rasterization, text shaping, renderer texture upload, or production atlas packing, deterministic cooked GameEngine.Tilemap.v1 metadata validation/serialization through TilemapMetadataDocument with AssetKind::tilemap and tilemap_texture dependency rows while keeping source decoding, production atlas packing, and native GPU sprite batching unsupported, shader source metadata, generated shader artifact tracking, shader descriptor reflection rows, shader compiler command planning including DXC Vulkan SPIR-V commands with -spirv and -fspv-target-env=vulkan1.3, shell-free shader tool runner validation, compiler output capture contracts, shader include dependency discovery, shader include dependency graph edge generation, deterministic shader artifact manifest serialization including reflection rows, texture/mesh/audio/material/scene import metadata, scene mesh/material/sprite dependency edge kinds, first-party texture/mesh/audio source document decoding including optional deterministic hex byte payloads, GameEngine.MorphMeshCpuSource.v1 morph mesh CPU source document serialization and validation with paired GameEngine.CookedMorphMeshCpu.v1 cook field emission, GameEngine.AnimationFloatClipSource.v1 animation float clip source document serialization and validation with paired GameEngine.CookedAnimationFloatClip.v1 cook field emission through the asset import tool, GameEngine.AnimationQuaternionClipSource.v1 3D TRS quaternion clip source document serialization and validation with paired GameEngine.CookedAnimationQuaternionClip.v1 cook field emission, AssetKind::animation_quaternion_clip, and animation_quaternion_clip import metadata planning, GameEngine.AnimationTransformBindingSource.v1 source document validation and deterministic text IO through AnimationTransformBindingSourceDocument, serialize_animation_transform_binding_source_document, and deserialize_animation_transform_binding_source_document for curve-target to named transform component authoring without scene-node resolution or runtime payload cooking, deterministic asset import planning, material definition serialization, GameEngine.MaterialGraph.v1 graph-authoring IR with deterministic text IO, validation diagnostics, and lowering to MaterialDefinition for the minimal v1 node set (graph_output, constant factors, texture nodes) without shader graph generation, GameEngine.MaterialGraphShaderExport.v0 bridge text IO plus deterministic HLSL stub emission for reviewed DXC planning without automatic package cook of export documents, material instance serialization/composition, fixed material factor uniform sizing, and explicit backend-neutral material binding metadata with uniform-buffer, sampled-texture, and sampler rows. Asset Identity v2 is implemented foundation-only, and Source Asset Registry v1 does not complete scene/render/UI/gameplay reference cleanup, renderer/RHI residency, package streaming, or 2D/3D playable vertical slices. External PNG decoded RGBA8 payloads, glTF position-only and interleaved position\u002Bnormal\u002Buv\u002Btangent mesh payload conversion, common-audio decoded PCM payloads, and first-party GameEngine.Scene.v1 source validation/canonicalization are owned by MK_tools adapters so runtime/game code remains cooked-artifact-only."
+    },
+    {
+      "name": "MK_animation",
+      "path": "engine/animation",
+      "status": "implemented",
+      "dependencies": [
+        "MK_math"
+      ],
+      "publicHeaders": [
+        "engine/animation/include/mirakana/animation/keyframe_animation.hpp",
+        "engine/animation/include/mirakana/animation/morph.hpp",
+        "engine/animation/include/mirakana/animation/chain_ik.hpp",
+        "engine/animation/include/mirakana/animation/two_bone_ik.hpp",
+        "engine/animation/include/mirakana/animation/skin.hpp",
+        "engine/animation/include/mirakana/animation/skeleton.hpp",
+        "engine/animation/include/mirakana/animation/state_machine.hpp",
+        "engine/animation/include/mirakana/animation/timeline.hpp"
+      ],
+      "purpose": "Deterministic animation foundations. Currently validates sorted float and Vec3 keyframes, samples them with clamped linear interpolation, exposes sorted float curve binding samples, applies sampled scalar float curves to caller-owned Transform3D rows through AnimationTransformCurveBinding, AnimationTransformComponent, and apply_float_animation_samples_to_transform3d, converts little-endian float32 cooked clip byte rows into validated FloatAnimationTrack rows through FloatAnimationTrackByteSource, make_float_animation_track_from_f32_bytes, and make_float_animation_tracks_from_f32_bytes, provides a deterministic clip/state/trigger/blend animation state machine, weighted blend tree samples, 1D blend graph samples, layered animation samples with additive flags, authored timeline event-track flattening, timeline event playback, retargeting policy evaluation, Skeleton Pose Foundation v0 with validated skeleton hierarchies, rest poses, local joint transforms using translation, positive scale, and Z-rotation-only radians, joint-track bindings, deterministic pose diagnostics, local pose sampling with missing tracks falling back to rest pose for gameplay, scene, and editor tests, Animation Quaternion Local Pose Foundation v1 with AnimationJointLocalTransform3d, AnimationSkeleton3dDesc, AnimationPose3d, AnimationModelPose3d, validate_animation_skeleton_3d_desc, validate_animation_pose_3d, make_animation_rest_pose_3d, and build_animation_model_pose_3d for unit-quaternion local rotation storage and model-pose matrices, Animation Quaternion Clip Sampling Application v1 with QuatKeyframe, QuatAnimationTrack, is_valid_quat_keyframes, sample_quat_keyframes, AnimationJointTrack3dDesc, validate_animation_joint_tracks_3d, sample_animation_local_pose_3d, AnimationJointTrack3dByteSource, and make_animation_joint_tracks_3d_from_f32_bytes for normalized shortest-path quaternion keyframe sampling, cooked byte-row decoding, and selected 3D local-pose track application, Animation Skin Payload Foundation v0 with skin joint palette entries, per-vertex influence rows, deterministic skin diagnostics, influence normalization, model-space joint matrices, and skinning palette construction, Animation CPU Skinning Foundation v0 with AnimationCpuSkinningDesc validation and skin_animation_vertices_cpu for deterministic skinned-position output from bind positions, skin influence rows, and palette matrices, Animation CPU Skinned Normal Stream v1 with optional bind_normals validation plus deterministic skinned-normal output, Animation CPU Skinned Tangent Stream v1 with optional bind_tangents validation plus deterministic skinned-tangent output, Animation CPU Skinned Bitangent Handedness v1 with optional bind_tangent_handedness validation plus deterministic skinned-bitangent reconstruction from skinned normal/tangent rows, AnimationMorphMeshCpuDesc and AnimationMorphTargetCpuDesc with validate_animation_morph_mesh_cpu_desc, apply_animation_morph_targets_positions_cpu, apply_animation_morph_targets_normals_cpu, and apply_animation_morph_targets_tangents_cpu for glTF-style additive POSITION, NORMAL, and/or TANGENT (xyz) morph targets, AnimationMorphWeightsTrackDesc with validate_animation_morph_weights_track_desc and sample_animation_morph_weights_at_time for LINEAR mesh weight channels with per-target weights in [0,1], planar two-bone IK through AnimationTwoBoneIkXyBendSide, AnimationTwoBoneIkXyDesc::pole_vector_xy, and solve_animation_two_bone_ik_xy_plane with explicit bend-side plus finite non-collinear pole-vector branch selection, analytic two-bone 3D orientation basis output through AnimationTwoBoneIk3dDesc, AnimationTwoBoneIk3dJointFrame, AnimationTwoBoneIk3dSolution, and solve_animation_two_bone_ik_3d_orientation, deterministic multi-segment XY FABRIK chain IK through AnimationFabrikIkXyBendSide, AnimationFabrikIkXyDesc::bend_side, AnimationFabrikIkXyDesc::pole_vector_xy, AnimationFabrikIkXySegmentRotationLimit, AnimationFabrikIkXySolution, solve_animation_fabrik_ik_xy_chain, AnimationIkLocalRotationLimit, and apply_animation_fabrik_ik_xy_solution_to_pose for optional explicit bend-side plus finite non-collinear pole-vector branch selection, solver-integrated per-segment local Z rotation limits with signed-pi local angle normalization, and validated local AnimationPose Z-rotation write-back with optional local Z-rotation clamping, plus deterministic multi-segment 3D FABRIK chain IK through AnimationFabrikIk3dDesc, AnimationFabrikIk3dSolution, and solve_animation_fabrik_ik_3d_chain for root-fixed 3D joint positions, and apply_animation_fabrik_ik_3d_solution_to_pose for validated AnimationPose3d unit-quaternion local rotation write-back, plus Animation 3D Local Rotation Limits Twist Controls v1 through AnimationIkLocalRotationLimit3d, validate_animation_ik_local_rotation_limits_3d, apply_animation_local_rotation_limits_3d, and the local-limit overload of apply_animation_fabrik_ik_3d_solution_to_pose for deterministic swing/twist clamps and constraint reporting in AnimationPose3d, plus deterministic unit-length vector outputs for morphed normals and tangents, root motion sampling via AnimationRootMotionSampleDesc and sample_animation_root_motion with translation plus Z-rotation start/end/delta fields, and root motion accumulation via AnimationRootMotionAccumulationDesc, validate_animation_root_motion_accumulation, is_valid_animation_root_motion_accumulation, and accumulate_animation_root_motion for explicit-duration forward loop intervals. Backward accumulation, negative-time wrapping, inferred clip duration, tangent-space material/render integration beyond the cooked tangent-frame schema, broader IK constraints beyond the implemented planar segment local Z and 3D swing/twist local clamps, broader generated-game animation/morph integration, async compute scheduling, graphics morph\u002Bskin composition, Metal compute morph parity, broad GPU skinning backend parity beyond the recorded D3D12/Vulkan package evidence, and animation graph authoring remain follow-up systems."
+    },
+    {
+      "name": "MK_ai",
+      "path": "engine/ai",
+      "status": "implemented-behavior-tree-blackboard-perception-services",
+      "dependencies": [],
+      "publicHeaders": [
+        "engine/ai/include/mirakana/ai/behavior_tree.hpp",
+        "engine/ai/include/mirakana/ai/perception.hpp"
+      ],
+      "purpose": "Standard-library-only gameplay decision-flow foundation. Behavior Tree Foundation v0 provides value-type BehaviorTreeDesc, BehaviorTreeNodeDesc, BehaviorTreeLeafResult, BehaviorTreeTickResult, diagnostics, and visited-node traces for deterministic memoryless sequence, selector, action, and condition evaluation. Behavior Tree Blackboard Conditions v0 adds typed BehaviorTreeBlackboardValue rows for bool, signed integer, finite double, and string facts, deterministic BehaviorTreeBlackboard snapshots, BehaviorTreeBlackboardCondition bindings, and BehaviorTreeEvaluationContext so condition nodes can read caller-supplied blackboard snapshots while action nodes still use game-supplied leaf statuses. AI Perception Services v1 adds AiPerceptionAgent2D, AiPerceptionTarget2D, AiPerceptionSnapshot2D, build_ai_perception_snapshot_2d, and write_ai_perception_blackboard for explicit caller-supplied 2D sight/hearing classification, stable primary-target selection, duplicate target rejection, finite validation, and blackboard projection into caller-selected fact keys. It reports missing-root, duplicate-node-id, missing-child, empty-composite, leaf-has-children, missing-leaf-result, invalid-leaf-result, duplicate-leaf-result, duplicate-blackboard-key, invalid-blackboard-key, invalid-blackboard-value, duplicate-blackboard-condition, invalid-blackboard-condition, missing-blackboard-key, blackboard-type-mismatch, invalid-blackboard-operator, invalid-agent, invalid-target, duplicate-target-id, invalid-perception-blackboard-key, calculation-overflow, cycle, and max-depth diagnostics without owning async tasks, decorators/services, scene state, physics queries, navigation requests, persistent blackboard services, editor graph authoring, platform APIs, middleware, scripting, or third-party dependencies."
+    },
+    {
+      "name": "MK_audio",
+      "path": "engine/audio",
+      "status": "implemented-device-streaming-baseline",
+      "dependencies": [
+        "MK_assets"
+      ],
+      "publicHeaders": [
+        "engine/audio/include/mirakana/audio/audio_mixer.hpp"
+      ],
+      "purpose": "Device-independent audio foundations. Currently provides an AudioMixer that validates audio buses, voices, spatial listener/source descriptors, clip metadata, device render requests, resampling quality, and interleaved float clip sample data; tracks logical clip asset ids; produces deterministic mix commands; builds spatial voice/listener metadata for distance attenuation and stereo pan; plans sample-frame voice scheduling; records streaming buffer availability, device format conversion intent, and underrun diagnostics; provides AudioStreamingQueue for decoded chunk append/consume/starvation state without codecs; renders deterministic interleaved float PCM buffers with gain, selectable nearest/linear resampling, channel conversion, and clamping; exposes AudioDeviceStreamRequest, AudioDeviceStreamPlan, plan_audio_device_stream, and render_audio_device_stream_interleaved_float so host adapters can fill output queues from AudioMixer PCM using bounded render chunks; and does not open OS audio devices."
+    },
+    {
+      "name": "MK_audio_sdl3",
+      "path": "engine/audio/sdl3",
+      "status": "optional-desktop-audio",
+      "dependencies": [
+        "MK_audio",
+        "SDL3"
+      ],
+      "publicHeaders": [
+        "engine/audio/sdl3/include/mirakana/audio/sdl3/sdl_audio_device.hpp"
+      ],
+      "purpose": "Optional SDL3 desktop audio adapter. Currently provides SdlAudioRuntime for SDL_INIT_AUDIO lifetime and SdlAudioDevice for default playback streams through SDL_OpenAudioDeviceStream, pause/resume/clear controls, queued-frame reporting, silence queuing, and interleaved float PCM queuing while keeping SDL stream and device handles private."
+    },
+    {
+      "name": "MK_math",
+      "path": "engine/math",
+      "status": "implemented",
+      "dependencies": [],
+      "publicHeaders": [
+        "engine/math/include/mirakana/math/mat4.hpp",
+        "engine/math/include/mirakana/math/quat.hpp",
+        "engine/math/include/mirakana/math/transform.hpp",
+        "engine/math/include/mirakana/math/vec.hpp"
+      ],
+      "purpose": "Standard-library-only 2D/3D math primitives for games and engine systems, including vectors, matrices, unit quaternions, quaternion vector rotation, Mat4::rotation_quat, and transforms with position, scale, and radians-based rotation."
+    },
+    {
+      "name": "MK_core",
+      "path": "engine/core",
+      "status": "implemented",
+      "dependencies": [],
+      "publicHeaders": [
+        "engine/core/include/mirakana/core/application.hpp",
+        "engine/core/include/mirakana/core/diagnostics.hpp",
+        "engine/core/include/mirakana/core/entity.hpp",
+        "engine/core/include/mirakana/core/log.hpp",
+        "engine/core/include/mirakana/core/registry.hpp",
+        "engine/core/include/mirakana/core/time.hpp",
+        "engine/core/include/mirakana/core/version.hpp"
+      ],
+      "purpose": "Standard-library-only deterministic engine core. Currently provides GameApp and headless runner lifecycle contracts, logging contracts, fixed timestep behavior, entity ids, component registry, version data, and dependency-free diagnostics/counter/profile capture plus Trace Event JSON subset export through DiagnosticEvent, CounterSample, ProfileSample, DiagnosticCapture, DiagnosticSummary, ManualProfileClock, SteadyProfileClock, DiagnosticsRecorder, ScopedProfileZone, summarize_diagnostics, DiagnosticsTraceExportOptions, export_diagnostics_trace_json, DiagnosticsOpsHostStatus, DiagnosticsOpsPlanOptions, DiagnosticsOpsArtifact, DiagnosticsOpsPlan, and build_diagnostics_ops_plan without exposing runtime, renderer, platform, editor, SDL3, OS, GPU, network upload, or Dear ImGui APIs."
+    },
+    {
+      "name": "MK_ui",
+      "path": "engine/ui",
+      "status": "implemented-runtime-ui-monospace-text-layout",
+      "dependencies": [],
+      "publicHeaders": [
+        "engine/ui/include/mirakana/ui/ui.hpp"
+      ],
+      "purpose": "First-party retained-mode runtime UI contracts for generated games and tools. Currently provides UiDocument retained element hierarchy with stable ids, parent/child relationships, visibility, enabled state, bounds, semantic roles, deterministic traversal, style/layout descriptors, headless row/column/stack layout solving with padding, margins, row/column gaps, anchors, fill, and size constraints, text metadata, image metadata, first-party renderer submission payload construction with solved element/layout data, RendererBox records, RendererTextRun records, image placeholder records, TextAdapterPayload rows with conservative line/span placeholders that keep resolved label text separate from localization keys and diagnose unresolved localization, an opt-in dependency-free MonospaceTextLayoutPolicy overload that emits deterministic logical-order line and glyph placeholder boxes with stable glyph ids, simple ASCII whitespace wrapping, clipping diagnostics, invalid-policy diagnostics, and unsupported right-to-left fallback diagnostics, ImageAdapterPayload rows with stable resource and asset URI references, AccessibilityPayload nodes carrying localization key, enabled, focusable, parent, and depth metadata, AccessibilityPublishPlan / AccessibilityPublishResult rows plus plan_accessibility_publish and publish_accessibility_payload validation before IAccessibilityAdapter dispatch, ImeCompositionPublishPlan / ImeCompositionPublishResult rows plus plan_ime_composition_update and publish_ime_composition validation before IImeAdapter dispatch, PlatformTextInputSessionPlan / PlatformTextInputSessionResult rows plus PlatformTextInputEndPlan / PlatformTextInputEndResult rows and plan_platform_text_input_session / begin_platform_text_input / plan_platform_text_input_end / end_platform_text_input validation before IPlatformIntegrationAdapter dispatch, TextEditState / CommittedTextInput / TextEditCommitPlan / TextEditCommitResult rows plus plan_committed_text_input and apply_committed_text_input validation/insertion/replacement, TextEditCommandKind / TextEditCommand / TextEditCommandPlan / TextEditCommandResult rows plus plan_text_edit_command and apply_text_edit_command validation for scalar-boundary cursor movement and backward/forward deletion, TextEditClipboardCommandKind / TextEditClipboardCommand / TextEditClipboardCommandPlan / TextEditClipboardCommandResult rows plus plan_text_edit_clipboard_command and apply_text_edit_clipboard_command validation for copy/cut/paste command application over TextEditState rows through IClipboardTextAdapter, TextShapingRequestPlan / TextShapingResult rows plus plan_text_shaping_request and shape_text_run validation before and after ITextShapingAdapter dispatch, FontRasterizationRequestPlan / FontRasterizationResult rows plus plan_font_rasterization_request and rasterize_font_glyph validation before and after IFontRasterizerAdapter dispatch, ImageDecodeRequestPlan / ImageDecodeDispatchResult rows plus plan_image_decode_request and decode_image_request validation before and after IImageDecodingAdapter dispatch, explicit adapter contracts and interfaces for text shaping, bidirectional text, production line breaking, font loading/rasterization, glyph atlas generation, native IME/text-input session integration, OS accessibility bridge publication, image decoding, concrete renderer adapters, and platform integration, input focus and navigation state with modal layer routing, UI transition state, one-way text binding, and command invocation without depending on editor, SDL3, Dear ImGui, UI middleware, native OS APIs, or GPU handles."
+    },
+    {
+      "name": "MK_ui_renderer",
+      "path": "engine/ui_renderer",
+      "status": "implemented-runtime-ui-font-image-adapter",
+      "dependencies": [
+        "MK_ui",
+        "MK_runtime",
+        "MK_renderer"
+      ],
+      "publicHeaders": [
+        "engine/ui_renderer/include/mirakana/ui_renderer/ui_renderer.hpp"
+      ],
+      "purpose": "First-party runtime UI renderer adapter that consumes MK_ui RendererSubmission payloads through the existing MK_renderer public API without making MK_ui depend on renderer code. Currently provides UiRendererTheme token-to-color mapping, resolves styled UI boxes to renderer colors, converts RendererBox bounds into SpriteCommand rectangles, resolves deterministic MonospaceTextLayoutPolicy glyph rows through UiRendererGlyphAtlasPalette and UiRendererGlyphAtlasBinding by font_family plus glyph id into atlas-backed text glyph sprite submissions, resolves ImageAdapterPayload rows through UiRendererImagePalette and UiRendererImageBinding into image sprite submissions with deterministic resource_id-first and asset_uri-fallback lookup, can attach first-party cooked atlas page and UV metadata for glyph and image bindings, can build UiRendererImagePalette rows from MK_runtime RuntimeUiAtlasPayload package metadata for the native-ui-atlas-package-metadata proof, can build glyph palette rows from RuntimeUiAtlasGlyph package metadata through build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas for the Runtime UI Glyph Atlas Package Bridge v1 proof, submits styled UI boxes, resolved text glyphs, and resolved image placeholders through IRenderer, reports text run, text adapter row, text glyph availability/resolution/missing/submission, image placeholder, image sprite submission, missing image resource, accessibility node, and adapter diagnostic availability, and leaves concrete text shaping/font loading/rasterization/glyph atlas generation/source image decoding/production atlas packing/renderer texture upload/OS accessibility bridges behind their separate MK_ui adapter boundaries."
+    },
+    {
+      "name": "MK_platform",
+      "path": "engine/platform",
+      "status": "implemented",
+      "dependencies": [
+        "MK_math"
+      ],
+      "publicHeaders": [
+        "engine/platform/include/mirakana/platform/clipboard.hpp",
+        "engine/platform/include/mirakana/platform/cursor.hpp",
+        "engine/platform/include/mirakana/platform/file_dialog.hpp",
+        "engine/platform/include/mirakana/platform/file_watcher.hpp",
+        "engine/platform/include/mirakana/platform/filesystem.hpp",
+        "engine/platform/include/mirakana/platform/input.hpp",
+        "engine/platform/include/mirakana/platform/lifecycle.hpp",
+        "engine/platform/include/mirakana/platform/linux_file_watcher.hpp",
+        "engine/platform/include/mirakana/platform/macos_file_watcher.hpp",
+        "engine/platform/include/mirakana/platform/mobile.hpp",
+        "engine/platform/include/mirakana/platform/process.hpp",
+        "engine/platform/include/mirakana/platform/windows_file_watcher.hpp",
+        "engine/platform/include/mirakana/platform/win32_process.hpp",
+        "engine/platform/include/mirakana/platform/window.hpp"
+      ],
+      "purpose": "Platform-facing contracts. Currently provides VirtualInput for keyboard-style state, VirtualPointerInput for mouse/touch/pen-style pointer state, VirtualGamepadInput for gamepad buttons and axes, DisplayInfo and WindowDisplayState for monitor/DPI/safe-area metadata plus deterministic monitor selection and window placement policy without native handles, mobile lifecycle/orientation/safe-area/touch/storage/permission contracts for Android and Apple adapters, IClipboard and MemoryClipboard for text clipboard workflows, FileDialogRequest/IFileDialogService/MemoryFileDialogService for asynchronous native-style open/save/folder dialog workflows, CursorMode/ICursor/MemoryCursor for cursor visibility, confinement, and relative-input state, VirtualLifecycle for quit, termination, low-memory, background, and foreground lifecycle events, HeadlessWindow, MemoryFileSystem, RootedFileSystem, file watch backend selection with native backend family reporting, deterministic PollingFileWatcher file event scanning, WindowsFileWatcher backed by Win32 API ReadDirectoryChangesW event scanning behind PIMPL, LinuxFileWatcher backed by inotify event scanning, MacOSFileWatcher backed by FSEvents event scanning, host-unavailable native watcher diagnostics, shell-free ProcessCommand validation, a recording process runner, and a Windows CreateProcessW runner that captures stdout, stderr, exit code, and launch diagnostics without exposing native handles."
+    },
+    {
+      "name": "MK_runtime",
+      "path": "engine/runtime",
+      "status": "implemented-runtime-resource-v2-foundation",
+      "dependencies": [
+        "MK_assets",
+        "MK_platform"
+      ],
+      "publicHeaders": [
+        "engine/runtime/include/mirakana/runtime/asset_runtime.hpp",
+        "engine/runtime/include/mirakana/runtime/package_streaming.hpp",
+        "engine/runtime/include/mirakana/runtime/resource_runtime.hpp",
+        "engine/runtime/include/mirakana/runtime/runtime_diagnostics.hpp",
+        "engine/runtime/include/mirakana/runtime/session_services.hpp"
+      ],
+      "purpose": "Game-facing runtime content and session contracts. Currently reads cooked package indexes through IFileSystem, validates package entries, cooked payload hashes, dependency presence, and duplicate assets, exposes immutable RuntimeAssetRecord payloads through first-party RuntimeAssetHandle values, provides typed cooked texture, mesh, morph_mesh_cpu, animation_float_clip, animation_quaternion_clip, audio, material, scene, and UI atlas metadata payload access through runtime_texture_payload, runtime_mesh_payload, runtime_morph_mesh_cpu_payload, runtime_animation_float_clip_payload, runtime_animation_quaternion_clip_payload, runtime_audio_payload, runtime_material_payload, runtime_ui_atlas_payload, and runtime_tilemap_payload including serialized scene payloads and RuntimeUiAtlasPayload page/image binding rows plus RuntimeUiAtlasGlyph rows for cooked GameEngine.UiAtlas.v1 glyph atlas metadata, resolves scene material dependencies through resolve_runtime_scene_materials, provides RuntimeAssetPackageStore for all-or-nothing active/staged package replacement at safe points, exposes Runtime Resource v2 foundation APIs through RuntimeResourceCatalogV2, generation-checked RuntimeResourceHandleV2 values, cooked-package-record catalog construction, lookup, duplicate-package-asset diagnostics, stale-handle rejection after catalog replacement, merge_runtime_asset_packages_overlay with RuntimePackageMountOverlay for deterministic ordered resident package mount overlays, RuntimeResidentPackageMountSetV2 and RuntimeResidentPackageMountIdV2 for explicit in-memory resident package mount ids, invalid/duplicate/missing mount diagnostics, deterministic mount-set generations, build_runtime_resource_catalog_v2_from_resident_mount_set for catalog rebuilds over explicit mount sets, RuntimeResidentCatalogCacheV2 for cache-hit resident catalog reuse over unchanged mount generations, overlay policy, and budgets with budget-failure catalog preservation, and build_runtime_resource_catalog_v2_from_resident_mounts for generation-checked catalog rebuilds over anonymous merged mounts, exposes estimate_runtime_asset_package_resident_bytes as the canonical cooked payload byte sum shared with host-gated streaming budget checks, evaluate_runtime_resource_residency_budget for optional explicit byte and resident asset-row caps without eviction, and build_runtime_resource_catalog_v2_from_resident_mounts_with_budget to merge mounts then rebuild catalogs only when those caps pass while preserving the prior catalog on failure, provides host-gated selected package streaming safe-point execution through execute_selected_runtime_package_streaming_safe_point with runtime scene validation evidence, loaded package staging, required preload asset hints, resident resource kind hints, selected resident package count hints, resident budget intent diagnostics, package/catalog commit, stale-handle counters, a resident mount-set/catalog-cache overload that validates explicit RuntimeResidentPackageMountIdV2 ids, projected resident budgets, and raw loaded-package catalog builds before mounting already-loaded packages into RuntimeResidentPackageMountSetV2 and refreshing RuntimeResidentCatalogCacheV2, commit_runtime_resident_package_replace_v2 for slot-preserving copy-then-commit replacement of one explicit resident mount plus RuntimeResidentCatalogCacheV2 refresh after raw candidate catalog preflight while preserving the live mount set and cached catalog on invalid, missing, candidate catalog, budget, or cache-refresh failure, and commit_runtime_resident_package_unmount_v2 for copy-then-commit removal of one explicit resident mount plus RuntimeResidentCatalogCacheV2 refresh while preserving the live mount set and cached catalog on invalid, missing, budget, or catalog failure, provides deterministic RuntimeDiagnosticReport helpers for package load failures, typed payload inspection, scene material resolution failures, and session document load failures, and provides deterministic host-independent runtime save data, settings, localization catalog, GameEngine.RuntimeInputActions.v4 context-scoped keyboard/pointer/gamepad button plus scalar key-pair/gamepad-axis action mapping documents, GameEngine.RuntimeInputRebindingProfile.v1 profile overlays, RuntimeInputRebindingCaptureRequest/RuntimeInputRebindingCaptureResult/capture_runtime_input_rebinding_action digital action capture, RuntimeInputRebindingAxisCaptureRequest/RuntimeInputRebindingAxisCaptureResult/capture_runtime_input_rebinding_axis gamepad-axis and keyboard key-pair axis capture, RuntimeInputRebindingFocusCaptureRequest/RuntimeInputRebindingFocusCaptureResult/capture_runtime_input_rebinding_action_with_focus focused capture consumption, and RuntimeInputRebindingPresentationToken/RuntimeInputRebindingPresentationRow/RuntimeInputRebindingPresentationModel plus present_runtime_input_action_trigger/present_runtime_input_axis_source/make_runtime_input_rebinding_presentation display rows with deterministic labels and symbolic glyph lookup keys through IFileSystem, RuntimeInputStateView, and RuntimeInputContextStack over VirtualInput, VirtualPointerInput, and VirtualGamepadInput, plus VirtualPointerInput::touch_gesture for active touch count, centroid, centroid delta, and two-touch pinch scale primitives over first-party touch pointers and TouchGestureRecognizer for tap, double-tap, long-press, pan, swipe, pinch, rotate, and canceled gesture events. Runtime Resource v2 is implemented foundation-only and broad/background package streaming, arbitrary eviction, dependency-driven streaming middleware, disk/VFS mount discovery, allocator/GPU budget enforcement, renderer/RHI resource ownership and teardown execution, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated. bind_key, bind_pointer, bind_gamepad_button, bind_key_axis, bind_gamepad_axis, bind_key_in_context, bind_pointer_in_context, bind_gamepad_button_in_context, bind_key_axis_in_context, bind_gamepad_axis_in_context, context-aware action_down, context-aware axis_value, validate_runtime_input_rebinding_profile, apply_runtime_input_rebinding_profile, capture_runtime_input_rebinding_action, capture_runtime_input_rebinding_action_with_focus, capture_runtime_input_rebinding_axis, and make_runtime_input_rebinding_presentation provide deterministic default-context and explicit-context input mapping, persisted profile overlays, first-party key/pointer/gamepad-button action capture, narrow armed rebinding capture focus/consumption, and symbolic glyph lookup keys with scalar clamp/deadzone handling and active-context ordering without exposing external source formats, tools, native OS handles, renderer handles, RHI handles, editor APIs, SDL3, Dear ImGui, or UI middleware. Broad UI focus integration, global input consumption/bubbling beyond focused rebinding capture, radial stick deadzones, response curves, pointer delta axes, gesture-to-RuntimeInputActions binding, full runtime/game rebinding panels outside the reviewed editor action and axis capture lanes, platform input glyph generation/assets/rendering, keyboard-layout localization, multiplayer device assignment, and per-device profiles remain follow-up work."
+    },
+    {
+      "name": "MK_runtime_rhi",
+      "path": "engine/runtime_rhi",
+      "status": "implemented-runtime-rhi-bridge",
+      "dependencies": [
+        "MK_runtime",
+        "MK_renderer",
+        "MK_rhi"
+      ],
+      "publicHeaders": [
+        "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp"
+      ],
+      "purpose": "Backend-neutral bridge from typed runtime payloads to RHI resources. Currently creates MK_rhi texture resources from RuntimeTexturePayload with owner-device provenance, writes cooked bytes into upload buffers, records copy-command upload paths when cooked texture byte payloads are present, creates vertex/index RHI buffers from RuntimeMeshPayload byte payloads with buffer-copy upload paths, uploads RuntimeMorphMeshCpuPayload POSITION deltas into storage buffers plus 256-byte-backed weight uniforms through upload_runtime_morph_mesh_cpu, make_runtime_morph_mesh_gpu_binding, and attach_morph_mesh_descriptor_set, exposes RuntimeMorphMeshComputeBinding plus create_runtime_morph_mesh_compute_binding for the narrow D3D12 compute morph proof that binds base POSITION bytes, POSITION deltas, morph weights, a compute-write output POSITION buffer, and opt-in NORMAL/TANGENT output buffers/descriptors when uploaded morph normal/tangent streams are present without native handles, exposes make_runtime_compute_morph_output_mesh_gpu_binding to map a vertex-usage compute output POSITION buffer plus the original index buffer into renderer MeshGpuBinding for the D3D12 renderer-consumption proof, derives position-only float32x3 stride 12 and lit tangent-space stride 48 (position, normal, TEXCOORD_0, tangent vec4 with handedness in w) vertex layout contracts from cooked mesh metadata, rejects partial normal/UV/tangent-frame layouts before buffer creation even when manual upload options are used, produces renderer MeshGpuBinding payloads through make_runtime_mesh_gpu_binding with owner-device validation data, keeps texture metadata-only payloads explicit while mesh uploads require bytes, derives material descriptor set layout descriptions from set-0 material binding metadata, and promotes MaterialFactors plus optional caller-owned descriptor set layouts into descriptor sets, 256-byte-backed uniform buffers carrying the 64-byte material factor payload, sampled texture descriptor writes, sampler descriptor writes, and Runtime RHI Upload Submission Fence Rows v1 submitted mirakana::rhi::FenceValue rows for texture, mesh, skinned mesh, morph mesh, and material-factor uploads with owner-device validation without exposing native backend handles or claiming native async upload execution."
+    },
+    {
+      "name": "MK_runtime_scene_rhi",
+      "path": "engine/runtime_scene_rhi",
+      "status": "implemented-runtime-scene-gpu-binding-palette",
+      "dependencies": [
+        "MK_runtime",
+        "MK_runtime_rhi",
+        "MK_rhi",
+        "MK_scene_renderer"
+      ],
+      "publicHeaders": [
+        "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp"
+      ],
+      "purpose": "Backend-neutral bridge from cooked runtime scene packages to renderer-visible scene GPU binding palettes. Currently builds retained SceneGpuBindingPalette resources from RuntimeAssetPackage plus SceneRenderPacket, uploads unique referenced mesh, skinned mesh, texture, and material payloads through MK_runtime_rhi, can explicitly select cooked morph_mesh_cpu package rows through RuntimeSceneGpuBindingOptions::morph_mesh_assets and retain them as SceneMorphGpuBindingPalette resources with a shared morph descriptor set layout, preserves derived mesh layout metadata such as position-only stride 12 and lit tangent-space stride 48 in renderer-visible MeshGpuBinding values, retains mesh uploads, skinned mesh uploads, morph mesh uploads, texture uploads, material descriptor bindings, generated material pipeline layouts, and actual submit-order RuntimeSceneGpuBindingResult::submitted_upload_fences rows in the result, exposes execute_runtime_scene_gpu_upload and RuntimeSceneGpuUploadExecutionReport for host-owned upload execution status with backend-neutral mesh/skinned/morph/texture/material counts, uploaded byte totals, submitted_upload_fence_count, and last_submitted_upload_fence rows derived from that ordered fence list, exposes execute_runtime_scene_gpu_binding_safe_point_teardown for host-owned safe-point GPU teardown handoff with deterministic null-device handle invalidation plus explicit host-native destroy guidance for non-null IRhiDevice implementations without exposing native handles to gameplay, uses one scene-shared material pipeline layout, supports caller-owned material descriptor set layouts while creating a matching pipeline layout itself, rejects incompatible default material descriptor layouts for the current single-pipeline RhiFrameRenderer path, reports deterministic per-asset failures, and keeps MK_runtime, MK_scene, SDL3, native window handles, concrete RHI backends, Dear ImGui, and editor APIs out of generated gameplay code."
+    },
+    {
+      "name": "MK_runtime_scene",
+      "path": "engine/runtime_scene",
+      "status": "implemented-runtime-scene-gameplay-instance",
+      "dependencies": [
+        "MK_runtime",
+        "MK_scene"
+      ],
+      "publicHeaders": [
+        "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
+      ],
+      "purpose": "Renderer-free cooked runtime scene gameplay bridge. Runtime Scene Gameplay Instance v0 provides mirakana::runtime_scene::instantiate_runtime_scene, RuntimeSceneInstance, RuntimeSceneReference, RuntimeSceneDiagnostic, RuntimeSceneLoadOptions, RuntimeSceneLoadResult, and find_runtime_scene_nodes_by_name so generated games and engine tests can instantiate a cooked RuntimeAssetPackage scene payload into mirakana::Scene state, enumerate mesh/material/sprite references, validate missing or wrong-kind referenced assets, optionally report duplicate node names, and receive deterministic diagnostics for missing scene assets, wrong scene asset kind, malformed scene payloads, and deserialization failures. Runtime Scene Animation Transform Binding v1 adds resolve_runtime_scene_animation_transform_bindings and apply_runtime_scene_animation_transform_samples to resolve GameEngine.AnimationTransformBindingSource.v1 rows against RuntimeSceneInstance node names and apply caller-provided FloatAnimationCurveSample rows to scene node transforms through MK_animation validation, rejecting invalid binding documents, missing node names, and duplicate node names before mutation. Runtime Scene Quaternion Animation Transform Binding v1 adds apply_runtime_scene_animation_pose_3d to resolve AnimationSkeleton3dDesc joint names against RuntimeSceneInstance node names and apply validated AnimationPose3d translation, unit-quaternion rotation converted into the current Transform3D Euler storage, and scale rows before mutation. It does not sample curves from time, add animation graphs, add package formats, add skeletal renderer deformation, expand scalar binding rows beyond translation xyz / rotation z / scale xyz, or depend on MK_renderer, MK_rhi, MK_scene_renderer, editor, platform windows, SDL3, Dear ImGui, or native handles."
+    },
+    {
+      "name": "MK_physics",
+      "path": "engine/physics",
+      "status": "implemented-physics-1-0-ready-surface",
+      "dependencies": [
+        "MK_math"
+      ],
+      "publicHeaders": [
+        "engine/physics/include/mirakana/physics/physics2d.hpp",
+        "engine/physics/include/mirakana/physics/physics3d.hpp"
+      ],
+      "purpose": "Deterministic gameplay physics foundations. Currently provides PhysicsWorld2D and PhysicsWorld3D with validated body descriptions, force accumulation, gravity, damping, fixed-step-friendly integration, deterministic 2D/3D sweep-and-prune broadphase pairs, 2D AABB/circle contacts, 3D AABB/sphere/capsule contacts, collision layer/mask filtering, deterministic collision-bounds raycasts with nearest-hit selection and ray mask filtering, trigger body flags plus non-resolving trigger overlap reporting, conservative bounds-based PhysicsShapeSweep2DDesc and PhysicsShapeSweep3DDesc shape sweeps with nearest-hit, ignored-body, trigger-inclusion, mask, and initial-overlap handling, deterministic exact 3D primitive sweeps through PhysicsShape3DDesc::aabb, PhysicsShape3DDesc::sphere, PhysicsShape3DDesc::capsule, PhysicsQueryFilter3D, PhysicsExactShapeSweep3DDesc, PhysicsExactShapeSweep3DHit, PhysicsExactShapeSweep3DResult, PhysicsExactShapeSweep3DStatus, PhysicsExactShapeSweep3DDiagnostic, and PhysicsWorld3D::exact_shape_sweep against current AABB/sphere/capsule target primitives with nearest-hit, deterministic epsilon tie-breaking, initial-overlap, disabled-body, ignored-body, trigger-inclusion, mask, conservative false-positive rejection, and invalid-request diagnostics, plus the first-class PhysicsExactSphereCast3DDesc, PhysicsExactSphereCast3DHit, PhysicsExactSphereCast3DResult, PhysicsExactSphereCast3DStatus, PhysicsExactSphereCast3DDiagnostic, and PhysicsWorld3D::exact_sphere_cast convenience wrapper. deterministic contact manifolds through PhysicsContactPoint3D, PhysicsContactManifold3D, and PhysicsWorld3D::contact_manifolds with stable feature ids, warm-start-safe point rows, trigger/disabled exclusion, and solver consumption for current AABB/sphere/vertical-capsule contacts. PhysicsContinuousStep3DConfig, PhysicsContinuousStep3DRow, PhysicsContinuousStep3DResult, and PhysicsWorld3D::step_continuous expose opt-in deterministic 3D CCD rows for fast dynamic AABB/sphere/vertical-capsule bodies swept against current non-trigger AABB/sphere/capsule targets while PhysicsWorld3D::step remains discrete. PhysicsCharacterDynamicPolicy3DDesc, PhysicsCharacterDynamicPolicy3DRowKind, PhysicsCharacterDynamicPolicy3DRow, PhysicsCharacterDynamicPolicy3DResult, and evaluate_physics_character_dynamic_policy_3d expose pure non-mutating generated-game push, step-up, slope, grounded, trigger, reciprocal layer/mask, and dynamic-body policy rows over the current query/contact/CCD surface. PhysicsJoint3DStatus, PhysicsJoint3DDiagnostic, PhysicsDistanceJoint3DDesc, PhysicsJointSolve3DConfig, PhysicsJointSolve3DDesc, PhysicsJointSolve3DRow, PhysicsJointSolve3DResult, and solve_physics_joints_3d expose explicit first-party distance-joint solving with deterministic diagnostics, replay rows, invalid-request rejection, disabled-joint rows, velocity preservation, and no persistent world joint storage. PhysicsDeterminismGate3DStatus, PhysicsDeterminismGate3DDiagnostic, PhysicsDeterminismGate3DConfig, PhysicsDeterminismGate3DCounts, PhysicsReplaySignature3D, PhysicsDeterminismGate3DResult, make_physics_replay_signature_3d, and evaluate_physics_determinism_gate_3d expose host-independent replay signatures and count-based budget gates over current 3D bodies, broadphase pairs, contacts, manifolds, trigger overlaps, and contact points. Iterative contact solver configuration with correction slop/percent controls, stacked-body coverage, replay-tested inverse-mass contact resolution, PhysicsCharacterController3DDesc and move_physics_character_controller_3d for conservative capsule movement/contact/grounding rows over PhysicsWorld3D::shape_sweep, PhysicsAuthoredCollisionScene3DDesc and build_physics_world_3d_from_authored_collision_scene for reviewed in-memory collision body rows with native backend requests failing closed, and a validated Physics 1.0 ready surface with explicit Jolt/native middleware exclusion and future optional-adapter gates is implemented. Dynamic-vs-dynamic TOI, rotational CCD, 2D CCD, persistent joint assets, vehicles, ragdolls, Jolt/native backends outside the 1.0 ready surface, middleware, oriented boxes, mesh/convex casts, timing benchmarks, and broad physics beyond the first-party Physics 1.0 ready surface remain follow-up work."
+    },
+    {
+      "name": "MK_navigation",
+      "path": "engine/navigation",
+      "status": "implemented-production-path-planner",
+      "dependencies": [],
+      "publicHeaders": [
+        "engine/navigation/include/mirakana/navigation/local_avoidance.hpp",
+        "engine/navigation/include/mirakana/navigation/navigation_agent.hpp",
+        "engine/navigation/include/mirakana/navigation/navigation_grid.hpp",
+        "engine/navigation/include/mirakana/navigation/navigation_path_planner.hpp",
+        "engine/navigation/include/mirakana/navigation/navigation_replan.hpp",
+        "engine/navigation/include/mirakana/navigation/path_following.hpp",
+        "engine/navigation/include/mirakana/navigation/path_smoothing.hpp"
+      ],
+      "purpose": "Standard-library-only deterministic navigation foundation for generated games and gameplay tests. Currently provides NavigationGrid, NavigationGridCoord, NavigationPathRequest, NavigationPathResult, NavigationPathStatus, and find_navigation_path for bounds-checked cardinal grid A* pathfinding with walkability, positive traversal costs, stable tie-breaking, invalid/blocked endpoint diagnostics, no-path reporting, total path cost, and visited-node counts. Path Following / Steering Foundation v0 adds NavigationPoint2, NavigationPointPathBuildResult, build_navigation_point_path_result, build_navigation_point_path, NavigationPathFollowRequest, advance_navigation_path_following, NavigationArriveSteeringRequest, and calculate_navigation_arrive_steering for grid-path-to-point conversion, explicit path-follow cursor advancement, max-step/arrival-radius movement, remaining-distance reporting, and single-agent arrive steering. Navigation Agent Controller Foundation v0 adds NavigationAgentConfig, NavigationAgentState, NavigationAgentUpdateRequest, NavigationAgentUpdateResult, make_navigation_agent_state, replace_navigation_agent_path, cancel_navigation_agent_move, and update_navigation_agent for value-type idle/moving/reached/cancelled/invalid movement state, speed/delta clamping, final-destination slowing, path replacement, and desired velocity from actual path movement. Grid Dynamic Obstacle Replan v0 adds NavigationGridPathValidationRequest, NavigationGridPathValidationResult, NavigationGridPathValidationStatus, validate_navigation_grid_path, NavigationGridReplanRequest, NavigationGridReplanResult, NavigationGridReplanStatus, and replan_navigation_grid_path for validating remaining cardinal-grid paths against the current grid, reporting empty/start/goal/out-of-bounds/blocked/non-cardinal/unsupported-adjacency/cost-overflow diagnostics, reusing valid remaining paths, and recalculating deterministic replacement paths around newly blocked cells through find_navigation_path. Navigation Agent Local Avoidance v0 adds NavigationLocalAvoidanceRequest, NavigationLocalAvoidanceResult, NavigationLocalAvoidanceDiagnostic, and calculate_navigation_local_avoidance for finite-input single-agent velocity adjustment against explicit neighbor rows, duplicate-neighbor and calculation-overflow diagnostics, deterministic neighbor ordering, closest-approach prediction over the requested time window, overlap/future-collision separation, and max-speed clamping. Navigation Grid Path Smoothing v0 adds NavigationGridPathSmoothingRequest, NavigationGridPathSmoothingResult, NavigationGridPathSmoothingStatus, and smooth_navigation_grid_path for reducing validated cardinal grid paths through deterministic walkable line-of-sight while preserving start and goal waypoints. Navigation Production Path v1 adds NavigationGridAgentPathRequest, NavigationGridAgentPathPlan, NavigationGridAgentPathStatus, NavigationGridAgentPathDiagnostic, and plan_navigation_grid_agent_path to compose validated grid pathfinding, optional smoothing, point-path mapping, and NavigationAgentState creation for generated-game route setup. navmesh assets, polygon navigation, spline/funnel smoothing, full crowd simulation, RVO/ORCA, scene/physics integration, editor visualization, middleware, and background navigation jobs remain future gameplay-system slices."
+    },
+    {
+      "name": "MK_platform_sdl3",
+      "path": "engine/platform/sdl3",
+      "status": "optional-desktop-runtime",
+      "dependencies": [
+        "MK_platform",
+        "MK_ui",
+        "SDL3"
+      ],
+      "publicHeaders": [
+        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_clipboard.hpp",
+        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_cursor.hpp",
+        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_file_dialog.hpp",
+        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_input.hpp",
+        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_ui_platform_integration.hpp",
+        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_window.hpp"
+      ],
+      "purpose": "Optional SDL3 platform backend with RAII runtime/window wrappers, SDL display enumeration and first-party monitor selection mapped into DisplayInfo, SDL window position/size movement mapped through WindowPlacement, SDL window display scale, pixel density, and safe-area mapping into WindowDisplayState, SDL text clipboard mapping into IClipboard and SdlClipboardTextAdapter mapping SdlClipboard through MK_ui IClipboardTextAdapter, SDL asynchronous native file dialogs mapped into IFileDialogService, SDL cursor visibility/grab/relative mode mapping into ICursor, SdlPlatformIntegrationAdapter mapping validated MK_ui PlatformTextInputRequest begin/end rows to SDL_SetTextInputArea plus SDL_StartTextInput/SDL_StopTextInput for caller-owned SdlWindow instances, SDL text input, text editing, and text editing candidate events copied into first-party SdlWindowEvent committed-text, composition-text/range, candidate-string, selected-candidate, candidate-list-orientation, SDL keycode, and key-modifier rows without retaining SDL-owned text or candidate pointers, selected SDL3 Ctrl/GUI \u002B C/X/V key-down rows mapped through sdl3_text_edit_clipboard_command_from_window_event / apply_sdl3_text_edit_clipboard_command_event into MK_ui TextEditClipboardCommand application through IClipboardTextAdapter, SDL app lifecycle events mapped into VirtualLifecycle, SDL key mapping into VirtualInput, SDL mouse/touch mapping into VirtualPointerInput, and SDL gamepad button/axis/device mapping into VirtualGamepadInput without exposing SDL_Window through MK_ui."
+    },
+    {
+      "name": "MK_runtime_host",
+      "path": "engine/runtime_host",
+      "status": "implemented-desktop-host-contract",
+      "dependencies": [
+        "MK_core",
+        "MK_platform",
+        "MK_renderer"
+      ],
+      "publicHeaders": [
+        "engine/runtime_host/include/mirakana/runtime_host/desktop_runner.hpp",
+        "engine/runtime_host/include/mirakana/runtime_host/shader_bytecode.hpp"
+      ],
+      "purpose": "Editor-independent desktop game host contract. Currently provides DesktopGameRunner, DesktopRunConfig, DesktopRunResult, DesktopHostServices, and IDesktopEventPump so games can keep implementing mirakana::GameApp while a host drives IWindow lifecycle, VirtualInput, VirtualPointerInput, VirtualGamepadInput, VirtualLifecycle, optional renderer resize including swapchain-backed RhiFrameRenderer resize through IRenderer, optional DiagnosticsRecorder/IProfileClock frame instrumentation, backend-neutral renderer counter capture from IRenderer::stats(), and app update/stop status without exposing SDL, OS, RHI, or graphics API handles to game code. It also provides load_desktop_shader_bytecode_pair for host-independent packaged shader bytecode loading through IFileSystem with owned byte vectors, entry points, stable statuses, and diagnostics."
+    },
+    {
+      "name": "MK_runtime_host_sdl3",
+      "path": "engine/runtime_host/sdl3",
+      "status": "optional-desktop-game-runtime",
+      "dependencies": [
+        "MK_runtime_host",
+        "MK_platform_sdl3",
+        "SDL3"
+      ],
+      "publicHeaders": [
+        "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_event_pump.hpp"
+      ],
+      "purpose": "Optional SDL3 desktop game runtime host adapter. Currently provides SdlDesktopEventPump, which owns the SDL_PollEvent loop in the adapter implementation and forwards translated SDL events through SdlWindow::handle_event into first-party virtual input, pointer, gamepad, lifecycle, and window contracts. Game code includes engine headers only and does not include SDL3 headers or native handles."
+    },
+    {
+      "name": "MK_runtime_host_sdl3_presentation",
+      "path": "engine/runtime_host/sdl3",
+      "status": "optional-desktop-game-presentation-adapter",
+      "dependencies": [
+        "MK_runtime_host_sdl3",
+        "MK_platform_sdl3",
+        "MK_renderer",
+        "MK_rhi",
+        "MK_rhi_d3d12",
+        "MK_rhi_vulkan",
+        "SDL3"
+      ],
+      "publicHeaders": [
+        "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp",
+        "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
+      ],
+      "purpose": "Optional SDL3 desktop game presentation and reusable game-host adapter. Provides SdlDesktopGameHost, which owns SDL runtime/window setup, event pumping, SdlDesktopPresentation renderer selection, virtual input/pointer/gamepad/lifecycle state, and DesktopGameRunner service wiring for games that select the desktop-game-runtime lane without exposing SDL headers, native OS handles, GPU handles, RHI backend handles, Dear ImGui, or editor APIs to gameplay code. Provides SdlDesktopPresentation, which keeps SDL3 native window-property probing, D3D12/Vulkan-ready first-party surface candidate creation, host-supplied precompiled D3D12 DXIL and Vulkan SPIR-V shader bytecode renderer creation, host-owned D3D12/Vulkan scene GPU binding injection with request vertex input validated against referenced cooked mesh layouts, host-owned D3D12/Vulkan Frame Graph/Postprocess v0 renderer creation from target-specific postprocess shader artifacts plus optional scene-depth input, host-owned Package-Visible Directional Shadow Filtering v0 creation from target-specific shadow receiver/shadow shader artifacts with fixed sampled-depth 3x3 PCF metadata, renderer selection diagnostics, postprocess diagnostics, postprocess_depth_input_requested/postprocess_depth_input_ready report fields, directional_shadow_status/directional_shadow_requested/directional_shadow_ready/directional_shadow_filter_mode/directional_shadow_filter_tap_count/directional_shadow_filter_radius_texels report fields, package-visible renderer quality gate reporting through evaluate_sdl_desktop_presentation_quality_gate and renderer_quality_* fields, and NullRenderer fallback policy in host code while exposing only first-party mirakana:: diagnostics, RHI value-type descriptors, SdlDesktopPresentationReport status fields, SdlDesktopPresentationQualityGateReport summary fields, and IRenderer access to the host."
+    },
+    {
+      "name": "MK_tools",
+      "path": "engine/tools",
+      "status": "implemented",
+      "dependencies": [
+        "MK_assets",
+        "MK_platform",
+        "MK_runtime_scene",
+        "MK_scene"
+      ],
+      "publicHeaders": [
+        "engine/tools/include/mirakana/tools/asset_file_scanner.hpp",
+        "engine/tools/include/mirakana/tools/asset_import_adapters.hpp",
+        "engine/tools/include/mirakana/tools/asset_import_tool.hpp",
+        "engine/tools/include/mirakana/tools/asset_package_tool.hpp",
+        "engine/tools/include/mirakana/tools/gltf_mesh_inspect.hpp",
+        "engine/tools/include/mirakana/tools/gltf_skin_animation_inspect.hpp",
+        "engine/tools/include/mirakana/tools/gltf_skin_animation_import.hpp",
+        "engine/tools/include/mirakana/tools/gltf_morph_animation_import.hpp",
+        "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp",
+        "engine/tools/include/mirakana/tools/morph_mesh_cpu_source_bridge.hpp",
+        "engine/tools/include/mirakana/tools/material_graph_shader_pipeline.hpp",
+        "engine/tools/include/mirakana/tools/material_tool.hpp",
+        "engine/tools/include/mirakana/tools/registered_source_asset_cook_package_tool.hpp",
+        "engine/tools/include/mirakana/tools/runtime_scene_package_validation_tool.hpp",
+        "engine/tools/include/mirakana/tools/scene_prefab_authoring_tool.hpp",
+        "engine/tools/include/mirakana/tools/scene_tool.hpp",
+        "engine/tools/include/mirakana/tools/scene_v2_runtime_package_migration_tool.hpp",
+        "engine/tools/include/mirakana/tools/shader_compile_action.hpp",
+        "engine/tools/include/mirakana/tools/shader_tool_process.hpp",
+        "engine/tools/include/mirakana/tools/shader_toolchain.hpp",
+        "engine/tools/include/mirakana/tools/source_asset_registration_tool.hpp",
+        "engine/tools/include/mirakana/tools/source_image_decode.hpp",
+        "engine/tools/include/mirakana/tools/tilemap_tool.hpp",
+        "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp"
+      ],
+      "purpose": "Development-time tool adapters. Currently maps shader compiler commands and spirv-val artifact validation commands to shell-free platform process execution through ShaderToolProcessRunner and ShaderArtifactValidationProcessRunner, plans reviewed DXC compile execution requests for GameEngine.MaterialGraphShaderExport.v0 through plan_material_graph_shader_pipeline, enforces artifact output-root policy and reviewed executable overrides for PATH names, project-relative paths, or absolute installed SDK/tool paths before invoking tools, discovers shader compiler and validator tool descriptors for dxc, spirv-val, metal, and metallib from deterministic toolchain roots, tracks DXC SPIR-V CodeGen capability separately from DXIL-capable DXC availability, evaluates backend-specific shader toolchain readiness, executes shader compile actions with provenance writes, persistent cache index storage, cache-hit reuse, deterministic test artifact marker writes, real artifact enforcement for compiler-backed runs, builds shader hot reload plans from artifact provenance and backend pipeline recreation decisions after successful non-cached compiles, batches selected shader requests through build_shader_pipeline_cache_plan, reconciles selected first-party cache indexes through reconcile_shader_pipeline_cache_index without invoking compilers or writing artifacts, executes SPIR-V artifact validation actions for existing compiled artifacts, executes asset import plans through filesystem-backed first-party texture/mesh/morph_mesh_cpu/animation_float_clip/animation_quaternion_clip/audio/material source decoding plus deterministic cooked artifact writes that preserve optional first-party texture, mesh, and audio byte payload hex data, validates and canonicalizes first-party GameEngine.Scene.v1 source documents through MK_scene before writing cooked scene artifacts, assembles successful import execution results plus cooked artifact content and dependency edges into validated runtime-loadable cooked package indexes, serializes those indexes through IFileSystem, rejects failed imports, missing cooked artifacts, duplicate entries, and package-external dependencies, provides plan_source_asset_registration and apply_source_asset_registration for deterministic safe repository-relative GameEngine.SourceAssetRegistry.v1 source asset registration and import metadata planning without executing external importers, writing cooked artifacts, updating .geindex package indexes, evaluating arbitrary shell, or supporting free-form edits, provides plan_registered_source_asset_cook_package and apply_registered_source_asset_cook_package for explicitly selected GameEngine.SourceAssetRegistry.v1 rows to reuse build_asset_import_plan, execute_asset_import_plan, and assemble_asset_cooked_package for deterministic cooked artifacts plus .geindex package updates without optional external importer execution, broad dependency cooking, renderer/RHI residency, package streaming, material graph, shader graph, live shader generation, editor productization, Metal readiness, public native/RHI handles, or general production renderer quality claims, provides plan_runtime_scene_package_validation and execute_runtime_scene_package_validation for non-mutating runtime scene package validation through mirakana::runtime::load_runtime_asset_package and mirakana::runtime_scene::instantiate_runtime_scene with safe package-relative paths, explicit AssetKeyV2 scene keys, package load diagnostics, scene instantiation diagnostics, and no package cooking, runtime source parsing, renderer/RHI residency, package streaming, editor productization, Metal readiness, public native/RHI handles, arbitrary shell, or free-form edits, provides plan_scene_prefab_authoring and apply_scene_prefab_authoring for deterministic safe repository-relative authored GameEngine.Scene.v2 .scene and GameEngine.Prefab.v2 .prefab create/update/instantiate commands without evaluating arbitrary shell or free-form edits, provides plan_scene_v2_runtime_package_migration and apply_scene_v2_runtime_package_migration for deterministic safe repository-relative GameEngine.Scene.v2 plus GameEngine.SourceAssetRegistry.v1 migration into the existing GameEngine.Scene.v1 scene package update surface through plan_scene_package_update and apply_scene_package_update without external importer execution, broad package cooking, dependent asset cooking, renderer/RHI residency, package streaming, material graph, shader graph, live shader generation, editor productization, Metal readiness, public native/RHI handles, or general production renderer quality claims, provides plan_scene_package_update and apply_scene_package_update for deterministic first-party GameEngine.Scene.v1 .scene artifacts, AssetKind::scene package rows, and scene_mesh, scene_material, and scene_sprite dependency edge validation without editor productization, prefab mutation, runtime source import, renderer/RHI residency, package streaming, material graph, shader graph, or live shader generation claims, provides plan_material_instance_package_update and apply_material_instance_package_update for deterministic first-party material instance .material artifacts, AssetKind::material package rows, and material_texture dependency edge validation without material graph, shader graph, live shader generation, renderer/RHI residency, or package streaming claims, provides plan_material_graph_package_update and apply_material_graph_package_update for deterministic explicit GameEngine.MaterialGraph.v1 graph text or selected graph path lowering into runtime GameEngine.Material.v1 .material artifacts, AssetKind::material package rows, and material_texture dependency edge validation without shader graph generation, shader compiler execution, live shader generation, renderer/RHI residency, or package streaming claims, provides author_cooked_ui_atlas_metadata, write_cooked_ui_atlas_metadata, verify_cooked_ui_atlas_package_metadata, plan_cooked_ui_atlas_package_update, and apply_cooked_ui_atlas_package_update for deterministic cooked GameEngine.UiAtlas.v1 metadata artifacts, AssetKind::ui_atlas package rows, and ui_atlas_texture dependency edge validation, and provides PackedUiAtlasAuthoringDesc, author_packed_ui_atlas_from_decoded_images, PackedUiGlyphAtlasAuthoringDesc, UiAtlasMetadataGlyph, author_packed_ui_glyph_atlas_from_rasterized_glyphs, plan_packed_ui_glyph_atlas_package_update, apply_packed_ui_glyph_atlas_package_update, plan_packed_ui_atlas_package_update, and apply_packed_ui_atlas_package_update for Runtime UI Decoded Image Atlas Package Bridge v1 plus Runtime UI Glyph Atlas Package Bridge v1 validated RGBA8 ImageDecodeResult or already-rasterized glyph rows to become deterministic GameEngine.CookedTexture.v1 pages plus synchronized GameEngine.UiAtlas.v1 package rows with source.decoding=rasterized-glyph-adapter and atlas.packing=deterministic-glyph-atlas-rgba8-max-side for glyph inputs, without runtime source parsing, SVG/vector parsing, real font loading/rasterization, text shaping, native IME/text-input sessions, OS accessibility bridge publication, renderer texture upload, package streaming, public native/RHI handles, Metal readiness, third-party adapters, platform SDK behavior, or broad UI renderer quality claims, provides author_cooked_tilemap_metadata, write_cooked_tilemap_metadata, verify_cooked_tilemap_package_metadata, plan_cooked_tilemap_package_update, and apply_cooked_tilemap_package_update for deterministic cooked GameEngine.Tilemap.v1 metadata artifacts, AssetKind::tilemap package rows, and tilemap_texture dependency edge validation without source decoding, production atlas packing, tilemap editor UX, native GPU sprite batching, public native/RHI handles, package streaming execution, Metal readiness, or general renderer quality claims, optionally routes PNG, glTF, and common audio source files through MK_tools-owned external importer adapters backed by libspng, fastgltf, and miniaudio when the asset-importers feature is enabled, provides PngImageDecodingAdapter as an optional mirakana::ui::IImageDecodingAdapter bridge over decode_audited_png_rgba8 for reviewed PNG bytes, provides import_gltf_node_transform_animation_tracks for LINEAR glTF node translation, z-axis-only rotation, and positive scale channels into sorted MK_animation keyframe rows while rejecting duplicate channels, weights channels, sparse accessors, unsupported interpolation, non-z-axis rotations, and invalid scales, provides import_gltf_node_transform_animation_tracks_3d for LINEAR glTF node translation, full unit-quaternion rotation, and positive scale channels into sorted GltfNodeTransformAnimationTrack3d rows while rejecting duplicate channels, weights channels, sparse accessors, unsupported interpolation, invalid quaternions, and invalid scales, provides import_gltf_node_transform_animation_float_clip for the same node TRS data as one-track-per-component GameEngine.AnimationFloatClipSource.v1 bridge rows that reuse the existing animation_float_clip cook/package/runtime payload path, provides import_gltf_node_transform_animation_quaternion_clip for LINEAR glTF node TRS 3D rows as GameEngine.AnimationQuaternionClipSource.v1 tracks that reuse the animation_quaternion_clip cook/package/runtime payload path, provides import_gltf_node_transform_animation_binding_source for matching GameEngine.AnimationTransformBindingSource.v1 target-to-node/component rows using glTF node names or deterministic fallback names, provides import_gltf_morph_mesh_cpu_primitive, import_gltf_animation_morph_weights_for_mesh_primitive, and import_gltf_morph_weights_animation_float_clip for glTF morph targets, LINEAR weights animation into MK_animation, and one-track-per-target GameEngine.AnimationFloatClipSource.v1 bridge rows while rejecting Draco, sparse accessors, skinned primitives, and non-LINEAR morph weight samplers, emits decoded RGBA8 payloads for PNG textures, decoded PCM sample payloads for common audio sources, and glTF triangle POSITION-only or POSITION/NORMAL/TEXCOORD_0/TANGENT interleaved mesh byte payloads for embedded/loaded buffers while rejecting partial normal/UV/tangent-frame primitives, imports glTF morph targets plus LINEAR mesh weights animation channels into MK_animation through import_gltf_morph_mesh_cpu_primitive and import_gltf_animation_morph_weights_for_mesh_primitive when importers are enabled while rejecting Draco, sparse accessors, skinned primitives, and non-LINEAR morph weight samplers, executes runtime recook requests transactionally through the asset import tool path and stages safe runtime replacements, and scans registered asset files into hot reload snapshots."
+    },
+    {
+      "name": "MK_renderer",
+      "path": "engine/renderer",
+      "status": "implemented",
+      "dependencies": [
+        "MK_assets",
+        "MK_core",
+        "MK_math",
+        "MK_rhi"
+      ],
+      "publicHeaders": [
+        "engine/renderer/include/mirakana/renderer/frame_graph.hpp",
+        "engine/renderer/include/mirakana/renderer/frame_graph_rhi.hpp",
+        "engine/renderer/include/mirakana/renderer/renderer.hpp",
+        "engine/renderer/include/mirakana/renderer/rhi_frame_renderer.hpp",
+        "engine/renderer/include/mirakana/renderer/rhi_postprocess_frame_renderer.hpp",
+        "engine/renderer/include/mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp",
+        "engine/renderer/include/mirakana/renderer/rhi_viewport_surface.hpp",
+        "engine/renderer/include/mirakana/renderer/shadow_map.hpp",
+        "engine/renderer/include/mirakana/renderer/sprite_batch.hpp"
+      ],
+      "purpose": "Graphics-API-independent renderer contracts with NullRenderer for headless validation, SpriteCommand draw intent, MeshCommand mesh/material asset identity plus optional MeshGpuBinding and MaterialGpuBinding payloads, 2D Sprite Batch Planning Contract v1 through SpriteBatchPlan, SpriteBatchRange, deterministic adjacent-run coalescing, texture metadata diagnostics, order-preserving plan_sprite_batches, and 2D Native Sprite Batching Execution v1 through renderer-owned RHI overlay adjacent-run batch draws plus RendererStats::native_sprite_batches_executed and RendererStats::native_sprite_batch_texture_binds counters without broad production sprite batching readiness claims, deterministic Frame Graph v0 pass/resource declaration diagnostics for color-only pass ordering, Frame Graph v1 foundation-only planning through FrameGraphV1Desc, FrameGraphResourceAccess, explicit imported/transient resource lifetime rows, deterministic pass ordering, barrier intent rows, missing-producer diagnostics, duplicate-writer diagnostics, same-pass read/write diagnostics, unknown-access diagnostics, schedule_frame_graph_v1_execution with deterministic barrier-then-pass_invoke steps, Frame Graph Pass Callback Execution v1 through FrameGraphPassExecutionBinding, FrameGraphExecutionCallbacks, FrameGraphExecutionResult, and execute_frame_graph_v1_schedule for caller-owned linear schedule callback dispatch with deterministic diagnostics, RendererStats::framegraph_barrier_steps_executed for completed RHI postprocess and directional shadow smoke frames, Frame Graph RHI Texture Barrier Recording v1 through FrameGraphTextureBinding, FrameGraphTextureBarrierRecordResult, frame_graph_texture_state_for_access, and record_frame_graph_texture_barriers for explicit caller-owned resource-name to TextureHandle transition recording over public IRhiCommandList, and Frame Graph RHI Texture Schedule Execution v1 through FrameGraphRhiTextureExecutionDesc, FrameGraphRhiTextureExecutionResult, and execute_frame_graph_rhi_texture_schedule for ordered caller-owned IRhiCommandList texture transitions plus pass callback dispatch over one FrameGraphExecutionStep schedule without claiming production graph ownership, renderer-wide pass migration, renderer-wide manual-transition removal, transient allocation, aliasing, or production multi-queue render graph scheduling, Shadow Map Foundation v0 planning through ShadowMapDesc, ShadowMapPlan, depth24_stencil8 depth_stencil|shader_resource texture requirements, caster/receiver counts, deterministic diagnostics, stable shadow-depth-before-receiver Frame Graph v1 pass declaration plus cached frame_graph_execution schedule, Stable Directional Light-Space Policy v0 planning through DirectionalShadowLightSpaceDesc and DirectionalShadowLightSpacePlan with deterministic texel-snapped orthographic light-space matrices plus light direction/focus/depth diagnostics, plus Directional Shadow Receiver Readback Proof v0 planning through ShadowReceiverDesc, ShadowReceiverPlan, sampled-depth plus sampler descriptor policy, depth bias and lit/shadow intensity diagnostics, D3D12 plus env-gated Vulkan RHI readback evidence, Cascaded Shadow Map v1 Phase A \u0060compute_practical_shadow_cascade_distances\u0060 practical split distances between camera near/far (log/uniform lambda blend, GPU Gems 3 Ch.10 style) for future multi-cascade scheduling, and Package-Visible Directional Shadow Filtering v0 readiness for sample_desktop_runtime_game with fixed sampled-depth 3x3 PCF filter mode/radius/tap diagnostics and D3D12 filtered boundary readback proof without hardware comparison sampler, multi-cascade shadow passes, shadow atlases, Metal shadow presentation, or production shadow quality claims, RhiFrameRenderer for submitting renderer frames through an IRhiDevice, propagating swapchain-backed resize requests to IRhiDevice::resize_swapchain outside active frames, optionally forwarding a host-owned RHI depth texture through RHI Depth Attachment Contract v0 without exposing depth ownership through IRenderer or gameplay APIs, replacing host-owned depth texture handles only between frames after resize or target recreation, binding material descriptor sets, binding vertex/index buffers, issuing indexed mesh draws when bindings are present, releasing acquired swapchain frames on begin-frame failure and destruction before present, replacing recreated graphics pipeline handles only between frames, RhiPostprocessFrameRenderer for the default scene-color render target plus fullscreen postprocess pass path and Postprocess Depth Input Readback Foundation v0 opt-in renderer-owned depth24_stencil8 sampled scene-depth input with stable scene color bindings 0/1, stable scene depth bindings 2/3, private RHI resources, acquired swapchain frame cleanup on begin/end failure and destruction before present, backend-neutral framegraph pass and barrier-step counters in RendererStats, NullRHI descriptor/state proof, D3D12 depth-aware postprocess readback proof, and env-gated Vulkan postprocess-depth readback proof, RhiDirectionalShadowSmokeFrameRenderer for the sample three-pass shadow-depth, shadow-receiver scene, and postprocess package-visible directional shadow filtering smoke with private RHI resources plus backend-neutral directional_shadow/filter/framegraph counters, and RhiViewportSurface for renderer-owned offscreen viewport targets, renderer-submitted viewport frames, shader-readable display frames, optional native display interop texture usage, CPU readback fallback frames, and explicit clear color propagation into RHI render passes."
+    },
+    {
+      "name": "MK_rhi",
+      "path": "engine/rhi",
+      "status": "implemented-upload-staging-foundation",
+      "dependencies": [],
+      "publicHeaders": [
+        "engine/rhi/include/mirakana/rhi/backend_capabilities.hpp",
+        "engine/rhi/include/mirakana/rhi/gpu_debug.hpp",
+        "engine/rhi/include/mirakana/rhi/memory_diagnostics.hpp",
+        "engine/rhi/include/mirakana/rhi/resource_lifetime.hpp",
+        "engine/rhi/include/mirakana/rhi/upload_staging.hpp",
+        "engine/rhi/include/mirakana/rhi/rhi.hpp"
+      ],
+      "purpose": "Graphics-API-independent RHI contracts for backend capability/probe profiles, host support policy, shader artifact formats, backend bootstrap steps, buffers, textures including shared texture usage intent, samplers, swapchains, explicit swapchain frame acquire/release, backend-neutral swapchain resize, shaders, descriptor set layouts, descriptor sets, upload-buffer writes, copy/upload/readback commands with explicit texture footprints, CPU buffer readback, transient resource leases, presentation ownership and sequencing, single-pending-frame swapchain throttling, graphics pipelines with explicit vertex input layouts/attributes plus DepthStencilStateDesc depth-test/write/compare state, render passes with explicit clear colors plus optional RenderPassDepthAttachment and ClearDepthValue, descriptor set binding including sampler descriptors, vertex/index buffer binding, direct/indexed draw calls, resource transitions, fences, backend-neutral write/copy/read/fence/sampler lifecycle stats, shared texture export/failure stats, and a NullRhiDevice for backend-free validation of depth attachment ownership, usage, format, clear-depth range, extent, and pipeline color/depth compatibility plus null_mark_buffer_released/null_mark_texture_released/null_mark_sampler_released/null_mark_descriptor_set_released/null_mark_descriptor_set_layout_released/null_mark_pipeline_layout_released helpers for deterministic safe-point invalidation during host-owned teardown validation. Renderer/RHI Resource Foundation v1 adds a foundation-only value API in resource_lifetime.hpp through RhiResourceLifetimeRegistry, generation-checked first-party resource handles, explicit resource kinds, owner labels, debug names, live/deferred-release records, frame-indexed retirement, deterministic diagnostics, and enum-backed marker-style lifetime event rows. Upload/Staging Foundation v1 adds RhiUploadStagingPlan in upload_staging.hpp with staging allocation ids, buffer and texture copy records, deterministic copy-range diagnostics, submitted FenceValue tracking, and completed-fence retirement. Upload ring and staging pool execution v1 adds RhiUploadRing fence-tracked suballocations over one copy_source upload buffer, RhiStagingBufferPool freelists, validate_upload_gpu_batch, record_upload_gpu_batch, and mark_pending_allocations_submitted for IRhiCommandList buffer and buffer-to-texture copies with null-backend readback proof. These foundations do not migrate native backend destruction, implement vendor-specialized async GPU upload queues or streaming package integration, a GPU allocator, residency budgets, package streaming, GPU markers beyond the scoped API, editor resource management/capture tooling execution beyond reviewed request handoff, production renderer scheduling, or 2D/3D playable vertical-slice readiness. The D3D12 IRhiDevice bridge implements private DSV-backed public depth attachments, native depth pipeline state, active pass/pipeline color-depth format validation, readback-observable depth-test proof, sampled-depth proof, depth-aware postprocess proof, and directional shadow receiver proof; the Vulkan bridge implements private depth-aspect image views for sampled descriptors, depth|stencil D24S8 barrier aspect masks, required synchronization2 feature query/device enablement, depth_write synchronization2 barriers, dynamic-rendering depth attachments, native depth pipeline state, active pass/pipeline color-depth format validation, environment-gated depth-ordered readback proof, environment-gated visible sampled-depth readback proof, environment-gated postprocess-depth readback proof, and environment-gated directional shadow receiver readback proof while keeping Vulkan handles private."
+    },
+    {
+      "name": "MK_rhi_d3d12",
+      "path": "engine/rhi/d3d12",
+      "status": "windows-backend-scaffold",
+      "dependencies": [
+        "MK_rhi",
+        "Windows SDK Direct3D 12 headers",
+        "Windows SDK D3D12/DXGI libraries",
+        "Windows SDK D3DCompiler test library"
+      ],
+      "publicHeaders": [
+        "engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_backend.hpp"
+      ],
+      "purpose": "Windows-only Direct3D 12 backend scaffold that verifies Windows SDK D3D12/DXGI compile integration, links official D3D12/DXGI libraries, probes DXGI factory plus hardware/WARP D3D12 support, validates minimal device, direct command queue, fence bootstrap, creates first committed upload/readback/default texture resources, and exposes a PIMPL DeviceContext for persistent D3D12 device/resource/command list/fence/swapchain/RTV/DSV/descriptor heap/root signature/shader/PSO ownership with CPU waits, GPU-side cross-queue waits, HWND presentation, swapchain resize, back-buffer transitions, standalone texture transitions, requested-color swapchain and texture render-target clears, requested-depth DSV clears, shader-visible descriptor heap binding, native CBV/SRV/UAV descriptor view writes, native sampler descriptor writes, graphics root signature binding, graphics descriptor table binding, sampler descriptor table splitting by heap kind, swapchain and texture render-target setup, private depth-stencil view setup, graphics PSO binding with optional input layouts and native depth-stencil state, vertex/index input-assembler view binding, upload-buffer writes, buffer and aligned buffer/texture copy recording, readback buffer mapping, shared committed texture creation for TextureUsage::shared, first-party shared texture export handles, and direct/indexed draw recording. It also exposes an initial IRhiDevice bridge for backend-neutral buffers, textures including depth24_stencil8 depth_stencil and depth_stencil|shader_resource textures, sampler handle validation, upload-buffer writes, descriptor set layout/allocation/update validation backed by separate CBV/SRV/UAV and sampler shader-visible descriptor arenas with native descriptor writes, shader bytecode, pipeline layouts, graphics pipelines with vertex input layouts/attributes and DepthStencilStateDesc mapping, buffer copies, aligned buffer/texture copies, CPU buffer readback, standalone texture transition commands with tracked before/after state validation, committed-resource-backed transient leases, surface-backed swapchains, explicit swapchain frame acquire/release, backend-neutral swapchain resize, graphics-queue-only queued presentation, render-pass-complete-before-present sequencing, duplicate-present rejection, single-pending-frame throttling until release or present/submit, swapchain and texture render passes with optional private DSV depth attachments, descriptor set binding across CBV/SRV/UAV and sampler root tables, vertex/index buffer binding, direct/indexed draw recording, command submission, fence wait ownership, backend-neutral write/copy/read/fence/sampler stats, shared texture export/failure stats, non-black render-target clear readback proof, first-triangle texture readback proof, depth-tested overlapping-triangle texture readback proof, sampled-depth readback proof through private typeless DSV/SRV views, visible sampled-texture-plus-sampler readback proof, D3D12-visible RhiFrameRenderer runtime material texture-sampling proof, D3D12-visible uploaded runtime mesh vertex/index buffer readback proof, D3D12-visible cooked runtime scene GPU palette indexed draw/readback proof, installed SDL3 packaged cooked-scene GPU binding proof with target-specific scene DXIL artifacts and strict scene-GPU smoke arguments, shared texture export proof, and swapchain lifecycle proof while native D3D12 handles remain backend-private and validate-gated by the public API boundary check."
+    },
+    {
+      "name": "MK_rhi_vulkan",
+      "path": "engine/rhi/vulkan",
+      "status": "sdk-independent-scaffold",
+      "dependencies": [
+        "MK_rhi"
+      ],
+      "publicHeaders": [
+        "engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_backend.hpp"
+      ],
+      "purpose": "SDK-independent Vulkan backend scaffold exposing mirakana::rhi::vulkan backend identity, host/runtime/device probing, private instance/device/command-pool owners, first-party buffer and texture owners, sampler owners, shader modules, descriptor set layout/pool/set update and binding, pipeline layout and graphics pipeline ownership with explicit vertex input layouts/attributes, Win32 surface/swapchain/image-view ownership, real surface capability/format/present-mode queries before swapchain creation, required dynamic rendering and synchronization2 feature query/device enablement, frame sync, acquire/present, dynamic rendering clear/draw recording, synchronization2 submission with shader-read texture barrier planning, depth|stencil D24S8 image-barrier aspect masks, command-list-local texture state commits, stale-submit rejection, readback buffers, SPIR-V artifact validation, and a mapping-plan-gated create_rhi_device IRhiDevice bridge for backend-neutral buffers, textures, sampler descriptors, upload-buffer writes, transient leases, shader modules, descriptor sets, descriptor binding that must match the bound pipeline layout, standalone texture transitions/copy/render-target-clear/render-target-draw commands, pipeline creation, vertex/index buffer binding, indexed draw recording, surface-backed swapchains, explicit swapchain frame acquire/release, queued present, copy-only submit, fence stats/waits, readback-buffer reads, and native sampled-image/sampler descriptor writes through private runtime owners without including Vulkan headers or exposing native handles. SDL3/Vulkan game-window presentation is validated on a ready Windows host with precompiled SPIR-V artifacts; visible texture-sampling, depth-ordered draw, sampled-depth readback, postprocess-depth readback, and directional shadow receiver readback proofs remain environment-gated by local Vulkan runtime plus real SPIR-V artifacts."
+    },
+    {
+      "name": "MK_rhi_metal",
+      "path": "engine/rhi/metal",
+      "status": "apple-native-ownership-gated",
+      "dependencies": [
+        "MK_rhi"
+      ],
+      "publicHeaders": [
+        "engine/rhi/metal/include/mirakana/rhi/metal/metal_backend.hpp"
+      ],
+      "purpose": "SDK-independent Metal backend scaffold exposing mirakana::rhi::metal backend identity, host support, capability profile, probe plan, deterministic probe result helpers, non-empty metallib shader library artifact validation, runtime/default-device/command-queue/shader-library readiness planning, texture synchronization planning for render/blit/present encoder intent, platform availability diagnostics, and Apple-only native default-device, command-queue, command-buffer, render-encoder, texture-target, CAMetalLayer drawable acquisition, drawable present scheduling, command-buffer submission, and texture-readback ownership through PIMPL without including Metal or QuartzCore headers or exposing native handles. Apple Objective-C\u002B\u002B sources assign GameEngine.RHI.Metal.* GPU debugger labels via -[MTLObject setLabel:] on created Metal objects when linked."
+    },
+    {
+      "name": "MK_scene",
+      "path": "engine/scene",
+      "status": "implemented-scene-schema-v2-contract",
+      "dependencies": [
+        "MK_assets",
+        "MK_math"
+      ],
+      "publicHeaders": [
+        "engine/scene/include/mirakana/scene/components.hpp",
+        "engine/scene/include/mirakana/scene/playable_2d.hpp",
+        "engine/scene/include/mirakana/scene/prefab.hpp",
+        "engine/scene/include/mirakana/scene/prefab_overrides.hpp",
+        "engine/scene/include/mirakana/scene/render_packet.hpp",
+        "engine/scene/include/mirakana/scene/schema_v2.hpp",
+        "engine/scene/include/mirakana/scene/scene.hpp"
+      ],
+      "purpose": "Scene graph foundation for editor hierarchy and runtime scene loading. Currently provides rotation-aware transforms, parent/child relationships, camera/light/mesh/sprite renderer components, backend-neutral 2D playable scene validation through mirakana::validate_playable_2d_scene for primary orthographic camera, visible sprite, and visible mesh rejection diagnostics, renderer-neutral render packet extraction with visible meshes, visible sprites, world transforms, scene-subtree prefab creation, prefab instantiation, PrefabInstantiateDesc path metadata, ScenePrefabSourceLink / SceneNode::prefab_source source identity rows for instantiated prefab nodes, deterministic prefab text serialization, dependency-free prefab variant/override value types with diagnostics, composition into plain PrefabDefinition, deterministic GameEngine.PrefabVariant.v1 text serialization, and deterministic scene text serialization that preserves component data plus source-link rows. Scene/Component/Prefab Schema v2 is implemented as a contract-only public MK_scene data spine through stable AuthoringId values, schema-driven SceneComponentDocumentV2 rows, deterministic validation diagnostics, GameEngine.Scene.v2 serialization/deserialization, GameEngine.Prefab.v2 validation/serialization/deserialization, and stable prefab override paths for node name/parent and component property overrides. Runtime package migration, editor productization, nested prefab propagation/merge resolution UX, production 2D atlas/tilemap/native GPU output, and ready 3D playable vertical slices remain follow-up work."
+    },
+    {
+      "name": "MK_scene_renderer",
+      "path": "engine/scene_renderer",
+      "status": "implemented",
+      "dependencies": [
+        "MK_renderer",
+        "MK_runtime",
+        "MK_runtime_scene",
+        "MK_scene"
+      ],
+      "publicHeaders": [
+        "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp"
+      ],
+      "purpose": "Bridge module that turns renderer-neutral SceneRenderPacket data into high-level renderer MeshCommand, SpriteCommand, camera matrix, light command, Shadow Map Foundation v0 plan data, and Stable Directional Light-Space Policy v0 plan data, including SceneMaterialPalette base-color resolution from MaterialDefinition and composed MaterialInstanceDefinition overrides, SceneGpuBindingPalette resolution from scene mesh/material asset ids into renderer MeshGpuBinding and MaterialGpuBinding payloads, build_scene_shadow_map_plan adaptation that chooses the first directional shadow-casting light and counts visible meshes as v0 casters/receivers, build_scene_directional_shadow_light_space_plan adaptation that derives mesh-center bounds plus selected directional light direction for DirectionalShadowLightSpacePlan without native handles, package-level load_runtime_scene_render_data that delegates cooked scene instantiation and reference validation to MK_runtime_scene before building a SceneMaterialPalette, instantiate_runtime_scene_render_data for producing a non-throwing Scene plus SceneRenderPacket runtime render instance with render-packet build failures reported as diagnostics, sample_and_apply_runtime_scene_render_animation_float_clip for applying cooked scalar float animation clips plus AnimationTransformBindingSourceDocument rows to RuntimeSceneRenderInstance scene data through MK_runtime_scene binding resolution and rebuilding the render packet after successful mutation, sample_and_apply_runtime_scene_render_animation_pose_3d for sampling AnimationJointTrack3dDesc rows into AnimationPose3d, applying named-joint pose rows to runtime scene node transforms through MK_runtime_scene, and rebuilding the render packet after successful mutation, sample_runtime_morph_mesh_cpu_animation_float_clip for sampling cooked scalar morph-weight clips against RuntimeMorphMeshCpuPayload rows and returning deterministic CPU-morphed positions for generated package smoke telemetry, preservation of scene mesh/material asset ids on MeshCommand, deterministic 3D mesh position/scale/z-rotation extraction, 2D sprite position/scale/rotation/tint extraction, camera view/projection matrix generation, and renderer-neutral light command extraction from scene world matrices, without making MK_scene depend on MK_renderer, MK_runtime, or RHI backends."
+    },
+    {
+      "name": "MK_editor_core",
+      "path": "editor/core",
+      "status": "implemented",
+      "dependencies": [
+        "MK_animation",
+        "MK_assets",
+        "MK_core",
+        "MK_platform",
+        "MK_runtime",
+        "MK_scene",
+        "MK_tools",
+        "MK_ui"
+      ],
+      "publicHeaders": [
+        "editor/core/include/mirakana/editor/asset_pipeline.hpp",
+        "editor/core/include/mirakana/editor/command.hpp",
+        "editor/core/include/mirakana/editor/content_browser.hpp",
+        "editor/core/include/mirakana/editor/gltf_mesh_catalog.hpp",
+        "editor/core/include/mirakana/editor/history.hpp",
+        "editor/core/include/mirakana/editor/io.hpp",
+        "editor/core/include/mirakana/editor/material_authoring.hpp",
+        "editor/core/include/mirakana/editor/material_graph_authoring.hpp",
+        "editor/core/include/mirakana/editor/palette.hpp",
+        "editor/core/include/mirakana/editor/play_in_editor.hpp",
+        "editor/core/include/mirakana/editor/prefab_variant_authoring.hpp",
+        "editor/core/include/mirakana/editor/profiler.hpp",
+        "editor/core/include/mirakana/editor/project.hpp",
+        "editor/core/include/mirakana/editor/project_wizard.hpp",
+        "editor/core/include/mirakana/editor/render_backend.hpp",
+        "editor/core/include/mirakana/editor/scene_authoring.hpp",
+        "editor/core/include/mirakana/editor/scene_edit.hpp",
+        "editor/core/include/mirakana/editor/shader_compile.hpp",
+        "editor/core/include/mirakana/editor/shader_tool_discovery.hpp",
+        "editor/core/include/mirakana/editor/shader_artifact_io.hpp",
+        "editor/core/include/mirakana/editor/ui_model.hpp",
+        "editor/core/include/mirakana/editor/viewport.hpp",
+        "editor/core/include/mirakana/editor/viewport_shader_artifacts.hpp",
+        "editor/core/include/mirakana/editor/workspace.hpp"
+      ],
+      "purpose": "GUI-independent editor project document with shader tool settings, shader tool discovery state plus backend-specific shader toolchain readiness diagnostics, render backend preference/availability selection, project settings draft validation, project creation wizard, project/workspace migration, project bundle IO, shader artifact manifest storage, text store abstraction, workspace serialization, panel state including Timeline, content browser state, asset import queue state, asset import progress summaries, import dependency display items, thumbnail requests including scene import rows, material preview metadata including selected cooked material artifact loading status, artifact path, diagnostics, base color, emissive factor, metallic/roughness factors, material uniform byte size, sampler rows, and texture dependency resolution rows, source material authoring documents for first-party MaterialDefinition factor edits and fixed texture-slot rows, GameEngine.MaterialGraph.v1 MaterialGraphAuthoringDocument graph text IO and registry-backed texture validation for graph texture nodes, deterministic texture dependency extraction, text-store save/load, dirty/staged state, and UndoStack-backed factor/texture and graph replace edit actions, source scene/prefab authoring documents for mirakana::Scene hierarchy rows, selected-node state, scene/prefab text-store save/load, registry-backed mesh/material/sprite reference diagnostics, scene package candidate rows, package registration draft rows that compare candidates with caller-supplied runtimePackageFiles entries, reviewed package registration apply plans, a narrow ITextStore updater for game.agent.json runtimePackageFiles, UndoStack-backed create/rename/reparent/delete/duplicate/transform/component/prefab-instantiation actions, path-aware prefab instantiation actions, ScenePrefabInstanceSourceLinkModel / make_scene_prefab_instance_source_link_model / make_scene_prefab_instance_source_link_ui_model retained scene_prefab_source_links review rows over SceneNode::prefab_source metadata, and ScenePrefabInstanceRefreshPlan / ScenePrefabInstanceRefreshRow / ScenePrefabInstanceRefreshResult / plan_scene_prefab_instance_refresh / apply_scene_prefab_instance_refresh / make_scene_prefab_instance_refresh_action / make_scene_prefab_instance_refresh_ui_model retained scene_prefab_instance_refresh rows for explicit selected-root refresh review, editor playtest package review model rows that order package candidate review, reviewed runtimePackageFiles registration, runtimeSceneValidationTargets selection, validate-runtime-scene-package, and host-gated desktop smoke, EditorPlaySession and IEditorPlaySessionDriver play-in-editor session contracts that snapshot a SceneAuthoringDocument into an isolated simulation scene, optionally invoke caller-supplied gameplay driver begin/tick/end callbacks against that simulation scene with EditorPlaySessionTickContext rows, expose EditorPlaySessionControlsModel command rows for visible Run/Viewport adapters, block source-scene edit claims while active, track simulation ticks and last delta, and discard simulation edits on stop without dynamic game module loading, runtime host embedding, package scripts, validation recipe execution, renderer/RHI uploads, or native handles, prefab variant authoring documents for GameEngine.PrefabVariant.v1 rows, composed prefab review, registry-backed override reference diagnostics, text-store save/load, dirty tracking, and UndoStack-backed name/transform/component override edits, GPU binding preview planning through typed runtime material/texture payload loading with missing or invalid cooked texture diagnostics, import diagnostics, asset pipeline panel aggregation, asset import execution result mapping, imported asset record registration helpers including scene records, asset hot reload event state, hot reload recook request state, hot reload applied/failed rollback result state, hot reload diagnostic labels, shader compile queue/status state, shader compile execution result mapping, default viewport shader compile request planning for D3D12 DXIL and Vulkan SPIR-V artifacts, material preview shader compile request planning for factor-only and base-color-textured D3D12 DXIL/Vulkan SPIR-V artifacts, shader-id-specific artifact readiness queries, viewport shader artifact readiness state, viewport state, viewport run controls, viewport tool state, scene transform drafts, scene component drafts, viewport transform edit application, command registry, command palette model, MK_editor_ui retained model helpers backed by MK_ui for inspector property rows, asset list rows, command palette entries, diagnostics panels, timeline controls and event rows backed by MK_animation, recorder-backed profiler panel models built from MK_core DiagnosticCapture and editor status counters, deterministic editor UI model serialization, dirty tracking, and undo/redo history used by the desktop editor and default tests."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# Generated cooked package files are hashed byte-for-byte by the runtime.
+*.geindex text eol=lf
+*.geasset text eol=lf
+*.mesh text eol=lf
+*.material text eol=lf
+*.scene text eol=lf

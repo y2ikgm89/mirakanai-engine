@@ -1,0 +1,9 @@
+format=GameEngine.CookedTexture.v1
+asset.id=7223550242185374713
+asset.kind=texture
+source.path=source/sample_2d_desktop_runtime_package/player.texture
+texture.width=1
+texture.height=1
+texture.pixel_format=rgba8_unorm
+texture.source_bytes=4
+texture.data_hex=33b3ffff

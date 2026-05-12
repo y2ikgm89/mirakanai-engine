@@ -1,0 +1,174 @@
+{
+  "validationRecipes": [
+    {
+      "name": "default",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+      "purpose": "Run the repository default correctness gate before reporting completion."
+    },
+    {
+      "name": "agent-contract",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1",
+      "purpose": "Validate AI instructions, manifests, schemas, and generated context."
+    },
+    {
+      "name": "public-api-boundary",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1",
+      "purpose": "Check public headers and backend interop boundaries after public API or handle-boundary changes."
+    },
+    {
+      "name": "desktop-gui",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
+      "purpose": "Build and test optional SDL3, Dear ImGui, editor, and SDL3 audio adapter code."
+    },
+    {
+      "name": "desktop-game-runtime",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
+      "purpose": "Build and test optional SDL3 desktop game runtime host code through the SDL3-only desktop-runtime preset, including manifest-linked generated registered-game metadata with package file path validation, SDL3 platform/audio tests, runtime host tests, the SDL event pump, reusable SdlDesktopGameHost tests, SDL presentation fallback/required-bytecode tests, finite sample_desktop_runtime_shell smoke execution, DXC-available build-output DXIL shader artifact smoke, DXC SPIR-V CodeGen-available build-output SPIR-V shader artifact smoke, non-shell sample_desktop_runtime_game smoke execution, sample_generated_desktop_runtime_package config-only scaffold smoke execution, sample_generated_desktop_runtime_cooked_scene_package cooked-scene scaffold smoke execution, sample_generated_desktop_runtime_material_shader_package material/shader scaffold smoke execution, and DXC-available sample_generated_desktop_runtime_material_shader_package_shader_artifacts_smoke source-tree shader-artifact execution. Real-window SDL3/D3D12 or SDL3/Vulkan renderer smokes remain explicit local commands because they open a native desktop window."
+    },
+    {
+      "name": "desktop-runtime-release-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1",
+      "purpose": "Build the optional Release desktop runtime package, install the selected registered runtime game executable, SDL3 runtime DLL, selected package files, generated desktop-runtime game package metadata with gameManifest and packageFiles paths derived from manifest-driven or literal registration, optional generated D3D12 DXIL and Vulkan SPIR-V shader artifacts for the current sample shell shader-artifact package path, validate installed SDK metadata, validate a clean installed consumer, validate the installed selected game manifest, package files, shader artifacts, and smoke from metadata, including selected-target cooked package load and renderer-submit proofs when the game metadata requires them, and create the CPack package artifact."
+    },
+    {
+      "name": "desktop-runtime-shell-vulkan-window-smoke",
+      "command": "out\\build\\desktop-runtime\\games\\Debug\\sample_desktop_runtime_shell.exe --smoke --video-driver windows --require-vulkan-shaders --require-vulkan-renderer",
+      "purpose": "On a Windows host with Vulkan runtime, surface support, and generated SPIR-V artifacts, validate the SDL3/Vulkan game-window RhiFrameRenderer path without exposing Vulkan or SDL handles to gameplay."
+    },
+    {
+      "name": "desktop-runtime-generated-scaffold-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_package",
+      "purpose": "Build the selected generated desktop runtime package scaffold lane and validate installed sample_generated_desktop_runtime_package with manifest-derived runtime config package files, metadata-selected --require-config smoke args, and deterministic NullRenderer fallback without D3D12/Vulkan shader artifacts or cooked-scene claims."
+    },
+    {
+      "name": "desktop-runtime-generated-cooked-scene-scaffold-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_cooked_scene_package",
+      "purpose": "Build the selected generated desktop runtime cooked-scene package scaffold lane and validate installed sample_generated_desktop_runtime_cooked_scene_package with manifest-derived config, .geindex, first-party cooked texture/mesh/material/scene files, metadata-selected --require-config plus --require-scene-package smoke args, runtime package loading, renderer-neutral scene submission counters, and deterministic NullRenderer fallback without D3D12/Vulkan shader artifacts or scene GPU binding claims."
+    },
+    {
+      "name": "desktop-runtime-2d-package-proof",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package",
+      "purpose": "Build the selected 2D desktop runtime package proof and validate installed sample_2d_desktop_runtime_package with manifest-derived config, .geindex, first-party cooked texture/material/audio/scene files, metadata-selected --require-config plus --require-scene-package smoke args, cooked package loading, playable 2D scene validation, sprite/HUD/audio counters, packaged D3D12 DXIL shader artifacts, host-gated D3D12 package window smoke, and --require-native-2d-sprites native 2D sprite batch execution counters such as native_2d_sprite_batches_executed and native_2d_sprite_batch_texture_binds without runtime image decoding and production atlas/editor/runtime integration beyond the reviewed source-image decode and atlas-packing tools, public native/RHI handles, Metal, broad production sprite batching readiness, or broad renderer-quality claims."
+    },
+    {
+      "name": "desktop-runtime-2d-vulkan-window-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -RequireVulkanShaders -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_2d_desktop_runtime_package.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_2d_desktop_runtime_package.geindex\u0027,\u0027--require-vulkan-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-vulkan-renderer\u0027)\u0022",
+      "purpose": "On a ready Windows/Vulkan host with DXC SPIR-V CodeGen and spirv-val, build the selected 2D desktop runtime package proof and validate installed sample_2d_desktop_runtime_package with packaged SPIR-V shader artifacts, --require-vulkan-renderer smoke args, presentation_selected=vulkan, cooked 2D scene validation, sprite/HUD/audio counters, and no public native/RHI handle exposure. This remains a strict host/toolchain-gated presentation smoke, not broad production sprite batching readiness, Metal, or broad renderer-quality readiness."
+    },
+    {
+      "name": "desktop-runtime-generated-material-shader-scaffold-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package",
+      "purpose": "Build the selected generated desktop runtime material/shader scaffold lane and validate installed sample_generated_desktop_runtime_material_shader_package with manifest-derived config and cooked scene package files, source material/HLSL authoring inputs kept out of runtimePackageFiles, target-specific D3D12 scene/postprocess DXIL artifacts, host-owned D3D12 scene GPU bindings, and Frame Graph/Postprocess v0 status through backend-neutral presentation report fields. The source-tree counterpart is covered by the desktop-game-runtime recipe through the DXC-available sample_generated_desktop_runtime_material_shader_package_shader_artifacts_smoke CTest."
+    },
+    {
+      "name": "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package -RequireVulkanShaders -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_generated_desktop_runtime_material_shader_package.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_generated_desktop_runtime_material_shader_package.geindex\u0027,\u0027--require-vulkan-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-vulkan-renderer\u0027,\u0027--require-scene-gpu-bindings\u0027,\u0027--require-postprocess\u0027)\u0022",
+      "purpose": "On a ready Windows/Vulkan host with DXC SPIR-V CodeGen and spirv-val, build and validate installed sample_generated_desktop_runtime_material_shader_package with packaged SPIR-V scene/postprocess artifacts, presentation_selected=vulkan, --require-vulkan-renderer, --require-scene-gpu-bindings, and --require-postprocess, matching the per-game desktop-runtime-release-target-vulkan-toolchain-gated recipe row. This is strict toolchain/package evidence for the material/shader scaffold lane aligned to editor material-preview Vulkan readiness workstreams; it does not claim full mirakana_editor material-preview display parity or cross-backend visual equivalence."
+    },
+    {
+      "name": "desktop-runtime-sample-game-scene-gpu-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game",
+      "purpose": "Build the selected non-shell desktop runtime package lane and validate installed sample_desktop_runtime_game with packaged config, cooked scene package loading, target-specific scene/postprocess/shadow/UI-overlay DXIL artifacts by default, metadata-selected --require-d3d12-renderer smoke args, --require-scene-gpu-bindings, --require-postprocess-depth-input, --require-directional-shadow, --require-directional-shadow-filtering, --require-renderer-quality-gates, --require-native-ui-overlay, --require-native-ui-textured-sprite-atlas, Lit Material v0 position\u002Bnormal\u002Buv/base-color/direct-light shader behavior, backend-neutral D3D12 scene GPU binding counters, postprocess_status=ready, postprocess_depth_input_ready=1, directional_shadow_status=ready, directional_shadow_ready=1, directional_shadow_filter_mode=fixed_pcf_3x3, directional_shadow_filter_taps=9, directional_shadow_filter_radius_texels=1, renderer_quality_status=ready, renderer_quality_ready=1, renderer_quality_diagnostics=0, renderer_quality_expected_framegraph_passes=3, renderer_quality_framegraph_execution_budget_ok=1, ui_overlay_status=ready, ui_overlay_ready=1, positive ui_overlay_sprites_submitted/ui_overlay_draws, ui_texture_overlay_status=ready, ui_texture_overlay_atlas_ready=1, positive ui_texture_overlay_sprites_submitted/ui_texture_overlay_texture_binds/ui_texture_overlay_draws, and framegraph_passes=3."
+    },
+    {
+      "name": "installed-d3d12-3d-shadow-morph-composition-smoke",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.geindex\u0027,\u0027--require-d3d12-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-d3d12-renderer\u0027,\u0027--require-shadow-morph-composition\u0027)\u0022",
+      "purpose": "Build the committed generated DesktopRuntime3DPackage proof and validate the selected D3D12 graphics morph \u002B directional shadow receiver package smoke with shifted shadow receiver artifacts, positive scene_gpu_morph_mesh_bindings, scene_gpu_morph_mesh_resolved, renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, fixed_pcf_3x3 filtering, and framegraph_passes=3 without claiming compute morph \u002B shadow composition, morph-deformed shadow-caster silhouettes, Vulkan/Metal parity, public native/RHI handles, or broad renderer quality."
+    },
+    {
+      "name": "installed-d3d12-3d-native-ui-overlay-smoke",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.geindex\u0027,\u0027--require-primary-camera-controller\u0027,\u0027--require-transform-animation\u0027,\u0027--require-morph-package\u0027,\u0027--require-compute-morph\u0027,\u0027--require-compute-morph-normal-tangent\u0027,\u0027--require-compute-morph-skin\u0027,\u0027--require-compute-morph-async-telemetry\u0027,\u0027--require-quaternion-animation\u0027,\u0027--require-package-streaming-safe-point\u0027,\u0027--require-gameplay-systems\u0027,\u0027--require-d3d12-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-d3d12-renderer\u0027,\u0027--require-scene-gpu-bindings\u0027,\u0027--require-postprocess\u0027,\u0027--require-postprocess-depth-input\u0027,\u0027--require-renderer-quality-gates\u0027,\u0027--require-playable-3d-slice\u0027,\u0027--require-native-ui-overlay\u0027)\u0022",
+      "purpose": "Build the committed generated DesktopRuntime3DPackage proof and validate the selected D3D12 native UI overlay HUD box package smoke with generated UI overlay DXIL artifacts, hud_boxes=2, ui_overlay_requested=1, ui_overlay_status=ready, ui_overlay_ready=1, ui_overlay_sprites_submitted=2, and ui_overlay_draws=2 without claiming textured image-sprite atlas behavior, production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, Metal overlay readiness, public native/RHI handles, or broad generated 3D production readiness."
+    },
+    {
+      "name": "installed-d3d12-3d-visible-production-proof-smoke",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.geindex\u0027,\u0027--require-primary-camera-controller\u0027,\u0027--require-transform-animation\u0027,\u0027--require-morph-package\u0027,\u0027--require-compute-morph\u0027,\u0027--require-compute-morph-normal-tangent\u0027,\u0027--require-compute-morph-skin\u0027,\u0027--require-compute-morph-async-telemetry\u0027,\u0027--require-quaternion-animation\u0027,\u0027--require-package-streaming-safe-point\u0027,\u0027--require-gameplay-systems\u0027,\u0027--require-d3d12-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-d3d12-renderer\u0027,\u0027--require-scene-gpu-bindings\u0027,\u0027--require-postprocess\u0027,\u0027--require-postprocess-depth-input\u0027,\u0027--require-renderer-quality-gates\u0027,\u0027--require-playable-3d-slice\u0027,\u0027--require-native-ui-overlay\u0027,\u0027--require-visible-3d-production-proof\u0027)\u0022",
+      "purpose": "Build the committed generated DesktopRuntime3DPackage proof and validate the selected D3D12 visible production-style aggregate with visible_3d_status=ready, visible_3d_ready=1, visible_3d_diagnostics=0, visible_3d_presented_frames=2, D3D12 selection, no NullRenderer fallback, scene GPU, postprocess, renderer-quality, playable_3d, gameplay systems, and native UI overlay readiness while avoiding Vulkan/Metal parity, native/RHI handle exposure, broad renderer quality, or broad generated 3D production readiness claims."
+    },
+    {
+      "name": "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.geindex\u0027,\u0027--require-primary-camera-controller\u0027,\u0027--require-transform-animation\u0027,\u0027--require-morph-package\u0027,\u0027--require-compute-morph\u0027,\u0027--require-compute-morph-normal-tangent\u0027,\u0027--require-compute-morph-skin\u0027,\u0027--require-compute-morph-async-telemetry\u0027,\u0027--require-quaternion-animation\u0027,\u0027--require-package-streaming-safe-point\u0027,\u0027--require-gameplay-systems\u0027,\u0027--require-d3d12-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-d3d12-renderer\u0027,\u0027--require-scene-gpu-bindings\u0027,\u0027--require-postprocess\u0027,\u0027--require-postprocess-depth-input\u0027,\u0027--require-renderer-quality-gates\u0027,\u0027--require-playable-3d-slice\u0027,\u0027--require-native-ui-overlay\u0027,\u0027--require-native-ui-textured-sprite-atlas\u0027)\u0022",
+      "purpose": "Build the committed generated DesktopRuntime3DPackage proof and validate the selected D3D12 cooked UI atlas image-sprite package smoke with generated UI overlay DXIL artifacts, runtime/assets/3d/hud.uiatlas, hud_images=2, ui_atlas_metadata_status=ready, ui_atlas_metadata_pages=1, ui_atlas_metadata_bindings=1, ui_texture_overlay_status=ready, ui_texture_overlay_atlas_ready=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2 without claiming production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, Metal overlay readiness, public native/RHI handles, or broad generated 3D production readiness."
+    },
+    {
+      "name": "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_generated_desktop_runtime_3d_package.geindex\u0027,\u0027--require-primary-camera-controller\u0027,\u0027--require-transform-animation\u0027,\u0027--require-morph-package\u0027,\u0027--require-compute-morph\u0027,\u0027--require-compute-morph-normal-tangent\u0027,\u0027--require-compute-morph-skin\u0027,\u0027--require-compute-morph-async-telemetry\u0027,\u0027--require-quaternion-animation\u0027,\u0027--require-package-streaming-safe-point\u0027,\u0027--require-gameplay-systems\u0027,\u0027--require-d3d12-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-d3d12-renderer\u0027,\u0027--require-scene-gpu-bindings\u0027,\u0027--require-postprocess\u0027,\u0027--require-postprocess-depth-input\u0027,\u0027--require-renderer-quality-gates\u0027,\u0027--require-playable-3d-slice\u0027,\u0027--require-native-ui-overlay\u0027,\u0027--require-native-ui-text-glyph-atlas\u0027)\u0022",
+      "purpose": "Build the committed generated DesktopRuntime3DPackage proof and validate the selected D3D12 cooked UI atlas text-glyph package smoke with generated UI overlay DXIL artifacts, runtime/assets/3d/hud_text.uiatlas, hud_text_glyphs=2, text_glyphs_available=2, text_glyphs_resolved=2, text_glyphs_missing=0, text_glyph_sprites_submitted=2, ui_atlas_metadata_status=ready, ui_atlas_metadata_pages=1, ui_atlas_metadata_bindings=0, ui_atlas_metadata_glyphs=1, ui_texture_overlay_status=ready, ui_texture_overlay_atlas_ready=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2 without claiming production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, Metal overlay readiness, public native/RHI handles, or broad generated 3D production readiness."
+    },
+    {
+      "name": "desktop-runtime-sample-game-vulkan-scene-gpu-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_desktop_runtime_game.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_desktop_runtime_game.geindex\u0027,\u0027--require-vulkan-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-vulkan-renderer\u0027,\u0027--require-scene-gpu-bindings\u0027,\u0027--require-postprocess\u0027,\u0027--require-postprocess-depth-input\u0027,\u0027--require-directional-shadow\u0027,\u0027--require-directional-shadow-filtering\u0027,\u0027--require-renderer-quality-gates\u0027)\u0022",
+      "purpose": "On a ready Windows/Vulkan host with DXC SPIR-V CodeGen and spirv-val, build the selected non-shell desktop runtime package lane and validate installed sample_desktop_runtime_game with target-specific scene/postprocess/shadow SPIR-V artifacts, --require-vulkan-renderer smoke args, --require-scene-gpu-bindings, --require-postprocess, --require-postprocess-depth-input, --require-directional-shadow, --require-directional-shadow-filtering, --require-renderer-quality-gates, Lit Material v0 position\u002Bnormal\u002Buv/base-color/direct-light shader behavior, presentation_selected=vulkan, postprocess_status=ready, postprocess_depth_input_ready=1, directional_shadow_status=ready, directional_shadow_ready=1, directional_shadow_filter_mode=fixed_pcf_3x3, directional_shadow_filter_taps=9, directional_shadow_filter_radius_texels=1, renderer_quality_status=ready, renderer_quality_framegraph_execution_budget_ok=1, framegraph_passes=3, and backend-neutral Vulkan scene GPU binding counters."
+    },
+    {
+      "name": "desktop-runtime-sample-game-native-ui-overlay-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game",
+      "purpose": "Build the selected non-shell desktop runtime package lane and validate installed sample_desktop_runtime_game on the primary D3D12 Windows path with renderer-owned native GPU runtime UI overlay output for MK_ui_renderer box/image-placeholder sprite submissions, target-specific UI overlay DXIL artifacts, ui_overlay_requested=1, ui_overlay_status=ready, ui_overlay_ready=1, and positive ui_overlay_sprites_submitted/ui_overlay_draws while keeping production text/font/image/atlas/accessibility unsupported."
+    },
+    {
+      "name": "desktop-runtime-sample-game-vulkan-native-ui-overlay-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_desktop_runtime_game.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_desktop_runtime_game.geindex\u0027,\u0027--require-vulkan-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-vulkan-renderer\u0027,\u0027--require-scene-gpu-bindings\u0027,\u0027--require-postprocess\u0027,\u0027--require-postprocess-depth-input\u0027,\u0027--require-directional-shadow\u0027,\u0027--require-directional-shadow-filtering\u0027,\u0027--require-native-ui-overlay\u0027)\u0022",
+      "purpose": "On a ready Windows/Vulkan host with DXC SPIR-V CodeGen and spirv-val, validate the same renderer-owned native GPU runtime UI overlay proof through strict Vulkan package smoke with target-specific UI overlay SPIR-V artifacts, presentation_selected=vulkan, ui_overlay_requested=1, ui_overlay_status=ready, ui_overlay_ready=1, and positive ui_overlay_sprites_submitted/ui_overlay_draws."
+    },
+    {
+      "name": "desktop-runtime-sample-game-textured-ui-atlas-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game",
+      "purpose": "Build the selected non-shell desktop runtime package lane and validate installed sample_desktop_runtime_game on the primary D3D12 Windows path with a renderer-owned sampled UI sprite bound from cooked texture metadata through UiRendererImageBinding atlas_page/uv_rect, --require-native-ui-textured-sprite-atlas, ui_texture_overlay_requested=1, ui_texture_overlay_status=ready, ui_texture_overlay_atlas_ready=1, and positive ui_texture_overlay_sprites_submitted/ui_texture_overlay_texture_binds/ui_texture_overlay_draws while runtime image decoding and production atlas/editor/runtime integration beyond the reviewed source-image decode and atlas-packing tools, text/font/accessibility, Metal, public native handles, and broad UI renderer quality remain unsupported."
+    },
+    {
+      "name": "desktop-runtime-sample-game-vulkan-textured-ui-atlas-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_desktop_runtime_game.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_desktop_runtime_game.geindex\u0027,\u0027--require-vulkan-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-vulkan-renderer\u0027,\u0027--require-scene-gpu-bindings\u0027,\u0027--require-postprocess\u0027,\u0027--require-postprocess-depth-input\u0027,\u0027--require-directional-shadow\u0027,\u0027--require-directional-shadow-filtering\u0027,\u0027--require-native-ui-overlay\u0027,\u0027--require-native-ui-textured-sprite-atlas\u0027)\u0022",
+      "purpose": "On a ready Windows/Vulkan host with DXC SPIR-V CodeGen and spirv-val, validate the same cooked texture/atlas-backed UI sprite proof through strict Vulkan package smoke with target-specific UI overlay SPIR-V artifacts, presentation_selected=vulkan, ui_texture_overlay_requested=1, ui_texture_overlay_status=ready, ui_texture_overlay_atlas_ready=1, and positive ui_texture_overlay_sprites_submitted/ui_texture_overlay_texture_binds/ui_texture_overlay_draws."
+    },
+    {
+      "name": "desktop-runtime-sample-game-ui-atlas-metadata-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game",
+      "purpose": "Build the selected sample_desktop_runtime_game desktop runtime package and validate that first-party cooked UI atlas package metadata is installed, loaded through MK_runtime, converted into UiRendererImagePalette bindings by MK_ui_renderer, and reported with ui_atlas_metadata_status=ready, ui_atlas_metadata_pages=1, ui_atlas_metadata_bindings=1, plus the existing ready textured UI overlay fields."
+    },
+    {
+      "name": "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \u0022\u0026 .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @(\u0027--smoke\u0027,\u0027--require-config\u0027,\u0027runtime/sample_desktop_runtime_game.config\u0027,\u0027--require-scene-package\u0027,\u0027runtime/sample_desktop_runtime_game.geindex\u0027,\u0027--require-vulkan-scene-shaders\u0027,\u0027--video-driver\u0027,\u0027windows\u0027,\u0027--require-vulkan-renderer\u0027,\u0027--require-scene-gpu-bindings\u0027,\u0027--require-postprocess\u0027,\u0027--require-postprocess-depth-input\u0027,\u0027--require-directional-shadow\u0027,\u0027--require-directional-shadow-filtering\u0027,\u0027--require-native-ui-overlay\u0027,\u0027--require-native-ui-textured-sprite-atlas\u0027)\u0022",
+      "purpose": "On a ready Windows/Vulkan host with DXC SPIR-V CodeGen, spirv-val, and Vulkan runtime readiness, validate the same UI atlas package metadata proof through strict Vulkan package smoke with presentation_selected=vulkan, framegraph_passes=3, ui_atlas_metadata_status=ready, ui_atlas_metadata_pages=1, ui_atlas_metadata_bindings=1, and ready textured UI overlay counters."
+    },
+    {
+      "name": "shader-toolchain",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1",
+      "purpose": "Report D3D12 DXIL, Vulkan SPIR-V, DXC SPIR-V CodeGen, spirv-val, Metal, and metallib readiness, using MK_SHADER_TOOLCHAIN_ROOT, User/Machine PATH, Vulkan SDK variables, vcpkg tool roots, and Windows SDK fallback discovery."
+    },
+    {
+      "name": "dev-windows-editor-game-module-driver-load-tests",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-editor-game-module-driver-load-tests.ps1",
+      "purpose": "On Windows with MSVC dev preset tooling, configure dev, build MK_editor_game_module_driver_probe and MK_editor_game_module_driver_load_tests, and run CTest MK_editor_game_module_driver_load_tests for same-engine-build DLL load, factory resolution, isolated session tick, stopped-state unload plus second load, and paired DynamicLibrary refcount ordering without mirakana_editor execution, active-session hot reload, or stable third-party ABI claims."
+    },
+    {
+      "name": "dependency-policy",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1",
+      "purpose": "Verify vcpkg, dependency docs, and third-party notice policy."
+    },
+    {
+      "name": "asset-importers",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
+      "purpose": "Validate optional PNG, glTF, and common audio source importer adapters behind MK_tools."
+    },
+    {
+      "name": "release-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1",
+      "purpose": "Build Release, run Release tests, validate installed SDK metadata, validate an installed SDK consumer project, create the CPack package artifact, validate the current ZIP SHA-256 sidecar, and inspect archived SDK metadata/tool/doc/license entries."
+    },
+    {
+      "name": "installed-sdk",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-installed-sdk.ps1",
+      "purpose": "Validate installed SDK metadata payloads, then build examples/installed_consumer against an installed GameEngine package without source-tree include paths."
+    },
+    {
+      "name": "mobile-packaging",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1",
+      "purpose": "Validate mobile packaging templates and report Android SDK/NDK/JDK/Gradle/AVD/device or Apple full-Xcode/iOS-SDK/iOS-runtime blockers explicitly without faking package readiness."
+    },
+    {
+      "name": "ios-simulator-smoke",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug",
+      "purpose": "On macOS/Xcode hosts, build the iOS Simulator bundle, install it with xcrun simctl, verify the app container, launch it, and clean up the simulator state."
+    }
+  ]
+}

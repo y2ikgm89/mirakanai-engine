@@ -1,0 +1,57 @@
+{
+  "windowsDiagnosticsToolchain": {
+    "policy": "Official Microsoft host diagnostics only. These tools are not default build dependencies, are not installed by CMake configure, and are blockers only for tasks that explicitly need native debugging, D3D12 debug-layer validation, GPU capture, or ETW/performance evidence.",
+    "debuggingToolsForWindows": {
+      "source": "Windows SDK OptionId.WindowsDesktopDebuggers",
+      "purpose": "Native crash, dump, cdb, and windbg debugging for the Windows/MSVC lane.",
+      "tools": [
+        "cdb",
+        "windbg",
+        "kd",
+        "ntsd"
+      ],
+      "verify": [
+        "cdb -version"
+      ],
+      "recommendedSymbolPath": "srv*C:\\Symbols*https://msdl.microsoft.com/download/symbols"
+    },
+    "graphicsTools": {
+      "source": "Windows optional capability Tools.Graphics.DirectX~~~~0.0.1.0",
+      "purpose": "D3D12 debug layer support for Windows backend diagnostics.",
+      "files": [
+        "C:\\Windows\\System32\\d3d12SDKLayers.dll",
+        "C:\\Windows\\SysWOW64\\d3d12SDKLayers.dll"
+      ],
+      "verify": [
+        "Get-WindowsCapability -Online -Name \u0027Tools.Graphics.DirectX~~~~0.0.1.0\u0027",
+        "Test-Path C:\\Windows\\System32\\d3d12SDKLayers.dll",
+        "Test-Path C:\\Windows\\SysWOW64\\d3d12SDKLayers.dll"
+      ]
+    },
+    "pixOnWindows": {
+      "source": "Official PIX on Windows installer",
+      "purpose": "D3D12 GPU captures, timing, and counter investigations.",
+      "tools": [
+        "WinPix",
+        "pixtool"
+      ],
+      "verify": [
+        "pixtool --help"
+      ]
+    },
+    "windowsPerformanceToolkit": {
+      "source": "Windows ADK OptionId.WindowsPerformanceToolkit",
+      "purpose": "ETW tracing plus CPU and system performance investigations.",
+      "tools": [
+        "wpr",
+        "wpa",
+        "xperf"
+      ],
+      "verify": [
+        "wpr -help",
+        "xperf -help"
+      ]
+    },
+    "hostGatePolicy": "Missing Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, or Windows Performance Toolkit must be reported as a host diagnostics blocker only for the relevant diagnostic task; do not report it as an engine compile, CMake, or default validation failure."
+  }
+}

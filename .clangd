@@ -1,0 +1,9 @@
+# Dev preset compile_commands.json lives under the CMake binary directory.
+# Configure first: cmake --preset dev
+CompileFlags:
+  CompilationDatabase: out/build/dev
+
+# MSVC compile_commands.json uses cl.exe. Top-level QueryDriver is not a valid .clangd
+# key (clangd validates the schema; use the CLI flag instead), for example in workspace
+# settings: "clangd.arguments": ["--query-driver=**/cl.exe"]
+# Or user config: %LocalAppData%/clangd/config.yaml on Windows.

@@ -1,0 +1,40 @@
+---
+paths:
+  - "engine/**/*.hpp"
+  - "engine/**/*.cpp"
+  - "editor/**/*.hpp"
+  - "editor/**/*.cpp"
+  - "tests/**/*.cpp"
+  - "examples/**/*.cpp"
+  - "games/**/*.cpp"
+---
+
+# C++ Engine Rules
+
+- Use C++23 as the required language level.
+- Prefer C++23-native designs and allow C++23-only language/library features when they simplify ownership, APIs, or compile-time structure.
+- Use project C++ modules through CMake `FILE_SET CXX_MODULES`; keep public installed headers available until module export/install support is intentionally designed.
+- Use `import std;` only where the active CMake generator/toolchain reports support; keep it gated by the central CMake policy.
+- Do not add C++20 compatibility shims or lower the engine standard without a new architecture decision.
+- Follow `docs/cpp-style.md` for naming, source layout, public include paths, CMake target naming, and installable package targets.
+- In **`tests/unit/*.cpp`**, keep **designated aggregate literals** complete in **declaration order** when structs gain fields (empty **`std::function`** as **`{}`**); see **`docs/cpp-style.md`** (**Unit tests**).
+- Keep `engine/core` standard-library-only.
+- Add or update tests before production behavior when the toolchain can run; lock the smallest externally meaningful behavior/API/regression guarantee and prefer existing-test updates when they already cover the contract.
+- Avoid tests that merely mirror implementation details, duplicate an existing guarantee, or over-specify incidental ordering unless deterministic ordering is the public contract.
+- Prefer RAII, value types, and explicit ownership.
+- Prefer C++23 **`std::string_view::contains`** / **`starts_with`** (and `std::string` equivalents) over `find` + `npos` for plain substring/prefix checks. Types with a non-trivial destructor and deleted copy operations must also declare **move construction and move assignment** (delete, default, or custom) so special members stay explicit (**Rule of Five**); see `docs/cpp-style.md`.
+- Keep native OS, window, GPU, and tool interop handles behind backend/PIMPL or first-party opaque handles unless an explicit interop design is accepted.
+- Treat Dear ImGui as optional developer/editor tooling only; runtime game UI should use public `mirakana::ui` contracts and must not depend on editor, SDL3, Dear ImGui, or UI middleware APIs.
+- In Dear ImGui call sites (especially `editor/src/main.cpp`): do not pass `std::string_view::data()` into varargs `Text` / `SetTooltip` / similar APIs that expect null-terminated `%s`; use `TextUnformatted(begin, end)`, a short-lived `std::string` + `c_str()`, or a file-local helper. Prefer `std::array` for Combo label tables and scratch `DragFloat`/`ColorEdit` buffers over C arrays.
+- On `_WIN32`, in translation units that combine Win32 headers with feature-gated graphics includes (for example `editor/src/main.cpp` with D3D12): include `<windows.h>` once after `WIN32_LEAN_AND_MEAN` / `NOMINMAX` as needed before those includes so `misc-include-cleaner` does not see duplicate `windows.h`.
+- On `_WIN32`, prefer `GetEnvironmentVariableA`/`W` into `std::string` over `_dupenv_s` + CRT `free` for read-only environment lookups in `editor/` or other first-party sources unless a stronger adapter already wraps the read.
+- Shell-local caches in `editor/src/main.cpp` (for example material GPU preview and SDL viewport display): keep GPU-bound state in `editor/include/mirakana/editor/material_preview_gpu_cache.hpp` / `sdl_viewport_texture.hpp` with `private` members and explicit `rebuild` / `render` (or equivalent) entry points; avoid new public mutable fields on ad-hoc aggregates. Keep optional RHI backend implementation includes in the implementing `editor/src/*.cpp` when the public `editor/include` header does not need those types for its API (`misc-include-cleaner`).
+- Keep text shaping, font rasterization, IME, accessibility bridges, image decoding, and platform integration behind first-party adapter boundaries instead of exposing those dependencies through public game APIs.
+- Use `mirakana::` for public engine API in new or migrated code.
+- For optional C++ dependencies, use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` before vcpkg-backed lanes and keep CMake configure lanes configure-only with `VCPKG_MANIFEST_INSTALL=OFF`.
+- Presets reference **`external/vcpkg/scripts/buildsystems/vcpkg.cmake`**; do not delete `external/vcpkg` as part of cache cleanup. Restore the clone from upstream vcpkg when missing before bootstrap or configure.
+- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` before diagnosing CMake, compiler, CTest, CPack, `clang-format`, Visual Studio, MSBuild, or `PATH` failures; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only when direct `cmake --preset ...` commands must work from the active shell. Visible CMake build presets must inherit `normalized-build-environment` so direct Windows builds pass MSBuild one child `Path` instead of duplicate parent `PATH`/`Path` keys.
+- Prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` / `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1` for formatting. Raw `clang-format --dry-run ...` commands require `clang-format` on `PATH`; check `direct-clang-format-status` before treating raw lookup failure as a format blocker.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` after changing shared C++ implementation patterns; it verifies `.clang-tidy` and supplies `clang-tidy` with native or File-API–synthesized `compile_commands.json` for the default `dev` preset (see `AGENTS.md` for `Get-RepoRoot` string usage in tooling scripts). For a single TU after `cmake --preset dev`, use `check-tidy.ps1 -Files <path>`; `.clang-tidy` enables `misc-include-cleaner` (IWYU-style includes)—prefer direct `#include`s that match actual symbols (see `docs/cpp-style.md`).
+- On Windows, use official Debugging Tools for Windows for native debugger work, Windows Graphics Tools for the D3D12 debug layer, PIX on Windows for D3D12 captures, and Windows Performance Toolkit for ETW/performance diagnostics. Treat them as host diagnostics, not default build dependencies. Optional PIX UI launch from a non-repo scratch directory: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/launch-pix-host-helper.ps1` (see `AGENTS.md` Testing and `docs/ai-integration.md`).
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` before completion.

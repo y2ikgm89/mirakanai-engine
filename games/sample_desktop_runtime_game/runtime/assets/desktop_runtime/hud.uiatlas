@@ -1,0 +1,17 @@
+format=GameEngine.UiAtlas.v1
+asset.id=6253782086463685608
+asset.kind=ui_atlas
+source.decoding=unsupported
+atlas.packing=unsupported
+page.count=1
+page.0.asset=5904496411938941653
+page.0.asset_uri=runtime/assets/desktop_runtime/base_color.texture.geasset
+image.count=1
+image.0.resource_id=hud.texture_atlas_proof
+image.0.asset_uri=runtime/assets/desktop_runtime/base_color.texture.geasset
+image.0.page=5904496411938941653
+image.0.u0=0
+image.0.v0=0
+image.0.u1=1
+image.0.v1=1
+image.0.color=1,1,1,1
