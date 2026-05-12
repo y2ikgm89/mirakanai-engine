@@ -595,6 +595,7 @@ foreach ($productionPromptNeedle in @("Production Completion Execution", "curren
     Assert-ContainsText $agentsContent $productionPromptNeedle "AGENTS.md"
 }
 Assert-ContainsText $agentsContent "validated commit checkpoints" "AGENTS.md"
+Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
 Assert-ContainsText $agentsContent '`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`' "AGENTS.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit")) {
     Assert-ContainsText $agentsContent $windowsDiagnosticsNeedle "AGENTS.md"
@@ -618,6 +619,7 @@ Assert-ContainsText $workflowsContent "AGENTS.override.md" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Commit, Push, And Pull Request Workflow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr create" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "specific, concise, verifiable" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "machine-readable capability/status claims" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "direct-clang-format-status" "docs/workflows.md"
@@ -662,6 +664,7 @@ $aiIntegrationContent = Get-Content -LiteralPath (Assert-Exists "docs/ai-integra
 Assert-ContainsText $aiIntegrationContent "Codex rules: https://developers.openai.com/codex/rules" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "git commit" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "policy reload" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "OpenAI developer docs MCP" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Claude Code settings and permissions: https://docs.anthropic.com/en/docs/claude-code/settings" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "windowsDiagnosticsToolchain" "docs/ai-integration.md"
@@ -12981,6 +12984,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Debugging Tools for Windows" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "PIX on Windows" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Git/GitHub publishing workflow changes" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
 }
 
 $codexRuleFile = Assert-Exists ".codex/rules/gameengine.rules"
@@ -12993,6 +12997,7 @@ Assert-ContainsText $codexRuleText "not_match =" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git commit" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git push" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git push --force" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "policy reload" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git restore" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr create" ".codex/rules/gameengine.rules"
@@ -13049,6 +13054,7 @@ foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down
     Assert-ContainsText $aiAgentRuleText $planVolumeNeedle ".claude/rules/ai-agent-integration.md"
 }
 Assert-ContainsText $aiAgentRuleText ".codex/rules" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "policy reload" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.local.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integration.md"

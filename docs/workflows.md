@@ -139,6 +139,8 @@ git remote -v
 git push -u origin <branch>
 ```
 
+If the task edits `.codex/rules/*.rules`, treat Codex command policy as session-scoped. Do not assume newly allowed commands are available until policy reload or a new session; when the active policy still requires a prompt and approvals are unavailable (for example `Approval policy: never`), record the blocker instead of retrying or weakening rules.
+
 5. Do not push directly to the default branch or protected branches. Do not use `--force`; use `--force-with-lease` only when the user explicitly requests history rewriting and the branch is known to be task-owned.
 
 6. Prefer a GitHub pull request for shared or release-facing work:

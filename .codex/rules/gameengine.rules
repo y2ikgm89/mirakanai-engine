@@ -1,5 +1,8 @@
 # Prompt before commands that commonly need local trust, network access,
 # user caches, signing state, or out-of-sandbox execution.
+# Rule edits are not guaranteed to relax the active Codex command policy in
+# the same session; rely on policy reload or a new session before running
+# newly allowed commands.
 prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ["tools/bootstrap-deps.ps1", "tools/build-mobile-android.ps1", "tools/check-android-release-package.ps1", "tools/smoke-android-package.ps1", "tools/build-mobile-apple.ps1", "tools/smoke-ios-package.ps1"]],
     decision = "prompt",
