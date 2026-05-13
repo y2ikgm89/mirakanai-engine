@@ -14,7 +14,7 @@
 
 namespace mirakana::rhi::metal {
 
-enum class MetalResourceUsage {
+enum class MetalResourceUsage : std::uint8_t {
     none,
     render_target_write,
     depth_write,
@@ -24,7 +24,7 @@ enum class MetalResourceUsage {
     drawable_present,
 };
 
-enum class MetalSynchronizationStep {
+enum class MetalSynchronizationStep : std::uint8_t {
     no_op,
     end_render_encoder,
     begin_render_encoder,

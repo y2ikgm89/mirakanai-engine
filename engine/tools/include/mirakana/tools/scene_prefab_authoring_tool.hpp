@@ -12,7 +12,7 @@
 
 namespace mirakana {
 
-enum class ScenePrefabAuthoringCommandKind {
+enum class ScenePrefabAuthoringCommandKind : std::uint8_t {
     create_scene,
     add_node,
     add_or_update_component,

@@ -15,14 +15,14 @@ namespace mirakana {
 
 using BehaviorTreeNodeId = std::uint32_t;
 
-enum class BehaviorTreeNodeKind {
+enum class BehaviorTreeNodeKind : std::uint8_t {
     sequence,
     selector,
     action,
     condition,
 };
 
-enum class BehaviorTreeStatus {
+enum class BehaviorTreeStatus : std::uint8_t {
     success,
     failure,
     running,
@@ -31,7 +31,7 @@ enum class BehaviorTreeStatus {
     invalid_leaf_result,
 };
 
-enum class BehaviorTreeDiagnosticCode {
+enum class BehaviorTreeDiagnosticCode : std::uint8_t {
     none,
     missing_root,
     duplicate_node_id,
@@ -71,7 +71,7 @@ struct BehaviorTreeLeafResult {
     BehaviorTreeStatus status{BehaviorTreeStatus::failure};
 };
 
-enum class BehaviorTreeBlackboardValueKind {
+enum class BehaviorTreeBlackboardValueKind : std::uint8_t {
     boolean,
     signed_integer,
     finite_double,
@@ -108,7 +108,7 @@ class BehaviorTreeBlackboard {
     std::vector<BehaviorTreeBlackboardEntry> entries_;
 };
 
-enum class BehaviorTreeBlackboardComparison {
+enum class BehaviorTreeBlackboardComparison : std::uint8_t {
     equal,
     not_equal,
     less,

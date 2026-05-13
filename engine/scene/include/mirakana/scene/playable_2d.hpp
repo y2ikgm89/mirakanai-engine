@@ -6,12 +6,13 @@
 #include "mirakana/scene/scene.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace mirakana {
 
-enum class Playable2DSceneDiagnosticCode {
+enum class Playable2DSceneDiagnosticCode : std::uint8_t {
     invalid_components,
     missing_primary_orthographic_camera,
     multiple_primary_cameras,

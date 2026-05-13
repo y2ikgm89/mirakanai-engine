@@ -136,6 +136,15 @@ void bind_mesh_vertex_buffers(rhi::IRhiCommandList& commands, const MeshGpuBindi
     }
 }
 
+[[nodiscard]] bool try_release_swapchain_frame(rhi::IRhiDevice& device, rhi::SwapchainFrameHandle frame) noexcept {
+    try {
+        device.release_swapchain_frame(frame);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi::IRhiDevice& device) {
     if (binding.pipeline_layout.value == 0 || binding.descriptor_set.value == 0) {
         throw std::invalid_argument(
@@ -730,10 +739,7 @@ void RhiPostprocessFrameRenderer::release_acquired_swapchain_frame() noexcept {
     }
 
     if (!swapchain_frame_presented_) {
-        try {
-            device_->release_swapchain_frame(swapchain_frame_);
-        } catch (...) {
-        }
+        (void)try_release_swapchain_frame(*device_, swapchain_frame_);
     }
 
     swapchain_frame_ = {};

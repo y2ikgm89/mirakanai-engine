@@ -12,7 +12,7 @@
 
 namespace mirakana {
 
-enum class RegisteredSourceAssetCookPackageCommandKind {
+enum class RegisteredSourceAssetCookPackageCommandKind : std::uint8_t {
     cook_registered_source_assets,
     free_form_edit,
 };
@@ -21,7 +21,7 @@ enum class RegisteredSourceAssetCookPackageCommandKind {
 /// - `explicit_dependency_selection`: every registered dependency key must appear in `selected_asset_keys`.
 /// - `registered_source_registry_closure`: expand the selection to the transitive closure of registry
 ///   `dependencies[].key` rows within the same `GameEngine.SourceAssetRegistry.v1` document.
-enum class RegisteredSourceAssetCookDependencyExpansion {
+enum class RegisteredSourceAssetCookDependencyExpansion : std::uint8_t {
     explicit_dependency_selection,
     registered_source_registry_closure,
 };

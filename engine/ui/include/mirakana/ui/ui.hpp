@@ -51,7 +51,7 @@ struct SizeConstraints {
     float max_height{0.0F};
 };
 
-enum class SemanticRole {
+enum class SemanticRole : std::uint8_t {
     none,
     root,
     panel,
@@ -66,14 +66,14 @@ enum class SemanticRole {
     dialog,
 };
 
-enum class LayoutMode {
+enum class LayoutMode : std::uint8_t {
     none,
     row,
     column,
     stack,
 };
 
-enum class AnchorMode {
+enum class AnchorMode : std::uint8_t {
     top_left,
     top_right,
     bottom_left,
@@ -82,13 +82,13 @@ enum class AnchorMode {
     fill,
 };
 
-enum class TextDirection {
+enum class TextDirection : std::uint8_t {
     automatic,
     left_to_right,
     right_to_left,
 };
 
-enum class TextWrapMode {
+enum class TextWrapMode : std::uint8_t {
     clip,
     ellipsis,
     wrap,
@@ -188,7 +188,7 @@ struct LayoutResult {
 [[nodiscard]] const ElementLayout* find_layout(const LayoutResult& layout, const ElementId& id) noexcept;
 [[nodiscard]] LayoutResult solve_layout(const UiDocument& document, const ElementId& root, Rect viewport);
 
-enum class AdapterBoundary {
+enum class AdapterBoundary : std::uint8_t {
     text_shaping,
     bidirectional_text,
     line_breaking,
@@ -296,7 +296,7 @@ struct ImageDecodeRequest {
     std::vector<std::byte> bytes;
 };
 
-enum class ImageDecodePixelFormat {
+enum class ImageDecodePixelFormat : std::uint8_t {
     unknown,
     rgba8_unorm,
 };
@@ -349,7 +349,7 @@ struct RendererSubmission {
 
 [[nodiscard]] RendererSubmission build_renderer_submission(const UiDocument& document, const LayoutResult& layout);
 
-enum class AdapterPayloadDiagnosticCode {
+enum class AdapterPayloadDiagnosticCode : std::uint8_t {
     invalid_text_bounds,
     unresolved_text_localization_key,
     empty_text_payload,
@@ -415,7 +415,7 @@ struct CommittedTextInput {
 
 // Host-independent edit commands. Host key mapping, key repeat, clipboard,
 // selection UI, IME sessions, and grapheme/word movement live outside mirakana_ui.
-enum class TextEditCommandKind {
+enum class TextEditCommandKind : std::uint8_t {
     move_cursor_backward,
     move_cursor_forward,
     move_cursor_to_start,
@@ -431,7 +431,7 @@ struct TextEditCommand {
 
 // Clipboard commands are host-independent. Platform shortcut mapping, rich
 // clipboard formats, selection UI, and native text services live outside mirakana_ui.
-enum class TextEditClipboardCommandKind {
+enum class TextEditClipboardCommandKind : std::uint8_t {
     copy_selection,
     cut_selection,
     paste_text,
@@ -747,7 +747,7 @@ class IRendererSubmissionAdapter {
     virtual void submit_ui(const RendererSubmission& submission) = 0;
 };
 
-enum class NavigationDirection {
+enum class NavigationDirection : std::uint8_t {
     next,
     previous,
     up,
@@ -756,7 +756,7 @@ enum class NavigationDirection {
     right,
 };
 
-enum class InputModality {
+enum class InputModality : std::uint8_t {
     mouse,
     touch,
     keyboard,

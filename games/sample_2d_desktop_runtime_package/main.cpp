@@ -529,7 +529,7 @@ void print_usage() {
 
 [[nodiscard]] std::filesystem::path executable_directory(const char* executable_path) {
     try {
-        if (executable_path != nullptr && std::string_view{executable_path}.size() > 0) {
+        if (executable_path != nullptr && !std::string_view{executable_path}.empty()) {
             const auto absolute_path = std::filesystem::absolute(std::filesystem::path{executable_path});
             if (absolute_path.has_parent_path()) {
                 return absolute_path.parent_path();
@@ -604,7 +604,7 @@ to_presentation_shader_bytecode(const mirakana::DesktopShaderBytecodeBlob& bytec
             std::cerr << "required config is empty: " << config_path << '\n';
             return false;
         }
-        if (config_text.rfind(kExpectedConfigFormat, 0) != 0) {
+        if (!config_text.starts_with(kExpectedConfigFormat)) {
             std::cerr << "required config has unexpected format: " << config_path << '\n';
             return false;
         }
@@ -743,8 +743,8 @@ load_required_2d_package(const char* executable_path, std::string_view package_p
 
         scene = std::move(instance);
         audio_samples = std::move(samples);
-        sprite_animation = std::move(animation_payload.payload);
-        tilemap = std::move(tilemap_payload.payload);
+        sprite_animation = animation_payload.payload;
+        tilemap = tilemap_payload.payload;
         runtime_package = std::move(package_result.package);
     } catch (const std::exception& exception) {
         std::cerr << "failed to read required 2D package '" << package_path << "': " << exception.what() << '\n';

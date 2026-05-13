@@ -6,6 +6,7 @@
 #include "mirakana/assets/material.hpp"
 #include "mirakana/assets/material_graph.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -33,7 +34,7 @@ struct MaterialGraphShaderExportDesc {
     std::string fragment_entry;
 };
 
-enum class MaterialGraphShaderExportDiagnosticCode {
+enum class MaterialGraphShaderExportDiagnosticCode : std::uint8_t {
     unknown,
     invalid_format,
     duplicate_key,

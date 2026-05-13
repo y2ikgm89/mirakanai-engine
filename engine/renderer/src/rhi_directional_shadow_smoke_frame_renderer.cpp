@@ -118,6 +118,15 @@ void bind_mesh_vertex_buffers(rhi::IRhiCommandList& commands, const MeshGpuBindi
     }
 }
 
+[[nodiscard]] bool try_release_swapchain_frame(rhi::IRhiDevice& device, rhi::SwapchainFrameHandle frame) noexcept {
+    try {
+        device.release_swapchain_frame(frame);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 void validate_skinned_mesh_gpu_binding(const SkinnedMeshGpuBinding& binding, const rhi::IRhiDevice& device) {
     if (!has_skinned_mesh_gpu_binding(binding)) {
         throw std::invalid_argument("rhi shadow smoke renderer skinned mesh command requires skinned gpu binding data");
@@ -687,10 +696,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::release_acquired_swapchain_frame() 
         return;
     }
 
-    try {
-        device_->release_swapchain_frame(swapchain_frame_);
-    } catch (...) {
-    }
+    (void)try_release_swapchain_frame(*device_, swapchain_frame_);
 
     swapchain_frame_ = {};
     swapchain_frame_presented_ = false;

@@ -20,7 +20,7 @@
 
 namespace mirakana::editor {
 
-enum class EditorAssetImportStatus { unknown, pending, imported, failed };
+enum class EditorAssetImportStatus : std::uint8_t { unknown, pending, imported, failed };
 
 struct EditorAssetImportItem {
     AssetId asset;
@@ -53,9 +53,9 @@ struct EditorAssetDependencyItem {
     std::string path;
 };
 
-enum class EditorAssetThumbnailKind { unknown, texture, mesh, material, scene, audio };
+enum class EditorAssetThumbnailKind : std::uint8_t { unknown, texture, mesh, material, scene, audio };
 
-enum class EditorMaterialPreviewStatus {
+enum class EditorMaterialPreviewStatus : std::uint8_t {
     unknown,
     ready,
     warning,
@@ -65,9 +65,9 @@ enum class EditorMaterialPreviewStatus {
     invalid_material,
 };
 
-enum class EditorMaterialPreviewTextureStatus { unknown, resolved, missing, wrong_kind };
+enum class EditorMaterialPreviewTextureStatus : std::uint8_t { unknown, resolved, missing, wrong_kind };
 
-enum class EditorMaterialGpuPreviewStatus {
+enum class EditorMaterialGpuPreviewStatus : std::uint8_t {
     unknown,
     ready,
     material_unavailable,

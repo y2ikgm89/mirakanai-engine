@@ -48,7 +48,7 @@ struct TilemapMetadataDocument {
     std::vector<TilemapLayer> layers;
 };
 
-enum class TilemapMetadataDiagnosticCode {
+enum class TilemapMetadataDiagnosticCode : std::uint8_t {
     invalid_asset,
     unsupported_source_decoding,
     unsupported_atlas_packing,

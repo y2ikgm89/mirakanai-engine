@@ -46,7 +46,7 @@ struct SdlRawEventHandle {
     const void* value{nullptr};
 };
 
-enum class SdlWindowEventKind {
+enum class SdlWindowEventKind : std::uint8_t {
     unknown = 0,
     quit_requested,
     terminating,
@@ -86,7 +86,7 @@ struct SdlWindowEvent {
     GamepadAxis gamepad_axis{GamepadAxis::unknown};
     float gamepad_axis_value{0.0F};
     Key key{Key::unknown};
-    std::int32_t sdl_keycode{0};
+    std::uint32_t sdl_keycode{0};
     std::uint16_t key_modifiers{0};
     bool repeated{false};
     std::string text;

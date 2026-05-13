@@ -13,12 +13,12 @@ namespace mirakana {
 
 using NavigationLocalAvoidanceAgentId = std::uint64_t;
 
-enum class NavigationLocalAvoidanceStatus {
+enum class NavigationLocalAvoidanceStatus : std::uint8_t {
     success,
     invalid_request,
 };
 
-enum class NavigationLocalAvoidanceDiagnostic {
+enum class NavigationLocalAvoidanceDiagnostic : std::uint8_t {
     none,
     invalid_agent_id,
     invalid_position,

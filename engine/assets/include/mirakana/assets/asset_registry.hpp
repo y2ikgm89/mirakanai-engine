@@ -28,7 +28,7 @@ struct AssetIdHash {
     }
 };
 
-enum class AssetKind {
+enum class AssetKind : std::uint8_t {
     unknown,
     texture,
     mesh,

@@ -29,7 +29,7 @@ struct RunConfig {
     double fixed_delta_seconds{1.0 / 60.0};
 };
 
-enum class RunStatus { completed, stopped_by_app };
+enum class RunStatus : std::uint8_t { completed, stopped_by_app };
 
 struct RunResult {
     RunStatus status;

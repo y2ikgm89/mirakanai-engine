@@ -7,6 +7,7 @@
 #include "mirakana/math/vec.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -14,7 +15,7 @@
 
 namespace mirakana {
 
-enum class AnimationFabrikIkXyBendSide {
+enum class AnimationFabrikIkXyBendSide : std::uint8_t {
     positive,
     negative,
 };
@@ -81,7 +82,7 @@ struct AnimationIkLocalRotationLimit3d {
     float max_twist_radians{0.0F};
 };
 
-enum class AnimationIkLocalRotationLimit3dDiagnosticCode {
+enum class AnimationIkLocalRotationLimit3dDiagnosticCode : std::uint8_t {
     invalid_skeleton,
     invalid_joint_index,
     duplicate_joint,

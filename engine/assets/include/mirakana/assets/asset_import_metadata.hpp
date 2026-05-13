@@ -6,15 +6,16 @@
 #include "mirakana/assets/asset_registry.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace mirakana {
 
-enum class TextureColorSpace { unknown, linear, srgb };
+enum class TextureColorSpace : std::uint8_t { unknown, linear, srgb };
 
-enum class TextureCompression { none, bc1, bc3, bc5, bc7, astc };
+enum class TextureCompression : std::uint8_t { none, bc1, bc3, bc5, bc7, astc };
 
 struct TextureImportMetadata {
     AssetId id;

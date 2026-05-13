@@ -10,7 +10,7 @@
 
 namespace mirakana {
 
-[[nodiscard]] Key sdl3_key_to_key(std::int32_t keycode) noexcept;
+[[nodiscard]] Key sdl3_key_to_key(std::uint32_t keycode) noexcept;
 [[nodiscard]] PointerId sdl3_touch_pointer_id(std::uint64_t finger_id) noexcept;
 [[nodiscard]] PointerSample sdl3_mouse_pointer_sample(float x, float y) noexcept;
 [[nodiscard]] PointerSample sdl3_touch_pointer_sample(std::uint64_t finger_id, float normalized_x, float normalized_y,

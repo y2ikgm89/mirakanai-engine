@@ -12,9 +12,9 @@
 
 namespace mirakana {
 
-enum class TextureSourcePixelFormat { unknown, r8_unorm, rg8_unorm, rgba8_unorm };
+enum class TextureSourcePixelFormat : std::uint8_t { unknown, r8_unorm, rg8_unorm, rgba8_unorm };
 
-enum class AudioSourceSampleFormat { unknown, pcm16, float32 };
+enum class AudioSourceSampleFormat : std::uint8_t { unknown, pcm16, float32 };
 
 struct TextureSourceDocument {
     std::uint32_t width{0};
@@ -83,7 +83,7 @@ struct AnimationQuaternionClipSourceDocument {
     std::vector<AnimationQuaternionClipTrackSourceDocument> tracks;
 };
 
-enum class AnimationTransformBindingComponent {
+enum class AnimationTransformBindingComponent : std::uint8_t {
     unknown,
     translation_x,
     translation_y,

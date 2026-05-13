@@ -7,12 +7,13 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
 namespace mirakana::rhi {
 
-enum class RhiHostPlatform {
+enum class RhiHostPlatform : std::uint8_t {
     windows,
     linux,
     android,
@@ -21,14 +22,14 @@ enum class RhiHostPlatform {
     unknown,
 };
 
-enum class ShaderArtifactFormat {
+enum class ShaderArtifactFormat : std::uint8_t {
     none,
     dxil,
     spirv,
     metallib,
 };
 
-enum class BackendProbeStatus {
+enum class BackendProbeStatus : std::uint8_t {
     unavailable,
     available,
     unsupported_host,
@@ -38,7 +39,7 @@ enum class BackendProbeStatus {
     no_present_queue,
 };
 
-enum class BackendProbeStep {
+enum class BackendProbeStep : std::uint8_t {
     validate_host,
     load_runtime,
     create_dxgi_factory,

@@ -16,13 +16,13 @@
 
 namespace mirakana::editor {
 
-enum class EditorPlaySessionState {
+enum class EditorPlaySessionState : std::uint8_t {
     edit,
     play,
     paused,
 };
 
-enum class EditorPlaySessionActionStatus {
+enum class EditorPlaySessionActionStatus : std::uint8_t {
     applied,
     rejected_inactive,
     rejected_active,
@@ -58,7 +58,7 @@ struct EditorPlaySessionReport {
     std::string diagnostic;
 };
 
-enum class EditorPlaySessionControlCommand {
+enum class EditorPlaySessionControlCommand : std::uint8_t {
     play,
     pause,
     resume,
@@ -78,7 +78,7 @@ struct EditorPlaySessionControlsModel {
     bool viewport_uses_simulation_scene{false};
 };
 
-enum class EditorInProcessRuntimeHostStatus {
+enum class EditorInProcessRuntimeHostStatus : std::uint8_t {
     ready,
     blocked,
     active,
@@ -125,7 +125,7 @@ struct EditorInProcessRuntimeHostBeginResult {
     std::string diagnostic;
 };
 
-enum class EditorRuntimeHostPlaytestLaunchStatus {
+enum class EditorRuntimeHostPlaytestLaunchStatus : std::uint8_t {
     ready,
     blocked,
     host_gated,

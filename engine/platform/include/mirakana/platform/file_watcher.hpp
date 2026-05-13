@@ -13,13 +13,13 @@ namespace mirakana {
 
 class IFileSystem;
 
-enum class FileWatchBackendKind {
+enum class FileWatchBackendKind : std::uint8_t {
     automatic,
     polling,
     native,
 };
 
-enum class FileWatchNativeBackendKind {
+enum class FileWatchNativeBackendKind : std::uint8_t {
     unavailable,
     windows_read_directory_changes,
     linux_inotify,
@@ -41,7 +41,7 @@ struct FileWatchBackendChoice {
     std::string diagnostic;
 };
 
-enum class FileWatchEventKind {
+enum class FileWatchEventKind : std::uint8_t {
     unknown,
     added,
     modified,

@@ -15,7 +15,7 @@ inline constexpr PointerId touch_pointer_payload_mask = 0x7FFFFFFFU;
 
 } // namespace
 
-Key sdl3_key_to_key(std::int32_t keycode) noexcept {
+Key sdl3_key_to_key(std::uint32_t keycode) noexcept {
     switch (keycode) {
     case SDLK_LEFT:
         return Key::left;

@@ -12,12 +12,12 @@
 
 namespace mirakana::runtime {
 
-enum class RuntimePackageStreamingExecutionMode {
+enum class RuntimePackageStreamingExecutionMode : std::uint8_t {
     planning_only = 0,
     host_gated_safe_point,
 };
 
-enum class RuntimePackageStreamingExecutionStatus {
+enum class RuntimePackageStreamingExecutionStatus : std::uint8_t {
     invalid_descriptor = 0,
     validation_preflight_required,
     package_load_failed,

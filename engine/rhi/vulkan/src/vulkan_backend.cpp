@@ -2741,7 +2741,10 @@ bool VulkanRuntimeInstance::destroyed() const noexcept {
 
 const VulkanCommandResolutionPlan& VulkanRuntimeInstance::command_plan() const noexcept {
     static const VulkanCommandResolutionPlan empty_plan{};
-    return impl_ != nullptr ? impl_->command_plan : empty_plan;
+    if (impl_ == nullptr) {
+        return empty_plan;
+    }
+    return impl_->command_plan;
 }
 
 void VulkanRuntimeInstance::reset() noexcept {
@@ -2958,12 +2961,18 @@ bool VulkanRuntimeDevice::has_present_queue() const noexcept {
 
 const VulkanLogicalDeviceCreatePlan& VulkanRuntimeDevice::logical_device_plan() const noexcept {
     static const VulkanLogicalDeviceCreatePlan empty_plan{};
-    return impl_ != nullptr ? impl_->logical_device_plan : empty_plan;
+    if (impl_ == nullptr) {
+        return empty_plan;
+    }
+    return impl_->logical_device_plan;
 }
 
 const VulkanCommandResolutionPlan& VulkanRuntimeDevice::command_plan() const noexcept {
     static const VulkanCommandResolutionPlan empty_plan{};
-    return impl_ != nullptr ? impl_->command_plan : empty_plan;
+    if (impl_ == nullptr) {
+        return empty_plan;
+    }
+    return impl_->command_plan;
 }
 
 bool VulkanRuntimeDevice::wait_for_fence_signaled(std::uint64_t fence, std::uint64_t timeout_ns) noexcept {

@@ -5,11 +5,12 @@
 
 #include "mirakana/navigation/path_following.hpp"
 
+#include <cstdint>
 #include <vector>
 
 namespace mirakana {
 
-enum class NavigationAgentStatus {
+enum class NavigationAgentStatus : std::uint8_t {
     idle,
     moving,
     reached_destination,

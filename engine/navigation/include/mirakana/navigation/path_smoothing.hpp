@@ -6,12 +6,13 @@
 #include "mirakana/navigation/navigation_replan.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <vector>
 
 namespace mirakana {
 
-enum class NavigationGridPathSmoothingStatus {
+enum class NavigationGridPathSmoothingStatus : std::uint8_t {
     success,
     invalid_source_path,
     unsupported_adjacency,

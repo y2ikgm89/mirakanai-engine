@@ -109,7 +109,7 @@ invalid_platform_text_input_request(const std::vector<ui::AdapterPayloadDiagnost
 }
 
 [[nodiscard]] std::optional<ui::TextEditClipboardCommandKind>
-text_edit_clipboard_command_kind_from_sdl_keycode(std::int32_t keycode) noexcept {
+text_edit_clipboard_command_kind_from_sdl_keycode(std::uint32_t keycode) noexcept {
     switch (keycode) {
     case SDLK_C:
         return ui::TextEditClipboardCommandKind::copy_selection;

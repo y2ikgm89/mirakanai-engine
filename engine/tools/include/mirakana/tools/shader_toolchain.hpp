@@ -6,13 +6,14 @@
 #include "mirakana/assets/shader_pipeline.hpp"
 #include "mirakana/platform/filesystem.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana {
 
-enum class ShaderToolKind { unknown, dxc, spirv_val, metal, metallib };
+enum class ShaderToolKind : std::uint8_t { unknown, dxc, spirv_val, metal, metallib };
 
 struct ShaderToolDescriptor {
     ShaderToolKind kind{ShaderToolKind::unknown};

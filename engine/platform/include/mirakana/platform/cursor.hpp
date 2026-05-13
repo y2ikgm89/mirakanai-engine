@@ -3,9 +3,10 @@
 
 #pragma once
 
+#include <cstdint>
 namespace mirakana {
 
-enum class CursorMode {
+enum class CursorMode : std::uint8_t {
     normal,
     hidden,
     confined,

@@ -5,13 +5,14 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <vector>
 
 namespace mirakana {
 namespace {
 
-enum class VisitState { unvisited, visiting, visited };
+enum class VisitState : std::uint8_t { unvisited, visiting, visited };
 
 [[nodiscard]] std::size_t checked_node_index(SceneNodeId id, std::size_t node_count) {
     if (id == null_scene_node || id.value > node_count) {

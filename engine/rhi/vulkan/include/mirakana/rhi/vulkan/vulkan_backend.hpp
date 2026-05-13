@@ -27,7 +27,7 @@ struct VulkanApiVersion {
     std::uint32_t minor{0};
 };
 
-enum class VulkanPhysicalDeviceType {
+enum class VulkanPhysicalDeviceType : std::uint8_t {
     other,
     integrated_gpu,
     discrete_gpu,
@@ -35,14 +35,14 @@ enum class VulkanPhysicalDeviceType {
     cpu,
 };
 
-enum class VulkanQueueCapability : std::uint32_t {
+enum class VulkanQueueCapability : std::uint8_t {
     none = 0,
     graphics = 1U << 0U,
     compute = 1U << 1U,
     transfer = 1U << 2U,
 };
 
-enum class VulkanCommandScope {
+enum class VulkanCommandScope : std::uint8_t {
     loader,
     global,
     instance,
@@ -121,7 +121,7 @@ struct VulkanLogicalDeviceCreatePlan {
     std::string diagnostic;
 };
 
-enum class VulkanPresentMode {
+enum class VulkanPresentMode : std::uint8_t {
     immediate,
     mailbox,
     fifo,
@@ -199,7 +199,7 @@ struct VulkanDynamicRenderingPlan {
     std::string diagnostic;
 };
 
-enum class VulkanSynchronizationStage {
+enum class VulkanSynchronizationStage : std::uint8_t {
     none,
     color_attachment_output,
     depth_attachment,
@@ -207,7 +207,7 @@ enum class VulkanSynchronizationStage {
     shader,
 };
 
-enum class VulkanSynchronizationAccess {
+enum class VulkanSynchronizationAccess : std::uint8_t {
     none,
     color_attachment_write,
     depth_attachment_read_write,
@@ -216,7 +216,7 @@ enum class VulkanSynchronizationAccess {
     shader_read,
 };
 
-enum class VulkanFrameSynchronizationStep {
+enum class VulkanFrameSynchronizationStep : std::uint8_t {
     acquire,
     render,
     readback,
@@ -298,7 +298,7 @@ struct VulkanRhiDeviceMappingPlan {
     std::string diagnostic;
 };
 
-enum class VulkanBufferMemoryDomain {
+enum class VulkanBufferMemoryDomain : std::uint8_t {
     device_local,
     upload,
     readback,

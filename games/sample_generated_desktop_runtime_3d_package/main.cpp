@@ -262,7 +262,7 @@ make_quaternion_animation_tracks(const mirakana::runtime::RuntimeAnimationQuater
     return document;
 }
 
-enum class UiAtlasMetadataStatus {
+enum class UiAtlasMetadataStatus : std::uint8_t {
     not_requested,
     missing,
     malformed,
@@ -541,7 +541,7 @@ constexpr const char* kGameplaySystemsVisibleTargetsKey{"generated3d.visible_tar
 constexpr const char* kGameplaySystemsAudibleTargetsKey{"generated3d.audible_targets"};
 constexpr const char* kGameplaySystemsTargetStateKey{"generated3d.target_state"};
 
-enum class GameplaySystemsStatus {
+enum class GameplaySystemsStatus : std::uint8_t {
     not_started,
     ready,
     diagnostics,
@@ -2225,7 +2225,7 @@ make_renderer_quality_gate_desc(const DesktopRuntimeOptions& options) noexcept {
     return desc;
 }
 
-enum class Playable3dSliceStatus {
+enum class Playable3dSliceStatus : std::uint8_t {
     not_requested,
     ready,
     diagnostics,
@@ -2269,7 +2269,7 @@ struct Playable3dSliceReport {
     bool compute_morph_async_telemetry_ready{false};
 };
 
-enum class Visible3dProductionProofStatus {
+enum class Visible3dProductionProofStatus : std::uint8_t {
     not_requested,
     ready,
     diagnostics,
@@ -2302,7 +2302,7 @@ struct Visible3dProductionProofReport {
     bool ui_overlay_ready{false};
 };
 
-enum class CollisionPackageStatus {
+enum class CollisionPackageStatus : std::uint8_t {
     not_requested,
     ready,
     diagnostics,
@@ -2594,7 +2594,7 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
 
 [[nodiscard]] std::filesystem::path executable_directory(const char* executable_path) {
     try {
-        if (executable_path != nullptr && std::string_view{executable_path}.size() > 0) {
+        if (executable_path != nullptr && !std::string_view{executable_path}.empty()) {
             const auto absolute_path = std::filesystem::absolute(std::filesystem::path{executable_path});
             if (absolute_path.has_parent_path()) {
                 return absolute_path.parent_path();
@@ -2623,7 +2623,7 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
             std::cerr << "required config is empty: " << config_path << '\n';
             return false;
         }
-        if (config_text.rfind(kExpectedConfigFormat, 0) != 0) {
+        if (!config_text.starts_with(kExpectedConfigFormat)) {
             std::cerr << "required config has unexpected format: " << config_path << '\n';
             return false;
         }
@@ -2735,9 +2735,9 @@ load_required_scene_package(const char* executable_path, std::string_view packag
             return false;
         }
 
-        animation_clip = std::move(animation_payload.payload.clip);
-        morph_payload = std::move(morph_result.payload);
-        morph_animation_clip = std::move(morph_animation_result.payload.clip);
+        animation_clip = animation_payload.payload.clip;
+        morph_payload = morph_result.payload;
+        morph_animation_clip = morph_animation_result.payload.clip;
         quaternion_animation_tracks = std::move(decoded_quaternion_tracks);
         runtime_package = std::move(package_result.package);
         scene = std::move(instance);
@@ -3513,7 +3513,7 @@ int main(int argc, char** argv) {
     const bool vulkan_native_ui_overlay_ready =
         !options.require_native_ui_overlay || vulkan_native_ui_overlay_bytecode.ready();
     if (vulkan_scene_bytecode.ready() && vulkan_morph_ready && vulkan_shadow_ready &&
-        (!(options.require_compute_morph && !options.require_compute_morph_skin) ||
+        (!options.require_compute_morph || options.require_compute_morph_skin ||
          (options.require_compute_morph_normal_tangent ? vulkan_compute_morph_tangent_frame_shader_bytecode.ready()
                                                        : vulkan_compute_morph_shader_bytecode.ready())) &&
         (!options.require_compute_morph_skin || vulkan_compute_morph_skinned_shader_bytecode.ready()) &&
@@ -4075,8 +4075,7 @@ int main(int argc, char** argv) {
              package_streaming_result.replacement.committed_record_count != runtime_package->records().size() ||
              package_streaming_result.required_preload_asset_count != 1 ||
              package_streaming_result.resident_resource_kind_count != 10 ||
-             package_streaming_result.resident_package_count != 1 ||
-             package_streaming_result.diagnostics.size() != 0)) {
+             package_streaming_result.resident_package_count != 1 || !package_streaming_result.diagnostics.empty())) {
             return 3;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {

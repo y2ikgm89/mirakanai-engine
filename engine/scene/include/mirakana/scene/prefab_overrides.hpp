@@ -12,9 +12,9 @@
 
 namespace mirakana {
 
-enum class PrefabOverrideKind { name, transform, components };
+enum class PrefabOverrideKind : std::uint8_t { name, transform, components };
 
-enum class PrefabVariantDiagnosticKind {
+enum class PrefabVariantDiagnosticKind : std::uint8_t {
     invalid_base_prefab,
     invalid_variant_name,
     invalid_node_index,

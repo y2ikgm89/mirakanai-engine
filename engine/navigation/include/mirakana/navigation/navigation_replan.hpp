@@ -12,7 +12,7 @@
 
 namespace mirakana {
 
-enum class NavigationGridPathValidationStatus {
+enum class NavigationGridPathValidationStatus : std::uint8_t {
     valid,
     empty_path,
     start_mismatch,
@@ -38,7 +38,7 @@ struct NavigationGridPathValidationResult {
     std::uint32_t total_cost{0};
 };
 
-enum class NavigationGridReplanStatus {
+enum class NavigationGridReplanStatus : std::uint8_t {
     reused_existing_path,
     replanned,
     unsupported_adjacency,

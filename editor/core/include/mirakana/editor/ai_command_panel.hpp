@@ -8,15 +8,16 @@
 #include "mirakana/ui/ui.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace mirakana::editor {
 
-enum class EditorAiCommandPanelStatus { ready, blocked, host_gated, external_action_required };
+enum class EditorAiCommandPanelStatus : std::uint8_t { ready, blocked, host_gated, external_action_required };
 
-enum class EditorAiReviewedValidationExecutionStatus { ready, blocked, host_gated };
+enum class EditorAiReviewedValidationExecutionStatus : std::uint8_t { ready, blocked, host_gated };
 
 struct EditorAiCommandPanelStageRow {
     std::string id;

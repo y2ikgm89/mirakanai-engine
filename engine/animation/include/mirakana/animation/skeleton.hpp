@@ -115,7 +115,7 @@ struct AnimationRootMotionAccumulation {
     float delta_rotation_z_radians{0.0F};
 };
 
-enum class AnimationSkeletonDiagnosticCode {
+enum class AnimationSkeletonDiagnosticCode : std::uint8_t {
     empty_skeleton,
     invalid_joint_name,
     duplicate_joint_name,
@@ -134,7 +134,7 @@ struct AnimationSkeletonDiagnostic {
     std::string message;
 };
 
-enum class AnimationRootMotionDiagnosticCode {
+enum class AnimationRootMotionDiagnosticCode : std::uint8_t {
     invalid_skeleton,
     invalid_joint_tracks,
     invalid_root_joint_index,

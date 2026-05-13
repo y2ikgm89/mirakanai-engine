@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <exception>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -190,11 +191,12 @@ make_skinned_position_payload(const runtime::RuntimeSkinnedMeshPayload& skinned_
     std::vector<std::uint8_t> position_bytes;
     position_bytes.reserve(static_cast<std::size_t>(skinned_payload.vertex_count) *
                            runtime_rhi::runtime_mesh_position_vertex_stride_bytes);
+    const std::span<const std::uint8_t> skinned_vertex_bytes{skinned_payload.vertex_bytes};
     for (std::uint32_t vertex = 0; vertex < skinned_payload.vertex_count; ++vertex) {
         const auto offset = static_cast<std::size_t>(vertex) * runtime_rhi::runtime_skinned_mesh_vertex_stride_bytes;
-        position_bytes.insert(position_bytes.end(), skinned_payload.vertex_bytes.begin() + offset,
-                              skinned_payload.vertex_bytes.begin() + offset +
-                                  runtime_rhi::runtime_mesh_position_vertex_stride_bytes);
+        const auto position_vertex_bytes =
+            skinned_vertex_bytes.subspan(offset, runtime_rhi::runtime_mesh_position_vertex_stride_bytes);
+        position_bytes.insert(position_bytes.end(), position_vertex_bytes.begin(), position_vertex_bytes.end());
     }
 
     return RuntimeSceneSkinnedPositionPayloadResult{

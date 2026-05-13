@@ -98,7 +98,7 @@ struct RuntimeSceneGpuBindingResult {
     }
 };
 
-enum class RuntimeSceneGpuUploadExecutionStatus {
+enum class RuntimeSceneGpuUploadExecutionStatus : std::uint8_t {
     not_requested = 0,
     invalid_request,
     failed,
@@ -166,7 +166,7 @@ make_runtime_scene_gpu_upload_execution_report(const RuntimeSceneGpuBindingResul
 [[nodiscard]] RuntimeSceneGpuUploadExecutionResult
 execute_runtime_scene_gpu_upload(const RuntimeSceneGpuUploadExecutionDesc& desc);
 
-enum class RuntimeSceneGpuSafePointTeardownStatus {
+enum class RuntimeSceneGpuSafePointTeardownStatus : std::uint8_t {
     skipped_binding_failed = 0,
     ownership_mismatch,
     completed_on_null_device,

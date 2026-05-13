@@ -9,6 +9,7 @@
 #include "mirakana/ui/ui.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <span>
 #include <string>
@@ -17,7 +18,7 @@
 
 namespace mirakana::editor {
 
-enum class EditorContentBrowserImportPanelStatus { empty, ready, attention };
+enum class EditorContentBrowserImportPanelStatus : std::uint8_t { empty, ready, attention };
 
 struct EditorContentBrowserAssetRow {
     AssetId asset;
@@ -67,7 +68,7 @@ struct EditorContentBrowserImportOpenDialogModel {
     bool accepted{false};
 };
 
-enum class EditorContentBrowserImportExternalSourceCopyStatus { idle, ready, copied, blocked, failed };
+enum class EditorContentBrowserImportExternalSourceCopyStatus : std::uint8_t { idle, ready, copied, blocked, failed };
 
 struct EditorContentBrowserImportExternalSourceCopyInput {
     std::string source_path;

@@ -20,21 +20,21 @@ struct AiPerceptionPoint2 {
     float y{0.0F};
 };
 
-enum class AiPerceptionStatus {
+enum class AiPerceptionStatus : std::uint8_t {
     ready,
     invalid_agent,
     invalid_target,
     duplicate_target_id,
 };
 
-enum class AiPerceptionBlackboardStatus {
+enum class AiPerceptionBlackboardStatus : std::uint8_t {
     ready,
     invalid_snapshot,
     invalid_key,
     blackboard_write_failed,
 };
 
-enum class AiPerceptionDiagnostic {
+enum class AiPerceptionDiagnostic : std::uint8_t {
     none,
     invalid_agent_id,
     invalid_agent_position,

@@ -13,7 +13,7 @@
 
 namespace mirakana {
 
-enum class SceneV2RuntimePackageMigrationCommandKind {
+enum class SceneV2RuntimePackageMigrationCommandKind : std::uint8_t {
     migrate_scene_v2_runtime_package,
     free_form_edit,
 };

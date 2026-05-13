@@ -4545,6 +4545,7 @@ foreach ($needle in @(
     "runs-on: ubuntu-latest",
     "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
     "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
+    "-Jobs 2",
     "static-analysis-tidy-logs"
 )) {
     if (-not $validateWorkflowText.Contains($needle)) {

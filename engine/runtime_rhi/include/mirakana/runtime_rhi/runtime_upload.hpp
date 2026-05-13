@@ -35,7 +35,12 @@ inline constexpr std::uint32_t runtime_morph_tangent_delta_stride_bytes = 12;
 /// Per-draw morph weight uniform allocation. D3D12 constant buffer views require 256-byte alignment.
 inline constexpr std::uint64_t runtime_morph_weight_uniform_buffer_allocation_size_bytes = 256;
 
-enum class RuntimeMeshVertexLayout { unknown, position, position_normal_uv_tangent, skinned_mesh_tangent_space };
+enum class RuntimeMeshVertexLayout : std::uint8_t {
+    unknown,
+    position,
+    position_normal_uv_tangent,
+    skinned_mesh_tangent_space
+};
 
 struct RuntimeTextureUploadOptions {
     rhi::TextureUsage usage{rhi::TextureUsage::shader_resource | rhi::TextureUsage::copy_destination};

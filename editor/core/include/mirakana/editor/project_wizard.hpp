@@ -5,13 +5,14 @@
 
 #include "mirakana/editor/project.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::editor {
 
-enum class ProjectCreationStep { identity = 0, paths, review };
+enum class ProjectCreationStep : std::uint8_t { identity = 0, paths, review };
 
 struct ProjectCreationDraft {
     std::string name;

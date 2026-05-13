@@ -5,12 +5,13 @@
 
 #include "mirakana/math/vec.hpp"
 
+#include <cstdint>
 #include <optional>
 #include <string>
 
 namespace mirakana {
 
-enum class AnimationTwoBoneIkXyBendSide {
+enum class AnimationTwoBoneIkXyBendSide : std::uint8_t {
     positive,
     negative,
 };

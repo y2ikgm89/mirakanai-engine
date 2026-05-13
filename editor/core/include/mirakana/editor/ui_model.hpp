@@ -6,6 +6,7 @@
 #include "mirakana/animation/timeline.hpp"
 #include "mirakana/ui/ui.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -32,7 +33,7 @@ struct EditorCommandPaletteEntry {
     bool enabled{true};
 };
 
-enum class EditorDiagnosticSeverity {
+enum class EditorDiagnosticSeverity : std::uint8_t {
     info,
     warning,
     error,

@@ -167,6 +167,7 @@ Assert-ContainsAll $staticAnalysisJob @(
     "actions/checkout@v4",
     "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
     "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
+    "-Jobs 2",
     "actions/upload-artifact@v4",
     "name: static-analysis-tidy-logs",
     "out/build/ci-linux-tidy/compile_commands.json",

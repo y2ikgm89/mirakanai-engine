@@ -143,7 +143,7 @@ make_quaternion_animation_tracks(const mirakana::runtime::RuntimeAnimationQuater
 constexpr mirakana::SceneNodeId kPackagedMeshNode{1};
 constexpr mirakana::SceneNodeId kPrimaryCameraNode{3};
 
-enum class UiAtlasMetadataStatus {
+enum class UiAtlasMetadataStatus : std::uint8_t {
     not_requested,
     missing,
     malformed,
@@ -777,7 +777,7 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
 
 [[nodiscard]] std::filesystem::path executable_directory(const char* executable_path) {
     try {
-        if (executable_path != nullptr && std::string_view{executable_path}.size() > 0) {
+        if (executable_path != nullptr && !std::string_view{executable_path}.empty()) {
             const auto absolute_path = std::filesystem::absolute(std::filesystem::path{executable_path});
             if (absolute_path.has_parent_path()) {
                 return absolute_path.parent_path();
@@ -806,7 +806,7 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
             std::cerr << "required config is empty: " << config_path << '\n';
             return false;
         }
-        if (config_text.rfind(kExpectedConfigFormat, 0) != 0) {
+        if (!config_text.starts_with(kExpectedConfigFormat)) {
             std::cerr << "required config has unexpected format: " << config_path << '\n';
             return false;
         }

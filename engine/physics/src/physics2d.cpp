@@ -199,30 +199,37 @@ struct BoundsRaycast2D {
         return std::nullopt;
     }
 
-    Vec2 normal_from_circle_to_aabb{.x = 1.0F, .y = 0.0F};
-    float penetration_depth = circle.radius;
-    if (distance_squared > 0.000001F) {
-        const auto distance = std::sqrt(distance_squared);
-        normal_from_circle_to_aabb = delta * (1.0F / distance);
-        penetration_depth = circle.radius - distance;
-    } else {
+    struct CircleAabbPenetration {
+        Vec2 normal_from_circle_to_aabb;
+        float depth;
+    };
+    const auto penetration = [&]() -> CircleAabbPenetration {
+        if (distance_squared > 0.000001F) {
+            const auto distance = std::sqrt(distance_squared);
+            return CircleAabbPenetration{
+                .normal_from_circle_to_aabb = delta * (1.0F / distance),
+                .depth = circle.radius - distance,
+            };
+        }
         const auto local = circle.position - aabb.position;
         const auto distance_to_x = aabb.half_extents.x - std::fabs(local.x);
         const auto distance_to_y = aabb.half_extents.y - std::fabs(local.y);
-        normal_from_circle_to_aabb = fallback_normal(local);
-        penetration_depth = circle.radius + std::min(distance_to_x, distance_to_y);
-    }
+        return CircleAabbPenetration{
+            .normal_from_circle_to_aabb = fallback_normal(local),
+            .depth = circle.radius + std::min(distance_to_x, distance_to_y),
+        };
+    }();
 
     if (circle_is_first) {
         return PhysicsContact2D{.first = circle.id,
                                 .second = aabb.id,
-                                .normal = normal_from_circle_to_aabb,
-                                .penetration_depth = penetration_depth};
+                                .normal = penetration.normal_from_circle_to_aabb,
+                                .penetration_depth = penetration.depth};
     }
     return PhysicsContact2D{.first = aabb.id,
                             .second = circle.id,
-                            .normal = normal_from_circle_to_aabb * -1.0F,
-                            .penetration_depth = penetration_depth};
+                            .normal = penetration.normal_from_circle_to_aabb * -1.0F,
+                            .penetration_depth = penetration.depth};
 }
 
 [[nodiscard]] std::optional<PhysicsContact2D> contact_for(const PhysicsBody2D& first, const PhysicsBody2D& second) {

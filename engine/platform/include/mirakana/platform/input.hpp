@@ -12,7 +12,20 @@
 
 namespace mirakana {
 
-enum class Key { unknown = 0, left, right, up, down, space, escape, backspace, delete_key, home, end, count };
+enum class Key : std::uint8_t {
+    unknown = 0,
+    left,
+    right,
+    up,
+    down,
+    space,
+    escape,
+    backspace,
+    delete_key,
+    home,
+    end,
+    count
+};
 
 class VirtualInput {
   public:
@@ -49,7 +62,7 @@ using PointerId = std::uint32_t;
 
 inline constexpr PointerId primary_pointer_id = 1;
 
-enum class PointerKind { unknown = 0, mouse, touch, pen };
+enum class PointerKind : std::uint8_t { unknown = 0, mouse, touch, pen };
 
 struct PointerSample {
     PointerId id{0};
@@ -102,9 +115,9 @@ class VirtualPointerInput {
     std::vector<PointerState> pointers_;
 };
 
-enum class TouchGestureKind { unknown = 0, tap, double_tap, long_press, pan, swipe, pinch, rotate };
+enum class TouchGestureKind : std::uint8_t { unknown = 0, tap, double_tap, long_press, pan, swipe, pinch, rotate };
 
-enum class TouchGesturePhase { unknown = 0, began, changed, ended, canceled };
+enum class TouchGesturePhase : std::uint8_t { unknown = 0, began, changed, ended, canceled };
 
 struct TouchGestureEvent {
     TouchGestureKind kind{TouchGestureKind::unknown};
@@ -170,7 +183,7 @@ class TouchGestureRecognizer {
 
 using GamepadId = std::uint32_t;
 
-enum class GamepadButton {
+enum class GamepadButton : std::uint8_t {
     unknown = 0,
     south,
     east,
@@ -190,7 +203,16 @@ enum class GamepadButton {
     count
 };
 
-enum class GamepadAxis { unknown = 0, left_x, left_y, right_x, right_y, left_trigger, right_trigger, count };
+enum class GamepadAxis : std::uint8_t {
+    unknown = 0,
+    left_x,
+    left_y,
+    right_x,
+    right_y,
+    left_trigger,
+    right_trigger,
+    count
+};
 
 struct GamepadButtonState {
     bool down{false};

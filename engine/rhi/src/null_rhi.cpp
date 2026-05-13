@@ -10,9 +10,20 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace mirakana::rhi {
 namespace {
+
+using BufferByteDifference = std::vector<std::uint8_t>::difference_type;
+
+[[nodiscard]] BufferByteDifference checked_buffer_byte_difference(std::uint64_t value) {
+    const auto max_difference = static_cast<std::uint64_t>(std::numeric_limits<BufferByteDifference>::max());
+    if (value > max_difference) {
+        throw std::invalid_argument("rhi byte offset is too large for host iterator arithmetic");
+    }
+    return static_cast<BufferByteDifference>(value);
+}
 
 void validate_buffer_desc(const BufferDesc& desc) {
     if (desc.size_bytes == 0) {
@@ -512,9 +523,9 @@ class NullRhiCommandList final : public IRhiCommandList {
             throw std::invalid_argument("rhi buffer copy destination must use copy_destination");
         }
         validate_buffer_copy_region(source_desc, destination_desc, region);
-        const auto source_offset = static_cast<std::size_t>(region.source_offset);
-        const auto destination_offset = static_cast<std::size_t>(region.destination_offset);
-        const auto size = static_cast<std::size_t>(region.size_bytes);
+        const auto source_offset = checked_buffer_byte_difference(region.source_offset);
+        const auto destination_offset = checked_buffer_byte_difference(region.destination_offset);
+        const auto size = checked_buffer_byte_difference(region.size_bytes);
         const auto& source_bytes = device_.buffer_bytes_.at(source.value - 1U);
         auto& destination_bytes = device_.buffer_bytes_.at(destination.value - 1U);
         std::copy_n(source_bytes.begin() + source_offset, size, destination_bytes.begin() + destination_offset);
@@ -1797,7 +1808,7 @@ void NullRhiDevice::write_buffer(BufferHandle buffer, std::uint64_t offset, std:
     }
 
     auto& storage = buffer_bytes_.at(buffer.value - 1U);
-    std::ranges::copy(bytes, storage.begin() + static_cast<std::size_t>(offset));
+    std::ranges::copy(bytes, storage.begin() + checked_buffer_byte_difference(offset));
     ++stats_.buffer_writes;
     stats_.bytes_written += static_cast<std::uint64_t>(bytes.size());
 }
@@ -1822,8 +1833,8 @@ std::vector<std::uint8_t> NullRhiDevice::read_buffer(BufferHandle buffer, std::u
     ++stats_.buffer_reads;
     stats_.bytes_read += size_bytes;
     const auto& storage = buffer_bytes_.at(buffer.value - 1U);
-    const auto begin = storage.begin() + static_cast<std::size_t>(offset);
-    return std::vector<std::uint8_t>(begin, begin + static_cast<std::size_t>(size_bytes));
+    const auto begin = storage.begin() + checked_buffer_byte_difference(offset);
+    return std::vector<std::uint8_t>(begin, begin + checked_buffer_byte_difference(size_bytes));
 }
 
 bool NullRhiDevice::null_mark_buffer_released(BufferHandle buffer) noexcept {

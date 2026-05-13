@@ -1502,7 +1502,8 @@ present_action_trigger_tokens_safely(const std::vector<RuntimeInputActionTrigger
     for (const auto& trigger : triggers) {
         try {
             tokens.push_back(make_action_trigger_presentation_token(trigger));
-        } catch (const std::exception&) {
+        } catch (const std::exception& exception) {
+            (void)exception;
             // The presentation model carries validation diagnostics; malformed token rows are omitted.
         }
     }
@@ -1516,7 +1517,8 @@ present_axis_source_tokens_safely(const std::vector<RuntimeInputAxisSource>& sou
     for (const auto& source : sources) {
         try {
             tokens.push_back(make_axis_source_presentation_token(source));
-        } catch (const std::exception&) {
+        } catch (const std::exception& exception) {
+            (void)exception;
             // The presentation model carries validation diagnostics; malformed token rows are omitted.
         }
     }

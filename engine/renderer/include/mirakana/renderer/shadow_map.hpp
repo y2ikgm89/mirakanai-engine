@@ -15,9 +15,9 @@
 
 namespace mirakana {
 
-enum class ShadowMapLightType { unknown = 0, directional, point, spot };
+enum class ShadowMapLightType : std::uint8_t { unknown = 0, directional, point, spot };
 
-enum class ShadowMapDiagnosticCode {
+enum class ShadowMapDiagnosticCode : std::uint8_t {
     none = 0,
     missing_light,
     unsupported_light_type,
@@ -31,7 +31,7 @@ enum class ShadowMapDiagnosticCode {
     frame_graph_failed,
 };
 
-enum class ShadowReceiverDiagnosticCode {
+enum class ShadowReceiverDiagnosticCode : std::uint8_t {
     none = 0,
     invalid_shadow_map_plan,
     invalid_light_space_plan,
@@ -44,9 +44,9 @@ enum class ShadowReceiverDiagnosticCode {
     invalid_filter_radius_texels,
 };
 
-enum class ShadowReceiverFilterMode { none = 0, fixed_pcf_3x3 };
+enum class ShadowReceiverFilterMode : std::uint8_t { none = 0, fixed_pcf_3x3 };
 
-enum class DirectionalShadowLightSpaceDiagnosticCode {
+enum class DirectionalShadowLightSpaceDiagnosticCode : std::uint8_t {
     none = 0,
     invalid_shadow_map_plan,
     invalid_light_direction,
@@ -57,7 +57,7 @@ enum class DirectionalShadowLightSpaceDiagnosticCode {
     unsupported_cascade_camera_projection,
 };
 
-enum class ShadowLightSpaceTexelSnap { disabled = 0, enabled };
+enum class ShadowLightSpaceTexelSnap : std::uint8_t { disabled = 0, enabled };
 
 [[nodiscard]] constexpr std::uint32_t invalid_shadow_map_light_index() noexcept {
     return static_cast<std::uint32_t>(-1);

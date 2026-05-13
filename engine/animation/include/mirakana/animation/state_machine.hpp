@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -84,7 +85,7 @@ struct AnimationLayerSample {
     std::vector<AnimationBlendTreeSample> clips;
 };
 
-enum class AnimationRetargetMode { preserve_source, scale_to_target };
+enum class AnimationRetargetMode : std::uint8_t { preserve_source, scale_to_target };
 
 struct AnimationRetargetBindingDesc {
     std::string source;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <span>
 #include <string>
@@ -13,7 +14,7 @@
 
 namespace mirakana {
 
-enum class FrameGraphDiagnosticCode {
+enum class FrameGraphDiagnosticCode : std::uint8_t {
     none = 0,
     invalid_pass,
     invalid_resource,
@@ -60,9 +61,9 @@ struct FrameGraphBuildResult {
 
 [[nodiscard]] FrameGraphBuildResult compile_frame_graph_v0(const FrameGraphDesc& desc);
 
-enum class FrameGraphResourceLifetime { imported = 0, transient };
+enum class FrameGraphResourceLifetime : std::uint8_t { imported = 0, transient };
 
-enum class FrameGraphAccess {
+enum class FrameGraphAccess : std::uint8_t {
     unknown = 0,
     color_attachment_write,
     depth_attachment_write,
@@ -116,7 +117,7 @@ struct FrameGraphV1BuildResult {
 
 /// Single step in a backend-neutral execution schedule derived from a successful v1 plan.
 struct FrameGraphExecutionStep {
-    enum class Kind { barrier, pass_invoke } kind{Kind::pass_invoke};
+    enum class Kind : std::uint8_t { barrier, pass_invoke } kind{Kind::pass_invoke};
     /// Valid when `kind == barrier`; encodes the intended resource access transition before `to_pass`.
     FrameGraphBarrier barrier{};
     /// Valid when `kind == pass_invoke`; matches an entry in `FrameGraphV1BuildResult::ordered_passes`.

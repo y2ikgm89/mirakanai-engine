@@ -83,7 +83,7 @@ struct RuntimeResidentPackageMountRecordV2 {
     RuntimeAssetPackage package;
 };
 
-enum class RuntimeResidentPackageMountStatusV2 {
+enum class RuntimeResidentPackageMountStatusV2 : std::uint8_t {
     mounted = 0,
     unmounted,
     invalid_mount_id,
@@ -175,7 +175,7 @@ build_runtime_resource_catalog_v2_from_resident_mounts_with_budget(RuntimeResour
                                                                    RuntimePackageMountOverlay overlay,
                                                                    const RuntimeResourceResidencyBudgetV2& budget);
 
-enum class RuntimeResidentCatalogCacheStatusV2 {
+enum class RuntimeResidentCatalogCacheStatusV2 : std::uint8_t {
     rebuilt = 0,
     cache_hit,
     budget_failed,
@@ -220,7 +220,7 @@ class RuntimeResidentCatalogCacheV2 {
     bool has_cache_{false};
 };
 
-enum class RuntimeResidentPackageUnmountCommitStatusV2 {
+enum class RuntimeResidentPackageUnmountCommitStatusV2 : std::uint8_t {
     unmounted = 0,
     invalid_mount_id,
     missing_mount_id,
@@ -248,7 +248,7 @@ commit_runtime_resident_package_unmount_v2(RuntimeResidentPackageMountSetV2& mou
                                            RuntimeResidentPackageMountIdV2 id, RuntimePackageMountOverlay overlay,
                                            const RuntimeResourceResidencyBudgetV2& budget);
 
-enum class RuntimeResidentPackageReplaceCommitStatusV2 {
+enum class RuntimeResidentPackageReplaceCommitStatusV2 : std::uint8_t {
     replaced = 0,
     invalid_mount_id,
     missing_mount_id,
@@ -284,7 +284,7 @@ struct RuntimeResidentPackageReplaceCommitResultV2 {
 [[nodiscard]] const RuntimeResourceRecordV2* runtime_resource_record_v2(const RuntimeResourceCatalogV2& catalog,
                                                                         RuntimeResourceHandleV2 handle) noexcept;
 
-enum class RuntimePackageSafePointReplacementStatus {
+enum class RuntimePackageSafePointReplacementStatus : std::uint8_t {
     no_pending_package = 0,
     catalog_build_failed,
     committed,
@@ -305,7 +305,7 @@ struct RuntimePackageSafePointReplacementResult {
 [[nodiscard]] RuntimePackageSafePointReplacementResult
 commit_runtime_package_safe_point_replacement(RuntimeAssetPackageStore& store, RuntimeResourceCatalogV2& catalog);
 
-enum class RuntimePackageSafePointUnloadStatus {
+enum class RuntimePackageSafePointUnloadStatus : std::uint8_t {
     no_active_package = 0,
     unloaded,
 };

@@ -139,7 +139,7 @@ jobs:
 
       - name: Run clang-tidy
         shell: pwsh
-        run: ./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy
+        run: ./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 2
 
       - name: Upload static analysis logs
         if: always()

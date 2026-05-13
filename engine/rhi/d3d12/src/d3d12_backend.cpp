@@ -1057,7 +1057,7 @@ static void d3d12_set_object_name_fmt(ID3D12Object* object, const wchar_t* forma
         return;
     }
     std::array<wchar_t, 256> buffer{};
-    va_list args;
+    std::va_list args{};
     va_start(args, format);
     (void)_vsnwprintf_s(buffer.data(), buffer.size(), _TRUNCATE, format, args);
     va_end(args);

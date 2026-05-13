@@ -14,7 +14,7 @@
 
 namespace mirakana {
 
-enum class RuntimeScenePackageValidationCommandKind {
+enum class RuntimeScenePackageValidationCommandKind : std::uint8_t {
     validate_runtime_scene_package,
     free_form_edit,
 };

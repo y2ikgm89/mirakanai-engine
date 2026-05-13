@@ -11,7 +11,7 @@
 
 namespace mirakana {
 
-enum class NavigationGridAgentPathStatus {
+enum class NavigationGridAgentPathStatus : std::uint8_t {
     ready,
     invalid_request,
     invalid_mapping,
@@ -23,7 +23,7 @@ enum class NavigationGridAgentPathStatus {
     agent_path_invalid,
 };
 
-enum class NavigationGridAgentPathDiagnostic {
+enum class NavigationGridAgentPathDiagnostic : std::uint8_t {
     none,
     invalid_mapping,
     unsupported_adjacency,

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -11,7 +12,7 @@
 
 namespace mirakana {
 
-enum class LogLevel { trace, debug, info, warn, error, fatal };
+enum class LogLevel : std::uint8_t { trace, debug, info, warn, error, fatal };
 
 struct LogRecord {
     LogLevel level;

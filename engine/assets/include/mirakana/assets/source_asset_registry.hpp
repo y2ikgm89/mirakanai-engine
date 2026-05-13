@@ -7,6 +7,7 @@
 #include "mirakana/assets/asset_identity.hpp"
 #include "mirakana/assets/asset_import_metadata.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -35,7 +36,7 @@ struct SourceAssetRegistryDocumentV1 {
     std::vector<SourceAssetRegistryRowV1> assets;
 };
 
-enum class SourceAssetRegistryDiagnosticCodeV1 {
+enum class SourceAssetRegistryDiagnosticCodeV1 : std::uint8_t {
     invalid_key,
     duplicate_key,
     duplicate_asset_id,

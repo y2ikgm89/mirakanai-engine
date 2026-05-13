@@ -42,8 +42,62 @@ struct PhysicsBodyBounds3D {
     Vec3 maximum;
 };
 
+struct CapsuleAxisPair3D {
+    float first_y;
+    float second_y;
+};
+
+struct ContactPenetration3D {
+    Vec3 normal;
+    float depth;
+};
+
 [[nodiscard]] float clamp_value(float value, float minimum, float maximum) noexcept {
     return std::max(minimum, std::min(value, maximum));
+}
+
+[[nodiscard]] float capsule_axis_y_for_bounds(const PhysicsBody3D& capsule,
+                                              const PhysicsBodyBounds3D& bounds) noexcept {
+    const auto capsule_min_y = capsule.position.y - capsule.half_height;
+    const auto capsule_max_y = capsule.position.y + capsule.half_height;
+    const auto overlapping_min_y = std::max(capsule_min_y, bounds.minimum.y);
+    const auto overlapping_max_y = std::min(capsule_max_y, bounds.maximum.y);
+
+    if (overlapping_min_y <= overlapping_max_y) {
+        return clamp_value(capsule.position.y, overlapping_min_y, overlapping_max_y);
+    }
+    if (capsule_max_y < bounds.minimum.y) {
+        return capsule_max_y;
+    }
+    return capsule_min_y;
+}
+
+[[nodiscard]] CapsuleAxisPair3D capsule_axis_pair(const PhysicsBody3D& first, const PhysicsBody3D& second) noexcept {
+    const auto first_min_y = first.position.y - first.half_height;
+    const auto first_max_y = first.position.y + first.half_height;
+    const auto second_min_y = second.position.y - second.half_height;
+    const auto second_max_y = second.position.y + second.half_height;
+    const auto overlapping_min_y = std::max(first_min_y, second_min_y);
+    const auto overlapping_max_y = std::min(first_max_y, second_max_y);
+
+    if (overlapping_min_y <= overlapping_max_y) {
+        const auto overlap_y = clamp_value(first.position.y, overlapping_min_y, overlapping_max_y);
+        return CapsuleAxisPair3D{.first_y = overlap_y, .second_y = overlap_y};
+    }
+    if (first_max_y < second_min_y) {
+        return CapsuleAxisPair3D{.first_y = first_max_y, .second_y = second_min_y};
+    }
+    return CapsuleAxisPair3D{.first_y = first_min_y, .second_y = second_max_y};
+}
+
+[[nodiscard]] ContactPenetration3D contact_penetration_from_distance(Vec3 delta, float distance_squared, float radius,
+                                                                     Vec3 fallback_normal,
+                                                                     float fallback_depth) noexcept {
+    if (distance_squared > 0.000001F) {
+        const auto distance = std::sqrt(distance_squared);
+        return ContactPenetration3D{.normal = delta * (1.0F / distance), .depth = radius - distance};
+    }
+    return ContactPenetration3D{.normal = fallback_normal, .depth = fallback_depth};
 }
 
 [[nodiscard]] Vec3 bounds_extents_for(const PhysicsBody3D& body) noexcept {
@@ -256,20 +310,7 @@ struct BoundsRaycast3D {
 [[nodiscard]] Vec3 capsule_aabb_contact_point(const PhysicsBody3D& capsule, const PhysicsBody3D& aabb,
                                               Vec3 normal_from_capsule_to_aabb) noexcept {
     const auto bounds = bounds_for(aabb);
-    const auto capsule_min_y = capsule.position.y - capsule.half_height;
-    const auto capsule_max_y = capsule.position.y + capsule.half_height;
-    const auto overlapping_min_y = std::max(capsule_min_y, bounds.minimum.y);
-    const auto overlapping_max_y = std::min(capsule_max_y, bounds.maximum.y);
-
-    float axis_y = capsule.position.y;
-    if (overlapping_min_y <= overlapping_max_y) {
-        axis_y = clamp_value(capsule.position.y, overlapping_min_y, overlapping_max_y);
-    } else if (capsule_max_y < bounds.minimum.y) {
-        axis_y = capsule_max_y;
-    } else {
-        axis_y = capsule_min_y;
-    }
-
+    const auto axis_y = capsule_axis_y_for_bounds(capsule, bounds);
     const auto axis_point = Vec3{.x = capsule.position.x, .y = axis_y, .z = capsule.position.z};
     const auto closest = Vec3{
         .x = clamp_value(axis_point.x, bounds.minimum.x, bounds.maximum.x),
@@ -284,29 +325,11 @@ struct BoundsRaycast3D {
 
 [[nodiscard]] Vec3 capsule_capsule_contact_point(const PhysicsBody3D& first, const PhysicsBody3D& second,
                                                  Vec3 normal) noexcept {
-    const auto first_min_y = first.position.y - first.half_height;
-    const auto first_max_y = first.position.y + first.half_height;
-    const auto second_min_y = second.position.y - second.half_height;
-    const auto second_max_y = second.position.y + second.half_height;
-
-    float first_y = first.position.y;
-    float second_y = second.position.y;
-    const auto overlapping_min_y = std::max(first_min_y, second_min_y);
-    const auto overlapping_max_y = std::min(first_max_y, second_max_y);
-    if (overlapping_min_y <= overlapping_max_y) {
-        first_y = clamp_value(first.position.y, overlapping_min_y, overlapping_max_y);
-        second_y = first_y;
-    } else if (first_max_y < second_min_y) {
-        first_y = first_max_y;
-        second_y = second_min_y;
-    } else {
-        first_y = first_min_y;
-        second_y = second_max_y;
-    }
-
-    const auto first_surface = Vec3{.x = first.position.x, .y = first_y, .z = first.position.z} + normal * first.radius;
+    const auto axes = capsule_axis_pair(first, second);
+    const auto first_surface =
+        Vec3{.x = first.position.x, .y = axes.first_y, .z = first.position.z} + normal * first.radius;
     const auto second_surface =
-        Vec3{.x = second.position.x, .y = second_y, .z = second.position.z} - normal * second.radius;
+        Vec3{.x = second.position.x, .y = axes.second_y, .z = second.position.z} - normal * second.radius;
     return (first_surface + second_surface) * 0.5F;
 }
 
@@ -465,32 +488,30 @@ make_single_point_manifold(const PhysicsBody3D& first, const PhysicsBody3D& seco
         return std::nullopt;
     }
 
-    Vec3 normal_from_sphere_to_aabb{.x = 1.0F, .y = 0.0F, .z = 0.0F};
-    float penetration_depth = sphere.radius;
-    if (distance_squared > 0.000001F) {
-        const auto distance = std::sqrt(distance_squared);
-        normal_from_sphere_to_aabb = delta * (1.0F / distance);
-        penetration_depth = sphere.radius - distance;
-    } else {
+    const auto penetration = [&]() -> ContactPenetration3D {
+        if (distance_squared > 0.000001F) {
+            return contact_penetration_from_distance(delta, distance_squared, sphere.radius,
+                                                     Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}, sphere.radius);
+        }
         const auto local = sphere.position - aabb.position;
         const auto distance_to_x = aabb.half_extents.x - std::fabs(local.x);
         const auto distance_to_y = aabb.half_extents.y - std::fabs(local.y);
         const auto distance_to_z = aabb.half_extents.z - std::fabs(local.z);
-        delta = fallback_normal(local);
-        normal_from_sphere_to_aabb = delta;
-        penetration_depth = sphere.radius + std::min({distance_to_x, distance_to_y, distance_to_z});
-    }
+        return contact_penetration_from_distance(delta, distance_squared, sphere.radius, fallback_normal(local),
+                                                 sphere.radius +
+                                                     std::min({distance_to_x, distance_to_y, distance_to_z}));
+    }();
 
     if (sphere_is_first) {
         return PhysicsContact3D{.first = sphere.id,
                                 .second = aabb.id,
-                                .normal = normal_from_sphere_to_aabb,
-                                .penetration_depth = penetration_depth};
+                                .normal = penetration.normal,
+                                .penetration_depth = penetration.depth};
     }
     return PhysicsContact3D{.first = aabb.id,
                             .second = sphere.id,
-                            .normal = normal_from_sphere_to_aabb * -1.0F,
-                            .penetration_depth = penetration_depth};
+                            .normal = penetration.normal * -1.0F,
+                            .penetration_depth = penetration.depth};
 }
 
 [[nodiscard]] Vec3 closest_point_on_capsule_axis(const PhysicsBody3D& capsule, Vec3 point) noexcept {
@@ -530,20 +551,7 @@ capsule_sphere_contact(const PhysicsBody3D& capsule, const PhysicsBody3D& sphere
 [[nodiscard]] std::optional<PhysicsContact3D> capsule_aabb_contact(const PhysicsBody3D& capsule,
                                                                    const PhysicsBody3D& aabb, bool capsule_is_first) {
     const auto bounds = bounds_for(aabb);
-    const auto capsule_min_y = capsule.position.y - capsule.half_height;
-    const auto capsule_max_y = capsule.position.y + capsule.half_height;
-    const auto overlapping_min_y = std::max(capsule_min_y, bounds.minimum.y);
-    const auto overlapping_max_y = std::min(capsule_max_y, bounds.maximum.y);
-
-    float axis_y = capsule.position.y;
-    if (overlapping_min_y <= overlapping_max_y) {
-        axis_y = clamp_value(capsule.position.y, overlapping_min_y, overlapping_max_y);
-    } else if (capsule_max_y < bounds.minimum.y) {
-        axis_y = capsule_max_y;
-    } else {
-        axis_y = capsule_min_y;
-    }
-
+    const auto axis_y = capsule_axis_y_for_bounds(capsule, bounds);
     const auto axis_point = Vec3{.x = capsule.position.x, .y = axis_y, .z = capsule.position.z};
     const auto closest = Vec3{
         .x = clamp_value(axis_point.x, bounds.minimum.x, bounds.maximum.x),
@@ -556,56 +564,36 @@ capsule_sphere_contact(const PhysicsBody3D& capsule, const PhysicsBody3D& sphere
         return std::nullopt;
     }
 
-    Vec3 normal_from_capsule_to_aabb{.x = 1.0F, .y = 0.0F, .z = 0.0F};
-    float penetration_depth = capsule.radius;
-    if (distance_squared > 0.000001F) {
-        const auto distance = std::sqrt(distance_squared);
-        normal_from_capsule_to_aabb = delta * (1.0F / distance);
-        penetration_depth = capsule.radius - distance;
-    } else {
+    const auto penetration = [&]() -> ContactPenetration3D {
+        if (distance_squared > 0.000001F) {
+            return contact_penetration_from_distance(delta, distance_squared, capsule.radius,
+                                                     Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}, capsule.radius);
+        }
         const auto local = axis_point - aabb.position;
         const auto distance_to_x = aabb.half_extents.x - std::fabs(local.x);
         const auto distance_to_y = aabb.half_extents.y - std::fabs(local.y);
         const auto distance_to_z = aabb.half_extents.z - std::fabs(local.z);
-        normal_from_capsule_to_aabb = fallback_normal(local);
-        penetration_depth = capsule.radius + std::min({distance_to_x, distance_to_y, distance_to_z});
-    }
+        return contact_penetration_from_distance(delta, distance_squared, capsule.radius, fallback_normal(local),
+                                                 capsule.radius +
+                                                     std::min({distance_to_x, distance_to_y, distance_to_z}));
+    }();
 
     if (capsule_is_first) {
         return PhysicsContact3D{.first = capsule.id,
                                 .second = aabb.id,
-                                .normal = normal_from_capsule_to_aabb,
-                                .penetration_depth = penetration_depth};
+                                .normal = penetration.normal,
+                                .penetration_depth = penetration.depth};
     }
     return PhysicsContact3D{.first = aabb.id,
                             .second = capsule.id,
-                            .normal = normal_from_capsule_to_aabb * -1.0F,
-                            .penetration_depth = penetration_depth};
+                            .normal = penetration.normal * -1.0F,
+                            .penetration_depth = penetration.depth};
 }
 
 [[nodiscard]] std::optional<PhysicsContact3D> capsule_contact(const PhysicsBody3D& first, const PhysicsBody3D& second) {
-    const auto first_min_y = first.position.y - first.half_height;
-    const auto first_max_y = first.position.y + first.half_height;
-    const auto second_min_y = second.position.y - second.half_height;
-    const auto second_max_y = second.position.y + second.half_height;
-
-    float first_y = first.position.y;
-    float second_y = second.position.y;
-    const auto overlapping_min_y = std::max(first_min_y, second_min_y);
-    const auto overlapping_max_y = std::min(first_max_y, second_max_y);
-    if (overlapping_min_y <= overlapping_max_y) {
-        first_y = clamp_value(first.position.y, overlapping_min_y, overlapping_max_y);
-        second_y = first_y;
-    } else if (first_max_y < second_min_y) {
-        first_y = first_max_y;
-        second_y = second_min_y;
-    } else {
-        first_y = first_min_y;
-        second_y = second_max_y;
-    }
-
-    const auto first_point = Vec3{.x = first.position.x, .y = first_y, .z = first.position.z};
-    const auto second_point = Vec3{.x = second.position.x, .y = second_y, .z = second.position.z};
+    const auto axes = capsule_axis_pair(first, second);
+    const auto first_point = Vec3{.x = first.position.x, .y = axes.first_y, .z = first.position.z};
+    const auto second_point = Vec3{.x = second.position.x, .y = axes.second_y, .z = second.position.z};
     const auto delta = second_point - first_point;
     const auto radius_sum = first.radius + second.radius;
     const auto distance_squared = dot(delta, delta);

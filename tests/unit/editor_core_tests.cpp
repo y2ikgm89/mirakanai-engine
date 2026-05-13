@@ -1000,7 +1000,6 @@ MK_TEST("editor content browser annotates asset identity rows") {
     const mirakana::AssetKeyV2 pose_key{"assets/animations/player_pose"};
     const mirakana::AssetKeyV2 texture_key{"assets/textures/player"};
     const auto material_id = mirakana::asset_id_from_key_v2(material_key);
-    const auto pose_id = mirakana::asset_id_from_key_v2(pose_key);
     const auto texture_id = mirakana::asset_id_from_key_v2(texture_key);
 
     mirakana::AssetRegistry registry;

@@ -6,12 +6,13 @@
 #include "mirakana/assets/asset_registry.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace mirakana {
 
-enum class AssetDependencyKind {
+enum class AssetDependencyKind : std::uint8_t {
     unknown,
     shader_include,
     material_texture,

@@ -1423,6 +1423,9 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
 [[nodiscard]] NativeRendererCreateResult create_d3d12_scene_renderer(const SdlDesktopPresentationDesc& desc,
                                                                      rhi::SurfaceHandle surface) {
 #if defined(MK_RUNTIME_HOST_SDL3_PRESENTATION_HAS_D3D12)
+    if (desc.d3d12_scene_renderer == nullptr) {
+        return missing_d3d12_scene_renderer_request();
+    }
     const bool directional_shadow_requested =
         desc.d3d12_scene_renderer != nullptr && desc.d3d12_scene_renderer->enable_directional_shadow_smoke;
     const bool native_ui_overlay_requested =
@@ -2452,6 +2455,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 [[nodiscard]] NativeRendererCreateResult create_vulkan_scene_renderer(const SdlDesktopPresentationDesc& desc,
                                                                       rhi::SurfaceHandle surface) {
 #if defined(MK_RUNTIME_HOST_SDL3_PRESENTATION_HAS_VULKAN)
+    if (desc.vulkan_scene_renderer == nullptr) {
+        return missing_vulkan_scene_renderer_request();
+    }
     const bool directional_shadow_requested =
         desc.vulkan_scene_renderer != nullptr && desc.vulkan_scene_renderer->enable_directional_shadow_smoke;
     const bool native_ui_overlay_requested =

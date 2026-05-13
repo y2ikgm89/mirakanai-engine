@@ -6,13 +6,14 @@
 #include "mirakana/assets/asset_dependency_graph.hpp"
 #include "mirakana/assets/shader_metadata.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana {
 
-enum class ShaderCompileTarget { unknown, d3d12_dxil, vulkan_spirv, metal_ir, metal_library };
+enum class ShaderCompileTarget : std::uint8_t { unknown, d3d12_dxil, vulkan_spirv, metal_ir, metal_library };
 
 struct ShaderCompileRequest {
     ShaderSourceMetadata source;
@@ -30,7 +31,7 @@ struct ShaderCompileCommand {
     ShaderGeneratedArtifact artifact;
 };
 
-enum class ShaderIncludeKind { quoted, system };
+enum class ShaderIncludeKind : std::uint8_t { quoted, system };
 
 struct ShaderSourceDependency {
     std::string path;

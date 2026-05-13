@@ -715,6 +715,17 @@ Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-MaxFiles 1" "t
 Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]' "tools/check-agents.ps1"
 $tidyWrapperContent = Get-AgentSurfaceText "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent '[string[]]$Files' "tools/check-tidy.ps1"
+Assert-ContainsText $tidyWrapperContent '[int]$Jobs' "tools/check-tidy.ps1"
+Assert-ContainsText $tidyWrapperContent "--warnings-as-errors=*" "tools/check-tidy.ps1"
+Assert-ContainsText $tidyWrapperContent "ForEach-Object -Parallel" "tools/check-tidy.ps1"
+$clangTidyContent = Get-AgentSurfaceText ".clang-tidy"
+Assert-ContainsText $clangTidyContent '(^|.*[/\\])(engine|editor|examples|games|tests)[/\\].*' ".clang-tidy"
+Assert-DoesNotContainText $clangTidyContent "-performance-enum-size" ".clang-tidy"
+Assert-ContainsText $testingContent "--warnings-as-errors=*" "docs/testing.md"
+Assert-ContainsText $testingContent "-Jobs" "docs/testing.md"
+Assert-ContainsText $testingContent "HeaderFilterRegex" "docs/testing.md"
+Assert-ContainsText $workflowsContent "--warnings-as-errors=*" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "-Jobs" "docs/workflows.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "PIX on Windows", "Windows Performance Toolkit", "Tools.Graphics.DirectX~~~~0.0.1.0", "d3d12SDKLayers.dll", "cdb -version", "pixtool --help", "wpr -help", "xperf -help")) {
     Assert-ContainsText $testingContent $windowsDiagnosticsNeedle "docs/testing.md"
 }
