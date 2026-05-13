@@ -1316,8 +1316,7 @@ capture_first_keyboard_key_pair_axis_source(const RuntimeInputRebindingAxisCaptu
     if (held.size() < 2) {
         return std::nullopt;
     }
-    std::sort(held.begin(), held.end(),
-              [](Key left, Key right) { return static_cast<int>(left) < static_cast<int>(right); });
+    std::ranges::sort(held, [](Key left, Key right) { return static_cast<int>(left) < static_cast<int>(right); });
     const Key negative_key = held.front();
     const Key positive_key = held[1];
     return RuntimeInputAxisSource{.kind = RuntimeInputAxisSourceKind::key_pair,

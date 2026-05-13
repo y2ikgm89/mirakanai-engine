@@ -36,15 +36,15 @@ void validate_window_desc(const WindowDesc& desc) {
 
 [[nodiscard]] DisplayRect display_rect_from_sdl(const SDL_Rect& rect) noexcept {
     return DisplayRect{
-        rect.x,
-        rect.y,
-        rect.w > 0 ? static_cast<std::uint32_t>(rect.w) : 0U,
-        rect.h > 0 ? static_cast<std::uint32_t>(rect.h) : 0U,
+        .x = rect.x,
+        .y = rect.y,
+        .width = rect.w > 0 ? static_cast<std::uint32_t>(rect.w) : 0U,
+        .height = rect.h > 0 ? static_cast<std::uint32_t>(rect.h) : 0U,
     };
 }
 
 [[nodiscard]] DisplayRect window_extent_rect(WindowExtent extent) noexcept {
-    return DisplayRect{0, 0, extent.width, extent.height};
+    return DisplayRect{.x = 0, .y = 0, .width = extent.width, .height = extent.height};
 }
 
 [[nodiscard]] float positive_or_default(float value, float fallback) noexcept {
@@ -136,12 +136,12 @@ std::vector<DisplayInfo> sdl3_displays() {
 
         const char* name = SDL_GetDisplayName(ids[index]);
         displays.push_back(DisplayInfo{
-            ids[index],
-            name != nullptr ? std::string{name} : std::string{},
-            display_rect_from_sdl(bounds),
-            display_rect_from_sdl(usable_bounds),
-            positive_or_default(SDL_GetDisplayContentScale(ids[index]), 1.0F),
-            ids[index] == primary,
+            .id = ids[index],
+            .name = name != nullptr ? std::string{name} : std::string{},
+            .bounds = display_rect_from_sdl(bounds),
+            .usable_bounds = display_rect_from_sdl(usable_bounds),
+            .content_scale = positive_or_default(SDL_GetDisplayContentScale(ids[index]), 1.0F),
+            .primary = ids[index] == primary,
         });
     }
 
@@ -191,14 +191,14 @@ SdlWindowEvent sdl3_translate_window_event(SdlRawEventHandle event, WindowExtent
         translated.kind = SdlWindowEventKind::resized;
         translated.window_id = source.window.windowID;
         if (source.window.data1 > 0 && source.window.data2 > 0) {
-            translated.extent = WindowExtent{static_cast<std::uint32_t>(source.window.data1),
-                                             static_cast<std::uint32_t>(source.window.data2)};
+            translated.extent = WindowExtent{.width = static_cast<std::uint32_t>(source.window.data1),
+                                             .height = static_cast<std::uint32_t>(source.window.data2)};
         }
         return translated;
     case SDL_EVENT_WINDOW_MOVED:
         translated.kind = SdlWindowEventKind::moved;
         translated.window_id = source.window.windowID;
-        translated.position = WindowPosition{source.window.data1, source.window.data2};
+        translated.position = WindowPosition{.x = source.window.data1, .y = source.window.data2};
         return translated;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
         if (is_touch_generated_mouse(source.button.which)) {
@@ -313,7 +313,7 @@ SdlWindowEvent sdl3_translate_window_event(SdlRawEventHandle event, WindowExtent
 }
 
 SdlWindow::SdlWindow(WindowDesc desc) : title_(std::move(desc.title)), extent_(desc.extent), position_(desc.position) {
-    validate_window_desc(WindowDesc{title_, extent_});
+    validate_window_desc(WindowDesc{.title = title_, .extent = extent_});
 
     SDL_Window* window = SDL_CreateWindow(title_.c_str(), static_cast<int>(extent_.width),
                                           static_cast<int>(extent_.height), SDL_WINDOW_RESIZABLE);
@@ -364,10 +364,10 @@ WindowDisplayState SdlWindow::display_state() const {
                                                                                  : window_extent_rect(extent_);
 
     return WindowDisplayState{
-        display_id,
-        positive_or_default(SDL_GetWindowDisplayScale(impl_->window), 1.0F),
-        positive_or_default(SDL_GetWindowPixelDensity(impl_->window), 1.0F),
-        is_valid_display_rect(safe_area_rect) ? safe_area_rect : window_extent_rect(extent_),
+        .display_id = display_id,
+        .content_scale = positive_or_default(SDL_GetWindowDisplayScale(impl_->window), 1.0F),
+        .pixel_density = positive_or_default(SDL_GetWindowPixelDensity(impl_->window), 1.0F),
+        .safe_area = is_valid_display_rect(safe_area_rect) ? safe_area_rect : window_extent_rect(extent_),
     };
 }
 

@@ -102,7 +102,7 @@ void sort_asset_ids(std::vector<AssetId>& ids) {
 
 void sort_unique_asset_ids(std::vector<AssetId>& ids) {
     sort_asset_ids(ids);
-    ids.erase(std::unique(ids.begin(), ids.end(), [](AssetId lhs, AssetId rhs) { return lhs == rhs; }), ids.end());
+    ids.erase(std::ranges::unique(ids, [](AssetId lhs, AssetId rhs) { return lhs == rhs; }).begin(), ids.end());
 }
 
 [[nodiscard]] bool has_invalid_or_duplicate_ids(std::vector<AssetId> ids) {
@@ -149,8 +149,7 @@ void canonicalize_package_index(AssetCookedPackageIndex& index) {
     }
     sort_entries(index.entries);
     sort_edges(index.dependencies);
-    index.dependencies.erase(std::unique(index.dependencies.begin(), index.dependencies.end(), same_edge),
-                             index.dependencies.end());
+    index.dependencies.erase(std::ranges::unique(index.dependencies, same_edge).begin(), index.dependencies.end());
 }
 
 [[nodiscard]] bool finite_vec3(Vec3 value) noexcept {

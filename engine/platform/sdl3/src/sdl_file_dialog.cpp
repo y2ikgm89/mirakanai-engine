@@ -99,11 +99,11 @@ void sdl3_file_dialog_callback(void* userdata, const char* const* filelist, int 
     try {
         if (filelist == nullptr) {
             (void)try_push_file_dialog_result(*context->results, FileDialogResult{
-                                                                     context->id,
-                                                                     FileDialogStatus::failed,
-                                                                     {},
-                                                                     -1,
-                                                                     sdl_error_or(context->fallback_error),
+                                                                     .id = context->id,
+                                                                     .status = FileDialogStatus::failed,
+                                                                     .paths = {},
+                                                                     .selected_filter = -1,
+                                                                     .error = sdl_error_or(context->fallback_error),
                                                                  });
             return;
         }
@@ -113,29 +113,29 @@ void sdl3_file_dialog_callback(void* userdata, const char* const* filelist, int 
             paths.emplace_back(*file);
         }
 
-        (void)try_push_file_dialog_result(*context->results,
-                                          FileDialogResult{
-                                              context->id,
-                                              paths.empty() ? FileDialogStatus::canceled : FileDialogStatus::accepted,
-                                              std::move(paths),
-                                              filter,
-                                              {},
-                                          });
+        (void)try_push_file_dialog_result(
+            *context->results, FileDialogResult{
+                                   .id = context->id,
+                                   .status = paths.empty() ? FileDialogStatus::canceled : FileDialogStatus::accepted,
+                                   .paths = std::move(paths),
+                                   .selected_filter = filter,
+                                   .error = {},
+                               });
     } catch (const std::exception& exception) {
         (void)try_push_file_dialog_result(*context->results, FileDialogResult{
-                                                                 context->id,
-                                                                 FileDialogStatus::failed,
-                                                                 {},
-                                                                 filter,
-                                                                 exception.what(),
+                                                                 .id = context->id,
+                                                                 .status = FileDialogStatus::failed,
+                                                                 .paths = {},
+                                                                 .selected_filter = filter,
+                                                                 .error = exception.what(),
                                                              });
     } catch (...) {
         (void)try_push_file_dialog_result(*context->results, FileDialogResult{
-                                                                 context->id,
-                                                                 FileDialogStatus::failed,
-                                                                 {},
-                                                                 filter,
-                                                                 context->fallback_error,
+                                                                 .id = context->id,
+                                                                 .status = FileDialogStatus::failed,
+                                                                 .paths = {},
+                                                                 .selected_filter = filter,
+                                                                 .error = context->fallback_error,
                                                              });
     }
 }
@@ -152,7 +152,7 @@ struct SdlFileDialogLaunchContext {
 
 void sdl3_file_dialog_launch_callback(void* userdata, const char* const* filelist, int filter) noexcept {
     const std::unique_ptr<SdlFileDialogLaunchContext> context{static_cast<SdlFileDialogLaunchContext*>(userdata)};
-    SdlFileDialogCallbackContext callback_context{context->results, context->id};
+    SdlFileDialogCallbackContext callback_context{.results = context->results, .id = context->id};
     sdl3_file_dialog_callback(&callback_context, filelist, filter);
 }
 

@@ -117,7 +117,7 @@ void append_unique_asset(std::vector<AssetId>& assets, AssetId asset) {
     if (asset.value == 0) {
         return;
     }
-    if (std::find(assets.begin(), assets.end(), asset) == assets.end()) {
+    if (std::ranges::find(assets, asset) == assets.end()) {
         assets.push_back(asset);
     }
 }
@@ -137,28 +137,28 @@ void append_morph_binding_assets(std::vector<AssetId>& assets,
 
 [[nodiscard]] std::vector<rhi::VertexBufferLayoutDesc> compute_morph_position_vertex_buffers() {
     return {rhi::VertexBufferLayoutDesc{
-        0,
-        runtime_rhi::runtime_mesh_position_vertex_stride_bytes,
-        rhi::VertexInputRate::vertex,
+        .binding = 0,
+        .stride = runtime_rhi::runtime_mesh_position_vertex_stride_bytes,
+        .input_rate = rhi::VertexInputRate::vertex,
     }};
 }
 
 [[nodiscard]] std::vector<rhi::VertexBufferLayoutDesc> compute_morph_tangent_frame_vertex_buffers() {
     return {
         rhi::VertexBufferLayoutDesc{
-            0,
-            runtime_rhi::runtime_mesh_position_vertex_stride_bytes,
-            rhi::VertexInputRate::vertex,
+            .binding = 0,
+            .stride = runtime_rhi::runtime_mesh_position_vertex_stride_bytes,
+            .input_rate = rhi::VertexInputRate::vertex,
         },
         rhi::VertexBufferLayoutDesc{
-            1,
-            runtime_rhi::runtime_morph_normal_delta_stride_bytes,
-            rhi::VertexInputRate::vertex,
+            .binding = 1,
+            .stride = runtime_rhi::runtime_morph_normal_delta_stride_bytes,
+            .input_rate = rhi::VertexInputRate::vertex,
         },
         rhi::VertexBufferLayoutDesc{
-            2,
-            runtime_rhi::runtime_morph_tangent_delta_stride_bytes,
-            rhi::VertexInputRate::vertex,
+            .binding = 2,
+            .stride = runtime_rhi::runtime_morph_tangent_delta_stride_bytes,
+            .input_rate = rhi::VertexInputRate::vertex,
         },
     };
 }
@@ -166,54 +166,54 @@ void append_morph_binding_assets(std::vector<AssetId>& assets,
 [[nodiscard]] std::vector<rhi::VertexBufferLayoutDesc> compute_morph_skinned_vertex_buffers() {
     return {
         rhi::VertexBufferLayoutDesc{
-            0,
-            runtime_rhi::runtime_mesh_position_vertex_stride_bytes,
-            rhi::VertexInputRate::vertex,
+            .binding = 0,
+            .stride = runtime_rhi::runtime_mesh_position_vertex_stride_bytes,
+            .input_rate = rhi::VertexInputRate::vertex,
         },
         rhi::VertexBufferLayoutDesc{
-            3,
-            runtime_rhi::runtime_skinned_mesh_vertex_stride_bytes,
-            rhi::VertexInputRate::vertex,
+            .binding = 3,
+            .stride = runtime_rhi::runtime_skinned_mesh_vertex_stride_bytes,
+            .input_rate = rhi::VertexInputRate::vertex,
         },
     };
 }
 
 [[nodiscard]] std::vector<rhi::VertexAttributeDesc> compute_morph_position_vertex_attributes() {
     return {rhi::VertexAttributeDesc{
-        0,
-        0,
-        0,
-        rhi::VertexFormat::float32x3,
-        rhi::VertexSemantic::position,
-        0,
+        .location = 0,
+        .binding = 0,
+        .offset = 0,
+        .format = rhi::VertexFormat::float32x3,
+        .semantic = rhi::VertexSemantic::position,
+        .semantic_index = 0,
     }};
 }
 
 [[nodiscard]] std::vector<rhi::VertexAttributeDesc> compute_morph_skinned_vertex_attributes() {
     return {
         rhi::VertexAttributeDesc{
-            0,
-            0,
-            0,
-            rhi::VertexFormat::float32x3,
-            rhi::VertexSemantic::position,
-            0,
+            .location = 0,
+            .binding = 0,
+            .offset = 0,
+            .format = rhi::VertexFormat::float32x3,
+            .semantic = rhi::VertexSemantic::position,
+            .semantic_index = 0,
         },
         rhi::VertexAttributeDesc{
-            1,
-            3,
-            48,
-            rhi::VertexFormat::uint16x4,
-            rhi::VertexSemantic::joint_indices,
-            0,
+            .location = 1,
+            .binding = 3,
+            .offset = 48,
+            .format = rhi::VertexFormat::uint16x4,
+            .semantic = rhi::VertexSemantic::joint_indices,
+            .semantic_index = 0,
         },
         rhi::VertexAttributeDesc{
-            2,
-            3,
-            56,
-            rhi::VertexFormat::float32x4,
-            rhi::VertexSemantic::joint_weights,
-            0,
+            .location = 2,
+            .binding = 3,
+            .offset = 56,
+            .format = rhi::VertexFormat::float32x4,
+            .semantic = rhi::VertexSemantic::joint_weights,
+            .semantic_index = 0,
         },
     };
 }
@@ -221,28 +221,28 @@ void append_morph_binding_assets(std::vector<AssetId>& assets,
 [[nodiscard]] std::vector<rhi::VertexAttributeDesc> compute_morph_tangent_frame_vertex_attributes() {
     return {
         rhi::VertexAttributeDesc{
-            0,
-            0,
-            0,
-            rhi::VertexFormat::float32x3,
-            rhi::VertexSemantic::position,
-            0,
+            .location = 0,
+            .binding = 0,
+            .offset = 0,
+            .format = rhi::VertexFormat::float32x3,
+            .semantic = rhi::VertexSemantic::position,
+            .semantic_index = 0,
         },
         rhi::VertexAttributeDesc{
-            1,
-            1,
-            0,
-            rhi::VertexFormat::float32x3,
-            rhi::VertexSemantic::normal,
-            0,
+            .location = 1,
+            .binding = 1,
+            .offset = 0,
+            .format = rhi::VertexFormat::float32x3,
+            .semantic = rhi::VertexSemantic::normal,
+            .semantic_index = 0,
         },
         rhi::VertexAttributeDesc{
-            2,
-            2,
-            0,
-            rhi::VertexFormat::float32x3,
-            rhi::VertexSemantic::tangent,
-            0,
+            .location = 2,
+            .binding = 2,
+            .offset = 0,
+            .format = rhi::VertexFormat::float32x3,
+            .semantic = rhi::VertexSemantic::tangent,
+            .semantic_index = 0,
         },
     };
 }
@@ -410,33 +410,34 @@ void append_unique_mesh(std::vector<AssetId>& meshes, AssetId mesh) {
         const auto* record = package.find(mesh);
         if (record == nullptr) {
             return SceneRendererRequestValidation{
-                false,
-                std::string(backend_name) +
-                    " scene renderer request references a mesh without cooked payload layout metadata.",
+                .valid = false,
+                .diagnostic = std::string(backend_name) +
+                              " scene renderer request references a mesh without cooked payload layout metadata.",
             };
         }
         if (record->kind == AssetKind::mesh) {
             const auto payload = runtime::runtime_mesh_payload(*record);
             if (!payload.succeeded()) {
                 return SceneRendererRequestValidation{
-                    false,
-                    std::string(backend_name) +
-                        " scene renderer request mesh payload is invalid: " + payload.diagnostic,
+                    .valid = false,
+                    .diagnostic = std::string(backend_name) +
+                                  " scene renderer request mesh payload is invalid: " + payload.diagnostic,
                 };
             }
             const auto layout = runtime_rhi::make_runtime_mesh_vertex_layout_desc(payload.payload);
             if (!layout.succeeded()) {
                 return SceneRendererRequestValidation{
-                    false,
-                    std::string(backend_name) + " scene renderer request mesh layout is invalid: " + layout.diagnostic,
+                    .valid = false,
+                    .diagnostic = std::string(backend_name) +
+                                  " scene renderer request mesh layout is invalid: " + layout.diagnostic,
                 };
             }
             if (!same_vertex_buffer_layouts(static_vertex_buffers, layout.vertex_buffers) ||
                 !same_vertex_attributes(static_vertex_attributes, layout.vertex_attributes)) {
                 return SceneRendererRequestValidation{
-                    false,
-                    std::string(backend_name) +
-                        " scene renderer request vertex input does not match cooked mesh payload layout.",
+                    .valid = false,
+                    .diagnostic = std::string(backend_name) +
+                                  " scene renderer request vertex input does not match cooked mesh payload layout.",
                 };
             }
             continue;
@@ -444,25 +445,26 @@ void append_unique_mesh(std::vector<AssetId>& meshes, AssetId mesh) {
         if (record->kind == AssetKind::skinned_mesh) {
             if (skinned_vertex_buffers.empty() || skinned_vertex_attributes.empty()) {
                 return SceneRendererRequestValidation{
-                    false,
-                    std::string(backend_name) +
+                    .valid = false,
+                    .diagnostic =
+                        std::string(backend_name) +
                         " scene renderer request references a skinned mesh but does not provide skinned vertex input.",
                 };
             }
             const auto payload = runtime::runtime_skinned_mesh_payload(*record);
             if (!payload.succeeded()) {
                 return SceneRendererRequestValidation{
-                    false,
-                    std::string(backend_name) +
-                        " scene renderer request skinned mesh payload is invalid: " + payload.diagnostic,
+                    .valid = false,
+                    .diagnostic = std::string(backend_name) +
+                                  " scene renderer request skinned mesh payload is invalid: " + payload.diagnostic,
                 };
             }
             const auto layout = runtime_rhi::make_runtime_skinned_mesh_vertex_layout_desc(payload.payload);
             if (!layout.succeeded()) {
                 return SceneRendererRequestValidation{
-                    false,
-                    std::string(backend_name) +
-                        " scene renderer request skinned mesh layout is invalid: " + layout.diagnostic,
+                    .valid = false,
+                    .diagnostic = std::string(backend_name) +
+                                  " scene renderer request skinned mesh layout is invalid: " + layout.diagnostic,
                 };
             }
             auto expected_vertex_buffers = layout.vertex_buffers;
@@ -474,19 +476,21 @@ void append_unique_mesh(std::vector<AssetId>& meshes, AssetId mesh) {
             if (!same_vertex_buffer_layouts(skinned_vertex_buffers, expected_vertex_buffers) ||
                 !same_vertex_attributes(skinned_vertex_attributes, expected_vertex_attributes)) {
                 return SceneRendererRequestValidation{
-                    false,
-                    std::string(backend_name) +
+                    .valid = false,
+                    .diagnostic =
+                        std::string(backend_name) +
                         " scene renderer request skinned vertex input does not match cooked skinned mesh layout.",
                 };
             }
             continue;
         }
         return SceneRendererRequestValidation{
-            false,
-            std::string(backend_name) + " scene renderer request references an unsupported mesh asset kind.",
+            .valid = false,
+            .diagnostic =
+                std::string(backend_name) + " scene renderer request references an unsupported mesh asset kind.",
         };
     }
-    return SceneRendererRequestValidation{true, {}};
+    return SceneRendererRequestValidation{.valid = true, .diagnostic = {}};
 }
 
 [[nodiscard]] bool
@@ -603,106 +607,113 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
 
 [[nodiscard]] NativeRendererCreateResult missing_d3d12_renderer_request() {
     return NativeRendererCreateResult{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        "D3D12 renderer creation requires non-empty vertex and fragment shader bytecode; using NullRenderer fallback.",
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = "D3D12 renderer creation requires non-empty vertex and fragment shader bytecode; using "
+                      "NullRenderer fallback.",
     };
 }
 
 [[nodiscard]] NativeRendererCreateResult missing_vulkan_renderer_request() {
     return NativeRendererCreateResult{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        "Vulkan renderer creation requires non-empty vertex and fragment SPIR-V bytecode; using NullRenderer "
-        "fallback.",
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic =
+            "Vulkan renderer creation requires non-empty vertex and fragment SPIR-V bytecode; using NullRenderer "
+            "fallback.",
     };
 }
 
 [[nodiscard]] NativeRendererCreateResult missing_d3d12_scene_renderer_request() {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        "D3D12 scene renderer creation requires non-empty shader bytecode, package, render packet, and vertex input "
-        "metadata; using NullRenderer fallback.",
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = "D3D12 scene renderer creation requires non-empty shader bytecode, package, render packet, and "
+                      "vertex input "
+                      "metadata; using NullRenderer fallback.",
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     return result;
 }
 
 [[nodiscard]] NativeRendererCreateResult missing_d3d12_postprocess_request() {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        "D3D12 scene postprocess creation requires non-empty postprocess vertex and fragment shader bytecode; using "
-        "NullRenderer fallback.",
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = "D3D12 scene postprocess creation requires non-empty postprocess vertex and fragment shader "
+                      "bytecode; using "
+                      "NullRenderer fallback.",
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     result.postprocess_status = SdlDesktopPresentationPostprocessStatus::invalid_request;
     result.postprocess_diagnostics.push_back(SdlDesktopPresentationPostprocessDiagnostic{
-        result.postprocess_status,
-        result.diagnostic,
+        .status = result.postprocess_status,
+        .message = result.diagnostic,
     });
     return result;
 }
 
 [[nodiscard]] NativeRendererCreateResult missing_vulkan_scene_renderer_request() {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        "Vulkan scene renderer creation requires non-empty SPIR-V shader bytecode, package, render packet, and vertex "
-        "input metadata; using NullRenderer fallback.",
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = "Vulkan scene renderer creation requires non-empty SPIR-V shader bytecode, package, render "
+                      "packet, and vertex "
+                      "input metadata; using NullRenderer fallback.",
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     return result;
 }
 
 [[nodiscard]] NativeRendererCreateResult missing_vulkan_postprocess_request() {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        "Vulkan scene postprocess creation requires non-empty postprocess vertex and fragment SPIR-V bytecode; using "
-        "NullRenderer fallback.",
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = "Vulkan scene postprocess creation requires non-empty postprocess vertex and fragment SPIR-V "
+                      "bytecode; using "
+                      "NullRenderer fallback.",
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     result.postprocess_status = SdlDesktopPresentationPostprocessStatus::invalid_request;
     result.postprocess_diagnostics.push_back(SdlDesktopPresentationPostprocessDiagnostic{
-        result.postprocess_status,
-        result.diagnostic,
+        .status = result.postprocess_status,
+        .message = result.diagnostic,
     });
     return result;
 }
 
 [[nodiscard]] NativeRendererCreateResult invalid_d3d12_postprocess_depth_input_request() {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        "D3D12 scene postprocess depth input requires scene postprocess to be enabled; using NullRenderer fallback.",
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = "D3D12 scene postprocess depth input requires scene postprocess to be enabled; using "
+                      "NullRenderer fallback.",
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     result.postprocess_status = SdlDesktopPresentationPostprocessStatus::invalid_request;
     result.postprocess_diagnostics.push_back(SdlDesktopPresentationPostprocessDiagnostic{
-        result.postprocess_status,
-        result.diagnostic,
+        .status = result.postprocess_status,
+        .message = result.diagnostic,
     });
     result.postprocess_depth_input_requested = true;
     return result;
@@ -710,19 +721,20 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
 
 [[nodiscard]] NativeRendererCreateResult invalid_vulkan_postprocess_depth_input_request() {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        "Vulkan scene postprocess depth input requires scene postprocess to be enabled; using NullRenderer fallback.",
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = "Vulkan scene postprocess depth input requires scene postprocess to be enabled; using "
+                      "NullRenderer fallback.",
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     result.postprocess_status = SdlDesktopPresentationPostprocessStatus::invalid_request;
     result.postprocess_diagnostics.push_back(SdlDesktopPresentationPostprocessDiagnostic{
-        result.postprocess_status,
-        result.diagnostic,
+        .status = result.postprocess_status,
+        .message = result.diagnostic,
     });
     result.postprocess_depth_input_requested = true;
     return result;
@@ -730,14 +742,14 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
 
 [[nodiscard]] NativeRendererCreateResult invalid_d3d12_directional_shadow_request(std::string message) {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        std::move(message),
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = std::move(message),
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     result.directional_shadow_status = SdlDesktopPresentationDirectionalShadowStatus::invalid_request;
     result.directional_shadow_diagnostics.push_back(
@@ -748,14 +760,14 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
 
 [[nodiscard]] NativeRendererCreateResult invalid_vulkan_directional_shadow_request(std::string message) {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        std::move(message),
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = std::move(message),
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     result.directional_shadow_status = SdlDesktopPresentationDirectionalShadowStatus::invalid_request;
     result.directional_shadow_diagnostics.push_back(
@@ -766,14 +778,14 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
 
 [[nodiscard]] NativeRendererCreateResult invalid_d3d12_native_ui_overlay_request(std::string message) {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        std::move(message),
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = std::move(message),
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     result.native_ui_overlay_status = SdlDesktopPresentationNativeUiOverlayStatus::invalid_request;
     result.native_ui_overlay_diagnostics.push_back(
@@ -793,14 +805,14 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
 
 [[nodiscard]] NativeRendererCreateResult invalid_vulkan_native_ui_overlay_request(std::string message) {
     NativeRendererCreateResult result{
-        false,
-        SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-        std::move(message),
+        .succeeded = false,
+        .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+        .diagnostic = std::move(message),
     };
     result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::invalid_request;
     result.scene_gpu_diagnostics.push_back(SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        result.scene_gpu_status,
-        result.diagnostic,
+        .status = result.scene_gpu_status,
+        .message = result.diagnostic,
     });
     result.native_ui_overlay_status = SdlDesktopPresentationNativeUiOverlayStatus::invalid_request;
     result.native_ui_overlay_diagnostics.push_back(
@@ -846,9 +858,9 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
     const auto native = window.native_window();
     if (native.value == 0) {
         return SurfaceProbe{
-            {},
-            SdlDesktopPresentationFallbackReason::native_surface_unavailable,
-            "SDL window handle is unavailable; using NullRenderer fallback.",
+            .surface = {},
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_surface_unavailable,
+            .diagnostic = "SDL window handle is unavailable; using NullRenderer fallback.",
         };
     }
 
@@ -857,25 +869,27 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
     const SDL_PropertiesID properties = SDL_GetWindowProperties(sdl_window);
     if (properties == 0) {
         return SurfaceProbe{
-            {},
-            SdlDesktopPresentationFallbackReason::native_surface_unavailable,
-            std::string{"SDL window properties are unavailable: "} + SDL_GetError() + "; using NullRenderer fallback.",
+            .surface = {},
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_surface_unavailable,
+            .diagnostic = std::string{"SDL window properties are unavailable: "} + SDL_GetError() +
+                          "; using NullRenderer fallback.",
         };
     }
 
     void* hwnd = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
     if (hwnd == nullptr) {
         return SurfaceProbe{
-            {},
-            SdlDesktopPresentationFallbackReason::native_surface_unavailable,
-            "SDL window does not expose a Win32 HWND for D3D12 presentation; using NullRenderer fallback.",
+            .surface = {},
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_surface_unavailable,
+            .diagnostic =
+                "SDL window does not expose a Win32 HWND for D3D12 presentation; using NullRenderer fallback.",
         };
     }
 
     return SurfaceProbe{
-        rhi::SurfaceHandle{reinterpret_cast<std::uintptr_t>(hwnd)},
-        SdlDesktopPresentationFallbackReason::none,
-        {},
+        .surface = rhi::SurfaceHandle{reinterpret_cast<std::uintptr_t>(hwnd)},
+        .failure_reason = SdlDesktopPresentationFallbackReason::none,
+        .diagnostic = {},
     };
 #else
     (void)window;
@@ -891,9 +905,9 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
     const auto native = window.native_window();
     if (native.value == 0) {
         return SurfaceProbe{
-            {},
-            SdlDesktopPresentationFallbackReason::native_surface_unavailable,
-            "SDL window handle is unavailable for Vulkan presentation; using NullRenderer fallback.",
+            .surface = {},
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_surface_unavailable,
+            .diagnostic = "SDL window handle is unavailable for Vulkan presentation; using NullRenderer fallback.",
         };
     }
 
@@ -902,26 +916,27 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
     const SDL_PropertiesID properties = SDL_GetWindowProperties(sdl_window);
     if (properties == 0) {
         return SurfaceProbe{
-            {},
-            SdlDesktopPresentationFallbackReason::native_surface_unavailable,
-            std::string{"SDL window properties are unavailable for Vulkan presentation: "} + SDL_GetError() +
-                "; using NullRenderer fallback.",
+            .surface = {},
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_surface_unavailable,
+            .diagnostic = std::string{"SDL window properties are unavailable for Vulkan presentation: "} +
+                          SDL_GetError() + "; using NullRenderer fallback.",
         };
     }
 
     void* hwnd = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
     if (hwnd == nullptr) {
         return SurfaceProbe{
-            {},
-            SdlDesktopPresentationFallbackReason::native_surface_unavailable,
-            "SDL window does not expose a Win32 HWND for Vulkan presentation; using NullRenderer fallback.",
+            .surface = {},
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_surface_unavailable,
+            .diagnostic =
+                "SDL window does not expose a Win32 HWND for Vulkan presentation; using NullRenderer fallback.",
         };
     }
 
     return SurfaceProbe{
-        rhi::SurfaceHandle{reinterpret_cast<std::uintptr_t>(hwnd)},
-        SdlDesktopPresentationFallbackReason::none,
-        {},
+        .surface = rhi::SurfaceHandle{reinterpret_cast<std::uintptr_t>(hwnd)},
+        .failure_reason = SdlDesktopPresentationFallbackReason::none,
+        .diagnostic = {},
     };
 #else
     (void)window;
@@ -936,40 +951,40 @@ backend_report_status_from_fallback_reason(SdlDesktopPresentationFallbackReason 
 [[nodiscard]] SdlDesktopPresentationDiagnostic make_diagnostic(SdlDesktopPresentationFallbackReason reason,
                                                                std::string message) {
     return SdlDesktopPresentationDiagnostic{
-        reason,
-        std::move(message),
+        .reason = reason,
+        .message = std::move(message),
     };
 }
 
 [[nodiscard]] SdlDesktopPresentationSceneGpuBindingDiagnostic
 make_scene_gpu_diagnostic(SdlDesktopPresentationSceneGpuBindingStatus status, std::string message) {
     return SdlDesktopPresentationSceneGpuBindingDiagnostic{
-        status,
-        std::move(message),
+        .status = status,
+        .message = std::move(message),
     };
 }
 
 [[nodiscard]] SdlDesktopPresentationPostprocessDiagnostic
 make_postprocess_diagnostic(SdlDesktopPresentationPostprocessStatus status, std::string message) {
     return SdlDesktopPresentationPostprocessDiagnostic{
-        status,
-        std::move(message),
+        .status = status,
+        .message = std::move(message),
     };
 }
 
 [[nodiscard]] SdlDesktopPresentationDirectionalShadowDiagnostic
 make_directional_shadow_diagnostic(SdlDesktopPresentationDirectionalShadowStatus status, std::string message) {
     return SdlDesktopPresentationDirectionalShadowDiagnostic{
-        status,
-        std::move(message),
+        .status = status,
+        .message = std::move(message),
     };
 }
 
 [[nodiscard]] SdlDesktopPresentationNativeUiOverlayDiagnostic
 make_native_ui_overlay_diagnostic(SdlDesktopPresentationNativeUiOverlayStatus status, std::string message) {
     return SdlDesktopPresentationNativeUiOverlayDiagnostic{
-        status,
-        std::move(message),
+        .status = status,
+        .message = std::move(message),
     };
 }
 
@@ -977,8 +992,8 @@ make_native_ui_overlay_diagnostic(SdlDesktopPresentationNativeUiOverlayStatus st
 make_native_ui_texture_overlay_diagnostic(SdlDesktopPresentationNativeUiTextureOverlayStatus status,
                                           std::string message) {
     return SdlDesktopPresentationNativeUiTextureOverlayDiagnostic{
-        status,
-        std::move(message),
+        .status = status,
+        .message = std::move(message),
     };
 }
 
@@ -1025,10 +1040,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
     }
 
     const auto compute_shader = device.create_shader(rhi::ShaderDesc{
-        rhi::ShaderStage::compute,
-        compute_shader_bytecode.entry_point,
-        compute_shader_bytecode.bytecode.size(),
-        compute_shader_bytecode.bytecode.data(),
+        .stage = rhi::ShaderStage::compute,
+        .entry_point = compute_shader_bytecode.entry_point,
+        .bytecode_size = compute_shader_bytecode.bytecode.size(),
+        .bytecode = compute_shader_bytecode.bytecode.data(),
     });
 
     result.bindings.reserve(requested_bindings.size());
@@ -1064,10 +1079,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
             return result;
         }
 
-        const auto compute_layout =
-            device.create_pipeline_layout(rhi::PipelineLayoutDesc{{compute_binding.descriptor_set_layout}, 0});
-        const auto compute_pipeline =
-            device.create_compute_pipeline(rhi::ComputePipelineDesc{compute_layout, compute_shader});
+        const auto compute_layout = device.create_pipeline_layout(rhi::PipelineLayoutDesc{
+            .descriptor_sets = {compute_binding.descriptor_set_layout}, .push_constant_bytes = 0});
+        const auto compute_pipeline = device.create_compute_pipeline(
+            rhi::ComputePipelineDesc{.layout = compute_layout, .compute_shader = compute_shader});
         auto commands = device.begin_command_list(rhi::QueueKind::compute);
         commands->bind_compute_pipeline(compute_pipeline);
         commands->bind_descriptor_set(compute_layout, 0, compute_binding.descriptor_set);
@@ -1087,9 +1102,9 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
             return result;
         }
         result.bindings.push_back(SceneComputeMorphMeshBinding{
-            requested.mesh,
-            requested.morph_mesh,
-            output_mesh_binding,
+            .mesh = requested.mesh,
+            .morph_mesh = requested.morph_mesh,
+            .mesh_binding = output_mesh_binding,
         });
     }
     return result;
@@ -1110,10 +1125,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
     }
 
     const auto compute_shader = device.create_shader(rhi::ShaderDesc{
-        rhi::ShaderStage::compute,
-        compute_shader_bytecode.entry_point,
-        compute_shader_bytecode.bytecode.size(),
-        compute_shader_bytecode.bytecode.data(),
+        .stage = rhi::ShaderStage::compute,
+        .entry_point = compute_shader_bytecode.entry_point,
+        .bytecode_size = compute_shader_bytecode.bytecode.size(),
+        .bytecode = compute_shader_bytecode.bytecode.data(),
     });
 
     for (const auto& binding : bindings) {
@@ -1122,10 +1137,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
             result.diagnostic = std::string{backend_name} + " scene compute morph skinned binding is incomplete";
             return result;
         }
-        const auto compute_layout =
-            device.create_pipeline_layout(rhi::PipelineLayoutDesc{{binding.compute_binding.descriptor_set_layout}, 0});
-        const auto compute_pipeline =
-            device.create_compute_pipeline(rhi::ComputePipelineDesc{compute_layout, compute_shader});
+        const auto compute_layout = device.create_pipeline_layout(rhi::PipelineLayoutDesc{
+            .descriptor_sets = {binding.compute_binding.descriptor_set_layout}, .push_constant_bytes = 0});
+        const auto compute_pipeline = device.create_compute_pipeline(
+            rhi::ComputePipelineDesc{.layout = compute_layout, .compute_shader = compute_shader});
         auto commands = device.begin_command_list(rhi::QueueKind::compute);
         commands->bind_compute_pipeline(compute_pipeline);
         commands->bind_descriptor_set(compute_layout, 0, binding.compute_binding.descriptor_set);
@@ -1183,10 +1198,10 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
 
     auto sampler = device.create_sampler(rhi::SamplerDesc{});
     return NativeUiOverlayAtlasBinding{
-        atlas_asset,
-        upload.texture,
-        sampler,
-        upload.owner_device,
+        .atlas_page = atlas_asset,
+        .texture = upload.texture,
+        .sampler = sampler,
+        .owner_device = upload.owner_device,
     };
 }
 
@@ -1198,7 +1213,8 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
     if (!enable_depth_input) {
         return {};
     }
-    return rhi::DepthStencilStateDesc{true, true, rhi::CompareOp::less_equal};
+    return rhi::DepthStencilStateDesc{
+        .depth_test_enabled = true, .depth_write_enabled = true, .depth_compare = rhi::CompareOp::less_equal};
 }
 
 [[nodiscard]] ShadowMapPlan make_scene_directional_shadow_plan(const SceneRenderPacket& packet,
@@ -1206,9 +1222,9 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
     const auto tile_dim =
         std::min<std::uint32_t>(512u, std::max(128u, std::min(window_extent.width, window_extent.height) / 2u));
     return build_scene_shadow_map_plan(packet, SceneShadowMapDesc{
-                                                   rhi::Extent2D{tile_dim, tile_dim},
-                                                   rhi::Format::depth24_stencil8,
-                                                   4,
+                                                   .extent = rhi::Extent2D{.width = tile_dim, .height = tile_dim},
+                                                   .depth_format = rhi::Format::depth24_stencil8,
+                                                   .directional_cascade_count = 4,
                                                });
 }
 
@@ -1253,9 +1269,9 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
     if (!probe.windows_sdk_available || !probe.dxgi_factory_created ||
         (!probe.hardware_device_supported && !probe.warp_device_supported)) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::native_backend_unavailable,
-            "D3D12 runtime support is unavailable in this build or host; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_backend_unavailable,
+            .diagnostic = "D3D12 runtime support is unavailable in this build or host; using NullRenderer fallback.",
         };
         if (native_sprite_overlay_requested) {
             mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::unavailable,
@@ -1270,14 +1286,14 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
 
     try {
         auto device = rhi::d3d12::create_rhi_device(rhi::d3d12::DeviceBootstrapDesc{
-            desc.prefer_warp,
-            desc.enable_debug_layer,
+            .prefer_warp = desc.prefer_warp,
+            .enable_debug_layer = desc.enable_debug_layer,
         });
         if (device == nullptr) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::native_backend_unavailable,
-                "D3D12 device creation is unavailable; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::native_backend_unavailable,
+                .diagnostic = "D3D12 device creation is unavailable; using NullRenderer fallback.",
             };
             if (native_sprite_overlay_requested) {
                 mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::unavailable,
@@ -1290,40 +1306,41 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
             return result;
         }
         const auto swapchain = device->create_swapchain(rhi::SwapchainDesc{
-            rhi::Extent2D{desc.extent.width, desc.extent.height},
-            rhi::Format::bgra8_unorm,
-            2,
-            desc.vsync,
-            surface,
+            .extent = rhi::Extent2D{.width = desc.extent.width, .height = desc.extent.height},
+            .format = rhi::Format::bgra8_unorm,
+            .buffer_count = 2,
+            .vsync = desc.vsync,
+            .surface = surface,
         });
-        const auto pipeline_layout = device->create_pipeline_layout(rhi::PipelineLayoutDesc{{}, 0});
+        const auto pipeline_layout =
+            device->create_pipeline_layout(rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
         const auto vertex_shader = device->create_shader(rhi::ShaderDesc{
-            rhi::ShaderStage::vertex,
-            desc.d3d12_renderer->vertex_shader.entry_point,
-            desc.d3d12_renderer->vertex_shader.bytecode.size(),
-            desc.d3d12_renderer->vertex_shader.bytecode.data(),
+            .stage = rhi::ShaderStage::vertex,
+            .entry_point = desc.d3d12_renderer->vertex_shader.entry_point,
+            .bytecode_size = desc.d3d12_renderer->vertex_shader.bytecode.size(),
+            .bytecode = desc.d3d12_renderer->vertex_shader.bytecode.data(),
         });
         const auto fragment_shader = device->create_shader(rhi::ShaderDesc{
-            rhi::ShaderStage::fragment,
-            desc.d3d12_renderer->fragment_shader.entry_point,
-            desc.d3d12_renderer->fragment_shader.bytecode.size(),
-            desc.d3d12_renderer->fragment_shader.bytecode.data(),
+            .stage = rhi::ShaderStage::fragment,
+            .entry_point = desc.d3d12_renderer->fragment_shader.entry_point,
+            .bytecode_size = desc.d3d12_renderer->fragment_shader.bytecode.size(),
+            .bytecode = desc.d3d12_renderer->fragment_shader.bytecode.data(),
         });
         rhi::ShaderHandle native_sprite_overlay_vertex_shader;
         rhi::ShaderHandle native_sprite_overlay_fragment_shader;
         NativeUiOverlayAtlasBinding native_sprite_overlay_atlas;
         if (native_sprite_overlay_requested) {
             native_sprite_overlay_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.d3d12_renderer->native_sprite_overlay_vertex_shader.entry_point,
-                desc.d3d12_renderer->native_sprite_overlay_vertex_shader.bytecode.size(),
-                desc.d3d12_renderer->native_sprite_overlay_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.d3d12_renderer->native_sprite_overlay_vertex_shader.entry_point,
+                .bytecode_size = desc.d3d12_renderer->native_sprite_overlay_vertex_shader.bytecode.size(),
+                .bytecode = desc.d3d12_renderer->native_sprite_overlay_vertex_shader.bytecode.data(),
             });
             native_sprite_overlay_fragment_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::fragment,
-                desc.d3d12_renderer->native_sprite_overlay_fragment_shader.entry_point,
-                desc.d3d12_renderer->native_sprite_overlay_fragment_shader.bytecode.size(),
-                desc.d3d12_renderer->native_sprite_overlay_fragment_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::fragment,
+                .entry_point = desc.d3d12_renderer->native_sprite_overlay_fragment_shader.entry_point,
+                .bytecode_size = desc.d3d12_renderer->native_sprite_overlay_fragment_shader.bytecode.size(),
+                .bytecode = desc.d3d12_renderer->native_sprite_overlay_fragment_shader.bytecode.data(),
             });
         }
         std::vector<SdlDesktopPresentationNativeUiTextureOverlayDiagnostic> texture_overlay_diagnostics;
@@ -1334,9 +1351,9 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
                                                      "D3D12 native 2D sprite overlay", texture_overlay_diagnostics);
             if (native_sprite_overlay_atlas.texture.value == 0 || native_sprite_overlay_atlas.sampler.value == 0) {
                 NativeRendererCreateResult result{
-                    false,
-                    SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                    "D3D12 native 2D sprite overlay atlas upload failed; using NullRenderer fallback.",
+                    .succeeded = false,
+                    .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                    .diagnostic = "D3D12 native 2D sprite overlay atlas upload failed; using NullRenderer fallback.",
                 };
                 mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::failed,
                                               result.diagnostic);
@@ -1348,14 +1365,14 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
             }
         }
         const auto pipeline = device->create_graphics_pipeline(rhi::GraphicsPipelineDesc{
-            pipeline_layout,
-            vertex_shader,
-            fragment_shader,
-            rhi::Format::bgra8_unorm,
-            rhi::Format::unknown,
-            desc.d3d12_renderer->topology,
-            desc.d3d12_renderer->vertex_buffers,
-            desc.d3d12_renderer->vertex_attributes,
+            .layout = pipeline_layout,
+            .vertex_shader = vertex_shader,
+            .fragment_shader = fragment_shader,
+            .color_format = rhi::Format::bgra8_unorm,
+            .depth_format = rhi::Format::unknown,
+            .topology = desc.d3d12_renderer->topology,
+            .vertex_buffers = desc.d3d12_renderer->vertex_buffers,
+            .vertex_attributes = desc.d3d12_renderer->vertex_attributes,
         });
         auto renderer = std::make_unique<RhiFrameRenderer>(RhiFrameRendererDesc{
             .device = device.get(),
@@ -1372,7 +1389,11 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
         });
 
         NativeRendererCreateResult result{
-            true, SdlDesktopPresentationFallbackReason::none, {}, std::move(device), std::move(renderer),
+            .succeeded = true,
+            .failure_reason = SdlDesktopPresentationFallbackReason::none,
+            .diagnostic = {},
+            .device = std::move(device),
+            .renderer = std::move(renderer),
         };
         if (native_sprite_overlay_requested) {
             result.native_ui_overlay_requested = true;
@@ -1387,9 +1408,9 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
         return result;
     } catch (const std::exception&) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            "D3D12 renderer creation failed; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = "D3D12 renderer creation failed; using NullRenderer fallback.",
         };
         if (native_sprite_overlay_requested) {
             mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::failed,
@@ -1445,9 +1466,9 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
     if (!probe.windows_sdk_available || !probe.dxgi_factory_created ||
         (!probe.hardware_device_supported && !probe.warp_device_supported)) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::native_backend_unavailable,
-            "D3D12 runtime support is unavailable in this build or host; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_backend_unavailable,
+            .diagnostic = "D3D12 runtime support is unavailable in this build or host; using NullRenderer fallback.",
         };
         result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::unavailable;
         result.scene_gpu_diagnostics.push_back(make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
@@ -1468,14 +1489,14 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
 
     try {
         auto device = rhi::d3d12::create_rhi_device(rhi::d3d12::DeviceBootstrapDesc{
-            desc.prefer_warp,
-            desc.enable_debug_layer,
+            .prefer_warp = desc.prefer_warp,
+            .enable_debug_layer = desc.enable_debug_layer,
         });
         if (device == nullptr) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::native_backend_unavailable,
-                "D3D12 device creation is unavailable; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::native_backend_unavailable,
+                .diagnostic = "D3D12 device creation is unavailable; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::unavailable;
             result.scene_gpu_diagnostics.push_back(
@@ -1522,7 +1543,8 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
                                     desc.d3d12_scene_renderer->compute_morph_skinned_mesh_bindings);
         for (const auto& binding : desc.d3d12_scene_renderer->compute_morph_skinned_mesh_bindings) {
             gpu_binding_options.compute_morph_skinned_mesh_bindings.push_back(
-                runtime_scene_rhi::RuntimeSceneComputeMorphSkinnedMeshBinding{binding.mesh, binding.morph_mesh});
+                runtime_scene_rhi::RuntimeSceneComputeMorphSkinnedMeshBinding{.mesh = binding.mesh,
+                                                                              .morph_mesh = binding.morph_mesh});
         }
         if (scene_compute_morph_mesh_requested) {
             gpu_binding_options.mesh_upload.vertex_usage =
@@ -1545,17 +1567,17 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
 
         auto gpu_upload =
             runtime_scene_rhi::execute_runtime_scene_gpu_upload(runtime_scene_rhi::RuntimeSceneGpuUploadExecutionDesc{
-                device.get(),
-                desc.d3d12_scene_renderer->package,
-                desc.d3d12_scene_renderer->packet,
-                gpu_binding_options,
+                .device = device.get(),
+                .package = desc.d3d12_scene_renderer->package,
+                .packet = desc.d3d12_scene_renderer->packet,
+                .binding_options = gpu_binding_options,
             });
         auto& gpu_bindings = gpu_upload.bindings;
         if (!gpu_bindings.succeeded()) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "D3D12 scene GPU binding creation failed; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "D3D12 scene GPU binding creation failed; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -1581,10 +1603,11 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
         }
         if (gpu_bindings.material_pipeline_layouts.empty()) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "D3D12 scene GPU binding creation did not produce a material pipeline layout; using NullRenderer "
-                "fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic =
+                    "D3D12 scene GPU binding creation did not produce a material pipeline layout; using NullRenderer "
+                    "fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -1609,9 +1632,9 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
             desc.d3d12_scene_renderer->enable_compute_morph_tangent_frame_output, "D3D12");
         if (!compute_morph_bindings.succeeded()) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                compute_morph_bindings.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = compute_morph_bindings.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -1631,9 +1654,9 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
             desc.d3d12_scene_renderer->compute_morph_skinned_shader, "D3D12");
         if (!compute_morph_skinned_dispatch.succeeded()) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                compute_morph_skinned_dispatch.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = compute_morph_skinned_dispatch.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -1649,32 +1672,32 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
             return result;
         }
         const auto swapchain = device->create_swapchain(rhi::SwapchainDesc{
-            rhi::Extent2D{desc.extent.width, desc.extent.height},
-            rhi::Format::bgra8_unorm,
-            2,
-            desc.vsync,
-            surface,
+            .extent = rhi::Extent2D{.width = desc.extent.width, .height = desc.extent.height},
+            .format = rhi::Format::bgra8_unorm,
+            .buffer_count = 2,
+            .vsync = desc.vsync,
+            .surface = surface,
         });
         const auto vertex_shader = device->create_shader(rhi::ShaderDesc{
-            rhi::ShaderStage::vertex,
-            desc.d3d12_scene_renderer->vertex_shader.entry_point,
-            desc.d3d12_scene_renderer->vertex_shader.bytecode.size(),
-            desc.d3d12_scene_renderer->vertex_shader.bytecode.data(),
+            .stage = rhi::ShaderStage::vertex,
+            .entry_point = desc.d3d12_scene_renderer->vertex_shader.entry_point,
+            .bytecode_size = desc.d3d12_scene_renderer->vertex_shader.bytecode.size(),
+            .bytecode = desc.d3d12_scene_renderer->vertex_shader.bytecode.data(),
         });
         rhi::ShaderHandle compute_morph_scene_vertex_shader{};
         if (scene_compute_morph_mesh_requested) {
             compute_morph_scene_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.d3d12_scene_renderer->compute_morph_vertex_shader.entry_point,
-                desc.d3d12_scene_renderer->compute_morph_vertex_shader.bytecode.size(),
-                desc.d3d12_scene_renderer->compute_morph_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.d3d12_scene_renderer->compute_morph_vertex_shader.entry_point,
+                .bytecode_size = desc.d3d12_scene_renderer->compute_morph_vertex_shader.bytecode.size(),
+                .bytecode = desc.d3d12_scene_renderer->compute_morph_vertex_shader.bytecode.data(),
             });
         }
         const auto fragment_shader = device->create_shader(rhi::ShaderDesc{
-            rhi::ShaderStage::fragment,
-            desc.d3d12_scene_renderer->fragment_shader.entry_point,
-            desc.d3d12_scene_renderer->fragment_shader.bytecode.size(),
-            desc.d3d12_scene_renderer->fragment_shader.bytecode.data(),
+            .stage = rhi::ShaderStage::fragment,
+            .entry_point = desc.d3d12_scene_renderer->fragment_shader.entry_point,
+            .bytecode_size = desc.d3d12_scene_renderer->fragment_shader.bytecode.size(),
+            .bytecode = desc.d3d12_scene_renderer->fragment_shader.bytecode.data(),
         });
         const bool scene_gpu_skinning_requested = has_shader_bytecode(desc.d3d12_scene_renderer->skinned_vertex_shader);
         const bool scene_gpu_morph_requested = has_shader_bytecode(desc.d3d12_scene_renderer->morph_vertex_shader) &&
@@ -1683,20 +1706,20 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
         rhi::GraphicsPipelineHandle skinned_scene_graphics_pipeline{};
         if (scene_gpu_skinning_requested) {
             skinned_scene_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.d3d12_scene_renderer->skinned_vertex_shader.entry_point,
-                desc.d3d12_scene_renderer->skinned_vertex_shader.bytecode.size(),
-                desc.d3d12_scene_renderer->skinned_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.d3d12_scene_renderer->skinned_vertex_shader.entry_point,
+                .bytecode_size = desc.d3d12_scene_renderer->skinned_vertex_shader.bytecode.size(),
+                .bytecode = desc.d3d12_scene_renderer->skinned_vertex_shader.bytecode.data(),
             });
         }
         rhi::ShaderHandle morph_scene_vertex_shader{};
         rhi::GraphicsPipelineHandle morph_scene_graphics_pipeline{};
         if (scene_gpu_morph_requested) {
             morph_scene_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.d3d12_scene_renderer->morph_vertex_shader.entry_point,
-                desc.d3d12_scene_renderer->morph_vertex_shader.bytecode.size(),
-                desc.d3d12_scene_renderer->morph_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.d3d12_scene_renderer->morph_vertex_shader.entry_point,
+                .bytecode_size = desc.d3d12_scene_renderer->morph_vertex_shader.bytecode.size(),
+                .bytecode = desc.d3d12_scene_renderer->morph_vertex_shader.bytecode.data(),
             });
         }
         rhi::ShaderHandle shifted_scene_fragment_shader_handle = fragment_shader;
@@ -1705,10 +1728,10 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
             has_shader_bytecode(desc.d3d12_scene_renderer->skinned_scene_fragment_shader);
         if (shifted_shadow_receiver_fragment_requested) {
             shifted_scene_fragment_shader_handle = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::fragment,
-                desc.d3d12_scene_renderer->skinned_scene_fragment_shader.entry_point,
-                desc.d3d12_scene_renderer->skinned_scene_fragment_shader.bytecode.size(),
-                desc.d3d12_scene_renderer->skinned_scene_fragment_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::fragment,
+                .entry_point = desc.d3d12_scene_renderer->skinned_scene_fragment_shader.entry_point,
+                .bytecode_size = desc.d3d12_scene_renderer->skinned_scene_fragment_shader.bytecode.size(),
+                .bytecode = desc.d3d12_scene_renderer->skinned_scene_fragment_shader.bytecode.data(),
             });
         }
         const auto scene_fragment_shader_handle =
@@ -1725,18 +1748,19 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
         rhi::GraphicsPipelineHandle shadow_pipeline;
         if (directional_shadow_requested) {
             const auto shadow_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.d3d12_scene_renderer->shadow_vertex_shader.entry_point,
-                desc.d3d12_scene_renderer->shadow_vertex_shader.bytecode.size(),
-                desc.d3d12_scene_renderer->shadow_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.d3d12_scene_renderer->shadow_vertex_shader.entry_point,
+                .bytecode_size = desc.d3d12_scene_renderer->shadow_vertex_shader.bytecode.size(),
+                .bytecode = desc.d3d12_scene_renderer->shadow_vertex_shader.bytecode.data(),
             });
             const auto shadow_fragment_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::fragment,
-                desc.d3d12_scene_renderer->shadow_fragment_shader.entry_point,
-                desc.d3d12_scene_renderer->shadow_fragment_shader.bytecode.size(),
-                desc.d3d12_scene_renderer->shadow_fragment_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::fragment,
+                .entry_point = desc.d3d12_scene_renderer->shadow_fragment_shader.entry_point,
+                .bytecode_size = desc.d3d12_scene_renderer->shadow_fragment_shader.bytecode.size(),
+                .bytecode = desc.d3d12_scene_renderer->shadow_fragment_shader.bytecode.data(),
             });
-            const auto shadow_pipeline_layout = device->create_pipeline_layout(rhi::PipelineLayoutDesc{{}, 0});
+            const auto shadow_pipeline_layout = device->create_pipeline_layout(
+                rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
             shadow_pipeline = create_scene_graphics_pipeline(
                 "D3D12 shadow pipeline",
                 rhi::GraphicsPipelineDesc{
@@ -1748,7 +1772,9 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
                     .topology = desc.d3d12_scene_renderer->topology,
                     .vertex_buffers = shadow_stage_vertex_buffers,
                     .vertex_attributes = shadow_stage_vertex_attributes,
-                    .depth_state = rhi::DepthStencilStateDesc{true, true, rhi::CompareOp::less_equal},
+                    .depth_state = rhi::DepthStencilStateDesc{.depth_test_enabled = true,
+                                                              .depth_write_enabled = true,
+                                                              .depth_compare = rhi::CompareOp::less_equal},
                 });
         }
         const bool postprocess_depth_input_requested = desc.d3d12_scene_renderer->enable_postprocess_depth_input;
@@ -1816,31 +1842,31 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
         result.native_ui_texture_overlay_requested = native_ui_texture_overlay_requested;
         if (desc.d3d12_scene_renderer->enable_postprocess) {
             const auto postprocess_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.d3d12_scene_renderer->postprocess_vertex_shader.entry_point,
-                desc.d3d12_scene_renderer->postprocess_vertex_shader.bytecode.size(),
-                desc.d3d12_scene_renderer->postprocess_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.d3d12_scene_renderer->postprocess_vertex_shader.entry_point,
+                .bytecode_size = desc.d3d12_scene_renderer->postprocess_vertex_shader.bytecode.size(),
+                .bytecode = desc.d3d12_scene_renderer->postprocess_vertex_shader.bytecode.data(),
             });
             const auto postprocess_fragment_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::fragment,
-                desc.d3d12_scene_renderer->postprocess_fragment_shader.entry_point,
-                desc.d3d12_scene_renderer->postprocess_fragment_shader.bytecode.size(),
-                desc.d3d12_scene_renderer->postprocess_fragment_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::fragment,
+                .entry_point = desc.d3d12_scene_renderer->postprocess_fragment_shader.entry_point,
+                .bytecode_size = desc.d3d12_scene_renderer->postprocess_fragment_shader.bytecode.size(),
+                .bytecode = desc.d3d12_scene_renderer->postprocess_fragment_shader.bytecode.data(),
             });
             rhi::ShaderHandle native_ui_overlay_vertex_shader;
             rhi::ShaderHandle native_ui_overlay_fragment_shader;
             if (native_ui_overlay_requested) {
                 native_ui_overlay_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                    rhi::ShaderStage::vertex,
-                    desc.d3d12_scene_renderer->native_ui_overlay_vertex_shader.entry_point,
-                    desc.d3d12_scene_renderer->native_ui_overlay_vertex_shader.bytecode.size(),
-                    desc.d3d12_scene_renderer->native_ui_overlay_vertex_shader.bytecode.data(),
+                    .stage = rhi::ShaderStage::vertex,
+                    .entry_point = desc.d3d12_scene_renderer->native_ui_overlay_vertex_shader.entry_point,
+                    .bytecode_size = desc.d3d12_scene_renderer->native_ui_overlay_vertex_shader.bytecode.size(),
+                    .bytecode = desc.d3d12_scene_renderer->native_ui_overlay_vertex_shader.bytecode.data(),
                 });
                 native_ui_overlay_fragment_shader = device->create_shader(rhi::ShaderDesc{
-                    rhi::ShaderStage::fragment,
-                    desc.d3d12_scene_renderer->native_ui_overlay_fragment_shader.entry_point,
-                    desc.d3d12_scene_renderer->native_ui_overlay_fragment_shader.bytecode.size(),
-                    desc.d3d12_scene_renderer->native_ui_overlay_fragment_shader.bytecode.data(),
+                    .stage = rhi::ShaderStage::fragment,
+                    .entry_point = desc.d3d12_scene_renderer->native_ui_overlay_fragment_shader.entry_point,
+                    .bytecode_size = desc.d3d12_scene_renderer->native_ui_overlay_fragment_shader.bytecode.size(),
+                    .bytecode = desc.d3d12_scene_renderer->native_ui_overlay_fragment_shader.bytecode.data(),
                 });
             }
             NativeUiOverlayAtlasBinding native_ui_overlay_atlas;
@@ -1907,8 +1933,8 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
                         .native_ui_overlay_atlas = native_ui_overlay_atlas,
                         .enable_native_ui_overlay = native_ui_overlay_requested,
                         .enable_native_ui_overlay_textures = native_ui_texture_overlay_requested,
-                        .shadow_depth_atlas_extent = Extent2D{shadow_map_plan.depth_texture.extent.width,
-                                                              shadow_map_plan.depth_texture.extent.height},
+                        .shadow_depth_atlas_extent = Extent2D{.width = shadow_map_plan.depth_texture.extent.width,
+                                                              .height = shadow_map_plan.depth_texture.extent.height},
                         .directional_shadow_cascade_count = shadow_map_plan.directional_cascade_count,
                         .shadow_receiver_constants_initial = shadow_cb,
                         .shadow_receiver_descriptor_set_index = shadow_receiver_descriptor_set_index,
@@ -1991,9 +2017,10 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
         return result;
     } catch (const std::exception& exception) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            "D3D12 scene renderer creation failed: " + std::string(exception.what()) + "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = "D3D12 scene renderer creation failed: " + std::string(exception.what()) +
+                          "; using NullRenderer fallback.",
         };
         result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
         result.scene_gpu_diagnostics.push_back(make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
@@ -2060,7 +2087,7 @@ make_vulkan_presentation_swapchain_mapping_plan(rhi::vulkan::VulkanRuntimeDevice
     }
 
     plan.supported = true;
-    plan.extent = rhi::Extent2D{extent.width, extent.height};
+    plan.extent = rhi::Extent2D{.width = extent.width, .height = extent.height};
     plan.format = format;
     plan.image_count = 2;
     plan.image_view_count = 2;
@@ -2074,11 +2101,11 @@ make_vulkan_presentation_swapchain_mapping_plan(rhi::vulkan::VulkanRuntimeDevice
 make_vulkan_presentation_dynamic_rendering_plan(rhi::vulkan::VulkanRuntimeDevice& device, Extent2D extent,
                                                 rhi::Format color_format) {
     rhi::vulkan::VulkanDynamicRenderingDesc rendering_desc;
-    rendering_desc.extent = rhi::Extent2D{extent.width, extent.height};
+    rendering_desc.extent = rhi::Extent2D{.width = extent.width, .height = extent.height};
     rendering_desc.color_attachments.push_back(rhi::vulkan::VulkanDynamicRenderingColorAttachmentDesc{
-        color_format,
-        rhi::LoadAction::clear,
-        rhi::StoreAction::store,
+        .format = color_format,
+        .load_action = rhi::LoadAction::clear,
+        .store_action = rhi::StoreAction::store,
     });
     return rhi::vulkan::build_dynamic_rendering_plan(rendering_desc, device.command_plan());
 }
@@ -2104,10 +2131,10 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 
     rhi::vulkan::VulkanRuntimeDescriptorSetLayoutDesc layout_desc;
     layout_desc.layout.bindings.push_back(rhi::DescriptorBindingDesc{
-        0,
-        rhi::DescriptorType::uniform_buffer,
-        1,
-        rhi::ShaderStageVisibility::vertex,
+        .binding = 0,
+        .type = rhi::DescriptorType::uniform_buffer,
+        .count = 1,
+        .stages = rhi::ShaderStageVisibility::vertex,
     });
     auto layout_result = rhi::vulkan::create_runtime_descriptor_set_layout(device, layout_desc);
     if (!layout_result.created) {
@@ -2137,11 +2164,11 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 [[nodiscard]] bool probe_vulkan_runtime_depth_mapping_ready(rhi::vulkan::VulkanRuntimeDevice& device,
                                                             rhi::Format color_format) {
     rhi::vulkan::VulkanDynamicRenderingDesc rendering_desc;
-    rendering_desc.extent = rhi::Extent2D{1, 1};
+    rendering_desc.extent = rhi::Extent2D{.width = 1, .height = 1};
     rendering_desc.color_attachments.push_back(rhi::vulkan::VulkanDynamicRenderingColorAttachmentDesc{
-        color_format,
-        rhi::LoadAction::clear,
-        rhi::StoreAction::store,
+        .format = color_format,
+        .load_action = rhi::LoadAction::clear,
+        .store_action = rhi::StoreAction::store,
     });
     rendering_desc.has_depth_attachment = true;
     rendering_desc.depth_format = rhi::Format::depth24_stencil8;
@@ -2192,46 +2219,46 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         desc.vulkan_renderer != nullptr && desc.vulkan_renderer->enable_native_sprite_overlay_textures;
     const auto vertex_validation =
         rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-            rhi::ShaderStage::vertex,
-            desc.vulkan_renderer->vertex_shader.bytecode.data(),
-            desc.vulkan_renderer->vertex_shader.bytecode.size(),
+            .stage = rhi::ShaderStage::vertex,
+            .bytecode = desc.vulkan_renderer->vertex_shader.bytecode.data(),
+            .bytecode_size = desc.vulkan_renderer->vertex_shader.bytecode.size(),
         });
     if (!vertex_validation.valid) {
         return NativeRendererCreateResult{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            "Vulkan vertex SPIR-V validation failed: " + vertex_validation.diagnostic +
-                "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = "Vulkan vertex SPIR-V validation failed: " + vertex_validation.diagnostic +
+                          "; using NullRenderer fallback.",
         };
     }
 
     const auto fragment_validation =
         rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-            rhi::ShaderStage::fragment,
-            desc.vulkan_renderer->fragment_shader.bytecode.data(),
-            desc.vulkan_renderer->fragment_shader.bytecode.size(),
+            .stage = rhi::ShaderStage::fragment,
+            .bytecode = desc.vulkan_renderer->fragment_shader.bytecode.data(),
+            .bytecode_size = desc.vulkan_renderer->fragment_shader.bytecode.size(),
         });
     if (!fragment_validation.valid) {
         return NativeRendererCreateResult{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            "Vulkan fragment SPIR-V validation failed: " + fragment_validation.diagnostic +
-                "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = "Vulkan fragment SPIR-V validation failed: " + fragment_validation.diagnostic +
+                          "; using NullRenderer fallback.",
         };
     }
     if (native_sprite_overlay_requested) {
         const auto native_sprite_vertex_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_renderer->native_sprite_overlay_vertex_shader.bytecode.data(),
-                desc.vulkan_renderer->native_sprite_overlay_vertex_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::vertex,
+                .bytecode = desc.vulkan_renderer->native_sprite_overlay_vertex_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_renderer->native_sprite_overlay_vertex_shader.bytecode.size(),
             });
         if (!native_sprite_vertex_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan native 2D sprite overlay vertex SPIR-V validation failed: " +
-                    native_sprite_vertex_validation.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan native 2D sprite overlay vertex SPIR-V validation failed: " +
+                              native_sprite_vertex_validation.diagnostic + "; using NullRenderer fallback.",
             };
             mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::failed,
                                           result.diagnostic);
@@ -2244,16 +2271,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 
         const auto native_sprite_fragment_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::fragment,
-                desc.vulkan_renderer->native_sprite_overlay_fragment_shader.bytecode.data(),
-                desc.vulkan_renderer->native_sprite_overlay_fragment_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::fragment,
+                .bytecode = desc.vulkan_renderer->native_sprite_overlay_fragment_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_renderer->native_sprite_overlay_fragment_shader.bytecode.size(),
             });
         if (!native_sprite_fragment_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan native 2D sprite overlay fragment SPIR-V validation failed: " +
-                    native_sprite_fragment_validation.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan native 2D sprite overlay fragment SPIR-V validation failed: " +
+                              native_sprite_fragment_validation.diagnostic + "; using NullRenderer fallback.",
             };
             mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::failed,
                                           result.diagnostic);
@@ -2268,9 +2295,10 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     auto runtime_device = rhi::vulkan::create_runtime_device({}, {}, {}, surface);
     if (!runtime_device.created) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::native_backend_unavailable,
-            "Vulkan runtime device creation failed: " + runtime_device.diagnostic + "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_backend_unavailable,
+            .diagnostic = "Vulkan runtime device creation failed: " + runtime_device.diagnostic +
+                          "; using NullRenderer fallback.",
         };
         if (native_sprite_overlay_requested) {
             mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::unavailable,
@@ -2288,9 +2316,10 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
                                                desc.extent, rhi::Format::bgra8_unorm, desc.vsync);
     if (!mapping_plan.supported) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            "Vulkan IRhiDevice mapping is unavailable: " + mapping_plan.diagnostic + "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = "Vulkan IRhiDevice mapping is unavailable: " + mapping_plan.diagnostic +
+                          "; using NullRenderer fallback.",
         };
         if (native_sprite_overlay_requested) {
             mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::unavailable,
@@ -2307,9 +2336,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         auto device = rhi::vulkan::create_rhi_device(std::move(runtime_device.device), mapping_plan);
         if (device == nullptr) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::native_backend_unavailable,
-                "Vulkan device creation is unavailable; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::native_backend_unavailable,
+                .diagnostic = "Vulkan device creation is unavailable; using NullRenderer fallback.",
             };
             if (native_sprite_overlay_requested) {
                 mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::unavailable,
@@ -2322,40 +2351,41 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
             return result;
         }
         const auto swapchain = device->create_swapchain(rhi::SwapchainDesc{
-            rhi::Extent2D{desc.extent.width, desc.extent.height},
-            rhi::Format::bgra8_unorm,
-            2,
-            desc.vsync,
-            surface,
+            .extent = rhi::Extent2D{.width = desc.extent.width, .height = desc.extent.height},
+            .format = rhi::Format::bgra8_unorm,
+            .buffer_count = 2,
+            .vsync = desc.vsync,
+            .surface = surface,
         });
-        const auto pipeline_layout = device->create_pipeline_layout(rhi::PipelineLayoutDesc{{}, 0});
+        const auto pipeline_layout =
+            device->create_pipeline_layout(rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
         const auto vertex_shader = device->create_shader(rhi::ShaderDesc{
-            rhi::ShaderStage::vertex,
-            desc.vulkan_renderer->vertex_shader.entry_point,
-            desc.vulkan_renderer->vertex_shader.bytecode.size(),
-            desc.vulkan_renderer->vertex_shader.bytecode.data(),
+            .stage = rhi::ShaderStage::vertex,
+            .entry_point = desc.vulkan_renderer->vertex_shader.entry_point,
+            .bytecode_size = desc.vulkan_renderer->vertex_shader.bytecode.size(),
+            .bytecode = desc.vulkan_renderer->vertex_shader.bytecode.data(),
         });
         const auto fragment_shader = device->create_shader(rhi::ShaderDesc{
-            rhi::ShaderStage::fragment,
-            desc.vulkan_renderer->fragment_shader.entry_point,
-            desc.vulkan_renderer->fragment_shader.bytecode.size(),
-            desc.vulkan_renderer->fragment_shader.bytecode.data(),
+            .stage = rhi::ShaderStage::fragment,
+            .entry_point = desc.vulkan_renderer->fragment_shader.entry_point,
+            .bytecode_size = desc.vulkan_renderer->fragment_shader.bytecode.size(),
+            .bytecode = desc.vulkan_renderer->fragment_shader.bytecode.data(),
         });
         rhi::ShaderHandle native_sprite_overlay_vertex_shader;
         rhi::ShaderHandle native_sprite_overlay_fragment_shader;
         NativeUiOverlayAtlasBinding native_sprite_overlay_atlas;
         if (native_sprite_overlay_requested) {
             native_sprite_overlay_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_renderer->native_sprite_overlay_vertex_shader.entry_point,
-                desc.vulkan_renderer->native_sprite_overlay_vertex_shader.bytecode.size(),
-                desc.vulkan_renderer->native_sprite_overlay_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.vulkan_renderer->native_sprite_overlay_vertex_shader.entry_point,
+                .bytecode_size = desc.vulkan_renderer->native_sprite_overlay_vertex_shader.bytecode.size(),
+                .bytecode = desc.vulkan_renderer->native_sprite_overlay_vertex_shader.bytecode.data(),
             });
             native_sprite_overlay_fragment_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::fragment,
-                desc.vulkan_renderer->native_sprite_overlay_fragment_shader.entry_point,
-                desc.vulkan_renderer->native_sprite_overlay_fragment_shader.bytecode.size(),
-                desc.vulkan_renderer->native_sprite_overlay_fragment_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::fragment,
+                .entry_point = desc.vulkan_renderer->native_sprite_overlay_fragment_shader.entry_point,
+                .bytecode_size = desc.vulkan_renderer->native_sprite_overlay_fragment_shader.bytecode.size(),
+                .bytecode = desc.vulkan_renderer->native_sprite_overlay_fragment_shader.bytecode.data(),
             });
         }
         std::vector<SdlDesktopPresentationNativeUiTextureOverlayDiagnostic> texture_overlay_diagnostics;
@@ -2366,9 +2396,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
                                                      "Vulkan native 2D sprite overlay", texture_overlay_diagnostics);
             if (native_sprite_overlay_atlas.texture.value == 0 || native_sprite_overlay_atlas.sampler.value == 0) {
                 NativeRendererCreateResult result{
-                    false,
-                    SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                    "Vulkan native 2D sprite overlay atlas upload failed; using NullRenderer fallback.",
+                    .succeeded = false,
+                    .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                    .diagnostic = "Vulkan native 2D sprite overlay atlas upload failed; using NullRenderer fallback.",
                 };
                 mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::failed,
                                               result.diagnostic);
@@ -2380,14 +2410,14 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
             }
         }
         const auto pipeline = device->create_graphics_pipeline(rhi::GraphicsPipelineDesc{
-            pipeline_layout,
-            vertex_shader,
-            fragment_shader,
-            rhi::Format::bgra8_unorm,
-            rhi::Format::unknown,
-            desc.vulkan_renderer->topology,
-            desc.vulkan_renderer->vertex_buffers,
-            desc.vulkan_renderer->vertex_attributes,
+            .layout = pipeline_layout,
+            .vertex_shader = vertex_shader,
+            .fragment_shader = fragment_shader,
+            .color_format = rhi::Format::bgra8_unorm,
+            .depth_format = rhi::Format::unknown,
+            .topology = desc.vulkan_renderer->topology,
+            .vertex_buffers = desc.vulkan_renderer->vertex_buffers,
+            .vertex_attributes = desc.vulkan_renderer->vertex_attributes,
         });
         auto renderer = std::make_unique<RhiFrameRenderer>(RhiFrameRendererDesc{
             .device = device.get(),
@@ -2404,7 +2434,11 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         });
 
         NativeRendererCreateResult result{
-            true, SdlDesktopPresentationFallbackReason::none, {}, std::move(device), std::move(renderer),
+            .succeeded = true,
+            .failure_reason = SdlDesktopPresentationFallbackReason::none,
+            .diagnostic = {},
+            .device = std::move(device),
+            .renderer = std::move(renderer),
         };
         if (native_sprite_overlay_requested) {
             result.native_ui_overlay_requested = true;
@@ -2419,9 +2453,10 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         return result;
     } catch (const std::exception& error) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            std::string{"Vulkan renderer creation failed: "} + error.what() + "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic =
+                std::string{"Vulkan renderer creation failed: "} + error.what() + "; using NullRenderer fallback.",
         };
         if (native_sprite_overlay_requested) {
             mark_native_ui_overlay_result(result, SdlDesktopPresentationNativeUiOverlayStatus::failed,
@@ -2479,16 +2514,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     }
     const auto vertex_validation =
         rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-            rhi::ShaderStage::vertex,
-            desc.vulkan_scene_renderer->vertex_shader.bytecode.data(),
-            desc.vulkan_scene_renderer->vertex_shader.bytecode.size(),
+            .stage = rhi::ShaderStage::vertex,
+            .bytecode = desc.vulkan_scene_renderer->vertex_shader.bytecode.data(),
+            .bytecode_size = desc.vulkan_scene_renderer->vertex_shader.bytecode.size(),
         });
     if (!vertex_validation.valid) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            "Vulkan scene vertex SPIR-V validation failed: " + vertex_validation.diagnostic +
-                "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = "Vulkan scene vertex SPIR-V validation failed: " + vertex_validation.diagnostic +
+                          "; using NullRenderer fallback.",
         };
         result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
         result.scene_gpu_diagnostics.push_back(make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
@@ -2505,16 +2540,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 
     const auto fragment_validation =
         rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-            rhi::ShaderStage::fragment,
-            desc.vulkan_scene_renderer->fragment_shader.bytecode.data(),
-            desc.vulkan_scene_renderer->fragment_shader.bytecode.size(),
+            .stage = rhi::ShaderStage::fragment,
+            .bytecode = desc.vulkan_scene_renderer->fragment_shader.bytecode.data(),
+            .bytecode_size = desc.vulkan_scene_renderer->fragment_shader.bytecode.size(),
         });
     if (!fragment_validation.valid) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            "Vulkan scene fragment SPIR-V validation failed: " + fragment_validation.diagnostic +
-                "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = "Vulkan scene fragment SPIR-V validation failed: " + fragment_validation.diagnostic +
+                          "; using NullRenderer fallback.",
         };
         result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
         result.scene_gpu_diagnostics.push_back(make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
@@ -2532,16 +2567,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     if (!desc.vulkan_scene_renderer->morph_mesh_bindings.empty()) {
         const auto morph_vertex_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->morph_vertex_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->morph_vertex_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::vertex,
+                .bytecode = desc.vulkan_scene_renderer->morph_vertex_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->morph_vertex_shader.bytecode.size(),
             });
         if (!morph_vertex_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan scene morph vertex SPIR-V validation failed: " + morph_vertex_validation.diagnostic +
-                    "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan scene morph vertex SPIR-V validation failed: " +
+                              morph_vertex_validation.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2558,19 +2593,19 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     if (has_shader_bytecode(desc.vulkan_scene_renderer->compute_morph_shader)) {
         compute_morph_shader_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::compute,
-                desc.vulkan_scene_renderer->compute_morph_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->compute_morph_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::compute,
+                .bytecode = desc.vulkan_scene_renderer->compute_morph_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->compute_morph_shader.bytecode.size(),
             });
         if (!compute_morph_shader_validation.valid) {
             const char* diagnostic_prefix = desc.vulkan_scene_renderer->compute_morph_mesh_bindings.empty()
                                                 ? "Vulkan scene compute mapping SPIR-V validation failed: "
                                                 : "Vulkan scene compute morph compute SPIR-V validation failed: ";
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                std::string{diagnostic_prefix} + compute_morph_shader_validation.diagnostic +
-                    "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = std::string{diagnostic_prefix} + compute_morph_shader_validation.diagnostic +
+                              "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2589,16 +2624,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     if (!desc.vulkan_scene_renderer->compute_morph_mesh_bindings.empty()) {
         const auto compute_morph_vertex_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->compute_morph_vertex_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->compute_morph_vertex_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::vertex,
+                .bytecode = desc.vulkan_scene_renderer->compute_morph_vertex_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->compute_morph_vertex_shader.bytecode.size(),
             });
         if (!compute_morph_vertex_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan scene compute morph vertex SPIR-V validation failed: " +
-                    compute_morph_vertex_validation.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan scene compute morph vertex SPIR-V validation failed: " +
+                              compute_morph_vertex_validation.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2614,16 +2649,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     if (!desc.vulkan_scene_renderer->compute_morph_skinned_mesh_bindings.empty()) {
         compute_morph_skinned_shader_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::compute,
-                desc.vulkan_scene_renderer->compute_morph_skinned_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->compute_morph_skinned_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::compute,
+                .bytecode = desc.vulkan_scene_renderer->compute_morph_skinned_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->compute_morph_skinned_shader.bytecode.size(),
             });
         if (!compute_morph_skinned_shader_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan scene compute morph skinned compute SPIR-V validation failed: " +
-                    compute_morph_skinned_shader_validation.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan scene compute morph skinned compute SPIR-V validation failed: " +
+                              compute_morph_skinned_shader_validation.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2641,16 +2676,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     if (desc.vulkan_scene_renderer->enable_postprocess) {
         postprocess_vertex_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->postprocess_vertex_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->postprocess_vertex_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::vertex,
+                .bytecode = desc.vulkan_scene_renderer->postprocess_vertex_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->postprocess_vertex_shader.bytecode.size(),
             });
         if (!postprocess_vertex_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan postprocess vertex SPIR-V validation failed: " + postprocess_vertex_validation.diagnostic +
-                    "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan postprocess vertex SPIR-V validation failed: " +
+                              postprocess_vertex_validation.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2671,16 +2706,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 
         postprocess_fragment_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::fragment,
-                desc.vulkan_scene_renderer->postprocess_fragment_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->postprocess_fragment_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::fragment,
+                .bytecode = desc.vulkan_scene_renderer->postprocess_fragment_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->postprocess_fragment_shader.bytecode.size(),
             });
         if (!postprocess_fragment_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan postprocess fragment SPIR-V validation failed: " + postprocess_fragment_validation.diagnostic +
-                    "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan postprocess fragment SPIR-V validation failed: " +
+                              postprocess_fragment_validation.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2705,16 +2740,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     if (native_ui_overlay_requested) {
         native_ui_overlay_vertex_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::vertex,
+                .bytecode = desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.bytecode.size(),
             });
         if (!native_ui_overlay_vertex_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan native UI overlay vertex SPIR-V validation failed: " +
-                    native_ui_overlay_vertex_validation.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan native UI overlay vertex SPIR-V validation failed: " +
+                              native_ui_overlay_vertex_validation.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2730,16 +2765,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 
         native_ui_overlay_fragment_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::fragment,
-                desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::fragment,
+                .bytecode = desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.bytecode.size(),
             });
         if (!native_ui_overlay_fragment_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan native UI overlay fragment SPIR-V validation failed: " +
-                    native_ui_overlay_fragment_validation.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan native UI overlay fragment SPIR-V validation failed: " +
+                              native_ui_overlay_fragment_validation.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2759,16 +2794,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     if (desc.vulkan_scene_renderer->enable_directional_shadow_smoke) {
         shadow_vertex_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->shadow_vertex_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->shadow_vertex_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::vertex,
+                .bytecode = desc.vulkan_scene_renderer->shadow_vertex_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->shadow_vertex_shader.bytecode.size(),
             });
         if (!shadow_vertex_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan directional shadow vertex SPIR-V validation failed: " + shadow_vertex_validation.diagnostic +
-                    "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan directional shadow vertex SPIR-V validation failed: " +
+                              shadow_vertex_validation.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2784,16 +2819,16 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 
         shadow_fragment_validation =
             rhi::vulkan::validate_spirv_shader_artifact(rhi::vulkan::VulkanSpirvShaderArtifactDesc{
-                rhi::ShaderStage::fragment,
-                desc.vulkan_scene_renderer->shadow_fragment_shader.bytecode.data(),
-                desc.vulkan_scene_renderer->shadow_fragment_shader.bytecode.size(),
+                .stage = rhi::ShaderStage::fragment,
+                .bytecode = desc.vulkan_scene_renderer->shadow_fragment_shader.bytecode.data(),
+                .bytecode_size = desc.vulkan_scene_renderer->shadow_fragment_shader.bytecode.size(),
             });
         if (!shadow_fragment_validation.valid) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan directional shadow fragment SPIR-V validation failed: " +
-                    shadow_fragment_validation.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan directional shadow fragment SPIR-V validation failed: " +
+                              shadow_fragment_validation.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2811,9 +2846,10 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
     auto runtime_device = rhi::vulkan::create_runtime_device({}, {}, {}, surface);
     if (!runtime_device.created) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::native_backend_unavailable,
-            "Vulkan runtime device creation failed: " + runtime_device.diagnostic + "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::native_backend_unavailable,
+            .diagnostic = "Vulkan runtime device creation failed: " + runtime_device.diagnostic +
+                          "; using NullRenderer fallback.",
         };
         result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::unavailable;
         result.scene_gpu_diagnostics.push_back(make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
@@ -2839,10 +2875,10 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         desc.vsync, mapping_compute_validation);
     if (!mapping_plan.supported) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            "Vulkan scene IRhiDevice mapping is unavailable: " + mapping_plan.diagnostic +
-                "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = "Vulkan scene IRhiDevice mapping is unavailable: " + mapping_plan.diagnostic +
+                          "; using NullRenderer fallback.",
         };
         result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
         result.scene_gpu_diagnostics.push_back(make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
@@ -2861,9 +2897,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         auto device = rhi::vulkan::create_rhi_device(std::move(runtime_device.device), mapping_plan);
         if (device == nullptr) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::native_backend_unavailable,
-                "Vulkan device creation is unavailable; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::native_backend_unavailable,
+                .diagnostic = "Vulkan device creation is unavailable; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::unavailable;
             result.scene_gpu_diagnostics.push_back(
@@ -2897,7 +2933,8 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
                                     desc.vulkan_scene_renderer->compute_morph_skinned_mesh_bindings);
         for (const auto& binding : desc.vulkan_scene_renderer->compute_morph_skinned_mesh_bindings) {
             gpu_binding_options.compute_morph_skinned_mesh_bindings.push_back(
-                runtime_scene_rhi::RuntimeSceneComputeMorphSkinnedMeshBinding{binding.mesh, binding.morph_mesh});
+                runtime_scene_rhi::RuntimeSceneComputeMorphSkinnedMeshBinding{.mesh = binding.mesh,
+                                                                              .morph_mesh = binding.morph_mesh});
         }
         if (scene_compute_morph_mesh_requested) {
             gpu_binding_options.mesh_upload.vertex_usage =
@@ -2920,17 +2957,17 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 
         auto gpu_upload =
             runtime_scene_rhi::execute_runtime_scene_gpu_upload(runtime_scene_rhi::RuntimeSceneGpuUploadExecutionDesc{
-                device.get(),
-                desc.vulkan_scene_renderer->package,
-                desc.vulkan_scene_renderer->packet,
-                gpu_binding_options,
+                .device = device.get(),
+                .package = desc.vulkan_scene_renderer->package,
+                .packet = desc.vulkan_scene_renderer->packet,
+                .binding_options = gpu_binding_options,
             });
         auto& gpu_bindings = gpu_upload.bindings;
         if (!gpu_bindings.succeeded()) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan scene GPU binding creation failed; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = "Vulkan scene GPU binding creation failed; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2952,10 +2989,11 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         }
         if (gpu_bindings.material_pipeline_layouts.empty()) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                "Vulkan scene GPU binding creation did not produce a material pipeline layout; using NullRenderer "
-                "fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic =
+                    "Vulkan scene GPU binding creation did not produce a material pipeline layout; using NullRenderer "
+                    "fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2976,9 +3014,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
             desc.vulkan_scene_renderer->enable_compute_morph_tangent_frame_output, "Vulkan");
         if (!compute_morph_bindings.succeeded()) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                compute_morph_bindings.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = compute_morph_bindings.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -2994,9 +3032,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
             desc.vulkan_scene_renderer->compute_morph_skinned_shader, "Vulkan");
         if (!compute_morph_skinned_dispatch.succeeded()) {
             NativeRendererCreateResult result{
-                false,
-                SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-                compute_morph_skinned_dispatch.diagnostic + "; using NullRenderer fallback.",
+                .succeeded = false,
+                .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+                .diagnostic = compute_morph_skinned_dispatch.diagnostic + "; using NullRenderer fallback.",
             };
             result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
             result.scene_gpu_diagnostics.push_back(
@@ -3009,32 +3047,32 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         }
 
         const auto swapchain = device->create_swapchain(rhi::SwapchainDesc{
-            rhi::Extent2D{desc.extent.width, desc.extent.height},
-            rhi::Format::bgra8_unorm,
-            2,
-            desc.vsync,
-            surface,
+            .extent = rhi::Extent2D{.width = desc.extent.width, .height = desc.extent.height},
+            .format = rhi::Format::bgra8_unorm,
+            .buffer_count = 2,
+            .vsync = desc.vsync,
+            .surface = surface,
         });
         const auto vertex_shader = device->create_shader(rhi::ShaderDesc{
-            rhi::ShaderStage::vertex,
-            desc.vulkan_scene_renderer->vertex_shader.entry_point,
-            desc.vulkan_scene_renderer->vertex_shader.bytecode.size(),
-            desc.vulkan_scene_renderer->vertex_shader.bytecode.data(),
+            .stage = rhi::ShaderStage::vertex,
+            .entry_point = desc.vulkan_scene_renderer->vertex_shader.entry_point,
+            .bytecode_size = desc.vulkan_scene_renderer->vertex_shader.bytecode.size(),
+            .bytecode = desc.vulkan_scene_renderer->vertex_shader.bytecode.data(),
         });
         rhi::ShaderHandle compute_morph_scene_vertex_shader{};
         if (scene_compute_morph_mesh_requested) {
             compute_morph_scene_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->compute_morph_vertex_shader.entry_point,
-                desc.vulkan_scene_renderer->compute_morph_vertex_shader.bytecode.size(),
-                desc.vulkan_scene_renderer->compute_morph_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.vulkan_scene_renderer->compute_morph_vertex_shader.entry_point,
+                .bytecode_size = desc.vulkan_scene_renderer->compute_morph_vertex_shader.bytecode.size(),
+                .bytecode = desc.vulkan_scene_renderer->compute_morph_vertex_shader.bytecode.data(),
             });
         }
         const auto fragment_shader = device->create_shader(rhi::ShaderDesc{
-            rhi::ShaderStage::fragment,
-            desc.vulkan_scene_renderer->fragment_shader.entry_point,
-            desc.vulkan_scene_renderer->fragment_shader.bytecode.size(),
-            desc.vulkan_scene_renderer->fragment_shader.bytecode.data(),
+            .stage = rhi::ShaderStage::fragment,
+            .entry_point = desc.vulkan_scene_renderer->fragment_shader.entry_point,
+            .bytecode_size = desc.vulkan_scene_renderer->fragment_shader.bytecode.size(),
+            .bytecode = desc.vulkan_scene_renderer->fragment_shader.bytecode.data(),
         });
         const bool scene_gpu_skinning_requested =
             has_shader_bytecode(desc.vulkan_scene_renderer->skinned_vertex_shader);
@@ -3044,20 +3082,20 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         rhi::GraphicsPipelineHandle skinned_scene_graphics_pipeline{};
         if (scene_gpu_skinning_requested) {
             skinned_scene_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->skinned_vertex_shader.entry_point,
-                desc.vulkan_scene_renderer->skinned_vertex_shader.bytecode.size(),
-                desc.vulkan_scene_renderer->skinned_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.vulkan_scene_renderer->skinned_vertex_shader.entry_point,
+                .bytecode_size = desc.vulkan_scene_renderer->skinned_vertex_shader.bytecode.size(),
+                .bytecode = desc.vulkan_scene_renderer->skinned_vertex_shader.bytecode.data(),
             });
         }
         rhi::ShaderHandle morph_scene_vertex_shader{};
         rhi::GraphicsPipelineHandle morph_scene_graphics_pipeline{};
         if (scene_gpu_morph_requested) {
             morph_scene_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->morph_vertex_shader.entry_point,
-                desc.vulkan_scene_renderer->morph_vertex_shader.bytecode.size(),
-                desc.vulkan_scene_renderer->morph_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.vulkan_scene_renderer->morph_vertex_shader.entry_point,
+                .bytecode_size = desc.vulkan_scene_renderer->morph_vertex_shader.bytecode.size(),
+                .bytecode = desc.vulkan_scene_renderer->morph_vertex_shader.bytecode.data(),
             });
         }
         rhi::ShaderHandle shifted_scene_fragment_shader_handle = fragment_shader;
@@ -3066,10 +3104,10 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
             has_shader_bytecode(desc.vulkan_scene_renderer->skinned_scene_fragment_shader);
         if (shifted_shadow_receiver_fragment_requested) {
             shifted_scene_fragment_shader_handle = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::fragment,
-                desc.vulkan_scene_renderer->skinned_scene_fragment_shader.entry_point,
-                desc.vulkan_scene_renderer->skinned_scene_fragment_shader.bytecode.size(),
-                desc.vulkan_scene_renderer->skinned_scene_fragment_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::fragment,
+                .entry_point = desc.vulkan_scene_renderer->skinned_scene_fragment_shader.entry_point,
+                .bytecode_size = desc.vulkan_scene_renderer->skinned_scene_fragment_shader.bytecode.size(),
+                .bytecode = desc.vulkan_scene_renderer->skinned_scene_fragment_shader.bytecode.data(),
             });
         }
         const auto scene_fragment_shader_handle =
@@ -3086,18 +3124,19 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         rhi::GraphicsPipelineHandle shadow_pipeline;
         if (directional_shadow_requested) {
             const auto shadow_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->shadow_vertex_shader.entry_point,
-                desc.vulkan_scene_renderer->shadow_vertex_shader.bytecode.size(),
-                desc.vulkan_scene_renderer->shadow_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.vulkan_scene_renderer->shadow_vertex_shader.entry_point,
+                .bytecode_size = desc.vulkan_scene_renderer->shadow_vertex_shader.bytecode.size(),
+                .bytecode = desc.vulkan_scene_renderer->shadow_vertex_shader.bytecode.data(),
             });
             const auto shadow_fragment_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::fragment,
-                desc.vulkan_scene_renderer->shadow_fragment_shader.entry_point,
-                desc.vulkan_scene_renderer->shadow_fragment_shader.bytecode.size(),
-                desc.vulkan_scene_renderer->shadow_fragment_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::fragment,
+                .entry_point = desc.vulkan_scene_renderer->shadow_fragment_shader.entry_point,
+                .bytecode_size = desc.vulkan_scene_renderer->shadow_fragment_shader.bytecode.size(),
+                .bytecode = desc.vulkan_scene_renderer->shadow_fragment_shader.bytecode.data(),
             });
-            const auto shadow_pipeline_layout = device->create_pipeline_layout(rhi::PipelineLayoutDesc{{}, 0});
+            const auto shadow_pipeline_layout = device->create_pipeline_layout(
+                rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
             shadow_pipeline = device->create_graphics_pipeline(rhi::GraphicsPipelineDesc{
                 .layout = shadow_pipeline_layout,
                 .vertex_shader = shadow_vertex_shader,
@@ -3107,7 +3146,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
                 .topology = desc.vulkan_scene_renderer->topology,
                 .vertex_buffers = shadow_stage_vertex_buffers,
                 .vertex_attributes = shadow_stage_vertex_attributes,
-                .depth_state = rhi::DepthStencilStateDesc{true, true, rhi::CompareOp::less_equal},
+                .depth_state = rhi::DepthStencilStateDesc{.depth_test_enabled = true,
+                                                          .depth_write_enabled = true,
+                                                          .depth_compare = rhi::CompareOp::less_equal},
             });
         }
         const bool postprocess_depth_input_requested = desc.vulkan_scene_renderer->enable_postprocess_depth_input;
@@ -3169,31 +3210,31 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         result.native_ui_texture_overlay_requested = native_ui_texture_overlay_requested;
         if (desc.vulkan_scene_renderer->enable_postprocess) {
             const auto postprocess_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::vertex,
-                desc.vulkan_scene_renderer->postprocess_vertex_shader.entry_point,
-                desc.vulkan_scene_renderer->postprocess_vertex_shader.bytecode.size(),
-                desc.vulkan_scene_renderer->postprocess_vertex_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::vertex,
+                .entry_point = desc.vulkan_scene_renderer->postprocess_vertex_shader.entry_point,
+                .bytecode_size = desc.vulkan_scene_renderer->postprocess_vertex_shader.bytecode.size(),
+                .bytecode = desc.vulkan_scene_renderer->postprocess_vertex_shader.bytecode.data(),
             });
             const auto postprocess_fragment_shader = device->create_shader(rhi::ShaderDesc{
-                rhi::ShaderStage::fragment,
-                desc.vulkan_scene_renderer->postprocess_fragment_shader.entry_point,
-                desc.vulkan_scene_renderer->postprocess_fragment_shader.bytecode.size(),
-                desc.vulkan_scene_renderer->postprocess_fragment_shader.bytecode.data(),
+                .stage = rhi::ShaderStage::fragment,
+                .entry_point = desc.vulkan_scene_renderer->postprocess_fragment_shader.entry_point,
+                .bytecode_size = desc.vulkan_scene_renderer->postprocess_fragment_shader.bytecode.size(),
+                .bytecode = desc.vulkan_scene_renderer->postprocess_fragment_shader.bytecode.data(),
             });
             rhi::ShaderHandle native_ui_overlay_vertex_shader;
             rhi::ShaderHandle native_ui_overlay_fragment_shader;
             if (native_ui_overlay_requested) {
                 native_ui_overlay_vertex_shader = device->create_shader(rhi::ShaderDesc{
-                    rhi::ShaderStage::vertex,
-                    desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.entry_point,
-                    desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.bytecode.size(),
-                    desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.bytecode.data(),
+                    .stage = rhi::ShaderStage::vertex,
+                    .entry_point = desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.entry_point,
+                    .bytecode_size = desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.bytecode.size(),
+                    .bytecode = desc.vulkan_scene_renderer->native_ui_overlay_vertex_shader.bytecode.data(),
                 });
                 native_ui_overlay_fragment_shader = device->create_shader(rhi::ShaderDesc{
-                    rhi::ShaderStage::fragment,
-                    desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.entry_point,
-                    desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.bytecode.size(),
-                    desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.bytecode.data(),
+                    .stage = rhi::ShaderStage::fragment,
+                    .entry_point = desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.entry_point,
+                    .bytecode_size = desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.bytecode.size(),
+                    .bytecode = desc.vulkan_scene_renderer->native_ui_overlay_fragment_shader.bytecode.data(),
                 });
             }
             NativeUiOverlayAtlasBinding native_ui_overlay_atlas;
@@ -3260,8 +3301,8 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
                         .native_ui_overlay_atlas = native_ui_overlay_atlas,
                         .enable_native_ui_overlay = native_ui_overlay_requested,
                         .enable_native_ui_overlay_textures = native_ui_texture_overlay_requested,
-                        .shadow_depth_atlas_extent = Extent2D{shadow_map_plan.depth_texture.extent.width,
-                                                              shadow_map_plan.depth_texture.extent.height},
+                        .shadow_depth_atlas_extent = Extent2D{.width = shadow_map_plan.depth_texture.extent.width,
+                                                              .height = shadow_map_plan.depth_texture.extent.height},
                         .directional_shadow_cascade_count = shadow_map_plan.directional_cascade_count,
                         .shadow_receiver_constants_initial = shadow_cb,
                         .shadow_receiver_descriptor_set_index = shadow_receiver_descriptor_set_index,
@@ -3344,9 +3385,10 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         return result;
     } catch (const std::exception& error) {
         NativeRendererCreateResult result{
-            false,
-            SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
-            std::string{"Vulkan scene renderer creation failed: "} + error.what() + "; using NullRenderer fallback.",
+            .succeeded = false,
+            .failure_reason = SdlDesktopPresentationFallbackReason::runtime_pipeline_unavailable,
+            .diagnostic = std::string{"Vulkan scene renderer creation failed: "} + error.what() +
+                          "; using NullRenderer fallback.",
         };
         result.scene_gpu_status = SdlDesktopPresentationSceneGpuBindingStatus::failed;
         result.scene_gpu_diagnostics.push_back(make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
@@ -3510,10 +3552,10 @@ SdlDesktopPresentation::SdlDesktopPresentation(const SdlDesktopPresentationDesc&
                                      SdlDesktopPresentationBackendReportStatus status,
                                      SdlDesktopPresentationFallbackReason reason, std::string message) {
         impl_->backend_reports.push_back(SdlDesktopPresentationBackendReport{
-            backend,
-            status,
-            reason,
-            message,
+            .backend = backend,
+            .status = status,
+            .fallback_reason = reason,
+            .message = message,
         });
         fallback_reason = reason;
         fallback_message = std::move(message);
@@ -3521,10 +3563,10 @@ SdlDesktopPresentation::SdlDesktopPresentation(const SdlDesktopPresentationDesc&
 
     auto record_backend_ready = [&](SdlDesktopPresentationBackend backend, std::string message) {
         impl_->backend_reports.push_back(SdlDesktopPresentationBackendReport{
-            backend,
-            SdlDesktopPresentationBackendReportStatus::ready,
-            SdlDesktopPresentationFallbackReason::none,
-            std::move(message),
+            .backend = backend,
+            .status = SdlDesktopPresentationBackendReportStatus::ready,
+            .fallback_reason = SdlDesktopPresentationFallbackReason::none,
+            .message = std::move(message),
         });
         impl_->fallback_reason = SdlDesktopPresentationFallbackReason::none;
     };
@@ -4218,44 +4260,44 @@ std::string_view SdlDesktopPresentation::backend_name() const noexcept {
 SdlDesktopPresentationReport SdlDesktopPresentation::report() const noexcept {
     const auto renderer_stats = impl_->renderer != nullptr ? impl_->renderer->stats() : RendererStats{};
     return SdlDesktopPresentationReport{
-        impl_->requested_backend,
-        impl_->backend,
-        impl_->fallback_reason,
-        impl_->backend == SdlDesktopPresentationBackend::null_renderer &&
-            impl_->requested_backend != SdlDesktopPresentationBackend::null_renderer,
-        impl_->allow_null_fallback,
-        impl_->scene_gpu_status,
-        scene_gpu_binding_stats(),
-        impl_->postprocess_status,
-        impl_->postprocess_depth_input_requested,
-        impl_->postprocess_depth_input_ready,
-        impl_->directional_shadow_status,
-        impl_->directional_shadow_requested,
-        impl_->directional_shadow_ready,
-        impl_->directional_shadow_filter_mode,
-        impl_->directional_shadow_filter_tap_count,
-        impl_->directional_shadow_filter_radius_texels,
-        impl_->native_ui_overlay_status,
-        impl_->native_ui_overlay_requested,
-        impl_->native_ui_overlay_ready,
-        renderer_stats.native_ui_overlay_sprites_submitted,
-        renderer_stats.native_ui_overlay_draws,
-        impl_->native_ui_texture_overlay_status,
-        impl_->native_ui_texture_overlay_requested,
-        impl_->native_ui_texture_overlay_atlas_ready,
-        renderer_stats.native_ui_overlay_textured_sprites_submitted,
-        renderer_stats.native_ui_overlay_texture_binds,
-        renderer_stats.native_ui_overlay_textured_draws,
-        impl_->framegraph_passes,
-        renderer_stats,
-        impl_->renderer != nullptr ? impl_->renderer->backbuffer_extent() : Extent2D{},
-        impl_->diagnostics.size(),
-        impl_->backend_reports.size(),
-        impl_->scene_gpu_diagnostics.size(),
-        impl_->postprocess_diagnostics.size(),
-        impl_->directional_shadow_diagnostics.size(),
-        impl_->native_ui_overlay_diagnostics.size(),
-        impl_->native_ui_texture_overlay_diagnostics.size(),
+        .requested_backend = impl_->requested_backend,
+        .selected_backend = impl_->backend,
+        .fallback_reason = impl_->fallback_reason,
+        .used_null_fallback = impl_->backend == SdlDesktopPresentationBackend::null_renderer &&
+                              impl_->requested_backend != SdlDesktopPresentationBackend::null_renderer,
+        .allow_null_fallback = impl_->allow_null_fallback,
+        .scene_gpu_status = impl_->scene_gpu_status,
+        .scene_gpu_stats = scene_gpu_binding_stats(),
+        .postprocess_status = impl_->postprocess_status,
+        .postprocess_depth_input_requested = impl_->postprocess_depth_input_requested,
+        .postprocess_depth_input_ready = impl_->postprocess_depth_input_ready,
+        .directional_shadow_status = impl_->directional_shadow_status,
+        .directional_shadow_requested = impl_->directional_shadow_requested,
+        .directional_shadow_ready = impl_->directional_shadow_ready,
+        .directional_shadow_filter_mode = impl_->directional_shadow_filter_mode,
+        .directional_shadow_filter_tap_count = impl_->directional_shadow_filter_tap_count,
+        .directional_shadow_filter_radius_texels = impl_->directional_shadow_filter_radius_texels,
+        .native_ui_overlay_status = impl_->native_ui_overlay_status,
+        .native_ui_overlay_requested = impl_->native_ui_overlay_requested,
+        .native_ui_overlay_ready = impl_->native_ui_overlay_ready,
+        .native_ui_overlay_sprites_submitted = renderer_stats.native_ui_overlay_sprites_submitted,
+        .native_ui_overlay_draws = renderer_stats.native_ui_overlay_draws,
+        .native_ui_texture_overlay_status = impl_->native_ui_texture_overlay_status,
+        .native_ui_texture_overlay_requested = impl_->native_ui_texture_overlay_requested,
+        .native_ui_texture_overlay_atlas_ready = impl_->native_ui_texture_overlay_atlas_ready,
+        .native_ui_texture_overlay_sprites_submitted = renderer_stats.native_ui_overlay_textured_sprites_submitted,
+        .native_ui_texture_overlay_texture_binds = renderer_stats.native_ui_overlay_texture_binds,
+        .native_ui_texture_overlay_draws = renderer_stats.native_ui_overlay_textured_draws,
+        .framegraph_passes = impl_->framegraph_passes,
+        .renderer_stats = renderer_stats,
+        .backbuffer_extent = impl_->renderer != nullptr ? impl_->renderer->backbuffer_extent() : Extent2D{},
+        .diagnostics_count = impl_->diagnostics.size(),
+        .backend_reports_count = impl_->backend_reports.size(),
+        .scene_gpu_diagnostics_count = impl_->scene_gpu_diagnostics.size(),
+        .postprocess_diagnostics_count = impl_->postprocess_diagnostics.size(),
+        .directional_shadow_diagnostics_count = impl_->directional_shadow_diagnostics.size(),
+        .native_ui_overlay_diagnostics_count = impl_->native_ui_overlay_diagnostics.size(),
+        .native_ui_texture_overlay_diagnostics_count = impl_->native_ui_texture_overlay_diagnostics.size(),
     };
 }
 

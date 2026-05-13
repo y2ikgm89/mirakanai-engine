@@ -3337,7 +3337,7 @@ void VulkanRuntimeSampler::reset() noexcept {
     }
 }
 
-[[nodiscard]] VulkanBufferMemoryDomain rhi_buffer_memory_domain(BufferUsage usage) noexcept {
+[[nodiscard]] static VulkanBufferMemoryDomain rhi_buffer_memory_domain(BufferUsage usage) noexcept {
     if (has_flag(usage, BufferUsage::copy_source)) {
         return VulkanBufferMemoryDomain::upload;
     }
@@ -6738,7 +6738,7 @@ VulkanRhiDeviceMappingPlan minimal_irhi_device_mapping_plan() {
     return build_rhi_device_mapping_plan(desc);
 }
 
-[[nodiscard]] bool complete_rhi_device_mapping_plan(const VulkanRhiDeviceMappingPlan& plan) noexcept {
+[[nodiscard]] static bool complete_rhi_device_mapping_plan(const VulkanRhiDeviceMappingPlan& plan) noexcept {
     return plan.supported && plan.resources_mapped && plan.swapchains_mapped && plan.render_passes_mapped &&
            plan.pipelines_mapped && plan.command_lists_mapped && plan.fences_mapped && plan.readbacks_mapped &&
            plan.descriptor_sets_mapped && plan.compute_dispatch_mapped && plan.visible_clear_readbacks_mapped &&

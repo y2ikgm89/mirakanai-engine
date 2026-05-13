@@ -2055,7 +2055,8 @@ load_packaged_vulkan_shifted_shadow_receiver_scene_shaders(const char* executabl
             d3d12_scene_renderer->skinned_vertex_buffers = runtime_compute_morph_skinned_scene_vertex_buffers();
             d3d12_scene_renderer->skinned_vertex_attributes = runtime_compute_morph_skinned_scene_vertex_attributes();
             d3d12_scene_renderer->compute_morph_skinned_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_skinned_mesh_asset_id(), packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_compute_morph) {
             const auto& selected_compute_morph_shader_bytecode =
@@ -2076,7 +2077,8 @@ load_packaged_vulkan_shifted_shadow_receiver_scene_shaders(const char* executabl
             d3d12_scene_renderer->enable_compute_morph_tangent_frame_output =
                 options.require_compute_morph_normal_tangent;
             d3d12_scene_renderer->compute_morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(), packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else {
             d3d12_scene_renderer->morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
@@ -2086,7 +2088,8 @@ load_packaged_vulkan_shifted_shadow_receiver_scene_shaders(const char* executabl
             };
             d3d12_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()};
             d3d12_scene_renderer->morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(), packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         }
     }
@@ -2118,7 +2121,8 @@ load_packaged_vulkan_shifted_shadow_receiver_scene_shaders(const char* executabl
             vulkan_scene_renderer->skinned_vertex_buffers = runtime_compute_morph_skinned_scene_vertex_buffers();
             vulkan_scene_renderer->skinned_vertex_attributes = runtime_compute_morph_skinned_scene_vertex_attributes();
             vulkan_scene_renderer->compute_morph_skinned_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_skinned_mesh_asset_id(), packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_compute_morph) {
             const auto& selected_compute_morph_shader_bytecode =
@@ -2139,7 +2143,8 @@ load_packaged_vulkan_shifted_shadow_receiver_scene_shaders(const char* executabl
             vulkan_scene_renderer->enable_compute_morph_tangent_frame_output =
                 options.require_compute_morph_normal_tangent;
             vulkan_scene_renderer->compute_morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(), packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else {
             vulkan_scene_renderer->morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
@@ -2149,7 +2154,8 @@ load_packaged_vulkan_shifted_shadow_receiver_scene_shaders(const char* executabl
             };
             vulkan_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()};
             vulkan_scene_renderer->morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(), packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         }
     }
@@ -3064,8 +3070,8 @@ void print_package_failures(const std::vector<mirakana::runtime::RuntimeAssetPac
         "        } else {`n            d3d12_scene_renderer->morph_vertex_shader",
         "        } else if (options.require_morph_package) {`n            d3d12_scene_renderer->morph_vertex_shader")
     $text = $text.Replace(
-        "            d3d12_scene_renderer->morph_mesh_bindings = {`n                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(),`n                                                                packaged_morph_mesh_asset_id()},`n            };`n        }`n    }`n`n    std::optional<mirakana::SdlDesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;",
-        "            d3d12_scene_renderer->morph_mesh_bindings = {`n                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(),`n                                                                packaged_morph_mesh_asset_id()},`n            };`n        }`n        if (options.require_directional_shadow) {`n            if (require_graphics_morph_scene) {`n                d3d12_scene_renderer->skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                    .entry_point = d3d12_shifted_shadow_receiver_bytecode.fragment_shader.entry_point,`n                    .bytecode = std::span<const std::uint8_t>{`n                        d3d12_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.data(),`n                        d3d12_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.size()},`n                };`n            }`n            d3d12_scene_renderer->shadow_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = d3d12_shadow_bytecode.vertex_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{d3d12_shadow_bytecode.vertex_shader.bytecode.data(),`n                                                          d3d12_shadow_bytecode.vertex_shader.bytecode.size()},`n            };`n            d3d12_scene_renderer->shadow_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = d3d12_shadow_bytecode.fragment_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{d3d12_shadow_bytecode.fragment_shader.bytecode.data(),`n                                                          d3d12_shadow_bytecode.fragment_shader.bytecode.size()},`n            };`n        }`n    }`n`n    std::optional<mirakana::SdlDesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;")
+        "            d3d12_scene_renderer->morph_mesh_bindings = {`n                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),`n                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},`n            };`n        }`n    }`n`n    std::optional<mirakana::SdlDesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;",
+        "            d3d12_scene_renderer->morph_mesh_bindings = {`n                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),`n                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},`n            };`n        }`n        if (options.require_directional_shadow) {`n            if (require_graphics_morph_scene) {`n                d3d12_scene_renderer->skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                    .entry_point = d3d12_shifted_shadow_receiver_bytecode.fragment_shader.entry_point,`n                    .bytecode = std::span<const std::uint8_t>{`n                        d3d12_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.data(),`n                        d3d12_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.size()},`n                };`n            }`n            d3d12_scene_renderer->shadow_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = d3d12_shadow_bytecode.vertex_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{d3d12_shadow_bytecode.vertex_shader.bytecode.data(),`n                                                          d3d12_shadow_bytecode.vertex_shader.bytecode.size()},`n            };`n            d3d12_scene_renderer->shadow_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = d3d12_shadow_bytecode.fragment_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{d3d12_shadow_bytecode.fragment_shader.bytecode.data(),`n                                                          d3d12_shadow_bytecode.fragment_shader.bytecode.size()},`n            };`n        }`n    }`n`n    std::optional<mirakana::SdlDesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;")
     $d3d12ShadowPattern = '(?s)(        \} else if \(options\.require_morph_package\) \{\r?\n            d3d12_scene_renderer->morph_vertex_shader.*?            \};\r?\n        \})(\r?\n    \}\r?\n\r?\n    std::optional<mirakana::SdlDesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;)'
     $d3d12ShadowReplacement = @'
 ${1}
@@ -3100,8 +3106,8 @@ ${1}
         "        } else {`n            vulkan_scene_renderer->morph_vertex_shader",
         "        } else if (options.require_morph_package) {`n            vulkan_scene_renderer->morph_vertex_shader")
     $text = $text.Replace(
-        "            vulkan_scene_renderer->morph_mesh_bindings = {`n                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(),`n                                                                packaged_morph_mesh_asset_id()},`n            };`n        }`n    }`n`n    mirakana::SdlDesktopGameHostDesc host_desc{",
-        "            vulkan_scene_renderer->morph_mesh_bindings = {`n                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(),`n                                                                packaged_morph_mesh_asset_id()},`n            };`n        }`n        if (options.require_directional_shadow) {`n            if (require_graphics_morph_scene) {`n                vulkan_scene_renderer->skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                    .entry_point = vulkan_shifted_shadow_receiver_bytecode.fragment_shader.entry_point,`n                    .bytecode = std::span<const std::uint8_t>{`n                        vulkan_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.data(),`n                        vulkan_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.size()},`n                };`n            }`n            vulkan_scene_renderer->compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = vulkan_compute_morph_shader_bytecode.fragment_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{`n                    vulkan_compute_morph_shader_bytecode.fragment_shader.bytecode.data(),`n                    vulkan_compute_morph_shader_bytecode.fragment_shader.bytecode.size()},`n            };`n            vulkan_scene_renderer->shadow_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = vulkan_shadow_bytecode.vertex_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{vulkan_shadow_bytecode.vertex_shader.bytecode.data(),`n                                                          vulkan_shadow_bytecode.vertex_shader.bytecode.size()},`n            };`n            vulkan_scene_renderer->shadow_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = vulkan_shadow_bytecode.fragment_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{vulkan_shadow_bytecode.fragment_shader.bytecode.data(),`n                                                          vulkan_shadow_bytecode.fragment_shader.bytecode.size()},`n            };`n        }`n    }`n`n    mirakana::SdlDesktopGameHostDesc host_desc{")
+        "            vulkan_scene_renderer->morph_mesh_bindings = {`n                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),`n                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},`n            };`n        }`n    }`n`n    mirakana::SdlDesktopGameHostDesc host_desc{",
+        "            vulkan_scene_renderer->morph_mesh_bindings = {`n                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),`n                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},`n            };`n        }`n        if (options.require_directional_shadow) {`n            if (require_graphics_morph_scene) {`n                vulkan_scene_renderer->skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                    .entry_point = vulkan_shifted_shadow_receiver_bytecode.fragment_shader.entry_point,`n                    .bytecode = std::span<const std::uint8_t>{`n                        vulkan_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.data(),`n                        vulkan_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.size()},`n                };`n            }`n            vulkan_scene_renderer->compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = vulkan_compute_morph_shader_bytecode.fragment_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{`n                    vulkan_compute_morph_shader_bytecode.fragment_shader.bytecode.data(),`n                    vulkan_compute_morph_shader_bytecode.fragment_shader.bytecode.size()},`n            };`n            vulkan_scene_renderer->shadow_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = vulkan_shadow_bytecode.vertex_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{vulkan_shadow_bytecode.vertex_shader.bytecode.data(),`n                                                          vulkan_shadow_bytecode.vertex_shader.bytecode.size()},`n            };`n            vulkan_scene_renderer->shadow_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{`n                .entry_point = vulkan_shadow_bytecode.fragment_shader.entry_point,`n                .bytecode = std::span<const std::uint8_t>{vulkan_shadow_bytecode.fragment_shader.bytecode.data(),`n                                                          vulkan_shadow_bytecode.fragment_shader.bytecode.size()},`n            };`n        }`n    }`n`n    mirakana::SdlDesktopGameHostDesc host_desc{")
     $vulkanShadowPattern = '(?s)(        \} else if \(options\.require_morph_package\) \{\r?\n            vulkan_scene_renderer->morph_vertex_shader.*?            \};\r?\n        \})(\r?\n    \}\r?\n\r?\n    mirakana::SdlDesktopGameHostDesc host_desc\{)'
     $vulkanShadowReplacement = @'
 ${1}

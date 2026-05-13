@@ -117,7 +117,7 @@ class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
         : input_(input), renderer_(renderer), throttle_(throttle), scene_(std::move(scene)) {}
 
     void on_start(mirakana::EngineContext&) override {
-        renderer_.set_clear_color(mirakana::Color{0.025F, 0.035F, 0.045F, 1.0F});
+        renderer_.set_clear_color(mirakana::Color{.r = 0.025F, .g = 0.035F, .b = 0.045F, .a = 1.0F});
     }
 
     bool on_update(mirakana::EngineContext&, double) override {
@@ -127,7 +127,7 @@ class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
             const auto scene_submit = mirakana::submit_scene_render_packet(
                 renderer_, scene_->render_packet,
                 mirakana::SceneRenderSubmitDesc{
-                    .fallback_mesh_color = mirakana::Color{0.35F, 0.75F, 0.45F, 1.0F},
+                    .fallback_mesh_color = mirakana::Color{.r = 0.35F, .g = 0.75F, .b = 0.45F, .a = 1.0F},
                     .material_palette = &scene_->material_palette,
                 });
             scene_meshes_submitted_ += scene_submit.meshes_submitted;
@@ -136,7 +136,8 @@ class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
             const auto axis =
                 input_.digital_axis(mirakana::Key::left, mirakana::Key::right, mirakana::Key::down, mirakana::Key::up);
             transform_.position = transform_.position + axis;
-            renderer_.draw_sprite(mirakana::SpriteCommand{transform_, mirakana::Color{0.35F, 0.75F, 0.45F, 1.0F}});
+            renderer_.draw_sprite(mirakana::SpriteCommand{
+                .transform = transform_, .color = mirakana::Color{.r = 0.35F, .g = 0.75F, .b = 0.45F, .a = 1.0F}});
         }
 
         renderer_.end_frame();
@@ -599,7 +600,7 @@ int main(int argc, char** argv) {
 
     mirakana::SdlDesktopGameHostDesc host_desc{
         .title = "sample-generated-desktop-runtime-material-shader-package",
-        .extent = mirakana::WindowExtent{960, 540},
+        .extent = mirakana::WindowExtent{.width = 960, .height = 540},
         .video_driver_hint = options.video_driver_hint,
         .prefer_vulkan = options.require_vulkan_renderer,
     };

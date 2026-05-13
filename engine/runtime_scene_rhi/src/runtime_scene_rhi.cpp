@@ -776,9 +776,8 @@ RuntimeSceneGpuUploadExecutionResult execute_runtime_scene_gpu_upload(const Runt
     return result;
 }
 
-[[nodiscard]] bool validate_runtime_scene_gpu_binding_device_ownership(const rhi::IRhiDevice& device,
-                                                                       const RuntimeSceneGpuBindingResult& bindings,
-                                                                       std::string& diagnostic_out) {
+[[nodiscard]] static bool validate_runtime_scene_gpu_binding_device_ownership(
+    const rhi::IRhiDevice& device, const RuntimeSceneGpuBindingResult& bindings, std::string& diagnostic_out) {
     for (const auto& mesh : bindings.mesh_uploads) {
         if (mesh.upload.owner_device != nullptr && mesh.upload.owner_device != &device) {
             diagnostic_out = "runtime scene mesh gpu upload owner_device does not match safe-point teardown device";
@@ -829,9 +828,9 @@ RuntimeSceneGpuUploadExecutionResult execute_runtime_scene_gpu_upload(const Runt
     return true;
 }
 
-void release_descriptor_write_resources(rhi::NullRhiDevice& device,
-                                        const mirakana::runtime_rhi::RuntimeMaterialGpuBinding& binding,
-                                        RuntimeSceneGpuSafePointTeardownReport& report) {
+static void release_descriptor_write_resources(rhi::NullRhiDevice& device,
+                                               const mirakana::runtime_rhi::RuntimeMaterialGpuBinding& binding,
+                                               RuntimeSceneGpuSafePointTeardownReport& report) {
     for (const auto& write : binding.writes) {
         for (const auto& resource : write.resources) {
             if (resource.type == rhi::DescriptorType::uniform_buffer ||
@@ -853,9 +852,9 @@ void release_descriptor_write_resources(rhi::NullRhiDevice& device,
     }
 }
 
-void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& device,
-                                                        const RuntimeSceneGpuBindingResult& bindings,
-                                                        RuntimeSceneGpuSafePointTeardownReport& report) {
+static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& device,
+                                                               const RuntimeSceneGpuBindingResult& bindings,
+                                                               RuntimeSceneGpuSafePointTeardownReport& report) {
     std::unordered_set<std::uint32_t> released_pipeline_layouts;
     std::unordered_set<std::uint32_t> released_descriptor_set_layouts;
 

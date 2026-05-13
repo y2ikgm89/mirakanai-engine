@@ -639,7 +639,7 @@ std::size_t SceneGpuBindingPalette::material_count() const noexcept {
     return materials_.size();
 }
 
-[[nodiscard]] bool is_valid_scene_skinned_mesh_gpu_binding(const SkinnedMeshGpuBinding& binding) noexcept {
+[[nodiscard]] static bool is_valid_scene_skinned_mesh_gpu_binding(const SkinnedMeshGpuBinding& binding) noexcept {
     return is_valid_scene_mesh_gpu_binding(binding.mesh) && binding.joint_palette_buffer.value != 0 &&
            binding.joint_descriptor_set.value != 0 && binding.joint_count != 0 && binding.owner_device != nullptr;
 }
@@ -675,7 +675,7 @@ std::span<const SceneSkinnedMeshGpuBinding> SceneSkinnedGpuBindingPalette::skinn
     return skinned_meshes_;
 }
 
-[[nodiscard]] bool is_valid_scene_morph_mesh_gpu_binding(const MorphMeshGpuBinding& binding) noexcept {
+[[nodiscard]] static bool is_valid_scene_morph_mesh_gpu_binding(const MorphMeshGpuBinding& binding) noexcept {
     const bool normal_stream_valid = (binding.normal_delta_buffer.value != 0) == (binding.normal_delta_bytes != 0);
     const bool tangent_stream_valid = (binding.tangent_delta_buffer.value != 0) == (binding.tangent_delta_bytes != 0);
     return binding.position_delta_buffer.value != 0 && binding.morph_weight_buffer.value != 0 &&

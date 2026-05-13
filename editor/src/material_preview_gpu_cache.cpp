@@ -20,16 +20,16 @@ create_material_preview_graphics_pipeline(mirakana::rhi::IRhiDevice& device, mir
                                           mirakana::rhi::PipelineLayoutHandle layout,
                                           const std::string* vertex_bytecode, const std::string* fragment_bytecode) {
     const auto vertex_shader = device.create_shader(mirakana::rhi::ShaderDesc{
-        mirakana::rhi::ShaderStage::vertex,
-        "vs_main",
-        vertex_bytecode == nullptr ? 64U : static_cast<std::uint64_t>(vertex_bytecode->size()),
-        vertex_bytecode == nullptr ? nullptr : vertex_bytecode->data(),
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = vertex_bytecode == nullptr ? 64U : static_cast<std::uint64_t>(vertex_bytecode->size()),
+        .bytecode = vertex_bytecode == nullptr ? nullptr : vertex_bytecode->data(),
     });
     const auto fragment_shader = device.create_shader(mirakana::rhi::ShaderDesc{
-        mirakana::rhi::ShaderStage::fragment,
-        "ps_main",
-        fragment_bytecode == nullptr ? 64U : static_cast<std::uint64_t>(fragment_bytecode->size()),
-        fragment_bytecode == nullptr ? nullptr : fragment_bytecode->data(),
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = fragment_bytecode == nullptr ? 64U : static_cast<std::uint64_t>(fragment_bytecode->size()),
+        .bytecode = fragment_bytecode == nullptr ? nullptr : fragment_bytecode->data(),
     });
     return device.create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
         .layout = layout,
@@ -54,7 +54,7 @@ create_material_preview_graphics_pipeline(mirakana::rhi::IRhiDevice& device, mir
 
 [[nodiscard]] mirakana::AssetId
 material_preview_shader_id_for_plan(const mirakana::editor::EditorMaterialGpuPreviewPlan& plan) {
-    const auto has_base_color_texture = std::any_of(plan.textures.begin(), plan.textures.end(), [](const auto& item) {
+    const auto has_base_color_texture = std::ranges::any_of(plan.textures, [](const auto& item) {
         return item.slot == mirakana::MaterialTextureSlot::base_color && item.payload.source_bytes > 0;
     });
     return has_base_color_texture ? material_preview_textured_shader_id() : material_preview_factor_shader_id();
@@ -126,13 +126,13 @@ MaterialPreviewGpuCache& MaterialPreviewGpuCache::rebuild(const MaterialPreviewG
                 return *this;
             }
             texture_resources.push_back(mirakana::runtime_rhi::RuntimeMaterialTextureResource{
-                texture.slot, upload.texture, upload.owner_device});
+                .slot = texture.slot, .texture = upload.texture, .owner_device = upload.owner_device});
             texture_uploads_.push_back(std::move(upload));
         }
 
         scene_pbr_frame_uniform_ = deps.device->create_buffer(mirakana::rhi::BufferDesc{
-            mirakana::runtime_rhi::runtime_scene_pbr_frame_uniform_size_bytes,
-            mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
+            .size_bytes = mirakana::runtime_rhi::runtime_scene_pbr_frame_uniform_size_bytes,
+            .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
         });
         std::array<std::uint8_t, mirakana::runtime_rhi::runtime_scene_pbr_frame_uniform_size_bytes> scene_clear{};
         deps.device->write_buffer(scene_pbr_frame_uniform_, 0,
@@ -175,16 +175,16 @@ MaterialPreviewGpuCache& MaterialPreviewGpuCache::rebuild(const MaterialPreviewG
         }
 
         surface_ = std::make_unique<mirakana::RhiViewportSurface>(mirakana::RhiViewportSurfaceDesc{
-            deps.device,
-            mirakana::Extent2D{128, 128},
-            mirakana::rhi::Format::rgba8_unorm,
-            true,
-            deps.device->backend_kind() == mirakana::rhi::BackendKind::d3d12,
+            .device = deps.device,
+            .extent = mirakana::Extent2D{.width = 128, .height = 128},
+            .color_format = mirakana::rhi::Format::rgba8_unorm,
+            .wait_for_completion = true,
+            .allow_native_display_interop = deps.device->backend_kind() == mirakana::rhi::BackendKind::d3d12,
         });
         display_texture_ = std::make_unique<SdlViewportTexture>(deps.sdl_renderer, surface_->extent());
         pipeline_layout_ = deps.device->create_pipeline_layout(mirakana::rhi::PipelineLayoutDesc{
-            {material_binding_.descriptor_set_layout},
-            0,
+            .descriptor_sets = {material_binding_.descriptor_set_layout},
+            .push_constant_bytes = 0,
         });
         pipeline_ =
             create_material_preview_graphics_pipeline(*deps.device, surface_->color_format(), pipeline_layout_,
@@ -226,8 +226,8 @@ void MaterialPreviewGpuCache::render(const MaterialPreviewGpuRenderDeps& deps) {
         if (rendered_version_ == 0) {
             surface_->render_frame(
                 mirakana::RhiViewportRenderDesc{
-                    pipeline_,
-                    mirakana::Color{0.035F, 0.04F, 0.05F, 1.0F},
+                    .graphics_pipeline = pipeline_,
+                    .clear_color = mirakana::Color{.r = 0.035F, .g = 0.04F, .b = 0.05F, .a = 1.0F},
                 },
                 [this, device = deps.device](mirakana::IRenderer& renderer) {
                     const auto extent = surface_->extent();
@@ -238,11 +238,11 @@ void MaterialPreviewGpuCache::render(const MaterialPreviewGpuRenderDeps& deps) {
                         std::span<std::uint8_t>(pbr_bytes.data(), pbr_bytes.size()),
                         mirakana::ScenePbrFrameGpuPackInput{
                             .packet = nullptr,
-                            .camera =
-                                mirakana::SceneCameraMatrices{mirakana::Mat4::identity(), mirakana::Mat4::identity(),
-                                                              mirakana::Mat4::identity()},
+                            .camera = mirakana::SceneCameraMatrices{.view_from_world = mirakana::Mat4::identity(),
+                                                                    .clip_from_view = mirakana::Mat4::identity(),
+                                                                    .clip_from_world = mirakana::Mat4::identity()},
                             .world_from_node = mirakana::Mat4::identity(),
-                            .camera_world_position = mirakana::Vec3{0.0F, 0.0F, 2.5F},
+                            .camera_world_position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 2.5F},
                             .ambient_rgb = {0.06F, 0.07F, 0.08F},
                             .viewport_aspect = aspect,
                         });
@@ -250,17 +250,17 @@ void MaterialPreviewGpuCache::render(const MaterialPreviewGpuRenderDeps& deps) {
                                          std::span<const std::uint8_t>(pbr_bytes.data(), pbr_bytes.size()));
                     renderer.draw_mesh(mirakana::MeshCommand{
                         .transform = mirakana::Transform3D{},
-                        .color = mirakana::Color{1.0F, 1.0F, 1.0F, 1.0F},
+                        .color = mirakana::Color{.r = 1.0F, .g = 1.0F, .b = 1.0F, .a = 1.0F},
                         .mesh = mirakana::AssetId::from_name("editor.material_preview.triangle"),
                         .material = material_,
                         .world_from_node = mirakana::Mat4::identity(),
                         .mesh_binding = mirakana::MeshGpuBinding{},
                         .material_binding =
                             mirakana::MaterialGpuBinding{
-                                pipeline_layout_,
-                                material_binding_.descriptor_set,
-                                0,
-                                material_binding_.owner_device,
+                                .pipeline_layout = pipeline_layout_,
+                                .descriptor_set = material_binding_.descriptor_set,
+                                .descriptor_set_index = 0,
+                                .owner_device = material_binding_.owner_device,
                             },
                         .gpu_skinning = false,
                         .skinned_mesh = {},

@@ -48,7 +48,7 @@ class SampleDesktopRuntimeShellGame final : public mirakana::GameApp {
         : input_(input), renderer_(renderer), throttle_(throttle) {}
 
     void on_start(mirakana::EngineContext&) override {
-        renderer_.set_clear_color(mirakana::Color{0.03F, 0.04F, 0.05F, 1.0F});
+        renderer_.set_clear_color(mirakana::Color{.r = 0.03F, .g = 0.04F, .b = 0.05F, .a = 1.0F});
     }
 
     bool on_update(mirakana::EngineContext&, double) override {
@@ -57,7 +57,8 @@ class SampleDesktopRuntimeShellGame final : public mirakana::GameApp {
         const auto axis =
             input_.digital_axis(mirakana::Key::left, mirakana::Key::right, mirakana::Key::down, mirakana::Key::up);
         transform_.position = transform_.position + axis;
-        renderer_.draw_sprite(mirakana::SpriteCommand{transform_, mirakana::Color{0.2F, 0.7F, 1.0F, 1.0F}});
+        renderer_.draw_sprite(mirakana::SpriteCommand{
+            .transform = transform_, .color = mirakana::Color{.r = 0.2F, .g = 0.7F, .b = 1.0F, .a = 1.0F}});
 
         renderer_.end_frame();
         ++frames_;
@@ -297,7 +298,7 @@ int main(int argc, char** argv) {
 
     mirakana::SdlDesktopGameHostDesc host_desc{
         .title = "Sample Desktop Runtime Shell",
-        .extent = mirakana::WindowExtent{960, 540},
+        .extent = mirakana::WindowExtent{.width = 960, .height = 540},
         .video_driver_hint = options.video_driver_hint,
         .prefer_vulkan = options.require_vulkan_renderer,
     };

@@ -25,7 +25,7 @@ class VirtualPointerInput;
 
 struct SdlDesktopGameHostDesc {
     std::string title{"GameEngine Desktop Game"};
-    WindowExtent extent{960, 540};
+    WindowExtent extent{.width = 960, .height = 540};
     std::string video_driver_hint;
     bool prefer_d3d12{true};
     bool prefer_vulkan{false};

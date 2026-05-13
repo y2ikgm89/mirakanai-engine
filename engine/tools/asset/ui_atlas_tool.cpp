@@ -339,13 +339,13 @@ void validate_package_index_entry_paths(std::vector<CookedUiAtlasAuthoringFailur
 void canonicalize_package_index(AssetCookedPackageIndex& index) {
     for (auto& entry : index.entries) {
         sort_asset_ids(entry.dependencies);
-        entry.dependencies.erase(std::unique(entry.dependencies.begin(), entry.dependencies.end(),
-                                             [](AssetId lhs, AssetId rhs) { return lhs == rhs; }),
-                                 entry.dependencies.end());
+        entry.dependencies.erase(
+            std::ranges::unique(entry.dependencies, [](AssetId lhs, AssetId rhs) { return lhs == rhs; }).begin(),
+            entry.dependencies.end());
     }
     sort_package_entries(index.entries);
     sort_dependency_edges(index.dependencies);
-    index.dependencies.erase(std::unique(index.dependencies.begin(), index.dependencies.end(), edge_same_identity),
+    index.dependencies.erase(std::ranges::unique(index.dependencies, edge_same_identity).begin(),
                              index.dependencies.end());
 }
 
@@ -476,9 +476,8 @@ CookedUiAtlasAuthoringResult author_cooked_ui_atlas_metadata(const CookedUiAtlas
         page_assets.push_back(page.asset);
     }
     sort_asset_ids(page_assets);
-    page_assets.erase(
-        std::unique(page_assets.begin(), page_assets.end(), [](AssetId lhs, AssetId rhs) { return lhs == rhs; }),
-        page_assets.end());
+    page_assets.erase(std::ranges::unique(page_assets, [](AssetId lhs, AssetId rhs) { return lhs == rhs; }).begin(),
+                      page_assets.end());
 
     result.dependency_edges.reserve(page_assets.size());
     for (const auto page_asset : page_assets) {

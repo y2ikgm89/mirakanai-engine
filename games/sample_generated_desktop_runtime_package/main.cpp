@@ -40,7 +40,7 @@ class sample_generated_desktop_runtime_package_Game final : public mirakana::Gam
         : input_(input), renderer_(renderer), throttle_(throttle) {}
 
     void on_start(mirakana::EngineContext&) override {
-        renderer_.set_clear_color(mirakana::Color{0.025F, 0.035F, 0.045F, 1.0F});
+        renderer_.set_clear_color(mirakana::Color{.r = 0.025F, .g = 0.035F, .b = 0.045F, .a = 1.0F});
     }
 
     bool on_update(mirakana::EngineContext&, double) override {
@@ -49,7 +49,8 @@ class sample_generated_desktop_runtime_package_Game final : public mirakana::Gam
         const auto axis =
             input_.digital_axis(mirakana::Key::left, mirakana::Key::right, mirakana::Key::down, mirakana::Key::up);
         transform_.position = transform_.position + axis;
-        renderer_.draw_sprite(mirakana::SpriteCommand{transform_, mirakana::Color{0.35F, 0.75F, 0.45F, 1.0F}});
+        renderer_.draw_sprite(mirakana::SpriteCommand{
+            .transform = transform_, .color = mirakana::Color{.r = 0.35F, .g = 0.75F, .b = 0.45F, .a = 1.0F}});
 
         renderer_.end_frame();
         ++frames_;
@@ -238,7 +239,7 @@ int main(int argc, char** argv) {
 
     mirakana::SdlDesktopGameHost host(mirakana::SdlDesktopGameHostDesc{
         .title = "sample-generated-desktop-runtime-package",
-        .extent = mirakana::WindowExtent{960, 540},
+        .extent = mirakana::WindowExtent{.width = 960, .height = 540},
         .video_driver_hint = options.video_driver_hint,
     });
 

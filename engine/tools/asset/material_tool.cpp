@@ -74,7 +74,7 @@ void append_changed_file(std::vector<MaterialInstancePackageChangedFile>& files,
 
 void sort_asset_ids(std::vector<AssetId>& ids) {
     std::ranges::sort(ids, [](AssetId lhs, AssetId rhs) { return lhs.value < rhs.value; });
-    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+    ids.erase(std::ranges::unique(ids).begin(), ids.end());
 }
 
 void sort_package_index(AssetCookedPackageIndex& index) {

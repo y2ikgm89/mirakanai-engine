@@ -4262,7 +4262,7 @@ struct D3d12DescriptorSetRootTables {
     std::uint32_t sampler{invalid_root_parameter};
 };
 
-[[nodiscard]] bool has_root_parameter(std::uint32_t root_parameter) noexcept {
+[[nodiscard]] static bool has_root_parameter(std::uint32_t root_parameter) noexcept {
     return root_parameter != D3d12DescriptorSetRootTables::invalid_root_parameter;
 }
 

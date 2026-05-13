@@ -237,7 +237,8 @@ MK_TEST("sdl3 pointer helpers map mouse and normalized touch samples") {
     MK_REQUIRE(mouse.position == (mirakana::Vec2{12.0F, 24.0F}));
 
     const auto touch_id = mirakana::sdl3_touch_pointer_id(42);
-    const auto touch = mirakana::sdl3_touch_pointer_sample(42, 0.5F, 0.25F, mirakana::WindowExtent{320, 240});
+    const auto touch =
+        mirakana::sdl3_touch_pointer_sample(42, 0.5F, 0.25F, mirakana::WindowExtent{.width = 320, .height = 240});
     MK_REQUIRE(touch.id == touch_id);
     MK_REQUIRE(touch.id != mirakana::primary_pointer_id);
     MK_REQUIRE(touch.kind == mirakana::PointerKind::touch);
@@ -265,7 +266,8 @@ MK_TEST("sdl3 gamepad helpers map buttons axes and normalized values") {
 
 MK_TEST("sdl3 window maps mouse events into virtual pointer input") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Pointer Test", mirakana::WindowExtent{320, 240}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Pointer Test",
+                                                    .extent = mirakana::WindowExtent{.width = 320, .height = 240}});
     mirakana::VirtualPointerInput pointer_input;
 
     SDL_Event event{};
@@ -299,7 +301,8 @@ MK_TEST("sdl3 window maps mouse events into virtual pointer input") {
 
 MK_TEST("sdl3 window maps touch events into virtual pointer input") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Touch Test", mirakana::WindowExtent{400, 200}});
+    mirakana::SdlWindow window(
+        mirakana::WindowDesc{.title = "SDL Touch Test", .extent = mirakana::WindowExtent{.width = 400, .height = 200}});
     mirakana::VirtualPointerInput pointer_input;
     const auto pointer_id = mirakana::sdl3_touch_pointer_id(7);
 
@@ -325,7 +328,8 @@ MK_TEST("sdl3 window maps touch events into virtual pointer input") {
 
 MK_TEST("sdl3 window maps touch cancel events into virtual pointer cancel") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Touch Cancel Test", mirakana::WindowExtent{400, 200}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Touch Cancel Test",
+                                                    .extent = mirakana::WindowExtent{.width = 400, .height = 200}});
     mirakana::VirtualPointerInput pointer_input;
     const auto pointer_id = mirakana::sdl3_touch_pointer_id(9);
 
@@ -351,7 +355,8 @@ MK_TEST("sdl3 window maps touch cancel events into virtual pointer cancel") {
 
 MK_TEST("sdl3 window ignores touch generated virtual mouse rows") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Touch Mouse Filter Test", mirakana::WindowExtent{400, 200}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Touch Mouse Filter Test",
+                                                    .extent = mirakana::WindowExtent{.width = 400, .height = 200}});
     mirakana::VirtualPointerInput pointer_input;
 
     SDL_Event event{};
@@ -379,7 +384,8 @@ MK_TEST("sdl3 window ignores touch generated virtual mouse rows") {
 
 MK_TEST("sdl3 window maps gamepad events into virtual gamepad input") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Gamepad Test", mirakana::WindowExtent{320, 240}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Gamepad Test",
+                                                    .extent = mirakana::WindowExtent{.width = 320, .height = 240}});
     mirakana::VirtualGamepadInput gamepad_input;
 
     SDL_Event event{};
@@ -435,8 +441,8 @@ MK_TEST("sdl3 runtime enumerates display info") {
 MK_TEST("sdl3 runtime selects display through first party monitor policy") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
 
-    const auto selected =
-        mirakana::sdl3_select_display(mirakana::DisplaySelectionRequest{mirakana::DisplaySelectionPolicy::primary});
+    const auto selected = mirakana::sdl3_select_display(
+        mirakana::DisplaySelectionRequest{.policy = mirakana::DisplaySelectionPolicy::primary});
 
     MK_REQUIRE(selected.has_value());
     MK_REQUIRE(mirakana::is_valid_display_info(*selected));
@@ -444,7 +450,8 @@ MK_TEST("sdl3 runtime selects display through first party monitor policy") {
 
 MK_TEST("sdl3 window reports display scale density and safe area") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Display Test", mirakana::WindowExtent{320, 240}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Display Test",
+                                                    .extent = mirakana::WindowExtent{.width = 320, .height = 240}});
 
     const auto state = window.display_state();
 
@@ -455,15 +462,17 @@ MK_TEST("sdl3 window reports display scale density and safe area") {
 
 MK_TEST("sdl3 window tracks position and applies placement") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(
-        mirakana::WindowDesc{"SDL Placement Test", mirakana::WindowExtent{320, 240}, mirakana::WindowPosition{20, 30}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Placement Test",
+                                                    .extent = mirakana::WindowExtent{.width = 320, .height = 240},
+                                                    .position = mirakana::WindowPosition{.x = 20, .y = 30}});
 
-    window.move(mirakana::WindowPosition{40, 50});
+    window.move(mirakana::WindowPosition{.x = 40, .y = 50});
     MK_REQUIRE(window.position().x == 40);
     MK_REQUIRE(window.position().y == 50);
 
-    window.apply_placement(
-        mirakana::WindowPlacement{mirakana::WindowPosition{60, 70}, mirakana::WindowExtent{400, 300}, 1});
+    window.apply_placement(mirakana::WindowPlacement{.position = mirakana::WindowPosition{.x = 60, .y = 70},
+                                                     .extent = mirakana::WindowExtent{.width = 400, .height = 300},
+                                                     .display_id = 1});
     MK_REQUIRE(window.position().x == 60);
     MK_REQUIRE(window.position().y == 70);
     MK_REQUIRE(window.extent().width == 400);
@@ -472,12 +481,13 @@ MK_TEST("sdl3 window tracks position and applies placement") {
 
 MK_TEST("sdl3 platform integration adapter begins text input with a window text area") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Text Input Test", mirakana::WindowExtent{320, 240}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Text Input Test",
+                                                    .extent = mirakana::WindowExtent{.width = 320, .height = 240}});
     mirakana::SdlPlatformIntegrationAdapter adapter(window);
 
     const mirakana::ui::PlatformTextInputRequest request{
-        mirakana::ui::ElementId{"chat.input"},
-        mirakana::ui::Rect{4.0F, 8.0F, 160.0F, 24.0F},
+        .target = mirakana::ui::ElementId{"chat.input"},
+        .text_bounds = mirakana::ui::Rect{.x = 4.0F, .y = 8.0F, .width = 160.0F, .height = 24.0F},
     };
 
     const auto result = mirakana::ui::begin_platform_text_input(adapter, request);
@@ -502,14 +512,15 @@ MK_TEST("sdl3 platform integration adapter begins text input with a window text 
 
 MK_TEST("sdl3 platform integration adapter rejects invalid direct requests before calling SDL") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Text Input Invalid Test", mirakana::WindowExtent{320, 240}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Text Input Invalid Test",
+                                                    .extent = mirakana::WindowExtent{.width = 320, .height = 240}});
     mirakana::SdlPlatformIntegrationAdapter adapter(window);
 
     bool threw = false;
     try {
         adapter.begin_text_input(mirakana::ui::PlatformTextInputRequest{
-            mirakana::ui::ElementId{},
-            mirakana::ui::Rect{0.0F, 0.0F, 10.0F, 10.0F},
+            .target = mirakana::ui::ElementId{},
+            .text_bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 10.0F, .height = 10.0F},
         });
     } catch (const std::invalid_argument& error) {
         threw = std::string{error.what()} == "platform text input target must not be empty";
@@ -1152,7 +1163,8 @@ MK_TEST("sdl3 clipboard text adapter composes with ge ui text edit clipboard com
 
 MK_TEST("sdl3 cursor applies normal hidden confined and relative modes") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Cursor Test", mirakana::WindowExtent{320, 240}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Cursor Test",
+                                                    .extent = mirakana::WindowExtent{.width = 320, .height = 240}});
     mirakana::SdlCursor cursor(window);
 
     cursor.set_mode(mirakana::CursorMode::normal);
@@ -1184,7 +1196,8 @@ MK_TEST("sdl3 cursor applies normal hidden confined and relative modes") {
 
 MK_TEST("sdl3 window maps application lifecycle events") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Lifecycle Test", mirakana::WindowExtent{320, 240}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Lifecycle Test",
+                                                    .extent = mirakana::WindowExtent{.width = 320, .height = 240}});
     mirakana::VirtualLifecycle lifecycle;
 
     SDL_Event event{};
@@ -1216,7 +1229,8 @@ MK_TEST("sdl3 window maps application lifecycle events") {
 
 MK_TEST("sdl3 quit and terminating events request lifecycle shutdown") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Shutdown Test", mirakana::WindowExtent{320, 240}});
+    mirakana::SdlWindow window(mirakana::WindowDesc{.title = "SDL Shutdown Test",
+                                                    .extent = mirakana::WindowExtent{.width = 320, .height = 240}});
     mirakana::VirtualLifecycle lifecycle;
 
     SDL_Event event{};
@@ -1233,7 +1247,8 @@ MK_TEST("sdl3 quit and terminating events request lifecycle shutdown") {
 
 MK_TEST("sdl3 window wraps runtime window state") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
-    mirakana::SdlWindow window(mirakana::WindowDesc{"SDL Test", mirakana::WindowExtent{320, 240}});
+    mirakana::SdlWindow window(
+        mirakana::WindowDesc{.title = "SDL Test", .extent = mirakana::WindowExtent{.width = 320, .height = 240}});
 
     MK_REQUIRE(window.native_window().value != 0);
     MK_REQUIRE(window.title() == "SDL Test");
@@ -1241,7 +1256,7 @@ MK_TEST("sdl3 window wraps runtime window state") {
     MK_REQUIRE(window.extent().height == 240);
     MK_REQUIRE(window.is_open());
 
-    window.resize(mirakana::WindowExtent{640, 480});
+    window.resize(mirakana::WindowExtent{.width = 640, .height = 480});
     MK_REQUIRE(window.extent().width == 640);
     MK_REQUIRE(window.extent().height == 480);
 

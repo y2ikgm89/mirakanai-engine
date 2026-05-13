@@ -146,19 +146,25 @@ struct RhiResourceKindDescriptor {
 };
 
 constexpr std::array<RhiResourceKindDescriptor, 10> rhi_resource_kind_descriptors{{
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::buffer, "buffer", "Buffers"},
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::texture, "texture", "Textures"},
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::sampler, "sampler", "Samplers"},
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::swapchain, "swapchain", "Swapchains"},
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::shader, "shader", "Shaders"},
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::descriptor_set_layout, "descriptor_set_layout",
-                              "Descriptor set layouts"},
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::descriptor_set, "descriptor_set", "Descriptor sets"},
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::pipeline_layout, "pipeline_layout", "Pipeline layouts"},
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::graphics_pipeline, "graphics_pipeline",
-                              "Graphics pipelines"},
-    RhiResourceKindDescriptor{mirakana::rhi::RhiResourceKind::compute_pipeline, "compute_pipeline",
-                              "Compute pipelines"},
+    RhiResourceKindDescriptor{.kind = mirakana::rhi::RhiResourceKind::buffer, .id = "buffer", .label = "Buffers"},
+    RhiResourceKindDescriptor{.kind = mirakana::rhi::RhiResourceKind::texture, .id = "texture", .label = "Textures"},
+    RhiResourceKindDescriptor{.kind = mirakana::rhi::RhiResourceKind::sampler, .id = "sampler", .label = "Samplers"},
+    RhiResourceKindDescriptor{
+        .kind = mirakana::rhi::RhiResourceKind::swapchain, .id = "swapchain", .label = "Swapchains"},
+    RhiResourceKindDescriptor{.kind = mirakana::rhi::RhiResourceKind::shader, .id = "shader", .label = "Shaders"},
+    RhiResourceKindDescriptor{.kind = mirakana::rhi::RhiResourceKind::descriptor_set_layout,
+                              .id = "descriptor_set_layout",
+                              .label = "Descriptor set layouts"},
+    RhiResourceKindDescriptor{
+        .kind = mirakana::rhi::RhiResourceKind::descriptor_set, .id = "descriptor_set", .label = "Descriptor sets"},
+    RhiResourceKindDescriptor{
+        .kind = mirakana::rhi::RhiResourceKind::pipeline_layout, .id = "pipeline_layout", .label = "Pipeline layouts"},
+    RhiResourceKindDescriptor{.kind = mirakana::rhi::RhiResourceKind::graphics_pipeline,
+                              .id = "graphics_pipeline",
+                              .label = "Graphics pipelines"},
+    RhiResourceKindDescriptor{.kind = mirakana::rhi::RhiResourceKind::compute_pipeline,
+                              .id = "compute_pipeline",
+                              .label = "Compute pipelines"},
 }};
 
 [[nodiscard]] std::string_view rhi_resource_kind_id(mirakana::rhi::RhiResourceKind kind) noexcept {
@@ -415,9 +421,9 @@ void append_known_shader_tool(std::vector<mirakana::ShaderToolDescriptor>& tools
     }
 
     tools.push_back(mirakana::ShaderToolDescriptor{
-        kind,
-        portable_path,
-        std::move(version),
+        .kind = kind,
+        .executable_path = portable_path,
+        .version = std::move(version),
     });
 }
 
@@ -544,7 +550,7 @@ void append_known_installed_shader_tools(std::vector<mirakana::ShaderToolDescrip
     material.shading_model = mirakana::MaterialShadingModel::unlit;
     material.surface_mode = mirakana::MaterialSurfaceMode::opaque;
     material.texture_bindings.push_back(
-        mirakana::MaterialTextureBinding{mirakana::MaterialTextureSlot::base_color, texture_id});
+        mirakana::MaterialTextureBinding{.slot = mirakana::MaterialTextureSlot::base_color, .texture = texture_id});
     return material;
 }
 
@@ -654,8 +660,8 @@ class EditorState {
           }),
           project_settings_draft_(mirakana::editor::ProjectSettingsDraft::from_project(project_)),
           workspace_(mirakana::editor::Workspace::create_default(
-              mirakana::editor::ProjectInfo{project_.name, project_.root_path})),
-          window_desc_{"GameEngine Editor", mirakana::WindowExtent{1280, 720}},
+              mirakana::editor::ProjectInfo{.name = project_.name, .root_path = project_.root_path})),
+          window_desc_{.title = "GameEngine Editor", .extent = mirakana::WindowExtent{.width = 1280, .height = 720}},
           scene_document_(make_default_scene_document(project_paths_.scene_path)), sdl_renderer_(renderer),
           file_dialogs_(file_dialogs) {
         set_scene_file_dialog_state(scene_open_dialog_, mirakana::editor::EditorSceneFileDialogMode::open,
@@ -673,28 +679,37 @@ class EditorState {
         reset_prefab_variant_document();
         configure_default_material_palette();
         register_commands();
-        assets_.add(mirakana::AssetRecord{mirakana::AssetId::from_name("editor.default.mesh"),
-                                          mirakana::AssetKind::mesh, "builtin/default.mesh"});
-        assets_.add(mirakana::AssetRecord{mirakana::AssetId::from_name("editor.default.material"),
-                                          mirakana::AssetKind::material, "builtin/default.material"});
-        assets_.add(mirakana::AssetRecord{mirakana::AssetId::from_name("editor.default.texture"),
-                                          mirakana::AssetKind::texture, "builtin/default.texture"});
-        assets_.add(mirakana::AssetRecord{mirakana::AssetId::from_name("editor.default.sprite"),
-                                          mirakana::AssetKind::texture, "builtin/default.sprite"});
-        assets_.add(mirakana::AssetRecord{mirakana::AssetId::from_name("editor.default.audio"),
-                                          mirakana::AssetKind::audio, "builtin/default.audio"});
-        assets_.add(mirakana::AssetRecord{mirakana::AssetId::from_name("editor.default.shader"),
-                                          mirakana::AssetKind::shader, "builtin/default.shader"});
-        assets_.add(mirakana::AssetRecord{mirakana::AssetId::from_name("scenes/start.scene"),
-                                          mirakana::AssetKind::scene, "scenes/start.scene"});
+        assets_.add(mirakana::AssetRecord{.id = mirakana::AssetId::from_name("editor.default.mesh"),
+                                          .kind = mirakana::AssetKind::mesh,
+                                          .path = "builtin/default.mesh"});
+        assets_.add(mirakana::AssetRecord{.id = mirakana::AssetId::from_name("editor.default.material"),
+                                          .kind = mirakana::AssetKind::material,
+                                          .path = "builtin/default.material"});
+        assets_.add(mirakana::AssetRecord{.id = mirakana::AssetId::from_name("editor.default.texture"),
+                                          .kind = mirakana::AssetKind::texture,
+                                          .path = "builtin/default.texture"});
+        assets_.add(mirakana::AssetRecord{.id = mirakana::AssetId::from_name("editor.default.sprite"),
+                                          .kind = mirakana::AssetKind::texture,
+                                          .path = "builtin/default.sprite"});
+        assets_.add(mirakana::AssetRecord{.id = mirakana::AssetId::from_name("editor.default.audio"),
+                                          .kind = mirakana::AssetKind::audio,
+                                          .path = "builtin/default.audio"});
+        assets_.add(mirakana::AssetRecord{.id = mirakana::AssetId::from_name("editor.default.shader"),
+                                          .kind = mirakana::AssetKind::shader,
+                                          .path = "builtin/default.shader"});
+        assets_.add(mirakana::AssetRecord{.id = mirakana::AssetId::from_name("scenes/start.scene"),
+                                          .kind = mirakana::AssetKind::scene,
+                                          .path = "scenes/start.scene"});
         initialize_asset_pipeline();
         refresh_content_browser_from_project_or_cooked_assets();
         initialize_shader_compile_state();
         initialize_shader_tool_discovery();
         configure_viewport_render_backend();
         configure_default_input_rebinding_profile();
-        viewport_.resize(mirakana::editor::ViewportExtent{window_desc_.extent.width, window_desc_.extent.height});
-        recreate_viewport_render_resources(mirakana::Extent2D{window_desc_.extent.width, window_desc_.extent.height});
+        viewport_.resize(
+            mirakana::editor::ViewportExtent{.width = window_desc_.extent.width, .height = window_desc_.extent.height});
+        recreate_viewport_render_resources(
+            mirakana::Extent2D{.width = window_desc_.extent.width, .height = window_desc_.extent.height});
         log_.log(mirakana::LogLevel::info, "editor", "Editor started");
     }
 
@@ -811,13 +826,14 @@ class EditorState {
         model.accepted =
             model.status_label == "Scene open dialog accepted" || model.status_label == "Scene save dialog accepted";
         model.rows = {
-            mirakana::editor::EditorSceneFileDialogRow{"status", "Status", model.status_label},
-            mirakana::editor::EditorSceneFileDialogRow{"selected_path", "Selected path",
-                                                       editor_dialog_row_value(model.selected_path)},
-            mirakana::editor::EditorSceneFileDialogRow{"selected_count", "Selected count",
-                                                       std::to_string(selected_count)},
-            mirakana::editor::EditorSceneFileDialogRow{"selected_filter", "Selected filter",
-                                                       trace_dialog_selected_filter_value(selected_filter)},
+            mirakana::editor::EditorSceneFileDialogRow{.id = "status", .label = "Status", .value = model.status_label},
+            mirakana::editor::EditorSceneFileDialogRow{
+                .id = "selected_path", .label = "Selected path", .value = editor_dialog_row_value(model.selected_path)},
+            mirakana::editor::EditorSceneFileDialogRow{
+                .id = "selected_count", .label = "Selected count", .value = std::to_string(selected_count)},
+            mirakana::editor::EditorSceneFileDialogRow{.id = "selected_filter",
+                                                       .label = "Selected filter",
+                                                       .value = trace_dialog_selected_filter_value(selected_filter)},
         };
     }
 
@@ -834,13 +850,15 @@ class EditorState {
         model.accepted = model.status_label == "Project open dialog accepted" ||
                          model.status_label == "Project save dialog accepted";
         model.rows = {
-            mirakana::editor::EditorProjectFileDialogRow{"status", "Status", model.status_label},
-            mirakana::editor::EditorProjectFileDialogRow{"selected_path", "Selected path",
-                                                         editor_dialog_row_value(model.selected_path)},
-            mirakana::editor::EditorProjectFileDialogRow{"selected_count", "Selected count",
-                                                         std::to_string(selected_count)},
-            mirakana::editor::EditorProjectFileDialogRow{"selected_filter", "Selected filter",
-                                                         trace_dialog_selected_filter_value(selected_filter)},
+            mirakana::editor::EditorProjectFileDialogRow{
+                .id = "status", .label = "Status", .value = model.status_label},
+            mirakana::editor::EditorProjectFileDialogRow{
+                .id = "selected_path", .label = "Selected path", .value = editor_dialog_row_value(model.selected_path)},
+            mirakana::editor::EditorProjectFileDialogRow{
+                .id = "selected_count", .label = "Selected count", .value = std::to_string(selected_count)},
+            mirakana::editor::EditorProjectFileDialogRow{.id = "selected_filter",
+                                                         .label = "Selected filter",
+                                                         .value = trace_dialog_selected_filter_value(selected_filter)},
         };
     }
 
@@ -857,13 +875,16 @@ class EditorState {
         model.accepted = model.status_label == "Prefab variant open dialog accepted" ||
                          model.status_label == "Prefab variant save dialog accepted";
         model.rows = {
-            mirakana::editor::EditorPrefabVariantFileDialogRow{"status", "Status", model.status_label},
-            mirakana::editor::EditorPrefabVariantFileDialogRow{"selected_path", "Selected path",
-                                                               editor_dialog_row_value(model.selected_path)},
-            mirakana::editor::EditorPrefabVariantFileDialogRow{"selected_count", "Selected count",
-                                                               std::to_string(selected_count)},
-            mirakana::editor::EditorPrefabVariantFileDialogRow{"selected_filter", "Selected filter",
-                                                               trace_dialog_selected_filter_value(selected_filter)},
+            mirakana::editor::EditorPrefabVariantFileDialogRow{
+                .id = "status", .label = "Status", .value = model.status_label},
+            mirakana::editor::EditorPrefabVariantFileDialogRow{
+                .id = "selected_path", .label = "Selected path", .value = editor_dialog_row_value(model.selected_path)},
+            mirakana::editor::EditorPrefabVariantFileDialogRow{
+                .id = "selected_count", .label = "Selected count", .value = std::to_string(selected_count)},
+            mirakana::editor::EditorPrefabVariantFileDialogRow{.id = "selected_filter",
+                                                               .label = "Selected filter",
+                                                               .value =
+                                                                   trace_dialog_selected_filter_value(selected_filter)},
         };
     }
 
@@ -876,13 +897,17 @@ class EditorState {
         profiler_trace_open_dialog_.diagnostics = std::move(diagnostics);
         profiler_trace_open_dialog_.accepted = profiler_trace_open_dialog_.status_label == "Trace open dialog accepted";
         profiler_trace_open_dialog_.rows = {
-            mirakana::editor::EditorProfilerKeyValueRow{"status", "Status", profiler_trace_open_dialog_.status_label},
             mirakana::editor::EditorProfilerKeyValueRow{
-                "selected_path", "Selected path", trace_dialog_row_value(profiler_trace_open_dialog_.selected_path)},
-            mirakana::editor::EditorProfilerKeyValueRow{"selected_count", "Selected count",
-                                                        std::to_string(selected_count)},
-            mirakana::editor::EditorProfilerKeyValueRow{"selected_filter", "Selected filter",
-                                                        trace_dialog_selected_filter_value(selected_filter)},
+                .id = "status", .label = "Status", .value = profiler_trace_open_dialog_.status_label},
+            mirakana::editor::EditorProfilerKeyValueRow{
+                .id = "selected_path",
+                .label = "Selected path",
+                .value = trace_dialog_row_value(profiler_trace_open_dialog_.selected_path)},
+            mirakana::editor::EditorProfilerKeyValueRow{
+                .id = "selected_count", .label = "Selected count", .value = std::to_string(selected_count)},
+            mirakana::editor::EditorProfilerKeyValueRow{.id = "selected_filter",
+                                                        .label = "Selected filter",
+                                                        .value = trace_dialog_selected_filter_value(selected_filter)},
         };
     }
 
@@ -895,13 +920,17 @@ class EditorState {
         profiler_trace_save_dialog_.diagnostics = std::move(diagnostics);
         profiler_trace_save_dialog_.accepted = profiler_trace_save_dialog_.status_label == "Trace save dialog accepted";
         profiler_trace_save_dialog_.rows = {
-            mirakana::editor::EditorProfilerKeyValueRow{"status", "Status", profiler_trace_save_dialog_.status_label},
             mirakana::editor::EditorProfilerKeyValueRow{
-                "selected_path", "Selected path", trace_dialog_row_value(profiler_trace_save_dialog_.selected_path)},
-            mirakana::editor::EditorProfilerKeyValueRow{"selected_count", "Selected count",
-                                                        std::to_string(selected_count)},
-            mirakana::editor::EditorProfilerKeyValueRow{"selected_filter", "Selected filter",
-                                                        trace_dialog_selected_filter_value(selected_filter)},
+                .id = "status", .label = "Status", .value = profiler_trace_save_dialog_.status_label},
+            mirakana::editor::EditorProfilerKeyValueRow{
+                .id = "selected_path",
+                .label = "Selected path",
+                .value = trace_dialog_row_value(profiler_trace_save_dialog_.selected_path)},
+            mirakana::editor::EditorProfilerKeyValueRow{
+                .id = "selected_count", .label = "Selected count", .value = std::to_string(selected_count)},
+            mirakana::editor::EditorProfilerKeyValueRow{.id = "selected_filter",
+                                                        .label = "Selected filter",
+                                                        .value = trace_dialog_selected_filter_value(selected_filter)},
         };
     }
 
@@ -915,20 +944,22 @@ class EditorState {
         asset_import_open_dialog_.accepted =
             asset_import_open_dialog_.status_label == "Asset import open dialog accepted";
         asset_import_open_dialog_.rows = {
-            mirakana::editor::EditorContentBrowserImportOpenDialogRow{"status", "Status",
-                                                                      asset_import_open_dialog_.status_label},
-            mirakana::editor::EditorContentBrowserImportOpenDialogRow{"selected_count", "Selected count",
-                                                                      std::to_string(selected_count)},
             mirakana::editor::EditorContentBrowserImportOpenDialogRow{
-                "selected_filter", "Selected filter", trace_dialog_selected_filter_value(selected_filter)},
+                .id = "status", .label = "Status", .value = asset_import_open_dialog_.status_label},
+            mirakana::editor::EditorContentBrowserImportOpenDialogRow{
+                .id = "selected_count", .label = "Selected count", .value = std::to_string(selected_count)},
+            mirakana::editor::EditorContentBrowserImportOpenDialogRow{
+                .id = "selected_filter",
+                .label = "Selected filter",
+                .value = trace_dialog_selected_filter_value(selected_filter)},
         };
 
         std::size_t path_index = 1;
         for (const auto& path : asset_import_open_dialog_.selected_paths) {
             asset_import_open_dialog_.rows.push_back(mirakana::editor::EditorContentBrowserImportOpenDialogRow{
-                "path." + std::to_string(path_index),
-                "Path " + std::to_string(path_index),
-                editor_dialog_row_value(path),
+                .id = "path." + std::to_string(path_index),
+                .label = "Path " + std::to_string(path_index),
+                .value = editor_dialog_row_value(path),
             });
             ++path_index;
         }
@@ -936,9 +967,9 @@ class EditorState {
         std::size_t diagnostic_index = 1;
         for (const auto& diagnostic : asset_import_open_dialog_.diagnostics) {
             asset_import_open_dialog_.rows.push_back(mirakana::editor::EditorContentBrowserImportOpenDialogRow{
-                "diagnostic." + std::to_string(diagnostic_index),
-                "Diagnostic " + std::to_string(diagnostic_index),
-                editor_dialog_row_value(diagnostic),
+                .id = "diagnostic." + std::to_string(diagnostic_index),
+                .label = "Diagnostic " + std::to_string(diagnostic_index),
+                .value = editor_dialog_row_value(diagnostic),
             });
             ++diagnostic_index;
         }
@@ -1259,48 +1290,48 @@ class EditorState {
             switch (kind) {
             case mirakana::AssetImportActionKind::texture:
                 imports.add_texture(mirakana::TextureImportMetadata{
-                    asset,
-                    source_path,
-                    output_path,
-                    mirakana::TextureColorSpace::srgb,
-                    true,
-                    mirakana::TextureCompression::none,
+                    .id = asset,
+                    .source_path = source_path,
+                    .imported_path = output_path,
+                    .color_space = mirakana::TextureColorSpace::srgb,
+                    .generate_mips = true,
+                    .compression = mirakana::TextureCompression::none,
                 });
                 break;
             case mirakana::AssetImportActionKind::mesh:
                 imports.add_mesh(mirakana::MeshImportMetadata{
-                    asset,
-                    source_path,
-                    output_path,
-                    1.0F,
-                    false,
-                    true,
+                    .id = asset,
+                    .source_path = source_path,
+                    .imported_path = output_path,
+                    .scale = 1.0F,
+                    .generate_lods = false,
+                    .generate_collision = true,
                 });
                 break;
             case mirakana::AssetImportActionKind::material:
                 imports.add_material(mirakana::MaterialImportMetadata{
-                    asset,
-                    source_path,
-                    output_path,
-                    {},
+                    .id = asset,
+                    .source_path = source_path,
+                    .imported_path = output_path,
+                    .texture_dependencies = {},
                 });
                 break;
             case mirakana::AssetImportActionKind::scene:
                 imports.add_scene(mirakana::SceneImportMetadata{
-                    asset,
-                    source_path,
-                    output_path,
-                    {},
-                    {},
-                    {},
+                    .id = asset,
+                    .source_path = source_path,
+                    .imported_path = output_path,
+                    .mesh_dependencies = {},
+                    .material_dependencies = {},
+                    .sprite_dependencies = {},
                 });
                 break;
             case mirakana::AssetImportActionKind::audio:
                 imports.add_audio(mirakana::AudioImportMetadata{
-                    asset,
-                    source_path,
-                    output_path,
-                    false,
+                    .id = asset,
+                    .source_path = source_path,
+                    .imported_path = output_path,
+                    .streaming = false,
                 });
                 break;
             default:
@@ -1530,9 +1561,9 @@ class EditorState {
             const auto project =
                 mirakana::editor::deserialize_project_document(project_store_.read_text(*relative_path));
             const mirakana::editor::ProjectBundlePaths paths{
-                *relative_path,
-                workspace_path_for_project_path(*relative_path),
-                scene_path_for_project_document(project),
+                .project_path = *relative_path,
+                .workspace_path = workspace_path_for_project_path(*relative_path),
+                .scene_path = scene_path_for_project_document(project),
             };
             if (!open_project_bundle_from_paths(paths, &diagnostic)) {
                 set_project_file_dialog_state(project_open_dialog_, mirakana::editor::EditorProjectFileDialogMode::open,
@@ -1568,9 +1599,9 @@ class EditorState {
         }
 
         const mirakana::editor::ProjectBundlePaths paths{
-            *relative_path,
-            workspace_path_for_project_path(*relative_path),
-            scene_path_for_project_document(project_),
+            .project_path = *relative_path,
+            .workspace_path = workspace_path_for_project_path(*relative_path),
+            .scene_path = scene_path_for_project_document(project_),
         };
         if (save_project_bundle_to_paths(paths, &diagnostic)) {
             project_paths_ = paths;
@@ -2104,43 +2135,54 @@ class EditorState {
         const auto sprite_id = scene.create_node("Nameplate");
 
         if (auto* camera = scene.find_node(camera_id); camera != nullptr) {
-            camera->transform.position = mirakana::Vec3{0.0F, 0.0F, 5.0F};
+            camera->transform.position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 5.0F};
             mirakana::SceneNodeComponents components;
             components.camera = mirakana::CameraComponent{
-                mirakana::CameraProjectionMode::perspective, 1.04719758F, 10.0F, 0.1F, 500.0F, true,
+                .projection = mirakana::CameraProjectionMode::perspective,
+                .vertical_fov_radians = 1.04719758F,
+                .orthographic_height = 10.0F,
+                .near_plane = 0.1F,
+                .far_plane = 500.0F,
+                .primary = true,
             };
             scene.set_components(camera->id, components);
         }
 
         if (auto* player = scene.find_node(player_id); player != nullptr) {
-            player->transform.scale = mirakana::Vec3{1.25F, 1.25F, 1.25F};
+            player->transform.scale = mirakana::Vec3{.x = 1.25F, .y = 1.25F, .z = 1.25F};
             mirakana::SceneNodeComponents components;
             components.mesh_renderer = mirakana::MeshRendererComponent{
-                mirakana::AssetId::from_name("editor.default.mesh"),
-                mirakana::AssetId::from_name("editor.default.material"),
-                true,
+                .mesh = mirakana::AssetId::from_name("editor.default.mesh"),
+                .material = mirakana::AssetId::from_name("editor.default.material"),
+                .visible = true,
             };
             scene.set_components(player->id, components);
         }
 
         if (auto* light = scene.find_node(light_id); light != nullptr) {
-            light->transform.position = mirakana::Vec3{2.0F, 4.0F, 3.0F};
+            light->transform.position = mirakana::Vec3{.x = 2.0F, .y = 4.0F, .z = 3.0F};
             mirakana::SceneNodeComponents components;
             components.light = mirakana::LightComponent{
-                mirakana::LightType::directional, mirakana::Vec3{1.0F, 0.96F, 0.82F}, 2.0F, 100.0F, 0.0F, 0.0F, false,
+                .type = mirakana::LightType::directional,
+                .color = mirakana::Vec3{.x = 1.0F, .y = 0.96F, .z = 0.82F},
+                .intensity = 2.0F,
+                .range = 100.0F,
+                .inner_cone_radians = 0.0F,
+                .outer_cone_radians = 0.0F,
+                .casts_shadows = false,
             };
             scene.set_components(light->id, components);
         }
 
         if (auto* sprite = scene.find_node(sprite_id); sprite != nullptr) {
-            sprite->transform.position = mirakana::Vec3{0.0F, -1.75F, 0.0F};
+            sprite->transform.position = mirakana::Vec3{.x = 0.0F, .y = -1.75F, .z = 0.0F};
             mirakana::SceneNodeComponents components;
             components.sprite_renderer = mirakana::SpriteRendererComponent{
-                mirakana::AssetId::from_name("editor.default.sprite"),
-                mirakana::AssetId::from_name("editor.default.material"),
-                mirakana::Vec2{2.5F, 0.4F},
-                {0.95F, 0.75F, 0.25F, 1.0F},
-                true,
+                .sprite = mirakana::AssetId::from_name("editor.default.sprite"),
+                .material = mirakana::AssetId::from_name("editor.default.material"),
+                .size = mirakana::Vec2{.x = 2.5F, .y = 0.4F},
+                .tint = {0.95F, 0.75F, 0.25F, 1.0F},
+                .visible = true,
             };
             scene.set_components(sprite->id, components);
         }
@@ -2300,9 +2342,9 @@ class EditorState {
 
     void register_command(std::string id, std::string label, std::function<void()> action) {
         const bool registered = commands_.try_add(mirakana::editor::Command{
-            std::move(id),
-            std::move(label),
-            std::move(action),
+            .id = std::move(id),
+            .label = std::move(label),
+            .action = std::move(action),
         });
         if (!registered) {
             log_.log(mirakana::LogLevel::warn, "editor", "Command registration failed");
@@ -3242,10 +3284,11 @@ class EditorState {
         float surface_height = std::max(96.0F, available.y - status_height);
         if (available.x >= 1.0F && surface_height >= 1.0F) {
             const auto next_extent = mirakana::Extent2D{
-                static_cast<std::uint32_t>(available.x),
-                static_cast<std::uint32_t>(surface_height),
+                .width = static_cast<std::uint32_t>(available.x),
+                .height = static_cast<std::uint32_t>(surface_height),
             };
-            viewport_.resize(mirakana::editor::ViewportExtent{next_extent.width, next_extent.height});
+            viewport_.resize(
+                mirakana::editor::ViewportExtent{.width = next_extent.width, .height = next_extent.height});
             if (viewport_surface_ != nullptr) {
                 viewport_surface_->resize(next_extent);
             }
@@ -3409,13 +3452,16 @@ class EditorState {
         const auto packet = mirakana::build_scene_render_packet(viewport_scene());
         mirakana::SceneRenderSubmitResult submit_result{};
         viewport_surface_->render_frame(
-            mirakana::RhiViewportRenderDesc{viewport_pipeline_, mirakana::Color{0.03F, 0.035F, 0.045F, 1.0F}},
+            mirakana::RhiViewportRenderDesc{.graphics_pipeline = viewport_pipeline_,
+                                            .clear_color =
+                                                mirakana::Color{.r = 0.03F, .g = 0.035F, .b = 0.045F, .a = 1.0F}},
             [this, &packet, &submit_result](mirakana::IRenderer& renderer) {
-                submit_result = mirakana::submit_scene_render_packet(renderer, packet,
-                                                                     mirakana::SceneRenderSubmitDesc{
-                                                                         mirakana::Color{0.76F, 0.86F, 1.0F, 1.0F},
-                                                                         &viewport_materials_,
-                                                                     });
+                submit_result = mirakana::submit_scene_render_packet(
+                    renderer, packet,
+                    mirakana::SceneRenderSubmitDesc{
+                        .fallback_mesh_color = mirakana::Color{.r = 0.76F, .g = 0.86F, .b = 1.0F, .a = 1.0F},
+                        .material_palette = &viewport_materials_,
+                    });
             });
         last_viewport_submit_ = submit_result;
     }
@@ -3428,17 +3474,17 @@ class EditorState {
         }
 
         const auto delta = viewport_delta_step(viewport_.active_tool());
-        draw_viewport_axis_delta_button("-X", mirakana::Vec3{-delta.x, 0.0F, 0.0F});
+        draw_viewport_axis_delta_button("-X", mirakana::Vec3{.x = -delta.x, .y = 0.0F, .z = 0.0F});
         ImGui::SameLine();
-        draw_viewport_axis_delta_button("+X", mirakana::Vec3{delta.x, 0.0F, 0.0F});
+        draw_viewport_axis_delta_button("+X", mirakana::Vec3{.x = delta.x, .y = 0.0F, .z = 0.0F});
         ImGui::SameLine();
-        draw_viewport_axis_delta_button("-Y", mirakana::Vec3{0.0F, -delta.y, 0.0F});
+        draw_viewport_axis_delta_button("-Y", mirakana::Vec3{.x = 0.0F, .y = -delta.y, .z = 0.0F});
         ImGui::SameLine();
-        draw_viewport_axis_delta_button("+Y", mirakana::Vec3{0.0F, delta.y, 0.0F});
+        draw_viewport_axis_delta_button("+Y", mirakana::Vec3{.x = 0.0F, .y = delta.y, .z = 0.0F});
         ImGui::SameLine();
-        draw_viewport_axis_delta_button("-Z", mirakana::Vec3{0.0F, 0.0F, -delta.z});
+        draw_viewport_axis_delta_button("-Z", mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = -delta.z});
         ImGui::SameLine();
-        draw_viewport_axis_delta_button("+Z", mirakana::Vec3{0.0F, 0.0F, delta.z});
+        draw_viewport_axis_delta_button("+Z", mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = delta.z});
     }
 
     void draw_viewport_axis_delta_button(const char* label, mirakana::Vec3 delta) {
@@ -3450,15 +3496,16 @@ class EditorState {
     static mirakana::Vec3 viewport_delta_step(mirakana::editor::ViewportTool tool) noexcept {
         switch (tool) {
         case mirakana::editor::ViewportTool::translate:
-            return mirakana::Vec3{0.25F, 0.25F, 0.25F};
+            return mirakana::Vec3{.x = 0.25F, .y = 0.25F, .z = 0.25F};
         case mirakana::editor::ViewportTool::rotate:
-            return mirakana::Vec3{15.0F * degrees_to_radians, 15.0F * degrees_to_radians, 15.0F * degrees_to_radians};
+            return mirakana::Vec3{
+                .x = 15.0F * degrees_to_radians, .y = 15.0F * degrees_to_radians, .z = 15.0F * degrees_to_radians};
         case mirakana::editor::ViewportTool::scale:
-            return mirakana::Vec3{0.1F, 0.1F, 0.1F};
+            return mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F};
         case mirakana::editor::ViewportTool::select:
-            return mirakana::Vec3{0.0F, 0.0F, 0.0F};
+            return mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F};
         }
-        return mirakana::Vec3{0.0F, 0.0F, 0.0F};
+        return mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F};
     }
 
     [[nodiscard]] static const char*
@@ -3497,7 +3544,7 @@ class EditorState {
 
         std::array<float, 3> position{draft->position.x, draft->position.y, draft->position.z};
         if (ImGui::DragFloat3("Position", position.data(), 0.05F)) {
-            draft->position = mirakana::Vec3{position[0], position[1], position[2]};
+            draft->position = mirakana::Vec3{.x = position[0], .y = position[1], .z = position[2]};
             apply_selected_transform_draft(*draft);
             return;
         }
@@ -3509,9 +3556,9 @@ class EditorState {
         };
         if (ImGui::DragFloat3("Rotation", rotation_degrees.data(), 0.5F)) {
             draft->rotation_radians = mirakana::Vec3{
-                rotation_degrees[0] * degrees_to_radians,
-                rotation_degrees[1] * degrees_to_radians,
-                rotation_degrees[2] * degrees_to_radians,
+                .x = rotation_degrees[0] * degrees_to_radians,
+                .y = rotation_degrees[1] * degrees_to_radians,
+                .z = rotation_degrees[2] * degrees_to_radians,
             };
             apply_selected_transform_draft(*draft);
             return;
@@ -3519,7 +3566,7 @@ class EditorState {
 
         std::array<float, 3> scale{draft->scale.x, draft->scale.y, draft->scale.z};
         if (ImGui::DragFloat3("Scale", scale.data(), 0.05F, 0.001F, 1000.0F)) {
-            draft->scale = mirakana::Vec3{scale[0], scale[1], scale[2]};
+            draft->scale = mirakana::Vec3{.x = scale[0], .y = scale[1], .z = scale[2]};
             apply_selected_transform_draft(*draft);
         }
     }
@@ -3535,8 +3582,13 @@ class EditorState {
         bool has_camera = draft->components.camera.has_value();
         if (ImGui::Checkbox("Camera", &has_camera)) {
             if (has_camera) {
-                draft->components.camera = mirakana::CameraComponent{
-                    mirakana::CameraProjectionMode::perspective, 1.04719758F, 10.0F, 0.1F, 500.0F, false};
+                draft->components.camera =
+                    mirakana::CameraComponent{.projection = mirakana::CameraProjectionMode::perspective,
+                                              .vertical_fov_radians = 1.04719758F,
+                                              .orthographic_height = 10.0F,
+                                              .near_plane = 0.1F,
+                                              .far_plane = 500.0F,
+                                              .primary = false};
             } else {
                 draft->components.camera.reset();
             }
@@ -3550,13 +3602,14 @@ class EditorState {
         bool has_light = draft->components.light.has_value();
         if (ImGui::Checkbox("Light", &has_light)) {
             if (has_light) {
-                draft->components.light = mirakana::LightComponent{mirakana::LightType::directional,
-                                                                   mirakana::Vec3{1.0F, 0.95F, 0.85F},
-                                                                   1.0F,
-                                                                   10.0F,
-                                                                   0.0F,
-                                                                   0.0F,
-                                                                   false};
+                draft->components.light =
+                    mirakana::LightComponent{.type = mirakana::LightType::directional,
+                                             .color = mirakana::Vec3{.x = 1.0F, .y = 0.95F, .z = 0.85F},
+                                             .intensity = 1.0F,
+                                             .range = 10.0F,
+                                             .inner_cone_radians = 0.0F,
+                                             .outer_cone_radians = 0.0F,
+                                             .casts_shadows = false};
             } else {
                 draft->components.light.reset();
             }
@@ -3571,9 +3624,9 @@ class EditorState {
         if (ImGui::Checkbox("Mesh Renderer", &has_mesh_renderer)) {
             if (has_mesh_renderer) {
                 draft->components.mesh_renderer = mirakana::MeshRendererComponent{
-                    mirakana::AssetId::from_name("editor.default.mesh"),
-                    mirakana::AssetId::from_name("editor.default.material"),
-                    true,
+                    .mesh = mirakana::AssetId::from_name("editor.default.mesh"),
+                    .material = mirakana::AssetId::from_name("editor.default.material"),
+                    .visible = true,
                 };
             } else {
                 draft->components.mesh_renderer.reset();
@@ -3616,11 +3669,11 @@ class EditorState {
         if (ImGui::Checkbox("Sprite Renderer", &has_sprite_renderer)) {
             if (has_sprite_renderer) {
                 draft->components.sprite_renderer = mirakana::SpriteRendererComponent{
-                    mirakana::AssetId::from_name("editor.default.sprite"),
-                    mirakana::AssetId::from_name("editor.default.material"),
-                    mirakana::Vec2{1.0F, 1.0F},
-                    {1.0F, 1.0F, 1.0F, 1.0F},
-                    true,
+                    .sprite = mirakana::AssetId::from_name("editor.default.sprite"),
+                    .material = mirakana::AssetId::from_name("editor.default.material"),
+                    .size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+                    .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                    .visible = true,
                 };
             } else {
                 draft->components.sprite_renderer.reset();
@@ -3699,7 +3752,7 @@ class EditorState {
 
         std::array<float, 3> color{light.color.x, light.color.y, light.color.z};
         if (ImGui::DragFloat3("Light Color", color.data(), 0.01F, 0.0F, 64.0F)) {
-            light.color = mirakana::Vec3{color[0], color[1], color[2]};
+            light.color = mirakana::Vec3{.x = color[0], .y = color[1], .z = color[2]};
             draft.components.light = light;
             apply_selected_component_draft(draft);
             return true;
@@ -3748,7 +3801,7 @@ class EditorState {
 
         std::array<float, 2> size{sprite.size.x, sprite.size.y};
         if (ImGui::DragFloat2("Sprite Size", size.data(), 0.05F, 0.0001F, 1000000.0F)) {
-            sprite.size = mirakana::Vec2{size[0], size[1]};
+            sprite.size = mirakana::Vec2{.x = size[0], .y = size[1]};
             draft.components.sprite_renderer = sprite;
             apply_selected_component_draft(draft);
             return true;
@@ -3808,8 +3861,8 @@ class EditorState {
     [[nodiscard]] static bool
     play_session_control_enabled(const mirakana::editor::EditorPlaySessionControlsModel& model,
                                  mirakana::editor::EditorPlaySessionControlCommand command) noexcept {
-        const auto it = std::find_if(model.controls.begin(), model.controls.end(),
-                                     [command](const auto& row) { return row.command == command; });
+        const auto it =
+            std::ranges::find_if(model.controls, [command](const auto& row) { return row.command == command; });
         return it != model.controls.end() && it->enabled;
     }
 
@@ -3908,11 +3961,11 @@ class EditorState {
     [[nodiscard]] static mirakana::runtime::RuntimeInputActionTrigger
     make_gamepad_button_trigger(mirakana::GamepadId gamepad_id, mirakana::GamepadButton button) noexcept {
         return mirakana::runtime::RuntimeInputActionTrigger{
-            mirakana::runtime::RuntimeInputActionTriggerKind::gamepad_button,
-            mirakana::Key::unknown,
-            0,
-            gamepad_id,
-            button,
+            .kind = mirakana::runtime::RuntimeInputActionTriggerKind::gamepad_button,
+            .key = mirakana::Key::unknown,
+            .pointer_id = 0,
+            .gamepad_id = gamepad_id,
+            .gamepad_button = button,
         };
     }
 
@@ -3936,14 +3989,14 @@ class EditorState {
 
         input_rebinding_profile_.profile_id = "player_one";
         input_rebinding_profile_.action_overrides.push_back(mirakana::runtime::RuntimeInputRebindingActionOverride{
-            "gameplay",
-            "confirm",
-            {make_gamepad_button_trigger(mirakana::GamepadId{1}, mirakana::GamepadButton::south)},
+            .context = "gameplay",
+            .action = "confirm",
+            .triggers = {make_gamepad_button_trigger(mirakana::GamepadId{1}, mirakana::GamepadButton::south)},
         });
         input_rebinding_profile_.axis_overrides.push_back(mirakana::runtime::RuntimeInputRebindingAxisOverride{
-            "gameplay",
-            "move_x",
-            {make_gamepad_axis_source(mirakana::GamepadId{1}, mirakana::GamepadAxis::left_x, 1.0F, 0.25F)},
+            .context = "gameplay",
+            .action = "move_x",
+            .sources = {make_gamepad_axis_source(mirakana::GamepadId{1}, mirakana::GamepadAxis::left_x, 1.0F, 0.25F)},
         });
     }
 
@@ -3952,18 +4005,19 @@ class EditorState {
                                       const std::string* vertex_bytecode = nullptr,
                                       const std::string* fragment_bytecode = nullptr) {
         const auto vertex_shader = device.create_shader(mirakana::rhi::ShaderDesc{
-            mirakana::rhi::ShaderStage::vertex,
-            "vs_main",
-            vertex_bytecode == nullptr ? 64U : static_cast<std::uint64_t>(vertex_bytecode->size()),
-            vertex_bytecode == nullptr ? nullptr : vertex_bytecode->data(),
+            .stage = mirakana::rhi::ShaderStage::vertex,
+            .entry_point = "vs_main",
+            .bytecode_size = vertex_bytecode == nullptr ? 64U : static_cast<std::uint64_t>(vertex_bytecode->size()),
+            .bytecode = vertex_bytecode == nullptr ? nullptr : vertex_bytecode->data(),
         });
         const auto fragment_shader = device.create_shader(mirakana::rhi::ShaderDesc{
-            mirakana::rhi::ShaderStage::fragment,
-            "ps_main",
-            fragment_bytecode == nullptr ? 64U : static_cast<std::uint64_t>(fragment_bytecode->size()),
-            fragment_bytecode == nullptr ? nullptr : fragment_bytecode->data(),
+            .stage = mirakana::rhi::ShaderStage::fragment,
+            .entry_point = "ps_main",
+            .bytecode_size = fragment_bytecode == nullptr ? 64U : static_cast<std::uint64_t>(fragment_bytecode->size()),
+            .bytecode = fragment_bytecode == nullptr ? nullptr : fragment_bytecode->data(),
         });
-        const auto layout = device.create_pipeline_layout(mirakana::rhi::PipelineLayoutDesc{{}, 0});
+        const auto layout = device.create_pipeline_layout(
+            mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
         return device.create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
             .layout = layout,
             .vertex_shader = vertex_shader,
@@ -4053,35 +4107,43 @@ class EditorState {
 
     [[nodiscard]] mirakana::editor::EditorProfilerStatus make_profiler_status() const {
         return mirakana::editor::EditorProfilerStatus{
-            log_.records().size(),
-            history_.undo_count(),
-            history_.redo_count(),
-            asset_pipeline_.item_count(),
-            asset_pipeline_.hot_reload_events().size(),
-            shader_compiles_.item_count(),
-            dirty_state_.dirty(),
-            dirty_state_.revision(),
+            .log_records = log_.records().size(),
+            .undo_stack = history_.undo_count(),
+            .redo_stack = history_.redo_count(),
+            .asset_imports = asset_pipeline_.item_count(),
+            .hot_reload_events = asset_pipeline_.hot_reload_events().size(),
+            .shader_compiles = shader_compiles_.item_count(),
+            .dirty = dirty_state_.dirty(),
+            .revision = dirty_state_.revision(),
         };
     }
 
     void record_editor_profiler_counters() {
         const auto status = make_profiler_status();
-        profiler_recorder_.record_counter(mirakana::CounterSample{
-            "editor.log_records", static_cast<double>(status.log_records), profiler_frame_index_});
-        profiler_recorder_.record_counter(mirakana::CounterSample{
-            "editor.undo_stack", static_cast<double>(status.undo_stack), profiler_frame_index_});
-        profiler_recorder_.record_counter(mirakana::CounterSample{
-            "editor.redo_stack", static_cast<double>(status.redo_stack), profiler_frame_index_});
-        profiler_recorder_.record_counter(mirakana::CounterSample{
-            "editor.asset_imports", static_cast<double>(status.asset_imports), profiler_frame_index_});
-        profiler_recorder_.record_counter(mirakana::CounterSample{
-            "editor.hot_reload_events", static_cast<double>(status.hot_reload_events), profiler_frame_index_});
-        profiler_recorder_.record_counter(mirakana::CounterSample{
-            "editor.shader_compiles", static_cast<double>(status.shader_compiles), profiler_frame_index_});
+        profiler_recorder_.record_counter(mirakana::CounterSample{.name = "editor.log_records",
+                                                                  .value = static_cast<double>(status.log_records),
+                                                                  .frame_index = profiler_frame_index_});
+        profiler_recorder_.record_counter(mirakana::CounterSample{.name = "editor.undo_stack",
+                                                                  .value = static_cast<double>(status.undo_stack),
+                                                                  .frame_index = profiler_frame_index_});
+        profiler_recorder_.record_counter(mirakana::CounterSample{.name = "editor.redo_stack",
+                                                                  .value = static_cast<double>(status.redo_stack),
+                                                                  .frame_index = profiler_frame_index_});
+        profiler_recorder_.record_counter(mirakana::CounterSample{.name = "editor.asset_imports",
+                                                                  .value = static_cast<double>(status.asset_imports),
+                                                                  .frame_index = profiler_frame_index_});
         profiler_recorder_.record_counter(
-            mirakana::CounterSample{"editor.dirty", status.dirty ? 1.0 : 0.0, profiler_frame_index_});
-        profiler_recorder_.record_counter(
-            mirakana::CounterSample{"editor.revision", static_cast<double>(status.revision), profiler_frame_index_});
+            mirakana::CounterSample{.name = "editor.hot_reload_events",
+                                    .value = static_cast<double>(status.hot_reload_events),
+                                    .frame_index = profiler_frame_index_});
+        profiler_recorder_.record_counter(mirakana::CounterSample{.name = "editor.shader_compiles",
+                                                                  .value = static_cast<double>(status.shader_compiles),
+                                                                  .frame_index = profiler_frame_index_});
+        profiler_recorder_.record_counter(mirakana::CounterSample{
+            .name = "editor.dirty", .value = status.dirty ? 1.0 : 0.0, .frame_index = profiler_frame_index_});
+        profiler_recorder_.record_counter(mirakana::CounterSample{.name = "editor.revision",
+                                                                  .value = static_cast<double>(status.revision),
+                                                                  .frame_index = profiler_frame_index_});
     }
 
     [[nodiscard]] mirakana::editor::EditorResourcePanelInput make_resource_panel_input() const {
@@ -4099,40 +4161,52 @@ class EditorState {
 
         const auto stats = viewport_device_->stats();
         input.rhi_counters = {
-            mirakana::editor::EditorResourceCounterInput{"buffers_created", "Buffers created", stats.buffers_created},
-            mirakana::editor::EditorResourceCounterInput{"textures_created", "Textures created",
-                                                         stats.textures_created},
-            mirakana::editor::EditorResourceCounterInput{"samplers_created", "Samplers created",
-                                                         stats.samplers_created},
-            mirakana::editor::EditorResourceCounterInput{"shader_modules_created", "Shader modules created",
-                                                         stats.shader_modules_created},
-            mirakana::editor::EditorResourceCounterInput{"descriptor_writes", "Descriptor writes",
-                                                         stats.descriptor_writes},
-            mirakana::editor::EditorResourceCounterInput{"graphics_pipelines_created", "Graphics pipelines created",
-                                                         stats.graphics_pipelines_created},
-            mirakana::editor::EditorResourceCounterInput{"compute_pipelines_created", "Compute pipelines created",
-                                                         stats.compute_pipelines_created},
-            mirakana::editor::EditorResourceCounterInput{"command_lists_submitted", "Command lists submitted",
-                                                         stats.command_lists_submitted},
-            mirakana::editor::EditorResourceCounterInput{"resource_transitions", "Resource transitions",
-                                                         stats.resource_transitions},
-            mirakana::editor::EditorResourceCounterInput{"draw_calls", "Draw calls", stats.draw_calls},
-            mirakana::editor::EditorResourceCounterInput{"indexed_draw_calls", "Indexed draw calls",
-                                                         stats.indexed_draw_calls},
-            mirakana::editor::EditorResourceCounterInput{"compute_dispatches", "Compute dispatches",
-                                                         stats.compute_dispatches},
-            mirakana::editor::EditorResourceCounterInput{"bytes_written", "Bytes written", stats.bytes_written},
-            mirakana::editor::EditorResourceCounterInput{"bytes_copied", "Bytes copied", stats.bytes_copied},
-            mirakana::editor::EditorResourceCounterInput{"bytes_read", "Bytes read", stats.bytes_read},
-            mirakana::editor::EditorResourceCounterInput{"shared_texture_exports", "Shared texture exports",
-                                                         stats.shared_texture_exports},
-            mirakana::editor::EditorResourceCounterInput{"shared_texture_export_failures",
-                                                         "Shared texture export failures",
-                                                         stats.shared_texture_export_failures},
-            mirakana::editor::EditorResourceCounterInput{"gpu_debug_scopes_begun", "GPU debug scopes begun",
-                                                         stats.gpu_debug_scopes_begun},
-            mirakana::editor::EditorResourceCounterInput{"gpu_debug_markers_inserted", "GPU debug markers inserted",
-                                                         stats.gpu_debug_markers_inserted},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "buffers_created", .label = "Buffers created", .value = stats.buffers_created},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "textures_created", .label = "Textures created", .value = stats.textures_created},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "samplers_created", .label = "Samplers created", .value = stats.samplers_created},
+            mirakana::editor::EditorResourceCounterInput{.id = "shader_modules_created",
+                                                         .label = "Shader modules created",
+                                                         .value = stats.shader_modules_created},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "descriptor_writes", .label = "Descriptor writes", .value = stats.descriptor_writes},
+            mirakana::editor::EditorResourceCounterInput{.id = "graphics_pipelines_created",
+                                                         .label = "Graphics pipelines created",
+                                                         .value = stats.graphics_pipelines_created},
+            mirakana::editor::EditorResourceCounterInput{.id = "compute_pipelines_created",
+                                                         .label = "Compute pipelines created",
+                                                         .value = stats.compute_pipelines_created},
+            mirakana::editor::EditorResourceCounterInput{.id = "command_lists_submitted",
+                                                         .label = "Command lists submitted",
+                                                         .value = stats.command_lists_submitted},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "resource_transitions", .label = "Resource transitions", .value = stats.resource_transitions},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "draw_calls", .label = "Draw calls", .value = stats.draw_calls},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "indexed_draw_calls", .label = "Indexed draw calls", .value = stats.indexed_draw_calls},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "compute_dispatches", .label = "Compute dispatches", .value = stats.compute_dispatches},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "bytes_written", .label = "Bytes written", .value = stats.bytes_written},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "bytes_copied", .label = "Bytes copied", .value = stats.bytes_copied},
+            mirakana::editor::EditorResourceCounterInput{
+                .id = "bytes_read", .label = "Bytes read", .value = stats.bytes_read},
+            mirakana::editor::EditorResourceCounterInput{.id = "shared_texture_exports",
+                                                         .label = "Shared texture exports",
+                                                         .value = stats.shared_texture_exports},
+            mirakana::editor::EditorResourceCounterInput{.id = "shared_texture_export_failures",
+                                                         .label = "Shared texture export failures",
+                                                         .value = stats.shared_texture_export_failures},
+            mirakana::editor::EditorResourceCounterInput{.id = "gpu_debug_scopes_begun",
+                                                         .label = "GPU debug scopes begun",
+                                                         .value = stats.gpu_debug_scopes_begun},
+            mirakana::editor::EditorResourceCounterInput{.id = "gpu_debug_markers_inserted",
+                                                         .label = "GPU debug markers inserted",
+                                                         .value = stats.gpu_debug_markers_inserted},
         };
 
         const auto memory = viewport_device_->memory_diagnostics();
@@ -4161,9 +4235,9 @@ class EditorState {
                     }));
                 if (count > 0U) {
                     input.lifetime.resources_by_kind.push_back(mirakana::editor::EditorResourceCounterInput{
-                        std::string(rhi_resource_kind_id(desc.kind)),
-                        std::string(rhi_resource_kind_label(desc.kind)),
-                        count,
+                        .id = std::string(rhi_resource_kind_id(desc.kind)),
+                        .label = std::string(rhi_resource_kind_label(desc.kind)),
+                        .value = count,
                     });
                 }
             }
@@ -4177,28 +4251,29 @@ class EditorState {
     void append_resource_capture_requests(mirakana::editor::EditorResourcePanelInput& input) const {
         const bool d3d12_viewport = input.device_available && input.backend_id == "d3d12";
         input.capture_requests.push_back(mirakana::editor::EditorResourceCaptureRequestInput{
-            "d3d12_debug_layer_gpu_validation",
-            "D3D12 Debug Layer / GPU Validation",
-            "Windows Graphics Tools",
-            "Request debug validation prep",
-            {"d3d12-debug-layer"},
-            d3d12_viewport,
-            resource_capture_request_acknowledged("d3d12_debug_layer_gpu_validation"),
-            d3d12_viewport ? "Prepare D3D12 debug layer and GPU-based validation through external host tooling"
-                           : "D3D12 debug validation handoff requires an active D3D12 viewport device",
+            .id = "d3d12_debug_layer_gpu_validation",
+            .label = "D3D12 Debug Layer / GPU Validation",
+            .tool_label = "Windows Graphics Tools",
+            .action_label = "Request debug validation prep",
+            .host_gates = {"d3d12-debug-layer"},
+            .available = d3d12_viewport,
+            .acknowledged = resource_capture_request_acknowledged("d3d12_debug_layer_gpu_validation"),
+            .diagnostic = d3d12_viewport
+                              ? "Prepare D3D12 debug layer and GPU-based validation through external host tooling"
+                              : "D3D12 debug validation handoff requires an active D3D12 viewport device",
         });
         input.capture_requests.push_back(mirakana::editor::EditorResourceCaptureRequestInput{
-            "pix_gpu_capture",
-            "PIX GPU Capture",
-            "PIX on Windows",
-            "Request PIX Capture",
-            {"d3d12-windows-primary", "pix-installed"},
-            d3d12_viewport,
-            resource_capture_request_acknowledged("pix_gpu_capture"),
-            d3d12_viewport
-                ? "Launch or attach PIX externally; validate D3D12 usage with the debug layer/GPU-based validation if "
-                  "capture fails"
-                : "PIX GPU capture handoff requires an active D3D12 viewport device",
+            .id = "pix_gpu_capture",
+            .label = "PIX GPU Capture",
+            .tool_label = "PIX on Windows",
+            .action_label = "Request PIX Capture",
+            .host_gates = {"d3d12-windows-primary", "pix-installed"},
+            .available = d3d12_viewport,
+            .acknowledged = resource_capture_request_acknowledged("pix_gpu_capture"),
+            .diagnostic = d3d12_viewport ? "Launch or attach PIX externally; validate D3D12 usage with the debug "
+                                           "layer/GPU-based validation if "
+                                           "capture fails"
+                                         : "PIX GPU capture handoff requires an active D3D12 viewport device",
         });
     }
 
@@ -4333,12 +4408,12 @@ class EditorState {
 
         const std::vector<mirakana::editor::RuntimeSceneValidationTargetRow> validation_targets{
             mirakana::editor::RuntimeSceneValidationTargetRow{
-                "current-scene-package",
-                std::string(default_package_index_path),
-                "scene.start",
-                "",
-                true,
-                true,
+                .id = "current-scene-package",
+                .package_index_path = std::string(default_package_index_path),
+                .scene_asset_key = "scene.start",
+                .content_root = "",
+                .validate_asset_references = true,
+                .require_unique_node_names = true,
             },
         };
 
@@ -4348,55 +4423,60 @@ class EditorState {
 
         return mirakana::editor::make_editor_ai_package_authoring_diagnostics_model(
             mirakana::editor::EditorAiPackageAuthoringDiagnosticsDesc{
-                mirakana::editor::EditorPlaytestPackageReviewDesc{
-                    package_registration_draft,
-                    validation_targets,
-                    "current-scene-package",
-                    {"desktop-runtime-sample-game-scene-gpu-package"},
-                },
-                {
-                    mirakana::editor::EditorAiPackageDescriptorDiagnosticRow{
-                        "runtime-scene-validation-target",
-                        "game.agent.json.runtimeSceneValidationTargets",
-                        mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready,
-                        false,
-                        false,
-                        "current scene validation target is represented as reviewed data",
+                .playtest_review =
+                    mirakana::editor::EditorPlaytestPackageReviewDesc{
+                        .package_registration_draft_rows = package_registration_draft,
+                        .runtime_scene_validation_targets = validation_targets,
+                        .selected_runtime_scene_validation_target_id = "current-scene-package",
+                        .host_gated_smoke_recipes = {"desktop-runtime-sample-game-scene-gpu-package"},
                     },
-                    mirakana::editor::EditorAiPackageDescriptorDiagnosticRow{
-                        "run-validation-recipe",
-                        "aiOperableProductionLoop.commandSurfaces.run-validation-recipe",
-                        mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready,
-                        false,
-                        false,
-                        "reviewed validation recipe runner is shown as dry-run/operator data only",
+                .descriptor_rows =
+                    {
+                        mirakana::editor::EditorAiPackageDescriptorDiagnosticRow{
+                            .id = "runtime-scene-validation-target",
+                            .surface = "game.agent.json.runtimeSceneValidationTargets",
+                            .status = mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready,
+                            .mutates = false,
+                            .executes = false,
+                            .diagnostic = "current scene validation target is represented as reviewed data",
+                        },
+                        mirakana::editor::EditorAiPackageDescriptorDiagnosticRow{
+                            .id = "run-validation-recipe",
+                            .surface = "aiOperableProductionLoop.commandSurfaces.run-validation-recipe",
+                            .status = mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready,
+                            .mutates = false,
+                            .executes = false,
+                            .diagnostic = "reviewed validation recipe runner is shown as dry-run/operator data only",
+                        },
                     },
-                },
-                {
-                    mirakana::editor::EditorAiPackagePayloadDiagnosticRow{
-                        "runtime-package-files",
-                        package_index_registered ? mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready
-                                                 : mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::blocked,
-                        package_index_registered ? "runtime package index is registered"
-                                                 : "runtime package index is not registered",
+                .payload_rows =
+                    {
+                        mirakana::editor::EditorAiPackagePayloadDiagnosticRow{
+                            .id = "runtime-package-files",
+                            .status = package_index_registered
+                                          ? mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready
+                                          : mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::blocked,
+                            .diagnostic = package_index_registered ? "runtime package index is registered"
+                                                                   : "runtime package index is not registered",
+                        },
                     },
-                },
-                {
-                    mirakana::editor::EditorAiPackageValidationRecipeDiagnosticRow{
-                        "agent-contract",
-                        mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready,
-                        false,
-                        false,
-                        "agent contract dry-run command data is reviewed",
+                .validation_recipe_rows =
+                    {
+                        mirakana::editor::EditorAiPackageValidationRecipeDiagnosticRow{
+                            .id = "agent-contract",
+                            .status = mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready,
+                            .host_gated = false,
+                            .executes = false,
+                            .diagnostic = "agent contract dry-run command data is reviewed",
+                        },
+                        mirakana::editor::EditorAiPackageValidationRecipeDiagnosticRow{
+                            .id = "desktop-runtime-sample-game-scene-gpu-package",
+                            .status = mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::host_gated,
+                            .host_gated = true,
+                            .executes = false,
+                            .diagnostic = "desktop runtime package smoke stays host-gated and external",
+                        },
                     },
-                    mirakana::editor::EditorAiPackageValidationRecipeDiagnosticRow{
-                        "desktop-runtime-sample-game-scene-gpu-package",
-                        mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::host_gated,
-                        true,
-                        false,
-                        "desktop runtime package smoke stays host-gated and external",
-                    },
-                },
             });
     }
 
@@ -4404,27 +4484,30 @@ class EditorState {
     make_reviewed_validation_recipe_dry_run_rows() {
         return {
             mirakana::editor::EditorAiValidationRecipeDryRunPlanRow{
-                "agent-contract",
-                "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe "
-                "agent-contract",
-                {},
-                {},
-                false,
-                "agent contract dry-run plan is reviewed",
-                {"pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/run-validation-recipe.ps1",
-                 "-Mode", "DryRun", "-Recipe", "agent-contract"},
+                .id = "agent-contract",
+                .command_display = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 "
+                                   "-Mode DryRun -Recipe "
+                                   "agent-contract",
+                .host_gates = {},
+                .blocked_by = {},
+                .executes = false,
+                .diagnostic = "agent contract dry-run plan is reviewed",
+                .argv = {"pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/run-validation-recipe.ps1",
+                         "-Mode", "DryRun", "-Recipe", "agent-contract"},
             },
             mirakana::editor::EditorAiValidationRecipeDryRunPlanRow{
-                "desktop-runtime-sample-game-scene-gpu-package",
-                "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe "
-                "desktop-runtime-sample-game-scene-gpu-package -GameTarget sample_desktop_runtime_game",
-                {"d3d12-windows-primary"},
-                {},
-                false,
-                "D3D12 desktop package dry-run plan is host-gated",
-                {"pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/run-validation-recipe.ps1",
-                 "-Mode", "DryRun", "-Recipe", "desktop-runtime-sample-game-scene-gpu-package", "-GameTarget",
-                 "sample_desktop_runtime_game"},
+                .id = "desktop-runtime-sample-game-scene-gpu-package",
+                .command_display =
+                    "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun "
+                    "-Recipe "
+                    "desktop-runtime-sample-game-scene-gpu-package -GameTarget sample_desktop_runtime_game",
+                .host_gates = {"d3d12-windows-primary"},
+                .blocked_by = {},
+                .executes = false,
+                .diagnostic = "D3D12 desktop package dry-run plan is host-gated",
+                .argv = {"pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/run-validation-recipe.ps1",
+                         "-Mode", "DryRun", "-Recipe", "desktop-runtime-sample-game-scene-gpu-package", "-GameTarget",
+                         "sample_desktop_runtime_game"},
             },
         };
     }
@@ -4453,35 +4536,40 @@ class EditorState {
         const auto recipe_ids = make_ai_validation_recipe_ids();
         const auto validation_preflight = mirakana::editor::make_editor_ai_validation_recipe_preflight_model(
             mirakana::editor::EditorAiValidationRecipePreflightDesc{
-                recipe_ids,
-                recipe_ids,
-                make_reviewed_validation_recipe_dry_run_rows(),
+                .manifest_validation_recipe_ids = recipe_ids,
+                .selected_validation_recipe_ids = recipe_ids,
+                .dry_run_plan_rows = make_reviewed_validation_recipe_dry_run_rows(),
             });
         const auto readiness_report = mirakana::editor::make_editor_ai_playtest_readiness_report_model(
-            mirakana::editor::EditorAiPlaytestReadinessReportDesc{package_diagnostics, validation_preflight});
+            mirakana::editor::EditorAiPlaytestReadinessReportDesc{.package_diagnostics = package_diagnostics,
+                                                                  .validation_preflight = validation_preflight});
         const auto operator_handoff = mirakana::editor::make_editor_ai_playtest_operator_handoff_model(
-            mirakana::editor::EditorAiPlaytestOperatorHandoffDesc{readiness_report, validation_preflight});
+            mirakana::editor::EditorAiPlaytestOperatorHandoffDesc{.readiness_report = readiness_report,
+                                                                  .validation_preflight = validation_preflight});
         const auto evidence_summary = mirakana::editor::make_editor_ai_playtest_evidence_summary_model(
-            mirakana::editor::EditorAiPlaytestEvidenceSummaryDesc{operator_handoff, ai_playtest_evidence_rows_});
+            mirakana::editor::EditorAiPlaytestEvidenceSummaryDesc{.operator_handoff = operator_handoff,
+                                                                  .evidence_rows = ai_playtest_evidence_rows_});
         const auto remediation_queue = mirakana::editor::make_editor_ai_playtest_remediation_queue_model(
-            mirakana::editor::EditorAiPlaytestRemediationQueueDesc{evidence_summary});
+            mirakana::editor::EditorAiPlaytestRemediationQueueDesc{.evidence_summary = evidence_summary});
         const auto remediation_handoff = mirakana::editor::make_editor_ai_playtest_remediation_handoff_model(
-            mirakana::editor::EditorAiPlaytestRemediationHandoffDesc{remediation_queue});
+            mirakana::editor::EditorAiPlaytestRemediationHandoffDesc{.remediation_queue = remediation_queue});
         const auto workflow_report = mirakana::editor::make_editor_ai_playtest_operator_workflow_report_model(
             mirakana::editor::EditorAiPlaytestOperatorWorkflowReportDesc{
-                package_diagnostics,
-                validation_preflight,
-                readiness_report,
-                operator_handoff,
-                evidence_summary,
-                remediation_queue,
-                remediation_handoff,
+                .package_diagnostics = package_diagnostics,
+                .validation_preflight = validation_preflight,
+                .readiness_report = readiness_report,
+                .operator_handoff = operator_handoff,
+                .evidence_summary = evidence_summary,
+                .remediation_queue = remediation_queue,
+                .remediation_handoff = remediation_handoff,
             });
         auto panel_model = mirakana::editor::make_editor_ai_command_panel_model(
-            mirakana::editor::EditorAiCommandPanelDesc{workflow_report, operator_handoff, evidence_summary});
+            mirakana::editor::EditorAiCommandPanelDesc{.workflow_report = workflow_report,
+                                                       .operator_handoff = operator_handoff,
+                                                       .evidence_summary = evidence_summary});
         return AiCommandPanelContext{
-            operator_handoff,
-            std::move(panel_model),
+            .operator_handoff = operator_handoff,
+            .panel_model = std::move(panel_model),
         };
     }
 
@@ -5648,8 +5736,9 @@ class EditorState {
             desc.profile = input_rebinding_profile_;
             desc.context = input_rebinding_capture_target_->context;
             desc.action = input_rebinding_capture_target_->action;
-            desc.state = mirakana::runtime::RuntimeInputStateView{&editor_keyboard_input_, &editor_pointer_input_,
-                                                                  &editor_gamepad_input_};
+            desc.state = mirakana::runtime::RuntimeInputStateView{.keyboard = &editor_keyboard_input_,
+                                                                  .pointer = &editor_pointer_input_,
+                                                                  .gamepad = &editor_gamepad_input_};
 
             auto capture = mirakana::editor::make_editor_input_rebinding_capture_action_model(desc);
             input_rebinding_capture_status_ =
@@ -5670,8 +5759,9 @@ class EditorState {
             desc.profile = input_rebinding_profile_;
             desc.context = input_rebinding_capture_target_->context;
             desc.action = input_rebinding_capture_target_->action;
-            desc.state = mirakana::runtime::RuntimeInputStateView{&editor_keyboard_input_, &editor_pointer_input_,
-                                                                  &editor_gamepad_input_};
+            desc.state = mirakana::runtime::RuntimeInputStateView{.keyboard = &editor_keyboard_input_,
+                                                                  .pointer = &editor_pointer_input_,
+                                                                  .gamepad = &editor_gamepad_input_};
 
             auto capture = mirakana::editor::make_editor_input_rebinding_capture_axis_model(desc);
             input_rebinding_capture_status_ =
@@ -5822,8 +5912,8 @@ class EditorState {
     void draw_input_rebinding_panel() {
         update_input_rebinding_capture();
         const auto model = mirakana::editor::make_editor_input_rebinding_profile_panel_model(
-            mirakana::editor::EditorInputRebindingProfileReviewDesc{input_rebinding_base_actions_,
-                                                                    input_rebinding_profile_});
+            mirakana::editor::EditorInputRebindingProfileReviewDesc{.base_actions = input_rebinding_base_actions_,
+                                                                    .profile = input_rebinding_profile_});
 
         ImGui::Begin("Input Rebinding");
         ImGui::Text("Status: %s", model.status_label.c_str());
@@ -6610,13 +6700,13 @@ class EditorState {
         }
         if (ImGui::Button("Apply Transform Override")) {
             mirakana::Transform3D transform;
-            transform.position =
-                mirakana::Vec3{prefab_variant_position_[0], prefab_variant_position_[1], prefab_variant_position_[2]};
-            transform.scale =
-                mirakana::Vec3{prefab_variant_scale_[0], prefab_variant_scale_[1], prefab_variant_scale_[2]};
-            transform.rotation_radians = mirakana::Vec3{prefab_variant_rotation_degrees_[0] * degrees_to_radians,
-                                                        prefab_variant_rotation_degrees_[1] * degrees_to_radians,
-                                                        prefab_variant_rotation_degrees_[2] * degrees_to_radians};
+            transform.position = mirakana::Vec3{
+                .x = prefab_variant_position_[0], .y = prefab_variant_position_[1], .z = prefab_variant_position_[2]};
+            transform.scale = mirakana::Vec3{
+                .x = prefab_variant_scale_[0], .y = prefab_variant_scale_[1], .z = prefab_variant_scale_[2]};
+            transform.rotation_radians = mirakana::Vec3{.x = prefab_variant_rotation_degrees_[0] * degrees_to_radians,
+                                                        .y = prefab_variant_rotation_degrees_[1] * degrees_to_radians,
+                                                        .z = prefab_variant_rotation_degrees_[2] * degrees_to_radians};
             execute_prefab_variant_authoring_action(mirakana::editor::make_prefab_variant_transform_override_action(
                 document, prefab_variant_node_index(), transform));
         }
@@ -6632,9 +6722,9 @@ class EditorState {
         if (ImGui::Button("Default Mesh Override")) {
             mirakana::SceneNodeComponents components;
             components.mesh_renderer = mirakana::MeshRendererComponent{
-                mirakana::AssetId::from_name("editor.default.mesh"),
-                mirakana::AssetId::from_name("editor.default.material"),
-                true,
+                .mesh = mirakana::AssetId::from_name("editor.default.mesh"),
+                .material = mirakana::AssetId::from_name("editor.default.material"),
+                .visible = true,
             };
             execute_prefab_variant_authoring_action(mirakana::editor::make_prefab_variant_component_override_action(
                 document, prefab_variant_node_index(), components));
@@ -6780,12 +6870,13 @@ class EditorState {
             auto prefab = mirakana::editor::load_prefab_authoring_document(project_store_, prefab_path);
             const auto policy = make_scene_prefab_refresh_policy();
             std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> targets;
-            targets.push_back(
-                mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput{node, std::move(prefab), prefab_path});
+            targets.push_back(mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput{
+                .instance_root = node, .refreshed_prefab = std::move(prefab), .refreshed_prefab_path = prefab_path});
             auto batch_plan =
                 mirakana::editor::plan_scene_prefab_instance_refresh_batch(scene_document_, std::move(targets), policy);
             const bool can_apply = batch_plan.can_apply;
-            scene_prefab_refresh_review_ = ScenePrefabRefreshReviewState{policy, std::move(batch_plan)};
+            scene_prefab_refresh_review_ =
+                ScenePrefabRefreshReviewState{.policy = policy, .batch_plan = std::move(batch_plan)};
             if (!can_apply) {
                 const auto& plan = scene_prefab_refresh_review_->batch_plan;
                 const auto diagnostic = prefab_refresh_blocked_diagnostic(plan, "prefab refresh blocked");
@@ -6806,7 +6897,7 @@ class EditorState {
         }
         std::vector<std::uint32_t> ordered_ids(scene_prefab_batch_refresh_node_ids_.begin(),
                                                scene_prefab_batch_refresh_node_ids_.end());
-        std::sort(ordered_ids.begin(), ordered_ids.end());
+        std::ranges::sort(ordered_ids);
         try {
             const auto policy = make_scene_prefab_refresh_policy();
             std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> targets;
@@ -6825,12 +6916,15 @@ class EditorState {
                 const auto prefab_path = scene_node->prefab_source->prefab_path;
                 auto prefab = mirakana::editor::load_prefab_authoring_document(project_store_, prefab_path);
                 targets.push_back(
-                    mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput{node, std::move(prefab), prefab_path});
+                    mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput{.instance_root = node,
+                                                                                 .refreshed_prefab = std::move(prefab),
+                                                                                 .refreshed_prefab_path = prefab_path});
             }
             auto batch_plan =
                 mirakana::editor::plan_scene_prefab_instance_refresh_batch(scene_document_, std::move(targets), policy);
             const bool can_apply = batch_plan.can_apply;
-            scene_prefab_refresh_review_ = ScenePrefabRefreshReviewState{policy, std::move(batch_plan)};
+            scene_prefab_refresh_review_ =
+                ScenePrefabRefreshReviewState{.policy = policy, .batch_plan = std::move(batch_plan)};
             if (!can_apply) {
                 const auto& plan = scene_prefab_refresh_review_->batch_plan;
                 const auto diagnostic = prefab_refresh_blocked_diagnostic(plan, "prefab batch refresh blocked");
@@ -7063,11 +7157,11 @@ class EditorState {
             project_ = project_wizard_.create_project_document();
             reset_project_settings_inputs_from_project();
             workspace_ = mirakana::editor::Workspace::create_default(
-                mirakana::editor::ProjectInfo{project_.name, project_.root_path});
+                mirakana::editor::ProjectInfo{.name = project_.name, .root_path = project_.root_path});
             project_paths_ = mirakana::editor::ProjectBundlePaths{
-                join_project_path(project_.root_path, "GameEngine.geproject"),
-                join_project_path(project_.root_path, "GameEngine.geworkspace"),
-                join_project_path(project_.root_path, project_.startup_scene_path),
+                .project_path = join_project_path(project_.root_path, "GameEngine.geproject"),
+                .workspace_path = join_project_path(project_.root_path, "GameEngine.geworkspace"),
+                .scene_path = join_project_path(project_.root_path, project_.startup_scene_path),
             };
             reset_prefab_variant_document();
             reset_ai_evidence_import_state();
@@ -7162,32 +7256,32 @@ class EditorState {
 
         mirakana::AssetImportMetadataRegistry imports;
         imports.add_texture(mirakana::TextureImportMetadata{
-            texture_id,
-            "source/builtin/default.texture",
-            "builtin/default.texture",
-            mirakana::TextureColorSpace::srgb,
-            true,
-            mirakana::TextureCompression::none,
+            .id = texture_id,
+            .source_path = "source/builtin/default.texture",
+            .imported_path = "builtin/default.texture",
+            .color_space = mirakana::TextureColorSpace::srgb,
+            .generate_mips = true,
+            .compression = mirakana::TextureCompression::none,
         });
         imports.add_mesh(mirakana::MeshImportMetadata{
-            mesh_id,
-            "source/builtin/default.mesh",
-            "builtin/default.mesh",
-            1.0F,
-            false,
-            true,
+            .id = mesh_id,
+            .source_path = "source/builtin/default.mesh",
+            .imported_path = "builtin/default.mesh",
+            .scale = 1.0F,
+            .generate_lods = false,
+            .generate_collision = true,
         });
         imports.add_material(mirakana::MaterialImportMetadata{
-            material_id,
-            "source/builtin/default.material",
-            "builtin/default.material",
-            {texture_id},
+            .id = material_id,
+            .source_path = "source/builtin/default.material",
+            .imported_path = "builtin/default.material",
+            .texture_dependencies = {texture_id},
         });
         imports.add_audio(mirakana::AudioImportMetadata{
-            audio_id,
-            "source/builtin/default.audio_source",
-            "builtin/default.audio",
-            false,
+            .id = audio_id,
+            .source_path = "source/builtin/default.audio_source",
+            .imported_path = "builtin/default.audio",
+            .streaming = false,
         });
         asset_import_plan_ = mirakana::build_asset_import_plan(imports);
         asset_pipeline_.set_import_plan(asset_import_plan_);
@@ -7240,14 +7334,15 @@ class EditorState {
     }
 
     void initialize_shader_tool_discovery() {
-        auto discovered = mirakana::discover_shader_tools(tool_filesystem_, mirakana::ShaderToolDiscoveryRequest{{
-                                                                                "toolchains/dxc/bin",
-                                                                                "toolchains/vulkan/bin",
-                                                                                "toolchains/apple/bin",
-                                                                                "external/dxc/bin",
-                                                                                "external/vulkan/bin",
-                                                                                "external/apple/bin",
-                                                                            }});
+        auto discovered = mirakana::discover_shader_tools(
+            tool_filesystem_, mirakana::ShaderToolDiscoveryRequest{.search_roots = {
+                                                                       "toolchains/dxc/bin",
+                                                                       "toolchains/vulkan/bin",
+                                                                       "toolchains/apple/bin",
+                                                                       "external/dxc/bin",
+                                                                       "external/vulkan/bin",
+                                                                       "external/apple/bin",
+                                                                   }});
         append_known_installed_shader_tools(discovered);
         shader_tool_discovery_.refresh_from(std::move(discovered));
     }
@@ -7310,7 +7405,7 @@ class EditorState {
 
     [[nodiscard]] mirakana::Extent2D current_viewport_extent() const noexcept {
         const auto extent = viewport_.extent();
-        return mirakana::Extent2D{extent.width, extent.height};
+        return mirakana::Extent2D{.width = extent.width, .height = extent.height};
     }
 
     [[nodiscard]] std::optional<std::string> viewport_shader_output_path(mirakana::ShaderSourceStage stage) const {
@@ -7452,8 +7547,8 @@ class EditorState {
 #if defined(MK_EDITOR_ENABLE_D3D12)
         if (backend == mirakana::editor::EditorRenderBackend::d3d12) {
             return mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-                false,
-                false,
+                .prefer_warp = false,
+                .enable_debug_layer = false,
             });
         }
 #endif
@@ -7478,11 +7573,11 @@ class EditorState {
     void create_null_viewport_render_resources(mirakana::Extent2D extent) {
         auto device = std::make_unique<mirakana::rhi::NullRhiDevice>();
         auto surface = std::make_unique<mirakana::RhiViewportSurface>(mirakana::RhiViewportSurfaceDesc{
-            device.get(),
-            extent,
-            mirakana::rhi::Format::rgba8_unorm,
-            true,
-            false,
+            .device = device.get(),
+            .extent = extent,
+            .color_format = mirakana::rhi::Format::rgba8_unorm,
+            .wait_for_completion = true,
+            .allow_native_display_interop = false,
         });
         const auto pipeline = create_viewport_graphics_pipeline(*device, surface->color_format());
         auto display_texture = std::make_unique<mirakana::editor::SdlViewportTexture>(sdl_renderer_, extent);
@@ -7527,11 +7622,11 @@ class EditorState {
             }
 
             auto surface = std::make_unique<mirakana::RhiViewportSurface>(mirakana::RhiViewportSurfaceDesc{
-                device.get(),
-                extent,
-                mirakana::rhi::Format::rgba8_unorm,
-                true,
-                active_backend == mirakana::editor::EditorRenderBackend::d3d12,
+                .device = device.get(),
+                .extent = extent,
+                .color_format = mirakana::rhi::Format::rgba8_unorm,
+                .wait_for_completion = true,
+                .allow_native_display_interop = active_backend == mirakana::editor::EditorRenderBackend::d3d12,
             });
             const auto pipeline = create_viewport_graphics_pipeline(
                 *device, surface->color_format(), vertex_bytecode.has_value() ? &(*vertex_bytecode) : nullptr,
@@ -7550,10 +7645,10 @@ class EditorState {
             log_.log(mirakana::LogLevel::warn, "editor", error.what());
             if (active_backend != mirakana::editor::EditorRenderBackend::null) {
                 viewport_.set_render_backend_selection(mirakana::editor::EditorRenderBackendChoice{
-                    project_.render_backend,
-                    mirakana::editor::EditorRenderBackend::null,
-                    false,
-                    "Native viewport backend failed; using NullRhiDevice",
+                    .requested = project_.render_backend,
+                    .active = mirakana::editor::EditorRenderBackend::null,
+                    .exact_match = false,
+                    .diagnostic = "Native viewport backend failed; using NullRhiDevice",
                 });
             }
             create_null_viewport_render_resources(extent);
@@ -7611,7 +7706,8 @@ class EditorState {
             std::vector<mirakana::editor::EditorAssetImportUpdate> updates;
             updates.reserve(asset_pipeline_.items().size());
             for (const auto& item : asset_pipeline_.items()) {
-                updates.push_back(mirakana::editor::EditorAssetImportUpdate{item.asset, false, error.what()});
+                updates.push_back(mirakana::editor::EditorAssetImportUpdate{
+                    .asset = item.asset, .imported = false, .diagnostic = error.what()});
             }
             asset_pipeline_.apply_import_updates(updates);
             log_.log(mirakana::LogLevel::warn, "editor", error.what());
@@ -7646,12 +7742,12 @@ class EditorState {
                     continue;
                 }
                 apply_results.push_back(mirakana::AssetHotReloadApplyResult{
-                    mirakana::AssetHotReloadApplyResultKind::applied,
-                    imported.asset,
-                    imported.output_path,
-                    request->current_revision,
-                    request->current_revision,
-                    {},
+                    .kind = mirakana::AssetHotReloadApplyResultKind::applied,
+                    .asset = imported.asset,
+                    .path = imported.output_path,
+                    .requested_revision = request->current_revision,
+                    .active_revision = request->current_revision,
+                    .diagnostic = {},
                 });
             }
             for (const auto& failure : result.failures) {
@@ -7660,12 +7756,12 @@ class EditorState {
                     continue;
                 }
                 apply_results.push_back(mirakana::AssetHotReloadApplyResult{
-                    mirakana::AssetHotReloadApplyResultKind::failed_rolled_back,
-                    failure.asset,
-                    failure.output_path,
-                    request->current_revision,
-                    request->previous_revision,
-                    failure.diagnostic,
+                    .kind = mirakana::AssetHotReloadApplyResultKind::failed_rolled_back,
+                    .asset = failure.asset,
+                    .path = failure.output_path,
+                    .requested_revision = request->current_revision,
+                    .active_revision = request->previous_revision,
+                    .diagnostic = failure.diagnostic,
                 });
             }
             asset_pipeline_.apply_hot_reload_results(std::move(apply_results));
@@ -7674,12 +7770,12 @@ class EditorState {
         } catch (const std::exception& error) {
             asset_pipeline_.apply_hot_reload_results({
                 mirakana::AssetHotReloadApplyResult{
-                    mirakana::AssetHotReloadApplyResultKind::failed_rolled_back,
-                    mirakana::AssetId{},
-                    "asset recook",
-                    0,
-                    0,
-                    error.what(),
+                    .kind = mirakana::AssetHotReloadApplyResultKind::failed_rolled_back,
+                    .asset = mirakana::AssetId{},
+                    .path = "asset recook",
+                    .requested_revision = 0,
+                    .active_revision = 0,
+                    .diagnostic = error.what(),
                 },
             });
             log_.log(mirakana::LogLevel::warn, "editor", error.what());
@@ -7691,12 +7787,12 @@ class EditorState {
         updates.reserve(shader_compiles_.items().size());
         for (const auto& item : shader_compiles_.items()) {
             updates.push_back(mirakana::editor::EditorShaderCompileUpdate{
-                item.shader,
-                item.output_path,
-                cache_hit ? mirakana::editor::EditorShaderCompileStatus::cached
-                          : mirakana::editor::EditorShaderCompileStatus::compiled,
-                cache_hit ? "cache hit" : "compiled",
-                cache_hit,
+                .shader = item.shader,
+                .output_path = item.output_path,
+                .status = cache_hit ? mirakana::editor::EditorShaderCompileStatus::cached
+                                    : mirakana::editor::EditorShaderCompileStatus::compiled,
+                .diagnostic = cache_hit ? "cache hit" : "compiled",
+                .cache_hit = cache_hit,
             });
         }
         shader_compiles_.apply_updates(updates);
@@ -7720,36 +7816,44 @@ class EditorState {
 
 #if defined(_WIN32)
         mirakana::Win32ProcessRunner process_runner;
-        mirakana::ShaderToolProcessRunner shader_runner(process_runner, mirakana::ShaderToolExecutionPolicy{
-                                                                            project_.shader_tool.artifact_output_root,
-                                                                            project_.shader_tool.working_directory,
-                                                                            project_.shader_tool.executable,
-                                                                        });
+        mirakana::ShaderToolProcessRunner shader_runner(
+            process_runner, mirakana::ShaderToolExecutionPolicy{
+                                .artifact_output_root = project_.shader_tool.artifact_output_root,
+                                .working_directory = project_.shader_tool.working_directory,
+                                .executable_override = project_.shader_tool.executable,
+                            });
         for (const auto& request : requests) {
             try {
                 const auto result = mirakana::execute_shader_compile_action(
                     tool_filesystem_, shader_runner,
                     mirakana::ShaderCompileExecutionRequest{
-                        request,
-                        mirakana::ShaderToolDescriptor{mirakana::ShaderToolKind::dxc, project_.shader_tool.executable,
-                                                       "project-settings"},
-                        project_.shader_tool.cache_index_path,
-                        true,
-                        false,
+                        .compile_request = request,
+                        .tool = mirakana::ShaderToolDescriptor{.kind = mirakana::ShaderToolKind::dxc,
+                                                               .executable_path = project_.shader_tool.executable,
+                                                               .version = "project-settings"},
+                        .cache_index_path = project_.shader_tool.cache_index_path,
+                        .allow_cache = true,
+                        .write_artifact_marker = false,
                     });
-                executions.push_back(mirakana::editor::EditorShaderCompileExecution{request, result});
+                executions.push_back(
+                    mirakana::editor::EditorShaderCompileExecution{.request = request, .result = result});
             } catch (const std::exception& error) {
                 auto artifact = mirakana::make_shader_compile_command(request).artifact;
                 executions.push_back(mirakana::editor::EditorShaderCompileExecution{
-                    request,
-                    mirakana::ShaderCompileExecutionResult{
-                        mirakana::ShaderToolRunResult{-1, error.what(), {}, {}, std::move(artifact)},
-                        {},
-                        mirakana::shader_artifact_provenance_path(
-                            mirakana::make_shader_compile_command(request).artifact),
-                        false,
-                        false,
-                    },
+                    .request = request,
+                    .result =
+                        mirakana::ShaderCompileExecutionResult{
+                            .tool_result = mirakana::ShaderToolRunResult{.exit_code = -1,
+                                                                         .diagnostic = error.what(),
+                                                                         .stdout_text = {},
+                                                                         .stderr_text = {},
+                                                                         .artifact = std::move(artifact)},
+                            .provenance = {},
+                            .provenance_path = mirakana::shader_artifact_provenance_path(
+                                mirakana::make_shader_compile_command(request).artifact),
+                            .cache_hit = false,
+                            .artifact_written = false,
+                        },
                 });
             }
         }
@@ -7792,23 +7896,23 @@ class EditorState {
         const auto previous_revision = asset_hot_reload_revision_;
         ++asset_hot_reload_revision_;
         const auto event = mirakana::AssetHotReloadEvent{
-            mirakana::AssetHotReloadEventKind::modified,
-            texture_id,
-            "builtin/default.texture",
-            previous_revision,
-            asset_hot_reload_revision_,
-            128,
-            160,
+            .kind = mirakana::AssetHotReloadEventKind::modified,
+            .asset = texture_id,
+            .path = "builtin/default.texture",
+            .previous_revision = previous_revision,
+            .current_revision = asset_hot_reload_revision_,
+            .previous_size_bytes = 128,
+            .current_size_bytes = 160,
         };
         const auto request = mirakana::AssetHotReloadRecookRequest{
-            texture_id,
-            texture_id,
-            event.path,
-            event.kind,
-            mirakana::AssetHotReloadRecookReason::source_modified,
-            event.previous_revision,
-            event.current_revision,
-            asset_hot_reload_revision_ + 2,
+            .asset = texture_id,
+            .source_asset = texture_id,
+            .trigger_path = event.path,
+            .trigger_event_kind = event.kind,
+            .reason = mirakana::AssetHotReloadRecookReason::source_modified,
+            .previous_revision = event.previous_revision,
+            .current_revision = event.current_revision,
+            .ready_tick = asset_hot_reload_revision_ + 2,
         };
         asset_pipeline_.apply_hot_reload_events({event});
         execute_editor_asset_recook({request});
@@ -7927,9 +8031,9 @@ class EditorState {
     mirakana::editor::CommandRegistry commands_;
     mirakana::editor::FileTextStore project_store_{"."};
     mirakana::editor::ProjectBundlePaths project_paths_{
-        "GameEngine.geproject",
-        "GameEngine.geworkspace",
-        "scenes/start.scene",
+        .project_path = "GameEngine.geproject",
+        .workspace_path = "GameEngine.geworkspace",
+        .scene_path = "scenes/start.scene",
     };
     std::optional<mirakana::FileDialogId> project_open_dialog_id_;
     std::optional<mirakana::FileDialogId> project_save_dialog_id_;
@@ -8046,24 +8150,31 @@ class EditorState {
     std::vector<mirakana::ShaderCompileRequest> shader_compile_requests_;
     std::vector<mirakana::ShaderCompileRequest> material_preview_shader_compile_requests_;
     mirakana::AnimationAuthoredTimelineDesc editor_timeline_{
-        2.0F,
-        true,
-        {
-            mirakana::AnimationTimelineEventTrackDesc{
-                "gameplay",
-                {
-                    mirakana::AnimationTimelineEventDesc{0.25F, "spawn", "preview"},
-                    mirakana::AnimationTimelineEventDesc{1.25F, "state", "resolve"},
+        .duration_seconds = 2.0F,
+        .looping = true,
+        .tracks =
+            {
+                mirakana::AnimationTimelineEventTrackDesc{
+                    .name = "gameplay",
+                    .events =
+                        {
+                            mirakana::AnimationTimelineEventDesc{
+                                .time_seconds = 0.25F, .name = "spawn", .payload = "preview"},
+                            mirakana::AnimationTimelineEventDesc{
+                                .time_seconds = 1.25F, .name = "state", .payload = "resolve"},
+                        },
+                },
+                mirakana::AnimationTimelineEventTrackDesc{
+                    .name = "audio",
+                    .events =
+                        {
+                            mirakana::AnimationTimelineEventDesc{
+                                .time_seconds = 0.5F, .name = "play", .payload = "step"},
+                            mirakana::AnimationTimelineEventDesc{
+                                .time_seconds = 1.5F, .name = "play", .payload = "impact"},
+                        },
                 },
             },
-            mirakana::AnimationTimelineEventTrackDesc{
-                "audio",
-                {
-                    mirakana::AnimationTimelineEventDesc{0.5F, "play", "step"},
-                    mirakana::AnimationTimelineEventDesc{1.5F, "play", "impact"},
-                },
-            },
-        },
     };
     mirakana::RootedFileSystem tool_filesystem_{"."};
     mirakana::editor::ViewportState viewport_;
@@ -8127,7 +8238,8 @@ class EditorState {
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv) {
     try {
         mirakana::SdlRuntime sdl;
-        mirakana::SdlWindow window(mirakana::WindowDesc{"GameEngine Editor", mirakana::WindowExtent{1280, 720}});
+        mirakana::SdlWindow window(mirakana::WindowDesc{
+            .title = "GameEngine Editor", .extent = mirakana::WindowExtent{.width = 1280, .height = 720}});
 
 #if defined(MK_EDITOR_ENABLE_D3D12)
         (void)SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d12,direct3d11,opengl,software");

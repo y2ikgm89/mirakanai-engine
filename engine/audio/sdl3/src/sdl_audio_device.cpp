@@ -54,9 +54,9 @@ namespace {
 
 [[nodiscard]] AudioDeviceFormat from_sdl_audio_spec(const SDL_AudioSpec& spec) noexcept {
     return AudioDeviceFormat{
-        spec.freq > 0 ? static_cast<std::uint32_t>(spec.freq) : 0U,
-        spec.channels > 0 ? static_cast<std::uint32_t>(spec.channels) : 0U,
-        from_sdl_audio_format(spec.format),
+        .sample_rate = spec.freq > 0 ? static_cast<std::uint32_t>(spec.freq) : 0U,
+        .channel_count = spec.channels > 0 ? static_cast<std::uint32_t>(spec.channels) : 0U,
+        .sample_format = from_sdl_audio_format(spec.format),
     };
 }
 

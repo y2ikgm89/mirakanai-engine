@@ -255,9 +255,9 @@ make_quaternion_animation_tracks(const mirakana::runtime::RuntimeAnimationQuater
 [[nodiscard]] mirakana::AnimationTransformBindingSourceDocument packaged_animation_bindings() {
     mirakana::AnimationTransformBindingSourceDocument document;
     document.bindings.push_back(mirakana::AnimationTransformBindingSourceRow{
-        "gltf/node/0/translation/x",
-        "PackagedMesh",
-        mirakana::AnimationTransformBindingComponent::translation_x,
+        .target = "gltf/node/0/translation/x",
+        .node_name = "PackagedMesh",
+        .component = mirakana::AnimationTransformBindingComponent::translation_x,
     });
     return document;
 }
@@ -712,34 +712,43 @@ audio_device_stream_diagnostic_name(mirakana::AudioDeviceStreamDiagnostic diagno
 class GeneratedGameplaySystemsProbe final {
   public:
     GeneratedGameplaySystemsProbe()
-        : physics_(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{0.0F, 0.0F, 0.0F}}),
+        : physics_(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}}),
           animation_(mirakana::AnimationStateMachineDesc{
-              {
-                  mirakana::AnimationStateDesc{"idle", mirakana::AnimationClipDesc{"idle", 1.0F, true}},
-                  mirakana::AnimationStateDesc{"walk", mirakana::AnimationClipDesc{"walk", 1.0F, true}},
-              },
-              "idle",
-              {
-                  mirakana::AnimationTransitionDesc{"idle", "walk", "move", 0.25F},
-              },
+              .states =
+                  {
+                      mirakana::AnimationStateDesc{
+                          .name = "idle",
+                          .clip =
+                              mirakana::AnimationClipDesc{.name = "idle", .duration_seconds = 1.0F, .looping = true}},
+                      mirakana::AnimationStateDesc{
+                          .name = "walk",
+                          .clip =
+                              mirakana::AnimationClipDesc{.name = "walk", .duration_seconds = 1.0F, .looping = true}},
+                  },
+              .initial_state = "idle",
+              .transitions =
+                  {
+                      mirakana::AnimationTransitionDesc{
+                          .from_state = "idle", .to_state = "walk", .trigger = "move", .blend_seconds = 0.25F},
+                  },
           }) {}
 
     void start() {
         floor_body_ = physics_.create_body(mirakana::PhysicsBody3DDesc{
-            mirakana::Vec3{0.0F, 0.0F, 0.0F},
-            mirakana::Vec3{0.0F, 0.0F, 0.0F},
-            0.0F,
-            0.0F,
-            false,
-            mirakana::Vec3{5.0F, 1.0F, 5.0F},
+            .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec3{.x = 5.0F, .y = 1.0F, .z = 5.0F},
         });
         actor_body_ = physics_.create_body(mirakana::PhysicsBody3DDesc{
-            mirakana::Vec3{0.0F, 1.5F, 0.0F},
-            mirakana::Vec3{0.0F, -1.0F, 0.0F},
-            1.0F,
-            0.0F,
-            true,
-            mirakana::Vec3{0.5F, 1.0F, 0.5F},
+            .position = mirakana::Vec3{.x = 0.0F, .y = 1.5F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = -1.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.5F, .y = 1.0F, .z = 0.5F},
         });
 
         build_authored_collision_probe();
@@ -754,7 +763,7 @@ class GeneratedGameplaySystemsProbe final {
             return;
         }
 
-        physics_.apply_force(actor_body_, mirakana::Vec3{2.0F, 0.0F, 0.0F});
+        physics_.apply_force(actor_body_, mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F});
         physics_.step(0.25F);
         physics_.resolve_contacts();
         if (const auto* actor = physics_.find_body(actor_body_); actor != nullptr) {
@@ -1007,28 +1016,30 @@ class GeneratedGameplaySystemsProbe final {
   private:
     void build_authored_collision_probe() {
         mirakana::PhysicsAuthoredCollisionScene3DDesc scene;
-        scene.world_config = mirakana::PhysicsWorld3DConfig{mirakana::Vec3{0.0F, 0.0F, 0.0F}};
+        scene.world_config = mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}};
         scene.bodies.push_back(mirakana::PhysicsAuthoredCollisionBody3DDesc{
-            "floor",
-            mirakana::PhysicsBody3DDesc{
-                mirakana::Vec3{0.0F, 0.0F, 0.0F},
-                mirakana::Vec3{0.0F, 0.0F, 0.0F},
-                0.0F,
-                0.0F,
-                false,
-                mirakana::Vec3{5.0F, 0.5F, 5.0F},
-            },
+            .name = "floor",
+            .body =
+                mirakana::PhysicsBody3DDesc{
+                    .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                    .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                    .mass = 0.0F,
+                    .linear_damping = 0.0F,
+                    .dynamic = false,
+                    .half_extents = mirakana::Vec3{.x = 5.0F, .y = 0.5F, .z = 5.0F},
+                },
         });
         scene.bodies.push_back(mirakana::PhysicsAuthoredCollisionBody3DDesc{
-            "wall",
-            mirakana::PhysicsBody3DDesc{
-                mirakana::Vec3{3.0F, 1.0F, 0.0F},
-                mirakana::Vec3{0.0F, 0.0F, 0.0F},
-                0.0F,
-                0.0F,
-                false,
-                mirakana::Vec3{0.5F, 1.0F, 2.0F},
-            },
+            .name = "wall",
+            .body =
+                mirakana::PhysicsBody3DDesc{
+                    .position = mirakana::Vec3{.x = 3.0F, .y = 1.0F, .z = 0.0F},
+                    .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                    .mass = 0.0F,
+                    .linear_damping = 0.0F,
+                    .dynamic = false,
+                    .half_extents = mirakana::Vec3{.x = 0.5F, .y = 1.0F, .z = 2.0F},
+                },
         });
 
         authored_collision_ = mirakana::build_physics_world_3d_from_authored_collision_scene(scene);
@@ -1037,8 +1048,8 @@ class GeneratedGameplaySystemsProbe final {
         }
 
         mirakana::PhysicsCharacterController3DDesc request;
-        request.position = mirakana::Vec3{0.0F, 2.0F, 0.0F};
-        request.displacement = mirakana::Vec3{0.0F, -3.0F, 0.0F};
+        request.position = mirakana::Vec3{.x = 0.0F, .y = 2.0F, .z = 0.0F};
+        request.displacement = mirakana::Vec3{.x = 0.0F, .y = -3.0F, .z = 0.0F};
         request.radius = 0.5F;
         request.half_height = 0.5F;
         request.skin_width = 0.05F;
@@ -1046,18 +1057,20 @@ class GeneratedGameplaySystemsProbe final {
     }
 
     void build_navigation_agent() {
-        mirakana::NavigationGrid grid(mirakana::NavigationGridSize{2, 1});
-        const auto plan = mirakana::plan_navigation_grid_agent_path(grid, mirakana::NavigationGridAgentPathRequest{
-                                                                              mirakana::NavigationGridCoord{0, 0},
-                                                                              mirakana::NavigationGridCoord{1, 0},
-                                                                              mirakana::NavigationGridPointMapping{
-                                                                                  mirakana::NavigationPoint2{},
-                                                                                  1.0F,
-                                                                                  true,
-                                                                              },
-                                                                              mirakana::NavigationAdjacency::cardinal4,
-                                                                              true,
-                                                                          });
+        mirakana::NavigationGrid grid(mirakana::NavigationGridSize{.width = 2, .height = 1});
+        const auto plan =
+            mirakana::plan_navigation_grid_agent_path(grid, mirakana::NavigationGridAgentPathRequest{
+                                                                .start = mirakana::NavigationGridCoord{.x = 0, .y = 0},
+                                                                .goal = mirakana::NavigationGridCoord{.x = 1, .y = 0},
+                                                                .mapping =
+                                                                    mirakana::NavigationGridPointMapping{
+                                                                        .origin = mirakana::NavigationPoint2{},
+                                                                        .cell_size = 1.0F,
+                                                                        .use_cell_centers = true,
+                                                                    },
+                                                                .adjacency = mirakana::NavigationAdjacency::cardinal4,
+                                                                .smooth_path = true,
+                                                            });
         navigation_plan_status_ = plan.status;
         navigation_plan_diagnostic_ = plan.diagnostic;
         navigation_path_point_count_ = plan.planned_grid_point_count;
@@ -1071,26 +1084,37 @@ class GeneratedGameplaySystemsProbe final {
         mirakana::AudioMixer mixer;
         const auto clip =
             asset_id_from_game_asset_key("sample-generated-desktop-runtime-3d-package/audio/gameplay-systems");
-        mixer.add_clip(mirakana::AudioClipDesc{clip, 48000, 1, 4, mirakana::AudioSampleFormat::float32, false, 4});
-        const auto voice = mixer.play(mirakana::AudioVoiceDesc{clip, "master", 1.0F, false});
+        mixer.add_clip(mirakana::AudioClipDesc{.clip = clip,
+                                               .sample_rate = 48000,
+                                               .channel_count = 1,
+                                               .frame_count = 4,
+                                               .sample_format = mirakana::AudioSampleFormat::float32,
+                                               .streaming = false,
+                                               .buffered_frame_count = 4});
+        const auto voice =
+            mixer.play(mirakana::AudioVoiceDesc{.clip = clip, .bus = "master", .gain = 1.0F, .looping = false});
         audio_voice_started_ = voice != mirakana::null_audio_voice;
 
         const std::vector<mirakana::AudioClipSampleData> samples{
             mirakana::AudioClipSampleData{
-                clip,
-                mirakana::AudioDeviceFormat{48000, 1, mirakana::AudioSampleFormat::float32},
-                4,
-                {0.1F, 0.2F, 0.3F, 0.4F},
+                .clip = clip,
+                .format = mirakana::AudioDeviceFormat{.sample_rate = 48000,
+                                                      .channel_count = 1,
+                                                      .sample_format = mirakana::AudioSampleFormat::float32},
+                .frame_count = 4,
+                .interleaved_float_samples = {0.1F, 0.2F, 0.3F, 0.4F},
             },
         };
         const auto output = mirakana::render_audio_device_stream_interleaved_float(
             mixer,
             mirakana::AudioDeviceStreamRequest{
-                mirakana::AudioDeviceFormat{48000, 1, mirakana::AudioSampleFormat::float32},
-                0,
-                2,
-                4,
-                2,
+                .format = mirakana::AudioDeviceFormat{.sample_rate = 48000,
+                                                      .channel_count = 1,
+                                                      .sample_format = mirakana::AudioSampleFormat::float32},
+                .device_frame = 0,
+                .queued_frames = 2,
+                .target_queued_frames = 4,
+                .max_render_frames = 2,
             },
             samples);
         audio_stream_status_ = output.plan.status;
@@ -1118,8 +1142,8 @@ class GeneratedGameplaySystemsProbe final {
         const std::vector<mirakana::AiPerceptionTarget2D> route_targets{
             mirakana::AiPerceptionTarget2D{
                 .id = 1U,
-                .position =
-                    mirakana::AiPerceptionPoint2{navigation_agent_.path.back().x, navigation_agent_.path.back().y},
+                .position = mirakana::AiPerceptionPoint2{.x = navigation_agent_.path.back().x,
+                                                         .y = navigation_agent_.path.back().y},
                 .radius = 0.0F,
                 .sight_enabled = true,
                 .hearing_enabled = false,
@@ -1127,14 +1151,14 @@ class GeneratedGameplaySystemsProbe final {
             },
         };
         const auto perception = mirakana::build_ai_perception_snapshot_2d(mirakana::AiPerceptionRequest2D{
-            .agent =
-                mirakana::AiPerceptionAgent2D{.id = 100U,
-                                              .position = mirakana::AiPerceptionPoint2{navigation_agent_.position.x,
-                                                                                       navigation_agent_.position.y},
-                                              .forward = mirakana::AiPerceptionPoint2{1.0F, 0.0F},
-                                              .sight_range = 4.0F,
-                                              .field_of_view_radians = 6.28318530718F,
-                                              .hearing_range = 0.0F},
+            .agent = mirakana::AiPerceptionAgent2D{.id = 100U,
+                                                   .position =
+                                                       mirakana::AiPerceptionPoint2{.x = navigation_agent_.position.x,
+                                                                                    .y = navigation_agent_.position.y},
+                                                   .forward = mirakana::AiPerceptionPoint2{.x = 1.0F, .y = 0.0F},
+                                                   .sight_range = 4.0F,
+                                                   .field_of_view_radians = 6.28318530718F,
+                                                   .hearing_range = 0.0F},
             .targets = std::span<const mirakana::AiPerceptionTarget2D>{route_targets},
         });
         last_perception_status_ = perception.status;
@@ -1185,42 +1209,50 @@ class GeneratedGameplaySystemsProbe final {
         }
 
         const std::vector<mirakana::BehaviorTreeBlackboardCondition> conditions{
-            mirakana::BehaviorTreeBlackboardCondition{kGameplaySystemsHasTargetNode, kGameplaySystemsHasTargetKey,
-                                                      mirakana::BehaviorTreeBlackboardComparison::equal,
-                                                      mirakana::make_behavior_tree_blackboard_bool(true)},
-            mirakana::BehaviorTreeBlackboardCondition{kGameplaySystemsNeedsMoveNode, kGameplaySystemsNeedsMoveKey,
-                                                      mirakana::BehaviorTreeBlackboardComparison::equal,
-                                                      mirakana::make_behavior_tree_blackboard_bool(true)},
+            mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplaySystemsHasTargetNode,
+                                                      .key = kGameplaySystemsHasTargetKey,
+                                                      .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                                      .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+            mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplaySystemsNeedsMoveNode,
+                                                      .key = kGameplaySystemsNeedsMoveKey,
+                                                      .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                                      .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
         };
         const auto supporting_systems_ready =
             authored_collision_.status == mirakana::PhysicsAuthoredCollision3DBuildStatus::success &&
             controller_result_.grounded && audio_stream_status_ == mirakana::AudioDeviceStreamStatus::ready;
         const std::vector<mirakana::BehaviorTreeLeafResult> leaf_results{
-            mirakana::BehaviorTreeLeafResult{kGameplaySystemsMoveActionNode,
-                                             supporting_systems_ready ? mirakana::BehaviorTreeStatus::success
-                                                                      : mirakana::BehaviorTreeStatus::failure},
+            mirakana::BehaviorTreeLeafResult{.node_id = kGameplaySystemsMoveActionNode,
+                                             .status = supporting_systems_ready
+                                                           ? mirakana::BehaviorTreeStatus::success
+                                                           : mirakana::BehaviorTreeStatus::failure},
         };
 
         last_tree_result_ = mirakana::evaluate_behavior_tree(
             mirakana::BehaviorTreeDesc{
-                kGameplaySystemsRootNode,
-                {
-                    mirakana::BehaviorTreeNodeDesc{
-                        kGameplaySystemsRootNode,
-                        mirakana::BehaviorTreeNodeKind::sequence,
-                        {kGameplaySystemsHasTargetNode, kGameplaySystemsNeedsMoveNode, kGameplaySystemsMoveActionNode}},
-                    mirakana::BehaviorTreeNodeDesc{
-                        kGameplaySystemsHasTargetNode, mirakana::BehaviorTreeNodeKind::condition, {}},
-                    mirakana::BehaviorTreeNodeDesc{
-                        kGameplaySystemsNeedsMoveNode, mirakana::BehaviorTreeNodeKind::condition, {}},
-                    mirakana::BehaviorTreeNodeDesc{
-                        kGameplaySystemsMoveActionNode, mirakana::BehaviorTreeNodeKind::action, {}},
-                },
+                .root_id = kGameplaySystemsRootNode,
+                .nodes =
+                    {
+                        mirakana::BehaviorTreeNodeDesc{.id = kGameplaySystemsRootNode,
+                                                       .kind = mirakana::BehaviorTreeNodeKind::sequence,
+                                                       .children = {kGameplaySystemsHasTargetNode,
+                                                                    kGameplaySystemsNeedsMoveNode,
+                                                                    kGameplaySystemsMoveActionNode}},
+                        mirakana::BehaviorTreeNodeDesc{.id = kGameplaySystemsHasTargetNode,
+                                                       .kind = mirakana::BehaviorTreeNodeKind::condition,
+                                                       .children = {}},
+                        mirakana::BehaviorTreeNodeDesc{.id = kGameplaySystemsNeedsMoveNode,
+                                                       .kind = mirakana::BehaviorTreeNodeKind::condition,
+                                                       .children = {}},
+                        mirakana::BehaviorTreeNodeDesc{.id = kGameplaySystemsMoveActionNode,
+                                                       .kind = mirakana::BehaviorTreeNodeKind::action,
+                                                       .children = {}},
+                    },
             },
             mirakana::BehaviorTreeEvaluationContext{
-                std::span<const mirakana::BehaviorTreeLeafResult>{leaf_results},
-                blackboard.entries(),
-                std::span<const mirakana::BehaviorTreeBlackboardCondition>{conditions},
+                .leaf_results = std::span<const mirakana::BehaviorTreeLeafResult>{leaf_results},
+                .blackboard_entries = blackboard.entries(),
+                .blackboard_conditions = std::span<const mirakana::BehaviorTreeBlackboardCondition>{conditions},
             });
 
         if (last_tree_result_.status != mirakana::BehaviorTreeStatus::success ||
@@ -1229,9 +1261,10 @@ class GeneratedGameplaySystemsProbe final {
         }
 
         const auto update = mirakana::update_navigation_agent(mirakana::NavigationAgentUpdateRequest{
-            navigation_agent_,
-            mirakana::NavigationAgentConfig{8.0F, 1.0F, 0.001F},
-            1.0F,
+            .state = navigation_agent_,
+            .config =
+                mirakana::NavigationAgentConfig{.max_speed = 8.0F, .slowing_radius = 1.0F, .arrival_radius = 0.001F},
+            .delta_seconds = 1.0F,
         });
         navigation_agent_ = update.state;
     }
@@ -1244,7 +1277,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::BehaviorTreeTickResult last_tree_result_;
     mirakana::PhysicsBody3DId floor_body_{mirakana::null_physics_body_3d};
     mirakana::PhysicsBody3DId actor_body_{mirakana::null_physics_body_3d};
-    mirakana::Vec3 final_actor_position_{0.0F, 0.0F, 0.0F};
+    mirakana::Vec3 final_actor_position_{.x = 0.0F, .y = 0.0F, .z = 0.0F};
     mirakana::AnimationStateMachineSample final_animation_sample_;
     mirakana::NavigationGridAgentPathStatus navigation_plan_status_{
         mirakana::NavigationGridAgentPathStatus::invalid_request};
@@ -1299,11 +1332,12 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
           textured_ui_atlas_mode_(textured_ui_atlas_mode), text_glyph_ui_atlas_mode_(text_glyph_ui_atlas_mode) {}
 
     void on_start(mirakana::EngineContext&) override {
-        renderer_.set_clear_color(mirakana::Color{0.025F, 0.035F, 0.045F, 1.0F});
+        renderer_.set_clear_color(mirakana::Color{.r = 0.025F, .g = 0.035F, .b = 0.045F, .a = 1.0F});
         input_.press(mirakana::Key::right);
         gameplay_systems_.start();
         ui_ok_ = build_hud();
-        theme_.add(mirakana::UiThemeColor{"hud.panel", mirakana::Color{0.06F, 0.08F, 0.09F, 1.0F}});
+        theme_.add(mirakana::UiThemeColor{.token = "hud.panel",
+                                          .color = mirakana::Color{.r = 0.06F, .g = 0.08F, .b = 0.09F, .a = 1.0F}});
     }
 
     bool on_update(mirakana::EngineContext&, double) override {
@@ -1398,7 +1432,7 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
             const auto scene_submit = mirakana::submit_scene_render_packet(
                 renderer_, *render_packet,
                 mirakana::SceneRenderSubmitDesc{
-                    .fallback_mesh_color = mirakana::Color{0.35F, 0.75F, 0.45F, 1.0F},
+                    .fallback_mesh_color = mirakana::Color{.r = 0.35F, .g = 0.75F, .b = 0.45F, .a = 1.0F},
                     .material_palette = &scene_->material_palette,
                 });
             scene_meshes_submitted_ += scene_submit.meshes_submitted;
@@ -1406,12 +1440,14 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
             primary_camera_seen_ = primary_camera_seen_ || scene_submit.has_primary_camera;
         } else {
             transform_.position = transform_.position + axis;
-            renderer_.draw_sprite(mirakana::SpriteCommand{transform_, mirakana::Color{0.35F, 0.75F, 0.45F, 1.0F}});
+            renderer_.draw_sprite(mirakana::SpriteCommand{
+                .transform = transform_, .color = mirakana::Color{.r = 0.35F, .g = 0.75F, .b = 0.45F, .a = 1.0F}});
         }
 
         update_hud_text();
-        const auto layout = mirakana::ui::solve_layout(hud_, mirakana::ui::ElementId{"hud.root"},
-                                                       mirakana::ui::Rect{0.0F, 0.0F, 320.0F, 180.0F});
+        const auto layout =
+            mirakana::ui::solve_layout(hud_, mirakana::ui::ElementId{"hud.root"},
+                                       mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 320.0F, .height = 180.0F});
         const auto submission = mirakana::ui::build_renderer_submission(hud_, layout);
         mirakana::UiRenderSubmitDesc ui_submit_desc;
         ui_submit_desc.theme = &theme_;
@@ -1790,7 +1826,7 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
         root.id = mirakana::ui::ElementId{"hud.root"};
         root.role = mirakana::ui::SemanticRole::root;
         root.style.layout = mirakana::ui::LayoutMode::column;
-        root.style.padding = mirakana::ui::EdgeInsets{8.0F, 8.0F, 8.0F, 8.0F};
+        root.style.padding = mirakana::ui::EdgeInsets{.top = 8.0F, .right = 8.0F, .bottom = 8.0F, .left = 8.0F};
         root.style.gap = 4.0F;
         if (!hud_.try_add_element(root)) {
             return false;
@@ -1800,8 +1836,9 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
         status.id = mirakana::ui::ElementId{"hud.status"};
         status.parent = root.id;
         status.role = mirakana::ui::SemanticRole::label;
-        status.bounds = mirakana::ui::Rect{0.0F, 0.0F, 160.0F, 24.0F};
-        status.text = mirakana::ui::TextContent{"3D Meshes 0", "hud.status", "engine-default"};
+        status.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 160.0F, .height = 24.0F};
+        status.text = mirakana::ui::TextContent{
+            .label = "3D Meshes 0", .localization_key = "hud.status", .font_family = "engine-default"};
         status.style.background_token = "hud.panel";
         status.accessibility_label = "Generated 3D diagnostics";
         if (!hud_.try_add_element(status)) {
@@ -1813,7 +1850,7 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
             atlas_image.id = mirakana::ui::ElementId{kHudAtlasProofResourceId};
             atlas_image.parent = root.id;
             atlas_image.role = mirakana::ui::SemanticRole::image;
-            atlas_image.bounds = mirakana::ui::Rect{0.0F, 0.0F, 32.0F, 32.0F};
+            atlas_image.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 32.0F};
             atlas_image.image.resource_id = kHudAtlasProofResourceId;
             atlas_image.image.asset_uri = kHudAtlasProofAssetUri;
             atlas_image.accessibility_label = "Texture atlas proof";
@@ -1828,15 +1865,17 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
     void update_hud_text() {
         const auto text = std::string{"3D Meshes "} + std::to_string(scene_meshes_submitted_);
         ui_text_updates_ok_ =
-            ui_text_updates_ok_ && hud_.set_text(mirakana::ui::ElementId{"hud.status"},
-                                                 mirakana::ui::TextContent{text, "hud.status", "engine-default"});
+            ui_text_updates_ok_ &&
+            hud_.set_text(mirakana::ui::ElementId{"hud.status"},
+                          mirakana::ui::TextContent{
+                              .label = text, .localization_key = "hud.status", .font_family = "engine-default"});
     }
 
     [[nodiscard]] mirakana::UiRenderSubmitResult submit_hud_text_glyph_proof() {
         mirakana::ui::RendererSubmission submission;
         mirakana::ui::RendererTextRun text;
         text.id = mirakana::ui::ElementId{kHudTextGlyphAtlasProofId};
-        text.bounds = mirakana::ui::Rect{12.0F, 48.0F, 16.0F, 16.0F};
+        text.bounds = mirakana::ui::Rect{.x = 12.0F, .y = 48.0F, .width = 16.0F, .height = 16.0F};
         text.text.label = "A";
         text.text.font_family = "engine-default";
         text.text.wrap = mirakana::ui::TextWrapMode::clip;
@@ -1846,7 +1885,8 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
         mirakana::UiRenderSubmitDesc desc;
         desc.theme = &theme_;
         desc.glyph_atlas = &glyph_atlas_;
-        desc.text_layout_policy = mirakana::ui::MonospaceTextLayoutPolicy{8.0F, 4.0F, 10.0F};
+        desc.text_layout_policy = mirakana::ui::MonospaceTextLayoutPolicy{
+            .glyph_advance = 8.0F, .whitespace_advance = 4.0F, .line_height = 10.0F};
         return mirakana::submit_ui_renderer_submission(renderer_, submission, desc);
     }
 
@@ -3444,8 +3484,8 @@ int main(int argc, char** argv) {
             d3d12_scene_renderer->skinned_vertex_buffers = runtime_compute_morph_skinned_scene_vertex_buffers();
             d3d12_scene_renderer->skinned_vertex_attributes = runtime_compute_morph_skinned_scene_vertex_attributes();
             d3d12_scene_renderer->compute_morph_skinned_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_skinned_mesh_asset_id(),
-                                                                      packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_compute_morph) {
             const auto& selected_compute_morph_shader_bytecode = options.require_compute_morph_normal_tangent
@@ -3467,8 +3507,8 @@ int main(int argc, char** argv) {
             d3d12_scene_renderer->enable_compute_morph_tangent_frame_output =
                 options.require_compute_morph_normal_tangent;
             d3d12_scene_renderer->compute_morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(),
-                                                                      packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_morph_package) {
             d3d12_scene_renderer->morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
@@ -3478,8 +3518,8 @@ int main(int argc, char** argv) {
             };
             d3d12_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()};
             d3d12_scene_renderer->morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(),
-                                                                      packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         }
         if (options.require_directional_shadow) {
@@ -3580,8 +3620,8 @@ int main(int argc, char** argv) {
             vulkan_scene_renderer->skinned_vertex_buffers = runtime_compute_morph_skinned_scene_vertex_buffers();
             vulkan_scene_renderer->skinned_vertex_attributes = runtime_compute_morph_skinned_scene_vertex_attributes();
             vulkan_scene_renderer->compute_morph_skinned_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_skinned_mesh_asset_id(),
-                                                                      packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_compute_morph) {
             const auto& selected_compute_morph_shader_bytecode =
@@ -3603,8 +3643,8 @@ int main(int argc, char** argv) {
             vulkan_scene_renderer->enable_compute_morph_tangent_frame_output =
                 options.require_compute_morph_normal_tangent;
             vulkan_scene_renderer->compute_morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(),
-                                                                      packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_morph_package) {
             vulkan_scene_renderer->morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
@@ -3614,8 +3654,8 @@ int main(int argc, char** argv) {
             };
             vulkan_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()};
             vulkan_scene_renderer->morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{packaged_mesh_asset_id(),
-                                                                      packaged_morph_mesh_asset_id()},
+                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         }
         if (options.require_directional_shadow) {
@@ -3649,7 +3689,7 @@ int main(int argc, char** argv) {
 
     mirakana::SdlDesktopGameHostDesc host_desc{
         .title = "sample-generated-desktop-runtime-3d-package",
-        .extent = mirakana::WindowExtent{960, 540},
+        .extent = mirakana::WindowExtent{.width = 960, .height = 540},
         .video_driver_hint = options.video_driver_hint,
         .prefer_vulkan = options.require_vulkan_renderer,
     };

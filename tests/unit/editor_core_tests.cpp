@@ -5125,8 +5125,11 @@ MK_TEST("editor scene prefab instance refresh batch plans disjoint roots and blo
     MK_REQUIRE(history.execute(
         mirakana::editor::make_scene_authoring_reparent_node_action(document, second_root, first_root)));
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> nested_roots;
-    nested_roots.push_back({first_root, solo, "assets/prefabs/solo.prefab"});
-    nested_roots.push_back({second_root, solo, "assets/prefabs/solo.prefab"});
+    nested_roots.push_back(
+        {.instance_root = first_root, .refreshed_prefab = solo, .refreshed_prefab_path = "assets/prefabs/solo.prefab"});
+    nested_roots.push_back({.instance_root = second_root,
+                            .refreshed_prefab = solo,
+                            .refreshed_prefab_path = "assets/prefabs/solo.prefab"});
     auto batch_nested =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, std::move(nested_roots), policy);
     MK_REQUIRE(batch_nested.status == mirakana::editor::ScenePrefabInstanceRefreshStatus::blocked);
@@ -5141,8 +5144,11 @@ MK_TEST("editor scene prefab instance refresh batch plans disjoint roots and blo
         .load_prefab_for_nested_propagation = {},
     };
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> nested_roots_with_propagation;
-    nested_roots_with_propagation.push_back({first_root, solo, "assets/prefabs/solo.prefab"});
-    nested_roots_with_propagation.push_back({second_root, solo, "assets/prefabs/solo.prefab"});
+    nested_roots_with_propagation.push_back(
+        {.instance_root = first_root, .refreshed_prefab = solo, .refreshed_prefab_path = "assets/prefabs/solo.prefab"});
+    nested_roots_with_propagation.push_back({.instance_root = second_root,
+                                             .refreshed_prefab = solo,
+                                             .refreshed_prefab_path = "assets/prefabs/solo.prefab"});
     const auto batch_nested_with_propagation = mirakana::editor::plan_scene_prefab_instance_refresh_batch(
         document, std::move(nested_roots_with_propagation), propagation_policy);
     MK_REQUIRE(batch_nested_with_propagation.status == mirakana::editor::ScenePrefabInstanceRefreshStatus::blocked);
@@ -5158,8 +5164,11 @@ MK_TEST("editor scene prefab instance refresh batch plans disjoint roots and blo
     MK_REQUIRE(history.undo());
 
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> disjoint;
-    disjoint.push_back({first_root, solo, "assets/prefabs/solo.prefab"});
-    disjoint.push_back({second_root, solo, "assets/prefabs/solo.prefab"});
+    disjoint.push_back(
+        {.instance_root = first_root, .refreshed_prefab = solo, .refreshed_prefab_path = "assets/prefabs/solo.prefab"});
+    disjoint.push_back({.instance_root = second_root,
+                        .refreshed_prefab = solo,
+                        .refreshed_prefab_path = "assets/prefabs/solo.prefab"});
     auto batch_disjoint =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, std::move(disjoint), policy);
     MK_REQUIRE(batch_disjoint.target_count == 2);
@@ -5624,7 +5633,9 @@ MK_TEST("editor scene prefab instance refresh review can keep nested prefab inst
                    "scene_prefab_instance_refresh.propagation_preview.rows.0.prefab_path"}) != nullptr);
 
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> nested_preview_batch;
-    nested_preview_batch.push_back({mirakana::SceneNodeId{1}, refreshed, "assets/prefabs/player.prefab"});
+    nested_preview_batch.push_back({.instance_root = mirakana::SceneNodeId{1},
+                                    .refreshed_prefab = refreshed,
+                                    .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto nested_propagation_batch = mirakana::editor::plan_scene_prefab_instance_refresh_batch(
         document, std::move(nested_preview_batch), keep_nested);
     MK_REQUIRE(nested_propagation_batch.targets.size() == 1);
@@ -5864,7 +5875,9 @@ MK_TEST("editor scene prefab instance refresh batch can apply nested prefab prop
     };
 
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> batch_targets;
-    batch_targets.push_back({mirakana::SceneNodeId{1}, refreshed_player, "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = mirakana::SceneNodeId{1},
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto batch_plan =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, batch_targets, propagation_policy);
     MK_REQUIRE(batch_plan.can_apply);
@@ -5898,7 +5911,9 @@ MK_TEST("editor scene prefab instance refresh batch can apply nested prefab prop
     };
 
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> batch_apply;
-    batch_apply.push_back({mirakana::SceneNodeId{1}, refreshed_player, "assets/prefabs/player.prefab"});
+    batch_apply.push_back({.instance_root = mirakana::SceneNodeId{1},
+                           .refreshed_prefab = refreshed_player,
+                           .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     MK_REQUIRE(history.execute(mirakana::editor::make_scene_prefab_instance_refresh_batch_action(
         document, std::move(batch_apply), propagation_policy)));
 
@@ -6022,8 +6037,12 @@ MK_TEST("editor scene prefab instance refresh batch multi-target can apply neste
     MK_REQUIRE(count_shield_nodes(document.scene()) == 0);
 
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> batch_targets;
-    batch_targets.push_back({mirakana::SceneNodeId{1}, refreshed_player, "assets/prefabs/player.prefab"});
-    batch_targets.push_back({mirakana::SceneNodeId{5}, refreshed_player, "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = mirakana::SceneNodeId{1},
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = mirakana::SceneNodeId{5},
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto batch_plan =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, batch_targets, propagation_policy);
     MK_REQUIRE(batch_plan.can_apply);
@@ -6156,9 +6175,15 @@ MK_TEST("editor scene prefab instance refresh batch triple disjoint can apply ne
     MK_REQUIRE(count_shield_nodes(document.scene()) == 0);
 
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> batch_targets;
-    batch_targets.push_back({mirakana::SceneNodeId{1}, refreshed_player, "assets/prefabs/player.prefab"});
-    batch_targets.push_back({mirakana::SceneNodeId{5}, refreshed_player, "assets/prefabs/player.prefab"});
-    batch_targets.push_back({mirakana::SceneNodeId{9}, refreshed_player, "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = mirakana::SceneNodeId{1},
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = mirakana::SceneNodeId{5},
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = mirakana::SceneNodeId{9},
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto batch_plan =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, batch_targets, propagation_policy);
     MK_REQUIRE(batch_plan.can_apply);
@@ -6243,7 +6268,9 @@ MK_TEST("editor scene prefab instance refresh batch blocks nested propagation wh
 
     const auto require_blocked_policy = [&](const mirakana::editor::ScenePrefabInstanceRefreshPolicy& policy) {
         std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> batch_targets;
-        batch_targets.push_back({mirakana::SceneNodeId{1}, refreshed_player, "assets/prefabs/player.prefab"});
+        batch_targets.push_back({.instance_root = mirakana::SceneNodeId{1},
+                                 .refreshed_prefab = refreshed_player,
+                                 .refreshed_prefab_path = "assets/prefabs/player.prefab"});
         const auto batch_plan =
             mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, batch_targets, policy);
         MK_REQUIRE(batch_plan.status == mirakana::editor::ScenePrefabInstanceRefreshStatus::blocked);
@@ -6378,7 +6405,9 @@ MK_TEST("editor scene prefab instance refresh batch stays atomic when nested loa
         },
     };
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> stable_targets;
-    stable_targets.push_back({mirakana::SceneNodeId{1}, refreshed_player, "assets/prefabs/player.prefab"});
+    stable_targets.push_back({.instance_root = mirakana::SceneNodeId{1},
+                              .refreshed_prefab = refreshed_player,
+                              .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto stable_plan =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, stable_targets, stable_policy);
     MK_REQUIRE(stable_plan.can_apply);
@@ -6405,7 +6434,9 @@ MK_TEST("editor scene prefab instance refresh batch stays atomic when nested loa
 
     require_scene_unchanged();
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> drift_targets;
-    drift_targets.push_back({mirakana::SceneNodeId{1}, refreshed_player, "assets/prefabs/player.prefab"});
+    drift_targets.push_back({.instance_root = mirakana::SceneNodeId{1},
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto undo_count_before = history.undo_count();
     const auto redo_count_before = history.redo_count();
     auto action = mirakana::editor::make_scene_prefab_instance_refresh_batch_action(document, std::move(drift_targets),
@@ -6517,8 +6548,12 @@ MK_TEST("editor scene prefab instance refresh batch stays atomic when later nest
         },
     };
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> stable_targets;
-    stable_targets.push_back({mirakana::SceneNodeId{1}, refreshed_player, "assets/prefabs/player.prefab"});
-    stable_targets.push_back({mirakana::SceneNodeId{5}, refreshed_player, "assets/prefabs/player.prefab"});
+    stable_targets.push_back({.instance_root = mirakana::SceneNodeId{1},
+                              .refreshed_prefab = refreshed_player,
+                              .refreshed_prefab_path = "assets/prefabs/player.prefab"});
+    stable_targets.push_back({.instance_root = mirakana::SceneNodeId{5},
+                              .refreshed_prefab = refreshed_player,
+                              .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto stable_plan =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, stable_targets, stable_policy);
     MK_REQUIRE(stable_plan.can_apply);
@@ -6547,8 +6582,12 @@ MK_TEST("editor scene prefab instance refresh batch stays atomic when later nest
 
     require_scene_unchanged();
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> drift_targets;
-    drift_targets.push_back({mirakana::SceneNodeId{1}, refreshed_player, "assets/prefabs/player.prefab"});
-    drift_targets.push_back({mirakana::SceneNodeId{5}, refreshed_player, "assets/prefabs/player.prefab"});
+    drift_targets.push_back({.instance_root = mirakana::SceneNodeId{1},
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
+    drift_targets.push_back({.instance_root = mirakana::SceneNodeId{5},
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto undo_count_before = history.undo_count();
     const auto redo_count_before = history.redo_count();
     auto action = mirakana::editor::make_scene_prefab_instance_refresh_batch_action(document, std::move(drift_targets),
@@ -6721,8 +6760,12 @@ MK_TEST("editor scene prefab instance refresh batch applies two-level nested pre
     require_selected_gem_root();
 
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> batch_targets;
-    batch_targets.push_back({first_player_root, refreshed_player, "assets/prefabs/player.prefab"});
-    batch_targets.push_back({second_player_root, refreshed_player, "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = first_player_root,
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = second_player_root,
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto batch_plan =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, batch_targets, propagation_policy);
     MK_REQUIRE(batch_plan.can_apply);
@@ -6890,7 +6933,9 @@ MK_TEST("editor scene prefab instance refresh batch keeps recreated nested sourc
     require_selected_blade("SelectedBlade");
 
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> batch_targets;
-    batch_targets.push_back({player_root, refreshed_player, "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = player_root,
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto batch_plan =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, batch_targets, propagation_policy);
     MK_REQUIRE(batch_plan.can_apply);
@@ -7056,7 +7101,9 @@ MK_TEST("editor scene prefab instance refresh batch keeps local child during nes
         },
     };
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> blocked_targets;
-    blocked_targets.push_back({player_root, refreshed_player, "assets/prefabs/player.prefab"});
+    blocked_targets.push_back({.instance_root = player_root,
+                               .refreshed_prefab = refreshed_player,
+                               .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto blocked_batch_plan = mirakana::editor::plan_scene_prefab_instance_refresh_batch(
         document, blocked_targets, blocked_nested_local_policy);
     MK_REQUIRE(!blocked_batch_plan.can_apply);
@@ -7080,7 +7127,9 @@ MK_TEST("editor scene prefab instance refresh batch keeps local child during nes
     MK_REQUIRE(count_source_nodes(document.scene(), "weapon.prefab", "Grip") == 0);
 
     std::vector<mirakana::editor::ScenePrefabInstanceRefreshBatchTargetInput> batch_targets;
-    batch_targets.push_back({player_root, refreshed_player, "assets/prefabs/player.prefab"});
+    batch_targets.push_back({.instance_root = player_root,
+                             .refreshed_prefab = refreshed_player,
+                             .refreshed_prefab_path = "assets/prefabs/player.prefab"});
     const auto batch_plan =
         mirakana::editor::plan_scene_prefab_instance_refresh_batch(document, batch_targets, propagation_policy);
     MK_REQUIRE(batch_plan.can_apply);

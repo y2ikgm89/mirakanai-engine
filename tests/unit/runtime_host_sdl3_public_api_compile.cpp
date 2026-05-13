@@ -92,19 +92,19 @@ int main() {
     scene_renderer.morph_vertex_shader.entry_point = "vs_morph";
     scene_renderer.morph_mesh_assets.push_back(mirakana::AssetId::from_name("morphs/probe"));
     scene_renderer.morph_mesh_bindings.push_back(mirakana::SdlDesktopPresentationSceneMorphMeshBinding{
-        mirakana::AssetId::from_name("meshes/probe"),
-        mirakana::AssetId::from_name("morphs/probe"),
+        .mesh = mirakana::AssetId::from_name("meshes/probe"),
+        .morph_mesh = mirakana::AssetId::from_name("morphs/probe"),
     });
     scene_renderer.compute_morph_vertex_shader.entry_point = "vs_compute_morph";
     scene_renderer.compute_morph_shader.entry_point = "cs_compute_morph_position";
     scene_renderer.compute_morph_mesh_bindings.push_back(mirakana::SdlDesktopPresentationSceneMorphMeshBinding{
-        mirakana::AssetId::from_name("meshes/probe"),
-        mirakana::AssetId::from_name("morphs/probe"),
+        .mesh = mirakana::AssetId::from_name("meshes/probe"),
+        .morph_mesh = mirakana::AssetId::from_name("morphs/probe"),
     });
     scene_renderer.compute_morph_skinned_shader.entry_point = "cs_compute_morph_skinned_position";
     scene_renderer.compute_morph_skinned_mesh_bindings.push_back(mirakana::SdlDesktopPresentationSceneMorphMeshBinding{
-        mirakana::AssetId::from_name("meshes/skinned-probe"),
-        mirakana::AssetId::from_name("morphs/probe"),
+        .mesh = mirakana::AssetId::from_name("meshes/skinned-probe"),
+        .morph_mesh = mirakana::AssetId::from_name("morphs/probe"),
     });
     scene_renderer.enable_compute_morph_tangent_frame_output = true;
     scene_renderer.enable_postprocess_depth_input = true;
@@ -114,27 +114,27 @@ int main() {
     scene_renderer.shadow_vertex_shader.entry_point = "vs_shadow";
     scene_renderer.shadow_fragment_shader.entry_point = "ps_shadow";
     scene_renderer.enable_directional_shadow_smoke = true;
-    scene_renderer.vertex_buffers.push_back(mirakana::rhi::VertexBufferLayoutDesc{0, 12});
+    scene_renderer.vertex_buffers.push_back(mirakana::rhi::VertexBufferLayoutDesc{.binding = 0, .stride = 12});
     scene_renderer.vertex_attributes.push_back(mirakana::rhi::VertexAttributeDesc{
-        0,
-        0,
-        0,
-        mirakana::rhi::VertexFormat::float32x3,
-        mirakana::rhi::VertexSemantic::position,
-        0,
+        .location = 0,
+        .binding = 0,
+        .offset = 0,
+        .format = mirakana::rhi::VertexFormat::float32x3,
+        .semantic = mirakana::rhi::VertexSemantic::position,
+        .semantic_index = 0,
     });
     mirakana::SdlDesktopPresentationD3d12SceneRendererDesc d3d12_scene_renderer;
     d3d12_scene_renderer.compute_morph_shader.entry_point = "cs_compute_morph_position";
     d3d12_scene_renderer.compute_morph_skinned_shader.entry_point = "cs_compute_morph_skinned_position";
     d3d12_scene_renderer.enable_compute_morph_tangent_frame_output = true;
     d3d12_scene_renderer.compute_morph_mesh_bindings.push_back(mirakana::SdlDesktopPresentationSceneMorphMeshBinding{
-        mirakana::AssetId::from_name("meshes/probe"),
-        mirakana::AssetId::from_name("morphs/probe"),
+        .mesh = mirakana::AssetId::from_name("meshes/probe"),
+        .morph_mesh = mirakana::AssetId::from_name("morphs/probe"),
     });
     d3d12_scene_renderer.compute_morph_skinned_mesh_bindings.push_back(
         mirakana::SdlDesktopPresentationSceneMorphMeshBinding{
-            mirakana::AssetId::from_name("meshes/skinned-probe"),
-            mirakana::AssetId::from_name("morphs/probe"),
+            .mesh = mirakana::AssetId::from_name("meshes/skinned-probe"),
+            .morph_mesh = mirakana::AssetId::from_name("morphs/probe"),
         });
     return status == mirakana::SdlDesktopPresentationSceneGpuBindingStatus::not_requested &&
                    reason == mirakana::SdlDesktopPresentationFallbackReason::none &&

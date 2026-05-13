@@ -373,11 +373,11 @@ std::vector<PhysicsBroadphasePair2D> PhysicsWorld2D::broadphase_pairs() const {
         }
         return lhs.second.value < rhs.second.value;
     });
-    const auto unique_end = std::unique(result.begin(), result.end(),
-                                        [](const PhysicsBroadphasePair2D& lhs, const PhysicsBroadphasePair2D& rhs) {
-                                            return lhs.first == rhs.first && lhs.second == rhs.second;
-                                        });
-    result.erase(unique_end, result.end());
+    const auto unique_end =
+        std::ranges::unique(result, [](const PhysicsBroadphasePair2D& lhs, const PhysicsBroadphasePair2D& rhs) {
+            return lhs.first == rhs.first && lhs.second == rhs.second;
+        });
+    result.erase(unique_end.begin(), result.end());
     return result;
 }
 

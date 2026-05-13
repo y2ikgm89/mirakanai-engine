@@ -273,7 +273,7 @@ constexpr std::array<ToolProbe, 4> tool_probes{
         paths.push_back(std::move(resolved));
     }
     std::ranges::sort(paths);
-    paths.erase(std::unique(paths.begin(), paths.end()), paths.end());
+    paths.erase(std::ranges::unique(paths).begin(), paths.end());
     return paths;
 }
 

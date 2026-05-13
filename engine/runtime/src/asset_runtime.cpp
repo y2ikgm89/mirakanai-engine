@@ -353,11 +353,11 @@ RuntimeAssetPackage merge_runtime_asset_packages_overlay(const std::vector<Runti
         }
     }
     std::ranges::sort(merged_edges, dependency_edge_less);
-    const auto unique_end = std::unique(merged_edges.begin(), merged_edges.end(),
-                                        [](const AssetDependencyEdge& lhs, const AssetDependencyEdge& rhs) noexcept {
-                                            return !dependency_edge_less(lhs, rhs) && !dependency_edge_less(rhs, lhs);
-                                        });
-    merged_edges.erase(unique_end, merged_edges.end());
+    const auto unique_end =
+        std::ranges::unique(merged_edges, [](const AssetDependencyEdge& lhs, const AssetDependencyEdge& rhs) noexcept {
+            return !dependency_edge_less(lhs, rhs) && !dependency_edge_less(rhs, lhs);
+        });
+    merged_edges.erase(unique_end.begin(), merged_edges.end());
 
     return RuntimeAssetPackage{std::move(merged_records), std::move(merged_edges)};
 }
@@ -555,8 +555,8 @@ RuntimePayloadAccessResult<RuntimeMeshPayload> runtime_mesh_payload(const Runtim
     }
 }
 
-MorphMeshCpuSourceDocument morph_mesh_cpu_document_from_runtime_payload(const KeyValues& values,
-                                                                        std::string_view diagnostic_name) {
+static MorphMeshCpuSourceDocument morph_mesh_cpu_document_from_runtime_payload(const KeyValues& values,
+                                                                               std::string_view diagnostic_name) {
     const auto vertex_count =
         parse_payload_u32(required_payload_value(values, "morph.vertex_count", diagnostic_name), diagnostic_name);
     if (vertex_count == 0U) {
@@ -591,8 +591,8 @@ MorphMeshCpuSourceDocument morph_mesh_cpu_document_from_runtime_payload(const Ke
     return document;
 }
 
-AnimationFloatClipSourceDocument animation_float_clip_document_from_runtime_payload(const KeyValues& values,
-                                                                                    std::string_view diagnostic_name) {
+static AnimationFloatClipSourceDocument
+animation_float_clip_document_from_runtime_payload(const KeyValues& values, std::string_view diagnostic_name) {
     const auto track_count =
         parse_payload_u32(required_payload_value(values, "clip.track_count", diagnostic_name), diagnostic_name);
     if (track_count == 0U || track_count > 4096U) {
@@ -622,7 +622,7 @@ AnimationFloatClipSourceDocument animation_float_clip_document_from_runtime_payl
     return document;
 }
 
-AnimationQuaternionClipSourceDocument
+static AnimationQuaternionClipSourceDocument
 animation_quaternion_clip_document_from_runtime_payload(const KeyValues& values, std::string_view diagnostic_name) {
     const auto track_count =
         parse_payload_u32(required_payload_value(values, "clip.track_count", diagnostic_name), diagnostic_name);
