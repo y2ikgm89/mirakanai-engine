@@ -647,6 +647,9 @@ Assert-ContainsText $agentsContent "gh pr create" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr merge --auto --merge --delete-branch" "AGENTS.md"
 Assert-ContainsText $agentsContent "mergeStateStatus" "AGENTS.md"
 Assert-ContainsText $agentsContent "--match-head-commit <headRefOid>" "AGENTS.md"
+Assert-ContainsText $agentsContent "hosted PR/CI check failures" "AGENTS.md"
+Assert-ContainsText $agentsContent "lcov --ignore-errors unused" "AGENTS.md"
+Assert-ContainsText $agentsContent "runtime/.gitattributes" "AGENTS.md"
 Assert-ContainsText $agentsContent '`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`' "AGENTS.md"
 Assert-ContainsText $agentsContent "documentation-only/non-runtime slices" "AGENTS.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit")) {
@@ -676,6 +679,8 @@ Assert-ContainsText $workflowsContent "--match-head-commit <headRefOid>" "docs/w
 Assert-ContainsText $workflowsContent "mergeStateStatus" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "Hosted PR Check Failure Triage" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "gh pr view <pr> --json headRefOid,statusCheckRollup,url" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Documentation-only or similarly narrow non-runtime slices" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
@@ -733,6 +738,8 @@ Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr merge --auto --merge --delete-branch" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "mergeStateStatus" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "--match-head-commit <headRefOid>" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent 'latest `headRefOid` and `statusCheckRollup`' "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent '.codex/rules` and `.claude/settings.json` remain command/permission gates' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "policy reload" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "GITHUB_TOKEN" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-integration.md"
@@ -755,6 +762,13 @@ Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" 
 $cursorAgentIntegrationSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+$cursorCmakeSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
+Assert-ContainsText $cursorCmakeSkillText "lcov --ignore-errors unused" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
+Assert-ContainsText $cursorCmakeSkillText "tools/check-coverage-thresholds.ps1" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
+$cursorGameDevelopmentSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "runtime/.gitattributes" ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "text eol=lf" ".cursor/skills/gameengine-game-development/SKILL.md"
 
 Assert-ContainsText $aiIntegrationContent "normalized-build-environment" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'Path`/`PATH' "docs/ai-integration.md"
@@ -2823,6 +2837,8 @@ foreach ($gameSkillText in @($gameDevelopmentSkillText, $claudeGameDevelopmentSk
     Assert-ContainsText $gameSkillText "scene_gpu_compute_morph_async_*" "gameengine game-development skill"
     Assert-ContainsText $gameSkillText "DesktopRuntime3DPackage" "gameengine game-development skill"
     Assert-ContainsText $gameSkillText "SceneSkinnedGpuBindingPalette" "gameengine game-development skill"
+    Assert-ContainsText $gameSkillText "runtime/.gitattributes" "gameengine game-development skill"
+    Assert-ContainsText $gameSkillText "text eol=lf" "gameengine game-development skill"
 }
 
 $validationRecipeNames = @{}
@@ -13006,6 +13022,8 @@ foreach ($cmakeSkill in @(
     Assert-ContainsText $cmakeSkillText "VCPKG_MANIFEST_INSTALL=OFF" $cmakeSkill
     Assert-ContainsText $cmakeSkillText 'VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed' $cmakeSkill
     Assert-ContainsText $cmakeSkillText "VCPKG_MANIFEST_FEATURES" $cmakeSkill
+    Assert-ContainsText $cmakeSkillText "lcov --ignore-errors unused" $cmakeSkill
+    Assert-ContainsText $cmakeSkillText "tools/check-coverage-thresholds.ps1" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "Debugging Tools for Windows" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "PIX on Windows" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "Windows Performance Toolkit" $cmakeSkill
@@ -13082,6 +13100,8 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "auto-merge registration" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "mergeStateStatus" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "--match-head-commit <headRefOid>" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "Hosted PR failure hardening" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "not troubleshooting playbooks" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "post-merge remote-tracking cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
@@ -13180,6 +13200,8 @@ Assert-ContainsText $aiAgentRuleText "OpenAI developer documentation MCP" ".clau
 Assert-ContainsText $aiAgentRuleText "official Anthropic docs" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "mergeStateStatus" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "--match-head-commit <headRefOid>" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "Rules/permissions stay narrow command gates" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "hosted PR check failure" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Debugging Tools for Windows" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Windows Graphics Tools" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "PIX on Windows" ".claude/rules/ai-agent-integration.md"
@@ -13248,6 +13270,9 @@ foreach ($buildFixerAgent in @(
     Assert-ContainsText $buildFixerText "CMake File API" $buildFixerAgent
     Assert-ContainsText $buildFixerText "CreateFileW stdin failed with 5" $buildFixerAgent
     Assert-ContainsText $buildFixerText "VCPKG_MANIFEST_INSTALL=OFF" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "latest PR head SHA" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "lcov --ignore-errors unused" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "runtime/.gitattributes" $buildFixerAgent
     Assert-ContainsText $buildFixerText "cdb -version" $buildFixerAgent
     Assert-ContainsText $buildFixerText "pixtool --help" $buildFixerAgent
     Assert-ContainsText $buildFixerText "Windows Graphics Tools" $buildFixerAgent

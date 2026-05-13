@@ -36,6 +36,8 @@ Machine-readable **canonical** contract: `engine/agent/manifest.json` (compose o
 
 Keep `AGENTS.md` under Codex's default 32 KiB project-doc budget, keep shared `SKILL.md` bodies as concise routers, and keep subagents narrowly scoped; `tools/check-agents.ps1` enforces the repository budgets. Move detail to skill-local `references/*.md`, canonical docs, subagents, or manifest fragments instead of expanding always-loaded instructions.
 
+Hosted PR failure hardening: update `AGENTS.md`, docs, Codex/Claude/Cursor skills, subagents, and scoped `tools/check-ai-integration.ps1` Needles together when a PR check exposes guidance/static-guard drift. Keep rules and settings as command/permission gates, not troubleshooting playbooks.
+
 Git/GitHub authentication stays host-local through Git Credential Manager, GitHub CLI, SSH agent, or a browser session; do not add repository requirements for `GITHUB_TOKEN` or personal access tokens. If warnings mention missing helpers such as `credential-manager-core`, inspect `git config --show-origin --get-all credential.helper`, prefer current Git for Windows GCM helper `manager`, and fix host/user Git config rather than adding repository overrides.
 
 When adding retained editor UI ids or literals enforced by `tools/check-ai-integration.ps1`, extend scoped Needles and sibling skill/manifest text together (see canonical skill §When Changing Integration item 17).

@@ -21,3 +21,5 @@ Full workflow lives in shared skills. Start with the short `SKILL.md` routers, t
 | Baseline | `AGENTS.md` |
 
 Games live under `games/<game_name>/` with `game.agent.json`; see `AGENTS.md` **AI-Driven Game Development**.
+
+Runtime package payloads are byte-hashed. New text cooked/runtime extensions or `runtimePackageFiles` entries need matching `runtime/.gitattributes` `text eol=lf`, scaffold/static-check parity, and the narrowest package smoke before slice completion.
