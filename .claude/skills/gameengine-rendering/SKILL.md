@@ -25,10 +25,10 @@ Use this skill for renderer, RHI, shaders, GPU resources, frame graph, materials
 ## Required Discipline
 
 - Keep renderer interfaces backend-neutral and native handles behind backend/PIMPL or explicit interop designs.
-- Read `references/full-guidance.md` only when detailed backend lanes, shader artifact rules, smoke counters, or historical rendering needles are needed.
+- Read `references/full-guidance.md` only when detailed backend lanes, shader artifact rules, smoke counters, or detailed rendering needles are needed.
 - Use focused renderer/RHI/shader checks while iterating, then `tools/validate.ps1` at the slice gate.
 - Use official SDK/tool docs for backend/toolchain behavior and keep D3D12/Vulkan/Metal readiness claims evidence-backed.
 
 ## Detailed Reference
 
-- `references/full-guidance.md`: detailed procedures, API inventory, retained row ids, package/backend/editor lanes, and historical validation evidence. Load only the sections needed for the current task.
+- `references/full-guidance.md`: detailed procedures, API inventory, retained row ids, package/backend/editor lanes, and detailed validation evidence. Load only the sections needed for the current task.

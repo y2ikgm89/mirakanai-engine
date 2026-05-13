@@ -30,4 +30,4 @@ Use this skill for C++ games, game.agent.json, new-game scaffolding, desktop run
 
 ## Detailed Reference
 
-- `references/full-guidance.md`: detailed procedures, API inventory, retained row ids, package/backend/editor lanes, and historical validation evidence. Load only the sections needed for the current task.
+- `references/full-guidance.md`: detailed procedures, API inventory, retained row ids, package/backend/editor lanes, and detailed validation evidence. Load only the sections needed for the current task.

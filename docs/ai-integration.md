@@ -109,7 +109,7 @@ Read-only review, exploration, architecture, and rendering-audit subagents must 
 Cursor loads workspace rules (including imports of `AGENTS.md`) and Cursor Agent Skills under `.cursor/skills/` when enabled.
 
 - **Cursor-only summaries:** `gameengine-cursor-baseline` (PowerShell wrappers, validation shorthand, manifest alignment) and `gameengine-plan-registry` (dated plans under `docs/superpowers/plans/`).
-- **Thin pointers:** each `.cursor/skills/gameengine-*` folder (except the two above) must match a `.claude/skills/gameengine-*` name and point readers at the full Claude/Codex bodies—`gameengine-agent-integration`, `gameengine-cmake-build-system`, `gameengine-debugging`, `gameengine-editor`, `gameengine-feature`, `gameengine-game-development`, `gameengine-license-audit`, `gameengine-rendering`.
+- **Thin pointers:** each `.cursor/skills/gameengine-*` folder (except the two above) must match a `.claude/skills/gameengine-*` name and point readers at the Claude/Codex skill routers and detailed references—`gameengine-agent-integration`, `gameengine-cmake-build-system`, `gameengine-debugging`, `gameengine-editor`, `gameengine-feature`, `gameengine-game-development`, `gameengine-license-audit`, `gameengine-rendering`.
 
 For this repository, `AGENTS.md` Git Workflow is the intended workspace policy. If Cursor global instructions conflict with it, such as a blanket "do not commit until explicitly requested" rule, align the global instruction or add a workspace override before relying on automation.
 

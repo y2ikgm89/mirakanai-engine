@@ -107,6 +107,24 @@ function Test-SkillFrontmatter {
     }
 }
 
+function Test-SkillReferenceTarget {
+    param([Parameter(Mandatory)][string]$SkillMdPath)
+
+    $content = Get-Content -LiteralPath $SkillMdPath -Raw
+    $referenceMatches = [System.Text.RegularExpressions.Regex]::Matches(
+        $content,
+        '(?<!/)references/[A-Za-z0-9._/-]+'
+    )
+    foreach ($referenceMatch in $referenceMatches) {
+        $relativeReference = $referenceMatch.Value.TrimEnd(".", ",", ";", ":")
+        $localReference = $relativeReference.Replace("/", [System.IO.Path]::DirectorySeparatorChar)
+        $referencePath = Join-Path (Split-Path -Parent $SkillMdPath) $localReference
+        if (-not (Test-Path -LiteralPath $referencePath)) {
+            Write-Error "Skill references missing local file '$relativeReference': $SkillMdPath"
+        }
+    }
+}
+
 $skillRoot = Join-Path $root ".agents/skills"
 $agentRoot = Join-Path $root ".codex/agents"
 $codexRuleRoot = Join-Path $root ".codex/rules"
@@ -127,6 +145,7 @@ if (Test-Path $skillRoot) {
             -Label ".agents/skills/$($_.Name)/SKILL.md" `
             -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or docs."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $false
+        Test-SkillReferenceTarget -SkillMdPath $skillFile
     }
 }
 
@@ -203,6 +222,7 @@ if (Test-Path $claudeSkillRoot) {
             -Label ".claude/skills/$($_.Name)/SKILL.md" `
             -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or docs."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $false
+        Test-SkillReferenceTarget -SkillMdPath $skillFile
     }
 }
 
@@ -212,7 +232,13 @@ if (Test-Path $cursorSkillRoot) {
         if (-not (Test-Path $skillFile)) {
             Write-Error "Cursor skill folder missing SKILL.md: $($_.FullName)"
         }
+        Test-AgentFileSizeBudget `
+            -Path $skillFile `
+            -MaxBytes (24 * 1024) `
+            -Label ".cursor/skills/$($_.Name)/SKILL.md" `
+            -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or shared skill references."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $true
+        Test-SkillReferenceTarget -SkillMdPath $skillFile
     }
 }
 

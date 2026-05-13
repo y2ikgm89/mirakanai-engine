@@ -1,6 +1,6 @@
 # Rendering Change Full Guidance
 
-This file is detailed reference material for the `.agents/skills/rendering-change/SKILL.md` skill. Load it only when the short `SKILL.md` router says the current task needs detailed API names, historical validation lanes, retained ids, or exact package/render/editor counters.
+This file is detailed reference material for the `.agents/skills/rendering-change/SKILL.md` skill. Load it only when the short `SKILL.md` router says the current task needs detailed API names, detailed validation lanes, retained ids, or exact package/render/editor counters.
 
 # Rendering Change
 

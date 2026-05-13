@@ -21,10 +21,10 @@ Use this skill for editor/core models, Dear ImGui shell wiring, project IO, asse
 ## Required Discipline
 
 - Keep `editor/core` GUI-independent and route persistent behavior through editor-core models before shell wiring.
-- Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, ImGui style rules, or historical validation lanes are needed.
+- Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, ImGui style rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.
 - When adding retained UI ids or CMake target literals enforced by `check-ai-integration.ps1`, update Needles and Codex/Claude skill twins together.
 
 ## Detailed Reference
 
-- `references/full-guidance.md`: detailed procedures, API inventory, retained row ids, package/backend/editor lanes, and historical validation evidence. Load only the sections needed for the current task.
+- `references/full-guidance.md`: detailed procedures, API inventory, retained row ids, package/backend/editor lanes, and detailed validation evidence. Load only the sections needed for the current task.

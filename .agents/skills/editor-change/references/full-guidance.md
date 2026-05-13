@@ -1,6 +1,6 @@
 # Editor Change Full Guidance
 
-This file is detailed reference material for the `.agents/skills/editor-change/SKILL.md` skill. Load it only when the short `SKILL.md` router says the current task needs detailed API names, historical validation lanes, retained ids, or exact package/render/editor counters.
+This file is detailed reference material for the `.agents/skills/editor-change/SKILL.md` skill. Load it only when the short `SKILL.md` router says the current task needs detailed API names, detailed validation lanes, retained ids, or exact package/render/editor counters.
 
 # Editor Change
 
@@ -57,7 +57,7 @@ The visible `MK_editor` entry point is a large translation unit; keep it consist
 ## Required Checks
 
 1. Identify whether the change belongs in `editor/core`, `editor`, or an engine module.
-2. Add or update tests in **`tests/unit/editor_core_tests.cpp`** before production editor-core behavior (CMake executable and CTest filter: **`MK_editor_core_tests`**; older plans may still say `mirakana_editor_core_tests`—treat that as the same lane).
+2. Add or update tests in **`tests/unit/editor_core_tests.cpp`** before production editor-core behavior (CMake executable and CTest filter: **`MK_editor_core_tests`**). Use the canonical `MK_editor_core_tests` name in new guidance and validation evidence.
 3. Update `docs/editor.md` and the engine agent manifest for new editor-facing contracts by editing the relevant `engine/agent/manifest.fragments/*.json` and running `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; when adding retained `play_in_editor.*` row ids, CMake target strings surfaced to agents, or other literals enforced in `tools/check-ai-integration.ps1`, extend the matching Needles blocks there and keep `.claude/skills/gameengine-editor/SKILL.md` equivalent paragraphs aligned in the same task.
 4. During implementation, prefer a focused loop: `cmake --build --preset dev --target MK_editor_core_tests` and `ctest --preset dev --output-on-failure -R MK_editor_core_tests` when `editor/core` or `tests/unit/editor_core_tests.cpp` changes, and run only the static checks matching touched docs/manifest/API files.
 5. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1` when `editor`, SDL3, Dear ImGui, or GUI CMake files change.
