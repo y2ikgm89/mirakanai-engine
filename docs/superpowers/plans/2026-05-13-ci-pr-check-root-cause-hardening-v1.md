@@ -11,7 +11,7 @@ Make PR validation green by fixing the root causes behind the failed GitHub chec
 
 ## Context
 
-PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, Metal Objective-C++ framework linkage gaps, host-optional Vulkan loader assumptions in macOS tests, asynchronous macOS FSEvents delivery timing, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
+PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, Metal Objective-C++ framework linkage gaps, host-optional Vulkan loader assumptions in macOS tests, asynchronous macOS FSEvents delivery timing, iOS accidentally compiling and advertising macOS-only FSEvents code, canonical path differences in macOS watcher events, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
 
 ## Constraints
 
@@ -34,6 +34,8 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 - Metal runtime render encoder creation has complete friend declarations for texture and drawable paths.
 - macOS tests accept unsupported Vulkan as an explicit host classification instead of requiring a Vulkan loader on every Apple runner.
 - macOS native file watcher polling flushes FSEvents delivery before inspecting queued events.
+- iOS builds compile the macOS watcher as an unavailable stub, do not advertise FSEvents as a host-native backend, and do not build the macOS/Linux native watcher executable target.
+- macOS watcher event paths normalize through canonical filesystem paths before applying the configured relative prefix, and `poll()` reconciles a file snapshot so native watch results stay deterministic when FSEvents coalesces or drops events.
 - Windows CRLF checkouts and macOS/iOS missing Windows-only environment variables do not crash validation scripts or source registry key checks.
 - Local validation covers the updated scripts, docs, presets, and native watcher compile contract.
 
@@ -66,3 +68,10 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 | `cmake --build --preset dev --target MK_backend_scaffold_tests` | PASS | Rebuilt the backend scaffold tests, Vulkan backend, Metal backend, and platform watcher sources after macOS CI test hardening. |
 | `ctest --preset dev --output-on-failure -R "MK_backend_scaffold_tests\|MK_core_tests"` | PASS | Windows host still proves Vulkan runtime loader tests after macOS unsupported-host assertions were narrowed, plus the core watcher API contract. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/platform/src/macos_file_watcher.cpp,tests/unit/backend_scaffold_tests.cpp -MaxFiles 2` | PASS | Targeted tidy covered the compiled Windows view of macOS watcher and Vulkan test edits; existing repository warnings remain warning-only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Formatting stayed clean after the Apple watcher host-gate and snapshot reconciliation edits. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | Manifest/schema contracts stayed synchronized after the CI hardening plan update. |
+| `cmake --build --preset dev --target MK_platform MK_core_tests MK_backend_scaffold_tests` | PASS | Rebuilt platform watcher host classification, core watcher API tests, and backend scaffold tests. |
+| `ctest --preset dev --output-on-failure -R "MK_backend_scaffold_tests\|MK_core_tests"` | PASS | Focused tests passed after iOS host-backend narrowing and macOS watcher snapshot reconciliation. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/platform/src/file_watcher.cpp,engine/platform/src/macos_file_watcher.cpp,tests/unit/backend_scaffold_tests.cpp -MaxFiles 3` | PASS | Targeted tidy covered host-backend classification and macOS watcher implementation; existing repository warnings remain warning-only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed after the final Apple watcher fixes; Apple/Metal diagnostics remained host-gated on Windows. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed independently after full validation. |
