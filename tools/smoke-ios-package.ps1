@@ -9,7 +9,8 @@ param(
     [string]$DeviceUdid = "",
     [string]$DeviceName = "",
     [switch]$SkipBuild,
-    [int]$BootTimeoutSeconds = 180,
+    [int]$BootTimeoutSeconds = 420,
+    [int]$BootAttempts = 2,
     [switch]$Help
 )
 
@@ -17,7 +18,7 @@ $ErrorActionPreference = "Stop"
 
 if ($Help) {
     Write-Host "ios-smoke: builds an iOS Simulator app, installs it with xcrun simctl, launches it, and terminates it."
-    Write-Host "ios-smoke: parameters: -Game <game_name> -Configuration <Debug|Release> [-BundleIdentifier <id>] [-DeviceUdid <udid>] [-DeviceName <name>] [-SkipBuild] [-BootTimeoutSeconds <seconds>]"
+    Write-Host "ios-smoke: parameters: -Game <game_name> -Configuration <Debug|Release> [-BundleIdentifier <id>] [-DeviceUdid <udid>] [-DeviceName <name>] [-SkipBuild] [-BootTimeoutSeconds <seconds>] [-BootAttempts <count>]"
     return
 }
 
@@ -102,22 +103,44 @@ function Select-IosSimulator {
         Select-Object -First 1
 }
 
-function Wait-IosSimulatorBoot {
+function Wait-IosSimulatorBootOnce {
     param([Parameter(Mandatory = $true)][string]$Udid)
 
     $process = Start-Process -FilePath $script:xcrun -ArgumentList @("simctl", "bootstatus", $Udid, "-b") -NoNewWindow -PassThru
     if (-not $process.WaitForExit($BootTimeoutSeconds * 1000)) {
         try {
             $process.Kill()
+            $process.WaitForExit(5000) | Out-Null
         }
         catch {
+            Write-Information "ios-smoke: failed to terminate timed-out simctl bootstatus process: $($_.Exception.Message)" -InformationAction Continue
         }
-        Write-Error "iOS Simulator did not finish booting within $BootTimeoutSeconds seconds: $Udid"
+        return $false
     }
 
-    if ($process.ExitCode -ne 0) {
-        Write-Error "xcrun simctl bootstatus failed with exit code $($process.ExitCode) for simulator: $Udid"
+    return $process.ExitCode -eq 0
+}
+
+function Wait-IosSimulatorBoot {
+    param(
+        [Parameter(Mandatory = $true)][string]$Udid,
+        [switch]$AllowRestart
+    )
+
+    for ($attempt = 1; $attempt -le $BootAttempts; $attempt++) {
+        Write-Information "ios-smoke: waiting for simulator boot ($attempt/$BootAttempts): $Udid" -InformationAction Continue
+        if (Wait-IosSimulatorBootOnce $Udid) {
+            return
+        }
+
+        if ($attempt -lt $BootAttempts -and $AllowRestart) {
+            Write-Information "ios-smoke: simulator boot wait timed out; restarting simulator: $Udid" -InformationAction Continue
+            [void](Invoke-XcrunAllowFailure @("simctl", "shutdown", $Udid))
+            Invoke-CheckedCommand $script:xcrun "simctl" "boot" $Udid
+        }
     }
+
+    Write-Error "iOS Simulator did not finish booting after $BootAttempts attempt(s) of $BootTimeoutSeconds seconds: $Udid"
 }
 
 function Find-IosAppBundle {
@@ -170,7 +193,7 @@ try {
         $bootedByScript = $true
     }
 
-    Wait-IosSimulatorBoot $selectedDevice.Udid
+    Wait-IosSimulatorBoot $selectedDevice.Udid -AllowRestart:($selectedDevice.State -ne "Booted")
 
     Invoke-CheckedCommand $xcrun "simctl" "install" $selectedDevice.Udid $appBundle
     Invoke-CheckedCommand $xcrun "simctl" "get_app_container" $selectedDevice.Udid $BundleIdentifier "app"

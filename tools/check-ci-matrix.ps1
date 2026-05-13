@@ -201,7 +201,7 @@ Assert-ContainsAll $iosJob @(
     "xcrun --sdk iphonesimulator --show-sdk-path",
     "xcrun simctl list runtimes",
     "./tools/check-mobile-packaging.ps1 -RequireApple",
-    "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug",
+    "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2",
     "actions/upload-artifact@v4",
     "name: ios-simulator-build",
     "out/build/ios-Simulator-sample_headless-Debug/**/*.app",

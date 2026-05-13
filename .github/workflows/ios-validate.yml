@@ -53,7 +53,7 @@ jobs:
 
       - name: Build and launch sample_headless on iOS Simulator
         shell: pwsh
-        run: ./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug
+        run: ./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2
 
       - name: Upload iOS build output
         if: always()
