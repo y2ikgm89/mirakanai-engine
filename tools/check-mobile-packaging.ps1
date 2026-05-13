@@ -256,6 +256,10 @@ Assert-TemplateText "tools/build-mobile-apple.ps1" @(
     "-DBUILD_TESTING=OFF",
     "--target `"MirakanaiIOS`""
 )
+Assert-TemplateText "platform/ios/Info.plist.in" @(
+    '<key>CFBundleExecutable</key>',
+    '${MACOSX_BUNDLE_EXECUTABLE_NAME}'
+)
 
 $androidBlockers = [System.Collections.Generic.List[string]]::new()
 $appleBlockers = [System.Collections.Generic.List[string]]::new()
