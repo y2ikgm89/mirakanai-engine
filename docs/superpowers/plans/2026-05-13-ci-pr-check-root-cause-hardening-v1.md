@@ -11,7 +11,7 @@ Make PR validation green by fixing the root causes behind the failed GitHub chec
 
 ## Context
 
-PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, and a real Linux/macOS native watcher API bug.
+PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
 
 ## Constraints
 
@@ -29,6 +29,8 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 - Linux/macOS native watcher `active()` is an instance `const noexcept` API matching Windows.
 - C++ code avoids C++23 library calls not present on hosted Clang/AppleClang standard libraries when C++20 alternatives are sufficient.
 - Apple bundle configure paths include CMake `BUNDLE DESTINATION` for runtime executable installs.
+- Apple iOS Xcode configure paths explicitly disable CMake C++ module scanning and CMake-managed `import std`.
+- Metal runtime render encoder creation has complete friend declarations for texture and drawable paths.
 - Windows CRLF checkouts and macOS/iOS missing Windows-only environment variables do not crash validation scripts or source registry key checks.
 - Local validation covers the updated scripts, docs, presets, and native watcher compile contract.
 
@@ -55,3 +57,5 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/runtime/src/asset_runtime.cpp,tests/unit/runtime_tests.cpp,editor/core/src/render_backend.cpp -MaxFiles 3` | PASS | Targeted tidy covered macOS libc++ float parsing and Linux clang direct-include fixes; existing repository warning profile remains warning-only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/tools/scene/physics_collision_package_tool.cpp -MaxFiles 1` | PASS | Targeted tidy covered the remaining first-party float parsing fallback. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed; Apple/Metal diagnostics remained host-gated on Windows. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` | PASS | Static policy now locks Apple mobile Xcode configure to `MK_ENABLE_CXX_MODULE_SCANNING=OFF` and `MK_ENABLE_IMPORT_STD=OFF`. |
+| `cmake --build --preset dev --target MK_rhi_metal` | PASS | Rebuilt the Metal target after adding the missing drawable render-encoder friend declaration. |

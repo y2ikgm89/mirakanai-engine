@@ -48,6 +48,8 @@ Invoke-CheckedCommand $tools.CMake `
     "-G" "Xcode" `
     "-DCMAKE_SYSTEM_NAME=iOS" `
     "-DCMAKE_OSX_SYSROOT=$sdk" `
+    "-DMK_ENABLE_CXX_MODULE_SCANNING=OFF" `
+    "-DMK_ENABLE_IMPORT_STD=OFF" `
     "-DMK_IOS_GAME_NAME=$Game" `
     "-DMK_IOS_GAME_MANIFEST=$gameManifest" `
     "-DMK_IOS_BUNDLE_IDENTIFIER=$BundleIdentifier" `

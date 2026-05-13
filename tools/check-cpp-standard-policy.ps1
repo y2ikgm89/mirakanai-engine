@@ -59,6 +59,8 @@ Assert-TextContains "CMakeLists.txt" 'CXX_EXTENSIONS OFF' "root CMake"
 Assert-TextContains "CMakeLists.txt" '/EHsc' "root CMake"
 Assert-TextContains "CMakeLists.txt" 'COMPATIBILITY ExactVersion' "root CMake"
 Assert-TextContains "CMakeLists.txt" 'BUNDLE DESTINATION \$\{CMAKE_INSTALL_BINDIR\}' "root CMake"
+Assert-TextContains "tools/build-mobile-apple.ps1" '-DMK_ENABLE_CXX_MODULE_SCANNING=OFF' "Apple mobile packaging script"
+Assert-TextContains "tools/build-mobile-apple.ps1" '-DMK_ENABLE_IMPORT_STD=OFF' "Apple mobile packaging script"
 Assert-TextContains ".clang-format" 'Standard:\s+(Latest|c\+\+23)' "clang-format C++ parser standard"
 Assert-TextContains "tools/validate.ps1" 'check-generated-msvc-cxx23-mode.ps1' "validation script"
 
