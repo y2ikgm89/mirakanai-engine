@@ -7,6 +7,31 @@ $ErrorActionPreference = "Stop"
 
 $root = Get-RepoRoot
 
+function Test-AgentFileSizeBudget {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][int]$MaxBytes,
+        [Parameter(Mandatory)][string]$Label,
+        [Parameter(Mandatory)][string]$Guidance
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    $bytes = [System.IO.File]::ReadAllBytes($Path).Length
+    if ($bytes -gt $MaxBytes) {
+        Write-Error ("{0} is {1} bytes, exceeding initial-load budget ({2} bytes). {3}" -f $Label, $bytes, $MaxBytes, $Guidance)
+    }
+}
+
+$agentsPath = Join-Path $root "AGENTS.md"
+Test-AgentFileSizeBudget `
+    -Path $agentsPath `
+    -MaxBytes (32 * 1024) `
+    -Label "AGENTS.md" `
+    -Guidance "Move long procedures to skills/docs/subagents/manifest."
+
 $toolsScriptRoot = Join-Path $root "tools"
 foreach ($script in Get-ChildItem -LiteralPath $toolsScriptRoot -Filter "*.ps1" -File | Sort-Object Name) {
     $bytes = [System.IO.File]::ReadAllBytes($script.FullName)
@@ -82,6 +107,24 @@ function Test-SkillFrontmatter {
     }
 }
 
+function Test-SkillReferenceTarget {
+    param([Parameter(Mandatory)][string]$SkillMdPath)
+
+    $content = Get-Content -LiteralPath $SkillMdPath -Raw
+    $referenceMatches = [System.Text.RegularExpressions.Regex]::Matches(
+        $content,
+        '(?<!/)references/[A-Za-z0-9._/-]+'
+    )
+    foreach ($referenceMatch in $referenceMatches) {
+        $relativeReference = $referenceMatch.Value.TrimEnd(".", ",", ";", ":")
+        $localReference = $relativeReference.Replace("/", [System.IO.Path]::DirectorySeparatorChar)
+        $referencePath = Join-Path (Split-Path -Parent $SkillMdPath) $localReference
+        if (-not (Test-Path -LiteralPath $referencePath)) {
+            Write-Error "Skill references missing local file '$relativeReference': $SkillMdPath"
+        }
+    }
+}
+
 $skillRoot = Join-Path $root ".agents/skills"
 $agentRoot = Join-Path $root ".codex/agents"
 $codexRuleRoot = Join-Path $root ".codex/rules"
@@ -96,12 +139,23 @@ if (Test-Path $skillRoot) {
         if (-not (Test-Path $skillFile)) {
             Write-Error "Skill folder missing SKILL.md: $($_.FullName)"
         }
+        Test-AgentFileSizeBudget `
+            -Path $skillFile `
+            -MaxBytes (24 * 1024) `
+            -Label ".agents/skills/$($_.Name)/SKILL.md" `
+            -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or docs."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $false
+        Test-SkillReferenceTarget -SkillMdPath $skillFile
     }
 }
 
 if (Test-Path $agentRoot) {
     Get-ChildItem -Path $agentRoot -Filter "*.toml" | ForEach-Object {
+        Test-AgentFileSizeBudget `
+            -Path $_.FullName `
+            -MaxBytes (16 * 1024) `
+            -Label ".codex/agents/$($_.Name)" `
+            -Guidance "Keep custom agents narrowly scoped and move reusable procedures to skills/docs."
         $content = Get-Content -LiteralPath $_.FullName -Raw
         foreach ($field in @("name", "description", "developer_instructions")) {
             if ($content -notmatch "(?m)^$field\s*=") {
@@ -162,7 +216,13 @@ if (Test-Path $claudeSkillRoot) {
         if (-not (Test-Path $skillFile)) {
             Write-Error "Claude skill folder missing SKILL.md: $($_.FullName)"
         }
+        Test-AgentFileSizeBudget `
+            -Path $skillFile `
+            -MaxBytes (24 * 1024) `
+            -Label ".claude/skills/$($_.Name)/SKILL.md" `
+            -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or docs."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $false
+        Test-SkillReferenceTarget -SkillMdPath $skillFile
     }
 }
 
@@ -172,7 +232,13 @@ if (Test-Path $cursorSkillRoot) {
         if (-not (Test-Path $skillFile)) {
             Write-Error "Cursor skill folder missing SKILL.md: $($_.FullName)"
         }
+        Test-AgentFileSizeBudget `
+            -Path $skillFile `
+            -MaxBytes (24 * 1024) `
+            -Label ".cursor/skills/$($_.Name)/SKILL.md" `
+            -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or shared skill references."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $true
+        Test-SkillReferenceTarget -SkillMdPath $skillFile
     }
 }
 
@@ -284,6 +350,11 @@ if ((Test-Path -LiteralPath $cursorSkillRoot) -and (Test-Path -LiteralPath $clau
 
 if (Test-Path $claudeAgentRoot) {
     Get-ChildItem -Path $claudeAgentRoot -Filter "*.md" | ForEach-Object {
+        Test-AgentFileSizeBudget `
+            -Path $_.FullName `
+            -MaxBytes (16 * 1024) `
+            -Label ".claude/agents/$($_.Name)" `
+            -Guidance "Keep subagents narrowly scoped and move reusable procedures to skills/docs."
         $head = (Get-Content -LiteralPath $_.FullName -TotalCount 8) -join "`n"
         if ($head -notmatch "---\s*\nname:\s*[a-z0-9-]+" -or $head -notmatch "description:\s*.+") {
             Write-Error "Claude agent frontmatter must include name and description: $($_.FullName)"
@@ -291,4 +362,4 @@ if (Test-Path $claudeAgentRoot) {
     }
 }
 
-Write-Host "agent-config-check: ok"
+Write-Information "agent-config-check: ok" -InformationAction Continue

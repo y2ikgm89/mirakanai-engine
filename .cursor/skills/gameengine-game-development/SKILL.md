@@ -10,12 +10,14 @@ paths:
 
 # GameEngine game development (Cursor)
 
-Full workflow lives in shared skills. Read these canonical files (ASCII paths):
+Full workflow lives in shared skills. Start with the short `SKILL.md` routers, then load the shared detailed references listed below only when exact game API names, manifest fields, package lanes, or mobile/desktop validation recipes are needed.
 
 | Layer | Path |
 | --- | --- |
 | Claude Code | `.claude/skills/gameengine-game-development/SKILL.md` |
+| Claude Code detailed reference | `.claude/skills/gameengine-game-development/references/full-guidance.md` |
 | Codex | `.agents/skills/gameengine-game-development/SKILL.md` |
+| Codex detailed reference | `.agents/skills/gameengine-game-development/references/full-guidance.md` |
 | Baseline | `AGENTS.md` |
 
 Games live under `games/<game_name>/` with `game.agent.json`; see `AGENTS.md` **AI-Driven Game Development**.

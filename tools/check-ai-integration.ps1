@@ -11,12 +11,45 @@ $ErrorActionPreference = "Stop"
 
 $root = Get-RepoRoot
 
-function Assert-Exists($relativePath) {
-    $path = Join-Path $root $relativePath
-    if (-not (Test-Path $path)) {
+function Resolve-RequiredAgentPath($relativePath) {
+    if ([System.IO.Path]::IsPathRooted($relativePath)) {
+        $path = $relativePath
+    }
+    else {
+        $path = Join-Path $root $relativePath
+    }
+    if (-not (Test-Path -LiteralPath $path)) {
         Write-Error "Missing required AI integration file: $relativePath"
     }
     return $path
+}
+
+function Get-AgentSurfaceText([Parameter(Mandatory)][string]$relativePath) {
+    $path = Resolve-RequiredAgentPath $relativePath
+    $parts = [System.Collections.Generic.List[string]]::new()
+    $parts.Add((Get-Content -LiteralPath $path -Raw))
+
+    $referenceRoot = Join-Path (Split-Path -Parent $path) "references"
+    if (Test-Path -LiteralPath $referenceRoot) {
+        $leafName = Split-Path -Leaf $path
+        if ($leafName -eq "SKILL.md") {
+            $referenceFiles = Get-ChildItem -LiteralPath $referenceRoot -Filter "*.md" -File | Sort-Object FullName
+        }
+        else {
+            $baseName = [System.IO.Path]::GetFileNameWithoutExtension($path)
+            $specificReference = Join-Path $referenceRoot "$baseName.md"
+            $referenceFiles = @()
+            if (Test-Path -LiteralPath $specificReference) {
+                $referenceFiles = @(Get-Item -LiteralPath $specificReference)
+            }
+        }
+
+        foreach ($referenceFile in $referenceFiles) {
+            $parts.Add((Get-Content -LiteralPath $referenceFile.FullName -Raw))
+        }
+    }
+
+    return ($parts -join "`n`n")
 }
 
 function Assert-SkillFrontmatter($skillFile) {
@@ -34,7 +67,7 @@ function Assert-ClaudeAgentFrontmatter($agentFile) {
 }
 
 function Assert-CodexReadOnlyAgent($relativePath) {
-    $path = Assert-Exists $relativePath
+    $path = Resolve-RequiredAgentPath $relativePath
     $content = Get-Content -LiteralPath $path -Raw
     if ($content -notmatch '(?m)^sandbox_mode\s*=\s*"read-only"\s*$') {
         Write-Error "Read-only Codex agent must declare sandbox_mode = `"read-only`": $relativePath"
@@ -59,7 +92,7 @@ function Assert-MatchesText($text, $pattern, $label) {
     }
 }
 
-function Assert-JsonProperties($object, [string[]]$properties, $label) {
+function Assert-JsonProperty($object, [string[]]$properties, $label) {
     foreach ($property in $properties) {
         if (-not $object.PSObject.Properties.Name.Contains($property)) {
             Write-Error "$label missing required property: $property"
@@ -77,14 +110,14 @@ function Get-RelativeRepoPath([string]$fullPath) {
 
 function Assert-NoGameSourceRawAssetIdFromName {
     $rawAssetIdMatches = @()
-    $gamesRoot = Assert-Exists "games"
+    $gamesRoot = Resolve-RequiredAgentPath "games"
     foreach ($sourceFile in Get-ChildItem -LiteralPath $gamesRoot -Filter "*.cpp" -Recurse -File) {
         foreach ($match in Select-String -LiteralPath $sourceFile.FullName -Pattern "AssetId::from_name(" -SimpleMatch) {
             $rawAssetIdMatches += "$(Get-RelativeRepoPath $match.Path):$($match.LineNumber)"
         }
     }
 
-    $newGameScript = Assert-Exists "tools/new-game.ps1"
+    $newGameScript = Resolve-RequiredAgentPath "tools/new-game.ps1"
     foreach ($match in Select-String -LiteralPath $newGameScript -Pattern "AssetId::from_name(" -SimpleMatch) {
         $rawAssetIdMatches += "$(Get-RelativeRepoPath $match.Path):$($match.LineNumber)"
     }
@@ -94,9 +127,9 @@ function Assert-NoGameSourceRawAssetIdFromName {
     }
 }
 
-function Get-ActiveChildProductionPlans {
+function Get-ActiveChildProductionPlan {
     $masterPlanPath = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
-    $plansRoot = Assert-Exists "docs/superpowers/plans"
+    $plansRoot = Resolve-RequiredAgentPath "docs/superpowers/plans"
     $activePlans = @()
 
     Get-ChildItem -LiteralPath $plansRoot -Filter "2026-*.md" -File | ForEach-Object {
@@ -126,13 +159,13 @@ function Get-ActiveChildProductionPlans {
 function Assert-ActiveProductionPlanDrift($productionLoop) {
     $masterPlanPath = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
     $planRegistryPath = "docs/superpowers/plans/README.md"
-    $planRegistryText = Get-Content -LiteralPath (Assert-Exists $planRegistryPath) -Raw
+    $planRegistryText = Get-AgentSurfaceText $planRegistryPath
     $activeSliceRow = [regex]::Match($planRegistryText, '(?m)^\| Active slice \(`currentActivePlan`\) \|.*$')
     if (-not $activeSliceRow.Success) {
         Write-Error "$planRegistryPath must contain an Active slice currentActivePlan row"
     }
 
-    $activeChildPlans = @(Get-ActiveChildProductionPlans)
+    $activeChildPlans = @(Get-ActiveChildProductionPlan)
     if ($activeChildPlans.Count -gt 1) {
         Write-Error "Only one active child production plan is allowed: $(@($activeChildPlans | ForEach-Object { $_.path }) -join ', ')"
     }
@@ -157,7 +190,7 @@ function Assert-ActiveProductionPlanDrift($productionLoop) {
     }
 }
 
-function Assert-NewGameFails($arguments, $label) {
+function Assert-NewGameFailure($arguments, $label) {
     try {
         & (Join-Path $PSScriptRoot "new-game.ps1") @arguments | Out-Null
     } catch {
@@ -166,7 +199,7 @@ function Assert-NewGameFails($arguments, $label) {
     Write-Error "$label should have failed."
 }
 
-function Assert-RegisterRuntimePackageFilesFails($arguments, $label) {
+function Assert-RegisterRuntimePackageFileFailure($arguments, $label) {
     try {
         & (Join-Path $PSScriptRoot "register-runtime-package-files.ps1") @arguments | Out-Null
     } catch {
@@ -360,7 +393,7 @@ function Assert-PrefabScenePackageAuthoringTarget($manifest, [string]$label, [st
     if ($targets.Count -ne 1) {
         Write-Error "$label prefabScenePackageAuthoringTargets must contain exactly one '$id' row"
     }
-    Assert-JsonProperties $targets[0] @("id", "mode", "sceneAuthoringPath", "prefabAuthoringPath", "sourceRegistryPath", "packageIndexPath", "outputScenePath", "sceneAssetKey", "runtimeSceneValidationTargetId", "authoringCommandRows", "selectedSourceAssetKeys", "sourceCookMode", "sceneMigration", "runtimeSceneValidation", "hostGatedSmokeRecipeIds", "broadImporterExecution", "broadDependencyCooking", "runtimeSourceParsing", "materialGraph", "shaderGraph", "liveShaderGeneration", "skeletalAnimation", "gpuSkinning", "publicNativeRhiHandles", "metalReadiness", "rendererQuality") "$label prefabScenePackageAuthoringTargets '$id'"
+    Assert-JsonProperty $targets[0] @("id", "mode", "sceneAuthoringPath", "prefabAuthoringPath", "sourceRegistryPath", "packageIndexPath", "outputScenePath", "sceneAssetKey", "runtimeSceneValidationTargetId", "authoringCommandRows", "selectedSourceAssetKeys", "sourceCookMode", "sceneMigration", "runtimeSceneValidation", "hostGatedSmokeRecipeIds", "broadImporterExecution", "broadDependencyCooking", "runtimeSourceParsing", "materialGraph", "shaderGraph", "liveShaderGeneration", "skeletalAnimation", "gpuSkinning", "publicNativeRhiHandles", "metalReadiness", "rendererQuality") "$label prefabScenePackageAuthoringTargets '$id'"
     if ($targets[0].packageIndexPath -ne $packageIndexPath) {
         Write-Error "$label prefabScenePackageAuthoringTargets '$id' packageIndexPath must be $packageIndexPath"
     }
@@ -447,7 +480,7 @@ function Assert-RegisteredSourceAssetCookTarget($manifest, [string]$label, [stri
     if ($targets.Count -ne 1) {
         Write-Error "$label registeredSourceAssetCookTargets must contain exactly one '$id' row"
     }
-    Assert-JsonProperties $targets[0] @("id", "mode", "cookCommandId", "prefabScenePackageAuthoringTargetId", "sourceRegistryPath", "packageIndexPath", "selectedAssetKeys", "dependencyExpansion", "dependencyCooking", "externalImporterExecution", "rendererRhiResidency", "packageStreaming", "materialGraph", "shaderGraph", "liveShaderGeneration", "editorProductization", "metalReadiness", "publicNativeRhiHandles", "generalProductionRendererQuality", "arbitraryShell", "freeFormEdit") "$label registeredSourceAssetCookTargets '$id'"
+    Assert-JsonProperty $targets[0] @("id", "mode", "cookCommandId", "prefabScenePackageAuthoringTargetId", "sourceRegistryPath", "packageIndexPath", "selectedAssetKeys", "dependencyExpansion", "dependencyCooking", "externalImporterExecution", "rendererRhiResidency", "packageStreaming", "materialGraph", "shaderGraph", "liveShaderGeneration", "editorProductization", "metalReadiness", "publicNativeRhiHandles", "generalProductionRendererQuality", "arbitraryShell", "freeFormEdit") "$label registeredSourceAssetCookTargets '$id'"
     if ($targets[0].prefabScenePackageAuthoringTargetId -ne $prefabScenePackageAuthoringTargetId) {
         Write-Error "$label registeredSourceAssetCookTargets '$id' prefabScenePackageAuthoringTargetId must be $prefabScenePackageAuthoringTargetId"
     }
@@ -500,15 +533,24 @@ function Assert-RegisteredSourceAssetCookTarget($manifest, [string]$label, [stri
 }
 
 function New-ScaffoldCheckRoot {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param()
+
     $base = Join-Path $root "out/new-game-scaffold-checks"
-    New-Item -ItemType Directory -Path $base -Force | Out-Null
     $rootPath = Join-Path $base ([System.Guid]::NewGuid().ToString("N"))
+    if (-not $PSCmdlet.ShouldProcess($rootPath, "Create scaffold check root")) {
+        return $rootPath
+    }
+    New-Item -ItemType Directory -Path $base -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $rootPath "games") -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $rootPath "games/CMakeLists.txt") -Value "" -NoNewline
     return $rootPath
 }
 
-function Remove-ScaffoldCheckRoot($rootPath) {
+function Remove-ScaffoldCheckRoot {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param([string]$rootPath)
+
     if ([string]::IsNullOrWhiteSpace($rootPath) -or -not (Test-Path -LiteralPath $rootPath)) {
         return
     }
@@ -519,11 +561,13 @@ function Remove-ScaffoldCheckRoot($rootPath) {
         -not $fullRoot.StartsWith($allowedChildPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         Write-Error "Refusing to remove scaffold check root outside repository out directory: $fullRoot"
     }
-    Remove-Item -LiteralPath $fullRoot -Recurse -Force
+    if ($PSCmdlet.ShouldProcess($fullRoot, "Remove scaffold check root")) {
+        Remove-Item -LiteralPath $fullRoot -Recurse -Force
+    }
 }
 
 function Assert-ClaudeReadOnlyAgent($relativePath) {
-    $path = Assert-Exists $relativePath
+    $path = Resolve-RequiredAgentPath $relativePath
     $head = (Get-Content -LiteralPath $path -TotalCount 8) -join "`n"
     if ($head -notmatch '(?m)^tools:\s*Read,\s*Grep,\s*Glob,\s*LS\s*$') {
         Write-Error "Read-only Claude agent must declare tools: Read, Grep, Glob, LS: $relativePath"
@@ -534,22 +578,22 @@ function Assert-ClaudeReadOnlyAgent($relativePath) {
 # Do not invoke this script again from the same `pwsh` run while this run holds the mutex (mutex is not re-entrant).
 $checkAiIntegrationRepoExclusiveMutex = Initialize-RepoExclusiveToolMutex -RepositoryRoot $root -ToolId "check-ai-integration"
 try {
-    Write-Host "check-ai-integration: exclusive repository mutex acquired; running checks..."
-$agents = Assert-Exists "AGENTS.md"
-$claude = Assert-Exists "CLAUDE.md"
-$manifestPath = Assert-Exists "engine/agent/manifest.json"
-$gameAgentSchemaPath = Assert-Exists "schemas/game-agent.schema.json"
-$currentCapabilitiesPath = Assert-Exists "docs/current-capabilities.md"
-$aiGameDevelopmentPath = Assert-Exists "docs/ai-game-development.md"
-$roadmapPath = Assert-Exists "docs/roadmap.md"
-$workflowsPath = Assert-Exists "docs/workflows.md"
-$testingPath = Assert-Exists "docs/testing.md"
-$buildingPath = Assert-Exists "docs/building.md"
-$releasePath = Assert-Exists "docs/release.md"
-$dependenciesPath = Assert-Exists "docs/dependencies.md"
-$legalPath = Assert-Exists "docs/legal-and-licensing.md"
-$planRegistryPath = Assert-Exists "docs/superpowers/plans/README.md"
-$productionCompletionMasterPlanPath = Assert-Exists "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+    Write-Information "check-ai-integration: exclusive repository mutex acquired; running checks..." -InformationAction Continue
+$agents = Resolve-RequiredAgentPath "AGENTS.md"
+$claude = Resolve-RequiredAgentPath "CLAUDE.md"
+$manifestPath = Resolve-RequiredAgentPath "engine/agent/manifest.json"
+$gameAgentSchemaPath = Resolve-RequiredAgentPath "schemas/game-agent.schema.json"
+$currentCapabilitiesPath = Resolve-RequiredAgentPath "docs/current-capabilities.md"
+$aiGameDevelopmentPath = Resolve-RequiredAgentPath "docs/ai-game-development.md"
+$roadmapPath = Resolve-RequiredAgentPath "docs/roadmap.md"
+$workflowsPath = Resolve-RequiredAgentPath "docs/workflows.md"
+$testingPath = Resolve-RequiredAgentPath "docs/testing.md"
+$buildingPath = Resolve-RequiredAgentPath "docs/building.md"
+$releasePath = Resolve-RequiredAgentPath "docs/release.md"
+$dependenciesPath = Resolve-RequiredAgentPath "docs/dependencies.md"
+$legalPath = Resolve-RequiredAgentPath "docs/legal-and-licensing.md"
+$planRegistryPath = Resolve-RequiredAgentPath "docs/superpowers/plans/README.md"
+$productionCompletionMasterPlanPath = Resolve-RequiredAgentPath "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 
 $claudeContent = Get-Content -LiteralPath $claude -Raw
 if ($claudeContent -notmatch "@AGENTS\.md") {
@@ -654,8 +698,8 @@ Assert-ContainsText $testingContent "pwsh -NoProfile -ExecutionPolicy Bypass -Fi
 $buildingContent = Get-Content -LiteralPath $buildingPath -Raw
 Assert-ContainsText $buildingContent "normalized-build-environment" "docs/building.md"
 Assert-ContainsText $buildingContent 'MSBuild a single `Path`' "docs/building.md"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/validate.ps1") -Raw) "-MaxFiles 1" "tools/validate.ps1"
-$tidyWrapperContent = Get-Content -LiteralPath (Assert-Exists "tools/check-tidy.ps1") -Raw
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-MaxFiles 1" "tools/validate.ps1"
+$tidyWrapperContent = Get-AgentSurfaceText "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent '[string[]]$Files' "tools/check-tidy.ps1"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "PIX on Windows", "Windows Performance Toolkit", "Tools.Graphics.DirectX~~~~0.0.1.0", "d3d12SDKLayers.dll", "cdb -version", "pixtool --help", "wpr -help", "xperf -help")) {
     Assert-ContainsText $testingContent $windowsDiagnosticsNeedle "docs/testing.md"
@@ -674,7 +718,7 @@ foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "b
     Assert-ContainsText $planRegistryContent $planVolumeNeedle "docs/superpowers/plans/README.md"
 }
 
-$aiIntegrationContent = Get-Content -LiteralPath (Assert-Exists "docs/ai-integration.md") -Raw
+$aiIntegrationContent = Get-AgentSurfaceText "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Codex rules: https://developers.openai.com/codex/rules" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "git commit" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
@@ -693,7 +737,7 @@ Assert-ContainsText $aiIntegrationContent ".claude/settings.local.json" "docs/ai
 Assert-ContainsText $aiIntegrationContent ".mcp.json" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "AGENTS.override.md" "docs/ai-integration.md"
 
-$cursorBaselineSkillText = Get-Content -LiteralPath (Assert-Exists ".cursor/skills/gameengine-cursor-baseline/SKILL.md") -Raw
+$cursorBaselineSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "Cursor global instructions" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "workspace override" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 
@@ -707,7 +751,7 @@ foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down
 }
 Assert-DoesNotContainText $aiIntegrationContent "code.claude.com/docs" "docs/ai-integration.md"
 
-$gitignoreContent = Get-Content -LiteralPath (Assert-Exists ".gitignore") -Raw
+$gitignoreContent = Get-AgentSurfaceText ".gitignore"
 foreach ($ignoredLocalFile in @("AGENTS.override.md", ".claude/settings.local.json", ".mcp.json")) {
     Assert-ContainsText $gitignoreContent $ignoredLocalFile ".gitignore"
 }
@@ -723,7 +767,7 @@ $gameNamingGuidanceFiles = @(
     ".claude/rules/ai-agent-integration.md"
 )
 foreach ($gameNamingGuidanceFile in $gameNamingGuidanceFiles) {
-    $gameNamingGuidanceText = Get-Content -LiteralPath (Assert-Exists $gameNamingGuidanceFile) -Raw
+    $gameNamingGuidanceText = Get-AgentSurfaceText $gameNamingGuidanceFile
     Assert-ContainsText $gameNamingGuidanceText '^[a-z][a-z0-9_]*$' $gameNamingGuidanceFile
     Assert-ContainsText $gameNamingGuidanceText "lowercase snake_case" $gameNamingGuidanceFile
     Assert-ContainsText $gameNamingGuidanceText "JSON manifest IDs" $gameNamingGuidanceFile
@@ -751,7 +795,7 @@ if ($manifest.engine.stageStatus -ne "mvp-closed-not-commercial-complete") {
 if (-not ([string]$manifest.engine.stageCompletion).Contains("not a commercial-engine completion claim")) {
     Write-Error "engine/agent/manifest.json engine.stageCompletion must distinguish MVP closure from commercial engine completion"
 }
-Assert-Exists $manifest.engine.stageClosurePlan | Out-Null
+Resolve-RequiredAgentPath $manifest.engine.stageClosurePlan | Out-Null
 if (-not ((@($manifest.engine.stageClosureNotes) -join " ").Contains("Apple/iOS/Metal"))) {
     Write-Error "engine/agent/manifest.json engine.stageClosureNotes must keep Apple/iOS/Metal host gating explicit"
 }
@@ -807,9 +851,9 @@ foreach ($importPath in @("AGENTS.md", ".claude/rules/ai-agent-integration.md", 
     }
 }
 Assert-ContainsText (Get-Content -LiteralPath $gameAgentSchemaPath -Raw) '"runtimeSceneValidationTargets"' "schemas/game-agent.schema.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "schemas/engine-agent.schema.json") -Raw) '"windowsDiagnosticsToolchain"' "schemas/engine-agent.schema.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "schemas/engine-agent.schema.json") -Raw) "engine-agent/ai-operable-production-loop.schema.json" "schemas/engine-agent.schema.json"
-Assert-Exists "schemas/engine-agent/ai-operable-production-loop.schema.json" | Out-Null
+Assert-ContainsText (Get-AgentSurfaceText "schemas/engine-agent.schema.json") '"windowsDiagnosticsToolchain"' "schemas/engine-agent.schema.json"
+Assert-ContainsText (Get-AgentSurfaceText "schemas/engine-agent.schema.json") "engine-agent/ai-operable-production-loop.schema.json" "schemas/engine-agent.schema.json"
+Resolve-RequiredAgentPath "schemas/engine-agent/ai-operable-production-loop.schema.json" | Out-Null
 Assert-ContainsText (Get-Content -LiteralPath $gameAgentSchemaPath -Raw) '"materialShaderAuthoringTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText (Get-Content -LiteralPath $gameAgentSchemaPath -Raw) '"atlasTilemapAuthoringTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText (Get-Content -LiteralPath $gameAgentSchemaPath -Raw) '"packageStreamingResidencyTargets"' "schemas/game-agent.schema.json"
@@ -874,14 +918,14 @@ Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "serialize_anim
 Assert-ContainsText $productionCompletionMasterPlanContent "animation-transform-binding-source-v1" "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-05-animation-transform-binding-source-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "GameEngine.AnimationTransformBindingSource.v1" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/assets/include/mirakana/assets/asset_source_format.hpp") -Raw) "AnimationTransformBindingSourceDocument" "engine/assets/include/mirakana/assets/asset_source_format.hpp"
+Assert-ContainsText (Get-AgentSurfaceText "engine/assets/include/mirakana/assets/asset_source_format.hpp") "AnimationTransformBindingSourceDocument" "engine/assets/include/mirakana/assets/asset_source_format.hpp"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "Runtime Scene Animation Transform Binding v1" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "resolve_runtime_scene_animation_transform_bindings" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "apply_runtime_scene_animation_transform_samples" "docs/roadmap.md"
 Assert-ContainsText $productionCompletionMasterPlanContent "runtime-scene-animation-transform-binding-v1" "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-05-runtime-scene-animation-transform-binding-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "resolve_runtime_scene_animation_transform_bindings" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp") -Raw) "RuntimeSceneAnimationTransformBindingResolution" "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp") "RuntimeSceneAnimationTransformBindingResolution" "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "glTF Node Transform Animation Binding Source Bridge v1" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "import_gltf_node_transform_animation_binding_source" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "import_gltf_node_transform_animation_binding_source" "docs/roadmap.md"
@@ -897,10 +941,10 @@ Assert-ContainsText $productionCompletionMasterPlanContent "cooked-animation-qua
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-05-cooked-animation-quaternion-clip-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "runtime_animation_quaternion_clip_payload" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "import_gltf_node_transform_animation_quaternion_clip" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/assets/include/mirakana/assets/asset_source_format.hpp") -Raw) "AnimationQuaternionClipSourceDocument" "MK_assets asset source public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime/include/mirakana/runtime/asset_runtime.hpp") -Raw) "RuntimeAnimationQuaternionClipPayload" "MK_runtime public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/skeleton.hpp") -Raw) "AnimationJointTrack3dByteSource" "MK_animation skeleton public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") -Raw) "GltfNodeTransformAnimationQuaternionClipImportReport" "MK_tools gltf node animation import public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/assets/include/mirakana/assets/asset_source_format.hpp") "AnimationQuaternionClipSourceDocument" "MK_assets asset source public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/asset_runtime.hpp") "RuntimeAnimationQuaternionClipPayload" "MK_runtime public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/skeleton.hpp") "AnimationJointTrack3dByteSource" "MK_animation skeleton public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") "GltfNodeTransformAnimationQuaternionClipImportReport" "MK_tools gltf node animation import public header"
 
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "sample_and_apply_runtime_scene_render_animation_float_clip" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "sample_and_apply_runtime_scene_render_animation_float_clip" "docs/ai-game-development.md"
@@ -908,22 +952,22 @@ Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "sample_and_app
 Assert-ContainsText $productionCompletionMasterPlanContent "generated-3d-transform-animation-scaffold-v1" "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-05-generated-3d-transform-animation-scaffold-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "desktopRuntime3dTransformAnimationScaffold" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") -Raw) "sample_and_apply_runtime_scene_render_animation_float_clip" "MK_scene_renderer public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp") -Raw) "apply_runtime_scene_animation_pose_3d" "MK_runtime_scene public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") -Raw) "sample_and_apply_runtime_scene_render_animation_pose_3d" "MK_scene_renderer public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") "sample_and_apply_runtime_scene_render_animation_float_clip" "MK_scene_renderer public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp") "apply_runtime_scene_animation_pose_3d" "MK_runtime_scene public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") "sample_and_apply_runtime_scene_render_animation_pose_3d" "MK_scene_renderer public header"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "Runtime Scene Quaternion Animation Transform Binding v1" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "sample_and_apply_runtime_scene_render_animation_pose_3d" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "quaternion scene-transform smoke" "docs/roadmap.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "apply_runtime_scene_animation_pose_3d" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "quaternion_animation_scene_rotation_z" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") -Raw) "GltfNodeTransformAnimationBindingSourceImportReport" "MK_tools gltf node animation import public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") "GltfNodeTransformAnimationBindingSourceImportReport" "MK_tools gltf node animation import public header"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "sample_runtime_morph_mesh_cpu_animation_float_clip" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "sample_runtime_morph_mesh_cpu_animation_float_clip" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "sample_runtime_morph_mesh_cpu_animation_float_clip" "docs/roadmap.md"
 Assert-ContainsText $productionCompletionMasterPlanContent "generated-3d-morph-package-consumption-v1" "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-05-generated-3d-morph-package-consumption-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "desktopRuntime3dMorphPackageConsumptionScaffold" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") -Raw) "sample_runtime_morph_mesh_cpu_animation_float_clip" "MK_scene_renderer public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") "sample_runtime_morph_mesh_cpu_animation_float_clip" "MK_scene_renderer public header"
 Assert-DoesNotContainText $productionCompletionMasterPlanContent "generated-game morph package consumption/rendering" "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "GPU Morph D3D12 Proof v1" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "upload_runtime_morph_mesh_cpu" "docs/ai-game-development.md"
@@ -931,13 +975,13 @@ Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "MeshCommand::g
 Assert-ContainsText $productionCompletionMasterPlanContent "gpu-morph-d3d12-proof-v1" "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-05-gpu-morph-d3d12-proof-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "runtimeMorphMeshGpuBinding" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") -Raw) "upload_runtime_morph_mesh_cpu" "MK_runtime_rhi public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") -Raw) "uploaded_normal_delta_bytes" "MK_runtime_rhi public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") -Raw) "uploaded_tangent_delta_bytes" "MK_runtime_rhi public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/renderer/include/mirakana/renderer/renderer.hpp") -Raw) "MorphMeshGpuBinding" "MK_renderer public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/renderer/include/mirakana/renderer/renderer.hpp") -Raw) "normal_delta_buffer" "MK_renderer public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/renderer/include/mirakana/renderer/renderer.hpp") -Raw) "tangent_delta_buffer" "MK_renderer public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/renderer/include/mirakana/renderer/rhi_frame_renderer.hpp") -Raw) "morph_graphics_pipeline" "MK_renderer rhi frame renderer public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") "upload_runtime_morph_mesh_cpu" "MK_runtime_rhi public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") "uploaded_normal_delta_bytes" "MK_runtime_rhi public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") "uploaded_tangent_delta_bytes" "MK_runtime_rhi public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp") "MorphMeshGpuBinding" "MK_renderer public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp") "normal_delta_buffer" "MK_renderer public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp") "tangent_delta_buffer" "MK_renderer public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/rhi_frame_renderer.hpp") "morph_graphics_pipeline" "MK_renderer rhi frame renderer public header"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "GPU Morph NORMAL/TANGENT D3D12 Proof v1" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "uploaded_normal_delta_bytes" "docs/roadmap.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-05-gpu-morph-normal-tangent-d3d12-proof-v1.md" "docs/superpowers/plans/README.md"
@@ -947,17 +991,17 @@ Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "SceneMorphGpuB
 Assert-ContainsText $productionCompletionMasterPlanContent "runtime-scene-rhi-morph-gpu-palette-v1" "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-05-runtime-scene-rhi-morph-gpu-palette-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "runtimeSceneRhiMorphGpuPalette" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") -Raw) "SceneMorphGpuBindingPalette" "MK_scene_renderer public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp") -Raw) "morph_mesh_assets" "MK_runtime_scene_rhi public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp") -Raw) "uploaded_morph_bytes" "MK_runtime_scene_rhi public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") "SceneMorphGpuBindingPalette" "MK_scene_renderer public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp") "morph_mesh_assets" "MK_runtime_scene_rhi public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp") "uploaded_morph_bytes" "MK_runtime_scene_rhi public header"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "generated 3D morph GPU palette smoke" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "scene_gpu_morph_mesh_uploads" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "generated 3D morph GPU palette smoke" "docs/roadmap.md"
 Assert-ContainsText $productionCompletionMasterPlanContent "generated-3d-morph-gpu-palette-smoke-v1" "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-05-generated-3d-morph-gpu-palette-smoke-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "desktopRuntime3dMorphGpuPaletteSmoke" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp") -Raw) "morph_mesh_assets" "MK_runtime_host_sdl3 public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp") -Raw) "uploaded_morph_bytes" "MK_runtime_host_sdl3 public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp") "morph_mesh_assets" "MK_runtime_host_sdl3 public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp") "uploaded_morph_bytes" "MK_runtime_host_sdl3 public header"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "Generated 3D Morph NORMAL/TANGENT Package Smoke v1" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "POSITION/NORMAL/TANGENT morph delta buffers" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "generated 3D NORMAL/TANGENT morph package smoke" "docs/roadmap.md"
@@ -975,9 +1019,9 @@ Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "Re
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "Renderer Resource Residency Upload Execution v1" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "Renderer Resource Residency Upload Execution v1" "docs/roadmap.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-02-renderer-resource-residency-upload-execution-v1.md" "docs/superpowers/plans/README.md"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/installed-sdk-validation.ps1") -Raw) "Assert-InstalledSdkMetadata" "tools/installed-sdk-validation.ps1"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/check-installed-sdk-validation.ps1") -Raw) "installed-sdk-validation-check: ok" "tools/check-installed-sdk-validation.ps1"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/validate-installed-sdk.ps1") -Raw) "Assert-InstalledSdkMetadata" "tools/validate-installed-sdk.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/installed-sdk-validation.ps1") "Assert-InstalledSdkMetadata" "tools/installed-sdk-validation.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/check-installed-sdk-validation.ps1") "installed-sdk-validation-check: ok" "tools/check-installed-sdk-validation.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate-installed-sdk.ps1") "Assert-InstalledSdkMetadata" "tools/validate-installed-sdk.ps1"
 Assert-ContainsText (Get-Content -LiteralPath $releasePath -Raw) "Assert-InstalledSdkMetadata" "docs/release.md"
 Assert-ContainsText (Get-Content -LiteralPath $testingPath -Raw) "validates installed SDK metadata before the installed consumer build" "docs/testing.md"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "Installed SDK release validation now checks installed metadata" "docs/current-capabilities.md"
@@ -985,10 +1029,10 @@ Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "installed SDK 
 Assert-ContainsText $productionCompletionMasterPlanContent "installed-sdk-release-metadata-validation-v1" "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-06-installed-sdk-release-metadata-validation-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "Installed SDK Release Metadata Validation v1" "engine/agent/manifest.json"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/release-package-artifacts.ps1") -Raw) "Assert-ReleasePackageArtifacts" "tools/release-package-artifacts.ps1"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/check-release-package-artifacts.ps1") -Raw) "release-package-artifacts-check: ok" "tools/check-release-package-artifacts.ps1"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/package.ps1") -Raw) "Assert-ReleasePackageArtifacts" "tools/package.ps1"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/validate.ps1") -Raw) "check-release-package-artifacts.ps1" "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/release-package-artifacts.ps1") "Assert-ReleasePackageArtifacts" "tools/release-package-artifacts.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/check-release-package-artifacts.ps1") "release-package-artifacts-check: ok" "tools/check-release-package-artifacts.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/package.ps1") "Assert-ReleasePackageArtifacts" "tools/package.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "check-release-package-artifacts.ps1" "tools/validate.ps1"
 Assert-ContainsText (Get-Content -LiteralPath $releasePath -Raw) "Assert-ReleasePackageArtifacts" "docs/release.md"
 Assert-ContainsText (Get-Content -LiteralPath $testingPath -Raw) 'validates the current `CPACK_PACKAGE_FILE_NAME` ZIP' "docs/testing.md"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "Desktop SDK release artifact validation now checks" "docs/current-capabilities.md"
@@ -998,7 +1042,7 @@ Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) "2026-05-0
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "Desktop Release Package Evidence v1" "engine/agent/manifest.json"
 
 $productionLoop = $manifest.aiOperableProductionLoop
-Assert-JsonProperties $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap") "engine/agent/manifest.json aiOperableProductionLoop"
+Assert-JsonProperty $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap") "engine/agent/manifest.json aiOperableProductionLoop"
 if ($productionLoop.schemaVersion -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.schemaVersion must be 1"
 }
@@ -1008,7 +1052,7 @@ $physicsBackendAdapterDecision = @($productionLoop.physicsBackendAdapterDecision
 if ($physicsBackendAdapterDecision.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must record one physics-1-0-jolt-native-adapter decision"
 }
-Assert-JsonProperties $physicsBackendAdapterDecision[0] @("id", "status", "decision", "futureGate", "unsupportedClaims") "engine/agent/manifest.json aiOperableProductionLoop physicsBackendAdapterDecisions"
+Assert-JsonProperty $physicsBackendAdapterDecision[0] @("id", "status", "decision", "futureGate", "unsupportedClaims") "engine/agent/manifest.json aiOperableProductionLoop physicsBackendAdapterDecisions"
 Assert-ContainsText ([string]$physicsBackendAdapterDecision[0].status) "excluded-from-1-0-ready-surface" "engine/agent/manifest.json aiOperableProductionLoop physicsBackendAdapterDecisions"
 Assert-ContainsText ([string]$physicsBackendAdapterDecision[0].decision) "first-party MK_physics only" "engine/agent/manifest.json aiOperableProductionLoop physicsBackendAdapterDecisions"
 Assert-ContainsText ([string]$physicsBackendAdapterDecision[0].futureGate) "vcpkg manifest feature" "engine/agent/manifest.json aiOperableProductionLoop physicsBackendAdapterDecisions"
@@ -1026,7 +1070,7 @@ if ($editorPlaytestReviewLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one editor-playtest-package-review-loop review loop"
 }
 if ($editorPlaytestReviewLoop.Count -eq 1) {
-    Assert-JsonProperties $editorPlaytestReviewLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preSmokeGate", "hostGatedSmokeRecipes", "unsupportedClaims") "engine/agent/manifest.json editor-playtest-package-review-loop"
+    Assert-JsonProperty $editorPlaytestReviewLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preSmokeGate", "hostGatedSmokeRecipes", "unsupportedClaims") "engine/agent/manifest.json editor-playtest-package-review-loop"
     if ($editorPlaytestReviewLoop[0].status -ne "ready") {
         Write-Error "engine/agent/manifest.json editor-playtest-package-review-loop must be ready inside its reviewed scope"
     }
@@ -1060,7 +1104,7 @@ if ($editorAiPackageDiagnosticsLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one editor-ai-package-authoring-diagnostics review loop"
 }
 if ($editorAiPackageDiagnosticsLoop.Count -eq 1) {
-    Assert-JsonProperties $editorAiPackageDiagnosticsLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "diagnosticInputs", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-package-authoring-diagnostics"
+    Assert-JsonProperty $editorAiPackageDiagnosticsLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "diagnosticInputs", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-package-authoring-diagnostics"
     if ($editorAiPackageDiagnosticsLoop[0].status -ne "ready") {
         Write-Error "engine/agent/manifest.json editor-ai-package-authoring-diagnostics must be ready as diagnostics-only editor-core model"
     }
@@ -1072,7 +1116,7 @@ if ($editorAiPackageDiagnosticsLoop.Count -eq 1) {
         "report-host-gated-desktop-smoke-preflight"
     )
     $actualEditorAiDiagnosticsSteps = @($editorAiPackageDiagnosticsLoop[0].orderedSteps | ForEach-Object {
-        Assert-JsonProperties $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-package-authoring-diagnostics ordered step"
+        Assert-JsonProperty $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-package-authoring-diagnostics ordered step"
         if ($_.mutates -ne $false) {
             Write-Error "engine/agent/manifest.json editor-ai-package-authoring-diagnostics step '$($_.id)' must not mutate"
         }
@@ -1103,7 +1147,7 @@ if ($editorAiPlaytestOperatorHandoffLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one editor-ai-playtest-operator-handoff review loop"
 }
 if ($editorAiPlaytestOperatorHandoffLoop.Count -eq 1) {
-    Assert-JsonProperties $editorAiPlaytestOperatorHandoffLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "handoffInputs", "commandFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-operator-handoff"
+    Assert-JsonProperty $editorAiPlaytestOperatorHandoffLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "handoffInputs", "commandFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-operator-handoff"
     if ($editorAiPlaytestOperatorHandoffLoop[0].status -ne "ready") {
         Write-Error "engine/agent/manifest.json editor-ai-playtest-operator-handoff must be ready as read-only editor-core handoff model"
     }
@@ -1114,7 +1158,7 @@ if ($editorAiPlaytestOperatorHandoffLoop.Count -eq 1) {
         "report-host-gates-blockers-and-unsupported-claims"
     )
     $actualEditorAiOperatorHandoffSteps = @($editorAiPlaytestOperatorHandoffLoop[0].orderedSteps | ForEach-Object {
-        Assert-JsonProperties $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-playtest-operator-handoff ordered step"
+        Assert-JsonProperty $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-playtest-operator-handoff ordered step"
         if ($_.mutates -ne $false) {
             Write-Error "engine/agent/manifest.json editor-ai-playtest-operator-handoff step '$($_.id)' must not mutate"
         }
@@ -1155,7 +1199,7 @@ if ($editorAiPlaytestEvidenceSummaryLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one editor-ai-playtest-evidence-summary review loop"
 }
 if ($editorAiPlaytestEvidenceSummaryLoop.Count -eq 1) {
-    Assert-JsonProperties $editorAiPlaytestEvidenceSummaryLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "evidenceInputs", "evidenceFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-evidence-summary"
+    Assert-JsonProperty $editorAiPlaytestEvidenceSummaryLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "evidenceInputs", "evidenceFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-evidence-summary"
     if ($editorAiPlaytestEvidenceSummaryLoop[0].status -ne "ready") {
         Write-Error "engine/agent/manifest.json editor-ai-playtest-evidence-summary must be ready as read-only editor-core evidence summary model"
     }
@@ -1166,7 +1210,7 @@ if ($editorAiPlaytestEvidenceSummaryLoop.Count -eq 1) {
         "report-evidence-blockers-and-unsupported-claims"
     )
     $actualEditorAiEvidenceSummarySteps = @($editorAiPlaytestEvidenceSummaryLoop[0].orderedSteps | ForEach-Object {
-        Assert-JsonProperties $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-playtest-evidence-summary ordered step"
+        Assert-JsonProperty $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-playtest-evidence-summary ordered step"
         if ($_.mutates -ne $false) {
             Write-Error "engine/agent/manifest.json editor-ai-playtest-evidence-summary step '$($_.id)' must not mutate"
         }
@@ -1207,7 +1251,7 @@ if ($editorAiPlaytestRemediationQueueLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one editor-ai-playtest-remediation-queue review loop"
 }
 if ($editorAiPlaytestRemediationQueueLoop.Count -eq 1) {
-    Assert-JsonProperties $editorAiPlaytestRemediationQueueLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "queueInputs", "queueFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-remediation-queue"
+    Assert-JsonProperty $editorAiPlaytestRemediationQueueLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "queueInputs", "queueFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-remediation-queue"
     if ($editorAiPlaytestRemediationQueueLoop[0].status -ne "ready") {
         Write-Error "engine/agent/manifest.json editor-ai-playtest-remediation-queue must be ready as read-only editor-core remediation queue model"
     }
@@ -1218,7 +1262,7 @@ if ($editorAiPlaytestRemediationQueueLoop.Count -eq 1) {
         "report-remediation-blockers-and-unsupported-claims"
     )
     $actualEditorAiRemediationQueueSteps = @($editorAiPlaytestRemediationQueueLoop[0].orderedSteps | ForEach-Object {
-        Assert-JsonProperties $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-playtest-remediation-queue ordered step"
+        Assert-JsonProperty $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-playtest-remediation-queue ordered step"
         if ($_.mutates -ne $false) {
             Write-Error "engine/agent/manifest.json editor-ai-playtest-remediation-queue step '$($_.id)' must not mutate"
         }
@@ -1262,7 +1306,7 @@ if ($rendererResourceExecutionLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one renderer-resource-residency-upload-execution loop"
 }
 if ($rendererResourceExecutionLoop.Count -eq 1) {
-    Assert-JsonProperties $rendererResourceExecutionLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preUploadGate", "hostGatedSmokeRecipes", "reportFields", "unsupportedClaims") "engine/agent/manifest.json renderer-resource-residency-upload-execution"
+    Assert-JsonProperty $rendererResourceExecutionLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preUploadGate", "hostGatedSmokeRecipes", "reportFields", "unsupportedClaims") "engine/agent/manifest.json renderer-resource-residency-upload-execution"
     if ($rendererResourceExecutionLoop[0].status -ne "host-gated") {
         Write-Error "engine/agent/manifest.json renderer-resource-residency-upload-execution must remain host-gated"
     }
@@ -1297,7 +1341,7 @@ if ($materialShaderAuthoringLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one material-shader-authoring-review-loop"
 }
 if ($materialShaderAuthoringLoop.Count -eq 1) {
-    Assert-JsonProperties $materialShaderAuthoringLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preSmokeGates", "descriptorFields", "hostGatedSmokeRecipes", "unsupportedClaims") "engine/agent/manifest.json material-shader-authoring-review-loop"
+    Assert-JsonProperty $materialShaderAuthoringLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preSmokeGates", "descriptorFields", "hostGatedSmokeRecipes", "unsupportedClaims") "engine/agent/manifest.json material-shader-authoring-review-loop"
     if ($materialShaderAuthoringLoop[0].status -ne "host-gated") {
         Write-Error "engine/agent/manifest.json material-shader-authoring-review-loop must remain host-gated"
     }
@@ -1336,7 +1380,7 @@ if ($atlasTilemapAuthoringLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one 2d-atlas-tilemap-package-authoring loop"
 }
 if ($atlasTilemapAuthoringLoop.Count -eq 1) {
-    Assert-JsonProperties $atlasTilemapAuthoringLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preflightGates", "descriptorFields", "hostGatedSmokeRecipes", "unsupportedClaims") "engine/agent/manifest.json 2d-atlas-tilemap-package-authoring"
+    Assert-JsonProperty $atlasTilemapAuthoringLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preflightGates", "descriptorFields", "hostGatedSmokeRecipes", "unsupportedClaims") "engine/agent/manifest.json 2d-atlas-tilemap-package-authoring"
     if ($atlasTilemapAuthoringLoop[0].status -ne "host-gated") {
         Write-Error "engine/agent/manifest.json 2d-atlas-tilemap-package-authoring must remain host-gated"
     }
@@ -1375,7 +1419,7 @@ if ($prefabScene3dAuthoringLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one 3d-prefab-scene-package-authoring loop"
 }
 if ($prefabScene3dAuthoringLoop.Count -eq 1) {
-    Assert-JsonProperties $prefabScene3dAuthoringLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preflightGates", "descriptorFields", "hostGatedSmokeRecipes", "unsupportedClaims") "engine/agent/manifest.json 3d-prefab-scene-package-authoring"
+    Assert-JsonProperty $prefabScene3dAuthoringLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "preflightGates", "descriptorFields", "hostGatedSmokeRecipes", "unsupportedClaims") "engine/agent/manifest.json 3d-prefab-scene-package-authoring"
     if ($prefabScene3dAuthoringLoop[0].status -ne "host-gated") {
         Write-Error "engine/agent/manifest.json 3d-prefab-scene-package-authoring must remain host-gated"
     }
@@ -1415,7 +1459,7 @@ if ($packageStreamingResidencyLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one package-streaming-residency-budget-contract loop"
 }
 if ($packageStreamingResidencyLoop.Count -eq 1) {
-    Assert-JsonProperties $packageStreamingResidencyLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "descriptorFields", "preflightGates", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json package-streaming-residency-budget-contract"
+    Assert-JsonProperty $packageStreamingResidencyLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "descriptorFields", "preflightGates", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json package-streaming-residency-budget-contract"
     if ($packageStreamingResidencyLoop[0].status -ne "ready") {
         Write-Error "engine/agent/manifest.json package-streaming-residency-budget-contract must be ready"
     }
@@ -1451,7 +1495,7 @@ if ($hostGatedPackageStreamingLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one host-gated-package-streaming-execution loop"
 }
 if ($hostGatedPackageStreamingLoop.Count -eq 1) {
-    Assert-JsonProperties $hostGatedPackageStreamingLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "descriptorFields", "preflightGates", "resultFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json host-gated-package-streaming-execution"
+    Assert-JsonProperty $hostGatedPackageStreamingLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "descriptorFields", "preflightGates", "resultFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json host-gated-package-streaming-execution"
     if ($hostGatedPackageStreamingLoop[0].status -ne "host-gated") {
         Write-Error "engine/agent/manifest.json host-gated-package-streaming-execution must be host-gated"
     }
@@ -1529,7 +1573,7 @@ if ($safePointPackageReplacementLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one safe-point-package-unload-replacement-execution loop"
 }
 if ($safePointPackageReplacementLoop.Count -eq 1) {
-    Assert-JsonProperties $safePointPackageReplacementLoop[0] @("id", "status", "owner", "orderedSteps", "requiredModules", "resultFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json safe-point-package-unload-replacement-execution"
+    Assert-JsonProperty $safePointPackageReplacementLoop[0] @("id", "status", "owner", "orderedSteps", "requiredModules", "resultFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json safe-point-package-unload-replacement-execution"
     if ($safePointPackageReplacementLoop[0].status -ne "ready") {
         Write-Error "engine/agent/manifest.json safe-point-package-unload-replacement-execution must be ready"
     }
@@ -1555,21 +1599,21 @@ if ($safePointPackageReplacementLoop.Count -eq 1) {
             Write-Error "engine/agent/manifest.json safe-point-package-unload-replacement-execution resultFields missing: $field"
         }
     }
-    Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") -Raw) "RuntimePackageSafePointUnloadResult" "MK_runtime resource public header"
-    Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") -Raw) "commit_runtime_package_safe_point_unload" "MK_runtime resource public header"
+    Assert-ContainsText (Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") "RuntimePackageSafePointUnloadResult" "MK_runtime resource public header"
+    Assert-ContainsText (Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") "commit_runtime_package_safe_point_unload" "MK_runtime resource public header"
     foreach ($claim in @("broad package streaming", "async eviction", "texture streaming", "allocator/GPU budget enforcement", "public native/RHI handles", "Metal readiness", "general renderer quality")) {
         if (-not ((@($safePointPackageReplacementLoop[0].unsupportedClaims) -join " ").Contains($claim))) {
             Write-Error "engine/agent/manifest.json safe-point-package-unload-replacement-execution unsupportedClaims missing: $claim"
         }
     }
 }
-Assert-Exists $productionLoop.design | Out-Null
-Assert-Exists $productionLoop.foundationPlan | Out-Null
-Assert-Exists $productionLoop.currentActivePlan | Out-Null
+Resolve-RequiredAgentPath $productionLoop.design | Out-Null
+Resolve-RequiredAgentPath $productionLoop.foundationPlan | Out-Null
+Resolve-RequiredAgentPath $productionLoop.currentActivePlan | Out-Null
 if ($productionLoop.recommendedNextPlan.PSObject.Properties.Name.Contains("path")) {
-    Assert-Exists $productionLoop.recommendedNextPlan.path | Out-Null
+    Resolve-RequiredAgentPath $productionLoop.recommendedNextPlan.path | Out-Null
 }
-$activeChildProductionPlans = @(Get-ActiveChildProductionPlans)
+$activeChildProductionPlans = @(Get-ActiveChildProductionPlan)
 if ($activeChildProductionPlans.Count -eq 0) {
     Assert-ContainsText ([string]$productionLoop.currentActivePlan) "2026-05-03-production-completion-master-plan-v1.md" "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.id) "next-production-gap-selection" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.id"
@@ -1842,12 +1886,12 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "ai_commands.execution" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Host-Gated Validation Execution Ack v1" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "-HostGateAcknowledgements" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.completedContext"
-$planRegistryText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/README.md") -Raw
-$masterPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md") -Raw
-$physicsJointsPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-09-physics-joints-foundation-v1.md") -Raw
-$physicsBenchmarkPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md") -Raw
-$physicsJoltPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-09-physics-jolt-adapter-gate-v1.md") -Raw
-$physicsCloseoutPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md") -Raw
+$planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
+$masterPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+$physicsJointsPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-09-physics-joints-foundation-v1.md"
+$physicsBenchmarkPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md"
+$physicsJoltPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-09-physics-jolt-adapter-gate-v1.md"
+$physicsCloseoutPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
 Assert-ContainsText $masterPlanText "Gap Burn-down Execution Strategy" "production completion master plan"
 Assert-ContainsText $masterPlanText "Execute this master plan by burning down one" "production completion master plan"
 Assert-ContainsText $masterPlanText "physics-1-0-collision-system-closeout-v1" "production completion master plan"
@@ -1871,91 +1915,91 @@ Assert-ContainsText $physicsJoltPlanText "explicit 1.0 exclusion" "docs/superpow
 Assert-ContainsText $physicsCloseoutPlanText 'Plan ID:** `physics-1-0-collision-system-closeout-v1`' "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
 Assert-ContainsText $physicsCloseoutPlanText '**Status:** Completed.' "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
 Assert-ContainsText $physicsCloseoutPlanText 'Gap:** `physics-1-0-collision-system` Phase P4' "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
-$queueSyncPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-queue-synchronization-d3d12-v1.md") -Raw
-$queueSyncPackagePlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-generated-3d-compute-morph-queue-sync-package-smoke-d3d12-v1.md") -Raw
-$computeMorphSkinPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-skin-composition-d3d12-v1.md") -Raw
-$runtimeSceneComputeMorphSkinPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-scene-rhi-compute-morph-skin-palette-d3d12-v1.md") -Raw
-$generatedComputeMorphSkinPackagePlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-generated-3d-compute-morph-skin-package-smoke-d3d12-v1.md") -Raw
-$computeMorphAsyncTelemetryPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-async-telemetry-d3d12-v1.md") -Raw
-$generatedComputeMorphAsyncTelemetryPackagePlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-generated-3d-compute-morph-async-telemetry-package-smoke-d3d12-v1.md") -Raw
-$runtimeComputeMorphAsyncOverlapPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-async-overlap-evidence-d3d12-v1.md") -Raw
-$runtimeComputeMorphPipelinedOutputRingPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-pipelined-output-ring-d3d12-v1.md") -Raw
-$runtimeComputeMorphPipelinedSchedulingPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-pipelined-scheduling-d3d12-v1.md") -Raw
-$rhiD3d12PerQueueFencePlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-rhi-d3d12-per-queue-fence-synchronization-v1.md") -Raw
-$rhiD3d12QueueTimestampPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-rhi-d3d12-queue-timestamp-measurement-foundation-v1.md") -Raw
-$rhiD3d12QueueClockCalibrationPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-rhi-d3d12-queue-clock-calibration-foundation-v1.md") -Raw
-$rhiD3d12CalibratedQueueTimingPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-rhi-d3d12-calibrated-queue-timing-diagnostics-v1.md") -Raw
-$runtimeComputeMorphCalibratedOverlapPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-calibrated-overlap-diagnostics-d3d12-v1.md") -Raw
-$rhiD3d12SubmittedCommandTimingPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-rhi-d3d12-submitted-command-calibrated-timing-scopes-v1.md") -Raw
-$runtimeComputeMorphSubmittedOverlapPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-submitted-overlap-diagnostics-d3d12-v1.md") -Raw
-$rhiVulkanComputeDispatchPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-rhi-vulkan-compute-dispatch-foundation-v1.md") -Raw
-$runtimeComputeMorphVulkanProofPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-vulkan-proof-v1.md") -Raw
-$runtimeComputeMorphRendererConsumptionVulkanPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-renderer-consumption-vulkan-v1.md") -Raw
-$runtimeComputeMorphNormalTangentOutputVulkanPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-normal-tangent-output-vulkan-v1.md") -Raw
-$generatedComputeMorphPackageVulkanPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-generated-3d-compute-morph-package-smoke-vulkan-v1.md") -Raw
-$generatedComputeMorphSkinPackageVulkanPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-07-generated-3d-compute-morph-skin-package-smoke-vulkan-v1.md") -Raw
-$nativeSpriteBatchingExecutionPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-2d-native-sprite-batching-execution-v1.md") -Raw
-$spriteAnimationPackagePlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-2d-sprite-animation-package-v1.md") -Raw
-$tilemapEditorRuntimeUxPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-2d-tilemap-editor-runtime-ux-v1.md") -Raw
-$inputRebindingProfileUxPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-input-rebinding-profile-ux-v1.md") -Raw
-$runtimeInputRebindingCapturePlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-capture-contract-v1.md") -Raw
-$runtimeInputRebindingFocusConsumptionPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-focus-consumption-v1.md") -Raw
-$runtimeInputRebindingPresentationRowsPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-presentation-rows-v1.md") -Raw
-$runtimeUiFontImageAdapterPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-runtime-ui-font-image-adapter-v1.md") -Raw
-$runtimeUiTextShapingRequestPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-ui-text-shaping-request-plan-v1.md") -Raw
-$runtimeUiFontRasterizationRequestPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-07-runtime-ui-font-rasterization-request-plan-v1.md") -Raw
-$runtimeUiPlatformTextInputSessionPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-ui-platform-text-input-session-plan-v1.md") -Raw
-$runtimeUiImageDecodeRequestPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-ui-image-decode-request-plan-v1.md") -Raw
-$runtimeUiPngImageDecodingAdapterPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-ui-png-image-decoding-adapter-v1.md") -Raw
-$crashTelemetryTraceOpsPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-crash-telemetry-trace-ops-v1.md") -Raw
-$androidReleaseDeviceMatrixPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-android-release-device-matrix-v1.md") -Raw
-$appleMetalIosHostEvidencePlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-apple-metal-ios-host-evidence-v1.md") -Raw
-$appleHostEvidenceScriptText = Get-Content -LiteralPath (Assert-Exists "tools/check-apple-host-evidence.ps1") -Raw
-$productionReadinessAuditPlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-06-production-1-0-readiness-audit-v1.md") -Raw
-$productionReadinessAuditScriptText = Get-Content -LiteralPath (Assert-Exists "tools/check-production-readiness-audit.ps1") -Raw
-$currentCapabilitiesText = Get-Content -LiteralPath (Assert-Exists "docs/current-capabilities.md") -Raw
-$aiGameDevelopmentText = Get-Content -LiteralPath (Assert-Exists "docs/ai-game-development.md") -Raw
-$roadmapText = Get-Content -LiteralPath (Assert-Exists "docs/roadmap.md") -Raw
-$coreDiagnosticsHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/core/include/mirakana/core/diagnostics.hpp") -Raw
-$coreTestsText = Get-Content -LiteralPath (Assert-Exists "tests/unit/core_tests.cpp") -Raw
-$tilemapMetadataSourceText = Get-Content -LiteralPath (Assert-Exists "engine/assets/src/tilemap_metadata.cpp") -Raw
-$uiAtlasMetadataSourceText = Get-Content -LiteralPath (Assert-Exists "engine/assets/src/ui_atlas_metadata.cpp") -Raw
-$sessionServicesSourceText = Get-Content -LiteralPath (Assert-Exists "engine/runtime/src/session_services.cpp") -Raw
-$rhiPublicHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/rhi/include/mirakana/rhi/rhi.hpp") -Raw
-$rhiAsyncOverlapSourceText = Get-Content -LiteralPath (Assert-Exists "engine/rhi/src/async_overlap.cpp") -Raw
-$nullRhiSourceText = Get-Content -LiteralPath (Assert-Exists "engine/rhi/src/null_rhi.cpp") -Raw
-$d3d12RhiHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_backend.hpp") -Raw
-$d3d12RhiSourceText = Get-Content -LiteralPath (Assert-Exists "engine/rhi/d3d12/src/d3d12_backend.cpp") -Raw
-$vulkanRhiHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_backend.hpp") -Raw
-$vulkanRhiSourceText = Get-Content -LiteralPath (Assert-Exists "engine/rhi/vulkan/src/vulkan_backend.cpp") -Raw
-$runtimeRhiHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") -Raw
-$runtimeRhiSourceText = Get-Content -LiteralPath (Assert-Exists "engine/runtime_rhi/src/runtime_upload.cpp") -Raw
-$runtimeSceneRhiHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp") -Raw
-$runtimeSceneRhiSourceText = Get-Content -LiteralPath (Assert-Exists "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp") -Raw
-$rendererHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/renderer/include/mirakana/renderer/renderer.hpp") -Raw
-$rendererSourceText = Get-Content -LiteralPath (Assert-Exists "engine/renderer/src/rhi_frame_renderer.cpp") -Raw
-$runtimeHostSdl3HeaderText = Get-Content -LiteralPath (Assert-Exists "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp") -Raw
-$runtimeHostSdl3SourceText = Get-Content -LiteralPath (Assert-Exists "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp") -Raw
-$runtimeHostSdl3SceneGpuInjectingRendererText = Get-Content -LiteralPath (Assert-Exists "engine/runtime_host/sdl3/src/scene_gpu_binding_injecting_renderer.hpp") -Raw
-$runtimeHostSdl3TestsText = Get-Content -LiteralPath (Assert-Exists "tests/unit/runtime_host_sdl3_tests.cpp") -Raw
-$runtimeHostSdl3PublicApiText = Get-Content -LiteralPath (Assert-Exists "tests/unit/runtime_host_sdl3_public_api_compile.cpp") -Raw
-$newGameToolText = Get-Content -LiteralPath (Assert-Exists "tools/new-game.ps1") -Raw
-$newGameHelpersText = Get-Content -LiteralPath (Assert-Exists "tools/new-game-helpers.ps1") -Raw
+$queueSyncPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-queue-synchronization-d3d12-v1.md"
+$queueSyncPackagePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-generated-3d-compute-morph-queue-sync-package-smoke-d3d12-v1.md"
+$computeMorphSkinPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-skin-composition-d3d12-v1.md"
+$runtimeSceneComputeMorphSkinPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-scene-rhi-compute-morph-skin-palette-d3d12-v1.md"
+$generatedComputeMorphSkinPackagePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-generated-3d-compute-morph-skin-package-smoke-d3d12-v1.md"
+$computeMorphAsyncTelemetryPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-async-telemetry-d3d12-v1.md"
+$generatedComputeMorphAsyncTelemetryPackagePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-generated-3d-compute-morph-async-telemetry-package-smoke-d3d12-v1.md"
+$runtimeComputeMorphAsyncOverlapPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-async-overlap-evidence-d3d12-v1.md"
+$runtimeComputeMorphPipelinedOutputRingPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-pipelined-output-ring-d3d12-v1.md"
+$runtimeComputeMorphPipelinedSchedulingPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-pipelined-scheduling-d3d12-v1.md"
+$rhiD3d12PerQueueFencePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-rhi-d3d12-per-queue-fence-synchronization-v1.md"
+$rhiD3d12QueueTimestampPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-rhi-d3d12-queue-timestamp-measurement-foundation-v1.md"
+$rhiD3d12QueueClockCalibrationPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-rhi-d3d12-queue-clock-calibration-foundation-v1.md"
+$rhiD3d12CalibratedQueueTimingPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-rhi-d3d12-calibrated-queue-timing-diagnostics-v1.md"
+$runtimeComputeMorphCalibratedOverlapPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-calibrated-overlap-diagnostics-d3d12-v1.md"
+$rhiD3d12SubmittedCommandTimingPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-rhi-d3d12-submitted-command-calibrated-timing-scopes-v1.md"
+$runtimeComputeMorphSubmittedOverlapPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-submitted-overlap-diagnostics-d3d12-v1.md"
+$rhiVulkanComputeDispatchPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-rhi-vulkan-compute-dispatch-foundation-v1.md"
+$runtimeComputeMorphVulkanProofPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-vulkan-proof-v1.md"
+$runtimeComputeMorphRendererConsumptionVulkanPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-renderer-consumption-vulkan-v1.md"
+$runtimeComputeMorphNormalTangentOutputVulkanPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-rhi-compute-morph-normal-tangent-output-vulkan-v1.md"
+$generatedComputeMorphPackageVulkanPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-generated-3d-compute-morph-package-smoke-vulkan-v1.md"
+$generatedComputeMorphSkinPackageVulkanPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-07-generated-3d-compute-morph-skin-package-smoke-vulkan-v1.md"
+$nativeSpriteBatchingExecutionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-2d-native-sprite-batching-execution-v1.md"
+$spriteAnimationPackagePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-2d-sprite-animation-package-v1.md"
+$tilemapEditorRuntimeUxPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-2d-tilemap-editor-runtime-ux-v1.md"
+$inputRebindingProfileUxPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-input-rebinding-profile-ux-v1.md"
+$runtimeInputRebindingCapturePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-capture-contract-v1.md"
+$runtimeInputRebindingFocusConsumptionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-focus-consumption-v1.md"
+$runtimeInputRebindingPresentationRowsPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-presentation-rows-v1.md"
+$runtimeUiFontImageAdapterPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-runtime-ui-font-image-adapter-v1.md"
+$runtimeUiTextShapingRequestPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-ui-text-shaping-request-plan-v1.md"
+$runtimeUiFontRasterizationRequestPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-07-runtime-ui-font-rasterization-request-plan-v1.md"
+$runtimeUiPlatformTextInputSessionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-ui-platform-text-input-session-plan-v1.md"
+$runtimeUiImageDecodeRequestPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-ui-image-decode-request-plan-v1.md"
+$runtimeUiPngImageDecodingAdapterPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-ui-png-image-decoding-adapter-v1.md"
+$crashTelemetryTraceOpsPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-crash-telemetry-trace-ops-v1.md"
+$androidReleaseDeviceMatrixPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-android-release-device-matrix-v1.md"
+$appleMetalIosHostEvidencePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-apple-metal-ios-host-evidence-v1.md"
+$appleHostEvidenceScriptText = Get-AgentSurfaceText "tools/check-apple-host-evidence.ps1"
+$productionReadinessAuditPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-production-1-0-readiness-audit-v1.md"
+$productionReadinessAuditScriptText = Get-AgentSurfaceText "tools/check-production-readiness-audit.ps1"
+$currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
+$aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"
+$roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
+$coreDiagnosticsHeaderText = Get-AgentSurfaceText "engine/core/include/mirakana/core/diagnostics.hpp"
+$coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
+$tilemapMetadataSourceText = Get-AgentSurfaceText "engine/assets/src/tilemap_metadata.cpp"
+$uiAtlasMetadataSourceText = Get-AgentSurfaceText "engine/assets/src/ui_atlas_metadata.cpp"
+$sessionServicesSourceText = Get-AgentSurfaceText "engine/runtime/src/session_services.cpp"
+$rhiPublicHeaderText = Get-AgentSurfaceText "engine/rhi/include/mirakana/rhi/rhi.hpp"
+$rhiAsyncOverlapSourceText = Get-AgentSurfaceText "engine/rhi/src/async_overlap.cpp"
+$nullRhiSourceText = Get-AgentSurfaceText "engine/rhi/src/null_rhi.cpp"
+$d3d12RhiHeaderText = Get-AgentSurfaceText "engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_backend.hpp"
+$d3d12RhiSourceText = Get-AgentSurfaceText "engine/rhi/d3d12/src/d3d12_backend.cpp"
+$vulkanRhiHeaderText = Get-AgentSurfaceText "engine/rhi/vulkan/include/mirakana/rhi/vulkan/vulkan_backend.hpp"
+$vulkanRhiSourceText = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_backend.cpp"
+$runtimeRhiHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp"
+$runtimeRhiSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/runtime_upload.cpp"
+$runtimeSceneRhiHeaderText = Get-AgentSurfaceText "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp"
+$runtimeSceneRhiSourceText = Get-AgentSurfaceText "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp"
+$rendererHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp"
+$rendererSourceText = Get-AgentSurfaceText "engine/renderer/src/rhi_frame_renderer.cpp"
+$runtimeHostSdl3HeaderText = Get-AgentSurfaceText "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
+$runtimeHostSdl3SourceText = Get-AgentSurfaceText "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
+$runtimeHostSdl3SceneGpuInjectingRendererText = Get-AgentSurfaceText "engine/runtime_host/sdl3/src/scene_gpu_binding_injecting_renderer.hpp"
+$runtimeHostSdl3TestsText = Get-AgentSurfaceText "tests/unit/runtime_host_sdl3_tests.cpp"
+$runtimeHostSdl3PublicApiText = Get-AgentSurfaceText "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
+$newGameToolText = Get-AgentSurfaceText "tools/new-game.ps1"
+$newGameHelpersText = Get-AgentSurfaceText "tools/new-game-helpers.ps1"
 Assert-ContainsText $newGameToolText "new-game-helpers.ps1" "tools/new-game.ps1"
 Assert-ContainsText $newGameHelpersText "function Format-CppSourceText" "tools/new-game-helpers.ps1"
 Assert-ContainsText $newGameHelpersText "Get-ClangFormatCommand" "tools/new-game-helpers.ps1"
 Assert-ContainsText $newGameToolText '$mainCpp = Format-CppSourceText -Text $mainCpp' "tools/new-game.ps1"
-$rhiTestsText = Get-Content -LiteralPath (Assert-Exists "tests/unit/rhi_tests.cpp") -Raw
-$runtimeRhiTestsText = Get-Content -LiteralPath (Assert-Exists "tests/unit/runtime_rhi_tests.cpp") -Raw
-$d3d12RhiTestsText = Get-Content -LiteralPath (Assert-Exists "tests/unit/d3d12_rhi_tests.cpp") -Raw
-$backendScaffoldTestsText = Get-Content -LiteralPath (Assert-Exists "tests/unit/backend_scaffold_tests.cpp") -Raw
-$vulkanComputeMorphShaderText = Get-Content -LiteralPath (Assert-Exists "tests/shaders/vulkan_compute_morph_position.hlsl") -Raw
-$vulkanComputeMorphRendererShaderText = Get-Content -LiteralPath (Assert-Exists "tests/shaders/vulkan_compute_morph_renderer_position.hlsl") -Raw
-$vulkanComputeMorphTangentFrameShaderText = Get-Content -LiteralPath (Assert-Exists "tests/shaders/vulkan_compute_morph_tangent_frame.hlsl") -Raw
-$renderingSkillText = Get-Content -LiteralPath (Assert-Exists ".agents/skills/rendering-change/SKILL.md") -Raw
-$claudeRenderingSkillText = Get-Content -LiteralPath (Assert-Exists ".claude/skills/gameengine-rendering/SKILL.md") -Raw
-$gameDevelopmentSkillText = Get-Content -LiteralPath (Assert-Exists ".agents/skills/gameengine-game-development/SKILL.md") -Raw
-$claudeGameDevelopmentSkillText = Get-Content -LiteralPath (Assert-Exists ".claude/skills/gameengine-game-development/SKILL.md") -Raw
+$rhiTestsText = Get-AgentSurfaceText "tests/unit/rhi_tests.cpp"
+$runtimeRhiTestsText = Get-AgentSurfaceText "tests/unit/runtime_rhi_tests.cpp"
+$d3d12RhiTestsText = Get-AgentSurfaceText "tests/unit/d3d12_rhi_tests.cpp"
+$backendScaffoldTestsText = Get-AgentSurfaceText "tests/unit/backend_scaffold_tests.cpp"
+$vulkanComputeMorphShaderText = Get-AgentSurfaceText "tests/shaders/vulkan_compute_morph_position.hlsl"
+$vulkanComputeMorphRendererShaderText = Get-AgentSurfaceText "tests/shaders/vulkan_compute_morph_renderer_position.hlsl"
+$vulkanComputeMorphTangentFrameShaderText = Get-AgentSurfaceText "tests/shaders/vulkan_compute_morph_tangent_frame.hlsl"
+$renderingSkillText = Get-AgentSurfaceText ".agents/skills/rendering-change/SKILL.md"
+$claudeRenderingSkillText = Get-AgentSurfaceText ".claude/skills/gameengine-rendering/SKILL.md"
+$gameDevelopmentSkillText = Get-AgentSurfaceText ".agents/skills/gameengine-game-development/SKILL.md"
+$claudeGameDevelopmentSkillText = Get-AgentSurfaceText ".claude/skills/gameengine-game-development/SKILL.md"
 Assert-ContainsText $planRegistryText "2026-05-06-generated-3d-compute-morph-package-smoke-d3d12-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "2026-05-06-runtime-scene-quaternion-animation-transform-binding-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "2026-05-06-runtime-rhi-compute-morph-normal-tangent-output-d3d12-v1.md" "docs/superpowers/plans/README.md"
@@ -2095,7 +2139,7 @@ Assert-ContainsText $appleHostEvidenceScriptText "xcodebuild" "tools/check-apple
 Assert-ContainsText $appleHostEvidenceScriptText "xcrun" "tools/check-apple-host-evidence.ps1"
 Assert-ContainsText $appleHostEvidenceScriptText "metal" "tools/check-apple-host-evidence.ps1"
 Assert-ContainsText $appleHostEvidenceScriptText "metallib" "tools/check-apple-host-evidence.ps1"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/validate.ps1") -Raw) "check-apple-host-evidence.ps1" "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "check-apple-host-evidence.ps1" "tools/validate.ps1"
 foreach ($appleHostEvidenceDocCheck in @(
     @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
     @{ Text = $testingContent; Label = "docs/testing.md" },
@@ -2112,7 +2156,7 @@ Assert-ContainsText $productionReadinessAuditPlanText "pwsh -NoProfile -Executio
 Assert-ContainsText $productionReadinessAuditPlanText "production-readiness-audit-check: ok" "Production 1.0 Readiness Audit plan"
 Assert-ContainsText $productionReadinessAuditScriptText "unsupportedProductionGaps" "tools/check-production-readiness-audit.ps1"
 Assert-ContainsText $productionReadinessAuditScriptText "production-readiness-audit-check: ok" "tools/check-production-readiness-audit.ps1"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "tools/validate.ps1") -Raw) "check-production-readiness-audit.ps1" "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "check-production-readiness-audit.ps1" "tools/validate.ps1"
 foreach ($readinessAuditDocCheck in @(
     @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
     @{ Text = $testingContent; Label = "docs/testing.md" },
@@ -2177,7 +2221,7 @@ Assert-ContainsText $runtimeUiPngImageDecodingAdapterPlanText "decode_audited_pn
 Assert-ContainsText $runtimeUiPngImageDecodingAdapterPlanText "ImageDecodePixelFormat::rgba8_unorm" "Runtime UI PNG image decoding adapter plan"
 Assert-ContainsText $runtimeUiPngImageDecodingAdapterPlanText "MK_tools_tests" "Runtime UI PNG image decoding adapter plan"
 Assert-ContainsText $runtimeUiPngImageDecodingAdapterPlanText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1" "Runtime UI PNG image decoding adapter plan"
-$runtimeUiDecodedImageAtlasPackageBridgePlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md") -Raw
+$runtimeUiDecodedImageAtlasPackageBridgePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md"
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "Runtime UI Decoded Image Atlas Package Bridge v1" "Runtime UI decoded image atlas package bridge plan"
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "**Status:** Completed" "Runtime UI decoded image atlas package bridge plan"
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "PackedUiAtlasAuthoringDesc" "Runtime UI decoded image atlas package bridge plan"
@@ -2186,7 +2230,7 @@ Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "plan_packe
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "apply_packed_ui_atlas_package_update" "Runtime UI decoded image atlas package bridge plan"
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "GameEngine.CookedTexture.v1" "Runtime UI decoded image atlas package bridge plan"
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "MK_tools_tests" "Runtime UI decoded image atlas package bridge plan"
-$runtimeUiGlyphAtlasPackageBridgePlanText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-ui-glyph-atlas-package-bridge-v1.md") -Raw
+$runtimeUiGlyphAtlasPackageBridgePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-ui-glyph-atlas-package-bridge-v1.md"
 Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "Runtime UI Glyph Atlas Package Bridge v1" "Runtime UI glyph atlas package bridge plan"
 Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "**Status:** Completed" "Runtime UI glyph atlas package bridge plan"
 Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "UiAtlasMetadataGlyph" "Runtime UI glyph atlas package bridge plan"
@@ -2599,7 +2643,7 @@ Assert-ContainsText $runtimeRhiTestsText "runtime rhi creates compute morph bind
 Assert-ContainsText $runtimeRhiTestsText "runtime rhi creates compute morph output ring with distinct position slots" "tests/unit/runtime_rhi_tests.cpp"
 Assert-ContainsText $runtimeRhiTestsText "runtime rhi exposes compute morph output as mesh binding" "tests/unit/runtime_rhi_tests.cpp"
 Assert-ContainsText $runtimeRhiTestsText "runtime rhi composes compute morph output with skinned mesh attributes" "tests/unit/runtime_rhi_tests.cpp"
-$runtimeSceneRhiTestsText = Get-Content -LiteralPath (Assert-Exists "tests/unit/runtime_scene_rhi_tests.cpp") -Raw
+$runtimeSceneRhiTestsText = Get-AgentSurfaceText "tests/unit/runtime_scene_rhi_tests.cpp"
 Assert-ContainsText $runtimeSceneRhiTestsText "runtime scene rhi builds compute morph skinned gpu palette from selected cooked assets" "tests/unit/runtime_scene_rhi_tests.cpp"
 Assert-ContainsText $runtimeSceneRhiTestsText "compute_morph_output_position_bytes == 36" "tests/unit/runtime_scene_rhi_tests.cpp"
 Assert-ContainsText $rhiTestsText "null rhi records queue waits for submitted fences" "tests/unit/rhi_tests.cpp"
@@ -2796,7 +2840,7 @@ $expectedProductionRecipeIds = @(
 )
 $productionRecipeIds = @{}
 foreach ($recipe in $productionLoop.recipes) {
-    Assert-JsonProperties $recipe @("id", "status", "requiredModules", "allowedTemplates", "allowedPackagingTargets", "validationRecipes", "unsupportedClaims", "followUpCapability") "engine/agent/manifest.json aiOperableProductionLoop recipe"
+    Assert-JsonProperty $recipe @("id", "status", "requiredModules", "allowedTemplates", "allowedPackagingTargets", "validationRecipes", "unsupportedClaims", "followUpCapability") "engine/agent/manifest.json aiOperableProductionLoop recipe"
     if ($productionRecipeIds.ContainsKey($recipe.id)) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop recipe id is duplicated: $($recipe.id)"
     }
@@ -3065,7 +3109,7 @@ foreach ($hostGate in $productionLoop.hostGates) {
 }
 $commandSurfaceIds = @{}
 foreach ($commandSurface in $productionLoop.commandSurfaces) {
-    Assert-JsonProperties $commandSurface @("id", "schemaVersion", "status", "owner", "summary", "requestModes", "requestShape", "resultShape", "requiredModules", "capabilityGates", "hostGates", "validationRecipes", "unsupportedGapIds", "undoToken", "notes") "engine/agent/manifest.json aiOperableProductionLoop command surface"
+    Assert-JsonProperty $commandSurface @("id", "schemaVersion", "status", "owner", "summary", "requestModes", "requestShape", "resultShape", "requiredModules", "capabilityGates", "hostGates", "validationRecipes", "unsupportedGapIds", "undoToken", "notes") "engine/agent/manifest.json aiOperableProductionLoop command surface"
     Assert-ManifestCommandSurfaceHasNoLegacyTopLevelFields -CommandSurface $commandSurface -MessagePrefix "engine/agent/manifest.json aiOperableProductionLoop command surface"
     if ($commandSurface.schemaVersion -ne 1) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' schemaVersion must be 1"
@@ -3076,7 +3120,7 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
     $commandSurfaceIds[$commandSurface.id] = $true
     $modeIds = @{}
     foreach ($mode in @($commandSurface.requestModes)) {
-        Assert-JsonProperties $mode @("id", "status", "mutates", "requiresDryRun", "notes") "engine/agent/manifest.json aiOperableProductionLoop command surface requestModes"
+        Assert-JsonProperty $mode @("id", "status", "mutates", "requiresDryRun", "notes") "engine/agent/manifest.json aiOperableProductionLoop command surface requestModes"
         $modeIds[$mode.id] = $mode
         if (@("dry-run", "apply", "execute") -notcontains $mode.id) {
             Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' has unknown request mode: $($mode.id)"
@@ -3102,15 +3146,15 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
         @("run-validation-recipe", "validate-runtime-scene-package") -notcontains $commandSurface.id) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' cannot make execute ready without a focused execution tooling slice"
     }
-    Assert-JsonProperties $commandSurface.requestShape @("schema", "requiredFields", "optionalFields", "pathPolicy", "nativeHandlePolicy") "engine/agent/manifest.json aiOperableProductionLoop command surface requestShape"
+    Assert-JsonProperty $commandSurface.requestShape @("schema", "requiredFields", "optionalFields", "pathPolicy", "nativeHandlePolicy") "engine/agent/manifest.json aiOperableProductionLoop command surface requestShape"
     if ($commandSurface.requestShape.nativeHandlePolicy -ne "forbidden") {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' requestShape must forbid native handles"
     }
-    Assert-JsonProperties $commandSurface.resultShape @("schema", "requiredFields", "diagnosticFields", "dryRunFields") "engine/agent/manifest.json aiOperableProductionLoop command surface resultShape"
+    Assert-JsonProperty $commandSurface.resultShape @("schema", "requiredFields", "diagnosticFields", "dryRunFields") "engine/agent/manifest.json aiOperableProductionLoop command surface resultShape"
     if (@("run-validation-recipe", "validate-runtime-scene-package") -contains $commandSurface.id) {
-        Assert-JsonProperties $commandSurface.resultShape @("executeFields") "engine/agent/manifest.json aiOperableProductionLoop run-validation-recipe resultShape"
+        Assert-JsonProperty $commandSurface.resultShape @("executeFields") "engine/agent/manifest.json aiOperableProductionLoop run-validation-recipe resultShape"
     } else {
-        Assert-JsonProperties $commandSurface.resultShape @("applyFields") "engine/agent/manifest.json aiOperableProductionLoop command surface resultShape"
+        Assert-JsonProperty $commandSurface.resultShape @("applyFields") "engine/agent/manifest.json aiOperableProductionLoop command surface resultShape"
     }
     foreach ($requiredResultField in @("commandId", "mode", "status", "diagnostics", "validationRecipes", "unsupportedGapIds", "undoToken")) {
         if (@($commandSurface.resultShape.requiredFields) -notcontains $requiredResultField) {
@@ -3128,7 +3172,7 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
         }
     }
     foreach ($gate in @($commandSurface.capabilityGates)) {
-        Assert-JsonProperties $gate @("id", "source", "requiredStatus", "notes") "engine/agent/manifest.json aiOperableProductionLoop command surface capabilityGates"
+        Assert-JsonProperty $gate @("id", "source", "requiredStatus", "notes") "engine/agent/manifest.json aiOperableProductionLoop command surface capabilityGates"
         switch ($gate.source) {
             "module" { if (-not $moduleNames.ContainsKey($gate.id)) { Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' references unknown module capability gate: $($gate.id)" } }
             "recipe" { if (-not $productionRecipeIds.ContainsKey($gate.id)) { Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' references unknown recipe capability gate: $($gate.id)" } }
@@ -3158,7 +3202,7 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
     if (@($commandSurface.unsupportedGapIds).Count -lt 1) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' must list unsupportedGapIds for diagnostics"
     }
-    Assert-JsonProperties $commandSurface.undoToken @("status", "notes") "engine/agent/manifest.json aiOperableProductionLoop command surface undoToken"
+    Assert-JsonProperty $commandSurface.undoToken @("status", "notes") "engine/agent/manifest.json aiOperableProductionLoop command surface undoToken"
     if ($commandSurface.undoToken.status -ne "placeholder-only") {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' undoToken must remain placeholder-only in this slice"
     }
@@ -3808,7 +3852,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {
         Write-Error "engine/agent/manifest.json run-validation-recipe must not expose a ready apply mode"
     }
-    $runnerScript = Assert-Exists "tools/run-validation-recipe.ps1"
+    $runnerScript = Resolve-RequiredAgentPath "tools/run-validation-recipe.ps1"
     $runnerText = Get-Content -LiteralPath $runnerScript -Raw
     Assert-ContainsText $runnerText "Get-ValidationRecipeCommandPlan" "tools/run-validation-recipe.ps1"
     Assert-ContainsText $runnerText "Invoke-ValidationRecipeCommandPlan" "tools/run-validation-recipe.ps1"
@@ -3834,7 +3878,7 @@ foreach ($commandId in $expectedCommandSurfaceIds) {
 
 $authoringSurfaceIds = @{}
 foreach ($authoringSurface in $productionLoop.authoringSurfaces) {
-    Assert-JsonProperties $authoringSurface @("id", "status", "owner", "notes") "engine/agent/manifest.json aiOperableProductionLoop authoringSurfaces"
+    Assert-JsonProperty $authoringSurface @("id", "status", "owner", "notes") "engine/agent/manifest.json aiOperableProductionLoop authoringSurfaces"
     if ($authoringSurfaceIds.ContainsKey($authoringSurface.id)) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface id is duplicated: $($authoringSurface.id)"
     }
@@ -3902,7 +3946,7 @@ $requiredProductionGapIds = @(
 )
 $productionGapIds = @{}
 foreach ($gap in $productionLoop.unsupportedProductionGaps) {
-    Assert-JsonProperties $gap @("id", "oneDotZeroCloseoutTier", "status", "requiredBeforeReadyClaim", "notes") "engine/agent/manifest.json aiOperableProductionLoop unsupportedProductionGaps"
+    Assert-JsonProperty $gap @("id", "oneDotZeroCloseoutTier", "status", "requiredBeforeReadyClaim", "notes") "engine/agent/manifest.json aiOperableProductionLoop unsupportedProductionGaps"
     $productionGapIds[$gap.id] = $true
     if ($gap.status -eq "ready") {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop unsupported gap '$($gap.id)' must not be ready"
@@ -3961,7 +4005,7 @@ foreach ($check in @(
         )
     }
 )) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     foreach ($needle in $check.Needles) {
         Assert-ContainsText $fileText $needle "$($check.Path) asset identity reference cleanup evidence"
     }
@@ -4122,7 +4166,7 @@ foreach ($check in @(
         )
     }
 )) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     foreach ($needle in $check.Needles) {
         Assert-ContainsText $fileText $needle "$($check.Path) runtime resource resident package mount set evidence"
     }
@@ -4179,7 +4223,7 @@ foreach ($check in @(
         )
     }
 )) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     foreach ($needle in $check.Needles) {
         Assert-ContainsText $fileText $needle "$($check.Path) runtime resource residency hints execution evidence"
     }
@@ -4640,7 +4684,7 @@ foreach ($field in @("entrypoint", "currentStatus", "currentCapabilities", "work
     if (-not $manifest.documentationPolicy.entrypoints.PSObject.Properties.Name.Contains($field)) {
         Write-Error "engine/agent/manifest.json documentationPolicy.entrypoints missing required field: $field"
     }
-    Assert-Exists $manifest.documentationPolicy.entrypoints.$field | Out-Null
+    Resolve-RequiredAgentPath $manifest.documentationPolicy.entrypoints.$field | Out-Null
 }
 if ($manifest.documentationPolicy.preferredMcp -ne "context7") {
     Write-Error "engine/agent/manifest.json documentationPolicy.preferredMcp must be context7"
@@ -5070,30 +5114,30 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFile
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "save_project_bundle" "editor project native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "Broader editor native save/open dialogs outside Profiler, Scene, Prefab Variant, and Project" "editor project native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "native handles" "editor project native dialog guidance"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw) "author_cooked_ui_atlas_metadata" "MK_tools ui atlas tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw) "verify_cooked_ui_atlas_package_metadata" "MK_tools ui atlas tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw) "plan_cooked_ui_atlas_package_update" "MK_tools ui atlas tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw) "apply_cooked_ui_atlas_package_update" "MK_tools ui atlas tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw) "PackedUiAtlasAuthoringDesc" "MK_tools ui atlas tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw) "author_packed_ui_atlas_from_decoded_images" "MK_tools ui atlas tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw) "plan_packed_ui_atlas_package_update" "MK_tools ui atlas tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw) "apply_packed_ui_atlas_package_update" "MK_tools ui atlas tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/gltf_morph_animation_import.hpp") -Raw) "import_gltf_morph_mesh_cpu_primitive" "MK_tools gltf morph import public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/gltf_morph_animation_import.hpp") -Raw) "import_gltf_morph_weights_animation_float_clip" "MK_tools gltf morph import public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") -Raw) "import_gltf_node_transform_animation_tracks" "MK_tools gltf node animation import public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") -Raw) "GltfNodeTransformAnimationTrack3d" "MK_tools gltf node animation import public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") -Raw) "import_gltf_node_transform_animation_tracks_3d" "MK_tools gltf node animation import public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") -Raw) "import_gltf_node_transform_animation_float_clip" "MK_tools gltf node animation import public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") -Raw) "import_gltf_node_transform_animation_binding_source" "MK_tools gltf node animation import public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/gltf/CMakeLists.txt") -Raw) "gltf_node_animation_import.cpp" "MK_tools gltf CMake source list"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/morph_mesh_cpu_source_bridge.hpp") -Raw) "morph_mesh_cpu_source_document_from_animation_desc" "MK_tools morph mesh CPU source bridge public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/material_tool.hpp") -Raw) "plan_material_instance_package_update" "MK_tools material tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/material_tool.hpp") -Raw) "apply_material_instance_package_update" "MK_tools material tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/material_tool.hpp") -Raw) "plan_material_graph_package_update" "MK_tools material tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/material_tool.hpp") -Raw) "apply_material_graph_package_update" "MK_tools material tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/scene_tool.hpp") -Raw) "plan_scene_package_update" "MK_tools scene tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/scene_tool.hpp") -Raw) "apply_scene_package_update" "MK_tools scene tool public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/assets/include/mirakana/assets/ui_atlas_metadata.hpp") -Raw) "GameEngine.UiAtlas.v1" "MK_assets ui atlas metadata public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") "author_cooked_ui_atlas_metadata" "MK_tools ui atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") "verify_cooked_ui_atlas_package_metadata" "MK_tools ui atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") "plan_cooked_ui_atlas_package_update" "MK_tools ui atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") "apply_cooked_ui_atlas_package_update" "MK_tools ui atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") "PackedUiAtlasAuthoringDesc" "MK_tools ui atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") "author_packed_ui_atlas_from_decoded_images" "MK_tools ui atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") "plan_packed_ui_atlas_package_update" "MK_tools ui atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") "apply_packed_ui_atlas_package_update" "MK_tools ui atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/gltf_morph_animation_import.hpp") "import_gltf_morph_mesh_cpu_primitive" "MK_tools gltf morph import public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/gltf_morph_animation_import.hpp") "import_gltf_morph_weights_animation_float_clip" "MK_tools gltf morph import public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") "import_gltf_node_transform_animation_tracks" "MK_tools gltf node animation import public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") "GltfNodeTransformAnimationTrack3d" "MK_tools gltf node animation import public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") "import_gltf_node_transform_animation_tracks_3d" "MK_tools gltf node animation import public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") "import_gltf_node_transform_animation_float_clip" "MK_tools gltf node animation import public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") "import_gltf_node_transform_animation_binding_source" "MK_tools gltf node animation import public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/gltf/CMakeLists.txt") "gltf_node_animation_import.cpp" "MK_tools gltf CMake source list"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/morph_mesh_cpu_source_bridge.hpp") "morph_mesh_cpu_source_document_from_animation_desc" "MK_tools morph mesh CPU source bridge public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "plan_material_instance_package_update" "MK_tools material tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "apply_material_instance_package_update" "MK_tools material tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "plan_material_graph_package_update" "MK_tools material tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "apply_material_graph_package_update" "MK_tools material tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "plan_scene_package_update" "MK_tools scene tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "apply_scene_package_update" "MK_tools scene tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/assets/include/mirakana/assets/ui_atlas_metadata.hpp") "GameEngine.UiAtlas.v1" "MK_assets ui atlas metadata public header"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_accessibility_publish" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "publish_accessibility_payload" "runtime UI game guidance"
@@ -5141,7 +5185,7 @@ foreach ($runtimeUiGuidance in @(
     ".codex/agents/engine-architect.toml",
     ".claude/agents/engine-architect.md"
 )) {
-    $runtimeUiText = Get-Content -LiteralPath (Assert-Exists $runtimeUiGuidance) -Raw
+    $runtimeUiText = Get-AgentSurfaceText $runtimeUiGuidance
     Assert-ContainsText $runtimeUiText "MonospaceTextLayoutPolicy" $runtimeUiGuidance
     Assert-ContainsText $runtimeUiText "UiRendererGlyphAtlasPalette" $runtimeUiGuidance
     Assert-ContainsText $runtimeUiText "UiRendererImagePalette" $runtimeUiGuidance
@@ -5169,7 +5213,7 @@ foreach ($runtimeUiPngGuidance in @(
     ".codex/agents/engine-architect.toml",
     ".claude/agents/engine-architect.md"
 )) {
-    $runtimeUiPngText = Get-Content -LiteralPath (Assert-Exists $runtimeUiPngGuidance) -Raw
+    $runtimeUiPngText = Get-AgentSurfaceText $runtimeUiPngGuidance
     Assert-ContainsText $runtimeUiPngText "PngImageDecodingAdapter" $runtimeUiPngGuidance
     Assert-ContainsText $runtimeUiPngText "decode_audited_png_rgba8" $runtimeUiPngGuidance
 }
@@ -5184,21 +5228,21 @@ foreach ($runtimeUiDecodedAtlasGuidance in @(
     "docs/superpowers/plans/README.md",
     "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 )) {
-    $runtimeUiDecodedAtlasText = Get-Content -LiteralPath (Assert-Exists $runtimeUiDecodedAtlasGuidance) -Raw
+    $runtimeUiDecodedAtlasText = Get-AgentSurfaceText $runtimeUiDecodedAtlasGuidance
     Assert-ContainsText $runtimeUiDecodedAtlasText "author_packed_ui_atlas_from_decoded_images" $runtimeUiDecodedAtlasGuidance
     Assert-ContainsText $runtimeUiDecodedAtlasText "plan_packed_ui_atlas_package_update" $runtimeUiDecodedAtlasGuidance
     Assert-ContainsText $runtimeUiDecodedAtlasText "GameEngine.CookedTexture.v1" $runtimeUiDecodedAtlasGuidance
 }
-$geUiHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/ui/include/mirakana/ui/ui.hpp") -Raw
-$geUiSourceText = Get-Content -LiteralPath (Assert-Exists "engine/ui/src/ui.cpp") -Raw
-$sourceImageDecodeHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/source_image_decode.hpp") -Raw
-$sourceImageDecodeSourceText = Get-Content -LiteralPath (Assert-Exists "engine/tools/asset/source_image_decode.cpp") -Raw
-$uiAtlasToolHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw
-$uiAtlasToolSourceText = Get-Content -LiteralPath (Assert-Exists "engine/tools/asset/ui_atlas_tool.cpp") -Raw
-$toolsTestsText = Get-Content -LiteralPath (Assert-Exists "tests/unit/tools_tests.cpp") -Raw
-$uiRendererHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/ui_renderer/include/mirakana/ui_renderer/ui_renderer.hpp") -Raw
-$uiRendererSourceText = Get-Content -LiteralPath (Assert-Exists "engine/ui_renderer/src/ui_renderer.cpp") -Raw
-$uiRendererTestsText = Get-Content -LiteralPath (Assert-Exists "tests/unit/ui_renderer_tests.cpp") -Raw
+$geUiHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/ui.hpp"
+$geUiSourceText = Get-AgentSurfaceText "engine/ui/src/ui.cpp"
+$sourceImageDecodeHeaderText = Get-AgentSurfaceText "engine/tools/include/mirakana/tools/source_image_decode.hpp"
+$sourceImageDecodeSourceText = Get-AgentSurfaceText "engine/tools/asset/source_image_decode.cpp"
+$uiAtlasToolHeaderText = Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp"
+$uiAtlasToolSourceText = Get-AgentSurfaceText "engine/tools/asset/ui_atlas_tool.cpp"
+$toolsTestsText = Get-AgentSurfaceText "tests/unit/tools_tests.cpp"
+$uiRendererHeaderText = Get-AgentSurfaceText "engine/ui_renderer/include/mirakana/ui_renderer/ui_renderer.hpp"
+$uiRendererSourceText = Get-AgentSurfaceText "engine/ui_renderer/src/ui_renderer.cpp"
+$uiRendererTestsText = Get-AgentSurfaceText "tests/unit/ui_renderer_tests.cpp"
 Assert-ContainsText $geUiHeaderText "TextAdapterGlyphPlaceholder" "MK_ui public header"
 Assert-ContainsText $geUiHeaderText "std::uint32_t glyph" "MK_ui public header"
 Assert-ContainsText $geUiHeaderText "AccessibilityPublishPlan" "MK_ui public header"
@@ -5413,7 +5457,7 @@ foreach ($inputGuidance in @(
     ".codex/agents/gameplay-builder.toml",
     ".claude/agents/gameplay-builder.md"
 )) {
-    $inputText = Get-Content -LiteralPath (Assert-Exists $inputGuidance) -Raw
+    $inputText = Get-AgentSurfaceText $inputGuidance
     Assert-ContainsText $inputText "RuntimeInputStateView" $inputGuidance
     Assert-ContainsText $inputText "RuntimeInputContextStack" $inputGuidance
     Assert-ContainsText $inputText "bind_gamepad_button" $inputGuidance
@@ -5435,7 +5479,7 @@ foreach ($inputRebindingGuidance in @(
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
-    $inputRebindingText = Get-Content -LiteralPath (Assert-Exists $inputRebindingGuidance) -Raw
+    $inputRebindingText = Get-AgentSurfaceText $inputRebindingGuidance
     Assert-ContainsText $inputRebindingText "GameEngine.RuntimeInputRebindingProfile.v1" $inputRebindingGuidance
     Assert-ContainsText $inputRebindingText "RuntimeInputRebindingProfile" $inputRebindingGuidance
     Assert-ContainsText $inputRebindingText "apply_runtime_input_rebinding_profile" $inputRebindingGuidance
@@ -5472,7 +5516,7 @@ foreach ($audioGuidance in @(
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
-    $audioText = Get-Content -LiteralPath (Assert-Exists $audioGuidance) -Raw
+    $audioText = Get-AgentSurfaceText $audioGuidance
     Assert-ContainsText $audioText "AudioDeviceStreamRequest" $audioGuidance
     Assert-ContainsText $audioText "AudioDeviceStreamPlan" $audioGuidance
     Assert-ContainsText $audioText "plan_audio_device_stream" $audioGuidance
@@ -5533,7 +5577,7 @@ foreach ($navigationGuidance in @(
     ".codex/agents/gameplay-builder.toml",
     ".claude/agents/gameplay-builder.md"
 )) {
-    $navigationText = Get-Content -LiteralPath (Assert-Exists $navigationGuidance) -Raw
+    $navigationText = Get-AgentSurfaceText $navigationGuidance
     Assert-ContainsText $navigationText "validate_navigation_grid_path" $navigationGuidance
     Assert-ContainsText $navigationText "replan_navigation_grid_path" $navigationGuidance
     Assert-ContainsText $navigationText "calculate_navigation_local_avoidance" $navigationGuidance
@@ -5596,7 +5640,7 @@ foreach ($physicsGuidance in @(
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
-    $physicsText = Get-Content -LiteralPath (Assert-Exists $physicsGuidance) -Raw
+    $physicsText = Get-AgentSurfaceText $physicsGuidance
     Assert-ContainsText $physicsText "move_physics_character_controller_3d" $physicsGuidance
     Assert-ContainsText $physicsText "build_physics_world_3d_from_authored_collision_scene" $physicsGuidance
     Assert-ContainsText $physicsText "PhysicsWorld3D::exact_shape_sweep" $physicsGuidance
@@ -5622,7 +5666,7 @@ foreach ($physicsUnsupportedGuidance in @(
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
-    $physicsText = Get-Content -LiteralPath (Assert-Exists $physicsUnsupportedGuidance) -Raw
+    $physicsText = Get-AgentSurfaceText $physicsUnsupportedGuidance
     Assert-ContainsText $physicsText "dynamic-vs-dynamic TOI" $physicsUnsupportedGuidance
     Assert-ContainsText $physicsText "rotational CCD" $physicsUnsupportedGuidance
     Assert-ContainsText $physicsText "2D CCD" $physicsUnsupportedGuidance
@@ -5675,7 +5719,7 @@ foreach ($aiApiGuidance in @(
     ".codex/agents/gameplay-builder.toml",
     ".claude/agents/gameplay-builder.md"
 )) {
-    $aiApiText = Get-Content -LiteralPath (Assert-Exists $aiApiGuidance) -Raw
+    $aiApiText = Get-AgentSurfaceText $aiApiGuidance
     Assert-ContainsText $aiApiText "BehaviorTreeBlackboard" $aiApiGuidance
     Assert-ContainsText $aiApiText "BehaviorTreeEvaluationContext" $aiApiGuidance
     Assert-ContainsText $aiApiText "AiPerceptionAgent2D" $aiApiGuidance
@@ -5689,7 +5733,7 @@ foreach ($aiStatusGuidance in @(
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md",
     "engine/agent/manifest.json"
 )) {
-    $aiStatusText = Get-Content -LiteralPath (Assert-Exists $aiStatusGuidance) -Raw
+    $aiStatusText = Get-AgentSurfaceText $aiStatusGuidance
     Assert-ContainsText $aiStatusText "Behavior Tree Blackboard Conditions v0" $aiStatusGuidance
     Assert-ContainsText $aiStatusText "AI Perception Services v1" $aiStatusGuidance
     Assert-ContainsText $aiStatusText "persistent blackboard" $aiStatusGuidance
@@ -5699,10 +5743,10 @@ foreach ($sampleAiGuidance in @(
     "games/sample_ai_navigation/README.md",
     "games/sample_ai_navigation/game.agent.json"
 )) {
-    $sampleAiText = Get-Content -LiteralPath (Assert-Exists $sampleAiGuidance) -Raw
+    $sampleAiText = Get-AgentSurfaceText $sampleAiGuidance
     Assert-ContainsText $sampleAiText "blackboard" $sampleAiGuidance
 }
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "games/sample_ai_navigation/game.agent.json") -Raw) "behavior-tree-blackboard-perception-services-v1" "sample_ai_navigation manifest"
+Assert-ContainsText (Get-AgentSurfaceText "games/sample_ai_navigation/game.agent.json") "behavior-tree-blackboard-perception-services-v1" "sample_ai_navigation manifest"
 
 foreach ($sampleGameplayGuidance in @(
     "games/sample_gameplay_foundation/main.cpp",
@@ -5713,7 +5757,7 @@ foreach ($sampleGameplayGuidance in @(
     "docs/ai-game-development.md",
     "engine/agent/manifest.json"
 )) {
-    $sampleGameplayText = Get-Content -LiteralPath (Assert-Exists $sampleGameplayGuidance) -Raw
+    $sampleGameplayText = Get-AgentSurfaceText $sampleGameplayGuidance
     Assert-ContainsText $sampleGameplayText "sample_gameplay_foundation" $sampleGameplayGuidance
     Assert-ContainsText $sampleGameplayText "build_physics_world_3d_from_authored_collision_scene" $sampleGameplayGuidance
     Assert-ContainsText $sampleGameplayText "move_physics_character_controller_3d" $sampleGameplayGuidance
@@ -5722,8 +5766,8 @@ foreach ($sampleGameplayGuidance in @(
     Assert-ContainsText $sampleGameplayText "write_ai_perception_blackboard" $sampleGameplayGuidance
     Assert-ContainsText $sampleGameplayText "render_audio_device_stream_interleaved_float" $sampleGameplayGuidance
 }
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "games/sample_gameplay_foundation/game.agent.json") -Raw) "headless runtime systems composition proof" "sample_gameplay_foundation manifest"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "games/sample_gameplay_foundation/README.md") -Raw) "source-tree headless composition evidence only" "sample_gameplay_foundation README"
+Assert-ContainsText (Get-AgentSurfaceText "games/sample_gameplay_foundation/game.agent.json") "headless runtime systems composition proof" "sample_gameplay_foundation manifest"
+Assert-ContainsText (Get-AgentSurfaceText "games/sample_gameplay_foundation/README.md") "source-tree headless composition evidence only" "sample_gameplay_foundation README"
 
 $geAnimationModule = @($manifest.modules | Where-Object { $_.name -eq "MK_animation" })
 if ($geAnimationModule.Count -ne 1) {
@@ -5742,8 +5786,8 @@ if ($geMathPublicHeaders -notcontains "engine/math/include/mirakana/math/quat.hp
 }
 Assert-ContainsText ([string]$geMathModule[0].purpose) "unit quaternions" "MK_math module purpose"
 Assert-ContainsText ([string]$geMathModule[0].purpose) "Mat4::rotation_quat" "MK_math module purpose"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/math/include/mirakana/math/quat.hpp") -Raw) "struct Quat" "MK_math quaternion public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/math/include/mirakana/math/mat4.hpp") -Raw) "rotation_quat" "MK_math Mat4 public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/math/include/mirakana/math/quat.hpp") "struct Quat" "MK_math quaternion public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/math/include/mirakana/math/mat4.hpp") "rotation_quat" "MK_math Mat4 public header"
 Assert-ContainsText ([string]$geAnimationModule[0].purpose) "AnimationCpuSkinningDesc" "MK_animation module purpose"
 Assert-ContainsText ([string]$geAnimationModule[0].purpose) "AnimationMorphMeshCpuDesc" "MK_animation module purpose"
 Assert-ContainsText ([string]$geAnimationModule[0].purpose) "AnimationMorphTargetCpuDesc" "MK_animation module purpose"
@@ -5770,20 +5814,20 @@ $geAnimationPublicHeaders = @($geAnimationModule[0].publicHeaders)
 if ($geAnimationPublicHeaders -notcontains "engine/animation/include/mirakana/animation/chain_ik.hpp") {
     Write-Error "engine/agent/manifest.json MK_animation publicHeaders must include chain_ik.hpp"
 }
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/keyframe_animation.hpp") -Raw) "apply_float_animation_samples_to_transform3d" "MK_animation keyframe animation public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/keyframe_animation.hpp") -Raw) "QuatKeyframe" "MK_animation keyframe animation public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/keyframe_animation.hpp") -Raw) "sample_quat_keyframes" "MK_animation keyframe animation public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/chain_ik.hpp") -Raw) "AnimationFabrikIk3dDesc" "MK_animation chain IK public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/chain_ik.hpp") -Raw) "solve_animation_fabrik_ik_3d_chain" "MK_animation chain IK public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/chain_ik.hpp") -Raw) "apply_animation_fabrik_ik_3d_solution_to_pose" "MK_animation chain IK public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/chain_ik.hpp") -Raw) "AnimationIkLocalRotationLimit3d" "MK_animation chain IK public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/chain_ik.hpp") -Raw) "apply_animation_local_rotation_limits_3d" "MK_animation chain IK public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/two_bone_ik.hpp") -Raw) "AnimationTwoBoneIk3dDesc" "MK_animation two bone IK public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/two_bone_ik.hpp") -Raw) "solve_animation_two_bone_ik_3d_orientation" "MK_animation two bone IK public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/skeleton.hpp") -Raw) "AnimationSkeleton3dDesc" "MK_animation skeleton public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/skeleton.hpp") -Raw) "build_animation_model_pose_3d" "MK_animation skeleton public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/skeleton.hpp") -Raw) "AnimationJointTrack3dDesc" "MK_animation skeleton public header"
-Assert-ContainsText (Get-Content -LiteralPath (Assert-Exists "engine/animation/include/mirakana/animation/skeleton.hpp") -Raw) "sample_animation_local_pose_3d" "MK_animation skeleton public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/keyframe_animation.hpp") "apply_float_animation_samples_to_transform3d" "MK_animation keyframe animation public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/keyframe_animation.hpp") "QuatKeyframe" "MK_animation keyframe animation public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/keyframe_animation.hpp") "sample_quat_keyframes" "MK_animation keyframe animation public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/chain_ik.hpp") "AnimationFabrikIk3dDesc" "MK_animation chain IK public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/chain_ik.hpp") "solve_animation_fabrik_ik_3d_chain" "MK_animation chain IK public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/chain_ik.hpp") "apply_animation_fabrik_ik_3d_solution_to_pose" "MK_animation chain IK public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/chain_ik.hpp") "AnimationIkLocalRotationLimit3d" "MK_animation chain IK public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/chain_ik.hpp") "apply_animation_local_rotation_limits_3d" "MK_animation chain IK public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/two_bone_ik.hpp") "AnimationTwoBoneIk3dDesc" "MK_animation two bone IK public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/two_bone_ik.hpp") "solve_animation_two_bone_ik_3d_orientation" "MK_animation two bone IK public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/skeleton.hpp") "AnimationSkeleton3dDesc" "MK_animation skeleton public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/skeleton.hpp") "build_animation_model_pose_3d" "MK_animation skeleton public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/skeleton.hpp") "AnimationJointTrack3dDesc" "MK_animation skeleton public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/animation/include/mirakana/animation/skeleton.hpp") "sample_animation_local_pose_3d" "MK_animation skeleton public header"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAnimation) "skin_animation_vertices_cpu" "animation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAnimation) "make_float_animation_tracks_from_f32_bytes" "animation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAnimation) "apply_float_animation_samples_to_transform3d" "animation game guidance"
@@ -5816,7 +5860,7 @@ foreach ($animationGuidance in @(
     ".codex/agents/gameplay-builder.toml",
     ".claude/agents/gameplay-builder.md"
 )) {
-    $animationText = Get-Content -LiteralPath (Assert-Exists $animationGuidance) -Raw
+    $animationText = Get-AgentSurfaceText $animationGuidance
     Assert-ContainsText $animationText "Animation CPU Skinning" $animationGuidance
 }
 foreach ($animationApiGuidance in @(
@@ -5828,7 +5872,7 @@ foreach ($animationApiGuidance in @(
     ".codex/agents/gameplay-builder.toml",
     ".claude/agents/gameplay-builder.md"
 )) {
-    $animationApiText = Get-Content -LiteralPath (Assert-Exists $animationApiGuidance) -Raw
+    $animationApiText = Get-AgentSurfaceText $animationApiGuidance
     Assert-ContainsText $animationApiText "skin_animation_vertices_cpu" $animationApiGuidance
     Assert-ContainsText $animationApiText "solve_animation_two_bone_ik_3d_orientation" $animationApiGuidance
     Assert-ContainsText $animationApiText "solve_animation_fabrik_ik_3d_chain" $animationApiGuidance
@@ -5894,7 +5938,7 @@ foreach ($depthGuidance in @(
     ".codex/agents/rendering-auditor.toml",
     ".claude/agents/rendering-auditor.md"
 )) {
-    $depthText = Get-Content -LiteralPath (Assert-Exists $depthGuidance) -Raw
+    $depthText = Get-AgentSurfaceText $depthGuidance
     Assert-ContainsText $depthText "RHI Depth Attachment Contract v0" $depthGuidance
 }
 foreach ($sampledDepthGuidance in @(
@@ -5908,7 +5952,7 @@ foreach ($sampledDepthGuidance in @(
     ".codex/agents/rendering-auditor.toml",
     ".claude/agents/rendering-auditor.md"
 )) {
-    $sampledDepthText = Get-Content -LiteralPath (Assert-Exists $sampledDepthGuidance) -Raw
+    $sampledDepthText = Get-AgentSurfaceText $sampledDepthGuidance
     Assert-ContainsText $sampledDepthText "MK_VULKAN_TEST_DEPTH_VERTEX_SPV" $sampledDepthGuidance
     Assert-ContainsText $sampledDepthText "MK_VULKAN_TEST_DEPTH_FRAGMENT_SPV" $sampledDepthGuidance
     Assert-ContainsText $sampledDepthText "MK_VULKAN_TEST_DEPTH_SAMPLE_VERTEX_SPV" $sampledDepthGuidance
@@ -5927,11 +5971,11 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentVulkan) "MK_VULKA
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentVulkan) "create_runtime_compute_pipeline" "Vulkan game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentVulkan) "record_runtime_compute_dispatch" "Vulkan game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentVulkanRuntimeOwners) "VulkanRuntimeComputePipeline" "Vulkan runtime owner guidance"
-$vulkanBackendSource = Get-Content -LiteralPath (Assert-Exists "engine/rhi/vulkan/src/vulkan_backend.cpp") -Raw
+$vulkanBackendSource = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_backend.cpp"
 Assert-ContainsText $vulkanBackendSource "refresh_surface_probe_queue_family_snapshots" "Vulkan surface support implementation"
 Assert-ContainsText $vulkanBackendSource "same native instance handles" "Vulkan surface support implementation"
-$rhiPostprocessSource = Get-Content -LiteralPath (Assert-Exists "engine/renderer/src/rhi_postprocess_frame_renderer.cpp") -Raw
-$rhiDirectionalShadowSource = Get-Content -LiteralPath (Assert-Exists "engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp") -Raw
+$rhiPostprocessSource = Get-AgentSurfaceText "engine/renderer/src/rhi_postprocess_frame_renderer.cpp"
+$rhiDirectionalShadowSource = Get-AgentSurfaceText "engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp"
 Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`r`n    require_active_frame();`r`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
 Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`n    require_active_frame();`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
 Assert-DoesNotContainText $rhiDirectionalShadowSource "pending_sprites_" "RHI directional shadow sprite submission"
@@ -5946,7 +5990,7 @@ foreach ($postprocessDepthGuidance in @(
     ".codex/agents/rendering-auditor.toml",
     ".claude/agents/rendering-auditor.md"
 )) {
-    $postprocessDepthText = Get-Content -LiteralPath (Assert-Exists $postprocessDepthGuidance) -Raw
+    $postprocessDepthText = Get-AgentSurfaceText $postprocessDepthGuidance
     Assert-ContainsText $postprocessDepthText "Postprocess Depth Input Readback Foundation v0" $postprocessDepthGuidance
     Assert-ContainsText $postprocessDepthText "MK_VULKAN_TEST_POSTPROCESS_DEPTH_VERTEX_SPV" $postprocessDepthGuidance
     Assert-ContainsText $postprocessDepthText "MK_VULKAN_TEST_POSTPROCESS_DEPTH_FRAGMENT_SPV" $postprocessDepthGuidance
@@ -5972,7 +6016,7 @@ foreach ($postprocessDepthReadyGuidance in @(
     ".claude/agents/rendering-auditor.md",
     "games/sample_desktop_runtime_game/README.md"
 )) {
-    $postprocessDepthReadyText = Get-Content -LiteralPath (Assert-Exists $postprocessDepthReadyGuidance) -Raw
+    $postprocessDepthReadyText = Get-AgentSurfaceText $postprocessDepthReadyGuidance
     Assert-ContainsText $postprocessDepthReadyText "postprocess_depth_input_ready" $postprocessDepthReadyGuidance
 }
 foreach ($postprocessDepthPackageCommandGuidance in @(
@@ -5982,7 +6026,7 @@ foreach ($postprocessDepthPackageCommandGuidance in @(
     "games/sample_desktop_runtime_game/README.md",
     "tools/validate-installed-desktop-runtime.ps1"
 )) {
-    $postprocessDepthPackageCommandText = Get-Content -LiteralPath (Assert-Exists $postprocessDepthPackageCommandGuidance) -Raw
+    $postprocessDepthPackageCommandText = Get-AgentSurfaceText $postprocessDepthPackageCommandGuidance
     Assert-ContainsText $postprocessDepthPackageCommandText "--require-postprocess-depth-input" $postprocessDepthPackageCommandGuidance
 }
 foreach ($gameDevelopmentDepthGuidance in @(
@@ -5991,7 +6035,7 @@ foreach ($gameDevelopmentDepthGuidance in @(
     ".codex/agents/gameplay-builder.toml",
     ".claude/agents/gameplay-builder.md"
 )) {
-    $gameDevelopmentDepthText = Get-Content -LiteralPath (Assert-Exists $gameDevelopmentDepthGuidance) -Raw
+    $gameDevelopmentDepthText = Get-AgentSurfaceText $gameDevelopmentDepthGuidance
     Assert-ContainsText $gameDevelopmentDepthText "generated color-postprocess scaffold" $gameDevelopmentDepthGuidance
     Assert-ContainsText $gameDevelopmentDepthText "postprocess_depth_input_ready" $gameDevelopmentDepthGuidance
 }
@@ -6006,7 +6050,7 @@ foreach ($shadowReceiverGuidance in @(
     ".codex/agents/rendering-auditor.toml",
     ".claude/agents/rendering-auditor.md"
 )) {
-    $shadowReceiverText = Get-Content -LiteralPath (Assert-Exists $shadowReceiverGuidance) -Raw
+    $shadowReceiverText = Get-AgentSurfaceText $shadowReceiverGuidance
     Assert-ContainsText $shadowReceiverText "MK_VULKAN_TEST_SHADOW_RECEIVER_VERTEX_SPV" $shadowReceiverGuidance
     Assert-ContainsText $shadowReceiverText "MK_VULKAN_TEST_SHADOW_RECEIVER_FRAGMENT_SPV" $shadowReceiverGuidance
     Assert-ContainsText $shadowReceiverText "shadow receiver readback" $shadowReceiverGuidance
@@ -6036,7 +6080,7 @@ foreach ($directionalShadowPackageGuidance in @(
     "games/sample_desktop_runtime_game/README.md",
     "tools/validate-installed-desktop-runtime.ps1"
 )) {
-    $directionalShadowPackageText = Get-Content -LiteralPath (Assert-Exists $directionalShadowPackageGuidance) -Raw
+    $directionalShadowPackageText = Get-AgentSurfaceText $directionalShadowPackageGuidance
     Assert-ContainsText $directionalShadowPackageText "--require-directional-shadow" $directionalShadowPackageGuidance
     Assert-ContainsText $directionalShadowPackageText "--require-directional-shadow-filtering" $directionalShadowPackageGuidance
 }
@@ -6046,12 +6090,12 @@ foreach ($rendererQualityPackageGuidance in @(
     "games/sample_desktop_runtime_game/README.md",
     "tools/validate-installed-desktop-runtime.ps1"
 )) {
-    $rendererQualityPackageText = Get-Content -LiteralPath (Assert-Exists $rendererQualityPackageGuidance) -Raw
+    $rendererQualityPackageText = Get-AgentSurfaceText $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "--require-renderer-quality-gates" $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "renderer_quality_status" $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "renderer_quality_framegraph_execution_budget_ok" $rendererQualityPackageGuidance
 }
-$rendererQualityCMakeText = Get-Content -LiteralPath (Assert-Exists "games/CMakeLists.txt") -Raw
+$rendererQualityCMakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
 Assert-ContainsText $rendererQualityCMakeText "--require-renderer-quality-gates" "games/CMakeLists.txt"
 foreach ($directionalShadowStatusGuidance in @(
     "engine/agent/manifest.json",
@@ -6059,20 +6103,20 @@ foreach ($directionalShadowStatusGuidance in @(
     "games/sample_desktop_runtime_game/README.md",
     "tools/validate-installed-desktop-runtime.ps1"
 )) {
-    $directionalShadowStatusText = Get-Content -LiteralPath (Assert-Exists $directionalShadowStatusGuidance) -Raw
+    $directionalShadowStatusText = Get-AgentSurfaceText $directionalShadowStatusGuidance
     Assert-ContainsText $directionalShadowStatusText "directional_shadow_status" $directionalShadowStatusGuidance
     Assert-ContainsText $directionalShadowStatusText "directional_shadow_ready" $directionalShadowStatusGuidance
     Assert-ContainsText $directionalShadowStatusText "directional_shadow_filter_mode" $directionalShadowStatusGuidance
     Assert-ContainsText $directionalShadowStatusText "directional_shadow_filter_taps" $directionalShadowStatusGuidance
     Assert-ContainsText $directionalShadowStatusText "directional_shadow_filter_radius_texels" $directionalShadowStatusGuidance
 }
-$installedDesktopRuntimeValidation = Get-Content -LiteralPath (Assert-Exists "tools/validate-installed-desktop-runtime.ps1") -Raw
+$installedDesktopRuntimeValidation = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedDesktopRuntimeValidation "did not emit the required" "installed desktop runtime validation"
 foreach ($directionalShadowGameDevelopmentGuidance in @(
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
-    $directionalShadowGameDevelopmentText = Get-Content -LiteralPath (Assert-Exists $directionalShadowGameDevelopmentGuidance) -Raw
+    $directionalShadowGameDevelopmentText = Get-AgentSurfaceText $directionalShadowGameDevelopmentGuidance
     Assert-ContainsText $directionalShadowGameDevelopmentText "--require-directional-shadow" $directionalShadowGameDevelopmentGuidance
     Assert-ContainsText $directionalShadowGameDevelopmentText "--require-directional-shadow-filtering" $directionalShadowGameDevelopmentGuidance
     Assert-ContainsText $directionalShadowGameDevelopmentText "directional_shadow_ready" $directionalShadowGameDevelopmentGuidance
@@ -6095,7 +6139,7 @@ foreach ($stableLightSpaceGuidance in @(
     ".claude/agents/gameplay-builder.md",
     "games/sample_desktop_runtime_game/README.md"
 )) {
-    $stableLightSpaceText = Get-Content -LiteralPath (Assert-Exists $stableLightSpaceGuidance) -Raw
+    $stableLightSpaceText = Get-AgentSurfaceText $stableLightSpaceGuidance
     Assert-ContainsText $stableLightSpaceText "Stable Directional Light-Space Policy v0" $stableLightSpaceGuidance
 }
 foreach ($stableLightSpaceApiGuidance in @(
@@ -6113,7 +6157,7 @@ foreach ($stableLightSpaceApiGuidance in @(
     ".codex/agents/gameplay-builder.toml",
     ".claude/agents/gameplay-builder.md"
 )) {
-    $stableLightSpaceApiText = Get-Content -LiteralPath (Assert-Exists $stableLightSpaceApiGuidance) -Raw
+    $stableLightSpaceApiText = Get-AgentSurfaceText $stableLightSpaceApiGuidance
     Assert-ContainsText $stableLightSpaceApiText "DirectionalShadowLightSpacePlan" $stableLightSpaceApiGuidance
 }
 
@@ -6136,23 +6180,23 @@ foreach ($field in @(
     if (-not $manifest.aiDrivenGameWorkflow.PSObject.Properties.Name.Contains($field)) {
         Write-Error "engine/agent/manifest.json aiDrivenGameWorkflow missing required sample field: $field"
     }
-    Assert-Exists $manifest.aiDrivenGameWorkflow.$field | Out-Null
+    Resolve-RequiredAgentPath $manifest.aiDrivenGameWorkflow.$field | Out-Null
 }
 
-Assert-Exists "games/CMakeLists.txt" | Out-Null
-Assert-Exists "docs/README.md" | Out-Null
-Assert-Exists "docs/current-capabilities.md" | Out-Null
-Assert-Exists "docs/roadmap.md" | Out-Null
-Assert-Exists "docs/workflows.md" | Out-Null
-Assert-Exists "games/sample_headless/game.agent.json" | Out-Null
-Assert-Exists "docs/ai-game-development.md" | Out-Null
-Assert-Exists "docs/superpowers/plans/README.md" | Out-Null
-Assert-Exists "docs/specs/README.md" | Out-Null
-Assert-Exists "docs/specs/game-template.md" | Out-Null
-Assert-Exists "docs/specs/generated-game-validation-scenarios.md" | Out-Null
-Assert-Exists "docs/specs/game-prompt-pack.md" | Out-Null
+Resolve-RequiredAgentPath "games/CMakeLists.txt" | Out-Null
+Resolve-RequiredAgentPath "docs/README.md" | Out-Null
+Resolve-RequiredAgentPath "docs/current-capabilities.md" | Out-Null
+Resolve-RequiredAgentPath "docs/roadmap.md" | Out-Null
+Resolve-RequiredAgentPath "docs/workflows.md" | Out-Null
+Resolve-RequiredAgentPath "games/sample_headless/game.agent.json" | Out-Null
+Resolve-RequiredAgentPath "docs/ai-game-development.md" | Out-Null
+Resolve-RequiredAgentPath "docs/superpowers/plans/README.md" | Out-Null
+Resolve-RequiredAgentPath "docs/specs/README.md" | Out-Null
+Resolve-RequiredAgentPath "docs/specs/game-template.md" | Out-Null
+Resolve-RequiredAgentPath "docs/specs/generated-game-validation-scenarios.md" | Out-Null
+Resolve-RequiredAgentPath "docs/specs/game-prompt-pack.md" | Out-Null
 
-$editorShell = Get-Content -LiteralPath (Assert-Exists "editor/src/main.cpp") -Raw
+$editorShell = Get-AgentSurfaceText "editor/src/main.cpp"
 $editorSceneAuthoringNeedles = @(
     '#include "mirakana/editor/scene_authoring.hpp"',
     "mirakana::editor::SceneAuthoringDocument",
@@ -6234,7 +6278,7 @@ $editorPackageRegistrationDraftChecks = @(
     }
 )
 foreach ($check in $editorPackageRegistrationDraftChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -6320,7 +6364,7 @@ $editorPlaytestReviewChecks = @(
     }
 )
 foreach ($check in $editorPlaytestReviewChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -6416,7 +6460,7 @@ $editorPlayInEditorIsolationChecks = @(
     }
 )
 foreach ($check in $editorPlayInEditorIsolationChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -6566,7 +6610,7 @@ $editorRuntimeHostPlaytestLaunchChecks = @(
     }
 )
 foreach ($check in $editorRuntimeHostPlaytestLaunchChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -6705,7 +6749,7 @@ $editorInProcessRuntimeHostReviewChecks = @(
     }
 )
 foreach ($check in $editorInProcessRuntimeHostReviewChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -7056,7 +7100,7 @@ $editorGameModuleDriverLoadChecks = @(
     }
 )
 foreach ($check in $editorGameModuleDriverLoadChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -7187,7 +7231,7 @@ $editorRuntimeScenePackageValidationExecutionChecks = @(
     }
 )
 foreach ($check in $editorRuntimeScenePackageValidationExecutionChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -7860,7 +7904,7 @@ $editorProfilerTraceExportChecks = @(
     }
 )
 foreach ($check in $editorProfilerTraceExportChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -7960,7 +8004,7 @@ $editorResourcePanelChecks = @(
     }
 )
 foreach ($check in $editorResourcePanelChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -8093,7 +8137,7 @@ $editorResourceCaptureRequestChecks = @(
     }
 )
 foreach ($check in $editorResourceCaptureRequestChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -8250,7 +8294,7 @@ $editorResourceCaptureExecutionChecks = @(
     }
 )
 foreach ($check in $editorResourceCaptureExecutionChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -8418,7 +8462,7 @@ $editorAiCommandPanelChecks = @(
     }
 )
 foreach ($check in $editorAiCommandPanelChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -8570,7 +8614,7 @@ $editorAiEvidenceImportReviewChecks = @(
     }
 )
 foreach ($check in $editorAiEvidenceImportReviewChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -8765,7 +8809,7 @@ $editorAiReviewedValidationExecutionChecks = @(
     }
 )
 foreach ($check in $editorAiReviewedValidationExecutionChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -8943,7 +8987,7 @@ $editorAiReviewedValidationBatchExecutionChecks = @(
     }
 )
 foreach ($check in $editorAiReviewedValidationBatchExecutionChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -9176,7 +9220,7 @@ $editorContentBrowserImportPanelChecks = @(
     }
 )
 foreach ($check in $editorContentBrowserImportPanelChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -9318,7 +9362,7 @@ $editorContentBrowserImportNativeDialogChecks = @(
     }
 )
 foreach ($check in $editorContentBrowserImportNativeDialogChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -9465,7 +9509,7 @@ $editorContentBrowserImportExternalCopyReviewChecks = @(
     }
 )
 foreach ($check in $editorContentBrowserImportExternalCopyReviewChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -9563,7 +9607,7 @@ $editorContentBrowserImportCodecAdapterCompletedPlanChecks = @(
     }
 )
 foreach ($check in $editorContentBrowserImportCodecAdapterCompletedPlanChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -9721,7 +9765,7 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
     }
 )
 foreach ($check in $ciMatrixContractCheckCompletedPlanChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -9780,7 +9824,7 @@ $cpp23ReleasePackageArtifactCiEvidenceChecks = @(
     }
 )
 foreach ($check in $cpp23ReleasePackageArtifactCiEvidenceChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10005,7 +10049,7 @@ $editorMaterialAssetPreviewPanelChecks = @(
     }
 )
 foreach ($check in $editorMaterialAssetPreviewPanelChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10253,7 +10297,7 @@ $editorInputRebindingProfilePanelChecks = @(
     }
 )
 foreach ($check in $editorInputRebindingProfilePanelChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10318,7 +10362,7 @@ $editorAiPackageDiagnosticsChecks = @(
     }
 )
 foreach ($check in $editorAiPackageDiagnosticsChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10417,7 +10461,7 @@ $editorAiValidationRecipePreflightChecks = @(
     }
 )
 foreach ($check in $editorAiValidationRecipePreflightChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10514,7 +10558,7 @@ $editorAiPlaytestReadinessReportChecks = @(
     }
 )
 foreach ($check in $editorAiPlaytestReadinessReportChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10608,7 +10652,7 @@ $editorAiPlaytestOperatorHandoffChecks = @(
     }
 )
 foreach ($check in $editorAiPlaytestOperatorHandoffChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10706,7 +10750,7 @@ $editorAiPlaytestEvidenceSummaryChecks = @(
     }
 )
 foreach ($check in $editorAiPlaytestEvidenceSummaryChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10800,7 +10844,7 @@ $editorAiPlaytestRemediationQueueChecks = @(
     }
 )
 foreach ($check in $editorAiPlaytestRemediationQueueChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10895,7 +10939,7 @@ $editorAiPlaytestRemediationHandoffChecks = @(
     }
 )
 foreach ($check in $editorAiPlaytestRemediationHandoffChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -10912,7 +10956,7 @@ if ($editorAiPlaytestOperatorWorkflowLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one editor-ai-playtest-operator-workflow review loop"
 }
 if ($editorAiPlaytestOperatorWorkflowLoop.Count -eq 1) {
-    Assert-JsonProperties $editorAiPlaytestOperatorWorkflowLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "workflowInputs", "workflowFields", "structuredReportSurface", "closeoutPolicy", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-operator-workflow"
+    Assert-JsonProperty $editorAiPlaytestOperatorWorkflowLoop[0] @("id", "status", "owner", "orderedSteps", "requiredManifestFields", "workflowInputs", "workflowFields", "structuredReportSurface", "closeoutPolicy", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-operator-workflow"
     if ($editorAiPlaytestOperatorWorkflowLoop[0].status -ne "ready") {
         Write-Error "engine/agent/manifest.json editor-ai-playtest-operator-workflow must be ready as a read-only consolidated operator workflow"
     }
@@ -10927,7 +10971,7 @@ if ($editorAiPlaytestOperatorWorkflowLoop.Count -eq 1) {
         "closeout-by-rerunning-evidence-summary"
     )
     $actualEditorAiOperatorWorkflowSteps = @($editorAiPlaytestOperatorWorkflowLoop[0].orderedSteps | ForEach-Object {
-        Assert-JsonProperties $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-playtest-operator-workflow ordered step"
+        Assert-JsonProperty $_ @("id", "surface", "status", "mutates", "executes") "engine/agent/manifest.json editor-ai-playtest-operator-workflow ordered step"
         if ($_.mutates -ne $false) {
             Write-Error "engine/agent/manifest.json editor-ai-playtest-operator-workflow step '$($_.id)' must not mutate"
         }
@@ -10954,7 +10998,7 @@ if ($editorAiPlaytestOperatorWorkflowLoop.Count -eq 1) {
             Write-Error "engine/agent/manifest.json editor-ai-playtest-operator-workflow workflowFields missing: $field"
         }
     }
-    Assert-JsonProperties $editorAiPlaytestOperatorWorkflowLoop[0].structuredReportSurface @("model", "stageFields", "closeoutFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-operator-workflow structuredReportSurface"
+    Assert-JsonProperty $editorAiPlaytestOperatorWorkflowLoop[0].structuredReportSurface @("model", "stageFields", "closeoutFields", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json editor-ai-playtest-operator-workflow structuredReportSurface"
     if ($editorAiPlaytestOperatorWorkflowLoop[0].structuredReportSurface.model -ne "EditorAiPlaytestOperatorWorkflowReportModel") {
         Write-Error "engine/agent/manifest.json editor-ai-playtest-operator-workflow structuredReportSurface.model must be EditorAiPlaytestOperatorWorkflowReportModel"
     }
@@ -11089,7 +11133,7 @@ $editorAiPlaytestOperatorWorkflowChecks = @(
     }
 )
 foreach ($check in $editorAiPlaytestOperatorWorkflowChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -11482,7 +11526,7 @@ $prefabVariantAuthoringChecks = @(
     }
 )
 foreach ($check in $prefabVariantAuthoringChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -11539,7 +11583,7 @@ $visiblePrefabVariantGuiChecks = @(
     }
 )
 foreach ($check in $visiblePrefabVariantGuiChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -11755,7 +11799,7 @@ $editorSceneNativeDialogChecks = @(
     }
 )
 foreach ($check in $editorSceneNativeDialogChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -11995,7 +12039,7 @@ $editorProjectNativeDialogChecks = @(
     }
 )
 foreach ($check in $editorProjectNativeDialogChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -12474,7 +12518,7 @@ $prefabVariantConflictReviewChecks = @(
     }
 )
 foreach ($check in $prefabVariantConflictReviewChecks) {
-    $fileText = Get-Content -LiteralPath (Assert-Exists $check.Path) -Raw
+    $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
         if (-not $fileText.Contains($needle)) {
@@ -12500,7 +12544,7 @@ Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json"
 }
 
 $sample2dManifestPath = "games/sample_2d_playable_foundation/game.agent.json"
-$sample2dManifestFullPath = Assert-Exists $sample2dManifestPath
+$sample2dManifestFullPath = Resolve-RequiredAgentPath $sample2dManifestPath
 $sample2dManifest = Get-Content -LiteralPath $sample2dManifestFullPath -Raw | ConvertFrom-Json
 if ($sample2dManifest.target -ne "sample_2d_playable_foundation") {
     Write-Error "$sample2dManifestPath target must be sample_2d_playable_foundation"
@@ -12521,7 +12565,7 @@ if (@($sample2dManifest.packagingTargets) -contains "desktop-game-runtime") {
 }
 
 $sample2dDesktopManifestPath = "games/sample_2d_desktop_runtime_package/game.agent.json"
-$sample2dDesktopManifestFullPath = Assert-Exists $sample2dDesktopManifestPath
+$sample2dDesktopManifestFullPath = Resolve-RequiredAgentPath $sample2dDesktopManifestPath
 $sample2dDesktopManifest = Get-Content -LiteralPath $sample2dDesktopManifestFullPath -Raw | ConvertFrom-Json
 if ($sample2dDesktopManifest.target -ne "sample_2d_desktop_runtime_package") {
     Write-Error "$sample2dDesktopManifestPath target must be sample_2d_desktop_runtime_package"
@@ -12607,7 +12651,7 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $sample2dDesktopMainText $needle "games/sample_2d_desktop_runtime_package/main.cpp"
 }
-$sample2dInstalledRuntimeValidationText = Get-Content -LiteralPath (Assert-Exists "tools/validate-installed-desktop-runtime.ps1") -Raw
+$sample2dInstalledRuntimeValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
 foreach ($needle in @(
     "native_2d_sprite_batches_executed",
     "native_2d_sprite_batch_sprites_executed",
@@ -12648,7 +12692,7 @@ Assert-AtlasTilemapAuthoringTarget `
     "runtime/assets/2d/player.texture.geasset"
 
 $sample3dManifestPath = "games/sample_desktop_runtime_game/game.agent.json"
-$sample3dManifestFullPath = Assert-Exists $sample3dManifestPath
+$sample3dManifestFullPath = Resolve-RequiredAgentPath $sample3dManifestPath
 $sample3dManifest = Get-Content -LiteralPath $sample3dManifestFullPath -Raw | ConvertFrom-Json
 if ($sample3dManifest.target -ne "sample_desktop_runtime_game") {
     Write-Error "$sample3dManifestPath target must be sample_desktop_runtime_game"
@@ -12729,7 +12773,7 @@ if ($sample3dManifestText.Contains("native GPU HUD or sprite overlay output rema
     Write-Error "$sample3dManifestPath keeps a stale native GPU HUD or sprite overlay unsupported claim"
 }
 Assert-ContainsText $sample3dManifestText "runtime/assets/desktop_runtime/hud.uiatlas" $sample3dManifestPath
-$sample3dUiAtlasText = Get-Content -LiteralPath (Assert-Exists "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas") -Raw
+$sample3dUiAtlasText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas"
 foreach ($needle in @(
     "format=GameEngine.UiAtlas.v1",
     "source.decoding=unsupported",
@@ -12739,11 +12783,11 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $sample3dUiAtlasText $needle "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas"
 }
-$sample3dIndexText = Get-Content -LiteralPath (Assert-Exists "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex") -Raw
+$sample3dIndexText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
 Assert-ContainsText $sample3dIndexText "kind=ui_atlas" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
 Assert-ContainsText $sample3dIndexText "kind=ui_atlas_texture" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
 Assert-ContainsText $sample3dIndexText "kind=animation_quaternion_clip" "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex"
-$sample3dMainText = Get-Content -LiteralPath (Assert-Exists "games/sample_desktop_runtime_game/main.cpp") -Raw
+$sample3dMainText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/main.cpp"
 foreach ($needle in @(
     "mirakana/ui/ui.hpp",
     "mirakana/ui_renderer/ui_renderer.hpp",
@@ -12799,7 +12843,7 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $sample3dMainText $needle "games/sample_desktop_runtime_game/main.cpp"
 }
-$sceneRendererHeaderText = Get-Content -LiteralPath (Assert-Exists "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") -Raw
+$sceneRendererHeaderText = Get-AgentSurfaceText "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp"
 foreach ($needle in @(
     "SceneMeshDrawPlan",
     "SceneMeshDrawPlanDiagnosticCode",
@@ -12807,13 +12851,13 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $sceneRendererHeaderText $needle "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp"
 }
-$planRegistryText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/README.md") -Raw
+$planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "3D Scene Mesh Package Telemetry v1" "docs/superpowers/plans/README.md"
-$currentCapabilitiesText = Get-Content -LiteralPath (Assert-Exists "docs/current-capabilities.md") -Raw
+$currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "3D Scene Mesh Package Telemetry v1" "docs/current-capabilities.md"
-$roadmapText = Get-Content -LiteralPath (Assert-Exists "docs/roadmap.md") -Raw
+$roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 Assert-ContainsText $roadmapText "3D Scene Mesh Package Telemetry v1" "docs/roadmap.md"
-$engineManifestText = Get-Content -LiteralPath (Assert-Exists "engine/agent/manifest.json") -Raw
+$engineManifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "normalized-build-environment" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "PATH/Path variants" "engine/agent/manifest.json"
 foreach ($needle in @(
@@ -12837,11 +12881,11 @@ foreach ($unsupportedClaim in @(
     Assert-ContainsText $engineManifestText $unsupportedClaim "engine/agent/manifest.json"
 }
 
-Get-ChildItem -Path (Assert-Exists ".agents/skills") -Recurse -Filter "SKILL.md" | ForEach-Object {
+Get-ChildItem -Path (Resolve-RequiredAgentPath ".agents/skills") -Recurse -Filter "SKILL.md" | ForEach-Object {
     Assert-SkillFrontmatter $_.FullName
 }
 
-Get-ChildItem -Path (Assert-Exists ".claude/skills") -Recurse -Filter "SKILL.md" | ForEach-Object {
+Get-ChildItem -Path (Resolve-RequiredAgentPath ".claude/skills") -Recurse -Filter "SKILL.md" | ForEach-Object {
     Assert-SkillFrontmatter $_.FullName
 }
 
@@ -12855,7 +12899,7 @@ foreach ($requiredCodexSkill in @(
     ".agents/skills/license-audit/SKILL.md",
     ".agents/skills/rendering-change/SKILL.md"
 )) {
-    Assert-Exists $requiredCodexSkill | Out-Null
+    Resolve-RequiredAgentPath $requiredCodexSkill | Out-Null
 }
 
 foreach ($requiredClaudeSkill in @(
@@ -12868,7 +12912,7 @@ foreach ($requiredClaudeSkill in @(
     ".claude/skills/gameengine-license-audit/SKILL.md",
     ".claude/skills/gameengine-rendering/SKILL.md"
 )) {
-    Assert-Exists $requiredClaudeSkill | Out-Null
+    Resolve-RequiredAgentPath $requiredClaudeSkill | Out-Null
 }
 
 foreach ($quaternionPackageSmokeGuidance in @(
@@ -12879,7 +12923,7 @@ foreach ($quaternionPackageSmokeGuidance in @(
     ".codex/agents/engine-architect.toml",
     ".claude/agents/engine-architect.md"
 )) {
-    $quaternionPackageSmokeGuidanceText = Get-Content -LiteralPath (Assert-Exists $quaternionPackageSmokeGuidance) -Raw
+    $quaternionPackageSmokeGuidanceText = Get-AgentSurfaceText $quaternionPackageSmokeGuidance
     Assert-ContainsText $quaternionPackageSmokeGuidanceText "quaternion package smoke is limited to cooked" $quaternionPackageSmokeGuidance
     Assert-ContainsText $quaternionPackageSmokeGuidanceText "sample_animation_local_pose_3d" $quaternionPackageSmokeGuidance
     Assert-DoesNotContainText $quaternionPackageSmokeGuidanceText "generated-game quaternion animation package smoke" $quaternionPackageSmokeGuidance
@@ -12889,7 +12933,7 @@ foreach ($packageStreamingSmokeGuidance in @(
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
-    $packageStreamingSmokeGuidanceText = Get-Content -LiteralPath (Assert-Exists $packageStreamingSmokeGuidance) -Raw
+    $packageStreamingSmokeGuidanceText = Get-AgentSurfaceText $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "--require-package-streaming-safe-point" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "execute_selected_runtime_package_streaming_safe_point" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "package_streaming_status" $packageStreamingSmokeGuidance
@@ -12907,7 +12951,7 @@ foreach ($featureSkill in @(
     ".agents/skills/gameengine-feature/SKILL.md",
     ".claude/skills/gameengine-feature/SKILL.md"
 )) {
-    $featureSkillText = Get-Content -LiteralPath (Assert-Exists $featureSkill) -Raw
+    $featureSkillText = Get-AgentSurfaceText $featureSkill
     Assert-ContainsText $featureSkillText "C++23" $featureSkill
     Assert-ContainsText $featureSkillText "docs/README.md" $featureSkill
     Assert-ContainsText $featureSkillText "docs/superpowers/plans/README.md" $featureSkill
@@ -12920,7 +12964,7 @@ foreach ($cmakeSkill in @(
     ".agents/skills/cmake-build-system/SKILL.md",
     ".claude/skills/gameengine-cmake-build-system/SKILL.md"
 )) {
-    $cmakeSkillText = Get-Content -LiteralPath (Assert-Exists $cmakeSkill) -Raw
+    $cmakeSkillText = Get-AgentSurfaceText $cmakeSkill
     Assert-ContainsText $cmakeSkillText "target_compile_features" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "FILE_SET CXX_MODULES" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "MK_MSVC_CXX23_STANDARD_OPTION" $cmakeSkill
@@ -12945,7 +12989,7 @@ foreach ($debuggingSkill in @(
     ".agents/skills/cpp-engine-debugging/SKILL.md",
     ".claude/skills/gameengine-debugging/SKILL.md"
 )) {
-    $debuggingSkillText = Get-Content -LiteralPath (Assert-Exists $debuggingSkill) -Raw
+    $debuggingSkillText = Get-AgentSurfaceText $debuggingSkill
     Assert-ContainsText $debuggingSkillText "Debugging Tools for Windows" $debuggingSkill
     Assert-ContainsText $debuggingSkillText "cdb -version" $debuggingSkill
     Assert-ContainsText $debuggingSkillText "_NT_SYMBOL_PATH" $debuggingSkill
@@ -12955,7 +12999,7 @@ foreach ($renderingSkill in @(
     ".agents/skills/rendering-change/SKILL.md",
     ".claude/skills/gameengine-rendering/SKILL.md"
 )) {
-    $renderingSkillText = Get-Content -LiteralPath (Assert-Exists $renderingSkill) -Raw
+    $renderingSkillText = Get-AgentSurfaceText $renderingSkill
     Assert-ContainsText $renderingSkillText "Windows Graphics Tools" $renderingSkill
     Assert-ContainsText $renderingSkillText "d3d12SDKLayers.dll" $renderingSkill
     Assert-ContainsText $renderingSkillText "PIX on Windows" $renderingSkill
@@ -12966,7 +13010,7 @@ foreach ($licenseSkill in @(
     ".agents/skills/license-audit/SKILL.md",
     ".claude/skills/gameengine-license-audit/SKILL.md"
 )) {
-    $licenseSkillText = Get-Content -LiteralPath (Assert-Exists $licenseSkill) -Raw
+    $licenseSkillText = Get-AgentSurfaceText $licenseSkill
     Assert-ContainsText $licenseSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $licenseSkill
     Assert-ContainsText $licenseSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1" $licenseSkill
 }
@@ -12975,7 +13019,7 @@ foreach ($agentIntegrationSkill in @(
     ".agents/skills/gameengine-agent-integration/SKILL.md",
     ".claude/skills/gameengine-agent-integration/SKILL.md"
 )) {
-    $agentIntegrationSkillText = Get-Content -LiteralPath (Assert-Exists $agentIntegrationSkill) -Raw
+    $agentIntegrationSkillText = Get-AgentSurfaceText $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "docs/README.md" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "docs/superpowers/plans/README.md" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1" $agentIntegrationSkill
@@ -13017,7 +13061,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "approval-capable session" $agentIntegrationSkill
 }
 
-$codexRuleFile = Assert-Exists ".codex/rules/gameengine.rules"
+$codexRuleFile = Resolve-RequiredAgentPath ".codex/rules/gameengine.rules"
 $codexRuleText = Get-Content -LiteralPath $codexRuleFile -Raw
 Assert-ContainsText $codexRuleText "prefix_rule" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText 'decision = "prompt"' ".codex/rules/gameengine.rules"
@@ -13042,7 +13086,7 @@ Assert-ContainsText $codexRuleText "Invoke-RestMethod" ".codex/rules/gameengine.
 Assert-ContainsText $codexRuleText "Add-WindowsCapability" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "msiexec" ".codex/rules/gameengine.rules"
 
-$claudeSettingsFile = Assert-Exists ".claude/settings.json"
+$claudeSettingsFile = Resolve-RequiredAgentPath ".claude/settings.json"
 $claudeSettings = Get-Content -LiteralPath $claudeSettingsFile -Raw | ConvertFrom-Json
 if (-not $claudeSettings.PSObject.Properties.Name.Contains('$schema')) {
     Write-Error ".claude/settings.json must include the official schema"
@@ -13075,7 +13119,7 @@ foreach ($ruleFile in @(
     ".claude/rules/ai-agent-integration.md",
     ".claude/rules/cpp-engine.md"
 )) {
-    $ruleText = Get-Content -LiteralPath (Assert-Exists $ruleFile) -Raw
+    $ruleText = Get-AgentSurfaceText $ruleFile
     Assert-ContainsText $ruleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $ruleFile
     Assert-ContainsText $ruleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $ruleFile
     Assert-ContainsText $ruleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $ruleFile
@@ -13086,7 +13130,7 @@ foreach ($ruleFile in @(
     Assert-ContainsText $ruleText "Windows Graphics Tools" $ruleFile
 }
 
-$aiAgentRuleText = Get-Content -LiteralPath (Assert-Exists ".claude/rules/ai-agent-integration.md") -Raw
+$aiAgentRuleText = Get-AgentSurfaceText ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "phase-gated milestone plan" ".claude/rules/ai-agent-integration.md"
 foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down or milestone", "behavior/API/validation boundary", "validation-only follow-up", "completed plan evidence")) {
     Assert-ContainsText $aiAgentRuleText $planVolumeNeedle ".claude/rules/ai-agent-integration.md"
@@ -13109,11 +13153,11 @@ Assert-ContainsText $aiAgentRuleText "Windows Graphics Tools" ".claude/rules/ai-
 Assert-ContainsText $aiAgentRuleText "PIX on Windows" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Windows Performance Toolkit" ".claude/rules/ai-agent-integration.md"
 
-Get-ChildItem -Path (Assert-Exists ".claude/agents") -Filter "*.md" | ForEach-Object {
+Get-ChildItem -Path (Resolve-RequiredAgentPath ".claude/agents") -Filter "*.md" | ForEach-Object {
     Assert-ClaudeAgentFrontmatter $_.FullName
 }
 
-Get-ChildItem -Path (Assert-Exists ".codex/agents") -Filter "*.toml" | ForEach-Object {
+Get-ChildItem -Path (Resolve-RequiredAgentPath ".codex/agents") -Filter "*.toml" | ForEach-Object {
     $content = Get-Content -LiteralPath $_.FullName -Raw
     foreach ($field in @("name", "description", "developer_instructions")) {
         if ($content -notmatch "(?m)^$field\s*=") {
@@ -13144,7 +13188,7 @@ foreach ($buildFixerAgent in @(
     ".codex/agents/build-fixer.toml",
     ".claude/agents/build-fixer.md"
 )) {
-    $buildFixerText = Get-Content -LiteralPath (Assert-Exists $buildFixerAgent) -Raw
+    $buildFixerText = Get-AgentSurfaceText $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $buildFixerAgent
@@ -13165,7 +13209,7 @@ foreach ($explorerAgent in @(
     ".codex/agents/explorer.toml",
     ".claude/agents/explorer.md"
 )) {
-    $explorerAgentText = Get-Content -LiteralPath (Assert-Exists $explorerAgent) -Raw
+    $explorerAgentText = Get-AgentSurfaceText $explorerAgent
     Assert-ContainsText $explorerAgentText "docs/README.md" $explorerAgent
     Assert-ContainsText $explorerAgentText "docs/roadmap.md" $explorerAgent
     Assert-ContainsText $explorerAgentText "docs/superpowers/plans/README.md" $explorerAgent
@@ -13177,7 +13221,7 @@ foreach ($architectAgent in @(
     ".codex/agents/engine-architect.toml",
     ".claude/agents/engine-architect.md"
 )) {
-    $architectAgentText = Get-Content -LiteralPath (Assert-Exists $architectAgent) -Raw
+    $architectAgentText = Get-AgentSurfaceText $architectAgent
     Assert-ContainsText $architectAgentText "phase-gated milestone plan" $architectAgent
     Assert-ContainsText $architectAgentText "Runtime RHI Compute Morph Calibrated Overlap Diagnostics D3D12 v1" $architectAgent
     Assert-ContainsText $architectAgentText "Runtime RHI Compute Morph Submitted Overlap Diagnostics D3D12 v1" $architectAgent
@@ -13192,7 +13236,7 @@ foreach ($gameplayBuilderAgent in @(
     ".codex/agents/gameplay-builder.toml",
     ".claude/agents/gameplay-builder.md"
 )) {
-    $gameplayBuilderText = Get-Content -LiteralPath (Assert-Exists $gameplayBuilderAgent) -Raw
+    $gameplayBuilderText = Get-AgentSurfaceText $gameplayBuilderAgent
     Assert-ContainsText $gameplayBuilderText "Runtime RHI Compute Morph NORMAL/TANGENT Output Vulkan v1" $gameplayBuilderAgent
     Assert-ContainsText $gameplayBuilderText "Generated 3D Compute Morph Package Smoke Vulkan v1" $gameplayBuilderAgent
     Assert-ContainsText $gameplayBuilderText "SdlDesktopPresentationVulkanSceneRendererDesc" $gameplayBuilderAgent
@@ -13203,7 +13247,7 @@ foreach ($renderingAuditorAgent in @(
     ".codex/agents/rendering-auditor.toml",
     ".claude/agents/rendering-auditor.md"
 )) {
-    $renderingAuditorText = Get-Content -LiteralPath (Assert-Exists $renderingAuditorAgent) -Raw
+    $renderingAuditorText = Get-AgentSurfaceText $renderingAuditorAgent
     Assert-ContainsText $renderingAuditorText "Windows Graphics Tools" $renderingAuditorAgent
     Assert-ContainsText $renderingAuditorText "PIX on Windows" $renderingAuditorAgent
     Assert-ContainsText $renderingAuditorText "Windows Performance Toolkit" $renderingAuditorAgent
@@ -13275,14 +13319,14 @@ foreach ($target in $manifest.packagingTargets) {
     }
 }
 
-$aiGameDevelopmentText = Get-Content -LiteralPath (Assert-Exists "docs/ai-game-development.md") -Raw
-$aiIntegrationText = Get-Content -LiteralPath (Assert-Exists "docs/ai-integration.md") -Raw
-$generatedScenariosText = Get-Content -LiteralPath (Assert-Exists "docs/specs/generated-game-validation-scenarios.md") -Raw
-$promptPackText = Get-Content -LiteralPath (Assert-Exists "docs/specs/game-prompt-pack.md") -Raw
-$handoffPromptText = Get-Content -LiteralPath (Assert-Exists "docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md") -Raw
-$architectureText = Get-Content -LiteralPath (Assert-Exists "docs/architecture.md") -Raw
-$roadmapText = Get-Content -LiteralPath (Assert-Exists "docs/roadmap.md") -Raw
-$rhiText = Get-Content -LiteralPath (Assert-Exists "docs/rhi.md") -Raw
+$aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"
+$aiIntegrationText = Get-AgentSurfaceText "docs/ai-integration.md"
+$generatedScenariosText = Get-AgentSurfaceText "docs/specs/generated-game-validation-scenarios.md"
+$promptPackText = Get-AgentSurfaceText "docs/specs/game-prompt-pack.md"
+$handoffPromptText = Get-AgentSurfaceText "docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md"
+$architectureText = Get-AgentSurfaceText "docs/architecture.md"
+$roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
+$rhiText = Get-AgentSurfaceText "docs/rhi.md"
 $authoredRuntimeWorkflowRequiredText = @(
     "validated authored-to-runtime workflow",
     "register-source-asset -> cook-registered-source-assets -> migrate-scene-v2-runtime-package -> mirakana::runtime::load_runtime_asset_package -> mirakana::runtime_scene::instantiate_runtime_scene"
@@ -13656,7 +13700,7 @@ try {
     $desktopDisplayName = 'Desktop "Quoted" \ Game'
     & (Join-Path $PSScriptRoot "new-game.ps1") -Name "desktop_package_game" -DisplayName $desktopDisplayName -RepositoryRoot $desktopScaffoldRoot -Template DesktopRuntimePackage | Out-Null
     $desktopGameRoot = Join-Path $desktopScaffoldRoot "games/desktop_package_game"
-    Assert-Exists "tools/new-game.ps1" | Out-Null
+    Resolve-RequiredAgentPath "tools/new-game.ps1" | Out-Null
     foreach ($relativePath in @(
         "main.cpp",
         "README.md",
@@ -13854,7 +13898,7 @@ try {
     Assert-ContainsText $materialShaderCmake "runtime_scene.hlsl" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "runtime_postprocess.hlsl" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "--require-d3d12-scene-shaders" "Desktop material/shader scaffold CMake"
-    $repositoryGamesCmake = Get-Content -LiteralPath (Assert-Exists "games/CMakeLists.txt") -Raw
+    $repositoryGamesCmake = Get-AgentSurfaceText "games/CMakeLists.txt"
     Assert-ContainsText $repositoryGamesCmake '${target_name}_runtime_files' "Desktop runtime package staging target"
     Assert-ContainsText $repositoryGamesCmake 'RUNTIME_OUTPUT_DIRECTORY' "Desktop runtime package staging target"
     Assert-ContainsText $repositoryGamesCmake '${target_name}' "Desktop runtime package staging target"
@@ -14014,36 +14058,36 @@ try {
     Remove-ScaffoldCheckRoot $desktop2dScaffoldRoot
 }
 
-$spriteBatchHeader = Get-Content -LiteralPath (Assert-Exists "engine/renderer/include/mirakana/renderer/sprite_batch.hpp") -Raw
-$spriteBatchSource = Get-Content -LiteralPath (Assert-Exists "engine/renderer/src/sprite_batch.cpp") -Raw
-$sceneRendererHeader = Get-Content -LiteralPath (Assert-Exists "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") -Raw
-$sceneRendererSource = Get-Content -LiteralPath (Assert-Exists "engine/scene_renderer/src/scene_renderer.cpp") -Raw
-$sceneRendererTests = Get-Content -LiteralPath (Assert-Exists "tests/unit/scene_renderer_tests.cpp") -Raw
-$runtimeHeader = Get-Content -LiteralPath (Assert-Exists "engine/runtime/include/mirakana/runtime/asset_runtime.hpp") -Raw
-$runtimeSource = Get-Content -LiteralPath (Assert-Exists "engine/runtime/src/asset_runtime.cpp") -Raw
-$runtimeSessionHeader = Get-Content -LiteralPath (Assert-Exists "engine/runtime/include/mirakana/runtime/session_services.hpp") -Raw
-$runtimeSessionSource = Get-Content -LiteralPath (Assert-Exists "engine/runtime/src/session_services.cpp") -Raw
-$runtimeTests = Get-Content -LiteralPath (Assert-Exists "tests/unit/runtime_tests.cpp") -Raw
-$rendererTests = Get-Content -LiteralPath (Assert-Exists "tests/unit/renderer_rhi_tests.cpp") -Raw
-$frameGraphHeader = Get-Content -LiteralPath (Assert-Exists "engine/renderer/include/mirakana/renderer/frame_graph.hpp") -Raw
-$frameGraphSource = Get-Content -LiteralPath (Assert-Exists "engine/renderer/src/frame_graph.cpp") -Raw
-$frameGraphRhiHeader = Get-Content -LiteralPath (Assert-Exists "engine/renderer/include/mirakana/renderer/frame_graph_rhi.hpp") -Raw
-$frameGraphRhiSource = Get-Content -LiteralPath (Assert-Exists "engine/renderer/src/frame_graph_rhi.cpp") -Raw
-$rhiUploadStagingHeader = Get-Content -LiteralPath (Assert-Exists "engine/rhi/include/mirakana/rhi/upload_staging.hpp") -Raw
-$rhiUploadStagingSource = Get-Content -LiteralPath (Assert-Exists "engine/rhi/src/upload_staging.cpp") -Raw
-$rhiUploadStagingTests = Get-Content -LiteralPath (Assert-Exists "tests/unit/rhi_upload_staging_tests.cpp") -Raw
-$runtimeRhiUploadHeader = Get-Content -LiteralPath (Assert-Exists "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") -Raw
-$runtimeRhiUploadSource = Get-Content -LiteralPath (Assert-Exists "engine/runtime_rhi/src/runtime_upload.cpp") -Raw
-$runtimeSceneRhiHeader = Get-Content -LiteralPath (Assert-Exists "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp") -Raw
-$runtimeSceneRhiSource = Get-Content -LiteralPath (Assert-Exists "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp") -Raw
-$runtimeRhiTests = Get-Content -LiteralPath (Assert-Exists "tests/unit/runtime_rhi_tests.cpp") -Raw
-$runtimeSceneRhiTests = Get-Content -LiteralPath (Assert-Exists "tests/unit/runtime_scene_rhi_tests.cpp") -Raw
-$runtimeUploadFencePlan = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-runtime-rhi-upload-submission-fence-rows-v1.md") -Raw
+$spriteBatchHeader = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/sprite_batch.hpp"
+$spriteBatchSource = Get-AgentSurfaceText "engine/renderer/src/sprite_batch.cpp"
+$sceneRendererHeader = Get-AgentSurfaceText "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp"
+$sceneRendererSource = Get-AgentSurfaceText "engine/scene_renderer/src/scene_renderer.cpp"
+$sceneRendererTests = Get-AgentSurfaceText "tests/unit/scene_renderer_tests.cpp"
+$runtimeHeader = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/asset_runtime.hpp"
+$runtimeSource = Get-AgentSurfaceText "engine/runtime/src/asset_runtime.cpp"
+$runtimeSessionHeader = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/session_services.hpp"
+$runtimeSessionSource = Get-AgentSurfaceText "engine/runtime/src/session_services.cpp"
+$runtimeTests = Get-AgentSurfaceText "tests/unit/runtime_tests.cpp"
+$rendererTests = Get-AgentSurfaceText "tests/unit/renderer_rhi_tests.cpp"
+$frameGraphHeader = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/frame_graph.hpp"
+$frameGraphSource = Get-AgentSurfaceText "engine/renderer/src/frame_graph.cpp"
+$frameGraphRhiHeader = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/frame_graph_rhi.hpp"
+$frameGraphRhiSource = Get-AgentSurfaceText "engine/renderer/src/frame_graph_rhi.cpp"
+$rhiUploadStagingHeader = Get-AgentSurfaceText "engine/rhi/include/mirakana/rhi/upload_staging.hpp"
+$rhiUploadStagingSource = Get-AgentSurfaceText "engine/rhi/src/upload_staging.cpp"
+$rhiUploadStagingTests = Get-AgentSurfaceText "tests/unit/rhi_upload_staging_tests.cpp"
+$runtimeRhiUploadHeader = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp"
+$runtimeRhiUploadSource = Get-AgentSurfaceText "engine/runtime_rhi/src/runtime_upload.cpp"
+$runtimeSceneRhiHeader = Get-AgentSurfaceText "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp"
+$runtimeSceneRhiSource = Get-AgentSurfaceText "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp"
+$runtimeRhiTests = Get-AgentSurfaceText "tests/unit/runtime_rhi_tests.cpp"
+$runtimeSceneRhiTests = Get-AgentSurfaceText "tests/unit/runtime_scene_rhi_tests.cpp"
+$runtimeUploadFencePlan = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-rhi-upload-submission-fence-rows-v1.md"
 $frameGraphRhiTextureSchedulePlan =
-    Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md") -Raw
+    Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md"
 $rhiUploadStaleGenerationPlan =
-    Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md") -Raw
-$rendererCmake = Get-Content -LiteralPath (Assert-Exists "engine/renderer/CMakeLists.txt") -Raw
+    Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md"
+$rendererCmake = Get-AgentSurfaceText "engine/renderer/CMakeLists.txt"
 foreach ($needle in @(
     "FrameGraphPassExecutionBinding",
     "FrameGraphExecutionCallbacks",
@@ -14329,14 +14373,14 @@ Assert-ContainsText $runtimeTests "runtime input rebinding presentation rows exp
 Assert-ContainsText $runtimeTests "runtime input rebinding presentation rows expose axis source tokens" "input rebinding presentation runtime tests"
 Assert-ContainsText $runtimeTests "runtime input rebinding presentation reports invalid profiles" "input rebinding presentation runtime tests"
 Assert-ContainsText $runtimeTests "model.diagnostics[0].path == row->id" "input rebinding presentation diagnostic row correlation test"
-$editorCoreHeader = Get-Content -LiteralPath (Assert-Exists "editor/core/include/mirakana/editor/playtest_package_review.hpp") -Raw
-$editorCoreSource = Get-Content -LiteralPath (Assert-Exists "editor/core/src/playtest_package_review.cpp") -Raw
-$editorInputRebindingHeader = Get-Content -LiteralPath (Assert-Exists "editor/core/include/mirakana/editor/input_rebinding.hpp") -Raw
-$editorInputRebindingSource = Get-Content -LiteralPath (Assert-Exists "editor/core/src/input_rebinding.cpp") -Raw
-$editorWorkspaceHeader = Get-Content -LiteralPath (Assert-Exists "editor/core/include/mirakana/editor/workspace.hpp") -Raw
-$editorWorkspaceSource = Get-Content -LiteralPath (Assert-Exists "editor/core/src/workspace.cpp") -Raw
-$editorMainSource = Get-Content -LiteralPath (Assert-Exists "editor/src/main.cpp") -Raw
-$editorCoreTests = Get-Content -LiteralPath (Assert-Exists "tests/unit/editor_core_tests.cpp") -Raw
+$editorCoreHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/playtest_package_review.hpp"
+$editorCoreSource = Get-AgentSurfaceText "editor/core/src/playtest_package_review.cpp"
+$editorInputRebindingHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/input_rebinding.hpp"
+$editorInputRebindingSource = Get-AgentSurfaceText "editor/core/src/input_rebinding.cpp"
+$editorWorkspaceHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/workspace.hpp"
+$editorWorkspaceSource = Get-AgentSurfaceText "editor/core/src/workspace.cpp"
+$editorMainSource = Get-AgentSurfaceText "editor/src/main.cpp"
+$editorCoreTests = Get-AgentSurfaceText "tests/unit/editor_core_tests.cpp"
 foreach ($needle in @(
     "EditorTilemapPackageDiagnosticsModel",
     "make_editor_tilemap_package_diagnostics_model"
@@ -14430,10 +14474,10 @@ foreach ($needle in @(
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "in-memory profile" "editor input rebinding capture guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "axis capture" "editor input rebinding capture guidance"
 
-$manifestText = Get-Content -LiteralPath (Assert-Exists "engine/agent/manifest.json") -Raw
-$currentCapabilitiesText = Get-Content -LiteralPath (Assert-Exists "docs/current-capabilities.md") -Raw
-$roadmapText = Get-Content -LiteralPath (Assert-Exists "docs/roadmap.md") -Raw
-$planRegistryText = Get-Content -LiteralPath (Assert-Exists "docs/superpowers/plans/README.md") -Raw
+$manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
+$currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
+$roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
+$planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 Assert-DoesNotContainText $manifestText "generated-game morph package consumption/rendering" "engine/agent/manifest.json generated 3D morph stale unsupported claim"
 foreach ($needle in @(
     "2d-sprite-batch-planning-contract",
@@ -15037,20 +15081,20 @@ try {
     Remove-ScaffoldCheckRoot $desktop3dScaffoldRoot
 }
 
-$null = Assert-Exists "games/sample_generated_desktop_runtime_3d_package"
+$null = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package"
 $committedDesktop3dManifestPath = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
-$committedDesktop3dManifestFullPath = Assert-Exists $committedDesktop3dManifestPath
-$committedDesktop3dMainPath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/main.cpp"
-$committedDesktop3dReadmePath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/README.md"
-$committedDesktop3dIndexPath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex"
-$committedDesktop3dScenePath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/packaged_scene.scene"
-$committedDesktop3dSceneShaderPath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_scene.hlsl"
-$committedDesktop3dPostprocessShaderPath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_postprocess.hlsl"
-$committedDesktop3dShadowShaderPath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_shadow.hlsl"
-$committedDesktop3dUiOverlayShaderPath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_ui_overlay.hlsl"
-$committedDesktop3dUiAtlasPath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud.uiatlas"
-$committedDesktop3dUiTextGlyphAtlasPath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas"
-$committedDesktop3dCollisionPath = Assert-Exists "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/collision.collision3d"
+$committedDesktop3dManifestFullPath = Resolve-RequiredAgentPath $committedDesktop3dManifestPath
+$committedDesktop3dMainPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/main.cpp"
+$committedDesktop3dReadmePath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/README.md"
+$committedDesktop3dIndexPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex"
+$committedDesktop3dScenePath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/packaged_scene.scene"
+$committedDesktop3dSceneShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_scene.hlsl"
+$committedDesktop3dPostprocessShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_postprocess.hlsl"
+$committedDesktop3dShadowShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_shadow.hlsl"
+$committedDesktop3dUiOverlayShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_ui_overlay.hlsl"
+$committedDesktop3dUiAtlasPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud.uiatlas"
+$committedDesktop3dUiTextGlyphAtlasPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas"
+$committedDesktop3dCollisionPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/collision.collision3d"
 $committedDesktop3dManifest = Get-Content -LiteralPath $committedDesktop3dManifestFullPath -Raw | ConvertFrom-Json
 $committedDesktop3dManifestText = Get-Content -LiteralPath $committedDesktop3dManifestFullPath -Raw
 $committedDesktop3dMainText = Get-Content -LiteralPath $committedDesktop3dMainPath -Raw
@@ -15064,7 +15108,7 @@ $committedDesktop3dUiOverlayShaderText = Get-Content -LiteralPath $committedDesk
 $committedDesktop3dUiAtlasText = Get-Content -LiteralPath $committedDesktop3dUiAtlasPath -Raw
 $committedDesktop3dUiTextGlyphAtlasText = Get-Content -LiteralPath $committedDesktop3dUiTextGlyphAtlasPath -Raw
 $committedDesktop3dCollisionText = Get-Content -LiteralPath $committedDesktop3dCollisionPath -Raw
-$committedDesktop3dCmakeText = Get-Content -LiteralPath (Assert-Exists "games/CMakeLists.txt") -Raw
+$committedDesktop3dCmakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
 $committedDesktop3dCmakeBlock = [regex]::Match(
     $committedDesktop3dCmakeText,
     "MK_add_desktop_runtime_game\(sample_generated_desktop_runtime_3d_package[\s\S]*?\n\s*\)"
@@ -15095,7 +15139,7 @@ foreach ($relativePath in @(
     if (@($committedDesktop3dManifest.runtimePackageFiles) -notcontains $relativePath) {
         Write-Error "$committedDesktop3dManifestPath runtimePackageFiles missing $relativePath"
     }
-    Assert-Exists (Join-Path "games/sample_generated_desktop_runtime_3d_package" $relativePath) | Out-Null
+    Resolve-RequiredAgentPath (Join-Path "games/sample_generated_desktop_runtime_3d_package" $relativePath) | Out-Null
 }
 foreach ($authoringPath in @(
     "source/assets/package.geassets",
@@ -15113,7 +15157,7 @@ foreach ($authoringPath in @(
     "shaders/runtime_shadow.hlsl",
     "shaders/runtime_ui_overlay.hlsl"
 )) {
-    Assert-Exists (Join-Path "games/sample_generated_desktop_runtime_3d_package" $authoringPath) | Out-Null
+    Resolve-RequiredAgentPath (Join-Path "games/sample_generated_desktop_runtime_3d_package" $authoringPath) | Out-Null
     if (@($committedDesktop3dManifest.runtimePackageFiles) -contains $authoringPath) {
         Write-Error "$committedDesktop3dManifestPath must not ship source authoring file in runtimePackageFiles: $authoringPath"
     }
@@ -15531,7 +15575,7 @@ try {
             validationRecipes = @(@{ name = "desktop-runtime-release"; command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1" })
         } | ConvertTo-Json -Depth 10) -NoNewline
 
-    $registerTool = Assert-Exists "tools/register-runtime-package-files.ps1"
+    $registerTool = Resolve-RequiredAgentPath "tools/register-runtime-package-files.ps1"
     & $registerTool `
         -RepositoryRoot $packageRegistrationRoot `
         -GameManifest "games/package_apply_game/game.agent.json" `
@@ -15586,7 +15630,7 @@ try {
         Write-Error "runtime package registration apply tool must create runtimePackageFiles when absent"
     }
 
-    Assert-RegisterRuntimePackageFilesFails @(
+    Assert-RegisterRuntimePackageFileFailure @(
         "-RepositoryRoot",
         $packageRegistrationRoot,
         "-GameManifest",
@@ -15594,7 +15638,7 @@ try {
         "-RuntimePackageFile",
         "../escape.txt"
     ) "runtime package registration parent traversal validation"
-    Assert-RegisterRuntimePackageFilesFails @(
+    Assert-RegisterRuntimePackageFileFailure @(
         "-RepositoryRoot",
         $packageRegistrationRoot,
         "-GameManifest",
@@ -15602,7 +15646,7 @@ try {
         "-RuntimePackageFile",
         "games/package_apply_game/runtime/scenes/start.scene"
     ) "runtime package registration repository-relative validation"
-    Assert-RegisterRuntimePackageFilesFails @(
+    Assert-RegisterRuntimePackageFileFailure @(
         "-RepositoryRoot",
         $packageRegistrationRoot,
         "-GameManifest",
@@ -15610,7 +15654,7 @@ try {
         "-RuntimePackageFile",
         "runtime/missing.file"
     ) "runtime package registration missing file validation"
-    Assert-RegisterRuntimePackageFilesFails @(
+    Assert-RegisterRuntimePackageFileFailure @(
         "-RepositoryRoot",
         $packageRegistrationRoot,
         "-GameManifest",
@@ -15618,7 +15662,7 @@ try {
         "-RuntimePackageFile",
         ""
     ) "runtime package registration empty path validation"
-    Assert-RegisterRuntimePackageFilesFails @(
+    Assert-RegisterRuntimePackageFileFailure @(
         "-RepositoryRoot",
         $packageRegistrationRoot,
         "-GameManifest",
@@ -15626,7 +15670,7 @@ try {
         "-RuntimePackageFile",
         (Join-Path $packageRegistrationGameRoot "runtime/scenes/start.scene")
     ) "runtime package registration absolute path validation"
-    Assert-RegisterRuntimePackageFilesFails @(
+    Assert-RegisterRuntimePackageFileFailure @(
         "-RepositoryRoot",
         $packageRegistrationRoot,
         "-GameManifest",
@@ -15634,7 +15678,7 @@ try {
         "-RuntimePackageFile",
         "runtime/scenes"
     ) "runtime package registration directory validation"
-    Assert-RegisterRuntimePackageFilesFails @(
+    Assert-RegisterRuntimePackageFileFailure @(
         "-RepositoryRoot",
         $packageRegistrationRoot,
         "-GameManifest",
@@ -15642,7 +15686,7 @@ try {
         "-RuntimePackageFile",
         "runtime/scenes/start.scene;runtime/package_apply_game.geindex"
     ) "runtime package registration CMake list separator validation"
-    Assert-RegisterRuntimePackageFilesFails @(
+    Assert-RegisterRuntimePackageFileFailure @(
         "-RepositoryRoot",
         $packageRegistrationRoot,
         "-GameManifest",
@@ -15657,7 +15701,7 @@ try {
 
 $invalidDisplayNameRoot = New-ScaffoldCheckRoot
 try {
-    Assert-NewGameFails @(
+    Assert-NewGameFailure @(
         "-Name",
         "bad_display_game",
         "-DisplayName",
@@ -15671,7 +15715,7 @@ try {
 
 $invalidGameNameRoot = New-ScaffoldCheckRoot
 try {
-    Assert-NewGameFails @(
+    Assert-NewGameFailure @(
         "-Name",
         "bad-hyphen-game",
         "-RepositoryRoot",
@@ -15689,7 +15733,7 @@ MK_add_game(collision_game
         collision_game/main.cpp
 )
 "@ -NoNewline
-    Assert-NewGameFails @(
+    Assert-NewGameFailure @(
         "-Name",
         "collision_game",
         "-RepositoryRoot",
@@ -15699,7 +15743,7 @@ MK_add_game(collision_game
     Remove-ScaffoldCheckRoot $targetCollisionRoot
 }
 
-Write-Host "ai-integration-check: ok"
+Write-Information "ai-integration-check: ok" -InformationAction Continue
 }
 finally {
     Clear-RepoExclusiveToolMutex -Mutex $checkAiIntegrationRepoExclusiveMutex
