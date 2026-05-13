@@ -12,6 +12,7 @@
 #include "mirakana/runtime/runtime_diagnostics.hpp"
 #include "mirakana/runtime/session_services.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <string>

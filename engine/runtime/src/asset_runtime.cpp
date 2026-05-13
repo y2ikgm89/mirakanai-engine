@@ -11,6 +11,8 @@
 #include <charconv>
 #include <cmath>
 #include <limits>
+#include <locale>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -119,12 +121,24 @@ using KeyValues = std::unordered_map<std::string, std::string>;
 }
 
 [[nodiscard]] float parse_payload_float(std::string_view value, std::string_view diagnostic_name) {
-    float number = 0.0F;
-    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), number);
-    if (error != std::errc{} || end != value.data() + value.size() || !std::isfinite(number)) {
+    const auto valid_character = [](char character) noexcept {
+        return (character >= '0' && character <= '9') || character == '+' || character == '-' || character == '.' ||
+               character == 'e' || character == 'E';
+    };
+    if (value.empty() || !std::ranges::all_of(value, valid_character)) {
         throw std::invalid_argument(std::string(diagnostic_name) + " float value is invalid");
     }
-    return number;
+
+    float parsed = 0.0F;
+    std::istringstream stream{std::string{value}};
+    stream.imbue(std::locale::classic());
+    stream >> std::noskipws >> parsed;
+
+    char trailing = '\0';
+    if (!stream || (stream >> trailing) || !std::isfinite(parsed)) {
+        throw std::invalid_argument(std::string(diagnostic_name) + " float value is invalid");
+    }
+    return parsed;
 }
 
 [[nodiscard]] std::array<float, 2> parse_payload_float2(std::string_view value, std::string_view diagnostic_name) {

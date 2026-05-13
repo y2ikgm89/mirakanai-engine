@@ -39,12 +39,16 @@ function Assert-DoesNotContainText($text, $needle, $label) {
     }
 }
 
+function ConvertTo-LfText([string]$text) {
+    return $text.Replace("`r`n", "`n").Replace("`r", "`n")
+}
+
 function Test-TextStartsWithLine([string]$text, [string]$line) {
     if ([string]::IsNullOrWhiteSpace($text)) {
         return $false
     }
 
-    $normalizedText = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $normalizedText = ConvertTo-LfText $text
     return $normalizedText.StartsWith("$line`n") -or $normalizedText -eq $line
 }
 
@@ -964,6 +968,7 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
 
         $sourceRegistryFullPath = Join-Path $root "$gameDirectory/$sourceRegistryPath"
         $sourceRegistryText = Get-Content -LiteralPath $sourceRegistryFullPath -Raw
+        $normalizedSourceRegistryText = ConvertTo-LfText $sourceRegistryText
         if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry.v1")) {
             Write-Error "$relativePath prefabScenePackageAuthoringTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry.v1 text: $sourceRegistryPath"
         }
@@ -1003,7 +1008,7 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
             if (-not (Test-SafeAssetKey $key)) {
                 Write-Error "$relativePath prefabScenePackageAuthoringTargets selectedSourceAssetKeys entries must be safe AssetKeyV2 values: $key"
             }
-            if (-not [System.Text.RegularExpressions.Regex]::IsMatch($sourceRegistryText, "(?m)^asset\.\d+\.key=$([System.Text.RegularExpressions.Regex]::Escape($key))$")) {
+            if (-not [System.Text.RegularExpressions.Regex]::IsMatch($normalizedSourceRegistryText, "(?m)^asset\.\d+\.key=$([System.Text.RegularExpressions.Regex]::Escape($key))$")) {
                 Write-Error "$relativePath prefabScenePackageAuthoringTargets selectedSourceAssetKeys must exist in sourceRegistryPath: $key"
             }
         }
@@ -1175,6 +1180,7 @@ function Assert-RegisteredSourceAssetCookTargets($game, [string]$relativePath, [
 
         $sourceRegistryFullPath = Join-Path $root "$gameDirectory/$($target.sourceRegistryPath)"
         $sourceRegistryText = Get-Content -LiteralPath $sourceRegistryFullPath -Raw
+        $normalizedSourceRegistryText = ConvertTo-LfText $sourceRegistryText
         if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry.v1")) {
             Write-Error "$relativePath registeredSourceAssetCookTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry.v1 text: $($target.sourceRegistryPath)"
         }
@@ -1187,7 +1193,7 @@ function Assert-RegisteredSourceAssetCookTargets($game, [string]$relativePath, [
             if (-not (Test-SafeAssetKey $key)) {
                 Write-Error "$relativePath registeredSourceAssetCookTargets '$id' selectedAssetKeys entries must be safe AssetKeyV2 values: $key"
             }
-            if (-not [System.Text.RegularExpressions.Regex]::IsMatch($sourceRegistryText, "(?m)^asset\.\d+\.key=$([System.Text.RegularExpressions.Regex]::Escape($key))$")) {
+            if (-not [System.Text.RegularExpressions.Regex]::IsMatch($normalizedSourceRegistryText, "(?m)^asset\.\d+\.key=$([System.Text.RegularExpressions.Regex]::Escape($key))$")) {
                 Write-Error "$relativePath registeredSourceAssetCookTargets '$id' selectedAssetKeys must exist in sourceRegistryPath: $key"
             }
         }

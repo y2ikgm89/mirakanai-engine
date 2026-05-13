@@ -8,6 +8,7 @@
 #include <charconv>
 #include <cmath>
 #include <limits>
+#include <locale>
 #include <memory>
 #include <sstream>
 #include <stdexcept>
@@ -217,9 +218,21 @@ void write_vec3(std::ostringstream& output, Vec3 value) {
 }
 
 [[nodiscard]] float parse_float(std::string_view value, std::string_view field) {
+    const auto valid_character = [](char character) noexcept {
+        return (character >= '0' && character <= '9') || character == '+' || character == '-' || character == '.' ||
+               character == 'e' || character == 'E';
+    };
+    if (value.empty() || !std::ranges::all_of(value, valid_character)) {
+        throw std::invalid_argument(std::string{field} + " must be a finite float");
+    }
+
     float parsed = 0.0F;
-    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
-    if (error != std::errc{} || end != value.data() + value.size() || !finite(parsed)) {
+    std::istringstream stream{std::string{value}};
+    stream.imbue(std::locale::classic());
+    stream >> std::noskipws >> parsed;
+
+    char trailing = '\0';
+    if (!stream || (stream >> trailing) || !finite(parsed)) {
         throw std::invalid_argument(std::string{field} + " must be a finite float");
     }
     return parsed;

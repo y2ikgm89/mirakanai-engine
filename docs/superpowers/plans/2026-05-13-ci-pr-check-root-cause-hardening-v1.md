@@ -11,7 +11,7 @@ Make PR validation green by fixing the root causes behind the failed GitHub chec
 
 ## Context
 
-PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, and a real Linux/macOS native watcher API bug.
+PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, and a real Linux/macOS native watcher API bug.
 
 ## Constraints
 
@@ -28,7 +28,8 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 - Linux coverage uses a separate preset and initializes the lcov summary input correctly.
 - Linux/macOS native watcher `active()` is an instance `const noexcept` API matching Windows.
 - C++ code avoids C++23 library calls not present on hosted Clang/AppleClang standard libraries when C++20 alternatives are sufficient.
-- Windows CRLF checkouts and macOS/iOS missing Windows-only environment variables do not crash validation scripts.
+- Apple bundle configure paths include CMake `BUNDLE DESTINATION` for runtime executable installs.
+- Windows CRLF checkouts and macOS/iOS missing Windows-only environment variables do not crash validation scripts or source registry key checks.
 - Local validation covers the updated scripts, docs, presets, and native watcher compile contract.
 
 ## Validation Evidence
@@ -48,4 +49,9 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/platform/src/linux_file_watcher.cpp,engine/platform/src/macos_file_watcher.cpp,tests/unit/core_tests.cpp -MaxFiles 3` | PASS | Targeted tidy completed; existing repository warning profile remains warning-only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files editor/core/src/material_graph_authoring.cpp,editor/core/src/material_authoring.cpp,engine/assets/src/sprite_atlas_packing.cpp,engine/navigation/src/local_avoidance.cpp,engine/platform/src/mobile.cpp,engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp,engine/scene_renderer/src/scene_renderer.cpp,engine/runtime/src/runtime_diagnostics.cpp,engine/runtime/src/asset_runtime.cpp,engine/tools/asset/ui_atlas_tool.cpp,engine/tools/asset/tilemap_tool.cpp,engine/rhi/vulkan/src/vulkan_backend.cpp,tests/unit/editor_core_tests.cpp -MaxFiles 13` | PASS | Targeted tidy covered hosted-library fallback edits; existing repository warning profile remains warning-only. |
 | `cmake --build --preset dev --target mirakana_rhi_vulkan` | PASS | Rebuilt the edited Vulkan backend after removing a non-ASCII comment that triggered MSVC C4819. |
+| `cmake --build --preset dev --target mirakana_runtime MK_runtime_tests MK_editor_core` | PASS | Rebuilt runtime parsing, Linux-tidy include fix, and editor backend direct include changes. |
+| `cmake --build --preset dev --target MK_tools_scene MK_tools_tests` | PASS | Rebuilt the scene tools after replacing remaining floating-point `std::from_chars` parsing with classic-locale parsing. |
+| `ctest --preset dev --output-on-failure -R "MK_runtime_tests\|MK_tools_tests"` | PASS | Targeted runtime and tools tests passed after hosted CI portability fixes. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/runtime/src/asset_runtime.cpp,tests/unit/runtime_tests.cpp,editor/core/src/render_backend.cpp -MaxFiles 3` | PASS | Targeted tidy covered macOS libc++ float parsing and Linux clang direct-include fixes; existing repository warning profile remains warning-only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/tools/scene/physics_collision_package_tool.cpp -MaxFiles 1` | PASS | Targeted tidy covered the remaining first-party float parsing fallback. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed; Apple/Metal diagnostics remained host-gated on Windows. |
