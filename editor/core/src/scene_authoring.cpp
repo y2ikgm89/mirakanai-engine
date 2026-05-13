@@ -21,6 +21,7 @@
 #include <functional>
 #include <initializer_list>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -120,8 +121,8 @@ void append_hierarchy_row(const Scene& scene, SceneNodeId node, std::size_t dept
             .has_sprite_renderer = scene_node->components.sprite_renderer.has_value(),
         });
 
-        for (auto it = scene_node->children.rbegin(); it != scene_node->children.rend(); ++it) {
-            stack.emplace_back(*it, current_depth + 1U);
+        for (const auto child : std::views::reverse(scene_node->children)) {
+            stack.emplace_back(child, current_depth + 1U);
         }
     }
 }

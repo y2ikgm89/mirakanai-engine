@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <exception>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -858,8 +859,7 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
     std::unordered_set<std::uint32_t> released_pipeline_layouts;
     std::unordered_set<std::uint32_t> released_descriptor_set_layouts;
 
-    for (auto it = bindings.material_bindings.rbegin(); it != bindings.material_bindings.rend(); ++it) {
-        const auto& material = *it;
+    for (const auto& material : std::views::reverse(bindings.material_bindings)) {
         if (device.null_mark_descriptor_set_released(material.binding.descriptor_set)) {
             ++report.descriptor_sets_released;
         }
@@ -896,11 +896,11 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         }
     }
 
-    for (auto it = bindings.material_pipeline_layouts.rbegin(); it != bindings.material_pipeline_layouts.rend(); ++it) {
-        if (released_pipeline_layouts.contains(it->value)) {
+    for (const auto& pipeline_layout : std::views::reverse(bindings.material_pipeline_layouts)) {
+        if (released_pipeline_layouts.contains(pipeline_layout.value)) {
             continue;
         }
-        if (device.null_mark_pipeline_layout_released(*it)) {
+        if (device.null_mark_pipeline_layout_released(pipeline_layout)) {
             ++report.pipeline_layouts_released;
         }
     }
@@ -916,8 +916,8 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         }
     }
 
-    for (auto it = bindings.skinned_mesh_uploads.rbegin(); it != bindings.skinned_mesh_uploads.rend(); ++it) {
-        const auto& upload = it->upload;
+    for (const auto& skinned_upload : std::views::reverse(bindings.skinned_mesh_uploads)) {
+        const auto& upload = skinned_upload.upload;
         if (device.null_mark_buffer_released(upload.vertex_buffer)) {
             ++report.buffers_released;
         }
@@ -938,10 +938,9 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         }
     }
 
-    for (auto it = bindings.compute_morph_skinned_mesh_bindings.rbegin();
-         it != bindings.compute_morph_skinned_mesh_bindings.rend(); ++it) {
-        const auto& base_upload = it->base_position_upload;
-        const auto& compute_binding = it->compute_binding;
+    for (const auto& morph_binding : std::views::reverse(bindings.compute_morph_skinned_mesh_bindings)) {
+        const auto& base_upload = morph_binding.base_position_upload;
+        const auto& compute_binding = morph_binding.compute_binding;
 
         if (device.null_mark_descriptor_set_released(compute_binding.descriptor_set)) {
             ++report.descriptor_sets_released;
@@ -990,8 +989,8 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         }
     }
 
-    for (auto it = bindings.mesh_uploads.rbegin(); it != bindings.mesh_uploads.rend(); ++it) {
-        const auto& upload = it->upload;
+    for (const auto& mesh_upload : std::views::reverse(bindings.mesh_uploads)) {
+        const auto& upload = mesh_upload.upload;
         if (device.null_mark_buffer_released(upload.vertex_buffer)) {
             ++report.buffers_released;
         }
@@ -1017,8 +1016,8 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         }
     }
 
-    for (auto it = bindings.morph_mesh_uploads.rbegin(); it != bindings.morph_mesh_uploads.rend(); ++it) {
-        const auto& upload = it->upload;
+    for (const auto& morph_upload : std::views::reverse(bindings.morph_mesh_uploads)) {
+        const auto& upload = morph_upload.upload;
         if (device.null_mark_buffer_released(upload.position_delta_buffer)) {
             ++report.buffers_released;
         }
@@ -1045,8 +1044,8 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         }
     }
 
-    for (auto it = bindings.texture_uploads.rbegin(); it != bindings.texture_uploads.rend(); ++it) {
-        const auto& upload = it->upload;
+    for (const auto& texture_upload : std::views::reverse(bindings.texture_uploads)) {
+        const auto& upload = texture_upload.upload;
         if (device.null_mark_texture_released(upload.texture)) {
             ++report.textures_released;
         }

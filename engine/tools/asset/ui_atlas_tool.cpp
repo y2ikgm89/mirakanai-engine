@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <limits>
+#include <ranges>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -225,9 +226,9 @@ void restore_changed_file(IFileSystem& filesystem, const ChangedFileSnapshot& sn
 
 void remove_created_directories(IFileSystem& filesystem, const std::vector<std::string>& directories,
                                 std::string& rollback_diagnostic) {
-    for (auto it = directories.rbegin(); it != directories.rend(); ++it) {
+    for (const auto& directory : std::views::reverse(directories)) {
         try {
-            filesystem.remove_empty_directory(*it);
+            filesystem.remove_empty_directory(directory);
         } catch (const std::exception& error) {
             if (!rollback_diagnostic.empty()) {
                 rollback_diagnostic += "; ";
@@ -255,9 +256,9 @@ void write_changed_files_transactionally(IFileSystem& filesystem,
     } catch (const std::exception& error) {
         std::string diagnostic = error.what();
         std::string rollback_diagnostic;
-        for (auto it = attempted_indices.rbegin(); it != attempted_indices.rend(); ++it) {
+        for (const auto attempted_index : std::views::reverse(attempted_indices)) {
             try {
-                restore_changed_file(filesystem, snapshot.files[*it]);
+                restore_changed_file(filesystem, snapshot.files[attempted_index]);
             } catch (const std::exception& rollback_error) {
                 if (!rollback_diagnostic.empty()) {
                     rollback_diagnostic += "; ";

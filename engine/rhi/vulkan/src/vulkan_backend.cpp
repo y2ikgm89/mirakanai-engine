@@ -7998,6 +7998,7 @@ VulkanRuntimeSurfaceSupportProbeResult probe_runtime_surface_support(const Vulka
     result.diagnostic = "Vulkan surface support probe ready";
     return result;
 #else
+    static_cast<void>(instance_desc);
     result.diagnostic = "Vulkan surface support probing is unsupported on this host";
     return result;
 #endif
