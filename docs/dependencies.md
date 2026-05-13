@@ -123,7 +123,7 @@ Mobile packaging templates are present but toolchain-gated. They are not used by
 - `androidx.core:core:1.18.0`
 - `androidx.games:games-activity:3.0.4`
 
-`platform/ios` declares a CMake/Xcode bundle template for Apple hosts. Full Xcode, UIKit, Metal, QuartzCore, iPhoneOS/iPhone Simulator SDKs, iOS Simulator runtimes, signing identities, and Apple SDK assets are host toolchain requirements and are not redistributed by this repository.
+`platform/ios` declares a CMake/Xcode bundle template for Apple hosts. Full Xcode, UIKit, Foundation, Metal, QuartzCore, iPhoneOS/iPhone Simulator SDKs, iOS Simulator runtimes, signing identities, and Apple SDK assets are host toolchain requirements and are not redistributed by this repository.
 
 Run mobile diagnostics with:
 
@@ -212,5 +212,4 @@ Validated local package versions:
 - Apple SDK frameworks are official platform SDK dependencies and are not redistributed by this repository.
 - Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit are official Microsoft host diagnostics tools and are not redistributed by this repository.
 - Any bundled source, binary, font, icon, texture, shader, or generated asset still requires a record in `THIRD_PARTY_NOTICES.md`.
-
 
