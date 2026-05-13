@@ -187,7 +187,7 @@ inline constexpr std::uint32_t vulkan_border_color_float_transparent_black = 0;
 inline constexpr std::uint32_t vulkan_format_r32g32_sfloat = 103;
 inline constexpr std::uint32_t vulkan_format_r32g32b32_sfloat = 106;
 inline constexpr std::uint32_t vulkan_format_r32g32b32a32_sfloat = 109;
-/// `VK_FORMAT_R16G16B16A16_UINT` — four 16-bit unsigned integer components per vertex attribute (skin joint indices).
+/// `VK_FORMAT_R16G16B16A16_UINT` - four 16-bit unsigned integer components per vertex attribute (skin joint indices).
 inline constexpr std::uint32_t vulkan_format_r16g16b16a16_uint = 95;
 inline constexpr std::uint32_t vulkan_format_r8g8b8a8_unorm = 37;
 inline constexpr std::uint32_t vulkan_format_b8g8r8a8_unorm = 44;
@@ -2266,7 +2266,7 @@ template <typename AvailableDeviceExtensions>
     std::vector<std::uint32_t> bindings;
     bindings.reserve(desc.bindings.size());
     for (const auto& binding : desc.bindings) {
-        if (std::ranges::contains(bindings, binding.binding)) {
+        if (std::ranges::find(bindings, binding.binding) != bindings.end()) {
             return true;
         }
         bindings.push_back(binding.binding);
@@ -2491,7 +2491,7 @@ template <typename AvailableDeviceExtensions>
 
 [[nodiscard]] bool contains_present_mode(const std::vector<VulkanPresentMode>& modes,
                                          VulkanPresentMode expected) noexcept {
-    return std::ranges::contains(modes, expected);
+    return std::ranges::find(modes, expected) != modes.end();
 }
 
 [[nodiscard]] Format choose_surface_format(const VulkanSwapchainCreateDesc& desc,
@@ -9718,7 +9718,8 @@ create_runtime_graphics_pipeline(VulkanRuntimeDevice& device, VulkanRuntimePipel
         result.diagnostic = "Vulkan graphics pipeline color format is unsupported";
         return result;
     }
-    if (!std::ranges::contains(desc.dynamic_rendering.color_formats, desc.color_format)) {
+    if (std::ranges::find(desc.dynamic_rendering.color_formats, desc.color_format) ==
+        desc.dynamic_rendering.color_formats.end()) {
         result.diagnostic = "Vulkan graphics pipeline color format must match dynamic rendering plan";
         return result;
     }

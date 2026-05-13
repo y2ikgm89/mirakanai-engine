@@ -11,7 +11,7 @@ Make PR validation green by fixing the root causes behind the failed GitHub chec
 
 ## Context
 
-PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, and macOS. The failures were caused by CI environment drift from the repository contract plus a real Linux/macOS native watcher API bug.
+PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, and a real Linux/macOS native watcher API bug.
 
 ## Constraints
 
@@ -23,10 +23,12 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, and macOS.
 ## Done When
 
 - Windows CI restores a pinned vcpkg checkout before dependency bootstrap.
-- Linux/static-analysis CI use a supported Ninja + Clang preset for C++ module scanning.
+- Linux build/sanitizer CI use supported Ninja + Clang presets for C++ module scanning, while static-analysis uses an explicit clang-tidy preset that does not depend on build-generated module maps.
 - macOS CI uses an explicit AppleClang preset with module scanning/import-std disabled until the host provides an officially supported scanning path.
 - Linux coverage uses a separate preset and initializes the lcov summary input correctly.
 - Linux/macOS native watcher `active()` is an instance `const noexcept` API matching Windows.
+- C++ code avoids C++23 library calls not present on hosted Clang/AppleClang standard libraries when C++20 alternatives are sufficient.
+- Windows CRLF checkouts and macOS/iOS missing Windows-only environment variables do not crash validation scripts.
 - Local validation covers the updated scripts, docs, presets, and native watcher compile contract.
 
 ## Validation Evidence
@@ -38,8 +40,12 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, and macOS.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage-thresholds.ps1` | PASS | Confirms `tools/check-coverage.ps1` initializes `$currentInfo` before lcov filtering/summary. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` | PASS | CI workflow static contract matches pinned vcpkg checkout, Linux/macOS presets, coverage, and static-analysis artifacts. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | JSON/manifests and workflow needles are synchronized. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` | PASS | C++23/module-scanning policy recognizes `ci-linux-clang`, `coverage`, and `ci-macos-appleclang`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` | PASS | C++23/module-scanning policy recognizes `ci-linux-clang`, `ci-linux-tidy`, `coverage`, and `ci-macos-appleclang`. |
+| `$env:LOCALAPPDATA=$null; $env:ProgramFiles=$null; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` | PASS | Diagnostic-only mobile validation no longer crashes on non-Windows hosts with missing Windows-only environment variables. |
+| `rg -n "^[^/\"]*std::ranges::(contains\|iota)" engine editor tests games examples` | PASS | No unsupported hosted-library calls remain in compiled source/test trees; `std::iota` uses are documented with targeted `NOLINT` because hosted Clang/AppleClang CI lacks `std::ranges::iota`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | Agent-facing workflow/skill contract stayed synchronized. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS | Header API change does not violate public boundary policy. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/platform/src/linux_file_watcher.cpp,engine/platform/src/macos_file_watcher.cpp,tests/unit/core_tests.cpp -MaxFiles 3` | PASS | Targeted tidy completed; existing repository warning profile remains warning-only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files editor/core/src/material_graph_authoring.cpp,editor/core/src/material_authoring.cpp,engine/assets/src/sprite_atlas_packing.cpp,engine/navigation/src/local_avoidance.cpp,engine/platform/src/mobile.cpp,engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp,engine/scene_renderer/src/scene_renderer.cpp,engine/runtime/src/runtime_diagnostics.cpp,engine/runtime/src/asset_runtime.cpp,engine/tools/asset/ui_atlas_tool.cpp,engine/tools/asset/tilemap_tool.cpp,engine/rhi/vulkan/src/vulkan_backend.cpp,tests/unit/editor_core_tests.cpp -MaxFiles 13` | PASS | Targeted tidy covered hosted-library fallback edits; existing repository warning profile remains warning-only. |
+| `cmake --build --preset dev --target mirakana_rhi_vulkan` | PASS | Rebuilt the edited Vulkan backend after removing a non-ASCII comment that triggered MSVC C4819. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed; Apple/Metal diagnostics remained host-gated on Windows. |

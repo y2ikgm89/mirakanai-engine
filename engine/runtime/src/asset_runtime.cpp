@@ -772,11 +772,11 @@ runtime_sprite_animation_payload(const RuntimeAssetRecord& record) {
             if (!valid_sprite_animation_frame(frame)) {
                 return payload_failure<RuntimeSpriteAnimationPayload>("runtime sprite animation frame is invalid");
             }
-            if (!std::ranges::contains(record.dependencies, frame.sprite)) {
+            if (std::ranges::find(record.dependencies, frame.sprite) == record.dependencies.end()) {
                 return payload_failure<RuntimeSpriteAnimationPayload>(
                     "runtime sprite animation frame sprite is not declared as a package dependency");
             }
-            if (!std::ranges::contains(record.dependencies, frame.material)) {
+            if (std::ranges::find(record.dependencies, frame.material) == record.dependencies.end()) {
                 return payload_failure<RuntimeSpriteAnimationPayload>(
                     "runtime sprite animation frame material is not declared as a package dependency");
             }
@@ -934,7 +934,7 @@ RuntimePayloadAccessResult<RuntimeUiAtlasPayload> runtime_ui_atlas_payload(const
 
         payload.pages.reserve(document.pages.size());
         for (const auto& page : document.pages) {
-            if (!std::ranges::contains(record.dependencies, page.asset)) {
+            if (std::ranges::find(record.dependencies, page.asset) == record.dependencies.end()) {
                 return payload_failure<RuntimeUiAtlasPayload>(
                     "runtime ui atlas page asset is not declared as a package dependency");
             }
@@ -985,7 +985,7 @@ RuntimePayloadAccessResult<RuntimeTilemapPayload> runtime_tilemap_payload(const 
         if (document.asset != record.asset) {
             return payload_failure<RuntimeTilemapPayload>("runtime tilemap payload asset id does not match record");
         }
-        if (!std::ranges::contains(record.dependencies, document.atlas_page)) {
+        if (std::ranges::find(record.dependencies, document.atlas_page) == record.dependencies.end()) {
             return payload_failure<RuntimeTilemapPayload>(
                 "runtime tilemap atlas page asset is not declared as a package dependency");
         }

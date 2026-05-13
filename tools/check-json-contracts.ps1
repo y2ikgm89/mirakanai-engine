@@ -33,6 +33,21 @@ function Assert-ContainsText($text, $needle, $label) {
     }
 }
 
+function Assert-DoesNotContainText($text, $needle, $label) {
+    if ($text.Contains($needle)) {
+        Write-Error "$label must not contain forbidden text: $needle"
+    }
+}
+
+function Test-TextStartsWithLine([string]$text, [string]$line) {
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $false
+    }
+
+    $normalizedText = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    return $normalizedText.StartsWith("$line`n") -or $normalizedText -eq $line
+}
+
 function ConvertTo-RepoPath([string]$path) {
     return $path.Replace("\", "/")
 }
@@ -940,16 +955,16 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
 
         $sourceSceneText = Get-Content -LiteralPath (Join-Path $root "$gameDirectory/$sceneAuthoringPath") -Raw
         $sourcePrefabText = Get-Content -LiteralPath (Join-Path $root "$gameDirectory/$prefabAuthoringPath") -Raw
-        if ([string]::IsNullOrWhiteSpace($sourceSceneText) -or -not $sourceSceneText.StartsWith("format=GameEngine.Scene.v2`n")) {
+        if (-not (Test-TextStartsWithLine $sourceSceneText "format=GameEngine.Scene.v2")) {
             Write-Error "$relativePath prefabScenePackageAuthoringTargets sceneAuthoringPath must contain GameEngine.Scene.v2 text: $sceneAuthoringPath"
         }
-        if ([string]::IsNullOrWhiteSpace($sourcePrefabText) -or -not $sourcePrefabText.StartsWith("format=GameEngine.Prefab.v2`n")) {
+        if (-not (Test-TextStartsWithLine $sourcePrefabText "format=GameEngine.Prefab.v2")) {
             Write-Error "$relativePath prefabScenePackageAuthoringTargets prefabAuthoringPath must contain GameEngine.Prefab.v2 text: $prefabAuthoringPath"
         }
 
         $sourceRegistryFullPath = Join-Path $root "$gameDirectory/$sourceRegistryPath"
         $sourceRegistryText = Get-Content -LiteralPath $sourceRegistryFullPath -Raw
-        if ([string]::IsNullOrWhiteSpace($sourceRegistryText) -or -not $sourceRegistryText.StartsWith("format=GameEngine.SourceAssetRegistry.v1`n")) {
+        if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry.v1")) {
             Write-Error "$relativePath prefabScenePackageAuthoringTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry.v1 text: $sourceRegistryPath"
         }
         $sourceRegistryRows = @{}
@@ -1160,7 +1175,7 @@ function Assert-RegisteredSourceAssetCookTargets($game, [string]$relativePath, [
 
         $sourceRegistryFullPath = Join-Path $root "$gameDirectory/$($target.sourceRegistryPath)"
         $sourceRegistryText = Get-Content -LiteralPath $sourceRegistryFullPath -Raw
-        if ([string]::IsNullOrWhiteSpace($sourceRegistryText) -or -not $sourceRegistryText.StartsWith("format=GameEngine.SourceAssetRegistry.v1`n")) {
+        if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry.v1")) {
             Write-Error "$relativePath registeredSourceAssetCookTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry.v1 text: $($target.sourceRegistryPath)"
         }
 
@@ -4488,8 +4503,21 @@ if (-not $testingContent.Contains("pwsh -NoProfile -ExecutionPolicy Bypass -File
 $ciMatrixCheckText = Get-Content -LiteralPath (Join-Path $root "tools/check-ci-matrix.ps1") -Raw
 $validateWorkflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw
 $validateScriptText = Get-Content -LiteralPath (Join-Path $root "tools/validate.ps1") -Raw
+$commonScriptText = Get-Content -LiteralPath (Join-Path $root "tools/common.ps1") -Raw
+$mobilePackagingScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-mobile-packaging.ps1") -Raw
+$androidReleasePackageScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-android-release-package.ps1") -Raw
 if (-not $validateScriptText.Contains("check-ci-matrix.ps1")) {
     Write-Error "tools/validate.ps1 must run check-ci-matrix.ps1"
+}
+Assert-ContainsText $commonScriptText "function Join-OptionalPath" "tools/common.ps1"
+Assert-ContainsText $commonScriptText "function Get-LocalApplicationDataRoot" "tools/common.ps1"
+foreach ($forbiddenNeedle in @(
+    'Join-Path $env:LOCALAPPDATA',
+    'Join-Path $env:ProgramFiles'
+)) {
+    Assert-DoesNotContainText $commonScriptText $forbiddenNeedle "tools/common.ps1"
+    Assert-DoesNotContainText $mobilePackagingScriptText $forbiddenNeedle "tools/check-mobile-packaging.ps1"
+    Assert-DoesNotContainText $androidReleasePackageScriptText $forbiddenNeedle "tools/check-android-release-package.ps1"
 }
 foreach ($needle in @(
     ".github/workflows/validate.yml",
@@ -4510,7 +4538,7 @@ foreach ($needle in @(
     "name: Full Repository Static Analysis",
     "runs-on: ubuntu-latest",
     "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
-    "./tools/check-tidy.ps1 -Strict -Preset ci-linux-clang",
+    "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
     "static-analysis-tidy-logs"
 )) {
     if (-not $validateWorkflowText.Contains($needle)) {

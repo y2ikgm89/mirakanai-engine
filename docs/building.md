@@ -76,7 +76,7 @@ Generated optional targets are added to `MK_LIBRARY_TARGETS` only when the `TARG
 | `ON` (default) | Sets `CMAKE_CXX_SCAN_FOR_MODULES=ON`. `MK_apply_common_target_options` enables module dependency scanning per target. |
 | `OFF` | Sets `CMAKE_CXX_SCAN_FOR_MODULES=OFF`. Use only for reviewed non-module lanes whose host generator/compiler cannot provide CMake module scanning. |
 
-Default development, C++23 verification, Linux Clang CI, sanitizer, release, and optional vcpkg-backed presets keep scanning `ON`. The `coverage` and `ci-macos-appleclang` presets keep scanning and CMake-managed `import std` `OFF` because those lanes use GCC coverage or AppleClang hosts where the current CI contract does not provide official CMake C++ module dependency scanning support. Do not add project `FILE_SET CXX_MODULES` sources to those exception lanes without moving them to a supported generator/compiler combination first.
+Default development, C++23 verification, Linux Clang CI, sanitizer, release, and optional vcpkg-backed presets keep scanning `ON`. The `ci-linux-tidy`, `coverage`, and `ci-macos-appleclang` presets keep scanning and CMake-managed `import std` `OFF` because those lanes use clang-tidy without build-generated module maps, GCC coverage, or AppleClang hosts where the current CI contract does not provide official CMake C++ module dependency scanning support. Do not add project `FILE_SET CXX_MODULES` sources to those exception lanes without moving them to a supported generator/compiler combination first.
 
 | `MK_ENABLE_IMPORT_STD` | `CMAKE_CXX_COMPILER_IMPORT_STD` contains `23` | Effect |
 | --- | --- | --- |

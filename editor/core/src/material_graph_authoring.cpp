@@ -3,7 +3,7 @@
 
 #include "mirakana/editor/material_graph_authoring.hpp"
 
-#include <ranges>
+#include <algorithm>
 #include <stdexcept>
 #include <utility>
 
@@ -121,7 +121,7 @@ std::vector<AssetId> material_graph_texture_dependencies(const MaterialGraphAuth
         if (node.kind != MaterialGraphNodeKind::texture || node.texture_id.value == 0) {
             continue;
         }
-        if (!std::ranges::contains(dependencies, node.texture_id)) {
+        if (std::ranges::find(dependencies, node.texture_id) == dependencies.end()) {
             dependencies.push_back(node.texture_id);
         }
     }

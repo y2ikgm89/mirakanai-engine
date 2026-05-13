@@ -61,7 +61,7 @@ When executing [Production Completion Master Plan v1](superpowers/plans/2026-05-
 
 ## Static Analysis And API Boundaries
 
-- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` for clang-tidy. The default validation path verifies `.clang-tidy`, uses CMake File API codemodel data to synthesize `compile_commands.json` for the Windows Visual Studio `dev` preset when the generator does not emit one, runs a `-MaxFiles 1` smoke analysis in `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and reports explicit CMake/clang-tidy tool blockers instead of silently skipping analysis. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/physics/src/physics3d.cpp` for wrapper-owned changed-file analysis when a full repository run is too broad for the current slice. GitHub Actions also has a reviewed `static-analysis` lane that runs `tools/check-tidy.ps1 -Strict` on `ubuntu-latest`; local `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` verifies that lane exists but does not execute CI locally.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` for clang-tidy. The default validation path verifies `.clang-tidy`, uses CMake File API codemodel data to synthesize `compile_commands.json` for the Windows Visual Studio `dev` preset when the generator does not emit one, runs a `-MaxFiles 1` smoke analysis in `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and reports explicit CMake/clang-tidy tool blockers instead of silently skipping analysis. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/physics/src/physics3d.cpp` for wrapper-owned changed-file analysis when a full repository run is too broad for the current slice. GitHub Actions also has a reviewed `static-analysis` lane that runs `tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy` on `ubuntu-latest`; local `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` verifies that lane exists but does not execute CI locally.
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1` for coverage. Coverage is currently enforced only on Linux GCC/Clang CI where gcov coverage is stable; other hosts report an explicit blocker instead of producing partial data.
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` after touching public headers or backend interop. Public engine/editor headers must not expose native D3D12/DXGI/Win32 symbols, COM pointers, or native graphics headers.
 - Use backend PIMPL types or first-party opaque handles for native OS/GPU interop until a written interop design accepts a narrower exception.
@@ -270,7 +270,7 @@ GitHub Actions runs:
 - Windows: `tools/validate.ps1` and `tools/evaluate-cpp23.ps1 -Release`
 - Linux: `cmake --preset ci-linux-clang`, build/CTest, plus `tools/check-coverage.ps1 -Strict`
 - Linux sanitizers: `cmake --preset clang-asan-ubsan`, build, and CTest
-- macOS: Ninja + Xcode `clang` CMake configure/build/CTest, including Apple-only Metal Objective-C++ sources
+- macOS: `cmake --preset ci-macos-appleclang`, build/CTest, including Apple-only Metal Objective-C++ sources
 - iOS Validate: `tools/smoke-ios-package.ps1` on a pinned macOS hosted runner, building the iOS Simulator bundle and running `xcrun simctl install`, `get_app_container`, `launch`, and cleanup for `sample_headless`
 
 Local Linux validation should use the CI preset with Ninja and Clang:

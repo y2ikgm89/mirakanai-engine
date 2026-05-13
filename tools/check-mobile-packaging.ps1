@@ -22,12 +22,13 @@ function Assert-TemplateFile {
 }
 
 function Find-AndroidSdk {
+    $localAppData = Get-LocalApplicationDataRoot
     $candidates = @(
         $env:ANDROID_HOME,
         $env:ANDROID_SDK_ROOT,
         (Get-EnvironmentVariableAnyScope "ANDROID_HOME"),
         (Get-EnvironmentVariableAnyScope "ANDROID_SDK_ROOT"),
-        (Join-Path $env:LOCALAPPDATA "Android\Sdk")
+        (Join-OptionalPath $localAppData "Android\Sdk")
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
     foreach ($candidate in $candidates) {
@@ -75,8 +76,8 @@ function Find-GradleCommand {
         return $gradle
     }
 
-    $toolchainsRoot = Join-Path $env:LOCALAPPDATA "GameEngineToolchains"
-    if (Test-Path $toolchainsRoot) {
+    $toolchainsRoot = Join-OptionalPath (Get-LocalApplicationDataRoot) "GameEngineToolchains"
+    if (-not [string]::IsNullOrWhiteSpace($toolchainsRoot) -and (Test-Path $toolchainsRoot)) {
         $candidate = Get-ChildItem -Path $toolchainsRoot -Directory -Filter "gradle-*" |
             Sort-Object Name -Descending |
             ForEach-Object { Join-Path $_.FullName "bin\gradle.bat" } |
@@ -104,8 +105,8 @@ function Find-JavaCommand {
         return $java
     }
 
-    $adoptiumRoot = Join-Path $env:ProgramFiles "Eclipse Adoptium"
-    if (Test-Path $adoptiumRoot) {
+    $adoptiumRoot = Join-OptionalPath (Get-EnvironmentVariableAnyScope "ProgramFiles") "Eclipse Adoptium"
+    if (-not [string]::IsNullOrWhiteSpace($adoptiumRoot) -and (Test-Path $adoptiumRoot)) {
         $candidate = Get-ChildItem -Path $adoptiumRoot -Directory -Filter "jdk-*" |
             Sort-Object Name -Descending |
             ForEach-Object { Join-Path $_.FullName "bin\java.exe" } |

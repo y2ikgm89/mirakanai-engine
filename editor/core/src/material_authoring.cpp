@@ -541,7 +541,7 @@ std::vector<AssetId> material_authoring_texture_dependencies(const MaterialAutho
         if (binding == document.material().texture_bindings.end()) {
             continue;
         }
-        if (!std::ranges::contains(dependencies, binding->texture)) {
+        if (std::ranges::find(dependencies, binding->texture) == dependencies.end()) {
             dependencies.push_back(binding->texture);
         }
     }

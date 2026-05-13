@@ -166,11 +166,11 @@ Assert-ContainsAll $staticAnalysisJob @(
     "runs-on: ubuntu-latest",
     "actions/checkout@v4",
     "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
-    "./tools/check-tidy.ps1 -Strict -Preset ci-linux-clang",
+    "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
     "actions/upload-artifact@v4",
     "name: static-analysis-tidy-logs",
-    "out/build/ci-linux-clang/compile_commands.json",
-    "out/build/ci-linux-clang/.cmake/api/v1/reply/*.json",
+    "out/build/ci-linux-tidy/compile_commands.json",
+    "out/build/ci-linux-tidy/.cmake/api/v1/reply/*.json",
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml static-analysis job"
 

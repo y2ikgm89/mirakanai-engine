@@ -301,7 +301,7 @@ struct SceneMeshCenterBounds {
 }
 
 [[nodiscard]] bool contains_asset(const std::vector<AssetId>& assets, AssetId asset) noexcept {
-    return std::ranges::contains(assets, asset);
+    return std::ranges::find(assets, asset) != assets.end();
 }
 
 [[nodiscard]] bool has_load_failure_for(const std::vector<RuntimeSceneRenderLoadFailure>& failures,

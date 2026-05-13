@@ -123,7 +123,7 @@ void append_sprite_animation_package_diagnostics(
     std::vector<AssetId> checked_sprites;
     std::vector<AssetId> checked_materials;
     for (const auto& frame : access.payload.frames) {
-        if (!std::ranges::contains(checked_sprites, frame.sprite)) {
+        if (std::ranges::find(checked_sprites, frame.sprite) == checked_sprites.end()) {
             checked_sprites.push_back(frame.sprite);
             const auto* sprite_record = package.find(frame.sprite);
             if (sprite_record == nullptr) {
@@ -143,7 +143,7 @@ void append_sprite_animation_package_diagnostics(
             }
         }
 
-        if (!std::ranges::contains(checked_materials, frame.material)) {
+        if (std::ranges::find(checked_materials, frame.material) == checked_materials.end()) {
             checked_materials.push_back(frame.material);
             const auto* material_record = package.find(frame.material);
             if (material_record == nullptr) {

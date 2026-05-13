@@ -88,7 +88,7 @@ foreach ($presetName in @("dev", "desktop-runtime", "desktop-gui", "asset-import
     }
 }
 
-foreach ($presetName in @("coverage", "ci-macos-appleclang")) {
+foreach ($presetName in @("ci-linux-tidy", "coverage", "ci-macos-appleclang")) {
     $configurePreset = $presets.configurePresets | Where-Object { $_.name -eq $presetName } | Select-Object -First 1
     if (-not $configurePreset) {
         Write-Error "CMakePresets.json missing $presetName configure preset"
@@ -133,7 +133,7 @@ foreach ($presetKind in @("buildPresets", "testPresets")) {
     }
 }
 
-foreach ($presetName in @("ci-linux-clang", "coverage", "ci-macos-appleclang")) {
+foreach ($presetName in @("ci-linux-clang", "ci-linux-tidy", "coverage", "ci-macos-appleclang")) {
     foreach ($presetKind in @("buildPresets", "testPresets")) {
         $preset = $presets.$presetKind | Where-Object { $_.name -eq $presetName } | Select-Object -First 1
         if (-not $preset) {
