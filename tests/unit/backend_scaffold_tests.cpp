@@ -387,10 +387,16 @@ MK_TEST("vulkan backend loader probe classifies runtime and symbol availability"
 
 MK_TEST("vulkan backend loader probe can inspect the current host without exposing native handles") {
     const auto result = mirakana::rhi::vulkan::probe_runtime_loader();
+    const auto host = mirakana::rhi::current_rhi_host_platform();
 
     MK_REQUIRE(result.probe.backend == mirakana::rhi::BackendKind::vulkan);
-    MK_REQUIRE(result.probe.host == mirakana::rhi::current_rhi_host_platform());
-    MK_REQUIRE(!result.runtime_library.empty());
+    MK_REQUIRE(result.probe.host == host);
+    if (mirakana::rhi::vulkan::supports_host(host)) {
+        MK_REQUIRE(!result.runtime_library.empty());
+    } else {
+        MK_REQUIRE(result.runtime_library.empty());
+        MK_REQUIRE(result.probe.status == mirakana::rhi::BackendProbeStatus::unsupported_host);
+    }
     MK_REQUIRE(!result.probe.diagnostic.empty());
 }
 
@@ -778,10 +784,16 @@ MK_TEST("vulkan command resolution plan rejects missing required commands but to
 
 MK_TEST("vulkan runtime global command probe inspects current host without exposing native pointers") {
     const auto result = mirakana::rhi::vulkan::probe_runtime_global_commands();
+    const auto host = mirakana::rhi::current_rhi_host_platform();
 
     MK_REQUIRE(result.loader.probe.backend == mirakana::rhi::BackendKind::vulkan);
-    MK_REQUIRE(result.loader.probe.host == mirakana::rhi::current_rhi_host_platform());
-    MK_REQUIRE(!result.loader.runtime_library.empty());
+    MK_REQUIRE(result.loader.probe.host == host);
+    if (mirakana::rhi::vulkan::supports_host(host)) {
+        MK_REQUIRE(!result.loader.runtime_library.empty());
+    } else {
+        MK_REQUIRE(result.loader.runtime_library.empty());
+        MK_REQUIRE(result.loader.probe.status == mirakana::rhi::BackendProbeStatus::unsupported_host);
+    }
     MK_REQUIRE(!result.command_plan.resolutions.empty());
     MK_REQUIRE(!result.command_plan.diagnostic.empty());
 }

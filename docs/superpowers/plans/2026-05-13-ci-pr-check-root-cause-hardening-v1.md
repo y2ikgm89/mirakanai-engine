@@ -11,7 +11,7 @@ Make PR validation green by fixing the root causes behind the failed GitHub chec
 
 ## Context
 
-PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, Metal Objective-C++ framework linkage gaps, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
+PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, Metal Objective-C++ framework linkage gaps, host-optional Vulkan loader assumptions in macOS tests, asynchronous macOS FSEvents delivery timing, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
 
 ## Constraints
 
@@ -32,6 +32,8 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 - Apple iOS Xcode configure paths explicitly disable CMake C++ module scanning and CMake-managed `import std`.
 - Metal Objective-C++ native code links all Apple SDK frameworks it uses, including Foundation for `NSString`.
 - Metal runtime render encoder creation has complete friend declarations for texture and drawable paths.
+- macOS tests accept unsupported Vulkan as an explicit host classification instead of requiring a Vulkan loader on every Apple runner.
+- macOS native file watcher polling flushes FSEvents delivery before inspecting queued events.
 - Windows CRLF checkouts and macOS/iOS missing Windows-only environment variables do not crash validation scripts or source registry key checks.
 - Local validation covers the updated scripts, docs, presets, and native watcher compile contract.
 
@@ -61,3 +63,6 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` | PASS | Static policy now locks Apple mobile Xcode configure to `MK_ENABLE_CXX_MODULE_SCANNING=OFF` and `MK_ENABLE_IMPORT_STD=OFF`. |
 | `cmake --build --preset dev --target MK_rhi_metal` | PASS | Rebuilt the Metal target after adding the missing drawable render-encoder friend declaration. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | PASS | Static dependency policy now locks Foundation documentation and Metal target linkage. |
+| `cmake --build --preset dev --target MK_backend_scaffold_tests` | PASS | Rebuilt the backend scaffold tests, Vulkan backend, Metal backend, and platform watcher sources after macOS CI test hardening. |
+| `ctest --preset dev --output-on-failure -R "MK_backend_scaffold_tests\|MK_core_tests"` | PASS | Windows host still proves Vulkan runtime loader tests after macOS unsupported-host assertions were narrowed, plus the core watcher API contract. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/platform/src/macos_file_watcher.cpp,tests/unit/backend_scaffold_tests.cpp -MaxFiles 2` | PASS | Targeted tidy covered the compiled Windows view of macOS watcher and Vulkan test edits; existing repository warnings remain warning-only. |

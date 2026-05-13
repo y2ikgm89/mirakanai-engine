@@ -39,7 +39,7 @@ namespace {
                                                                                const std::string& path) {
 #endif
     std::vector<mirakana::FileWatchEvent> collected;
-    for (int attempt = 0; attempt < 150; ++attempt) {
+    for (int attempt = 0; attempt < 300; ++attempt) {
         auto result = watcher.poll();
         if (!result.active || !result.diagnostic.empty()) {
             throw std::runtime_error("watcher inactive: " + result.diagnostic);
@@ -48,7 +48,7 @@ namespace {
         if (std::ranges::any_of(collected, [&](const mirakana::FileWatchEvent& event) { return event.path == path; })) {
             return collected;
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
     }
     return collected;
 }
@@ -91,6 +91,7 @@ MK_TEST("native file watcher reports file changes without exposing handles") {
 #endif
         MK_REQUIRE(watcher.active());
         MK_REQUIRE(watcher.backend_kind() == mirakana::FileWatchBackendKind::native);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         {
             std::ofstream output(root / "player.texture", std::ios::binary | std::ios::trunc);

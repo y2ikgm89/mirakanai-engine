@@ -132,6 +132,7 @@ struct MacOSFileWatcher::Impl {
     mutable std::mutex mutex;
     std::condition_variable ready_cv;
     CFRunLoopRef run_loop{nullptr};
+    FSEventStreamRef event_stream{nullptr};
 
     explicit Impl(MacOSFileWatcherDesc desc)
         : directory_path(std::filesystem::absolute(desc.directory)), path_prefix(normalize_prefix(desc.path_prefix)),
@@ -174,6 +175,16 @@ struct MacOSFileWatcher::Impl {
             ready = true;
         }
         ready_cv.notify_all();
+    }
+
+    void set_event_stream(FSEventStreamRef stream) noexcept {
+        std::lock_guard lock(mutex);
+        event_stream = stream;
+    }
+
+    [[nodiscard]] FSEventStreamRef current_event_stream() const noexcept {
+        std::lock_guard lock(mutex);
+        return event_stream;
     }
 
     void set_failure(std::string message) {
@@ -282,7 +293,9 @@ struct MacOSFileWatcher::Impl {
         }
 
         FSEventStreamScheduleWithRunLoop(stream, current_loop, kCFRunLoopDefaultMode);
+        set_event_stream(stream);
         if (!FSEventStreamStart(stream)) {
+            set_event_stream(nullptr);
             FSEventStreamInvalidate(stream);
             FSEventStreamRelease(stream);
             {
@@ -309,11 +322,16 @@ struct MacOSFileWatcher::Impl {
         {
             std::lock_guard lock(mutex);
             run_loop = nullptr;
+            event_stream = nullptr;
             active = false;
         }
     }
 
     [[nodiscard]] MacOSFileWatcherPollResult poll() {
+        if (const auto stream = current_event_stream(); stream != nullptr) {
+            FSEventStreamFlushSync(stream);
+        }
+
         std::lock_guard lock(mutex);
         MacOSFileWatcherPollResult result;
         result.active = active;
