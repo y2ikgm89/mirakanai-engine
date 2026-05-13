@@ -7,6 +7,13 @@ on:
       - master
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   windows:
     name: Windows MSVC
@@ -139,7 +146,7 @@ jobs:
 
       - name: Run clang-tidy
         shell: pwsh
-        run: ./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 2
+        run: ./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0
 
       - name: Upload static analysis logs
         if: always()

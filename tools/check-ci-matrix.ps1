@@ -92,7 +92,12 @@ Assert-ContainsAll $validateWorkflow @(
     "branches:",
     "- main",
     "- master",
-    "pull_request:"
+    "pull_request:",
+    "permissions:",
+    "contents: read",
+    "concurrency:",
+    'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+    "cancel-in-progress: `${{ github.event_name == 'pull_request' }}"
 ) ".github/workflows/validate.yml triggers"
 
 $windowsJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows" -Label ".github/workflows/validate.yml"
@@ -167,7 +172,7 @@ Assert-ContainsAll $staticAnalysisJob @(
     "actions/checkout@v4",
     "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
     "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
-    "-Jobs 2",
+    "-Jobs 0",
     "actions/upload-artifact@v4",
     "name: static-analysis-tidy-logs",
     "out/build/ci-linux-tidy/compile_commands.json",
@@ -188,7 +193,12 @@ Assert-ContainsAll $iosWorkflow @(
     '"platform/ios/**"',
     '"tools/build-mobile-apple.ps1"',
     '"tools/check-mobile-packaging.ps1"',
-    '"tools/smoke-ios-package.ps1"'
+    '"tools/smoke-ios-package.ps1"',
+    "permissions:",
+    "contents: read",
+    "concurrency:",
+    'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+    "cancel-in-progress: `${{ github.event_name == 'pull_request' }}"
 ) ".github/workflows/ios-validate.yml triggers and path filters"
 
 $iosJob = Get-WorkflowJobText -WorkflowText $iosWorkflow -JobName "simulator-smoke" -Label ".github/workflows/ios-validate.yml"

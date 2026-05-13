@@ -6,7 +6,7 @@ param(
     [string]$Configuration = "Debug",
     [switch]$Strict,
     [int]$MaxFiles = 0,
-    [int]$Jobs = 1,
+    [int]$Jobs = 0,
     [string[]]$Files = @()
 )
 
@@ -415,13 +415,24 @@ if ($MaxFiles -gt 0 -and $tidyFiles.Count -gt $MaxFiles) {
     $tidyFiles = [System.Collections.Generic.List[string]]($tidyFiles | Select-Object -First $MaxFiles)
 }
 
-if ($Jobs -lt 1) {
-    Write-Error "tidy-check: -Jobs must be at least 1"
+if ($Jobs -lt 0) {
+    Write-Error "tidy-check: -Jobs must be 0 for automatic CPU-count parallelism or a positive explicit job count"
+}
+
+$effectiveJobs = if ($Jobs -eq 0) {
+    [Math]::Max(1, [Environment]::ProcessorCount)
+}
+else {
+    $Jobs
+}
+$effectiveJobs = [Math]::Max(1, $effectiveJobs)
+if ($tidyFiles.Count -gt 0) {
+    $effectiveJobs = [Math]::Min($effectiveJobs, $tidyFiles.Count)
 }
 
 $suppressedWarningSummaryCount = 0
 $failedTidyFiles = [System.Collections.Generic.List[string]]::new()
-if ($Jobs -eq 1 -or $tidyFiles.Count -le 1) {
+if ($effectiveJobs -eq 1 -or $tidyFiles.Count -le 1) {
     foreach ($file in $tidyFiles) {
         $tidyArguments = @("--quiet", "-p", $buildDir)
         if ($Strict) {
@@ -443,7 +454,7 @@ if ($Jobs -eq 1 -or $tidyFiles.Count -le 1) {
         }
     }
 } else {
-    Write-Host "tidy-check: running clang-tidy with $Jobs parallel jobs"
+    Write-Host "tidy-check: running clang-tidy with $effectiveJobs parallel jobs"
     $indexedTidyFiles = for ($index = 0; $index -lt $tidyFiles.Count; ++$index) {
         [pscustomobject]@{
             Index = $index
@@ -464,7 +475,7 @@ if ($Jobs -eq 1 -or $tidyFiles.Count -le 1) {
             ExitCode = $LASTEXITCODE
             Output = $tidyOutput
         }
-    } -ThrottleLimit $Jobs
+    } -ThrottleLimit $effectiveJobs
 
     foreach ($tidyResult in ($tidyResults | Sort-Object Index)) {
         foreach ($line in @($tidyResult.Output)) {
