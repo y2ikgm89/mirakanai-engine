@@ -28,11 +28,11 @@ Workflow: [.github/workflows/validate.yml](../.github/workflows/validate.yml). A
 
 | Job ID | Runner | What runs |
 | --- | --- | --- |
-| `windows` | `windows-latest` | `tools/validate.ps1`, `tools/evaluate-cpp23.ps1 -Release`; validates C++23 release CPack ZIP/SHA-256/archive payloads through `Assert-ReleasePackageArtifacts`; uploads Windows test logs, CPack ZIP artifacts, and `.zip.sha256` sidecars |
-| `linux` | `ubuntu-latest` | Installs **lcov**; plain CMake Debug in `out/build/dev`, `ctest`; then `tools/check-coverage.ps1 -Strict` (separate **`out/build/coverage`** tree, `gcc --coverage` / `lcov` summary vs [tools/coverage-thresholds.json](../tools/coverage-thresholds.json)) |
-| `linux-sanitizers` | `ubuntu-latest` | Installs **ninja-build**, then **`cmake --preset clang-asan-ubsan`** (Ninja generator, `MK_ENABLE_SANITIZERS=ON`, Clang **`-fsanitize=address,undefined`** matching compile/link), **`ctest --preset clang-asan-ubsan`** with **`UBSAN_OPTIONS=print_stacktrace=1`** for actionable traces |
-| `static-analysis` | `ubuntu-latest` | Installs **clang-tidy**, runs **`tools/check-tidy.ps1 -Strict`** over the repository wrapper, and uploads `static-analysis-tidy-logs` for the generated compile database / CMake File API evidence |
-| `macos` | `macos-latest` | Ninja + Apple Clang, `out/build/dev-macos`, CTest |
+| `windows` | `windows-latest` | Restores `external/vcpkg` from the official Microsoft repository at the `vcpkg.json` `builtin-baseline`, then runs `tools/bootstrap-deps.ps1`, `tools/validate.ps1`, and `tools/evaluate-cpp23.ps1 -Release`; validates C++23 release CPack ZIP/SHA-256/archive payloads through `Assert-ReleasePackageArtifacts`; uploads Windows test logs, CPack ZIP artifacts, and `.zip.sha256` sidecars |
+| `linux` | `ubuntu-latest` | Installs **clang**, **g++**, **lcov**, and **ninja-build**; runs `cmake --preset ci-linux-clang`, `cmake --build --preset ci-linux-clang`, `ctest --preset ci-linux-clang`; then `tools/check-coverage.ps1 -Strict` (separate **`out/build/coverage`** tree through the `coverage` preset, `g++ --coverage` / `lcov` summary vs [tools/coverage-thresholds.json](../tools/coverage-thresholds.json)) |
+| `linux-sanitizers` | `ubuntu-latest` | Installs **clang** and **ninja-build**, then **`cmake --preset clang-asan-ubsan`** (Ninja generator, `MK_ENABLE_SANITIZERS=ON`, Clang **`-fsanitize=address,undefined`** matching compile/link), **`ctest --preset clang-asan-ubsan`** with **`UBSAN_OPTIONS=print_stacktrace=1`** for actionable traces |
+| `static-analysis` | `ubuntu-latest` | Installs **clang**, **clang-tidy**, and **ninja-build**, runs **`tools/check-tidy.ps1 -Strict -Preset ci-linux-clang`** over the repository wrapper, and uploads `static-analysis-tidy-logs` for the generated compile database / CMake File API evidence |
+| `macos` | `macos-latest` | Ninja + AppleClang through `cmake --preset ci-macos-appleclang`, `cmake --build --preset ci-macos-appleclang`, and `ctest --preset ci-macos-appleclang`; this preset disables CMake module scanning/import-std until the CI host uses an officially supported module-scanning compiler path |
 
 Authoritative green/red for the sanitizer lane is CI on Ubuntu (Clang). Local reproduction:
 
@@ -48,10 +48,10 @@ Requires **`clang++`** and **Ninja** on `PATH` (the preset sets generator Ninja)
 
 Policy lives in [tools/coverage-thresholds.json](../tools/coverage-thresholds.json) (`minLineCoveragePercent`, optional `lcovRemovePatterns`). On Linux:
 
-- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1` runs a **separate** instrumented build under `out/build/coverage`, executes CTest including `ctest -T Coverage`, runs **`lcov --capture`** / **`lcov --summary`**, and compares the reported **line %** to the minimum (warnings only unless you use strict modes below).
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1` runs the **separate** `coverage` preset under `out/build/coverage`, executes CTest including `ctest -T Coverage`, runs **`lcov --capture`** / **`lcov --summary`**, and compares the reported **line %** to the minimum (warnings only unless you use strict modes below).
 - **`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1 -Strict`** (or `./tools/check-coverage.ps1 -Strict`) **fails** if line coverage is below the minimum or if `lcov`/`gcov` is missing. CI uses **`-Strict`** in [.github/workflows/validate.yml](../.github/workflows/validate.yml).
 
-Install **`lcov`** and **`gcov`** (GCC coverage tools) on the host; Ubuntu/Debian: `apt install lcov g++`. Raise `minLineCoveragePercent` only when sustained CI/`lcov --summary` evidence supports it (see [coverage threshold plan](superpowers/plans/2026-05-03-coverage-threshold-policy-v1.md)).
+Install **`lcov`**, **`gcov`** / **`g++`**, and **Ninja** on the host; Ubuntu/Debian: `apt install lcov g++ ninja-build`. Raise `minLineCoveragePercent` only when sustained CI/`lcov --summary` evidence supports it (see [coverage threshold plan](superpowers/plans/2026-05-03-coverage-threshold-policy-v1.md)).
 
 ## Commands
 

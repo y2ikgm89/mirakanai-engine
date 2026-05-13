@@ -268,17 +268,17 @@ See [testing.md](testing.md) for the **CI validation matrix** (job ids, runners,
 GitHub Actions runs:
 
 - Windows: `tools/validate.ps1` and `tools/evaluate-cpp23.ps1 -Release`
-- Linux: CMake configure/build/CTest plus `tools/check-coverage.ps1 -Strict`
+- Linux: `cmake --preset ci-linux-clang`, build/CTest, plus `tools/check-coverage.ps1 -Strict`
 - Linux sanitizers: `cmake --preset clang-asan-ubsan`, build, and CTest
 - macOS: Ninja + Xcode `clang` CMake configure/build/CTest, including Apple-only Metal Objective-C++ sources
 - iOS Validate: `tools/smoke-ios-package.ps1` on a pinned macOS hosted runner, building the iOS Simulator bundle and running `xcrun simctl install`, `get_app_container`, `launch`, and cleanup for `sample_headless`
 
-Local Linux validation on WSL should use a toolchain that CMake supports for C++ module dependency scanning, such as Clang 18 with Ninja:
+Local Linux validation should use the CI preset with Ninja and Clang:
 
 ```bash
-cmake -S . -B out/build/dev-linux-clang -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DMK_CXX_STANDARD=23 -DCMAKE_CXX_COMPILER=clang++-18
-cmake --build out/build/dev-linux-clang
-ctest --test-dir out/build/dev-linux-clang --output-on-failure
+cmake --preset ci-linux-clang
+cmake --build --preset ci-linux-clang
+ctest --preset ci-linux-clang --output-on-failure
 ```
 
 CI uploads test logs for every job, Linux coverage output, and Windows release package ZIP artifacts. The Windows release evaluation installs the package and builds `examples/installed_consumer` against the installed `mirakana::` CMake targets before publishing the ZIP.
@@ -288,9 +288,9 @@ C++23 verification must stay covered by default validation, `tools/check-generat
 macOS CI is defined for Metal host coverage. Local macOS validation should mirror the hosted lane:
 
 ```bash
-cmake -S . -B out/build/dev-macos -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DCMAKE_C_COMPILER="$(xcrun --find clang)" -DCMAKE_CXX_COMPILER="$(xcrun --find clang++)"
-cmake --build out/build/dev-macos
-ctest --test-dir out/build/dev-macos --output-on-failure
+cmake --preset ci-macos-appleclang
+cmake --build --preset ci-macos-appleclang
+ctest --preset ci-macos-appleclang --output-on-failure
 ```
 
 ## Mobile Packaging

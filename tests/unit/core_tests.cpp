@@ -66,6 +66,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 namespace {
@@ -74,6 +75,11 @@ struct Position {
     float x;
     float y;
 };
+
+static_assert(std::is_same_v<decltype(&mirakana::LinuxFileWatcher::active),
+                             bool (mirakana::LinuxFileWatcher::*)() const noexcept>);
+static_assert(std::is_same_v<decltype(&mirakana::MacOSFileWatcher::active),
+                             bool (mirakana::MacOSFileWatcher::*)() const noexcept>);
 
 // Test double: public fields are intentional for assertion in MK_TEST.
 // NOLINTBEGIN(misc-non-private-member-variables-in-classes)

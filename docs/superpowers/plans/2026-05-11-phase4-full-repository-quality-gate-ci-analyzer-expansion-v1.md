@@ -38,4 +38,4 @@ Extend **CI build/package execution evidence** and **static analyzer coverage** 
 
 | Topic | Plan | Status |
 | --- | --- | --- |
-| (pending) | — | Add row per landed Phase 4 child plan |
+| CI PR check root-cause hardening | [2026-05-13-ci-pr-check-root-cause-hardening-v1.md](2026-05-13-ci-pr-check-root-cause-hardening-v1.md) | Completed |

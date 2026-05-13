@@ -195,6 +195,70 @@
         "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
         "MK_ENABLE_SANITIZERS": "ON"
       }
+    },
+    {
+      "name": "ci-linux-clang",
+      "displayName": "CI Linux Clang build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/ci-linux-clang",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview"
+      }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Linux GCC coverage build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/coverage",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "g++",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "OFF",
+        "MK_ENABLE_IMPORT_STD": "OFF",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "CMAKE_CXX_FLAGS": "--coverage",
+        "CMAKE_EXE_LINKER_FLAGS": "--coverage"
+      }
+    },
+    {
+      "name": "ci-macos-appleclang",
+      "displayName": "CI macOS AppleClang build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/ci-macos-appleclang",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "OFF",
+        "MK_ENABLE_IMPORT_STD": "OFF",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview"
+      }
     }
   ],
   "buildPresets": [
@@ -263,6 +327,24 @@
       "name": "clang-asan-ubsan",
       "inherits": "normalized-build-environment",
       "configurePreset": "clang-asan-ubsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux-clang",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "ci-linux-clang",
+      "configuration": "Debug"
+    },
+    {
+      "name": "coverage",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "coverage",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-macos-appleclang",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "ci-macos-appleclang",
       "configuration": "Debug"
     }
   ],
@@ -346,6 +428,30 @@
       "output": {
         "outputOnFailure": true
       }
+    },
+    {
+      "name": "ci-linux-clang",
+      "configurePreset": "ci-linux-clang",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ci-macos-appleclang",
+      "configurePreset": "ci-macos-appleclang",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
     }
   ],
   "packagePresets": [
@@ -381,4 +487,3 @@
     }
   ]
 }
-

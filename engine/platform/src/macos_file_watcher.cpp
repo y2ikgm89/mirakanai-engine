@@ -365,7 +365,7 @@ MacOSFileWatcherPollResult MacOSFileWatcher::poll() {
     return impl_->poll();
 }
 
-bool MacOSFileWatcher::active() noexcept {
+bool MacOSFileWatcher::active() const noexcept {
 #if defined(__APPLE__)
     return impl_ != nullptr && impl_->is_active();
 #else

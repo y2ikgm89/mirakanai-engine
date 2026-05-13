@@ -4509,8 +4509,8 @@ foreach ($needle in @(
     "static-analysis:",
     "name: Full Repository Static Analysis",
     "runs-on: ubuntu-latest",
-    "sudo apt-get update && sudo apt-get install -y clang-tidy",
-    "./tools/check-tidy.ps1 -Strict",
+    "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
+    "./tools/check-tidy.ps1 -Strict -Preset ci-linux-clang",
     "static-analysis-tidy-logs"
 )) {
     if (-not $validateWorkflowText.Contains($needle)) {
