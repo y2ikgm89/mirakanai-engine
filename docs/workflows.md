@@ -166,13 +166,21 @@ The PR can also be created or updated through GitHub Web or GitHub Desktop. If a
 
 Push and PR publishing depend on host-local GitHub authentication such as Git Credential Manager, GitHub CLI, SSH agent, or a browser session. This repository must not require or store `GITHUB_TOKEN`, personal access tokens, or credential helper state for routine publishing.
 
-8. Merge only after branch protection, required checks, and required reviews are satisfied. For unattended Codex sessions, prefer GitHub auto-merge registration so GitHub performs the final `main` merge only after required checks and reviews pass:
+8. Merge only after branch protection, required checks, and required reviews are satisfied. Before any unattended merge or auto-merge registration, inspect the live PR state:
 
 ```powershell
-gh pr merge --auto --merge --delete-branch
+gh pr view <pr> --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url
 ```
 
-Use `--delete-branch` only for a task-owned head branch that is no longer needed. This does not bypass branch protection; `gh` must fail or leave auto-merge pending when required checks or reviews are missing. Immediate merge commands such as `gh pr merge --merge --delete-branch` remain prompt-gated unless the user explicitly requests them in an approval-capable session.
+Continue only when the PR is open, not draft, targets the expected base branch, uses a task-owned head branch, has fresh local validation evidence, is not conflicting, has no requested changes, and has no `FAILURE`, `CANCELLED`, `TIMED_OUT`, or `ACTION_REQUIRED` status/check conclusion. Treat `UNSTABLE`, `DIRTY`, and `UNKNOWN` `mergeStateStatus` values as blockers. `BLOCKED` can be acceptable only when the block is an expected unmet GitHub requirement, such as pending required checks or reviews, and no check has failed.
+
+For unattended Codex sessions, prefer GitHub auto-merge registration so GitHub performs the final `main` merge only after requirements are met. Include `--match-head-commit <headRefOid>` when the PR state query returns a head SHA, so a later push cannot be merged by the earlier decision:
+
+```powershell
+gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>
+```
+
+Run the merge command from the task branch whose PR was preflighted. Use `--delete-branch` only for a task-owned head branch that is no longer needed. GitHub auto-merge must be enabled for the repository and PR; if `gh` reports auto-merge is unavailable, if branch protection or required checks are absent in a way that would merge pending/failing work immediately, or if the PR state is ambiguous, stop and report the blocker. Immediate merge commands such as `gh pr merge --merge --delete-branch`, `--squash`, `--rebase`, or `--admin` remain prompt-gated unless the user explicitly requests them in an approval-capable session with fresh passing evidence.
 
 9. After GitHub deletes a merged head branch, optionally prune stale remote-tracking refs in local workspaces:
 
@@ -192,7 +200,7 @@ git credential-manager --version
 
 On Git for Windows, the current Git Credential Manager helper is `manager`. Remove stale user-level helper entries such as `manager-core` only after confirming `manager` is still configured by system or user Git config. Do not commit repository-level `credential.helper` overrides, token requirements, or checked-in credential state to hide host configuration drift.
 
-These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests and protected branches. For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html).
+These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests, [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches), [auto-merge](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request), and [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge). For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html).
 
 ## Windows Diagnostics Toolchain
 
@@ -229,7 +237,7 @@ Use subagents only when the user explicitly asks for subagent delegation or para
 - Use the OpenAI developer documentation MCP, or official OpenAI documentation when MCP is unavailable, for OpenAI API, Codex, ChatGPT Apps SDK, OpenAI agent, and OpenAI model behavior. Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagents.
 - Keep always-loaded instructions specific, concise, verifiable, and durable. Keep `AGENTS.md` under Codex's default 32 KiB `project_doc_max_bytes` budget, keep selected `SKILL.md` bodies as concise routers, and keep subagents narrowly scoped; put long procedures in skill-local `references/*.md` or docs, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the composed `engine/agent/manifest.json` (edit `engine/agent/manifest.fragments/*.json`, then `tools/compose-agent-manifest.ps1 -Write`).
 - Keep Codex project rules narrow with `match` / `not_match` examples. Cover Windows PowerShell deletion/network/host-servicing commands as well as POSIX-like spellings. Do not add broad allow rules for shells, package managers, network tools, destructive commands, direct default-branch pushes, force-pushes, or immediate PR merges.
-- Keep Claude Code shared project permissions in `.claude/settings.json` with the official JSON schema: deny secret-bearing files, allow task-owned PR creation and auto-merge registration after validation checkpoints, and require approval for destructive, network, dependency-bootstrap, mobile signing/smoke, force-push, and non-auto PR state-change commands.
+- Keep Claude Code shared project permissions in `.claude/settings.json` with the official JSON schema: deny secret-bearing files, allow read-only PR preflight, task-owned PR creation, and auto-merge registration after validation checkpoints plus safe PR preflight, and require approval for destructive, network, dependency-bootstrap, mobile signing/smoke, force-push, and non-auto PR state-change commands.
 - Keep local override and credential-bearing config uncommitted: `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md`.
 
 ## Repository consistency checklist (recommended)
