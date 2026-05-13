@@ -650,6 +650,7 @@ Assert-ContainsText $agentsContent "--match-head-commit <headRefOid>" "AGENTS.md
 Assert-ContainsText $agentsContent "hosted PR/CI check failures" "AGENTS.md"
 Assert-ContainsText $agentsContent "lcov --ignore-errors unused" "AGENTS.md"
 Assert-ContainsText $agentsContent "runtime/.gitattributes" "AGENTS.md"
+Assert-ContainsText $agentsContent "GitHub account billing/spending-limit" "AGENTS.md"
 Assert-ContainsText $agentsContent '`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`' "AGENTS.md"
 Assert-ContainsText $agentsContent "documentation-only/non-runtime slices" "AGENTS.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit")) {
@@ -681,6 +682,7 @@ Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "doc
 Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Hosted PR Check Failure Triage" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr view <pr> --json headRefOid,statusCheckRollup,url" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "GitHub account billing/spending-limit" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Documentation-only or similarly narrow non-runtime slices" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
@@ -740,6 +742,7 @@ Assert-ContainsText $aiIntegrationContent "mergeStateStatus" "docs/ai-integratio
 Assert-ContainsText $aiIntegrationContent "--match-head-commit <headRefOid>" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'latest `headRefOid` and `statusCheckRollup`' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent '.codex/rules` and `.claude/settings.json` remain command/permission gates' "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "GitHub account billing/spending-limit" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "policy reload" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "GITHUB_TOKEN" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-integration.md"
@@ -13273,6 +13276,7 @@ foreach ($buildFixerAgent in @(
     Assert-ContainsText $buildFixerText "latest PR head SHA" $buildFixerAgent
     Assert-ContainsText $buildFixerText "lcov --ignore-errors unused" $buildFixerAgent
     Assert-ContainsText $buildFixerText "runtime/.gitattributes" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "GitHub account billing/spending-limit" $buildFixerAgent
     Assert-ContainsText $buildFixerText "cdb -version" $buildFixerAgent
     Assert-ContainsText $buildFixerText "pixtool --help" $buildFixerAgent
     Assert-ContainsText $buildFixerText "Windows Graphics Tools" $buildFixerAgent
