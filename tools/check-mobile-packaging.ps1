@@ -21,6 +21,25 @@ function Assert-TemplateFile {
     }
 }
 
+function Assert-TemplateText {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativePath,
+        [Parameter(Mandatory = $true)][string[]]$Needles
+    )
+
+    $path = Join-Path $root $RelativePath
+    if (-not (Test-Path $path)) {
+        Write-Error "Missing mobile packaging template file: $RelativePath"
+    }
+
+    $content = Get-Content -LiteralPath $path -Raw
+    foreach ($needle in $Needles) {
+        if (-not $content.Contains($needle)) {
+            Write-Error "Mobile packaging template $RelativePath missing required text: $needle"
+        }
+    }
+}
+
 function Find-AndroidSdk {
     $localAppData = Get-LocalApplicationDataRoot
     $candidates = @(
@@ -232,6 +251,11 @@ foreach ($file in @(
 )) {
     Assert-TemplateFile $file
 }
+
+Assert-TemplateText "tools/build-mobile-apple.ps1" @(
+    "-DBUILD_TESTING=OFF",
+    "--target `"MirakanaiIOS`""
+)
 
 $androidBlockers = [System.Collections.Generic.List[string]]::new()
 $appleBlockers = [System.Collections.Generic.List[string]]::new()

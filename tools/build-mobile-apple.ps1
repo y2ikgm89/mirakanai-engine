@@ -48,6 +48,7 @@ Invoke-CheckedCommand $tools.CMake `
     "-G" "Xcode" `
     "-DCMAKE_SYSTEM_NAME=iOS" `
     "-DCMAKE_OSX_SYSROOT=$sdk" `
+    "-DBUILD_TESTING=OFF" `
     "-DMK_ENABLE_CXX_MODULE_SCANNING=OFF" `
     "-DMK_ENABLE_IMPORT_STD=OFF" `
     "-DMK_IOS_GAME_NAME=$Game" `
@@ -58,5 +59,5 @@ Invoke-CheckedCommand $tools.CMake `
     "-DMK_IOS_CODE_SIGNING_ALLOWED=$codeSigningAllowed" `
     "-DCMAKE_INSTALL_PREFIX=$installDir"
 
-Invoke-CheckedCommand $tools.CMake --build $buildDir --config $Configuration
+Invoke-CheckedCommand $tools.CMake --build $buildDir --config $Configuration --target "MirakanaiIOS"
 

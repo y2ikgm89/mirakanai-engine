@@ -1,6 +1,6 @@
 # Apple Packaging Template
 
-This template is the Wave 9 Apple entry path. It is configured by `tools/build-mobile-apple.ps1` on macOS with full Xcode selected as the active developer directory. UIKit, Metal, sandbox storage roots, signing, and bundle resources stay inside this packaging template and future Apple platform adapters; game-facing code continues to use first-party `mirakana::` contracts.
+This template is the Wave 9 Apple entry path. It is configured by `tools/build-mobile-apple.ps1` on macOS with full Xcode selected as the active developer directory. The package script configures this tree with `BUILD_TESTING=OFF` and builds only the `MirakanaiIOS` app target, so Simulator smoke stays focused on the bundle instead of Xcode `ALL_BUILD` test targets. UIKit, Metal, sandbox storage roots, signing, and bundle resources stay inside this packaging template and future Apple platform adapters; game-facing code continues to use first-party `mirakana::` contracts.
 
 Run diagnostics from the repository root:
 

@@ -11,7 +11,7 @@ Make PR validation green by fixing the root causes behind the failed GitHub chec
 
 ## Context
 
-PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, Metal Objective-C++ framework linkage gaps, host-optional Vulkan loader assumptions in macOS tests, asynchronous macOS FSEvents delivery timing, iOS accidentally compiling and advertising macOS-only FSEvents code, canonical path differences in macOS watcher events, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
+PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, Apple package smoke building the entire Xcode `ALL_BUILD` graph instead of the app bundle target, Metal Objective-C++ framework linkage gaps, host-optional Vulkan loader assumptions in macOS tests, asynchronous macOS FSEvents delivery timing, iOS accidentally compiling and advertising macOS-only FSEvents code, canonical path differences in macOS watcher events, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
 
 ## Constraints
 
@@ -30,6 +30,7 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 - C++ code avoids C++23 library calls not present on hosted Clang/AppleClang standard libraries when C++20 alternatives are sufficient.
 - Apple bundle configure paths include CMake `BUNDLE DESTINATION` for runtime executable installs.
 - Apple iOS Xcode configure paths explicitly disable CMake C++ module scanning and CMake-managed `import std`.
+- Apple iOS package smoke configures the package tree with `BUILD_TESTING=OFF` and builds only the `MirakanaiIOS` target, avoiding unrelated Xcode `ALL_BUILD` unit-test and aggregate tool-library targets.
 - Metal Objective-C++ native code links all Apple SDK frameworks it uses, including Foundation for `NSString`.
 - Metal runtime render encoder creation has complete friend declarations for texture and drawable paths.
 - macOS tests accept unsupported Vulkan as an explicit host classification instead of requiring a Vulkan loader on every Apple runner.
@@ -75,3 +76,7 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/platform/src/file_watcher.cpp,engine/platform/src/macos_file_watcher.cpp,tests/unit/backend_scaffold_tests.cpp -MaxFiles 3` | PASS | Targeted tidy covered host-backend classification and macOS watcher implementation; existing repository warnings remain warning-only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed after the final Apple watcher fixes; Apple/Metal diagnostics remained host-gated on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed independently after full validation. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` | PASS | Diagnostic contract now verifies Apple packaging keeps `BUILD_TESTING=OFF` and builds only the `MirakanaiIOS` target; Apple execution remains host-gated on Windows. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` | PASS | C++/Apple policy now locks the iOS package script to the focused Xcode app-bundle target and module-scanning/import-std exceptions. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed after the focused iOS package target fix. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed independently after the final validation run. |
