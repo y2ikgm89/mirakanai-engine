@@ -12612,6 +12612,17 @@ foreach ($packageFile in @(
         Write-Error "$sample2dDesktopManifestPath runtimePackageFiles missing $packageFile"
     }
 }
+$sample2dDesktopGitAttributes = Get-Content -LiteralPath (Join-Path $root "games/sample_2d_desktop_runtime_package/runtime/.gitattributes") -Raw
+foreach ($attributeRule in @(
+    "*.geindex text eol=lf",
+    "*.geasset text eol=lf",
+    "*.material text eol=lf",
+    "*.scene text eol=lf",
+    "*.tilemap text eol=lf",
+    "*.sprite_animation text eol=lf"
+)) {
+    Assert-ContainsText $sample2dDesktopGitAttributes $attributeRule "games/sample_2d_desktop_runtime_package/runtime/.gitattributes"
+}
 $sample2dDesktopManifestText = Get-Content -LiteralPath $sample2dDesktopManifestFullPath -Raw
 foreach ($needle in @(
     "native 2D sprite package proof",
@@ -14036,10 +14047,21 @@ try {
     $desktop2dCmake = Get-Content -LiteralPath (Join-Path $desktop2dScaffoldRoot "games/CMakeLists.txt") -Raw
     $desktop2dMain = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "main.cpp") -Raw
     $desktop2dReadme = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "README.md") -Raw
+    $desktop2dGitAttributes = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/.gitattributes") -Raw
     $desktop2dShader = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "shaders/runtime_2d_sprite.hlsl") -Raw
     $desktop2dIndex = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/desktop_2d_package_game.geindex") -Raw
     $desktop2dScene = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/assets/2d/playable.scene") -Raw
     $desktop2dSpriteAnimation = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/assets/2d/player.sprite_animation") -Raw
+    foreach ($attributeRule in @(
+        "*.geindex text eol=lf",
+        "*.geasset text eol=lf",
+        "*.material text eol=lf",
+        "*.scene text eol=lf",
+        "*.tilemap text eol=lf",
+        "*.sprite_animation text eol=lf"
+    )) {
+        Assert-ContainsText $desktop2dGitAttributes $attributeRule "Desktop 2D scaffold runtime/.gitattributes"
+    }
     Assert-ContainsText $desktop2dCmake "MK_add_desktop_runtime_game(desktop_2d_package_game" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "PACKAGE_FILES_FROM_MANIFEST" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-scene-package" "Desktop 2D scaffold CMake"

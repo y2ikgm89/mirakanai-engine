@@ -47,4 +47,9 @@ if ($captureInfoIndex -lt 0 -or $currentInfoInitIndex -lt $captureInfoIndex -or
     Write-Error "tools/check-coverage.ps1 must initialize `$currentInfo from `$infoRaw before lcov filtering or summary."
 }
 
+$removeIgnoreIndex = $coverageScript.IndexOf('"--ignore-errors", "unused"', [System.StringComparison]::Ordinal)
+if ($removeIgnoreIndex -lt $currentInfoInitIndex) {
+    Write-Error "tools/check-coverage.ps1 must pass lcov --ignore-errors unused when removing optional coverage filters."
+}
+
 Write-Host "check-coverage-thresholds: ok"

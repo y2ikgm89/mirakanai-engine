@@ -81,7 +81,11 @@ if ($patterns.Count -gt 0) {
             continue
         }
         $nextInfo = Join-Path $buildDir ("coverage-filtered-{0}.info" -f $stageIndex)
-        Invoke-CheckedCommand $lcovExe @("--remove", $currentInfo, [string]$pattern, "-o", $nextInfo)
+        Invoke-CheckedCommand $lcovExe @(
+            "--remove", $currentInfo, [string]$pattern,
+            "--ignore-errors", "unused",
+            "-o", $nextInfo
+        )
         $currentInfo = $nextInfo
         $stageIndex++
     }

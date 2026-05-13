@@ -11,7 +11,7 @@ Make PR validation green by fixing the root causes behind the failed GitHub chec
 
 ## Context
 
-PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, Apple package smoke building the entire Xcode `ALL_BUILD` graph instead of the app bundle target, iOS bundle metadata using a non-CMake executable placeholder, Metal Objective-C++ framework linkage gaps, host-optional Vulkan loader assumptions in macOS tests, asynchronous macOS FSEvents delivery timing, iOS accidentally compiling and advertising macOS-only FSEvents code, canonical path differences in macOS watcher events, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
+PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, Apple package smoke building the entire Xcode `ALL_BUILD` graph instead of the app bundle target, iOS bundle metadata using a non-CMake executable placeholder, Metal Objective-C++ framework linkage gaps, host-optional Vulkan loader assumptions in macOS tests, asynchronous macOS FSEvents delivery timing, iOS accidentally compiling and advertising macOS-only FSEvents code, canonical path differences in macOS watcher events, Linux `lcov 2.0` treating optional unused remove filters as errors, a missing LF attribute for byte-hashed `.tilemap` package data on Windows checkouts, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
 
 ## Constraints
 
@@ -32,6 +32,8 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 - Apple iOS Xcode configure paths explicitly disable CMake C++ module scanning and CMake-managed `import std`.
 - Apple iOS package smoke configures the package tree with `BUILD_TESTING=OFF` and builds only the `MirakanaiIOS` target, avoiding unrelated Xcode `ALL_BUILD` unit-test and aggregate tool-library targets.
 - Apple iOS `Info.plist` uses CMake's `${MACOSX_BUNDLE_EXECUTABLE_NAME}` placeholder for `CFBundleExecutable`.
+- Linux `lcov --remove` keeps strict threshold enforcement but tolerates unused optional exclude filters.
+- Windows-hosted checkouts keep byte-hashed 2D `.tilemap` package payloads LF-normalized.
 - Metal Objective-C++ native code links all Apple SDK frameworks it uses, including Foundation for `NSString`.
 - Metal runtime render encoder creation has complete friend declarations for texture and drawable paths.
 - macOS tests accept unsupported Vulkan as an explicit host classification instead of requiring a Vulkan loader on every Apple runner.
@@ -84,3 +86,13 @@ PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` | PASS | Diagnostic contract now also verifies the iOS bundle Info.plist uses CMake's `${MACOSX_BUNDLE_EXECUTABLE_NAME}` for `CFBundleExecutable`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed after the iOS Info.plist executable placeholder fix. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed independently after the final Info.plist validation run. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage-thresholds.ps1` | PASS | Static coverage policy now verifies `lcov --remove` passes `--ignore-errors unused` for optional filters such as `*/vcpkg_installed/*`. |
+| `git ls-files --eol games/sample_2d_desktop_runtime_package/runtime/assets/2d/level.tilemap` | PASS | The byte-hashed tilemap payload now reports `attr/text eol=lf`, preventing Windows checkout CRLF hash drift. |
+| `cmake --build --preset dev --target sample_2d_desktop_runtime_package` | PASS | Rebuilt the Windows 2D package sample after the LF attribute hardening. |
+| `ctest --preset dev --output-on-failure -R "sample_2d_desktop_runtime_package_(smoke\|shader_artifacts_smoke)"` | PASS | Both Windows package smokes passed locally after the `.tilemap` LF attribute fix. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | Static agent integration now enforces committed and generated 2D package runtime `.gitattributes` entries for byte-hashed package files. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | JSON and manifest contracts stayed synchronized after the package metadata hardening. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Formatting stayed clean after the coverage and package attribute updates. |
+| `git diff --check` | PASS | No whitespace errors in the final diff. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed after the Linux coverage and Windows tilemap package hash fixes. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed independently after full validation. |
