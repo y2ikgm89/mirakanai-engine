@@ -3165,7 +3165,8 @@ MK_TEST("editor material preview shader compile requests include factor and text
     MK_REQUIRE(textured_command.arguments[1] == "-fspv-target-env=vulkan1.3");
     MK_REQUIRE(textured_command.arguments[2] == "-T");
     MK_REQUIRE(textured_command.arguments[3] == "vs_6_7");
-    MK_REQUIRE(std::ranges::contains(textured_command.arguments, std::string_view{"MK_MATERIAL_PREVIEW_TEXTURED=1"}));
+    MK_REQUIRE(std::ranges::find(textured_command.arguments, std::string{"MK_MATERIAL_PREVIEW_TEXTURED=1"}) !=
+               textured_command.arguments.end());
 }
 
 MK_TEST("editor shader tool discovery state exposes deterministic tool options") {

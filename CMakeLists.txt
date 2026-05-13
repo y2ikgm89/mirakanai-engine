@@ -470,7 +470,7 @@ if(BUILD_TESTING)
         add_test(NAME MK_d3d12_rhi_tests COMMAND MK_d3d12_rhi_tests)
     endif()
 
-    if(APPLE OR (UNIX AND NOT APPLE))
+    if((APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") OR (UNIX AND NOT APPLE))
         add_executable(MK_platform_native_file_watcher_tests
             tests/unit/platform_native_file_watcher_tests.cpp
         )
@@ -775,6 +775,7 @@ install(TARGETS ${MK_LIBRARY_TARGETS}
 )
 
 install(TARGETS ${MK_INSTALL_RUNTIME_TARGETS}
+    BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 

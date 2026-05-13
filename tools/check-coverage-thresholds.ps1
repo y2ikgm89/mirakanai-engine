@@ -33,4 +33,23 @@ if ($null -ne $data.lcovRemovePatterns) {
     }
 }
 
+$coverageScriptPath = Join-Path $root "tools/check-coverage.ps1"
+if (-not (Test-Path -LiteralPath $coverageScriptPath -PathType Leaf)) {
+    Write-Error "Missing tools/check-coverage.ps1"
+}
+
+$coverageScript = Get-Content -LiteralPath $coverageScriptPath -Raw
+$captureInfoIndex = $coverageScript.IndexOf('$infoRaw = Join-Path $buildDir "coverage-full.info"', [System.StringComparison]::Ordinal)
+$currentInfoInitIndex = $coverageScript.IndexOf('$currentInfo = $infoRaw', [System.StringComparison]::Ordinal)
+$summaryInfoUseIndex = $coverageScript.IndexOf('$summaryProcess.ArgumentList.Add($currentInfo)', [System.StringComparison]::Ordinal)
+if ($captureInfoIndex -lt 0 -or $currentInfoInitIndex -lt $captureInfoIndex -or
+    $summaryInfoUseIndex -lt $currentInfoInitIndex) {
+    Write-Error "tools/check-coverage.ps1 must initialize `$currentInfo from `$infoRaw before lcov filtering or summary."
+}
+
+$removeIgnoreIndex = $coverageScript.IndexOf('"--ignore-errors", "unused"', [System.StringComparison]::Ordinal)
+if ($removeIgnoreIndex -lt $currentInfoInitIndex) {
+    Write-Error "tools/check-coverage.ps1 must pass lcov --ignore-errors unused when removing optional coverage filters."
+}
+
 Write-Host "check-coverage-thresholds: ok"

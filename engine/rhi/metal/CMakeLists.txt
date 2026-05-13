@@ -15,9 +15,11 @@ if(APPLE)
     target_sources(MK_rhi_metal PRIVATE
         src/metal_native.mm
     )
+    find_library(MK_APPLE_FOUNDATION_FRAMEWORK Foundation REQUIRED)
     find_library(MK_APPLE_METAL_FRAMEWORK Metal REQUIRED)
     find_library(MK_APPLE_QUARTZCORE_FRAMEWORK QuartzCore REQUIRED)
     target_link_libraries(MK_rhi_metal PRIVATE
+        ${MK_APPLE_FOUNDATION_FRAMEWORK}
         ${MK_APPLE_METAL_FRAMEWORK}
         ${MK_APPLE_QUARTZCORE_FRAMEWORK}
     )

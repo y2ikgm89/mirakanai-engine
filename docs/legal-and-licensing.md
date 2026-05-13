@@ -45,7 +45,7 @@ Every external dependency or asset must be recorded in `THIRD_PARTY_NOTICES.md` 
 
 Optional package-manager declarations in `vcpkg.json` must also be mirrored in `THIRD_PARTY_NOTICES.md` as planned dependencies before integration work starts.
 
-Mobile template dependencies declared through Gradle or official platform SDK tooling must also be recorded before package builds are distributed. Official Android SDK, Android NDK, Google Maven artifacts, Xcode, UIKit, Metal, and related Apple SDK frameworks are toolchain/platform dependencies; do not vendor their binaries into the repository. Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit are official Microsoft host diagnostics; do not vendor their binaries, installers, symbol caches, or captured traces into the repository.
+Mobile template dependencies declared through Gradle or official platform SDK tooling must also be recorded before package builds are distributed. Official Android SDK, Android NDK, Google Maven artifacts, Xcode, UIKit, Foundation, Metal, and related Apple SDK frameworks are toolchain/platform dependencies; do not vendor their binaries into the repository. Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit are official Microsoft host diagnostics; do not vendor their binaries, installers, symbol caches, or captured traces into the repository.
 
 For each item, record:
 

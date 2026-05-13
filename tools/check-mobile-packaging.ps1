@@ -21,13 +21,33 @@ function Assert-TemplateFile {
     }
 }
 
+function Assert-TemplateText {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativePath,
+        [Parameter(Mandatory = $true)][string[]]$Needles
+    )
+
+    $path = Join-Path $root $RelativePath
+    if (-not (Test-Path $path)) {
+        Write-Error "Missing mobile packaging template file: $RelativePath"
+    }
+
+    $content = Get-Content -LiteralPath $path -Raw
+    foreach ($needle in $Needles) {
+        if (-not $content.Contains($needle)) {
+            Write-Error "Mobile packaging template $RelativePath missing required text: $needle"
+        }
+    }
+}
+
 function Find-AndroidSdk {
+    $localAppData = Get-LocalApplicationDataRoot
     $candidates = @(
         $env:ANDROID_HOME,
         $env:ANDROID_SDK_ROOT,
         (Get-EnvironmentVariableAnyScope "ANDROID_HOME"),
         (Get-EnvironmentVariableAnyScope "ANDROID_SDK_ROOT"),
-        (Join-Path $env:LOCALAPPDATA "Android\Sdk")
+        (Join-OptionalPath $localAppData "Android\Sdk")
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
     foreach ($candidate in $candidates) {
@@ -75,8 +95,8 @@ function Find-GradleCommand {
         return $gradle
     }
 
-    $toolchainsRoot = Join-Path $env:LOCALAPPDATA "GameEngineToolchains"
-    if (Test-Path $toolchainsRoot) {
+    $toolchainsRoot = Join-OptionalPath (Get-LocalApplicationDataRoot) "GameEngineToolchains"
+    if (-not [string]::IsNullOrWhiteSpace($toolchainsRoot) -and (Test-Path $toolchainsRoot)) {
         $candidate = Get-ChildItem -Path $toolchainsRoot -Directory -Filter "gradle-*" |
             Sort-Object Name -Descending |
             ForEach-Object { Join-Path $_.FullName "bin\gradle.bat" } |
@@ -104,8 +124,8 @@ function Find-JavaCommand {
         return $java
     }
 
-    $adoptiumRoot = Join-Path $env:ProgramFiles "Eclipse Adoptium"
-    if (Test-Path $adoptiumRoot) {
+    $adoptiumRoot = Join-OptionalPath (Get-EnvironmentVariableAnyScope "ProgramFiles") "Eclipse Adoptium"
+    if (-not [string]::IsNullOrWhiteSpace($adoptiumRoot) -and (Test-Path $adoptiumRoot)) {
         $candidate = Get-ChildItem -Path $adoptiumRoot -Directory -Filter "jdk-*" |
             Sort-Object Name -Descending |
             ForEach-Object { Join-Path $_.FullName "bin\java.exe" } |
@@ -231,6 +251,15 @@ foreach ($file in @(
 )) {
     Assert-TemplateFile $file
 }
+
+Assert-TemplateText "tools/build-mobile-apple.ps1" @(
+    "-DBUILD_TESTING=OFF",
+    "--target `"MirakanaiIOS`""
+)
+Assert-TemplateText "platform/ios/Info.plist.in" @(
+    '<key>CFBundleExecutable</key>',
+    '${MACOSX_BUNDLE_EXECUTABLE_NAME}'
+)
 
 $androidBlockers = [System.Collections.Generic.List[string]]::new()
 $appleBlockers = [System.Collections.Generic.List[string]]::new()

@@ -241,7 +241,7 @@ struct LinuxFileWatcher::Impl {
                 continue;
             }
             const auto relative = std::filesystem::relative(entry.path(), directory_path).generic_string();
-            add_watch(entry.path(), join_event_path(path_prefix, relative), false);
+            (void)add_watch(entry.path(), join_event_path(path_prefix, relative), false);
         }
         return true;
     }
@@ -261,7 +261,7 @@ struct LinuxFileWatcher::Impl {
         if (!std::filesystem::is_directory(child_directory)) {
             return;
         }
-        add_directory_tree(child_directory, join_event_path(output_prefix->second, name), false);
+        (void)add_directory_tree(child_directory, join_event_path(output_prefix->second, name), false);
     }
 
     [[nodiscard]] std::vector<FileWatchEvent> parse_events(const char* data, std::size_t byte_count) {
@@ -386,7 +386,7 @@ LinuxFileWatcherPollResult LinuxFileWatcher::poll() {
     return impl_->poll();
 }
 
-bool LinuxFileWatcher::active() noexcept {
+bool LinuxFileWatcher::active() const noexcept {
 #if defined(__linux__)
     return impl_ != nullptr && impl_->active;
 #else

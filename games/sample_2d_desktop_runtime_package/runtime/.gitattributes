@@ -1,6 +1,8 @@
+# Cooked package files are hashed byte-for-byte by the runtime.
 *.config text eol=lf
 *.geindex text eol=lf
 *.geasset text eol=lf
 *.material text eol=lf
 *.scene text eol=lf
+*.tilemap text eol=lf
 *.sprite_animation text eol=lf

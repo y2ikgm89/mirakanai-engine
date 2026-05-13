@@ -189,7 +189,8 @@ validate_request(const NavigationLocalAvoidanceRequest& request) noexcept {
 [[nodiscard]] std::vector<std::size_t>
 sorted_neighbor_indices(std::span<const NavigationLocalAvoidanceNeighborDesc> neighbors) {
     std::vector<std::size_t> indices(neighbors.size());
-    std::ranges::iota(indices, std::size_t{0});
+    // NOLINTNEXTLINE(modernize-use-ranges): hosted Clang/AppleClang CI lacks std::ranges::iota.
+    std::iota(indices.begin(), indices.end(), std::size_t{0});
     std::ranges::stable_sort(indices, [&neighbors](std::size_t lhs, std::size_t rhs) {
         if (neighbors[lhs].id == neighbors[rhs].id) {
             return lhs < rhs;

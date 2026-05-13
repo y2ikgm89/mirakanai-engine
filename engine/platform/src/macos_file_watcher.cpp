@@ -4,11 +4,27 @@
 #include "mirakana/platform/macos_file_watcher.hpp"
 
 #include <algorithm>
+#include <cstddef>
+#include <filesystem>
+#include <memory>
 #include <stdexcept>
 #include <string_view>
+#include <system_error>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 #if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
+#if defined(__APPLE__) && defined(TARGET_OS_OSX) && TARGET_OS_OSX
+#define MK_PLATFORM_HAS_MACOS_FSEVENTS 1
+#else
+#define MK_PLATFORM_HAS_MACOS_FSEVENTS 0
+#endif
+
+#if MK_PLATFORM_HAS_MACOS_FSEVENTS
 #include <CoreServices/CoreServices.h>
 
 #include <condition_variable>
@@ -85,6 +101,24 @@ namespace {
     return event;
 }
 
+struct MacOSFileSnapshot {
+    std::uint64_t revision{0};
+    std::uint64_t size_bytes{0};
+};
+
+[[nodiscard]] std::uint64_t make_revision(std::filesystem::file_time_type time) noexcept {
+    return static_cast<std::uint64_t>(time.time_since_epoch().count());
+}
+
+[[nodiscard]] std::filesystem::path normalize_watch_path(const std::filesystem::path& path) {
+    std::error_code error;
+    auto normalized = std::filesystem::weakly_canonical(std::filesystem::absolute(path), error);
+    if (!error) {
+        return normalized;
+    }
+    return std::filesystem::absolute(path);
+}
+
 [[nodiscard]] bool event_less(const FileWatchEvent& left, const FileWatchEvent& right) noexcept {
     if (left.path != right.path) {
         return left.path < right.path;
@@ -92,7 +126,7 @@ namespace {
     return static_cast<int>(left.kind) < static_cast<int>(right.kind);
 }
 
-#if defined(__APPLE__)
+#if MK_PLATFORM_HAS_MACOS_FSEVENTS
 [[nodiscard]] bool is_dropped_event(FSEventStreamEventFlags flags) noexcept {
     return (flags & (kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagKernelDropped |
                      kFSEventStreamEventFlagUserDropped)) != 0U;
@@ -116,7 +150,7 @@ namespace {
 
 } // namespace
 
-#if defined(__APPLE__)
+#if MK_PLATFORM_HAS_MACOS_FSEVENTS
 struct MacOSFileWatcher::Impl {
     std::filesystem::path directory_path;
     std::string path_prefix;
@@ -128,13 +162,15 @@ struct MacOSFileWatcher::Impl {
     bool stop_requested{false};
     std::string diagnostic;
     std::vector<FileWatchEvent> queued_events;
+    std::unordered_map<std::string, MacOSFileSnapshot> snapshots_by_path;
     std::thread worker;
     mutable std::mutex mutex;
     std::condition_variable ready_cv;
     CFRunLoopRef run_loop{nullptr};
+    FSEventStreamRef event_stream{nullptr};
 
     explicit Impl(MacOSFileWatcherDesc desc)
-        : directory_path(std::filesystem::absolute(desc.directory)), path_prefix(normalize_prefix(desc.path_prefix)),
+        : directory_path(normalize_watch_path(desc.directory)), path_prefix(normalize_prefix(desc.path_prefix)),
           recursive(desc.recursive), latency_seconds(desc.latency_seconds > 0.0 ? desc.latency_seconds : 0.05) {
         if (directory_path.empty()) {
             throw std::invalid_argument("macos file watcher directory must not be empty");
@@ -143,6 +179,7 @@ struct MacOSFileWatcher::Impl {
             throw std::invalid_argument("macos file watcher directory must exist");
         }
 
+        snapshots_by_path = scan_snapshots();
         worker = std::thread(&Impl::run, this);
         std::unique_lock lock(mutex);
         ready_cv.wait(lock, [&] { return ready; });
@@ -176,6 +213,16 @@ struct MacOSFileWatcher::Impl {
         ready_cv.notify_all();
     }
 
+    void set_event_stream(FSEventStreamRef stream) noexcept {
+        std::lock_guard lock(mutex);
+        event_stream = stream;
+    }
+
+    [[nodiscard]] FSEventStreamRef current_event_stream() const noexcept {
+        std::lock_guard lock(mutex);
+        return event_stream;
+    }
+
     void set_failure(std::string message) {
         {
             std::lock_guard lock(mutex);
@@ -197,7 +244,7 @@ struct MacOSFileWatcher::Impl {
             return {};
         }
 
-        event_path = std::filesystem::absolute(event_path);
+        event_path = normalize_watch_path(event_path);
         auto relative = event_path.lexically_relative(directory_path).generic_string();
         if (relative == ".") {
             relative.clear();
@@ -209,6 +256,78 @@ struct MacOSFileWatcher::Impl {
             return {};
         }
         return join_event_path(path_prefix, relative);
+    }
+
+    void add_snapshot(std::unordered_map<std::string, MacOSFileSnapshot>& snapshots,
+                      const std::filesystem::path& path) const {
+        std::error_code error;
+        if (!std::filesystem::is_regular_file(path, error) || error) {
+            return;
+        }
+
+        const auto output_path = make_output_path(path.generic_string());
+        if (output_path.empty()) {
+            return;
+        }
+
+        const auto write_time = std::filesystem::last_write_time(path, error);
+        if (error) {
+            return;
+        }
+        const auto size_bytes = std::filesystem::file_size(path, error);
+        if (error) {
+            return;
+        }
+
+        snapshots.emplace(output_path, MacOSFileSnapshot{
+                                           .revision = make_revision(write_time),
+                                           .size_bytes = static_cast<std::uint64_t>(size_bytes),
+                                       });
+    }
+
+    [[nodiscard]] std::unordered_map<std::string, MacOSFileSnapshot> scan_snapshots() const {
+        std::unordered_map<std::string, MacOSFileSnapshot> snapshots;
+        constexpr auto options = std::filesystem::directory_options::skip_permission_denied;
+        std::error_code error;
+
+        if (recursive) {
+            for (std::filesystem::recursive_directory_iterator entry{directory_path, options, error}, end;
+                 !error && entry != end; entry.increment(error)) {
+                add_snapshot(snapshots, entry->path());
+            }
+            return snapshots;
+        }
+
+        for (std::filesystem::directory_iterator entry{directory_path, options, error}, end; !error && entry != end;
+             entry.increment(error)) {
+            add_snapshot(snapshots, entry->path());
+        }
+        return snapshots;
+    }
+
+    [[nodiscard]] std::vector<FileWatchEvent> reconcile_snapshot_events() {
+        std::vector<FileWatchEvent> events;
+        auto current = scan_snapshots();
+
+        for (const auto& [path, snapshot] : current) {
+            const auto previous = snapshots_by_path.find(path);
+            if (previous == snapshots_by_path.end()) {
+                events.push_back(make_event(FileWatchEventKind::added, path));
+            } else if (previous->second.revision != snapshot.revision ||
+                       previous->second.size_bytes != snapshot.size_bytes) {
+                events.push_back(make_event(FileWatchEventKind::modified, path));
+            }
+        }
+
+        for (const auto& [path, snapshot] : snapshots_by_path) {
+            (void)snapshot;
+            if (current.find(path) == current.end()) {
+                events.push_back(make_event(FileWatchEventKind::removed, path));
+            }
+        }
+
+        snapshots_by_path = std::move(current);
+        return events;
     }
 
     void push_events(std::vector<FileWatchEvent> events, bool overflowed) {
@@ -282,7 +401,9 @@ struct MacOSFileWatcher::Impl {
         }
 
         FSEventStreamScheduleWithRunLoop(stream, current_loop, kCFRunLoopDefaultMode);
+        set_event_stream(stream);
         if (!FSEventStreamStart(stream)) {
+            set_event_stream(nullptr);
             FSEventStreamInvalidate(stream);
             FSEventStreamRelease(stream);
             {
@@ -309,11 +430,17 @@ struct MacOSFileWatcher::Impl {
         {
             std::lock_guard lock(mutex);
             run_loop = nullptr;
+            event_stream = nullptr;
             active = false;
         }
     }
 
     [[nodiscard]] MacOSFileWatcherPollResult poll() {
+        if (const auto stream = current_event_stream(); stream != nullptr) {
+            FSEventStreamFlushSync(stream);
+        }
+
+        auto snapshot_events = reconcile_snapshot_events();
         std::lock_guard lock(mutex);
         MacOSFileWatcherPollResult result;
         result.active = active;
@@ -322,6 +449,13 @@ struct MacOSFileWatcher::Impl {
         result.events = std::move(queued_events);
         queued_events.clear();
         overflowed_since_poll = false;
+        result.events.insert(result.events.end(), snapshot_events.begin(), snapshot_events.end());
+        std::ranges::sort(result.events, event_less);
+        const auto duplicate_begin = std::unique(result.events.begin(), result.events.end(),
+                                                 [](const FileWatchEvent& left, const FileWatchEvent& right) noexcept {
+                                                     return left.path == right.path && left.kind == right.kind;
+                                                 });
+        result.events.erase(duplicate_begin, result.events.end());
         return result;
     }
 
@@ -335,7 +469,7 @@ struct MacOSFileWatcher::Impl {
     std::filesystem::path directory_path;
     std::string diagnostic{"macos FSEvents file watcher is only available on macOS"};
 
-    explicit Impl(const MacOSFileWatcherDesc& desc) : directory_path(std::filesystem::absolute(desc.directory)) {
+    explicit Impl(const MacOSFileWatcherDesc& desc) : directory_path(normalize_watch_path(desc.directory)) {
         if (directory_path.empty()) {
             throw std::invalid_argument("macos file watcher directory must not be empty");
         }
@@ -365,8 +499,8 @@ MacOSFileWatcherPollResult MacOSFileWatcher::poll() {
     return impl_->poll();
 }
 
-bool MacOSFileWatcher::active() noexcept {
-#if defined(__APPLE__)
+bool MacOSFileWatcher::active() const noexcept {
+#if MK_PLATFORM_HAS_MACOS_FSEVENTS
     return impl_ != nullptr && impl_->is_active();
 #else
     return false;

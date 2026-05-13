@@ -24,6 +24,38 @@ function Get-EnvironmentVariableAnyScope {
     return $null
 }
 
+function Join-OptionalPath {
+    param(
+        [AllowNull()][string]$Path,
+        [Parameter(Mandatory = $true)][string]$ChildPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    return Join-Path $Path $ChildPath
+}
+
+function Get-LocalApplicationDataRoot {
+    $localAppData = Get-EnvironmentVariableAnyScope "LOCALAPPDATA"
+    if (-not [string]::IsNullOrWhiteSpace($localAppData)) {
+        return $localAppData
+    }
+
+    $specialFolder = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
+    if (-not [string]::IsNullOrWhiteSpace($specialFolder)) {
+        return $specialFolder
+    }
+
+    $home = Get-EnvironmentVariableAnyScope "HOME"
+    if (-not [string]::IsNullOrWhiteSpace($home)) {
+        return Join-Path $home ".local/share"
+    }
+
+    return $null
+}
+
 function Get-VcpkgDefaultTriplet {
     $explicitTriplet = Get-EnvironmentVariableAnyScope "VCPKG_DEFAULT_TRIPLET"
     if (-not [string]::IsNullOrWhiteSpace($explicitTriplet)) {
@@ -258,12 +290,13 @@ function Set-MirakanaiVcpkgEnvironment {
 }
 
 function Find-AndroidSdkRoot {
+    $localAppData = Get-LocalApplicationDataRoot
     $candidates = @(
         $env:ANDROID_HOME,
         $env:ANDROID_SDK_ROOT,
         (Get-EnvironmentVariableAnyScope "ANDROID_HOME"),
         (Get-EnvironmentVariableAnyScope "ANDROID_SDK_ROOT"),
-        (Join-Path $env:LOCALAPPDATA "Android\Sdk")
+        (Join-OptionalPath $localAppData "Android\Sdk")
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
 
     foreach ($candidate in $candidates) {

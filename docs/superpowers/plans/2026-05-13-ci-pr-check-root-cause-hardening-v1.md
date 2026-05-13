@@ -1,0 +1,98 @@
+# CI PR Check Root Cause Hardening v1 (2026-05-13)
+
+**Plan ID:** `ci-pr-check-root-cause-hardening-v1`
+**Gap:** `full-repository-quality-gate`
+**Parent:** [2026-05-11-phase4-full-repository-quality-gate-ci-analyzer-expansion-v1.md](2026-05-11-phase4-full-repository-quality-gate-ci-analyzer-expansion-v1.md)
+**Status:** Completed
+
+## Goal
+
+Make PR validation green by fixing the root causes behind the failed GitHub checks instead of masking individual jobs.
+
+## Context
+
+PR #5 failed across Windows, Linux, Linux sanitizer, static analysis, macOS, and iOS. The failures were caused by CI environment drift from the repository contract, host line-ending/tool environment differences, C++23 standard-library implementation gaps on hosted Clang/AppleClang, clang-tidy module-map timing, CMake bundle install requirements on Apple generators, Xcode generator C++ module-scanning incompatibility, Apple package smoke building the entire Xcode `ALL_BUILD` graph instead of the app bundle target, iOS bundle metadata using a non-CMake executable placeholder, Metal Objective-C++ framework linkage gaps, host-optional Vulkan loader assumptions in macOS tests, asynchronous macOS FSEvents delivery timing, iOS accidentally compiling and advertising macOS-only FSEvents code, canonical path differences in macOS watcher events, Linux `lcov 2.0` treating optional unused remove filters as errors, a missing LF attribute for byte-hashed `.tilemap` package data on Windows checkouts, a Metal runtime encoder access-control bug, and a real Linux/macOS native watcher API bug.
+
+## Constraints
+
+- Keep PowerShell 7 wrappers as the repository command surface.
+- Keep vcpkg installation outside CMake configure; CI may restore the gitignored `external/vcpkg` checkout before `tools/bootstrap-deps.ps1`.
+- Use official CMake C++ module scanning support: supported generator/compiler combinations keep scanning on; unsupported CI host lanes must be explicit exceptions.
+- Preserve greenfield clean-break policy; do not add compatibility shims for the incorrect static native watcher API.
+
+## Done When
+
+- Windows CI restores a pinned vcpkg checkout before dependency bootstrap.
+- Linux build/sanitizer CI use supported Ninja + Clang presets for C++ module scanning, while static-analysis uses an explicit clang-tidy preset that does not depend on build-generated module maps.
+- macOS CI uses an explicit AppleClang preset with module scanning/import-std disabled until the host provides an officially supported scanning path.
+- Linux coverage uses a separate preset and initializes the lcov summary input correctly.
+- Linux/macOS native watcher `active()` is an instance `const noexcept` API matching Windows.
+- C++ code avoids C++23 library calls not present on hosted Clang/AppleClang standard libraries when C++20 alternatives are sufficient.
+- Apple bundle configure paths include CMake `BUNDLE DESTINATION` for runtime executable installs.
+- Apple iOS Xcode configure paths explicitly disable CMake C++ module scanning and CMake-managed `import std`.
+- Apple iOS package smoke configures the package tree with `BUILD_TESTING=OFF` and builds only the `MirakanaiIOS` target, avoiding unrelated Xcode `ALL_BUILD` unit-test and aggregate tool-library targets.
+- Apple iOS `Info.plist` uses CMake's `${MACOSX_BUNDLE_EXECUTABLE_NAME}` placeholder for `CFBundleExecutable`.
+- Linux `lcov --remove` keeps strict threshold enforcement but tolerates unused optional exclude filters.
+- Windows-hosted checkouts keep byte-hashed 2D `.tilemap` package payloads LF-normalized.
+- Metal Objective-C++ native code links all Apple SDK frameworks it uses, including Foundation for `NSString`.
+- Metal runtime render encoder creation has complete friend declarations for texture and drawable paths.
+- macOS tests accept unsupported Vulkan as an explicit host classification instead of requiring a Vulkan loader on every Apple runner.
+- macOS native file watcher polling flushes FSEvents delivery before inspecting queued events.
+- iOS builds compile the macOS watcher as an unavailable stub, do not advertise FSEvents as a host-native backend, and do not build the macOS/Linux native watcher executable target.
+- macOS watcher event paths normalize through canonical filesystem paths before applying the configured relative prefix, and `poll()` reconciles a file snapshot so native watch results stay deterministic when FSEvents coalesces or drops events.
+- Windows CRLF checkouts and macOS/iOS missing Windows-only environment variables do not crash validation scripts or source registry key checks.
+- Local validation covers the updated scripts, docs, presets, and native watcher compile contract.
+
+## Validation Evidence
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `cmake --build --preset dev --target MK_core_tests` after RED static assertions | PASS | Static assertions failed first for the incorrect static Linux/macOS watcher API, then passed after the clean instance API fix. |
+| `ctest --preset dev --output-on-failure -R MK_core_tests` | PASS | Targeted public API and file watcher contract test passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage-thresholds.ps1` | PASS | Confirms `tools/check-coverage.ps1` initializes `$currentInfo` before lcov filtering/summary. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` | PASS | CI workflow static contract matches pinned vcpkg checkout, Linux/macOS presets, coverage, and static-analysis artifacts. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | JSON/manifests and workflow needles are synchronized. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` | PASS | C++23/module-scanning policy recognizes `ci-linux-clang`, `ci-linux-tidy`, `coverage`, and `ci-macos-appleclang`. |
+| `$env:LOCALAPPDATA=$null; $env:ProgramFiles=$null; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` | PASS | Diagnostic-only mobile validation no longer crashes on non-Windows hosts with missing Windows-only environment variables. |
+| `rg -n "^[^/\"]*std::ranges::(contains\|iota)" engine editor tests games examples` | PASS | No unsupported hosted-library calls remain in compiled source/test trees; `std::iota` uses are documented with targeted `NOLINT` because hosted Clang/AppleClang CI lacks `std::ranges::iota`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | Agent-facing workflow/skill contract stayed synchronized. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS | Header API change does not violate public boundary policy. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/platform/src/linux_file_watcher.cpp,engine/platform/src/macos_file_watcher.cpp,tests/unit/core_tests.cpp -MaxFiles 3` | PASS | Targeted tidy completed; existing repository warning profile remains warning-only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files editor/core/src/material_graph_authoring.cpp,editor/core/src/material_authoring.cpp,engine/assets/src/sprite_atlas_packing.cpp,engine/navigation/src/local_avoidance.cpp,engine/platform/src/mobile.cpp,engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp,engine/scene_renderer/src/scene_renderer.cpp,engine/runtime/src/runtime_diagnostics.cpp,engine/runtime/src/asset_runtime.cpp,engine/tools/asset/ui_atlas_tool.cpp,engine/tools/asset/tilemap_tool.cpp,engine/rhi/vulkan/src/vulkan_backend.cpp,tests/unit/editor_core_tests.cpp -MaxFiles 13` | PASS | Targeted tidy covered hosted-library fallback edits; existing repository warning profile remains warning-only. |
+| `cmake --build --preset dev --target mirakana_rhi_vulkan` | PASS | Rebuilt the edited Vulkan backend after removing a non-ASCII comment that triggered MSVC C4819. |
+| `cmake --build --preset dev --target mirakana_runtime MK_runtime_tests MK_editor_core` | PASS | Rebuilt runtime parsing, Linux-tidy include fix, and editor backend direct include changes. |
+| `cmake --build --preset dev --target MK_tools_scene MK_tools_tests` | PASS | Rebuilt the scene tools after replacing remaining floating-point `std::from_chars` parsing with classic-locale parsing. |
+| `ctest --preset dev --output-on-failure -R "MK_runtime_tests\|MK_tools_tests"` | PASS | Targeted runtime and tools tests passed after hosted CI portability fixes. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/runtime/src/asset_runtime.cpp,tests/unit/runtime_tests.cpp,editor/core/src/render_backend.cpp -MaxFiles 3` | PASS | Targeted tidy covered macOS libc++ float parsing and Linux clang direct-include fixes; existing repository warning profile remains warning-only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/tools/scene/physics_collision_package_tool.cpp -MaxFiles 1` | PASS | Targeted tidy covered the remaining first-party float parsing fallback. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed; Apple/Metal diagnostics remained host-gated on Windows. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` | PASS | Static policy now locks Apple mobile Xcode configure to `MK_ENABLE_CXX_MODULE_SCANNING=OFF` and `MK_ENABLE_IMPORT_STD=OFF`. |
+| `cmake --build --preset dev --target MK_rhi_metal` | PASS | Rebuilt the Metal target after adding the missing drawable render-encoder friend declaration. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | PASS | Static dependency policy now locks Foundation documentation and Metal target linkage. |
+| `cmake --build --preset dev --target MK_backend_scaffold_tests` | PASS | Rebuilt the backend scaffold tests, Vulkan backend, Metal backend, and platform watcher sources after macOS CI test hardening. |
+| `ctest --preset dev --output-on-failure -R "MK_backend_scaffold_tests\|MK_core_tests"` | PASS | Windows host still proves Vulkan runtime loader tests after macOS unsupported-host assertions were narrowed, plus the core watcher API contract. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/platform/src/macos_file_watcher.cpp,tests/unit/backend_scaffold_tests.cpp -MaxFiles 2` | PASS | Targeted tidy covered the compiled Windows view of macOS watcher and Vulkan test edits; existing repository warnings remain warning-only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Formatting stayed clean after the Apple watcher host-gate and snapshot reconciliation edits. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | Manifest/schema contracts stayed synchronized after the CI hardening plan update. |
+| `cmake --build --preset dev --target MK_platform MK_core_tests MK_backend_scaffold_tests` | PASS | Rebuilt platform watcher host classification, core watcher API tests, and backend scaffold tests. |
+| `ctest --preset dev --output-on-failure -R "MK_backend_scaffold_tests\|MK_core_tests"` | PASS | Focused tests passed after iOS host-backend narrowing and macOS watcher snapshot reconciliation. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Files engine/platform/src/file_watcher.cpp,engine/platform/src/macos_file_watcher.cpp,tests/unit/backend_scaffold_tests.cpp -MaxFiles 3` | PASS | Targeted tidy covered host-backend classification and macOS watcher implementation; existing repository warnings remain warning-only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed after the final Apple watcher fixes; Apple/Metal diagnostics remained host-gated on Windows. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed independently after full validation. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` | PASS | Diagnostic contract now verifies Apple packaging keeps `BUILD_TESTING=OFF`, builds only the `MirakanaiIOS` target, and uses CMake's bundle executable placeholder; Apple execution remains host-gated on Windows. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` | PASS | C++/Apple policy now locks the iOS package script to the focused Xcode app-bundle target and module-scanning/import-std exceptions. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed after the focused iOS package target fix. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed independently after the final validation run. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` | PASS | Diagnostic contract now also verifies the iOS bundle Info.plist uses CMake's `${MACOSX_BUNDLE_EXECUTABLE_NAME}` for `CFBundleExecutable`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed after the iOS Info.plist executable placeholder fix. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed independently after the final Info.plist validation run. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage-thresholds.ps1` | PASS | Static coverage policy now verifies `lcov --remove` passes `--ignore-errors unused` for optional filters such as `*/vcpkg_installed/*`. |
+| `git ls-files --eol games/sample_2d_desktop_runtime_package/runtime/assets/2d/level.tilemap` | PASS | The byte-hashed tilemap payload now reports `attr/text eol=lf`, preventing Windows checkout CRLF hash drift. |
+| `cmake --build --preset dev --target sample_2d_desktop_runtime_package` | PASS | Rebuilt the Windows 2D package sample after the LF attribute hardening. |
+| `ctest --preset dev --output-on-failure -R "sample_2d_desktop_runtime_package_(smoke\|shader_artifacts_smoke)"` | PASS | Both Windows package smokes passed locally after the `.tilemap` LF attribute fix. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | Static agent integration now enforces committed and generated 2D package runtime `.gitattributes` entries for byte-hashed package files. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | JSON and manifest contracts stayed synchronized after the package metadata hardening. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Formatting stayed clean after the coverage and package attribute updates. |
+| `git diff --check` | PASS | No whitespace errors in the final diff. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full Windows validation, build, and 51 CTest tests passed after the Linux coverage and Windows tilemap package hash fixes. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed independently after full validation. |

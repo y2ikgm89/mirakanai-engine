@@ -11,6 +11,8 @@
 #include <charconv>
 #include <cmath>
 #include <limits>
+#include <locale>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -119,12 +121,24 @@ using KeyValues = std::unordered_map<std::string, std::string>;
 }
 
 [[nodiscard]] float parse_payload_float(std::string_view value, std::string_view diagnostic_name) {
-    float number = 0.0F;
-    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), number);
-    if (error != std::errc{} || end != value.data() + value.size() || !std::isfinite(number)) {
+    const auto valid_character = [](char character) noexcept {
+        return (character >= '0' && character <= '9') || character == '+' || character == '-' || character == '.' ||
+               character == 'e' || character == 'E';
+    };
+    if (value.empty() || !std::ranges::all_of(value, valid_character)) {
         throw std::invalid_argument(std::string(diagnostic_name) + " float value is invalid");
     }
-    return number;
+
+    float parsed = 0.0F;
+    std::istringstream stream{std::string{value}};
+    stream.imbue(std::locale::classic());
+    stream >> std::noskipws >> parsed;
+
+    char trailing = '\0';
+    if (!stream || (stream >> trailing) || !std::isfinite(parsed)) {
+        throw std::invalid_argument(std::string(diagnostic_name) + " float value is invalid");
+    }
+    return parsed;
 }
 
 [[nodiscard]] std::array<float, 2> parse_payload_float2(std::string_view value, std::string_view diagnostic_name) {
@@ -772,11 +786,11 @@ runtime_sprite_animation_payload(const RuntimeAssetRecord& record) {
             if (!valid_sprite_animation_frame(frame)) {
                 return payload_failure<RuntimeSpriteAnimationPayload>("runtime sprite animation frame is invalid");
             }
-            if (!std::ranges::contains(record.dependencies, frame.sprite)) {
+            if (std::ranges::find(record.dependencies, frame.sprite) == record.dependencies.end()) {
                 return payload_failure<RuntimeSpriteAnimationPayload>(
                     "runtime sprite animation frame sprite is not declared as a package dependency");
             }
-            if (!std::ranges::contains(record.dependencies, frame.material)) {
+            if (std::ranges::find(record.dependencies, frame.material) == record.dependencies.end()) {
                 return payload_failure<RuntimeSpriteAnimationPayload>(
                     "runtime sprite animation frame material is not declared as a package dependency");
             }
@@ -934,7 +948,7 @@ RuntimePayloadAccessResult<RuntimeUiAtlasPayload> runtime_ui_atlas_payload(const
 
         payload.pages.reserve(document.pages.size());
         for (const auto& page : document.pages) {
-            if (!std::ranges::contains(record.dependencies, page.asset)) {
+            if (std::ranges::find(record.dependencies, page.asset) == record.dependencies.end()) {
                 return payload_failure<RuntimeUiAtlasPayload>(
                     "runtime ui atlas page asset is not declared as a package dependency");
             }
@@ -985,7 +999,7 @@ RuntimePayloadAccessResult<RuntimeTilemapPayload> runtime_tilemap_payload(const 
         if (document.asset != record.asset) {
             return payload_failure<RuntimeTilemapPayload>("runtime tilemap payload asset id does not match record");
         }
-        if (!std::ranges::contains(record.dependencies, document.atlas_page)) {
+        if (std::ranges::find(record.dependencies, document.atlas_page) == record.dependencies.end()) {
             return payload_failure<RuntimeTilemapPayload>(
                 "runtime tilemap atlas page asset is not declared as a package dependency");
         }

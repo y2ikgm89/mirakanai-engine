@@ -39,7 +39,7 @@ class LinuxFileWatcher final {
     LinuxFileWatcher& operator=(LinuxFileWatcher&&) noexcept;
 
     [[nodiscard]] LinuxFileWatcherPollResult poll();
-    [[nodiscard]] static bool active() noexcept;
+    [[nodiscard]] bool active() const noexcept;
     [[nodiscard]] const std::filesystem::path& directory() const noexcept;
     [[nodiscard]] static FileWatchBackendKind backend_kind() noexcept;
     [[nodiscard]] static FileWatchNativeBackendKind native_backend_kind() noexcept;

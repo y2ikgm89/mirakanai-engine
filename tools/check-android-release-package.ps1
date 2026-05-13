@@ -76,7 +76,12 @@ function New-LocalValidationUploadKey {
         Write-Error "keytool is required to create a local Android upload key. Install JDK 17 and set JAVA_HOME."
     }
 
-    $keyRoot = Join-Path $env:LOCALAPPDATA "Mirakanai\android\keys"
+    $localAppData = Get-LocalApplicationDataRoot
+    if ([string]::IsNullOrWhiteSpace($localAppData)) {
+        Write-Error "Unable to resolve a local application data directory for Android upload key generation."
+    }
+
+    $keyRoot = Join-Path $localAppData "Mirakanai\android\keys"
     New-Item -ItemType Directory -Force -Path $keyRoot | Out-Null
 
     $stamp = Get-Date -Format "yyyyMMdd-HHmmss"

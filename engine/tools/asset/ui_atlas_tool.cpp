@@ -139,7 +139,7 @@ void sort_package_entries(std::vector<AssetCookedPackageEntry>& entries) {
 }
 
 [[nodiscard]] bool has_dependency(const AssetCookedPackageEntry& entry, AssetId dependency) noexcept {
-    return std::ranges::contains(entry.dependencies, dependency);
+    return std::ranges::find(entry.dependencies, dependency) != entry.dependencies.end();
 }
 
 [[nodiscard]] bool has_ui_atlas_texture_edge(const AssetCookedPackageIndex& index, AssetId atlas_asset,

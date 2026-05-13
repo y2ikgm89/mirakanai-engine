@@ -58,6 +58,11 @@ Assert-TextContains "CMakeLists.txt" 'CXX_MODULE_STD' "root CMake"
 Assert-TextContains "CMakeLists.txt" 'CXX_EXTENSIONS OFF' "root CMake"
 Assert-TextContains "CMakeLists.txt" '/EHsc' "root CMake"
 Assert-TextContains "CMakeLists.txt" 'COMPATIBILITY ExactVersion' "root CMake"
+Assert-TextContains "CMakeLists.txt" 'BUNDLE DESTINATION \$\{CMAKE_INSTALL_BINDIR\}' "root CMake"
+Assert-TextContains "tools/build-mobile-apple.ps1" '-DMK_ENABLE_CXX_MODULE_SCANNING=OFF' "Apple mobile packaging script"
+Assert-TextContains "tools/build-mobile-apple.ps1" '-DMK_ENABLE_IMPORT_STD=OFF' "Apple mobile packaging script"
+Assert-TextContains "tools/build-mobile-apple.ps1" '-DBUILD_TESTING=OFF' "Apple mobile packaging script"
+Assert-TextContains "tools/build-mobile-apple.ps1" '--target "MirakanaiIOS"' "Apple mobile packaging script"
 Assert-TextContains ".clang-format" 'Standard:\s+(Latest|c\+\+23)' "clang-format C++ parser standard"
 Assert-TextContains "tools/validate.ps1" 'check-generated-msvc-cxx23-mode.ps1' "validation script"
 
@@ -66,7 +71,7 @@ if ($presets.cmakeMinimumRequired.major -lt 3 -or
     Write-Error "CMakePresets.json cmakeMinimumRequired must be at least 3.30 for CMAKE_CXX_MODULE_STD and module scanning policy"
 }
 
-foreach ($presetName in @("dev", "desktop-runtime", "desktop-gui", "asset-importers", "release", "desktop-runtime-release", "clang-asan-ubsan")) {
+foreach ($presetName in @("dev", "desktop-runtime", "desktop-gui", "asset-importers", "release", "desktop-runtime-release", "clang-asan-ubsan", "ci-linux-clang")) {
     $configurePreset = $presets.configurePresets | Where-Object { $_.name -eq $presetName } | Select-Object -First 1
     if (-not $configurePreset) {
         Write-Error "CMakePresets.json missing $presetName configure preset"
@@ -88,6 +93,29 @@ foreach ($presetName in @("dev", "desktop-runtime", "desktop-gui", "asset-import
     }
 }
 
+foreach ($presetName in @("ci-linux-tidy", "coverage", "ci-macos-appleclang")) {
+    $configurePreset = $presets.configurePresets | Where-Object { $_.name -eq $presetName } | Select-Object -First 1
+    if (-not $configurePreset) {
+        Write-Error "CMakePresets.json missing $presetName configure preset"
+    }
+    if ($configurePreset.cacheVariables.MK_CXX_STANDARD -ne "23") {
+        Write-Error "$presetName configure preset must set MK_CXX_STANDARD to 23"
+    }
+    Assert-MsvcCxx23Option $configurePreset.cacheVariables.MK_MSVC_CXX23_STANDARD_OPTION "$presetName configure preset"
+    if ($configurePreset.cacheVariables.MK_ENABLE_CXX_MODULE_SCANNING -ne "OFF") {
+        Write-Error "$presetName configure preset must set MK_ENABLE_CXX_MODULE_SCANNING to OFF because its CI host toolchain does not provide supported CMake module scanning."
+    }
+    if ($configurePreset.cacheVariables.MK_ENABLE_IMPORT_STD -ne "OFF") {
+        Write-Error "$presetName configure preset must set MK_ENABLE_IMPORT_STD to OFF when CMake module scanning is disabled."
+    }
+}
+
+$coverageConfigure = $presets.configurePresets | Where-Object { $_.name -eq "coverage" } | Select-Object -First 1
+if ($coverageConfigure.cacheVariables.CMAKE_CXX_FLAGS -ne "--coverage" -or
+    $coverageConfigure.cacheVariables.CMAKE_EXE_LINKER_FLAGS -ne "--coverage") {
+    Write-Error "coverage configure preset must keep GCC coverage instrumentation flags on compile and link."
+}
+
 $cpp23Configure = $presets.configurePresets | Where-Object { $_.name -eq "cpp23-eval" } | Select-Object -First 1
 if (-not $cpp23Configure) {
     Write-Error "CMakePresets.json missing cpp23-eval configure preset"
@@ -107,6 +135,15 @@ foreach ($presetKind in @("buildPresets", "testPresets")) {
     $preset = $presets.$presetKind | Where-Object { $_.name -eq "cpp23-eval" } | Select-Object -First 1
     if (-not $preset) {
         Write-Error "CMakePresets.json missing cpp23-eval in $presetKind"
+    }
+}
+
+foreach ($presetName in @("ci-linux-clang", "ci-linux-tidy", "coverage", "ci-macos-appleclang")) {
+    foreach ($presetKind in @("buildPresets", "testPresets")) {
+        $preset = $presets.$presetKind | Where-Object { $_.name -eq $presetName } | Select-Object -First 1
+        if (-not $preset) {
+            Write-Error "CMakePresets.json missing $presetName in $presetKind"
+        }
     }
 }
 

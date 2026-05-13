@@ -67,14 +67,16 @@ Always-present core examples:
 
 `MK_ai`, `MK_animation`, `MK_assets`, `MK_audio`, `MK_core`, `MK_math`, `MK_navigation`, `MK_physics`, `MK_platform`, `MK_renderer`, `MK_rhi`, `MK_runtime`, `MK_runtime_host`, `MK_runtime_rhi`, `MK_runtime_scene`, `MK_runtime_scene_rhi`, `MK_rhi_metal`, `MK_rhi_vulkan`, `MK_scene`, `MK_scene_renderer`, `MK_tools`, `MK_ui`, `MK_ui_renderer`
 
-Generated optional targets are added to `MK_LIBRARY_TARGETS` only when the `TARGET` exists, such as `MK_rhi_d3d12`, `MK_platform_sdl3`, or `MK_editor_core`. `EXPORT_NAME` shortens the public package names so consumers reference targets such as `mirakana::core`.
+Generated optional targets are added to `MK_LIBRARY_TARGETS` only when the `TARGET` exists, such as `MK_rhi_d3d12`, `MK_platform_sdl3`, or `MK_editor_core`. `EXPORT_NAME` shortens the public package names so consumers reference targets such as `mirakana::core`. Runtime executables are installed outside the export set with `RUNTIME` and Apple `BUNDLE` destinations.
 
 ## C++ Modules And `import std`
 
 | `MK_ENABLE_CXX_MODULE_SCANNING` | Effect |
 | --- | --- |
 | `ON` (default) | Sets `CMAKE_CXX_SCAN_FOR_MODULES=ON`. `MK_apply_common_target_options` enables module dependency scanning per target. |
-| `OFF` | Sets `CMAKE_CXX_SCAN_FOR_MODULES=OFF`. This is not recommended when using project `FILE_SET CXX_MODULES`; repository presets keep it `ON`. |
+| `OFF` | Sets `CMAKE_CXX_SCAN_FOR_MODULES=OFF`. Use only for reviewed non-module lanes whose host generator/compiler cannot provide CMake module scanning. |
+
+Default development, C++23 verification, Linux Clang CI, sanitizer, release, and optional vcpkg-backed presets keep scanning `ON`. The `ci-linux-tidy`, `coverage`, and `ci-macos-appleclang` presets keep scanning and CMake-managed `import std` `OFF` because those lanes use clang-tidy without build-generated module maps, GCC coverage, or AppleClang hosts where the current CI contract does not provide official CMake C++ module dependency scanning support. `tools/build-mobile-apple.ps1` also disables scanning and CMake-managed `import std` when configuring the iOS Xcode project, because CMake does not support module dependency scanning with the Xcode generator. Do not add project `FILE_SET CXX_MODULES` sources to those exception lanes without moving them to a supported generator/compiler combination first.
 
 | `MK_ENABLE_IMPORT_STD` | `CMAKE_CXX_COMPILER_IMPORT_STD` contains `23` | Effect |
 | --- | --- | --- |

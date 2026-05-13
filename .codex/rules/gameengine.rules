@@ -83,15 +83,31 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["gh", "pr", "view"],
+    decision = "allow",
+    justification = "Read-only PR state inspection is required before task-owned auto-merge registration.",
+    match = [
+        "gh pr view --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url",
+        "gh pr view 4 --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url",
+    ],
+    not_match = [
+        "gh pr edit --base main",
+        "gh pr merge --merge --delete-branch",
+    ],
+)
+
+prefix_rule(
     pattern = ["gh", "pr", "merge", "--auto", "--merge", "--delete-branch"],
     decision = "allow",
-    justification = "Registering GitHub auto-merge for a task-owned PR preserves branch protection and required checks while allowing unattended completion.",
+    justification = "Register GitHub auto-merge only after docs/workflows.md PR preflight confirms a task-owned PR, safe mergeStateStatus, no failed checks, and fresh validation; prefer --match-head-commit.",
     match = [
         "gh pr merge --auto --merge --delete-branch",
+        "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
     ],
     not_match = [
         "gh pr merge --merge --delete-branch",
         "gh pr merge --squash --delete-branch",
+        "gh pr merge --admin --merge --delete-branch",
     ],
 )
 

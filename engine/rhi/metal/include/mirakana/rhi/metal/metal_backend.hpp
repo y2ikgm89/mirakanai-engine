@@ -308,6 +308,9 @@ class MetalRuntimeRenderEncoder {
     friend MetalRuntimeRenderEncoderCreateResult create_native_render_encoder(MetalRuntimeCommandBuffer& command_buffer,
                                                                               MetalRuntimeTexture& texture,
                                                                               const MetalRenderEncoderDesc& desc);
+    friend MetalRuntimeRenderEncoderCreateResult create_native_render_encoder(MetalRuntimeCommandBuffer& command_buffer,
+                                                                              MetalRuntimeDrawable& drawable,
+                                                                              const MetalRenderEncoderDesc& desc);
 };
 
 struct MetalRuntimeDeviceQueueCreateResult {

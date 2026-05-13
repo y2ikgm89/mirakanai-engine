@@ -136,8 +136,12 @@ foreach ($dependencyName in @("libspng", "fastgltf", "miniaudio")) {
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| SDL3 \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Dear ImGui \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "Foundation" "dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "Foundation" "legal dependency docs"
 Assert-TextContains "CMakePresets.json" "desktop-runtime" "CMake presets"
 Assert-TextContains "CMakePresets.json" "asset-importers" "CMake presets"
+Assert-TextContains "engine/rhi/metal/CMakeLists.txt" 'find_library\(MK_APPLE_FOUNDATION_FRAMEWORK Foundation REQUIRED\)' "Metal Apple SDK linkage"
+Assert-TextContains "engine/rhi/metal/CMakeLists.txt" '\$\{MK_APPLE_FOUNDATION_FRAMEWORK\}' "Metal Apple SDK linkage"
 
 $vcpkgPresets = @($presets.configurePresets | Where-Object {
         $_.PSObject.Properties.Name.Contains("cacheVariables") -and

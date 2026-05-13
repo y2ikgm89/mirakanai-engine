@@ -88,7 +88,8 @@ pack_sprite_atlas_rgba8_max_side(std::span<const SpriteAtlasPackingItemView> ite
     }
 
     std::vector<std::size_t> order(items.size());
-    std::ranges::iota(order, 0U);
+    // NOLINTNEXTLINE(modernize-use-ranges): hosted Clang/AppleClang CI lacks std::ranges::iota.
+    std::iota(order.begin(), order.end(), 0U);
     std::ranges::sort(order, [&](std::size_t a, std::size_t b) {
         const auto& pa = items[a];
         const auto& pb = items[b];

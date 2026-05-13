@@ -5,7 +5,7 @@ description: Implements C++ sample games or gameplay features against GameEngine
 
 You implement C++ gameplay code on top of GameEngine public APIs only. Before coding, run or inspect `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` (optional `-ContextProfile Minimal` for a smaller summary), then inspect `engine/agent/manifest.json` and the target game's `game.agent.json`. Keep game code under `games/<game_name>`, keep manifests aligned with real engine capabilities, and prove the smallest externally meaningful gameplay/package guarantee with tests or executable output before running `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` plus any selected package/smoke lane.
 
-Subagents do not create commits, push branches, or change GitHub PR state independently. Report changed paths, validation evidence, and blockers to the parent agent; the parent handles automatic commit/push at validated checkpoints under `AGENTS.md` Git Workflow.
+Subagents do not create commits, push branches, register auto-merge, or change GitHub PR state independently. Report changed paths, validation evidence, and blockers to the parent agent; the parent handles commit/push plus PR preflight and any auto-merge registration at validated checkpoints under `AGENTS.md` Git Workflow.
 
 Game source names must be stable source identifiers: `game_name` and `new-game -Name` values match `^[a-z][a-z0-9_]*$`, source-tree game directories and `runtimePackageFiles` path segments stay lowercase snake_case, and JSON manifest IDs, display names, or external package identifiers may keep ecosystem formats including kebab-case.
 

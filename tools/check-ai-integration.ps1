@@ -642,8 +642,11 @@ Assert-ContainsText $agentsContent "validated commit checkpoints" "AGENTS.md"
 Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
 Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
 Assert-ContainsText $agentsContent "credential-manager-core" "AGENTS.md"
+Assert-ContainsText $agentsContent "gh pr view <pr> --json" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr create" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr merge --auto --merge --delete-branch" "AGENTS.md"
+Assert-ContainsText $agentsContent "mergeStateStatus" "AGENTS.md"
+Assert-ContainsText $agentsContent "--match-head-commit <headRefOid>" "AGENTS.md"
 Assert-ContainsText $agentsContent '`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`' "AGENTS.md"
 Assert-ContainsText $agentsContent "documentation-only/non-runtime slices" "AGENTS.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit")) {
@@ -666,8 +669,11 @@ Assert-ContainsText $workflowsContent ".claude/settings.local.json" "docs/workfl
 Assert-ContainsText $workflowsContent ".mcp.json" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "AGENTS.override.md" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Commit, Push, And Pull Request Workflow" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "gh pr view <pr> --json" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr create" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --auto --merge --delete-branch" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "--match-head-commit <headRefOid>" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "mergeStateStatus" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Documentation-only or similarly narrow non-runtime slices" "docs/workflows.md"
@@ -699,6 +705,7 @@ $buildingContent = Get-Content -LiteralPath $buildingPath -Raw
 Assert-ContainsText $buildingContent "normalized-build-environment" "docs/building.md"
 Assert-ContainsText $buildingContent 'MSBuild a single `Path`' "docs/building.md"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-MaxFiles 1" "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]' "tools/check-agents.ps1"
 $tidyWrapperContent = Get-AgentSurfaceText "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent '[string[]]$Files' "tools/check-tidy.ps1"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "PIX on Windows", "Windows Performance Toolkit", "Tools.Graphics.DirectX~~~~0.0.1.0", "d3d12SDKLayers.dll", "cdb -version", "pixtool --help", "wpr -help", "xperf -help")) {
@@ -721,8 +728,11 @@ foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "b
 $aiIntegrationContent = Get-AgentSurfaceText "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Codex rules: https://developers.openai.com/codex/rules" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "git commit" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "gh pr view" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr merge --auto --merge --delete-branch" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "mergeStateStatus" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "--match-head-commit <headRefOid>" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "policy reload" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "GITHUB_TOKEN" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-integration.md"
@@ -740,6 +750,11 @@ Assert-ContainsText $aiIntegrationContent "AGENTS.override.md" "docs/ai-integrat
 $cursorBaselineSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "Cursor global instructions" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "workspace override" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+$cursorAgentIntegrationSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 
 Assert-ContainsText $aiIntegrationContent "normalized-build-environment" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'Path`/`PATH' "docs/ai-integration.md"
@@ -12597,6 +12612,17 @@ foreach ($packageFile in @(
         Write-Error "$sample2dDesktopManifestPath runtimePackageFiles missing $packageFile"
     }
 }
+$sample2dDesktopGitAttributes = Get-Content -LiteralPath (Join-Path $root "games/sample_2d_desktop_runtime_package/runtime/.gitattributes") -Raw
+foreach ($attributeRule in @(
+    "*.geindex text eol=lf",
+    "*.geasset text eol=lf",
+    "*.material text eol=lf",
+    "*.scene text eol=lf",
+    "*.tilemap text eol=lf",
+    "*.sprite_animation text eol=lf"
+)) {
+    Assert-ContainsText $sample2dDesktopGitAttributes $attributeRule "games/sample_2d_desktop_runtime_package/runtime/.gitattributes"
+}
 $sample2dDesktopManifestText = Get-Content -LiteralPath $sample2dDesktopManifestFullPath -Raw
 foreach ($needle in @(
     "native 2D sprite package proof",
@@ -13054,6 +13080,8 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Git/GitHub publishing workflow changes" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "merge/delete-branch" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "auto-merge registration" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "mergeStateStatus" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "--match-head-commit <headRefOid>" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "post-merge remote-tracking cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
@@ -13076,10 +13104,12 @@ Assert-ContainsText $codexRuleText "policy reload" ".codex/rules/gameengine.rule
 Assert-ContainsText $codexRuleText "git restore" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText 'decision = "allow"' ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "gh pr view" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr create" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge --merge --delete-branch" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge --auto --merge --delete-branch" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "--match-head-commit" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Remove-Item" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-WebRequest" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-RestMethod" ".codex/rules/gameengine.rules"
@@ -13094,7 +13124,7 @@ if (-not $claudeSettings.PSObject.Properties.Name.Contains('$schema')) {
 if (-not $claudeSettings.PSObject.Properties.Name.Contains("permissions")) {
     Write-Error ".claude/settings.json must define permissions"
 }
-foreach ($allowRule in @("Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)")) {
+foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)")) {
     if (@($claudeSettings.permissions.allow) -notcontains $allowRule) {
         Write-Error ".claude/settings.json permissions.allow missing $allowRule"
     }
@@ -13104,7 +13134,7 @@ foreach ($askRule in @("Bash(git push origin main:*)", "Bash(git push origin mas
         Write-Error ".claude/settings.json permissions.ask missing $askRule"
     }
 }
-foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)")) {
+foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)")) {
     if (@($claudeSettings.permissions.ask) -contains $automaticGitRule) {
         Write-Error ".claude/settings.json permissions.ask should not prompt routine automatic checkpoint command $automaticGitRule"
     }
@@ -13148,6 +13178,8 @@ Assert-ContainsText $aiAgentRuleText "specific, concise, verifiable" ".claude/ru
 Assert-ContainsText $aiAgentRuleText "MCP connection state" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "OpenAI developer documentation MCP" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "official Anthropic docs" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "mergeStateStatus" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "--match-head-commit <headRefOid>" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Debugging Tools for Windows" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Windows Graphics Tools" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "PIX on Windows" ".claude/rules/ai-agent-integration.md"
@@ -13164,6 +13196,23 @@ Get-ChildItem -Path (Resolve-RequiredAgentPath ".codex/agents") -Filter "*.toml"
             Write-Error "Codex agent missing required field '$field': $($_.FullName)"
         }
     }
+}
+
+foreach ($relativePath in @(
+    ".codex/agents/build-fixer.toml",
+    ".codex/agents/cpp-reviewer.toml",
+    ".codex/agents/engine-architect.toml",
+    ".codex/agents/explorer.toml",
+    ".codex/agents/gameplay-builder.toml",
+    ".codex/agents/rendering-auditor.toml",
+    ".claude/agents/build-fixer.md",
+    ".claude/agents/cpp-reviewer.md",
+    ".claude/agents/engine-architect.md",
+    ".claude/agents/explorer.md",
+    ".claude/agents/gameplay-builder.md",
+    ".claude/agents/rendering-auditor.md"
+)) {
+    Assert-ContainsText (Get-AgentSurfaceText $relativePath) "register auto-merge" $relativePath
 }
 
 foreach ($relativePath in @(
@@ -13998,10 +14047,21 @@ try {
     $desktop2dCmake = Get-Content -LiteralPath (Join-Path $desktop2dScaffoldRoot "games/CMakeLists.txt") -Raw
     $desktop2dMain = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "main.cpp") -Raw
     $desktop2dReadme = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "README.md") -Raw
+    $desktop2dGitAttributes = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/.gitattributes") -Raw
     $desktop2dShader = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "shaders/runtime_2d_sprite.hlsl") -Raw
     $desktop2dIndex = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/desktop_2d_package_game.geindex") -Raw
     $desktop2dScene = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/assets/2d/playable.scene") -Raw
     $desktop2dSpriteAnimation = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/assets/2d/player.sprite_animation") -Raw
+    foreach ($attributeRule in @(
+        "*.geindex text eol=lf",
+        "*.geasset text eol=lf",
+        "*.material text eol=lf",
+        "*.scene text eol=lf",
+        "*.tilemap text eol=lf",
+        "*.sprite_animation text eol=lf"
+    )) {
+        Assert-ContainsText $desktop2dGitAttributes $attributeRule "Desktop 2D scaffold runtime/.gitattributes"
+    }
     Assert-ContainsText $desktop2dCmake "MK_add_desktop_runtime_game(desktop_2d_package_game" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "PACKAGE_FILES_FROM_MANIFEST" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-scene-package" "Desktop 2D scaffold CMake"

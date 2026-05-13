@@ -61,7 +61,7 @@ When executing [Production Completion Master Plan v1](superpowers/plans/2026-05-
 
 ## Static Analysis And API Boundaries
 
-- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` for clang-tidy. The default validation path verifies `.clang-tidy`, uses CMake File API codemodel data to synthesize `compile_commands.json` for the Windows Visual Studio `dev` preset when the generator does not emit one, runs a `-MaxFiles 1` smoke analysis in `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and reports explicit CMake/clang-tidy tool blockers instead of silently skipping analysis. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/physics/src/physics3d.cpp` for wrapper-owned changed-file analysis when a full repository run is too broad for the current slice. GitHub Actions also has a reviewed `static-analysis` lane that runs `tools/check-tidy.ps1 -Strict` on `ubuntu-latest`; local `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` verifies that lane exists but does not execute CI locally.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` for clang-tidy. The default validation path verifies `.clang-tidy`, uses CMake File API codemodel data to synthesize `compile_commands.json` for the Windows Visual Studio `dev` preset when the generator does not emit one, runs a `-MaxFiles 1` smoke analysis in `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and reports explicit CMake/clang-tidy tool blockers instead of silently skipping analysis. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/physics/src/physics3d.cpp` for wrapper-owned changed-file analysis when a full repository run is too broad for the current slice. GitHub Actions also has a reviewed `static-analysis` lane that runs `tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy` on `ubuntu-latest`; local `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` verifies that lane exists but does not execute CI locally.
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1` for coverage. Coverage is currently enforced only on Linux GCC/Clang CI where gcov coverage is stable; other hosts report an explicit blocker instead of producing partial data.
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` after touching public headers or backend interop. Public engine/editor headers must not expose native D3D12/DXGI/Win32 symbols, COM pointers, or native graphics headers.
 - Use backend PIMPL types or first-party opaque handles for native OS/GPU interop until a written interop design accepts a narrower exception.
@@ -166,13 +166,21 @@ The PR can also be created or updated through GitHub Web or GitHub Desktop. If a
 
 Push and PR publishing depend on host-local GitHub authentication such as Git Credential Manager, GitHub CLI, SSH agent, or a browser session. This repository must not require or store `GITHUB_TOKEN`, personal access tokens, or credential helper state for routine publishing.
 
-8. Merge only after branch protection, required checks, and required reviews are satisfied. For unattended Codex sessions, prefer GitHub auto-merge registration so GitHub performs the final `main` merge only after required checks and reviews pass:
+8. Merge only after branch protection, required checks, and required reviews are satisfied. Before any unattended merge or auto-merge registration, inspect the live PR state:
 
 ```powershell
-gh pr merge --auto --merge --delete-branch
+gh pr view <pr> --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url
 ```
 
-Use `--delete-branch` only for a task-owned head branch that is no longer needed. This does not bypass branch protection; `gh` must fail or leave auto-merge pending when required checks or reviews are missing. Immediate merge commands such as `gh pr merge --merge --delete-branch` remain prompt-gated unless the user explicitly requests them in an approval-capable session.
+Continue only when the PR is open, not draft, targets the expected base branch, uses a task-owned head branch, has fresh local validation evidence, is not conflicting, has no requested changes, and has no `FAILURE`, `CANCELLED`, `TIMED_OUT`, or `ACTION_REQUIRED` status/check conclusion. Treat `UNSTABLE`, `DIRTY`, and `UNKNOWN` `mergeStateStatus` values as blockers. `BLOCKED` can be acceptable only when the block is an expected unmet GitHub requirement, such as pending required checks or reviews, and no check has failed.
+
+For unattended Codex sessions, prefer GitHub auto-merge registration so GitHub performs the final `main` merge only after requirements are met. Include `--match-head-commit <headRefOid>` when the PR state query returns a head SHA, so a later push cannot be merged by the earlier decision:
+
+```powershell
+gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>
+```
+
+Run the merge command from the task branch whose PR was preflighted. Use `--delete-branch` only for a task-owned head branch that is no longer needed. GitHub auto-merge must be enabled for the repository and PR; if `gh` reports auto-merge is unavailable, if branch protection or required checks are absent in a way that would merge pending/failing work immediately, or if the PR state is ambiguous, stop and report the blocker. Immediate merge commands such as `gh pr merge --merge --delete-branch`, `--squash`, `--rebase`, or `--admin` remain prompt-gated unless the user explicitly requests them in an approval-capable session with fresh passing evidence.
 
 9. After GitHub deletes a merged head branch, optionally prune stale remote-tracking refs in local workspaces:
 
@@ -192,7 +200,7 @@ git credential-manager --version
 
 On Git for Windows, the current Git Credential Manager helper is `manager`. Remove stale user-level helper entries such as `manager-core` only after confirming `manager` is still configured by system or user Git config. Do not commit repository-level `credential.helper` overrides, token requirements, or checked-in credential state to hide host configuration drift.
 
-These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests and protected branches. For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html).
+These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, and `core.excludesFile`, and GitHub documentation for pull requests, [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches), [auto-merge](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request), and [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge). For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html).
 
 ## Windows Diagnostics Toolchain
 
@@ -229,7 +237,7 @@ Use subagents only when the user explicitly asks for subagent delegation or para
 - Use the OpenAI developer documentation MCP, or official OpenAI documentation when MCP is unavailable, for OpenAI API, Codex, ChatGPT Apps SDK, OpenAI agent, and OpenAI model behavior. Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagents.
 - Keep always-loaded instructions specific, concise, verifiable, and durable. Keep `AGENTS.md` under Codex's default 32 KiB `project_doc_max_bytes` budget, keep selected `SKILL.md` bodies as concise routers, and keep subagents narrowly scoped; put long procedures in skill-local `references/*.md` or docs, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the composed `engine/agent/manifest.json` (edit `engine/agent/manifest.fragments/*.json`, then `tools/compose-agent-manifest.ps1 -Write`).
 - Keep Codex project rules narrow with `match` / `not_match` examples. Cover Windows PowerShell deletion/network/host-servicing commands as well as POSIX-like spellings. Do not add broad allow rules for shells, package managers, network tools, destructive commands, direct default-branch pushes, force-pushes, or immediate PR merges.
-- Keep Claude Code shared project permissions in `.claude/settings.json` with the official JSON schema: deny secret-bearing files, allow task-owned PR creation and auto-merge registration after validation checkpoints, and require approval for destructive, network, dependency-bootstrap, mobile signing/smoke, force-push, and non-auto PR state-change commands.
+- Keep Claude Code shared project permissions in `.claude/settings.json` with the official JSON schema: deny secret-bearing files, allow read-only PR preflight, task-owned PR creation, and auto-merge registration after validation checkpoints plus safe PR preflight, and require approval for destructive, network, dependency-bootstrap, mobile signing/smoke, force-push, and non-auto PR state-change commands.
 - Keep local override and credential-bearing config uncommitted: `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md`.
 
 ## Repository consistency checklist (recommended)
@@ -260,17 +268,17 @@ See [testing.md](testing.md) for the **CI validation matrix** (job ids, runners,
 GitHub Actions runs:
 
 - Windows: `tools/validate.ps1` and `tools/evaluate-cpp23.ps1 -Release`
-- Linux: CMake configure/build/CTest plus `tools/check-coverage.ps1 -Strict`
+- Linux: `cmake --preset ci-linux-clang`, build/CTest, plus `tools/check-coverage.ps1 -Strict`
 - Linux sanitizers: `cmake --preset clang-asan-ubsan`, build, and CTest
-- macOS: Ninja + Xcode `clang` CMake configure/build/CTest, including Apple-only Metal Objective-C++ sources
+- macOS: `cmake --preset ci-macos-appleclang`, build/CTest, including Apple-only Metal Objective-C++ sources
 - iOS Validate: `tools/smoke-ios-package.ps1` on a pinned macOS hosted runner, building the iOS Simulator bundle and running `xcrun simctl install`, `get_app_container`, `launch`, and cleanup for `sample_headless`
 
-Local Linux validation on WSL should use a toolchain that CMake supports for C++ module dependency scanning, such as Clang 18 with Ninja:
+Local Linux validation should use the CI preset with Ninja and Clang:
 
 ```bash
-cmake -S . -B out/build/dev-linux-clang -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DMK_CXX_STANDARD=23 -DCMAKE_CXX_COMPILER=clang++-18
-cmake --build out/build/dev-linux-clang
-ctest --test-dir out/build/dev-linux-clang --output-on-failure
+cmake --preset ci-linux-clang
+cmake --build --preset ci-linux-clang
+ctest --preset ci-linux-clang --output-on-failure
 ```
 
 CI uploads test logs for every job, Linux coverage output, and Windows release package ZIP artifacts. The Windows release evaluation installs the package and builds `examples/installed_consumer` against the installed `mirakana::` CMake targets before publishing the ZIP.
@@ -280,9 +288,9 @@ C++23 verification must stay covered by default validation, `tools/check-generat
 macOS CI is defined for Metal host coverage. Local macOS validation should mirror the hosted lane:
 
 ```bash
-cmake -S . -B out/build/dev-macos -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON -DCMAKE_C_COMPILER="$(xcrun --find clang)" -DCMAKE_CXX_COMPILER="$(xcrun --find clang++)"
-cmake --build out/build/dev-macos
-ctest --test-dir out/build/dev-macos --output-on-failure
+cmake --preset ci-macos-appleclang
+cmake --build --preset ci-macos-appleclang
+ctest --preset ci-macos-appleclang --output-on-failure
 ```
 
 ## Mobile Packaging
@@ -293,7 +301,7 @@ Android package attempts use `tools/build-mobile-android.ps1`, the `platform/and
 
 Android Release Device Matrix v1 current evidence uses `sample_headless` on the Windows Android-ready host: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-android.ps1 -Game sample_headless -Configuration Debug`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1 -Game sample_headless -UseLocalValidationKey`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-android-package.ps1 -Game sample_headless -Configuration Release -SkipBuild -StartEmulator -AvdName Mirakanai_API36` passed. This proves the template can build Debug/Release APKs, verify a locally signed Release APK, export the upload certificate, and install/launch on the API 36 emulator; it does not claim Play upload, production signing material, physical-device coverage, broader ABI/device matrix coverage, Apple/iOS readiness, or repository-owned keys.
 
-Apple package attempts use `tools/build-mobile-apple.ps1` and the `platform/ios` CMake/Xcode bundle template. The template packages `games/<game_name>/game.agent.json` into bundle resources, creates a Metal-backed UIKit view, maps Application Support/Caches/Documents into first-party save/cache/shared storage roots, supports `-Platform Simulator|Device`, disables simulator signing when no team is supplied, and accepts `MK_IOS_BUNDLE_IDENTIFIER`, `MK_IOS_DEVELOPMENT_TEAM`, and `MK_IOS_CODE_SIGN_IDENTITY` or the matching script parameters for Xcode signing. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug` builds the Simulator bundle, selects an available iPhone Simulator, boots it when needed, installs the app, verifies the app container, launches the bundle, terminates it, and shuts down only the simulator booted by the script. These scripts validate `games/<game_name>/game.agent.json` before building.
+Apple package attempts use `tools/build-mobile-apple.ps1` and the `platform/ios` CMake/Xcode bundle template. The template packages `games/<game_name>/game.agent.json` into bundle resources, creates a Metal-backed UIKit view, maps Application Support/Caches/Documents into first-party save/cache/shared storage roots, supports `-Platform Simulator|Device`, disables simulator signing when no team is supplied, and accepts `MK_IOS_BUNDLE_IDENTIFIER`, `MK_IOS_DEVELOPMENT_TEAM`, and `MK_IOS_CODE_SIGN_IDENTITY` or the matching script parameters for Xcode signing. The Apple package script configures the package tree with `BUILD_TESTING=OFF` and builds only the `MirakanaiIOS` bundle target, keeping iOS smoke focused on the app package instead of Xcode `ALL_BUILD` unit-test targets. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug` builds the Simulator bundle, selects an available iPhone Simulator, boots it when needed, installs the app, verifies the app container, launches the bundle, terminates it, and shuts down only the simulator booted by the script. These scripts validate `games/<game_name>/game.agent.json` before building.
 
 Apple Metal iOS Host Evidence v1 current Windows evidence is host-gated: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1` reports `host=windows`, `xcode=blocked`, `ios-simulator=blocked`, `metal-library=blocked`, missing `xcodebuild`, missing `xcrun`, missing iOS SDK/runtime access, missing `metal`, missing `metallib`, and present iOS Simulator/macOS Metal workflow coverage. Run `tools/check-apple-host-evidence.ps1 -RequireReady` only on a macOS/full-Xcode host when the task requires hard Apple-ready evidence.
 

@@ -176,6 +176,7 @@ if (Test-Path $codexRuleRoot) {
             'prefix_rule\([\s\S]*?decision\s*=\s*"allow"[\s\S]*?\)'
         )
         $approvedAllowPatterns = @(
+            'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]',
             'pattern\s*=\s*\["gh",\s*"pr",\s*"create"\]',
             'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--delete-branch"\]'
         )

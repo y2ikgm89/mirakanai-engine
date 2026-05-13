@@ -42,17 +42,11 @@ if ($thresholds.schemaVersion -ne 1) {
 $minLineRequired = [double]$thresholds.minLineCoveragePercent
 
 $buildDir = Join-Path $root "out/build/coverage"
+$coveragePreset = "coverage"
 
-Invoke-CheckedCommand $tools.CMake -S $root -B $buildDir `
-    "-DCMAKE_BUILD_TYPE=Debug" `
-    "-DBUILD_TESTING=ON" `
-    "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON" `
-    "-DCMAKE_C_FLAGS=--coverage" `
-    "-DCMAKE_CXX_FLAGS=--coverage" `
-    "-DCMAKE_EXE_LINKER_FLAGS=--coverage"
-
-Invoke-CheckedCommand $tools.CMake --build $buildDir
-Invoke-CheckedCommand $tools.CTest --test-dir $buildDir --output-on-failure
+Invoke-CheckedCommand $tools.CMake "--preset" $coveragePreset
+Invoke-CheckedCommand $tools.CMake "--build" "--preset" $coveragePreset
+Invoke-CheckedCommand $tools.CTest "--preset" $coveragePreset "--output-on-failure"
 Invoke-CheckedCommand $tools.CTest --test-dir $buildDir -T Coverage --output-on-failure
 
 $lcovCmd = Get-Command lcov -ErrorAction SilentlyContinue
@@ -74,6 +68,7 @@ Invoke-CheckedCommand $lcovExe @(
     "--output-file", $infoRaw,
     "--ignore-errors", "source,gcov,mismatch"
 )
+$currentInfo = $infoRaw
 
 $patterns = @()
 if ($null -ne $thresholds.lcovRemovePatterns) {
@@ -86,7 +81,11 @@ if ($patterns.Count -gt 0) {
             continue
         }
         $nextInfo = Join-Path $buildDir ("coverage-filtered-{0}.info" -f $stageIndex)
-        Invoke-CheckedCommand $lcovExe @("--remove", $currentInfo, [string]$pattern, "-o", $nextInfo)
+        Invoke-CheckedCommand $lcovExe @(
+            "--remove", $currentInfo, [string]$pattern,
+            "--ignore-errors", "unused",
+            "-o", $nextInfo
+        )
         $currentInfo = $nextInfo
         $stageIndex++
     }

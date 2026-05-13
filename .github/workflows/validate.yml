@@ -15,6 +15,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Clone vcpkg tool checkout
+        shell: pwsh
+        run: |
+          $manifest = Get-Content vcpkg.json -Raw | ConvertFrom-Json
+          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git external/vcpkg
+          git -C external/vcpkg checkout $manifest.'builtin-baseline'
+
       - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
         shell: pwsh
         run: ./tools/bootstrap-deps.ps1
@@ -55,17 +62,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install lcov
-        run: sudo apt-get update && sudo apt-get install -y lcov
+      - name: Install build and coverage tools
+        run: sudo apt-get update && sudo apt-get install -y clang g++ lcov ninja-build
 
       - name: Configure
-        run: cmake -S . -B out/build/dev -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON
+        run: cmake --preset ci-linux-clang
 
       - name: Build
-        run: cmake --build out/build/dev
+        run: cmake --build --preset ci-linux-clang
 
       - name: Test
-        run: ctest --test-dir out/build/dev --output-on-failure
+        run: ctest --preset ci-linux-clang --output-on-failure
 
       - name: Coverage
         shell: pwsh
@@ -77,7 +84,7 @@ jobs:
         with:
           name: linux-test-logs
           path: |
-            out/build/dev/Testing/**/*.log
+            out/build/ci-linux-clang/Testing/**/*.log
             out/build/coverage/Testing/**/*.log
           if-no-files-found: warn
 
@@ -98,8 +105,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Ninja
-        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y clang ninja-build
 
       - name: Configure
         run: cmake --preset clang-asan-ubsan
@@ -127,12 +134,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install clang-tidy
-        run: sudo apt-get update && sudo apt-get install -y clang-tidy
+      - name: Install static analysis tools
+        run: sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build
 
       - name: Run clang-tidy
         shell: pwsh
-        run: ./tools/check-tidy.ps1 -Strict
+        run: ./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy
 
       - name: Upload static analysis logs
         if: always()
@@ -140,8 +147,8 @@ jobs:
         with:
           name: static-analysis-tidy-logs
           path: |
-            out/build/dev/compile_commands.json
-            out/build/dev/.cmake/api/v1/reply/*.json
+            out/build/ci-linux-tidy/compile_commands.json
+            out/build/ci-linux-tidy/.cmake/api/v1/reply/*.json
           if-no-files-found: warn
 
   macos:
@@ -155,24 +162,18 @@ jobs:
         run: brew install ninja
 
       - name: Configure
-        run: >
-          cmake -S . -B out/build/dev-macos -G Ninja
-          -DCMAKE_BUILD_TYPE=Debug
-          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-          -DBUILD_TESTING=ON
-          -DCMAKE_C_COMPILER="$(xcrun --find clang)"
-          -DCMAKE_CXX_COMPILER="$(xcrun --find clang++)"
+        run: cmake --preset ci-macos-appleclang
 
       - name: Build
-        run: cmake --build out/build/dev-macos
+        run: cmake --build --preset ci-macos-appleclang
 
       - name: Test
-        run: ctest --test-dir out/build/dev-macos --output-on-failure
+        run: ctest --preset ci-macos-appleclang --output-on-failure
 
       - name: Upload macOS test logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: macos-test-logs
-          path: out/build/dev-macos/Testing/**/*.log
+          path: out/build/ci-macos-appleclang/Testing/**/*.log
           if-no-files-found: warn

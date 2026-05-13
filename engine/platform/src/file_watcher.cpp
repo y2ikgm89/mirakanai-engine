@@ -10,6 +10,10 @@
 #include <string_view>
 #include <utility>
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
 namespace mirakana {
 namespace {
 
@@ -149,7 +153,7 @@ FileWatchNativeBackendKind host_file_watch_native_backend() noexcept {
     return FileWatchNativeBackendKind::windows_read_directory_changes;
 #elif defined(__linux__)
     return FileWatchNativeBackendKind::linux_inotify;
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && defined(TARGET_OS_OSX) && TARGET_OS_OSX
     return FileWatchNativeBackendKind::macos_fsevents;
 #else
     return FileWatchNativeBackendKind::unavailable;

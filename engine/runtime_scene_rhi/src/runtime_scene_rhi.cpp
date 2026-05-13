@@ -16,7 +16,7 @@ namespace mirakana::runtime_scene_rhi {
 namespace {
 
 [[nodiscard]] bool contains_asset(const std::vector<AssetId>& assets, AssetId asset) noexcept {
-    return std::ranges::contains(assets, asset);
+    return std::ranges::find(assets, asset) != assets.end();
 }
 
 void record_submitted_upload_fence(RuntimeSceneGpuUploadExecutionReport& report, rhi::FenceValue fence) noexcept {

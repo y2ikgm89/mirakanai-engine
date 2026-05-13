@@ -40,8 +40,9 @@ paths:
 - Do not put `VCPKG_MANIFEST_FEATURES` in CMake presets; select features in `tools/bootstrap-deps.ps1` so configure cannot restore packages implicitly.
 - Keep `MK_CXX_STANDARD=23` as the required standard.
 - Keep MSVC C++23 builds centralized through `MK_MSVC_CXX23_STANDARD_OPTION`. Use `/std:c++23preview` until a stable `/std:c++23` path is available through the supported CMake generator, then switch the cache default/presets to `/std:c++23`.
-- Keep `MK_ENABLE_CXX_MODULE_SCANNING=ON`; add project modules with CMake `FILE_SET CXX_MODULES`.
-- Keep `MK_ENABLE_IMPORT_STD=ON`, but only rely on `import std;` in targets when CMake reports `23` in `CMAKE_CXX_COMPILER_IMPORT_STD`.
+- Keep `MK_ENABLE_CXX_MODULE_SCANNING=ON` for development, release, sanitizer, Linux Clang CI, and optional vcpkg-backed presets; add project modules with CMake `FILE_SET CXX_MODULES`.
+- Keep `MK_ENABLE_IMPORT_STD=ON` for those module-scanning presets, but only rely on `import std;` in targets when CMake reports `23` in `CMAKE_CXX_COMPILER_IMPORT_STD`.
+- Keep reviewed CI exception presets explicit: `ci-linux-tidy`, `coverage`, and `ci-macos-appleclang` set module scanning/import-std `OFF` because clang-tidy should not depend on build-generated module maps and those coverage/Apple host paths do not provide supported CMake module dependency scanning.
 - Use the `cpp23-eval` presets and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1` for C++23 verification checks.
 - Use Context7 for current CMake, vcpkg, compiler, and SDK documentation before relying on memory for toolchain-specific behavior.
 

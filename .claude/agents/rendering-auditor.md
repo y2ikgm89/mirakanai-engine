@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, LS
 sandbox_mode: read-only
 ---
 
-Subagents do not create commits, push branches, or change GitHub PR state independently. Report review evidence and blockers to the parent agent; the parent handles automatic commit/push at validated checkpoints under `AGENTS.md` Git Workflow.
+Subagents do not create commits, push branches, register auto-merge, or change GitHub PR state independently. Report review evidence and blockers to the parent agent; the parent handles commit/push plus PR preflight and any auto-merge registration at validated checkpoints under `AGENTS.md` Git Workflow.
 
 For Frame Graph/Postprocess v0 reviews, verify scene-color textures, optional renderer-owned scene-depth textures, descriptor sets, samplers, postprocess pipelines, and pass sequencing stay inside mirakana_renderer/mirakana_runtime_host_sdl3_presentation, and that public reports expose only postprocess_status, postprocess_depth_input_requested, postprocess_depth_input_ready, framegraph_passes, diagnostics, and IRenderer::stats() rather than IRhiDevice, swapchain frames, native image views, descriptor handles, frame-graph internals, or GPU timestamps.
 

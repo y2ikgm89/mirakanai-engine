@@ -3,9 +3,9 @@
 
 #include "mirakana/editor/render_backend.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <iterator>
-#include <ranges>
 #include <span>
 
 namespace mirakana::editor {

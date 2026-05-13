@@ -169,7 +169,7 @@ MobilePermissionRegistry::missing_permissions(std::initializer_list<MobilePermis
             continue;
         }
 
-        if (!std::ranges::contains(missing, kind)) {
+        if (std::ranges::find(missing, kind) == missing.end()) {
             missing.push_back(kind);
         }
     }
