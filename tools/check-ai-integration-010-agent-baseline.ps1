@@ -48,8 +48,10 @@ if ($agentsContent -notmatch "docs/README\.md" -or $agentsContent -notmatch "doc
     Write-Error "AGENTS.md must document the docs entrypoint and implementation plan registry"
 }
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" "AGENTS.md"
+Assert-ContainsText $agentsContent "normalized-configure-environment" "AGENTS.md"
 Assert-ContainsText $agentsContent "normalized-build-environment" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "direct-clang-format-status" "AGENTS.md"
@@ -155,12 +157,14 @@ Assert-ContainsText $workflowsContent "git config --show-origin --get-all creden
 Assert-ContainsText $workflowsContent "approval-capable session" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Worktree And Parallel Agent Workflow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Codex app Worktree/Handoff" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent ".claude/worktrees/" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "specific, concise, verifiable" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "machine-readable capability/status claims" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "direct-clang-format-status" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "CMake File API codemodel" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "normalized-configure-environment" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "normalized-build-environment" "docs/workflows.md"
 Assert-ContainsText $workflowsContent 'PATH`/`Path' "docs/workflows.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit", "cdb -version", "pixtool --help", "wpr -help", "xperf -help", "_NT_SYMBOL_PATH")) {
@@ -170,12 +174,16 @@ $testingContent = Get-Content -LiteralPath $testingPath -Raw
 Assert-ContainsText $testingContent "direct-clang-format-status" "docs/testing.md"
 Assert-ContainsText $testingContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" "docs/testing.md"
 Assert-ContainsText $testingContent "CMake File API codemodel" "docs/testing.md"
+Assert-ContainsText $testingContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/testing.md"
+Assert-ContainsText $testingContent "normalized-configure-environment" "docs/testing.md"
 Assert-ContainsText $testingContent "normalized-build-environment" "docs/testing.md"
 Assert-ContainsText $testingContent 'PATH`/`Path' "docs/testing.md"
 Assert-ContainsText $testingContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/physics/src/physics3d.cpp" "docs/testing.md"
 $buildingContent = Get-Content -LiteralPath $buildingPath -Raw
+Assert-ContainsText $buildingContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/building.md"
+Assert-ContainsText $buildingContent "normalized-configure-environment" "docs/building.md"
 Assert-ContainsText $buildingContent "normalized-build-environment" "docs/building.md"
-Assert-ContainsText $buildingContent 'MSBuild a single `Path`' "docs/building.md"
+Assert-ContainsText $buildingContent 'MSBuild a single `PATH`' "docs/building.md"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-MaxFiles 1" "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]' "tools/check-agents.ps1"
 $tidyWrapperContent = Get-AgentSurfaceText "tools/check-tidy.ps1"
@@ -238,6 +246,7 @@ Assert-ContainsText $aiIntegrationContent "GITHUB_TOKEN" "docs/ai-integration.md
 Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "approval-capable session" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Codex app Worktree/Handoff" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'worktree.baseRef = "head"' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Cursor global instructions" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "OpenAI developer docs MCP" "docs/ai-integration.md"
@@ -279,6 +288,7 @@ Assert-ContainsText $cursorGameDevelopmentSkillText "runtime/.gitattributes" ".c
 Assert-ContainsText $cursorGameDevelopmentSkillText "text eol=lf" ".cursor/skills/gameengine-game-development/SKILL.md"
 Assert-ContainsText $cursorGameDevelopmentSkillText "tools/new-game-templates.ps1" ".cursor/skills/gameengine-game-development/SKILL.md"
 
+Assert-ContainsText $aiIntegrationContent "normalized-configure-environment" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "normalized-build-environment" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'Path`/`PATH' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Instruction Hygiene" "docs/ai-integration.md"
@@ -343,6 +353,11 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("bootstrapDeps")) 
     Write-Error "engine/agent/manifest.json commands missing required command: bootstrapDeps"
 } elseif ($manifest.commands.bootstrapDeps -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1") {
     Write-Error "engine/agent/manifest.json commands.bootstrapDeps must be pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1"
+}
+if (-not $manifest.commands.PSObject.Properties.Name.Contains("prepareWorktree")) {
+    Write-Error "engine/agent/manifest.json commands missing required command: prepareWorktree"
+} elseif ($manifest.commands.prepareWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1") {
+    Write-Error "engine/agent/manifest.json commands.prepareWorktree must be pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1"
 }
 $composeAgentManifestCmd = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 [-Write|-Verify|-SplitFromCanonical]"
 if (-not $manifest.commands.PSObject.Properties.Name.Contains("composeAgentManifest")) {

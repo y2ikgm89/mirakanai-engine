@@ -20,11 +20,15 @@ ctest --preset dev --output-on-failure
 
 Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` for the aggregated agent/CI validation gate. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` to diagnose missing local tools.
 
-On Windows, checked-in CMake build presets inherit `normalized-build-environment` so direct `cmake --build --preset ...` runs pass MSBuild a single `Path` environment key even when the parent process exposes both `PATH` and `Path`. Keep new visible build presets inheriting that hidden preset.
+On Windows, checked-in CMake build presets inherit `normalized-build-environment` and repository wrappers pass MSBuild a single `PATH` environment key even when the parent process exposes both `PATH` and `Path`. Keep new visible build presets inheriting that hidden preset.
+
+Checked-in CMake configure presets also inherit `normalized-configure-environment` so direct `cmake --preset ...` uses the same single child `PATH` policy and removes duplicate `Path` before CMake try-compile or generator tool checks run. Keep new visible configure presets inheriting that hidden preset.
 
 ## Local worktree cleanup (disk space)
 
 You may delete **`out/`** (preset build trees) and other paths listed in `.gitignore` that are clearly regenerated outputs (for example Android Gradle/CXX dirs under `platform/android/`, `*.log`, `imgui.ini`). **`external/vcpkg` is not disposable cache**: it is the gitignored Microsoft **vcpkg tool checkout** referenced by `CMAKE_TOOLCHAIN_FILE` in `CMakePresets.json`. Removing it breaks configure until you run `git clone https://github.com/microsoft/vcpkg.git external/vcpkg`, bootstrap `vcpkg.exe`, then `cmake --preset dev` or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1`. Optional: remove **`vcpkg_installed/`** only when you intend to rerun `tools/bootstrap-deps.ps1` afterward.
+
+For a manual linked worktree under `.worktrees/`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` after `git worktree add` and before the first configure. The script verifies the ignored worktree/tool-output roots and links an existing local `external/vcpkg` checkout into the linked worktree instead of downloading packages during CMake configure.
 
 ## Install Layout
 

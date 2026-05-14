@@ -18,7 +18,7 @@ function Assert-TextContains([string]$relativePath, [string]$pattern, [string]$l
     }
 }
 
-$presets = Read-Json "CMakePresets.json"
+$presets = Read-CMakePresets
 $manifest = Read-Json "engine/agent/manifest.json"
 $allowedMsvcCxx23Options = @("/std:c++23preview", "/std:c++23")
 $expectedMsvcCxx23Option = $null

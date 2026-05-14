@@ -11,6 +11,7 @@ paths:
   - "tools/check-json-contracts*.ps1"
   - "tools/static-contract-ledger.ps1"
   - "tools/check-agents.ps1"
+  - "tools/prepare-worktree.ps1"
   - "tools/compose-agent-manifest.ps1"
   - ".agents/**"
   - ".claude/**"
@@ -42,7 +43,7 @@ Keep `AGENTS.md` under Codex's default 32 KiB project-doc budget, keep shared `S
 
 Every implementation change, improvement, bug fix, refactor, and architecture/toolchain/workflow/validation/packaging change includes a targeted **agent-surface drift check** before completion. When durable guidance or AI-operable contracts are stale, update the relevant `AGENTS.md`, `CLAUDE.md`, docs, Codex/Claude/Cursor skills, rules, settings, subagents, manifest fragments plus compose output, schemas, validation checks, and tracked `.clangd` in the same task; do not leave that synchronization as a separate follow-up or load every surface when no durable guidance changed.
 
-Parallel worktree guidance follows official Codex/Claude surfaces: prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree`, keep `.worktrees/` and `.claude/worktrees/` ignored, use Claude `worktree.baseRef = "head"` for isolated subagents that need current branch context, and clean with `git worktree remove` / `git worktree prune`.
+Parallel worktree guidance follows official Codex/Claude surfaces: prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree`, keep `.worktrees/` and `.claude/worktrees/` ignored, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` inside manual linked worktrees, use Claude `worktree.baseRef = "head"` for isolated subagents that need current branch context, and clean with `git worktree remove` / `git worktree prune`.
 
 Hosted PR failure hardening: update `AGENTS.md`, docs, Codex/Claude/Cursor skills, subagents, and scoped `tools/check-ai-integration.ps1` Needles together when a PR check exposes guidance/static-guard drift. For CI check selection, keep branch-protection-required checks always-running or aggregate-gated; do not make path-filtered required checks. Use lightweight static validation for docs/agent/rules/subagent-only PRs instead of unrelated Windows/MSVC, macOS, or full repository clang-tidy lanes. For static analysis, keep `.clang-tidy` `HeaderFilterRegex`, `--warnings-as-errors=*`, `NN warnings generated.` handling, and hosted `-Jobs 0` guidance synchronized. Keep rules and settings as command/permission gates, not troubleshooting playbooks.
 

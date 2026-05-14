@@ -350,8 +350,7 @@ if ($LASTEXITCODE -ne 0) {
     Write-Error "clang-tidy profile validation failed"
 }
 
-$presetsPath = Join-Path $root "CMakePresets.json"
-$presets = Get-Content -LiteralPath $presetsPath -Raw | ConvertFrom-Json
+$presets = Read-CMakePresets
 $configurePreset = $presets.configurePresets | Where-Object { $_.name -eq $Preset } | Select-Object -First 1
 if (-not $configurePreset) {
     Write-Error "Unknown CMake configure preset for clang-tidy: $Preset"

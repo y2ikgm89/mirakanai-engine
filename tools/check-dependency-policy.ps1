@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $root = Get-RepoRoot
 
 function Assert-Property($object, [string]$property, [string]$label) {
-    if (-not $object.PSObject.Properties.Name.Contains($property)) {
+    if (-not (Test-JsonProperty -Object $object -Property $property)) {
         Write-Error "$label missing required property: $property"
     }
 }
@@ -25,18 +25,19 @@ function Assert-TextContains([string]$relativePath, [string]$pattern, [string]$l
 }
 
 function Assert-CacheVariableEquals($preset, [string]$variable, [string]$expected) {
-    if (-not $preset.cacheVariables.PSObject.Properties.Name.Contains($variable)) {
+    $cacheVariables = Get-JsonPropertyValue -Object $preset -Property "cacheVariables"
+    if (-not (Test-JsonProperty -Object $cacheVariables -Property $variable)) {
         Write-Error "CMake preset '$($preset.name)' missing required cache variable: $variable"
     }
 
-    $actual = [string]$preset.cacheVariables.$variable
+    $actual = [string](Get-JsonPropertyValue -Object $cacheVariables -Property $variable)
     if ($actual -ne $expected) {
         Write-Error "CMake preset '$($preset.name)' must set $variable to '$expected' but got '$actual'"
     }
 }
 
 $manifest = Read-Json "vcpkg.json"
-$presets = Read-Json "CMakePresets.json"
+$presets = Read-CMakePresets
 Assert-Property $manifest '$schema' "vcpkg manifest"
 Assert-Property $manifest "builtin-baseline" "vcpkg manifest"
 Assert-Property $manifest "features" "vcpkg manifest"
@@ -136,9 +137,9 @@ Assert-TextContains "engine/rhi/metal/CMakeLists.txt" 'find_library\(MK_APPLE_FO
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" '\$\{MK_APPLE_FOUNDATION_FRAMEWORK\}' "Metal Apple SDK linkage"
 
 $vcpkgPresets = @($presets.configurePresets | Where-Object {
-        $_.PSObject.Properties.Name.Contains("cacheVariables") -and
-        $_.cacheVariables.PSObject.Properties.Name.Contains("CMAKE_TOOLCHAIN_FILE") -and
-        ([string]$_.cacheVariables.CMAKE_TOOLCHAIN_FILE).Contains("external/vcpkg/scripts/buildsystems/vcpkg.cmake")
+        (Test-JsonProperty -Object $_ -Property "cacheVariables") -and
+        (Test-JsonProperty -Object $_.cacheVariables -Property "CMAKE_TOOLCHAIN_FILE") -and
+        ([string](Get-JsonPropertyValue -Object $_.cacheVariables -Property "CMAKE_TOOLCHAIN_FILE")).Contains("external/vcpkg/scripts/buildsystems/vcpkg.cmake")
     })
 if ($vcpkgPresets.Count -eq 0) {
     Write-Error "CMake presets must keep explicit vcpkg-backed configure presets for optional dependency lanes"
@@ -147,7 +148,7 @@ foreach ($preset in $vcpkgPresets) {
     Assert-CacheVariableEquals $preset "VCPKG_MANIFEST_INSTALL" "OFF"
     Assert-CacheVariableEquals $preset "VCPKG_INSTALLED_DIR" '${sourceDir}/vcpkg_installed'
     Assert-CacheVariableEquals $preset "VCPKG_TARGET_TRIPLET" "x64-windows"
-    if ($preset.cacheVariables.PSObject.Properties.Name.Contains("VCPKG_MANIFEST_FEATURES")) {
+    if (Test-JsonProperty -Object $preset.cacheVariables -Property "VCPKG_MANIFEST_FEATURES") {
         Write-Error "CMake preset '$($preset.name)' must not declare VCPKG_MANIFEST_FEATURES when VCPKG_MANIFEST_INSTALL is OFF; feature selection belongs in bootstrap-deps."
     }
 }
