@@ -659,6 +659,8 @@ Assert-ContainsText $agentsContent "hosted PR/CI check failures" "AGENTS.md"
 Assert-ContainsText $agentsContent "PR CI selection" "AGENTS.md"
 Assert-ContainsText $agentsContent "always-running required gate" "AGENTS.md"
 Assert-ContainsText $agentsContent "path-filtered required workflows" "AGENTS.md"
+Assert-ContainsText $agentsContent "docs/agent/rules/subagent-only changes" "AGENTS.md"
+Assert-ContainsText $agentsContent "not Windows/MSVC, macOS, or full repository clang-tidy" "AGENTS.md"
 Assert-ContainsText $agentsContent "HeaderFilterRegex" "AGENTS.md"
 Assert-ContainsText $agentsContent "--warnings-as-errors=*" "AGENTS.md"
 Assert-ContainsText $agentsContent "NN warnings generated." "AGENTS.md"
@@ -702,6 +704,8 @@ Assert-ContainsText $workflowsContent "Hosted PR Check Failure Triage" "docs/wor
 Assert-ContainsText $workflowsContent "Hosted PR Check Selection" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "always-running required gate" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Path-filtered workflows must not be branch-protection-required" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "Docs/agent/rules/subagent-only" "docs/workflows.md"
+Assert-ContainsText $workflowsContent 'Do not run `Windows MSVC`, `macOS Metal CMake`, or `Full Repository Static Analysis`' "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr view <pr> --json headRefOid,statusCheckRollup,url" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GitHub account billing/spending-limit" "docs/workflows.md"
 Assert-ContainsText $workflowsContent 'hosted `static-analysis` failures' "docs/workflows.md"
@@ -792,6 +796,8 @@ Assert-ContainsText $aiIntegrationContent 'pending-only `UNSTABLE` / `BLOCKED`' 
 Assert-ContainsText $aiIntegrationContent "--match-head-commit <headRefOid>" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'latest `headRefOid` and `statusCheckRollup`' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent '.codex/rules` and `.claude/settings.json` remain command/permission gates' "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "lightweight static validation for docs/agent/rules/subagent-only PRs" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "unrelated Windows/MSVC, macOS, or full repository clang-tidy lanes" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "GitHub account billing/spending-limit" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "policy reload" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "GITHUB_TOKEN" "docs/ai-integration.md"
@@ -816,6 +822,7 @@ Assert-ContainsText $cursorBaselineSkillText "official GitHub Flow" ".cursor/ski
 Assert-ContainsText $cursorBaselineSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "docs/agent/rules/subagent-only PRs should use lightweight static validation" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 $cursorAgentIntegrationSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -823,6 +830,7 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cu
 Assert-ContainsText $cursorAgentIntegrationSkillText "Direct default-branch pushes are forbidden" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "Use lightweight static validation for docs/agent/rules/subagent-only PRs" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "HeaderFilterRegex" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "NN warnings generated." ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "agent-surface drift check" ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -9751,6 +9759,11 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
     @{
         Path = ".github/workflows/validate.yml"
         Needles = @(
+            "Select PR validation tier",
+            "Docs/agent/rules/subagent-only changes leave heavy hosted lanes disabled",
+            "needs.changes.outputs.windows",
+            "PR Gate",
+            "toJson(needs)",
             "windows-packages",
             "out/build/cpp23-release-preset-eval/*.zip.sha256",
             "linux-coverage",
@@ -9830,6 +9843,8 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         Path = "docs/testing.md"
         Needles = @(
             "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1",
+            "PR validation tier selector",
+            "PR aggregate gate",
             "Windows/Linux/sanitizer/static-analysis/macOS/iOS",
             "static-analysis",
             "does not execute GitHub Actions locally"
@@ -13180,6 +13195,8 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "CI check selection changes" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "path-filtered required checks" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "always-running aggregate gate" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "Docs/agent/rules/subagent-only changes run formatting plus agent/static guards" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "docs/agent-only PRs use lightweight static validation" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Static-analysis drift includes" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "HeaderFilterRegex" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "NN warnings generated." $agentIntegrationSkill
@@ -13298,6 +13315,9 @@ Assert-ContainsText $aiAgentRuleText "specific, concise, verifiable" ".claude/ru
 Assert-ContainsText $aiAgentRuleText "MCP connection state" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "agent-surface drift check" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "no durable guidance changed" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "PR validation cost proportional to risk" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "docs, skills, rules, settings, subagents" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "lightweight static validation" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "OpenAI developer documentation MCP" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "official Anthropic docs" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "mergeStateStatus" ".claude/rules/ai-agent-integration.md"
