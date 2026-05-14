@@ -10,6 +10,8 @@ alwaysApply: true
 - **`tools/*.ps1` edits:** Follow **`AGENTS.md` → Repository command entrypoints** for PSScriptAnalyzer-friendly patterns (automatic variables, `ShouldProcess` on host-mutating helpers, `Write-Information` vs `Write-Host`, non-empty `catch`, approved verbs such as `ConvertTo-*` over `Normalize-*`). Run **`Invoke-ScriptAnalyzer`** on touched scripts when the module is installed.
 - **Expanded procedures:** [`docs/agent-operational-reference.md`](../../docs/agent-operational-reference.md) (validation matrix, editor shell details, plan lifecycle, game lanes).
 - **Skills:** Thin pointers under [`.cursor/skills/`](../../.cursor/skills/); canonical bodies under [`.claude/skills/`](../../.claude/skills/) and [`.agents/skills/`](../../.agents/skills/).
+- **Parallel work:** Prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree`; keep `.worktrees/` and `.claude/worktrees/` ignored, and clean with `git worktree remove` / `git worktree prune`.
+- **Publishing:** Follow official GitHub Flow: commit validated task-owned slices on topic branches, push the topic branch, open a PR, rely on required reviews/checks plus GitHub auto-merge, and never push directly to the default branch.
 - **Efficiency:** Keep reads, tests, plans, and validation scoped to the smallest behavior/API/validation boundary; prefer clean breaking implementation over compatibility shims, and do not weaken official best practices or validation evidence for speed.
 - **Instruction size:** Keep `AGENTS.md` as concise baseline guidance; place reusable workflows in skills and long procedures in docs.
 - **User language:** Respond in Japanese when the user writes Japanese; keep code, paths, and API names in ASCII.

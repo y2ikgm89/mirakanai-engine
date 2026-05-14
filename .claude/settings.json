@@ -1,5 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "worktree": {
+    "baseRef": "head"
+  },
   "permissions": {
     "allow": [
       "Bash(gh pr view:*)",
@@ -11,8 +14,9 @@
       "Bash(git reset:*)",
       "Bash(git restore:*)",
       "Bash(git clean:*)",
-      "Bash(git push origin main:*)",
-      "Bash(git push origin master:*)",
+      "Bash(git worktree remove:*)",
+      "Bash(git worktree prune:*)",
+      "Bash(git worktree repair:*)",
       "Bash(git push --force:*)",
       "Bash(git push --force-with-lease:*)",
       "Bash(gh pr edit:*)",
@@ -40,6 +44,18 @@
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1:*)"
     ],
     "deny": [
+      "Bash(git push origin main:*)",
+      "Bash(git push origin master:*)",
+      "Bash(git push -u origin main:*)",
+      "Bash(git push -u origin master:*)",
+      "Bash(git push --set-upstream origin main:*)",
+      "Bash(git push --set-upstream origin master:*)",
+      "Bash(git push --force origin main:*)",
+      "Bash(git push --force origin master:*)",
+      "Bash(git push --force-with-lease origin main:*)",
+      "Bash(git push --force-with-lease origin master:*)",
+      "Bash(git push origin HEAD:main:*)",
+      "Bash(git push origin HEAD:master:*)",
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./.mcp.json)",

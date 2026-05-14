@@ -641,12 +641,18 @@ foreach ($productionPromptNeedle in @("Production Completion Execution", "curren
 Assert-ContainsText $agentsContent "validated commit checkpoints" "AGENTS.md"
 Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
 Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
+Assert-ContainsText $agentsContent "official GitHub Flow" "AGENTS.md"
+Assert-ContainsText $agentsContent "Direct default-branch pushes are outside the official GitHub Flow path" "AGENTS.md"
 Assert-ContainsText $agentsContent "credential-manager-core" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr view <pr> --json" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr create" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr merge --auto --merge --delete-branch" "AGENTS.md"
 Assert-ContainsText $agentsContent "mergeStateStatus" "AGENTS.md"
+Assert-ContainsText $agentsContent "pending required checks or reviews" "AGENTS.md"
 Assert-ContainsText $agentsContent "--match-head-commit <headRefOid>" "AGENTS.md"
+Assert-ContainsText $agentsContent "Codex app Worktree/Handoff" "AGENTS.md"
+Assert-ContainsText $agentsContent "isolation: worktree" "AGENTS.md"
+Assert-ContainsText $agentsContent ".claude/worktrees/" "AGENTS.md"
 Assert-ContainsText $agentsContent "hosted PR/CI check failures" "AGENTS.md"
 Assert-ContainsText $agentsContent "HeaderFilterRegex" "AGENTS.md"
 Assert-ContainsText $agentsContent "--warnings-as-errors=*" "AGENTS.md"
@@ -682,6 +688,7 @@ Assert-ContainsText $workflowsContent "gh pr create" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --auto --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "--match-head-commit <headRefOid>" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "mergeStateStatus" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "pending required checks or reviews" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Hosted PR Check Failure Triage" "docs/workflows.md"
@@ -693,10 +700,15 @@ Assert-ContainsText $workflowsContent "Documentation-only or similarly narrow no
 Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GitHub flow" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "official GitHub Flow" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "direct default-branch pushes must stay forbidden" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GITHUB_TOKEN" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "credential-manager-core" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git config --show-origin --get-all credential.helper" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "approval-capable session" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "Worktree And Parallel Agent Workflow" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "Codex app Worktree/Handoff" "docs/workflows.md"
+Assert-ContainsText $workflowsContent ".claude/worktrees/" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "specific, concise, verifiable" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "machine-readable capability/status claims" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "direct-clang-format-status" "docs/workflows.md"
@@ -760,7 +772,10 @@ Assert-ContainsText $aiIntegrationContent "git commit" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr view" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr merge --auto --merge --delete-branch" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "official GitHub Flow" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "Direct default-branch pushes are blocked" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "mergeStateStatus" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent 'pending-only `UNSTABLE` / `BLOCKED`' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "--match-head-commit <headRefOid>" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'latest `headRefOid` and `statusCheckRollup`' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent '.codex/rules` and `.claude/settings.json` remain command/permission gates' "docs/ai-integration.md"
@@ -769,6 +784,8 @@ Assert-ContainsText $aiIntegrationContent "policy reload" "docs/ai-integration.m
 Assert-ContainsText $aiIntegrationContent "GITHUB_TOKEN" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "approval-capable session" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "Codex app Worktree/Handoff" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent 'worktree.baseRef = "head"' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Cursor global instructions" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "OpenAI developer docs MCP" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Claude Code settings and permissions: https://docs.anthropic.com/en/docs/claude-code/settings" "docs/ai-integration.md"
@@ -782,11 +799,16 @@ Assert-ContainsText $aiIntegrationContent "AGENTS.override.md" "docs/ai-integrat
 $cursorBaselineSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "Cursor global instructions" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "workspace override" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "official GitHub Flow" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 $cursorAgentIntegrationSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "Direct default-branch pushes are forbidden" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "HeaderFilterRegex" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "NN warnings generated." ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -13131,6 +13153,9 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Git/GitHub publishing workflow changes" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "merge/delete-branch" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "auto-merge registration" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "official GitHub Flow" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "Direct default-branch pushes are forbidden" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "mergeStateStatus" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "--match-head-commit <headRefOid>" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Hosted PR failure hardening" $agentIntegrationSkill
@@ -13143,7 +13168,14 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "credential-manager-core" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "approval-capable session" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "Codex app Worktree/Handoff" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "isolation: worktree" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText 'worktree.baseRef = "head"' $agentIntegrationSkill
 }
+
+$gitignoreText = Get-AgentSurfaceText ".gitignore"
+Assert-ContainsText $gitignoreText ".worktrees/" ".gitignore"
+Assert-ContainsText $gitignoreText ".claude/worktrees/" ".gitignore"
 
 $codexRuleFile = Resolve-RequiredAgentPath ".codex/rules/gameengine.rules"
 $codexRuleText = Get-Content -LiteralPath $codexRuleFile -Raw
@@ -13155,10 +13187,16 @@ Assert-ContainsText $codexRuleText "not_match =" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git commit" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git push" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git push origin main" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "git push -u origin main" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "git push origin HEAD:main" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "git push --force origin main" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "GitHub Flow" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git push --force" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "policy reload" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git restore" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "git worktree remove" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "git worktree prune" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText 'decision = "allow"' ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr view" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr create" ".codex/rules/gameengine.rules"
@@ -13180,12 +13218,15 @@ if (-not $claudeSettings.PSObject.Properties.Name.Contains('$schema')) {
 if (-not $claudeSettings.PSObject.Properties.Name.Contains("permissions")) {
     Write-Error ".claude/settings.json must define permissions"
 }
+if (-not $claudeSettings.PSObject.Properties.Name.Contains("worktree") -or $claudeSettings.worktree.baseRef -ne "head") {
+    Write-Error ".claude/settings.json must set worktree.baseRef to head for project subagent worktree isolation"
+}
 foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)")) {
     if (@($claudeSettings.permissions.allow) -notcontains $allowRule) {
         Write-Error ".claude/settings.json permissions.allow missing $allowRule"
     }
 }
-foreach ($askRule in @("Bash(git push origin main:*)", "Bash(git push origin master:*)", "Bash(git push --force:*)", "Bash(git push --force-with-lease:*)", "Bash(git restore:*)", "Bash(git checkout:*)", "Bash(gh pr edit:*)", "Bash(gh pr merge --merge:*)", "Bash(gh pr merge --squash:*)", "Bash(gh pr merge --rebase:*)", "Bash(gh pr merge --admin:*)", "Bash(gh pr ready:*)", "Bash(gh pr close:*)", "Bash(gh pr reopen:*)", "Bash(Remove-Item:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1:*)", "Bash(curl:*)", "Bash(Invoke-WebRequest:*)", "Bash(Invoke-RestMethod:*)", "Bash(Add-WindowsCapability:*)", "Bash(dism:*)", "Bash(msiexec:*)")) {
+foreach ($askRule in @("Bash(git push --force:*)", "Bash(git push --force-with-lease:*)", "Bash(git restore:*)", "Bash(git checkout:*)", "Bash(git worktree remove:*)", "Bash(git worktree prune:*)", "Bash(git worktree repair:*)", "Bash(gh pr edit:*)", "Bash(gh pr merge --merge:*)", "Bash(gh pr merge --squash:*)", "Bash(gh pr merge --rebase:*)", "Bash(gh pr merge --admin:*)", "Bash(gh pr ready:*)", "Bash(gh pr close:*)", "Bash(gh pr reopen:*)", "Bash(Remove-Item:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1:*)", "Bash(curl:*)", "Bash(Invoke-WebRequest:*)", "Bash(Invoke-RestMethod:*)", "Bash(Add-WindowsCapability:*)", "Bash(dism:*)", "Bash(msiexec:*)")) {
     if (@($claudeSettings.permissions.ask) -notcontains $askRule) {
         Write-Error ".claude/settings.json permissions.ask missing $askRule"
     }
@@ -13195,7 +13236,7 @@ foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(
         Write-Error ".claude/settings.json permissions.ask should not prompt routine automatic checkpoint command $automaticGitRule"
     }
 }
-foreach ($denyRule in @("Read(./.env)", "Read(./.env.*)", "Read(./.mcp.json)", "Read(./secrets/**)", "Read(./.claude/settings.local.json)", "Read(./**/*.p12)")) {
+foreach ($denyRule in @("Bash(git push origin main:*)", "Bash(git push origin master:*)", "Bash(git push -u origin main:*)", "Bash(git push -u origin master:*)", "Bash(git push --set-upstream origin main:*)", "Bash(git push --set-upstream origin master:*)", "Bash(git push --force origin main:*)", "Bash(git push --force origin master:*)", "Bash(git push --force-with-lease origin main:*)", "Bash(git push --force-with-lease origin master:*)", "Bash(git push origin HEAD:main:*)", "Bash(git push origin HEAD:master:*)", "Read(./.env)", "Read(./.env.*)", "Read(./.mcp.json)", "Read(./secrets/**)", "Read(./.claude/settings.local.json)", "Read(./**/*.p12)")) {
     if (@($claudeSettings.permissions.deny) -notcontains $denyRule) {
         Write-Error ".claude/settings.json permissions.deny missing $denyRule"
     }
@@ -13226,6 +13267,8 @@ Assert-ContainsText $aiAgentRuleText "policy reload" ".claude/rules/ai-agent-int
 Assert-ContainsText $aiAgentRuleText "GITHUB_TOKEN" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "credential-manager-core" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "approval-capable session" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "Codex app Worktree/Handoff" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "isolation: worktree" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.local.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integration.md"
@@ -13291,6 +13334,13 @@ foreach ($relativePath in @(
     ".claude/agents/rendering-auditor.md"
 )) {
     Assert-ClaudeReadOnlyAgent $relativePath
+}
+
+foreach ($relativePath in @(
+    ".claude/agents/build-fixer.md",
+    ".claude/agents/gameplay-builder.md"
+)) {
+    Assert-ContainsText (Get-AgentSurfaceText $relativePath) "isolation: worktree" $relativePath
 }
 
 foreach ($buildFixerAgent in @(
