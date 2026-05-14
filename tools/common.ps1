@@ -35,6 +35,37 @@ function Read-Json {
     return Get-Content -LiteralPath $path -Encoding utf8 -Raw | ConvertFrom-Json
 }
 
+function Read-CMakePresets {
+    $path = Join-Path (Get-RepoRoot) "CMakePresets.json"
+    return Get-Content -LiteralPath $path -Encoding utf8 -Raw | ConvertFrom-Json -AsHashtable
+}
+
+function Test-JsonProperty {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string]$Property
+    )
+
+    if ($Object -is [System.Collections.IDictionary]) {
+        return $Object.Contains($Property)
+    }
+
+    return $Object.PSObject.Properties.Name.Contains($Property)
+}
+
+function Get-JsonPropertyValue {
+    param(
+        [Parameter(Mandatory = $true)]$Object,
+        [Parameter(Mandatory = $true)][string]$Property
+    )
+
+    if ($Object -is [System.Collections.IDictionary]) {
+        return $Object[$Property]
+    }
+
+    return $Object.$Property
+}
+
 function ConvertTo-LfText {
     param([string]$Text)
 
@@ -261,11 +292,7 @@ function Set-ProcessEnvironmentFromAnyScope {
 function Add-ProcessPathEntries {
     param([string[]]$Entries)
 
-    $pathKey = if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
-        "Path"
-    } else {
-        "PATH"
-    }
+    $pathKey = "PATH"
     $currentPath = [Environment]::GetEnvironmentVariable($pathKey, "Process")
     if ($null -eq $currentPath) {
         $currentPath = [Environment]::GetEnvironmentVariable("Path", "Process")

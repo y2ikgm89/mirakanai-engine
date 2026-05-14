@@ -61,6 +61,7 @@ Install **`lcov`**, **`gcov`** / **`g++`**, and **Ninja** on the host; Ubuntu/De
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1
@@ -86,7 +87,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1
 ```
 
-Direct CMake loop, when the active shell has CMake on `PATH`. On Windows, use Visual Studio Developer PowerShell/Command Prompt or install official CMake 3.30+ on `PATH`. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` when a task specifically requires direct `cmake` commands instead of repository wrappers:
+Direct CMake loop, when the active shell has CMake on `PATH` and, on Windows, one effective `PATH` / `Path` key. Use Visual Studio Developer PowerShell/Command Prompt or repository wrappers when an ordinary shell reports duplicate path casing. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` when a task specifically requires direct `cmake` commands instead of repository wrappers:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake
@@ -95,7 +96,9 @@ cmake --build --preset dev
 ctest --preset dev --output-on-failure
 ```
 
-Checked-in CMake build presets inherit `normalized-build-environment`, which sets a single child `Path` from parent `PATH`/`Path` values so raw `cmake --build --preset ...` does not pass duplicate path keys to MSBuild tool tasks on Windows. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` enforces that every visible build preset inherits this hidden preset. Repository `tools/*.ps1` wrappers use the resolved CMake/CTest tools reported by `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` and normalize the child-process environment before launching build tools.
+In a manual linked worktree, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` before the first configure. It verifies `.worktrees/`, `.claude/worktrees/`, `external/`, and `vcpkg_installed/` are ignored, then links an existing local `external/vcpkg` checkout so CMake presets keep using the required vcpkg toolchain path without configure-time package install or a duplicate vcpkg clone.
+
+Checked-in CMake configure/build presets inherit `normalized-configure-environment` / `normalized-build-environment`, which expose a single child `PATH` from parent `PATH`/`Path` values and unset mixed-case preset `Path`. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` enforces that every visible configure/build preset inherits the matching hidden preset, reports parent process path casing, and reports linked-worktree `external/vcpkg` readiness; add `-RequireVcpkgToolchain` when a selected vcpkg-backed lane must fail fast on a missing tool checkout. Repository `tools/*.ps1` wrappers use the resolved CMake/CTest tools reported by `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` and normalize the child-process environment before launching build tools.
 `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1` builds the `dev` preset and then invokes `ctest --preset dev --output-on-failure --timeout 300` directly instead of routing tests through the generator-specific `RUN_TESTS` target, keeping the scripted lane on the same CTest preset path documented above.
 
 Format checks should use repository wrappers for repeatability:

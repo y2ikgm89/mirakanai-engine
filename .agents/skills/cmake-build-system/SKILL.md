@@ -8,6 +8,7 @@ paths:
   - "vcpkg.json"
   - "cmake/**"
   - "docs/building.md"
+  - "tools/prepare-worktree.ps1"
   - "tools/bootstrap-deps.ps1"
   - "tools/check-toolchain.ps1"
 ---
@@ -25,10 +26,12 @@ paths:
 - For registered desktop runtime games, prefer `PACKAGE_FILES_FROM_MANIFEST` so `game.agent.json.runtimePackageFiles` is the package file source of truth; do not mix it with literal `PACKAGE_FILES`.
 - Keep local build output under `out/`.
 - **Worktree cleanup:** Safe to delete for a clean rebuild: `out/`, Android Gradle/CXX outputs under `platform/android/` per `.gitignore`, `*.log`, `imgui.ini`, and (only when followed by `tools/bootstrap-deps.ps1`) `vcpkg_installed/`. **Never delete `external/vcpkg` or the entire `external/` directory as cache**—presets point `CMAKE_TOOLCHAIN_FILE` at `external/vcpkg/scripts/buildsystems/vcpkg.cmake`. Restore with `git clone https://github.com/microsoft/vcpkg.git external/vcpkg`, bootstrap `vcpkg.exe`, then `cmake --preset dev` or `tools/bootstrap-deps.ps1`.
+- **Linked worktree setup:** After manual `git worktree add`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` inside the linked worktree. It verifies ignored worktree roots and links an existing local `external/vcpkg` checkout without configure-time package restore or a duplicate vcpkg clone.
 - Keep project-wide build settings in checked-in `CMakePresets.json`; keep local developer overrides in ignored `CMakeUserPresets.json`.
 - Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` to diagnose wrapper CMake, CTest, CPack, `clang-format`, Visual Studio, and MSBuild resolution before editing around build or format failures.
 - Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` when a task specifically depends on direct `cmake --preset ...` commands being available on `PATH`.
-- Keep visible CMake build presets inheriting hidden `normalized-build-environment` so Windows direct `cmake --build --preset ...` runs collapse parent `PATH`/`Path` variants into one MSBuild child `Path`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` validates this.
+- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireVcpkgToolchain` when a selected vcpkg-backed configure lane must fail fast on missing `external/vcpkg`.
+- Keep visible CMake configure/build presets inheriting hidden `normalized-configure-environment` / `normalized-build-environment`; repository wrappers collapse parent `PATH`/`Path` variants into one child `PATH`, and `tools/check-toolchain.ps1` validates this plus linked-worktree `external/vcpkg` readiness.
 - Raw `clang-format --dry-run ...` commands also depend on `PATH`; prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` / `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1` unless `toolchain-check` reports `direct-clang-format-status=ready`.
 - Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` for clang-tidy. It verifies `.clang-tidy`, configures the active CMake preset when needed, accepts native Makefile/Ninja `compile_commands.json`, or **synthesizes** `compile_commands.json` under the preset `binaryDir` from CMake File API codemodel data for the default Windows Visual Studio `dev` preset when needed; missing CMake or clang-tidy remains a local tool blocker.
 - Static analysis policy: keep `.clang-tidy` `HeaderFilterRegex` absolute-path and Windows/Linux separator aware, keep strict CI on `--warnings-as-errors=*`, use `-Jobs 0` for full hosted lanes, and use `-Files` for focused local TU loops. Treat unsupported check names from config verification as toolchain-version drift to fix or remove, never as a reason to hide diagnostics; suppress only frontend summary lines like `NN warnings generated.` after preserving actionable diagnostics and exit codes.
@@ -60,6 +63,7 @@ ctest --preset dev --output-on-failure -R <test-name>
 For completion, run:
 
 ```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```

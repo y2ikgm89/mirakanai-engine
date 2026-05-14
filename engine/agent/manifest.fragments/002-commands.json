@@ -1,6 +1,7 @@
 {
   "commands": {
     "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+    "prepareWorktree": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1",
     "toolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1",
     "directToolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake",
     "bootstrapDeps": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1",

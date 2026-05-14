@@ -7,6 +7,14 @@
   },
   "configurePresets": [
     {
+      "name": "normalized-configure-environment",
+      "hidden": true,
+      "environment": {
+        "PATH": "$penv{PATH}${pathListSep}$penv{Path}",
+        "Path": null
+      }
+    },
+    {
       "name": "dev-core",
       "hidden": true,
       "binaryDir": "${sourceDir}/out/build/dev",
@@ -39,7 +47,7 @@
       "name": "dev",
       "displayName": "Developer build",
       "binaryDir": "${sourceDir}/out/build/dev",
-      "inherits": ["dev-core", "dev-windows-gui"],
+      "inherits": ["normalized-configure-environment", "dev-core", "dev-windows-gui"],
       "cacheVariables": {
         "MK_CXX_STANDARD": "23",
         "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
@@ -51,6 +59,7 @@
       "name": "cpp23-eval",
       "displayName": "C++23 verification build",
       "binaryDir": "${sourceDir}/out/build/cpp23-eval",
+      "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
@@ -64,6 +73,7 @@
       "name": "cpp23-release-eval",
       "displayName": "C++23 release package verification build",
       "binaryDir": "${sourceDir}/out/build/cpp23-release-preset-eval",
+      "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
@@ -77,6 +87,7 @@
       "name": "desktop-runtime",
       "displayName": "Desktop runtime build",
       "binaryDir": "${sourceDir}/out/build/desktop-runtime",
+      "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
@@ -96,6 +107,7 @@
       "name": "desktop-gui",
       "displayName": "Desktop GUI build",
       "binaryDir": "${sourceDir}/out/build/desktop-gui",
+      "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
@@ -114,6 +126,7 @@
       "name": "asset-importers",
       "displayName": "Asset importer dependency build",
       "binaryDir": "${sourceDir}/out/build/asset-importers",
+      "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
@@ -132,6 +145,7 @@
       "name": "cpp23-desktop-gui-eval",
       "displayName": "C++23 desktop GUI verification build",
       "binaryDir": "${sourceDir}/out/build/cpp23-desktop-gui-eval",
+      "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
@@ -150,6 +164,7 @@
       "name": "release",
       "displayName": "Release package build",
       "binaryDir": "${sourceDir}/out/build/release",
+      "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
@@ -163,6 +178,7 @@
       "name": "desktop-runtime-release",
       "displayName": "Desktop runtime release package build",
       "binaryDir": "${sourceDir}/out/build/desktop-runtime-release",
+      "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "ON",
@@ -184,6 +200,7 @@
       "displayName": "Clang Address/Undefined sanitizer build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/clang-asan-ubsan",
+      "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_CXX_COMPILER": "clang++",
@@ -201,6 +218,7 @@
       "displayName": "CI Linux Clang build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/ci-linux-clang",
+      "inherits": "normalized-configure-environment",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -222,6 +240,7 @@
       "displayName": "CI Linux clang-tidy analysis",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/ci-linux-tidy",
+      "inherits": "normalized-configure-environment",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -243,6 +262,7 @@
       "displayName": "Linux GCC coverage build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/coverage",
+      "inherits": "normalized-configure-environment",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -266,6 +286,7 @@
       "displayName": "CI macOS AppleClang build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/ci-macos-appleclang",
+      "inherits": "normalized-configure-environment",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -287,7 +308,8 @@
       "name": "normalized-build-environment",
       "hidden": true,
       "environment": {
-        "Path": "$penv{PATH}${pathListSep}$penv{Path}"
+        "PATH": "$penv{PATH}${pathListSep}$penv{Path}",
+        "Path": null
       }
     },
     {

@@ -1061,6 +1061,8 @@ Assert-ContainsText $currentCapabilitiesText "3D Scene Mesh Package Telemetry v1
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 Assert-ContainsText $roadmapText "3D Scene Mesh Package Telemetry v1" "docs/roadmap.md"
 $engineManifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "prepare-worktree.ps1" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "normalized-configure-environment" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "normalized-build-environment" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "PATH/Path variants" "engine/agent/manifest.json"
 foreach ($needle in @(
@@ -1173,10 +1175,12 @@ foreach ($cmakeSkill in @(
     Assert-ContainsText $cmakeSkillText "MK_MSVC_CXX23_STANDARD_OPTION" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "PACKAGE_FILES_FROM_MANIFEST" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $cmakeSkill
+    Assert-ContainsText $cmakeSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $cmakeSkill
+    Assert-ContainsText $cmakeSkillText "normalized-configure-environment" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "normalized-build-environment" $cmakeSkill
-    Assert-ContainsText $cmakeSkillText 'MSBuild child `Path`' $cmakeSkill
+    Assert-ContainsText $cmakeSkillText 'child `PATH`' $cmakeSkill
     Assert-ContainsText $cmakeSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "direct-clang-format-status" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "CMake File API" $cmakeSkill
@@ -1239,8 +1243,10 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "targeted drift checks" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Context7" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "normalized-configure-environment" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "normalized-build-environment" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "direct-clang-format-status" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "CMake File API" $agentIntegrationSkill
@@ -1368,8 +1374,10 @@ foreach ($ruleFile in @(
 )) {
     $ruleText = Get-AgentSurfaceText $ruleFile
     Assert-ContainsText $ruleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $ruleFile
+    Assert-ContainsText $ruleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" $ruleFile
     Assert-ContainsText $ruleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $ruleFile
     Assert-ContainsText $ruleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $ruleFile
+    Assert-ContainsText $ruleText "normalized-configure-environment" $ruleFile
     Assert-ContainsText $ruleText "normalized-build-environment" $ruleFile
     Assert-ContainsText $ruleText "direct-clang-format-status" $ruleFile
     Assert-ContainsText $ruleText "VCPKG_MANIFEST_INSTALL=OFF" $ruleFile
@@ -1389,6 +1397,7 @@ Assert-ContainsText $aiAgentRuleText "credential-manager-core" ".claude/rules/ai
 Assert-ContainsText $aiAgentRuleText "approval-capable session" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Codex app Worktree/Handoff" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "isolation: worktree" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.local.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integration.md"
@@ -1485,8 +1494,10 @@ foreach ($buildFixerAgent in @(
 )) {
     $buildFixerText = Get-AgentSurfaceText $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "normalized-configure-environment" $buildFixerAgent
     Assert-ContainsText $buildFixerText "normalized-build-environment" $buildFixerAgent
     Assert-ContainsText $buildFixerText 'CL.exe` command-line switch error' $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" $buildFixerAgent

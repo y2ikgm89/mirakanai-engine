@@ -41,7 +41,7 @@
     },
     "commands": {
       "type": "object",
-      "required": ["validate", "toolchainCheck", "directToolchainCheck", "build", "buildGui", "buildAssetImporters", "test", "agentContext", "agentCheck", "composeAgentManifest", "newGame"]
+      "required": ["validate", "prepareWorktree", "toolchainCheck", "directToolchainCheck", "build", "buildGui", "buildAssetImporters", "test", "agentContext", "agentCheck", "composeAgentManifest", "newGame"]
     },
     "windowsDiagnosticsToolchain": {
       "type": "object",
