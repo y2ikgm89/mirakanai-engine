@@ -1,0 +1,52 @@
+# Repository-wide text normalization (see gitattributes(5), GitHub "Configuring Git to handle line endings").
+# All detected text files use LF in the object database and in the working tree, independent of local
+# core.autocrlf defaults, without per-file workarounds.
+* text=auto eol=lf
+
+# Binary and non-text overrides (keep Git's text heuristic away from byte-accurate payloads).
+*.7z binary
+*.a binary
+*.bmp binary
+*.bz2 binary
+*.cso binary
+*.dds binary
+*.dll binary
+*.dylib binary
+*.exe binary
+*.exp binary
+*.exr binary
+*.gif binary
+*.gz binary
+*.hdr binary
+*.icns binary
+*.ico binary
+*.ilk binary
+*.jpeg binary
+*.jpg binary
+*.ktx binary
+*.ktx2 binary
+*.lib binary
+*.mp3 binary
+*.mp4 binary
+*.mov binary
+*.o binary
+*.obj binary
+*.ogg binary
+*.otf binary
+*.pdb binary
+*.pdf binary
+*.png binary
+*.so binary
+*.spv binary
+*.tga binary
+*.tif binary
+*.tiff binary
+*.ttf binary
+*.wasm binary
+*.wav binary
+*.webm binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.xz binary
+*.zip binary
