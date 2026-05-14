@@ -7,6 +7,50 @@ $ErrorActionPreference = "Stop"
 
 $root = Get-RepoRoot
 
+function Test-RepositoryLineEndingContract {
+    param([Parameter(Mandatory)][string]$Root)
+
+    $gitAttributesPath = Join-Path $Root ".gitattributes"
+    if (-not (Test-Path -LiteralPath $gitAttributesPath -PathType Leaf)) {
+        Write-Error "Repository root must include .gitattributes with '* text=auto eol=lf'."
+    }
+
+    $gitAttributesText = Get-Content -LiteralPath $gitAttributesPath -Raw
+    if ($gitAttributesText -notmatch '(?m)^\*\s+text=auto\s+eol=lf\s*$') {
+        Write-Error "Repository root .gitattributes must declare '* text=auto eol=lf'."
+    }
+
+    $editorConfigPath = Join-Path $Root ".editorconfig"
+    if (-not (Test-Path -LiteralPath $editorConfigPath -PathType Leaf)) {
+        Write-Error "Repository root must include .editorconfig aligned with the LF line-ending policy."
+    }
+
+    $editorConfigText = Get-Content -LiteralPath $editorConfigPath -Raw
+    foreach ($requiredLine in @(
+            "root = true",
+            "charset = utf-8",
+            "end_of_line = lf",
+            "insert_final_newline = true"
+        )) {
+        if ($editorConfigText -notmatch "(?m)^\s*$([regex]::Escape($requiredLine))\s*$") {
+            Write-Error "Repository root .editorconfig must declare '$requiredLine'."
+        }
+    }
+
+    $eolEntries = @(git -C $Root ls-files --eol)
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "git ls-files --eol failed while checking repository line endings."
+    }
+
+    $nonLfEntries = @($eolEntries | Where-Object { $_ -match '\b[wi]/(crlf|mixed)\b' })
+    if ($nonLfEntries.Count -gt 0) {
+        $sample = ($nonLfEntries | Select-Object -First 10) -join "`n"
+        Write-Error "Tracked files must not have CRLF or mixed line endings under the root LF contract. First entries:`n$sample"
+    }
+}
+
+Test-RepositoryLineEndingContract -Root $root
+
 function Test-AgentFileSizeBudget {
     param(
         [Parameter(Mandatory)][string]$Path,

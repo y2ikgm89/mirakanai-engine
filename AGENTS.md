@@ -54,7 +54,7 @@
 - Use existing build, cache, temp, or ignored output locations for transient validation artifacts.
 - Remove task-local scaffolding before reporting completion unless it is intentionally tracked and documented.
 - Do not delete files or directories that may contain user work unless the task explicitly requires it and the ownership is clear.
-- Root `.gitattributes` is the repository line-ending contract (`* text=auto eol=lf`); keep text LF and let root `.editorconfig` align editors.
+- Root `.gitattributes` is the LF contract (`* text=auto eol=lf`); root `.editorconfig` aligns editors, and `tools/check-agents.ps1` enforces it.
 - When cleaning ignored paths, distinguish **build output** from **tool checkouts**. `out/`, Android build/.gradle trees, `*.log`, and `imgui.ini` are disposable; **`external/vcpkg` is a required Microsoft vcpkg clone** referenced by `CMakePresets.json`, so do not delete `external/vcpkg` or the whole `external/` tree as cache. Remove `vcpkg_installed/` only when you intend to rerun `tools/bootstrap-deps.ps1`.
 
 ## Project Goal
