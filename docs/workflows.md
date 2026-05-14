@@ -153,6 +153,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 
 For documentation-only or other narrow non-runtime slices, use the narrower tier described above and include the justification in the PR body. Do not use the narrow tier for C++, build scripts, packaging, runtime assets, agent manifests, or validation policy changes unless the matching static checks prove the touched surface.
 
+### Hosted PR Check Selection
+
+Use an always-running required gate for branch protection. Path-filtered workflows must not be branch-protection-required directly because GitHub can leave skipped checks pending; if hosted cost needs reduction, keep heavy jobs conditional behind a required aggregate gate or use non-required supplemental workflows.
+
+Run the full hosted matrix for `main` push, release, scheduled/nightly, and `workflow_dispatch` runs. For PRs, full or near-full hosted coverage is required when changes touch `.github/`, `CMakeLists.txt`, `CMakePresets.json`, `cmake/`, `vcpkg.json`, `tools/`, `engine/`, `editor/`, `games/`, packaging, validation policy, agent surfaces, or public/runtime contracts. Documentation-only and similarly narrow non-runtime PRs may use the lighter tier only when the PR body records the exact commands/checks and why the changed files cannot affect runtime/build behavior.
+
+Keep required job names unique across workflows. If branch protection or merge queue is enabled, the required check surface must stay stable while the underlying heavy lanes can evolve behind the aggregate gate.
+
 6. Do not push directly to the default branch or protected branches; that is outside the official GitHub Flow publishing path. Do not use `--force`; use `--force-with-lease` only when the user explicitly requests history rewriting and the branch is known to be task-owned.
 
 7. Prefer a GitHub pull request for shared or release-facing work:

@@ -656,6 +656,9 @@ Assert-ContainsText $agentsContent "Codex app Worktree/Handoff" "AGENTS.md"
 Assert-ContainsText $agentsContent "isolation: worktree" "AGENTS.md"
 Assert-ContainsText $agentsContent ".claude/worktrees/" "AGENTS.md"
 Assert-ContainsText $agentsContent "hosted PR/CI check failures" "AGENTS.md"
+Assert-ContainsText $agentsContent "PR CI selection" "AGENTS.md"
+Assert-ContainsText $agentsContent "always-running required gate" "AGENTS.md"
+Assert-ContainsText $agentsContent "path-filtered required workflows" "AGENTS.md"
 Assert-ContainsText $agentsContent "HeaderFilterRegex" "AGENTS.md"
 Assert-ContainsText $agentsContent "--warnings-as-errors=*" "AGENTS.md"
 Assert-ContainsText $agentsContent "NN warnings generated." "AGENTS.md"
@@ -696,6 +699,9 @@ Assert-ContainsText $workflowsContent "pending required checks or reviews" "docs
 Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Hosted PR Check Failure Triage" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "Hosted PR Check Selection" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "always-running required gate" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "Path-filtered workflows must not be branch-protection-required" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr view <pr> --json headRefOid,statusCheckRollup,url" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GitHub account billing/spending-limit" "docs/workflows.md"
 Assert-ContainsText $workflowsContent 'hosted `static-analysis` failures' "docs/workflows.md"
@@ -748,6 +754,9 @@ Assert-ContainsText $testingContent "-Jobs" "docs/testing.md"
 Assert-ContainsText $testingContent "HeaderFilterRegex" "docs/testing.md"
 Assert-ContainsText $testingContent "workflow concurrency" "docs/testing.md"
 Assert-ContainsText $testingContent "GITHUB_TOKEN permissions" "docs/testing.md"
+Assert-ContainsText $testingContent "PR check selection policy" "docs/testing.md"
+Assert-ContainsText $testingContent "always-running aggregate gate" "docs/testing.md"
+Assert-ContainsText $testingContent "main push, release, scheduled/nightly, and workflow_dispatch" "docs/testing.md"
 Assert-ContainsText $workflowsContent "--warnings-as-errors=*" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "-Jobs" "docs/workflows.md"
 $agentOperationalReferenceContent = Get-AgentSurfaceText "docs/agent-operational-reference.md"
@@ -13168,6 +13177,9 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "mergeStateStatus" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "--match-head-commit <headRefOid>" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Hosted PR failure hardening" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "CI check selection changes" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "path-filtered required checks" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "always-running aggregate gate" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Static-analysis drift includes" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "HeaderFilterRegex" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "NN warnings generated." $agentIntegrationSkill
