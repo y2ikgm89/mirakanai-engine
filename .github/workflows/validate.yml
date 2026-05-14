@@ -6,6 +6,7 @@ on:
       - main
       - master
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,8 +16,82 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: Select PR validation tier
+    runs-on: ubuntu-latest
+    outputs:
+      windows: ${{ steps.classify.outputs.windows }}
+      linux: ${{ steps.classify.outputs.linux }}
+      linux_sanitizers: ${{ steps.classify.outputs.linux_sanitizers }}
+      static_analysis: ${{ steps.classify.outputs.static_analysis }}
+      macos: ${{ steps.classify.outputs.macos }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Classify touched surfaces
+        id: classify
+        shell: pwsh
+        run: |
+          $runAll = "${{ github.event_name }}" -ne "pull_request"
+          if ($runAll) {
+            "windows=true" >> $env:GITHUB_OUTPUT
+            "linux=true" >> $env:GITHUB_OUTPUT
+            "linux_sanitizers=true" >> $env:GITHUB_OUTPUT
+            "static_analysis=true" >> $env:GITHUB_OUTPUT
+            "macos=true" >> $env:GITHUB_OUTPUT
+            return
+          }
+
+          $base = "${{ github.event.pull_request.base.sha }}"
+          $head = "${{ github.event.pull_request.head.sha }}"
+          $files = @(git diff --name-only $base $head)
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "failed to compute PR file diff"
+          }
+
+          $ciOrWorkflow = $false
+          $runtimeOrBuild = $false
+          $staticPolicy = $false
+          # Docs/agent/rules/subagent-only changes leave heavy hosted lanes disabled.
+          foreach ($file in $files) {
+            $path = $file -replace "\\", "/"
+            if ($path -match "^\.github/workflows/") {
+              $ciOrWorkflow = $true
+            }
+            if (
+              $path -eq "CMakeLists.txt" -or
+              $path -match "/CMakeLists\.txt$" -or
+              $path -eq "CMakePresets.json" -or
+              $path -match "^(cmake|engine|editor|games|platform|runtime|shaders|examples|tests)/" -or
+              $path -eq "vcpkg.json" -or
+              $path -match "^tools/(validate|build|test|bootstrap-deps|check-toolchain|check-tidy|check-format|check-coverage|check-dependency-policy|check-cpp-standard-policy|evaluate-cpp23|package|package-desktop-runtime|check-public-api-boundaries|check-shader-toolchain|run-validation-recipe|common)\.ps1$"
+            ) {
+              $runtimeOrBuild = $true
+            }
+            if ($path -eq ".clang-tidy" -or $path -eq ".clang-format" -or $path -match "^tools/check-tidy\.ps1$") {
+              $staticPolicy = $true
+            }
+          }
+
+          $windows = $ciOrWorkflow -or $runtimeOrBuild
+          $linux = $ciOrWorkflow -or $runtimeOrBuild
+          $linuxSanitizers = $ciOrWorkflow -or $runtimeOrBuild
+          $staticAnalysis = $ciOrWorkflow -or $runtimeOrBuild -or $staticPolicy
+          $macos = $ciOrWorkflow -or $runtimeOrBuild
+
+          "windows=$($windows.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "linux=$($linux.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "linux_sanitizers=$($linuxSanitizers.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "static_analysis=$($staticAnalysis.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "macos=$($macos.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
   windows:
     name: Windows MSVC
+    needs: changes
+    if: needs.changes.outputs.windows == 'true'
     runs-on: windows-2025-vs2026
     steps:
       - name: Checkout
@@ -64,6 +139,8 @@ jobs:
 
   linux:
     name: Linux CMake
+    needs: changes
+    if: needs.changes.outputs.linux == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -107,6 +184,8 @@ jobs:
 
   linux-sanitizers:
     name: Linux Clang ASan/UBSan
+    needs: changes
+    if: needs.changes.outputs.linux_sanitizers == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -136,6 +215,8 @@ jobs:
 
   static-analysis:
     name: Full Repository Static Analysis
+    needs: changes
+    if: needs.changes.outputs.static_analysis == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -160,6 +241,8 @@ jobs:
 
   macos:
     name: macOS Metal CMake
+    needs: changes
+    if: needs.changes.outputs.macos == 'true'
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -190,3 +273,30 @@ jobs:
           name: macos-test-logs
           path: out/build/ci-macos-appleclang/Testing/**/*.log
           if-no-files-found: warn
+
+  pr-gate:
+    name: PR Gate
+    needs:
+      - changes
+      - windows
+      - linux
+      - linux-sanitizers
+      - static-analysis
+      - macos
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify selected validation tier
+        shell: pwsh
+        run: |
+          $needs = '${{ toJson(needs) }}' | ConvertFrom-Json
+          $failed = @()
+          foreach ($job in $needs.PSObject.Properties) {
+            if ($job.Value.result -in @("failure", "cancelled")) {
+              $failed += "$($job.Name)=$($job.Value.result)"
+            }
+          }
+          if ($failed.Count -gt 0) {
+            Write-Error "PR validation gate failed: $($failed -join ', ')"
+          }
+          "PR validation gate passed"

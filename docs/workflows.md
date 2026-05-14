@@ -110,7 +110,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 git diff --cached --check
 ```
 
-Documentation-only or similarly narrow non-runtime slices may use a narrower validation tier only when the changed files cannot affect build or runtime behavior. The PR body must name the commands that ran and explain why the narrower tier is the relevant signal. At minimum, run `git diff --check`; for agent-facing docs or workflow policy text, also run the matching static check such as `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`. Record concrete toolchain blockers instead of treating missing validation as success.
+Documentation-only or similarly narrow non-runtime slices should use the cheapest validation tier that still proves the changed contract. The PR body must name the commands that ran and explain why the narrower tier is the relevant signal. At minimum, run `git diff --check`; for agent-facing docs, skills, rules, settings, subagents, or workflow policy text, also run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` and the matching static guard such as `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`. Add `tools/check-json-contracts.ps1` for manifest fragments/schemas and `tools/check-ci-matrix.ps1` for workflow/CI policy changes. Do not spend Windows/MSVC, macOS, or full repository clang-tidy PR minutes on docs/agent-only changes unless the edit also changes code, build/test/package tooling, CI execution, validation scripts that run builds, or public/runtime contracts. Record concrete toolchain blockers instead of treating missing validation as success.
 
 ### Commit, Push, And Pull Request Workflow
 
@@ -157,7 +157,15 @@ For documentation-only or other narrow non-runtime slices, use the narrower tier
 
 Use an always-running required gate for branch protection. Path-filtered workflows must not be branch-protection-required directly because GitHub can leave skipped checks pending; if hosted cost needs reduction, keep heavy jobs conditional behind a required aggregate gate or use non-required supplemental workflows.
 
-Run the full hosted matrix for `main` push, release, scheduled/nightly, and `workflow_dispatch` runs. For PRs, full or near-full hosted coverage is required when changes touch `.github/`, `CMakeLists.txt`, `CMakePresets.json`, `cmake/`, `vcpkg.json`, `tools/`, `engine/`, `editor/`, `games/`, packaging, validation policy, agent surfaces, or public/runtime contracts. Documentation-only and similarly narrow non-runtime PRs may use the lighter tier only when the PR body records the exact commands/checks and why the changed files cannot affect runtime/build behavior.
+The `Validate` workflow implements this with `changes` (`Select PR validation tier`) and `pr-gate` (`PR Gate`). `changes` always runs and sets heavy-lane outputs from the PR file diff; `pr-gate` always runs after the matrix and is the stable aggregate check intended for branch protection.
+
+Run the full hosted matrix for `main` push, release, scheduled/nightly, and `workflow_dispatch` runs. For PRs, choose the cheapest tier that proves the touched surface:
+
+- **Docs/agent/rules/subagent-only:** keep the required gate green with `git diff --check`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, plus `tools/check-json-contracts.ps1` or `tools/check-ci-matrix.ps1` only when those contracts changed. Do not run `Windows MSVC`, `macOS Metal CMake`, or `Full Repository Static Analysis` just because instructions, skills, rules, settings, subagents, or prose docs changed.
+- **CI/build/tooling policy:** run the matching static guard and the affected hosted lane(s). A workflow edit that changes macOS setup should prove macOS; a clang-tidy policy change should prove static analysis; a Windows runner/toolchain change should prove Windows.
+- **Runtime/build behavior:** run the relevant build/test/static lanes for changes under `CMakeLists.txt`, `CMakePresets.json`, `cmake/`, `vcpkg.json`, build/test/package scripts, `engine/`, `editor/`, `games/`, packaging, runtime assets, public headers, or public/runtime contracts.
+
+The PR body must record the selected tier, exact commands/checks, and why omitted heavy lanes are unrelated. If branch protection needs a single stable required result, put the tier decision behind the always-running aggregate gate and keep heavy jobs conditional or non-required.
 
 Keep required job names unique across workflows. If branch protection or merge queue is enabled, the required check surface must stay stable while the underlying heavy lanes can evolve behind the aggregate gate.
 
