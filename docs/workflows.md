@@ -172,7 +172,7 @@ Push and PR publishing depend on host-local GitHub authentication such as Git Cr
 gh pr view <pr> --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url
 ```
 
-Continue only when the PR is open, not draft, targets the expected base branch, uses a task-owned head branch, has fresh local validation evidence, is not conflicting, has no requested changes, and has no `FAILURE`, `CANCELLED`, `TIMED_OUT`, or `ACTION_REQUIRED` status/check conclusion. Treat `UNSTABLE`, `DIRTY`, and `UNKNOWN` `mergeStateStatus` values as blockers. `BLOCKED` can be acceptable only when the block is an expected unmet GitHub requirement, such as pending required checks or reviews, and no check has failed.
+Continue only when the PR is open, not draft, targets the expected base branch, uses a task-owned head branch, has fresh local validation evidence, is not conflicting, has no requested changes, and has no `FAILURE`, `CANCELLED`, `TIMED_OUT`, or `ACTION_REQUIRED` status/check conclusion. Treat `DIRTY` and `UNKNOWN` `mergeStateStatus` values as blockers. `UNSTABLE` or `BLOCKED` can be acceptable only when the block is an expected unmet GitHub requirement, such as pending required checks or reviews, and no check has failed.
 
 For unattended Codex sessions, prefer GitHub auto-merge registration so GitHub performs the final `main` merge only after requirements are met. Include `--match-head-commit <headRefOid>` when the PR state query returns a head SHA, so a later push cannot be merged by the earlier decision:
 

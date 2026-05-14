@@ -648,6 +648,7 @@ Assert-ContainsText $agentsContent "gh pr view <pr> --json" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr create" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr merge --auto --merge --delete-branch" "AGENTS.md"
 Assert-ContainsText $agentsContent "mergeStateStatus" "AGENTS.md"
+Assert-ContainsText $agentsContent "pending required checks or reviews" "AGENTS.md"
 Assert-ContainsText $agentsContent "--match-head-commit <headRefOid>" "AGENTS.md"
 Assert-ContainsText $agentsContent "Codex app Worktree/Handoff" "AGENTS.md"
 Assert-ContainsText $agentsContent "isolation: worktree" "AGENTS.md"
@@ -687,6 +688,7 @@ Assert-ContainsText $workflowsContent "gh pr create" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --auto --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "--match-head-commit <headRefOid>" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "mergeStateStatus" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "pending required checks or reviews" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Hosted PR Check Failure Triage" "docs/workflows.md"
@@ -773,6 +775,7 @@ Assert-ContainsText $aiIntegrationContent "gh pr merge --auto --merge --delete-b
 Assert-ContainsText $aiIntegrationContent "official GitHub Flow" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Direct default-branch pushes are blocked" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "mergeStateStatus" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent 'pending-only `UNSTABLE` / `BLOCKED`' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "--match-head-commit <headRefOid>" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'latest `headRefOid` and `statusCheckRollup`' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent '.codex/rules` and `.claude/settings.json` remain command/permission gates' "docs/ai-integration.md"
@@ -797,6 +800,7 @@ $cursorBaselineSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-curso
 Assert-ContainsText $cursorBaselineSkillText "Cursor global instructions" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "workspace override" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "official GitHub Flow" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 $cursorAgentIntegrationSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -804,6 +808,7 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Direct default-branch pushes are forbidden" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "HeaderFilterRegex" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "NN warnings generated." ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -13150,6 +13155,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "auto-merge registration" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "official GitHub Flow" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Direct default-branch pushes are forbidden" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "mergeStateStatus" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "--match-head-commit <headRefOid>" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Hosted PR failure hardening" $agentIntegrationSkill
