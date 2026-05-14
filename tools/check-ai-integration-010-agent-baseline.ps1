@@ -50,6 +50,7 @@ if ($agentsContent -notmatch "docs/README\.md" -or $agentsContent -notmatch "doc
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "fast-forwards it" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" "AGENTS.md"
 Assert-ContainsText $agentsContent "normalized-configure-environment" "AGENTS.md"
@@ -138,9 +139,11 @@ Assert-ContainsText $workflowsContent "--match-head-commit <headRefOid>" "docs/w
 Assert-ContainsText $workflowsContent "mergeStateStatus" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "pending required checks or reviews" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "docs/workflows.md"
-Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "git fetch --prune <remote>" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "post-merge worktree cleanup" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "fast-forwards the local checkout" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "do not stash, merge into an active feature branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Hosted PR Check Failure Triage" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Hosted PR Check Selection" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "always-running required gate" "docs/workflows.md"
@@ -254,6 +257,7 @@ Assert-ContainsText $aiIntegrationContent "approval-capable session" "docs/ai-in
 Assert-ContainsText $aiIntegrationContent "Codex app Worktree/Handoff" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "local checkout sync plus cleanup" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'worktree.baseRef = "head"' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Cursor global instructions" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "OpenAI developer docs MCP" "docs/ai-integration.md"
@@ -370,7 +374,7 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("prepareWorktree")
 }
 if (-not $manifest.commands.PSObject.Properties.Name.Contains("removeMergedWorktree")) {
     Write-Error "engine/agent/manifest.json commands missing required command: removeMergedWorktree"
-} elseif ($manifest.commands.removeMergedWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-DeleteLocalBranch]") {
+} elseif ($manifest.commands.removeMergedWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch]") {
     Write-Error "engine/agent/manifest.json commands.removeMergedWorktree must expose the guarded post-merge worktree cleanup command"
 }
 $composeAgentManifestCmd = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 [-Write|-Verify|-SplitFromCanonical]"

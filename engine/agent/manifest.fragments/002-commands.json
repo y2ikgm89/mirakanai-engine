@@ -2,7 +2,7 @@
   "commands": {
     "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
     "prepareWorktree": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1",
-    "removeMergedWorktree": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-DeleteLocalBranch]",
+    "removeMergedWorktree": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch]",
     "toolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1",
     "directToolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake",
     "bootstrapDeps": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1",

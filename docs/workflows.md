@@ -216,15 +216,13 @@ gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>
 
 Run the merge command from the task branch whose PR was preflighted. Use `--delete-branch` only for a task-owned head branch that is no longer needed. GitHub auto-merge must be enabled for the repository and PR; if `gh` reports auto-merge is unavailable, if branch protection or required checks are absent in a way that would merge pending/failing work immediately, or if the PR state is ambiguous, stop and report the blocker. Immediate merge commands such as `gh pr merge --merge --delete-branch`, `--squash`, `--rebase`, or `--admin` are not part of the unattended agent path and remain prompt-gated unless the user explicitly requests them in an approval-capable session with fresh passing evidence.
 
-9. After GitHub deletes a merged head branch, prune stale remote-tracking refs when useful, then run guarded post-merge worktree cleanup for task-owned linked worktrees that are no longer needed:
+9. After GitHub deletes a merged head branch, run guarded post-merge worktree cleanup for task-owned linked worktrees that are no longer needed. The cleanup command fetches and prunes the remote, fast-forwards the local checkout on the base branch, then removes the merged worktree:
 
 ```powershell
-git fetch --prune origin
-git branch -vv
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> -BaseRef origin/main -DeleteLocalBranch
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> -BaseRef origin/main -BaseBranch main -Remote origin -DeleteLocalBranch
 ```
 
-`git fetch --prune origin` removes deleted `origin/<branch>` tracking refs; it does not delete local branches. `tools/remove-merged-worktree.ps1` is the automatic cleanup path for merged work under `.worktrees/` or `.claude/worktrees/`: it refuses the current/default worktree, locked or detached worktrees, dirty status, unknown worktree records, and branches not proven merged into `-BaseRef`. Run it from Local or another non-target checkout; if the PR was squash/rebase-merged or the base ref is stale, stop and report the blocker instead of forcing deletion.
+`tools/remove-merged-worktree.ps1` is the automatic cleanup path for merged work under `.worktrees/` or `.claude/worktrees/`: it runs `git fetch --prune <remote>`, requires the local checkout to be from the same repository, clean, attached to `-BaseBranch`, and fast-forwardable to `-BaseRef`, then refuses the current/default worktree, locked or detached worktrees, dirty status, unknown worktree records, and branches not proven merged into `-BaseRef`. If the local checkout is dirty, on another feature branch, detached, or diverged, stop and report the blocker; do not stash, merge into an active feature branch, force-delete, or copy files by hand.
 
 ### Hosted PR Check Failure Triage
 
@@ -283,7 +281,7 @@ Use subagents only when the user explicitly asks for subagent delegation or para
 - Prefer native product worktree support before manual Git commands: Codex app Worktree/Handoff for Codex threads, and Claude Code `--worktree` or subagent `isolation: worktree` for Claude sessions that need file isolation.
 - Use worktrees for parallel write-capable sessions so Local stays the foreground checkout. Keep immediate blocking work local, split parallel work by file ownership, and avoid two agents editing the same file.
 - `.worktrees/` and `.claude/worktrees/` are ignored repository-local worktree roots. After entering a manual linked worktree, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1`; it verifies required ignore rules and links an existing local `external/vcpkg` checkout so preset configure does not download dependencies or duplicate the Microsoft vcpkg clone. Do not copy secrets into tracked files; use `.worktreeinclude` only for gitignored local files that an operator intentionally wants copied into new Claude worktrees.
-- Manual fallback is `git worktree list`, `git worktree add <path> -b <branch> [<base>]`, `git worktree remove <path>`, and `git worktree prune`. Treat raw remove/prune/repair as cleanup operations that require status inspection; do not delete worktree directories with `Remove-Item`. For merged task work, prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-DeleteLocalBranch]` so the branch merge, clean status, and standard worktree-root checks run before deletion.
+- Manual fallback is `git worktree list`, `git worktree add <path> -b <branch> [<base>]`, `git worktree remove <path>`, and `git worktree prune`. Treat raw remove/prune/repair as cleanup operations that require status inspection; do not delete worktree directories with `Remove-Item`. For merged task work, prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch]` so fetch/prune, local checkout fast-forward, branch merge, clean status, and standard worktree-root checks run before deletion.
 
 ## Agent Surface Governance
 
@@ -305,7 +303,7 @@ Run these periodically—especially before merge or after touching agent surface
 3. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` after manifest, schema, game agent JSON, shared skill content, or **new Needles** enforced there change (including retained editor UI ids, manifest slices, editor-shell literals, or other strings added to a `check-ai-integration-*` chapter). Durable changes to `engine/agent/manifest.json` must go through `engine/agent/manifest.fragments/` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; `tools/check-json-contracts.ps1` enforces semantic parity via `compose-agent-manifest.ps1 -Verify`.
 4. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` after editing public headers or backend interop.
 5. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at coherent slice boundaries (full gate including build and tests when the host can run them).
-6. After documenting or automating **worktree setup or cleanup**, keep guidance aligned with `AGENTS.md`: **`external/vcpkg` is a required vcpkg tool checkout** (preset toolchain path)—do not treat it like `out/` or `vcpkg_installed/` when reclaiming disk space. Use `tools/prepare-worktree.ps1` for linked-worktree setup and `tools/remove-merged-worktree.ps1` for guarded post-merge worktree cleanup; keep raw `git worktree remove` / `git worktree prune` prompt-gated.
+6. After documenting or automating **worktree setup or cleanup**, keep guidance aligned with `AGENTS.md`: **`external/vcpkg` is a required vcpkg tool checkout** (preset toolchain path)—do not treat it like `out/` or `vcpkg_installed/` when reclaiming disk space. Use `tools/prepare-worktree.ps1` for linked-worktree setup and `tools/remove-merged-worktree.ps1` for guarded post-merge local checkout sync plus worktree cleanup; keep raw `git worktree remove` / `git worktree prune` prompt-gated.
 
 This checklist does not replace subsystem-specific validation (packaging, mobile, shaders); combine it with **Default Implementation Flow** above.
 

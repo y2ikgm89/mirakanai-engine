@@ -1279,7 +1279,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Direct default-branch pushes are forbidden" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "mergeStateStatus" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "--match-head-commit <headRefOid>" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText '--match-head-commit <headRefOid>' $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Hosted PR failure hardening" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "CI check selection changes" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "path-filtered required checks" $agentIntegrationSkill
@@ -1292,6 +1292,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "not troubleshooting playbooks" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "post-merge remote-tracking cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "post-merge worktree cleanup" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "local checkout fast-forward" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "credential-manager-core" $agentIntegrationSkill
@@ -1402,6 +1403,7 @@ Assert-ContainsText $aiAgentRuleText "Codex app Worktree/Handoff" ".claude/rules
 Assert-ContainsText $aiAgentRuleText "isolation: worktree" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText 'fast-forward it to `-BaseRef`' ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.local.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integration.md"
@@ -1416,7 +1418,7 @@ Assert-ContainsText $aiAgentRuleText "lightweight static validation" ".claude/ru
 Assert-ContainsText $aiAgentRuleText "OpenAI developer documentation MCP" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "official Anthropic docs" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "mergeStateStatus" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "--match-head-commit <headRefOid>" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText '--match-head-commit <headRefOid>' ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "final completion report must not stop after local validation" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Rules/permissions stay narrow command gates" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "hosted PR check failure" ".claude/rules/ai-agent-integration.md"

@@ -60,10 +60,10 @@ prefix_rule(
 prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/remove-merged-worktree.ps1"],
     decision = "allow",
-    justification = "Guarded post-merge cleanup is allowed because the repository script verifies a standard ignored worktree root, clean status, and branch ancestry before invoking Git worktree removal.",
+    justification = "Guarded post-merge cleanup is allowed because the repository script fetches/prunes, fast-forwards a clean base checkout, and verifies standard ignored worktree root, clean status, and branch ancestry before invoking Git worktree removal.",
     match = [
-        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .worktrees/codex/example -BaseRef origin/main -DeleteLocalBranch",
-        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .claude/worktrees/example -BaseRef origin/main",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .worktrees/codex/example -BaseRef origin/main -BaseBranch main -Remote origin -DeleteLocalBranch",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .claude/worktrees/example -BaseRef origin/main -BaseBranch main -LocalCheckoutPath .",
     ],
     not_match = [
         "git worktree remove .worktrees/codex/example",
