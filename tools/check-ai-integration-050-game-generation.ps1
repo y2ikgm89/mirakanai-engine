@@ -1479,6 +1479,13 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         Needles = @(
             ".github/workflows/validate.yml",
             ".github/workflows/ios-validate.yml",
+            "tools/classify-pr-validation-tier.ps1",
+            "Assert-ValidationTierSelection",
+            "docs-only PR",
+            "static policy PR",
+            "runtime PR",
+            "workflow PR",
+            "non-PR run",
             "tools/evaluate-cpp23.ps1",
             "Assert-ReleasePackageArtifacts",
             "cpp23-release-preset-eval",
@@ -1495,7 +1502,20 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         Path = "engine/agent/manifest.json"
         Needles = @(
             "ciMatrixCheck",
-            "tools/check-ci-matrix.ps1"
+            "tools/check-ci-matrix.ps1",
+            "classifyPrValidationTier",
+            "tools/classify-pr-validation-tier.ps1"
+        )
+    },
+    @{
+        Path = "tools/classify-pr-validation-tier.ps1"
+        Needles = @(
+            "Test-CiWorkflowPath",
+            "Test-RuntimeOrBuildPath",
+            "Test-StaticPolicyPath",
+            "tools/classify-pr-validation-tier.ps1",
+            "tools/check-tidy.ps1",
+            "GitHubOutputPath"
         )
     },
     @{
@@ -1508,7 +1528,8 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         Path = ".github/workflows/validate.yml"
         Needles = @(
             "Select PR validation tier",
-            "Docs/agent/rules/subagent-only changes leave heavy hosted lanes disabled",
+            "tools/classify-pr-validation-tier.ps1 -RunAll -GitHubOutputPath",
+            "tools/classify-pr-validation-tier.ps1 -ChangedPath",
             "needs.changes.outputs.windows",
             "PR Gate",
             "toJson(needs)",
@@ -1583,6 +1604,7 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         Needles = @(
             "CI Matrix Contract Check v1",
             "Full Repository Static Analysis CI Contract v1",
+            "tools/classify-pr-validation-tier.ps1",
             "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1",
             "without executing CI locally"
         )
@@ -1592,6 +1614,7 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         Needles = @(
             "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1",
             "PR validation tier selector",
+            "tools/classify-pr-validation-tier.ps1",
             "PR aggregate gate",
             "Windows/Linux/sanitizer/static-analysis/macOS/iOS",
             "static-analysis",
@@ -1612,11 +1635,13 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         Path = "engine/agent/manifest.json"
         Needles = @(
             "ciMatrixCheck",
+            "classifyPrValidationTier",
             "CI Matrix Contract Check v1",
             # manifest.json is emitted with ASCII escapes for '+' (e.g. language C\u002B\u002B23).
             "C\u002B\u002B23 Release Package Artifact CI Evidence v1",
             "Full Repository Static Analysis CI Contract v1",
             "Assert-ReleasePackageArtifacts",
+            "tools/classify-pr-validation-tier.ps1",
             "tools/check-ci-matrix.ps1",
             "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1",
             "Windows/Linux/sanitizer/macOS/iOS",

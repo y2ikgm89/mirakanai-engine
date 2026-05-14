@@ -220,9 +220,12 @@ foreach ($needle in @(
         Write-Error "engine manifest gameCodeGuidance.currentEditorContentBrowserImportDiagnostics missing: $needle"
     }
 }
-Assert-Properties $engine.commands @("validate", "toolchainCheck", "directToolchainCheck", "bootstrapDeps", "build", "buildGui", "buildAssetImporters", "test", "dependencyCheck", "cppStandardCheck", "evaluateCpp23", "shaderToolchainCheck", "agentContext", "agentCheck", "newGame", "ciMatrixCheck") "engine manifest commands"
+Assert-Properties $engine.commands @("validate", "toolchainCheck", "directToolchainCheck", "bootstrapDeps", "build", "buildGui", "buildAssetImporters", "test", "dependencyCheck", "cppStandardCheck", "evaluateCpp23", "shaderToolchainCheck", "agentContext", "agentCheck", "newGame", "ciMatrixCheck", "classifyPrValidationTier") "engine manifest commands"
 if ($engine.commands.ciMatrixCheck -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1") {
     Write-Error "engine manifest commands.ciMatrixCheck must expose pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1"
+}
+if ($engine.commands.classifyPrValidationTier -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/classify-pr-validation-tier.ps1 -ChangedPath <repo-relative-path>") {
+    Write-Error "engine manifest commands.classifyPrValidationTier must expose pwsh -NoProfile -ExecutionPolicy Bypass -File tools/classify-pr-validation-tier.ps1 -ChangedPath <repo-relative-path>"
 }
 if (-not $engine.commands.newGame.Contains("DesktopRuntime2DPackage")) {
     Write-Error "engine manifest commands.newGame must expose DesktopRuntime2DPackage"

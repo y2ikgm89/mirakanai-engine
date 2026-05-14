@@ -512,6 +512,7 @@ if (-not $testingContent.Contains("pwsh -NoProfile -ExecutionPolicy Bypass -File
 }
 
 $ciMatrixCheckText = Get-Content -LiteralPath (Join-Path $root "tools/check-ci-matrix.ps1") -Raw
+$classifierScriptText = Get-Content -LiteralPath (Join-Path $root "tools/classify-pr-validation-tier.ps1") -Raw
 $validateWorkflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw
 $validateScriptText = Get-Content -LiteralPath (Join-Path $root "tools/validate.ps1") -Raw
 $commonScriptText = Get-Content -LiteralPath (Join-Path $root "tools/common.ps1") -Raw
@@ -577,6 +578,13 @@ foreach ($forbiddenNeedle in @(
 foreach ($needle in @(
     ".github/workflows/validate.yml",
     ".github/workflows/ios-validate.yml",
+    "tools/classify-pr-validation-tier.ps1",
+    "Assert-ValidationTierSelection",
+    "docs-only PR",
+    "static policy PR",
+    "runtime PR",
+    "workflow PR",
+    "non-PR run",
     "windows-packages",
     "linux-coverage",
     "linux-sanitizer-test-logs",
@@ -588,6 +596,18 @@ foreach ($needle in @(
 )) {
     if (-not $ciMatrixCheckText.Contains($needle)) {
         Write-Error "tools/check-ci-matrix.ps1 missing required CI matrix contract text: $needle"
+    }
+}
+foreach ($needle in @(
+    "Test-CiWorkflowPath",
+    "Test-RuntimeOrBuildPath",
+    "Test-StaticPolicyPath",
+    "tools/classify-pr-validation-tier.ps1",
+    "tools/check-tidy.ps1",
+    "GitHubOutputPath"
+)) {
+    if (-not $classifierScriptText.Contains($needle)) {
+        Write-Error "tools/classify-pr-validation-tier.ps1 missing required PR validation tier classifier text: $needle"
     }
 }
 foreach ($needle in @(

@@ -96,6 +96,8 @@ git status --short --branch
 
 This setting belongs in `.git/config` and must not be committed. It removes the sandbox-only warning without loosening host permissions, changing global Git state, or adding machine-specific paths to shared ignore rules.
 
+**Line endings:** the repository root `.gitattributes` declares `* text=auto eol=lf` for Git-detected text (see `gitattributes(5)` and GitHub's line-ending guidance). Treat that file as the repository contract; prefer `core.autocrlf` unset or `false` for clones of this tree so local diagnostics and untracked-file behavior stay aligned with the same LF policy. Root `.editorconfig` keeps editors aligned with that contract.
+
 If Git author identity is missing on a local workspace, set it locally unless the user asks for a global identity:
 
 ```powershell
@@ -169,7 +171,7 @@ For documentation-only or other narrow non-runtime slices, use the narrower tier
 
 Use an always-running required gate for branch protection. Path-filtered workflows must not be branch-protection-required directly because GitHub can leave skipped checks pending; if hosted cost needs reduction, keep heavy jobs conditional behind a required aggregate gate or use non-required supplemental workflows.
 
-The `Validate` workflow implements this with `changes` (`Select PR validation tier`) and `pr-gate` (`PR Gate`). `changes` always runs and sets heavy-lane outputs from the PR file diff; `pr-gate` always runs after the matrix and is the stable aggregate check intended for branch protection.
+The `Validate` workflow implements this with `changes` (`Select PR validation tier`) and `pr-gate` (`PR Gate`). `changes` always runs and delegates PR file-diff classification to `tools/classify-pr-validation-tier.ps1`; `tools/check-ci-matrix.ps1` verifies docs-only, static-policy, runtime, workflow, and non-PR classifications. `pr-gate` always runs after the matrix and is the stable aggregate check intended for branch protection.
 
 Run the full hosted matrix for `main` push, release, scheduled/nightly, and `workflow_dispatch` runs. For PRs, choose the cheapest tier that proves the touched surface:
 
@@ -354,6 +356,4 @@ Android Release Device Matrix v1 current evidence uses `sample_headless` on the 
 Apple package attempts use `tools/build-mobile-apple.ps1` and the `platform/ios` CMake/Xcode bundle template. The template packages `games/<game_name>/game.agent.json` into bundle resources, creates a Metal-backed UIKit view, maps Application Support/Caches/Documents into first-party save/cache/shared storage roots, supports `-Platform Simulator|Device`, disables simulator signing when no team is supplied, and accepts `MK_IOS_BUNDLE_IDENTIFIER`, `MK_IOS_DEVELOPMENT_TEAM`, and `MK_IOS_CODE_SIGN_IDENTITY` or the matching script parameters for Xcode signing. The Apple package script configures the package tree with `BUILD_TESTING=OFF` and builds only the `MirakanaiIOS` bundle target, keeping iOS smoke focused on the app package instead of Xcode `ALL_BUILD` unit-test targets. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug` builds the Simulator bundle, selects an available iPhone Simulator, boots it when needed, installs the app, verifies the app container, launches the bundle, terminates it, and shuts down only the simulator booted by the script. These scripts validate `games/<game_name>/game.agent.json` before building.
 
 Apple Metal iOS Host Evidence v1 current Windows evidence is host-gated: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1` reports `host=windows`, `xcode=blocked`, `ios-simulator=blocked`, `metal-library=blocked`, missing `xcodebuild`, missing `xcrun`, missing iOS SDK/runtime access, missing `metal`, missing `metallib`, and present iOS Simulator/macOS Metal workflow coverage. Run `tools/check-apple-host-evidence.ps1 -RequireReady` only on a macOS/full-Xcode host when the task requires hard Apple-ready evidence.
-
-
 
