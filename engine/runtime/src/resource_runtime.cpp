@@ -54,6 +54,35 @@ resident_packages_from_mount_set(const RuntimeResidentPackageMountSetV2& mount_s
     return packages;
 }
 
+[[nodiscard]] bool contains_mount_id(const std::vector<RuntimeResidentPackageMountIdV2>& ids,
+                                     RuntimeResidentPackageMountIdV2 id) noexcept {
+    for (const auto candidate : ids) {
+        if (candidate == id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool has_mount_id(const RuntimeResidentPackageMountSetV2& mount_set,
+                                RuntimeResidentPackageMountIdV2 id) noexcept {
+    for (const auto& mounted : mount_set.mounts()) {
+        if (mounted.id == id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void add_eviction_diagnostic(RuntimeResidentPackageEvictionPlanResultV2& result, RuntimeResidentPackageMountIdV2 mount,
+                             std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimeResidentPackageEvictionPlanDiagnosticV2{
+        .mount = mount,
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
 } // namespace
 
 const std::vector<RuntimeResourceRecordV2>& RuntimeResourceCatalogV2::records() const noexcept {
@@ -326,6 +355,86 @@ commit_runtime_resident_package_unmount_v2(RuntimeResidentPackageMountSetV2& mou
     result.status = RuntimeResidentPackageUnmountCommitStatusV2::unmounted;
     result.mount_generation = mount_set.generation();
     result.mounted_package_count = mount_set.mounts().size();
+    return result;
+}
+
+bool RuntimeResidentPackageEvictionPlanResultV2::succeeded() const noexcept {
+    return status == RuntimeResidentPackageEvictionPlanStatusV2::no_eviction_required ||
+           status == RuntimeResidentPackageEvictionPlanStatusV2::planned;
+}
+
+RuntimeResidentPackageEvictionPlanResultV2
+plan_runtime_resident_package_evictions_v2(const RuntimeResidentPackageMountSetV2& mount_set,
+                                           const RuntimeResidentPackageEvictionPlanDescV2& desc) {
+    RuntimeResidentPackageEvictionPlanResultV2 result;
+    result.mount_generation = mount_set.generation();
+    result.previous_mount_count = mount_set.mounts().size();
+    result.projected_mount_count = result.previous_mount_count;
+
+    RuntimeResidentCatalogCacheV2 current_cache;
+    result.current_refresh = current_cache.refresh(mount_set, desc.overlay, desc.target_budget);
+    result.projected_refresh = result.current_refresh;
+    if (result.current_refresh.succeeded()) {
+        result.status = RuntimeResidentPackageEvictionPlanStatusV2::no_eviction_required;
+        return result;
+    }
+    if (result.current_refresh.status == RuntimeResidentCatalogCacheStatusV2::catalog_build_failed) {
+        result.status = RuntimeResidentPackageEvictionPlanStatusV2::catalog_build_failed;
+        return result;
+    }
+
+    std::vector<RuntimeResidentPackageMountIdV2> seen_candidates;
+    seen_candidates.reserve(desc.candidate_unmount_order.size());
+    for (const auto candidate : desc.candidate_unmount_order) {
+        if (candidate.value == 0) {
+            result.status = RuntimeResidentPackageEvictionPlanStatusV2::invalid_candidate_mount_id;
+            add_eviction_diagnostic(result, candidate, "invalid-candidate-mount-id",
+                                    "resident eviction candidate mount ids must be non-zero");
+            return result;
+        }
+        if (contains_mount_id(seen_candidates, candidate)) {
+            result.status = RuntimeResidentPackageEvictionPlanStatusV2::duplicate_candidate_mount_id;
+            add_eviction_diagnostic(result, candidate, "duplicate-candidate-mount-id",
+                                    "resident eviction candidate mount id appears more than once");
+            return result;
+        }
+        if (contains_mount_id(desc.protected_mount_ids, candidate)) {
+            result.status = RuntimeResidentPackageEvictionPlanStatusV2::protected_candidate_mount_id;
+            add_eviction_diagnostic(result, candidate, "protected-candidate-mount-id",
+                                    "resident eviction candidate mount id is protected");
+            return result;
+        }
+        if (!has_mount_id(mount_set, candidate)) {
+            result.status = RuntimeResidentPackageEvictionPlanStatusV2::missing_candidate_mount_id;
+            add_eviction_diagnostic(result, candidate, "missing-candidate-mount-id",
+                                    "resident eviction candidate mount id is not mounted");
+            return result;
+        }
+        seen_candidates.push_back(candidate);
+    }
+
+    RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set;
+    RuntimeResidentCatalogCacheV2 projected_cache;
+    for (const auto candidate : desc.candidate_unmount_order) {
+        RuntimeResidentPackageEvictionPlanStepV2 step;
+        step.mount_id = candidate;
+        step.unmount = projected_mount_set.unmount(candidate);
+        step.catalog_refresh = projected_cache.refresh(projected_mount_set, desc.overlay, desc.target_budget);
+        result.projected_refresh = step.catalog_refresh;
+        result.projected_mount_count = projected_mount_set.mounts().size();
+        result.steps.push_back(std::move(step));
+
+        if (result.projected_refresh.succeeded()) {
+            result.status = RuntimeResidentPackageEvictionPlanStatusV2::planned;
+            return result;
+        }
+        if (result.projected_refresh.status == RuntimeResidentCatalogCacheStatusV2::catalog_build_failed) {
+            result.status = RuntimeResidentPackageEvictionPlanStatusV2::catalog_build_failed;
+            return result;
+        }
+    }
+
+    result.status = RuntimeResidentPackageEvictionPlanStatusV2::budget_unreachable;
     return result;
 }
 
