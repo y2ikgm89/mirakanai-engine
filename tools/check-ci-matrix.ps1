@@ -30,6 +30,30 @@ function Assert-ContainsText {
     }
 }
 
+function Assert-DoesNotContainText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Needle,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    if ($Text.Contains($Needle)) {
+        Write-Error "ci-matrix-check: $Label contains forbidden text: $Needle"
+    }
+}
+
+function Assert-DoesNotContainAny {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string[]]$Needles,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    foreach ($needle in $Needles) {
+        Assert-DoesNotContainText -Text $Text -Needle $needle -Label $Label
+    }
+}
+
 function Assert-ContainsAll {
     param(
         [Parameter(Mandatory = $true)][string]$Text,
@@ -86,6 +110,13 @@ if ($cpp23CpackCallIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt 0 -or $cpp23Art
 }
 
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
+Assert-DoesNotContainAny $validateWorkflow @(
+    "actions/checkout@v4",
+    "actions/upload-artifact@v4",
+    "runs-on: windows-latest",
+    "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24",
+    "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION"
+) ".github/workflows/validate.yml Node 24 and VS2026 CI contract"
 Assert-ContainsAll $validateWorkflow @(
     "name: Validate",
     "push:",
@@ -103,14 +134,14 @@ Assert-ContainsAll $validateWorkflow @(
 $windowsJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $windowsJob @(
     "name: Windows MSVC",
-    "runs-on: windows-latest",
-    "actions/checkout@v4",
+    "runs-on: windows-2025-vs2026",
+    "actions/checkout@v6",
     "git clone --filter=blob:none https://github.com/microsoft/vcpkg.git external/vcpkg",
     "git -C external/vcpkg checkout `$manifest.'builtin-baseline'",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1",
     "run: ./tools/evaluate-cpp23.ps1 -Release",
-    "actions/upload-artifact@v4",
+    "actions/upload-artifact@v7",
     "name: windows-test-logs",
     "out/build/dev/Testing/**/*.log",
     "out/build/cpp23-eval/Testing/**/*.log",
@@ -125,11 +156,13 @@ $linuxJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux"
 Assert-ContainsAll $linuxJob @(
     "name: Linux CMake",
     "runs-on: ubuntu-latest",
+    "actions/checkout@v6",
     "sudo apt-get update && sudo apt-get install -y clang g++ lcov ninja-build",
     "cmake --preset ci-linux-clang",
     "cmake --build --preset ci-linux-clang",
     "ctest --preset ci-linux-clang --output-on-failure",
     "./tools/check-coverage.ps1 -Strict",
+    "actions/upload-artifact@v7",
     "name: linux-test-logs",
     "out/build/ci-linux-clang/Testing/**/*.log",
     "out/build/coverage/Testing/**/*.log",
@@ -142,11 +175,13 @@ $sanitizerJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "li
 Assert-ContainsAll $sanitizerJob @(
     "name: Linux Clang ASan/UBSan",
     "runs-on: ubuntu-latest",
+    "actions/checkout@v6",
     "sudo apt-get update && sudo apt-get install -y clang ninja-build",
     "cmake --preset clang-asan-ubsan",
     "cmake --build --preset clang-asan-ubsan",
     "UBSAN_OPTIONS: print_stacktrace=1",
     "ctest --preset clang-asan-ubsan --output-on-failure",
+    "actions/upload-artifact@v7",
     "name: linux-sanitizer-test-logs",
     "out/build/clang-asan-ubsan/Testing/**/*.log",
     "if-no-files-found: warn"
@@ -156,10 +191,12 @@ $macosJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "macos"
 Assert-ContainsAll $macosJob @(
     "name: macOS Metal CMake",
     "runs-on: macos-latest",
+    "actions/checkout@v6",
     "brew install ninja",
     "cmake --preset ci-macos-appleclang",
     "cmake --build --preset ci-macos-appleclang",
     "ctest --preset ci-macos-appleclang --output-on-failure",
+    "actions/upload-artifact@v7",
     "name: macos-test-logs",
     "out/build/ci-macos-appleclang/Testing/**/*.log",
     "if-no-files-found: warn"
@@ -169,11 +206,11 @@ $staticAnalysisJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobNam
 Assert-ContainsAll $staticAnalysisJob @(
     "name: Full Repository Static Analysis",
     "runs-on: ubuntu-latest",
-    "actions/checkout@v4",
+    "actions/checkout@v6",
     "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
     "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
     "-Jobs 0",
-    "actions/upload-artifact@v4",
+    "actions/upload-artifact@v7",
     "name: static-analysis-tidy-logs",
     "out/build/ci-linux-tidy/compile_commands.json",
     "out/build/ci-linux-tidy/.cmake/api/v1/reply/*.json",
@@ -181,6 +218,12 @@ Assert-ContainsAll $staticAnalysisJob @(
 ) ".github/workflows/validate.yml static-analysis job"
 
 $iosWorkflow = Read-RequiredText ".github/workflows/ios-validate.yml"
+Assert-DoesNotContainAny $iosWorkflow @(
+    "actions/checkout@v4",
+    "actions/upload-artifact@v4",
+    "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24",
+    "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION"
+) ".github/workflows/ios-validate.yml Node 24 CI contract"
 Assert-ContainsAll $iosWorkflow @(
     "name: iOS Validate",
     "workflow_dispatch:",
@@ -206,13 +249,14 @@ Assert-ContainsAll $iosJob @(
     "name: iOS Simulator smoke",
     "runs-on: macos-26",
     "timeout-minutes: 30",
+    "actions/checkout@v6",
     "xcodebuild -version",
     "xcode-select -p",
     "xcrun --sdk iphonesimulator --show-sdk-path",
     "xcrun simctl list runtimes",
     "./tools/check-mobile-packaging.ps1 -RequireApple",
     "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2",
-    "actions/upload-artifact@v4",
+    "actions/upload-artifact@v7",
     "name: ios-simulator-build",
     "out/build/ios-Simulator-sample_headless-Debug/**/*.app",
     "out/build/ios-Simulator-sample_headless-Debug/**/*.log",

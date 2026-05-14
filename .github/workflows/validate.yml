@@ -17,10 +17,10 @@ concurrency:
 jobs:
   windows:
     name: Windows MSVC
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Clone vcpkg tool checkout
         shell: pwsh
@@ -43,7 +43,7 @@ jobs:
 
       - name: Upload Windows test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-test-logs
           path: |
@@ -54,7 +54,7 @@ jobs:
 
       - name: Upload Windows packages
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-packages
           path: |
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install build and coverage tools
         run: sudo apt-get update && sudo apt-get install -y clang g++ lcov ninja-build
@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload Linux test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-test-logs
           path: |
@@ -97,7 +97,7 @@ jobs:
 
       - name: Upload Linux coverage output
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-coverage
           path: |
@@ -110,7 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install build tools
         run: sudo apt-get update && sudo apt-get install -y clang ninja-build
@@ -128,7 +128,7 @@ jobs:
 
       - name: Upload sanitizer test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-sanitizer-test-logs
           path: out/build/clang-asan-ubsan/Testing/**/*.log
@@ -139,7 +139,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install static analysis tools
         run: sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build
@@ -150,7 +150,7 @@ jobs:
 
       - name: Upload static analysis logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: static-analysis-tidy-logs
           path: |
@@ -163,7 +163,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install build tools
         run: brew install ninja
@@ -179,7 +179,7 @@ jobs:
 
       - name: Upload macOS test logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-test-logs
           path: out/build/ci-macos-appleclang/Testing/**/*.log
