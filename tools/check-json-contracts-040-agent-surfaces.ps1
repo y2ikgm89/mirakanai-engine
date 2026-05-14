@@ -44,6 +44,8 @@ foreach ($check in @(
             "Resident package streaming mount commit",
             "Resident package streaming replace commit",
             "execute_selected_runtime_package_streaming_resident_replace_safe_point",
+            "Runtime Package Streaming Resident Unmount v1",
+            "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
             "disk/VFS mount discovery"
@@ -54,9 +56,11 @@ foreach ($check in @(
         Needles = @(
             "Runtime Resource Resident Package Replacement Commit v1 coverage",
             "Runtime Package Streaming Resident Replace v1 coverage",
+            "Runtime Package Streaming Resident Unmount v1 coverage",
             "MK_runtime_resource_resident_replace_tests",
             "MK_runtime_package_streaming_resident_mount_tests",
-            "commit_runtime_resident_package_replace_v2"
+            "commit_runtime_resident_package_replace_v2",
+            "execute_selected_runtime_package_streaming_resident_unmount_safe_point"
         )
     },
     @{
@@ -81,11 +85,14 @@ foreach ($check in @(
         Needles = @(
             "resident_mount_failed",
             "resident_replace_failed",
+            "resident_unmount_failed",
             "resident_catalog_refresh_failed",
             "RuntimeResidentCatalogCacheV2& catalog_cache",
             "RuntimeResidentPackageMountIdV2 mount_id",
             "RuntimeResidentPackageReplaceCommitResultV2 resident_replace",
+            "RuntimeResidentPackageUnmountCommitResultV2 resident_unmount",
             "execute_selected_runtime_package_streaming_resident_replace_safe_point",
+            "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
             "resident_catalog_refresh"
         )
     },
@@ -96,7 +103,10 @@ foreach ($check in @(
             "evaluate_projected_resident_budget",
             "validate_loaded_package_catalog_before_mount",
             "validate_resident_replace_mount_id",
+            "validate_projected_resident_catalog_hints",
             "commit_runtime_resident_package_replace_v2",
+            "commit_runtime_resident_package_unmount_v2",
+            "resident_unmount_failed",
             "resident_catalog_refresh_failed",
             "mount_set.unmount(mount_id)"
         )
@@ -111,7 +121,10 @@ foreach ($check in @(
             "runtime package streaming resident replace commit replaces mounted package and refreshes resident catalog",
             "runtime package streaming resident replace commit rejects invalid and missing ids before mutation",
             "runtime package streaming resident replace commit preserves state on candidate catalog failure",
-            "runtime package streaming resident replace commit preserves state on projected budget failure"
+            "runtime package streaming resident replace commit preserves state on projected budget failure",
+            "runtime package streaming resident unmount commit removes mounted package and refreshes resident catalog",
+            "runtime package streaming resident unmount commit rejects invalid and missing ids before mutation",
+            "runtime package streaming resident unmount commit preserves state on projected residency hint failure"
         )
     }
 )) {
