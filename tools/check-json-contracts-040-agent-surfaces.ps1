@@ -19,13 +19,22 @@ foreach ($check in @(
             "commit_runtime_resident_package_replace_v2",
             "RuntimeResidentPackageUnmountCommitStatusV2",
             "RuntimeResidentPackageUnmountCommitResultV2",
-            "commit_runtime_resident_package_unmount_v2"
+            "commit_runtime_resident_package_unmount_v2",
+            "RuntimeResidentPackageEvictionPlanStatusV2",
+            "RuntimeResidentPackageEvictionPlanDescV2",
+            "RuntimeResidentPackageEvictionPlanResultV2",
+            "plan_runtime_resident_package_evictions_v2"
         )
     },
     @{
         Path = "engine/runtime/src/resource_runtime.cpp"
         Needles = @(
             "RuntimeResidentPackageReplaceCommitResultV2::succeeded",
+            "RuntimeResidentPackageEvictionPlanResultV2::succeeded",
+            "contains_mount_id",
+            "protected-candidate-mount-id",
+            "budget_unreachable",
+            "projected_mount_set.unmount",
             "RuntimeResidentPackageMountSetReplaceAccessV2",
             "invoked_candidate_catalog_build",
             "RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set",
@@ -46,6 +55,8 @@ foreach ($check in @(
             "execute_selected_runtime_package_streaming_resident_replace_safe_point",
             "Runtime Package Streaming Resident Unmount v1",
             "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
+            "Resident package eviction plan",
+            "plan_runtime_resident_package_evictions_v2",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
             "disk/VFS mount discovery"
@@ -57,10 +68,22 @@ foreach ($check in @(
             "Runtime Resource Resident Package Replacement Commit v1 coverage",
             "Runtime Package Streaming Resident Replace v1 coverage",
             "Runtime Package Streaming Resident Unmount v1 coverage",
+            "Runtime Resident Package Eviction Plan v1 coverage",
             "MK_runtime_resource_resident_replace_tests",
             "MK_runtime_package_streaming_resident_mount_tests",
             "commit_runtime_resident_package_replace_v2",
-            "execute_selected_runtime_package_streaming_resident_unmount_safe_point"
+            "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
+            "plan_runtime_resident_package_evictions_v2"
+        )
+    },
+    @{
+        Path = "tests/unit/runtime_resource_resident_unmount_tests.cpp"
+        Needles = @(
+            "runtime resident package eviction plan is no op when current view is within budget",
+            "runtime resident package eviction plan returns reviewed candidate order until budget passes",
+            "runtime resident package eviction plan rejects protected candidates before partial planning",
+            "runtime resident package eviction plan rejects duplicate and missing candidates before partial planning",
+            "runtime resident package eviction plan reports unreachable budget without mutating mounts"
         )
     },
     @{

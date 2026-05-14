@@ -248,6 +248,56 @@ commit_runtime_resident_package_unmount_v2(RuntimeResidentPackageMountSetV2& mou
                                            RuntimeResidentPackageMountIdV2 id, RuntimePackageMountOverlay overlay,
                                            const RuntimeResourceResidencyBudgetV2& budget);
 
+enum class RuntimeResidentPackageEvictionPlanStatusV2 : std::uint8_t {
+    no_eviction_required = 0,
+    planned,
+    invalid_candidate_mount_id,
+    duplicate_candidate_mount_id,
+    missing_candidate_mount_id,
+    protected_candidate_mount_id,
+    budget_unreachable,
+    catalog_build_failed,
+};
+
+struct RuntimeResidentPackageEvictionPlanDiagnosticV2 {
+    RuntimeResidentPackageMountIdV2 mount;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimeResidentPackageEvictionPlanDescV2 {
+    RuntimeResourceResidencyBudgetV2 target_budget;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    std::vector<RuntimeResidentPackageMountIdV2> candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+};
+
+struct RuntimeResidentPackageEvictionPlanStepV2 {
+    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimeResidentPackageMountResultV2 unmount;
+    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+};
+
+struct RuntimeResidentPackageEvictionPlanResultV2 {
+    RuntimeResidentPackageEvictionPlanStatusV2 status{RuntimeResidentPackageEvictionPlanStatusV2::budget_unreachable};
+    RuntimeResidentCatalogCacheRefreshResultV2 current_refresh;
+    RuntimeResidentCatalogCacheRefreshResultV2 projected_refresh;
+    std::vector<RuntimeResidentPackageEvictionPlanStepV2> steps;
+    std::vector<RuntimeResidentPackageEvictionPlanDiagnosticV2> diagnostics;
+    std::uint32_t mount_generation{0};
+    std::size_t previous_mount_count{0};
+    std::size_t projected_mount_count{0};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Plans reviewed resident package removals from an explicit candidate order until the projected resident view fits
+/// the target budget. This is a pure planning helper: it does not mutate the live mount set, load packages, discover
+/// files, infer LRU policy, enforce GPU budgets, or touch renderer/RHI resources.
+[[nodiscard]] RuntimeResidentPackageEvictionPlanResultV2
+plan_runtime_resident_package_evictions_v2(const RuntimeResidentPackageMountSetV2& mount_set,
+                                           const RuntimeResidentPackageEvictionPlanDescV2& desc);
+
 enum class RuntimeResidentPackageReplaceCommitStatusV2 : std::uint8_t {
     replaced = 0,
     invalid_mount_id,
