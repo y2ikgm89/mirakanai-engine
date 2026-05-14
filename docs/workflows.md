@@ -201,6 +201,8 @@ gh pr view <pr> --json headRefOid,statusCheckRollup,url
 
 Open the failing job log for that `headRefOid`, reproduce the narrowest matching local lane, and fix the root cause. If the root cause is a repository contract that can drift, add or extend a static guard in the same slice. If all jobs fail before checkout with a GitHub account billing/spending-limit annotation, report it as a hosted account blocker. Do not diagnose against stale workflow runs, loosen branch protection, or broaden Codex/Claude command permissions to make the PR merge.
 
+For hosted `static-analysis` failures, use the repository `tools/check-tidy.ps1` path first. Keep `.clang-tidy` `HeaderFilterRegex` compatible with absolute Windows/Linux compile-database paths, keep strict CI on `--warnings-as-errors=*`, treat unsupported checks as hosted toolchain-version drift, and only suppress `NN warnings generated.` summary lines after real diagnostics and exit codes are preserved.
+
 If Git prints credential helper warnings such as `git: 'credential-manager-core' is not a git command`, inspect all helper sources first:
 
 ```powershell

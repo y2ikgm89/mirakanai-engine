@@ -28,4 +28,6 @@ Validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain
 
 **Coverage filters:** hosted `lcov` 2.x treats unmatched remove filters as errors. Keep optional `lcovRemovePatterns` guarded by `lcov --ignore-errors unused` and update `tools/check-coverage-thresholds.ps1` with coverage filter changes.
 
+**Static analysis:** use `tools/check-tidy.ps1`, keep `.clang-tidy` `HeaderFilterRegex` absolute-path and Windows/Linux separator aware, keep strict CI on `--warnings-as-errors=*`, prefer `-Files` for focused local TUs and `-Jobs 0` for full hosted lanes, and suppress only summary lines like `NN warnings generated.` after actionable diagnostics and exit codes are preserved.
+
 **Worktree cleanup:** Deleting `out/` is fine. **Do not delete `external/vcpkg`** (Microsoft vcpkg clone; `CMAKE_TOOLCHAIN_FILE` in presets). If it is missing, `git clone https://github.com/microsoft/vcpkg.git external/vcpkg`, bootstrap `vcpkg.exe`, then `cmake --preset dev` or `tools/bootstrap-deps.ps1`. Optional: remove `vcpkg_installed/` only when you will rerun `tools/bootstrap-deps.ps1`.
