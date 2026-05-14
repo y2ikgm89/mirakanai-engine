@@ -63,7 +63,7 @@ jobs:
         run: ./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2
 
       - name: Upload iOS build output
-        if: always()
+        if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: ios-simulator-build

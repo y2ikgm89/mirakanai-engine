@@ -7,14 +7,6 @@ $ErrorActionPreference = "Stop"
 
 $root = Get-RepoRoot
 
-function Read-Json($relativePath) {
-    $path = Join-Path $root $relativePath
-    if (-not (Test-Path $path)) {
-        Write-Error "Missing JSON file: $relativePath"
-    }
-    return Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
-}
-
 function Assert-TextContains([string]$relativePath, [string]$pattern, [string]$label) {
     $path = Join-Path $root $relativePath
     if (-not (Test-Path $path)) {

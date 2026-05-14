@@ -11,20 +11,6 @@ if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
 }
 . $helper
 
-function Reset-TestDirectory {
-    param([Parameter(Mandatory = $true)][string]$Path)
-
-    $root = [System.IO.Path]::GetFullPath((Join-Path (Get-RepoRoot) "out/tmp"))
-    $target = [System.IO.Path]::GetFullPath($Path)
-    if (-not $target.StartsWith($root + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
-        Write-Error "Refusing to reset path outside out/tmp: $target"
-    }
-    if (Test-Path -LiteralPath $target) {
-        Remove-Item -LiteralPath $target -Recurse -Force
-    }
-    New-Item -ItemType Directory -Path $target -Force | Out-Null
-}
-
 function Write-TextFile {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -75,7 +61,7 @@ function Assert-Fails {
 }
 
 $testRoot = Join-Path (Get-RepoRoot) "out/tmp/installed-sdk-validation-check"
-Reset-TestDirectory -Path $testRoot
+Reset-RepoTmpDirectory -Path $testRoot
 
 $validInstall = Join-Path $testRoot "valid"
 New-FakeInstalledSdk -InstallPrefix $validInstall

@@ -88,6 +88,37 @@ jobs:
           "static_analysis=$($staticAnalysis.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "macos=$($macos.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
+  agent-static:
+    name: Agent Static Guards
+    needs: changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check PR diff whitespace
+        shell: pwsh
+        run: git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}
+
+      - name: Check agent file contracts
+        shell: pwsh
+        run: ./tools/check-agents.ps1
+
+      - name: Check JSON contracts
+        shell: pwsh
+        run: ./tools/check-json-contracts.ps1
+
+      - name: Check AI integration
+        shell: pwsh
+        run: ./tools/check-ai-integration.ps1
+
+      - name: Check CI matrix contract
+        shell: pwsh
+        run: ./tools/check-ci-matrix.ps1
+
   windows:
     name: Windows MSVC
     needs: changes
@@ -117,7 +148,7 @@ jobs:
         run: ./tools/evaluate-cpp23.ps1 -Release
 
       - name: Upload Windows test logs
-        if: always()
+        if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: windows-test-logs
@@ -128,14 +159,14 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload Windows packages
-        if: always()
+        if: ${{ success() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: windows-packages
           path: |
             out/build/cpp23-release-preset-eval/*.zip
             out/build/cpp23-release-preset-eval/*.zip.sha256
-          if-no-files-found: warn
+          if-no-files-found: error
 
   linux:
     name: Linux CMake
@@ -163,7 +194,7 @@ jobs:
         run: ./tools/check-coverage.ps1 -Strict
 
       - name: Upload Linux test logs
-        if: always()
+        if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: linux-test-logs
@@ -173,7 +204,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload Linux coverage output
-        if: always()
+        if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: linux-coverage
@@ -206,7 +237,7 @@ jobs:
         run: ctest --preset clang-asan-ubsan --output-on-failure
 
       - name: Upload sanitizer test logs
-        if: always()
+        if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: linux-sanitizer-test-logs
@@ -230,7 +261,7 @@ jobs:
         run: ./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0
 
       - name: Upload static analysis logs
-        if: always()
+        if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: static-analysis-tidy-logs
@@ -267,7 +298,7 @@ jobs:
         run: ctest --preset ci-macos-appleclang --output-on-failure
 
       - name: Upload macOS test logs
-        if: always()
+        if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: macos-test-logs
@@ -278,12 +309,13 @@ jobs:
     name: PR Gate
     needs:
       - changes
+      - agent-static
       - windows
       - linux
       - linux-sanitizers
       - static-analysis
       - macos
-    if: always()
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify selected validation tier

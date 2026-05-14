@@ -7,9 +7,25 @@ $ErrorActionPreference = "Stop"
 
 $root = Get-RepoRoot
 $runner = Join-Path $PSScriptRoot "run-validation-recipe.ps1"
+$recipeCore = Join-Path $PSScriptRoot "validation-recipe-core.ps1"
 
 if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
     Write-Error "Missing validation recipe runner: tools/run-validation-recipe.ps1"
+}
+if (-not (Test-Path -LiteralPath $recipeCore -PathType Leaf)) {
+    Write-Error "Missing validation recipe core helper: tools/validation-recipe-core.ps1"
+}
+
+. $recipeCore
+. (Join-Path $PSScriptRoot "run-validation-recipe-plans.ps1")
+
+function ConvertTo-RunnerResultObject {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Result
+    )
+
+    return $Result | ConvertTo-Json -Depth 12 | ConvertFrom-Json
 }
 
 function Invoke-RunnerJson {
@@ -20,17 +36,104 @@ function Invoke-RunnerJson {
         [int]$ExpectedExitCode = 0
     )
 
-    $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $runner @Arguments 2>&1)
-    $exitCode = if ($null -eq $global:LASTEXITCODE) { 0 } else { $global:LASTEXITCODE }
+    $mode = "DryRun"
+    $recipe = ""
+    $gameTarget = ""
+    $strictBackend = ""
+    $hostGateAcknowledgements = @()
+    $timeoutSeconds = 0
+    $remainingArguments = @()
+
+    for ($index = 0; $index -lt $Arguments.Count; $index++) {
+        $argument = $Arguments[$index]
+        switch ($argument) {
+            "-Mode" {
+                $index++
+                $mode = $Arguments[$index]
+            }
+            "-Recipe" {
+                $index++
+                $recipe = $Arguments[$index]
+            }
+            "-GameTarget" {
+                $index++
+                $gameTarget = $Arguments[$index]
+            }
+            "-StrictBackend" {
+                $index++
+                $strictBackend = $Arguments[$index]
+            }
+            "-HostGateAcknowledgements" {
+                $index++
+                $hostGateAcknowledgements += $Arguments[$index]
+            }
+            "-TimeoutSeconds" {
+                $index++
+                $timeoutSeconds = [int]$Arguments[$index]
+            }
+            "-RemainingArguments" {
+                $index++
+                $remainingArguments += $Arguments[$index]
+            }
+            default {
+                $remainingArguments += $argument
+            }
+        }
+    }
+
+    $exitCode = 0
+    if ([string]::IsNullOrWhiteSpace($recipe)) {
+        $result = New-ValidationRecipeRejectedResult -Mode $mode -RecipeName "" -Diagnostic (New-RunnerDiagnostic -Severity "error" -Code "missing-recipe" -Message "Recipe is required.")
+        $exitCode = 2
+    } else {
+        $plan = Get-ValidationRecipeCommandPlan -RecipeName $recipe -SelectedGameTarget $gameTarget -SelectedStrictBackend $strictBackend
+        if ($null -eq $plan) {
+            $result = New-ValidationRecipeRejectedResult -Mode $mode -RecipeName $recipe -Diagnostic (New-RunnerDiagnostic -Severity "error" -Code "unknown-recipe" -Message "Validation recipe '$recipe' is not in the reviewed run-validation-recipe allowlist." -ValidationRecipe $recipe)
+            $exitCode = 2
+        } else {
+            $diagnostic = Test-ValidationRecipeRequest `
+                -Plan $plan `
+                -Mode $mode `
+                -GameTarget $gameTarget `
+                -StrictBackend $strictBackend `
+                -HostGateAcknowledgements $hostGateAcknowledgements `
+                -RemainingArguments $remainingArguments `
+                -TimeoutSeconds $timeoutSeconds
+            if ($null -ne $diagnostic) {
+                $result = New-ValidationRecipeRejectedResult -Mode $mode -RecipeName $recipe -Diagnostic $diagnostic
+                $result.hostGates = @($plan.hostGates)
+                $result.validationRecipes = @($recipe)
+                $exitCode = 2
+            } else {
+                $result = New-ValidationRecipeDryRunResult -Mode $mode -Plan $plan
+            }
+        }
+    }
+
     if ($exitCode -ne $ExpectedExitCode) {
-        Write-Error "run-validation-recipe.ps1 $($Arguments -join ' ') exited $exitCode, expected $ExpectedExitCode. Output: $($output -join "`n")"
+        Write-Error "run-validation-recipe.ps1 $($Arguments -join ' ') exited $exitCode, expected $ExpectedExitCode."
+    }
+
+    return ConvertTo-RunnerResultObject -Result $result
+}
+
+function Assert-RunnerCliSmoke {
+    $output = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $runner -Mode DryRun -Recipe "agent-contract" 2>&1)
+    $exitCode = if ($null -eq $global:LASTEXITCODE) { 0 } else { $global:LASTEXITCODE }
+    if ($exitCode -ne 0) {
+        Write-Error "run-validation-recipe.ps1 CLI smoke exited $exitCode. Output: $($output -join "`n")"
     }
 
     try {
-        return (($output | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }) -join "`n") | ConvertFrom-Json
+        $result = (($output | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }) -join "`n") | ConvertFrom-Json
     } catch {
-        Write-Error "run-validation-recipe.ps1 did not return JSON for $($Arguments -join ' '). Output: $($output -join "`n")"
+        Write-Error "run-validation-recipe.ps1 CLI smoke did not return JSON. Output: $($output -join "`n")"
     }
+
+    if ($result.status -ne "dry-run" -or $result.recipe -ne "agent-contract") {
+        Write-Error "run-validation-recipe.ps1 CLI smoke returned unexpected result."
+    }
+    Assert-ArgvHasScriptSuffix -Result $result -ScriptSuffix "tools/check-ai-integration.ps1" -Label "CLI smoke argv for agent-contract"
 }
 
 function Assert-HasProperty($object, [string]$Property, [string]$Label) {
@@ -107,6 +210,7 @@ function Assert-DryRunRecipe {
 }
 
 Write-Host "validation-recipe-runner-check: dry-run recipe contracts..."
+Assert-RunnerCliSmoke
 Assert-DryRunRecipe -Recipe "agent-contract" -ExpectedArgv @("-File", "check-ai-integration.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "default" -ExpectedArgv @("-File", "validate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "shader-toolchain" -ExpectedArgv @("-File", "check-shader-toolchain.ps1") | Out-Null

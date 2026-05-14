@@ -20,29 +20,8 @@ function Join-IfSet($base, $child) {
     return Join-Path $base $child
 }
 
-function Get-ExistingFile($paths) {
-    foreach ($path in $paths) {
-        if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path -PathType Leaf)) {
-            return (Resolve-Path -LiteralPath $path).Path
-        }
-    }
-
-    return $null
-}
-
 function Join-IfEnvSet($name, $child) {
     return Join-IfSet (Get-EnvironmentVariableAnyScope $name) $child
-}
-
-function Get-WindowsSdkDxcCandidates {
-    $kitsRoot = "C:\Program Files (x86)\Windows Kits\10\bin"
-    if (-not (Test-Path -LiteralPath $kitsRoot -PathType Container)) {
-        return @()
-    }
-
-    return @(Get-ChildItem -LiteralPath $kitsRoot -Directory | Sort-Object -Property Name -Descending | ForEach-Object {
-        Join-Path $_.FullName "x64\dxc.exe"
-    })
 }
 
 function Get-ToolRootVariants($base) {
@@ -117,7 +96,7 @@ function Get-ToolCandidates($name) {
 }
 
 function Find-ShaderTool($name) {
-    $candidate = Get-ExistingFile (Get-ToolCandidates $name)
+    $candidate = Get-FirstExistingFile (Get-ToolCandidates $name)
     if ($null -ne $candidate) {
         return [pscustomobject]@{
             Path = $candidate
@@ -134,7 +113,7 @@ function Find-ShaderTool($name) {
     }
 
     if ($name -eq "dxc") {
-        $windowsSdkDxc = Get-ExistingFile (Get-WindowsSdkDxcCandidates)
+        $windowsSdkDxc = Get-FirstExistingFile (Get-WindowsSdkDxcCandidates)
         if ($null -ne $windowsSdkDxc) {
             return [pscustomobject]@{
                 Path = $windowsSdkDxc

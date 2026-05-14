@@ -1,13 +1,15 @@
 ---
 name: gameengine-agent-integration
-description: Keeps Codex, Claude Code, Cursor, manifests, skills, rules, and validation scripts aligned with the engine agent contract. Use when editing AGENTS.md, agent manifest fragments, check-ai-integration needles, or cross-tool agent surfaces.
+description: Keeps Codex, Claude, Cursor, manifests, skills, rules, and validation scripts aligned with the engine agent contract. Use for AGENTS.md, manifest fragments, check-ai-integration needles, or cross-tool agent surfaces.
 paths:
   - "AGENTS.md"
   - "CLAUDE.md"
   - "engine/agent/**"
   - "schemas/**"
   - "tools/agent-context.ps1"
-  - "tools/check-ai-integration.ps1"
+  - "tools/check-ai-integration*.ps1"
+  - "tools/check-json-contracts*.ps1"
+  - "tools/static-contract-ledger.ps1"
   - "tools/check-agents.ps1"
   - "tools/compose-agent-manifest.ps1"
   - ".agents/**"
@@ -32,7 +34,9 @@ Full workflow lives in shared skills. Read these canonical files (ASCII paths):
 
 `tools/*.ps1` hygiene also includes **UTF-8 without BOM**, contiguous `#requires`, **approved-verb** `function` names, and **PSScriptAnalyzer-friendly** patterns (no automatic-variable reuse such as **`$input` / `$matches`**—including **`foreach ($input in ...)`** and **`$matches = [Regex]::Matches(...)`**—no shadowing **`$Is*`** platform automatics, **`$null =`** for intentional discard, **`Write-Information -InformationAction Continue`** instead of **`Write-Host`** for non-pipeline status, non-empty **`catch`**, **`ShouldProcess`** on host-mutating **`Set-*`** helpers—see checklist step 2 and `AGENTS.md` **Repository command entrypoints**). Run **`Invoke-ScriptAnalyzer`** on edited scripts when the module is installed.
 
-Machine-readable **canonical** contract: `engine/agent/manifest.json` (compose output from `engine/agent/manifest.fragments/` via `tools/compose-agent-manifest.ps1`). New `.claude/skills/gameengine-*` topics require a Codex twin registered in `tools/check-agents.ps1` (`claudeToCodexSkillMap`) and a matching thin `.cursor/skills/gameengine-*` folder unless intentionally Cursor-only (`gameengine-cursor-baseline`, `gameengine-plan-registry`). Keep Codex/Claude/Cursor surfaces aligned when workflow commands change, including Git/GitHub commit, push, merge/delete-branch, auto-merge registration, post-merge remote-tracking cleanup, force-push, and PR publishing gates. Treat Codex command policy as session-scoped: `.codex/rules` edits may need policy reload or a new session before newly allowed commands are available. Agent publishing follows official GitHub Flow: task-owned `gh pr create` and `gh pr merge --auto --merge --delete-branch` may run automatically only after validation checkpoints and the `docs/workflows.md` PR preflight confirms `mergeStateStatus`, `statusCheckRollup`, and `reviewDecision`; push cadence is checkpoint-based, not commit-count-based; pending-only `UNSTABLE` / `BLOCKED` may register auto-merge, and use `--match-head-commit <headRefOid>` when available. Direct default-branch pushes are forbidden; prompt-gated PR state changes such as `gh pr edit` or immediate `gh pr merge` still require GitHub Web/Desktop or an approval-capable session when approvals are unavailable.
+Static contract ledger entrypoints stay thin; `tools/static-contract-ledger.ps1`.
+
+Machine-readable **canonical** contract: `engine/agent/manifest.json` (compose output from `engine/agent/manifest.fragments/` via `tools/compose-agent-manifest.ps1`). New `.claude/skills/gameengine-*` topics require a Codex twin registered in `tools/check-agents.ps1` (`claudeToCodexSkillMap`) and a matching thin `.cursor/skills/gameengine-*` folder unless intentionally Cursor-only (`gameengine-cursor-baseline`, `gameengine-plan-registry`). Keep Codex/Claude/Cursor surfaces aligned when workflow commands change, including Git/GitHub commit, push, merge/delete-branch, auto-merge registration, post-merge remote-tracking cleanup, force-push, and PR publishing gates. Treat Codex command policy as session-scoped: `.codex/rules` edits may need policy reload or a new session before newly allowed commands are available. Agent publishing follows official GitHub Flow: task-owned `gh pr create` and `gh pr merge --auto --merge --delete-branch` may run automatically only after validation checkpoints and the `docs/workflows.md` PR preflight confirms `mergeStateStatus`, `statusCheckRollup`, and `reviewDecision`; a final completion report must not stop after local validation when task-owned changes can be published; push cadence is checkpoint-based, not commit-count-based; pending-only `UNSTABLE` / `BLOCKED` may register auto-merge, and use `--match-head-commit <headRefOid>` when available. Direct default-branch pushes are forbidden; prompt-gated PR state changes such as `gh pr edit` or immediate `gh pr merge` still require GitHub Web/Desktop or an approval-capable session when approvals are unavailable.
 
 Keep `AGENTS.md` under Codex's default 32 KiB project-doc budget, keep shared `SKILL.md` bodies as concise routers, and keep subagents narrowly scoped; `tools/check-agents.ps1` enforces the repository budgets. Move detail to skill-local `references/*.md`, canonical docs, subagents, or manifest fragments instead of expanding always-loaded instructions.
 

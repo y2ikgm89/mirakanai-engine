@@ -52,14 +52,6 @@ function Get-Fnv1a64Decimal {
     return $hash.ToString()
 }
 
-function ConvertTo-LfText {
-    param(
-        [string]$Text
-    )
-
-    return $Text.Replace("`r`n", "`n").Replace("`r", "`n")
-}
-
 function Format-CppSourceText {
     param(
         [Parameter(Mandatory = $true)]

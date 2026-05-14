@@ -156,7 +156,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -Command ". ./tools/release-package-arti
 `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-installed-sdk.ps1` now validates installed SDK metadata before the installed consumer build: CMake package config/version files, parseable installed AI manifest and JSON schemas, non-empty installed workflow tools, installed consumer source, sample game manifests, docs README, third-party notices, and the proprietary license payload.
 
 `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1` runs `Assert-ReleasePackageArtifacts` after CPack generation. It validates the current `CPACK_PACKAGE_FILE_NAME` ZIP and `.zip.sha256` sidecar, compares SHA-256 bytes, and inspects the archive for required SDK metadata/tools/docs/notices/license entries without extracting or executing package contents.
-The Windows CI C++23 release evaluation lane now reuses the same artifact integrity helper after `cpack --preset cpp23-release-eval`, then uploads both `out/build/cpp23-release-preset-eval/*.zip` and `out/build/cpp23-release-preset-eval/*.zip.sha256`.
+The Windows CI C++23 release evaluation lane now reuses the same artifact integrity helper after `cpack --preset cpp23-release-eval`, then uploads both `out/build/cpp23-release-preset-eval/*.zip` and `out/build/cpp23-release-preset-eval/*.zip.sha256` only after the release evaluation succeeds; a missing ZIP or SHA-256 sidecar is a CI error rather than an upload warning.
 
 The editor-independent desktop runtime package lane uses:
 

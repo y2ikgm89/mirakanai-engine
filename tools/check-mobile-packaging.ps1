@@ -9,6 +9,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "common.ps1")
+. (Join-Path $PSScriptRoot "apple-host-helpers.ps1")
 
 $root = Get-RepoRoot
 
@@ -139,11 +140,6 @@ function Find-JavaCommand {
     return $null
 }
 
-function Test-IsMacOS {
-    return [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
-        [System.Runtime.InteropServices.OSPlatform]::OSX)
-}
-
 function Test-EnvironmentSet {
     param([Parameter(Mandatory = $true)][string[]]$Names)
 
@@ -154,82 +150,6 @@ function Test-EnvironmentSet {
     }
 
     return $true
-}
-
-function Get-AppleDeveloperDirectory {
-    if (-not (Find-CommandOnCombinedPath "xcode-select")) {
-        return $null
-    }
-
-    $output = @(& xcode-select "-p" 2>$null)
-    if ($LASTEXITCODE -ne 0 -or $output.Count -eq 0) {
-        return $null
-    }
-
-    $developerDirectory = ([string]$output[0]).Trim()
-    if ([string]::IsNullOrWhiteSpace($developerDirectory)) {
-        return $null
-    }
-
-    return $developerDirectory
-}
-
-function Test-FullXcodeDeveloperDirectory {
-    param([string]$DeveloperDirectory)
-
-    if ([string]::IsNullOrWhiteSpace($DeveloperDirectory)) {
-        return $false
-    }
-
-    if ($DeveloperDirectory -notmatch "\.app/Contents/Developer$") {
-        return $false
-    }
-
-    return Test-Path -LiteralPath (Join-Path $DeveloperDirectory "Platforms/iPhoneSimulator.platform")
-}
-
-function Test-AppleSdkAvailable {
-    param([Parameter(Mandatory = $true)][string]$SdkName)
-
-    if (-not (Find-CommandOnCombinedPath "xcrun")) {
-        return $false
-    }
-
-    $output = @(& xcrun "--sdk" $SdkName "--show-sdk-path" 2>$null)
-    if ($LASTEXITCODE -ne 0 -or $output.Count -eq 0) {
-        return $false
-    }
-
-    $sdkPath = ([string]$output[0]).Trim()
-    return -not [string]::IsNullOrWhiteSpace($sdkPath) -and (Test-Path -LiteralPath $sdkPath)
-}
-
-function Test-IosSimulatorRuntimeAvailable {
-    if (-not (Find-CommandOnCombinedPath "xcrun")) {
-        return $false
-    }
-
-    $jsonText = @(& xcrun "simctl" "list" "--json" "runtimes" "available" 2>$null) -join "`n"
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($jsonText)) {
-        return $false
-    }
-
-    try {
-        $json = $jsonText | ConvertFrom-Json
-    }
-    catch {
-        return $false
-    }
-
-    foreach ($runtime in @($json.runtimes)) {
-        $identifier = [string]$runtime.identifier
-        $platform = [string]$runtime.platform
-        if ($identifier -match "iOS" -or $platform -eq "iOS") {
-            return $true
-        }
-    }
-
-    return $false
 }
 
 foreach ($file in @(
@@ -340,17 +260,17 @@ if ($hostIsAppleOs -and $xcodebuild -and $xcrun) {
             Out-Null
     }
 
-    if (-not (Test-AppleSdkAvailable "iphonesimulator")) {
+    if (-not (Test-XcrunSdkAvailable -Xcrun $xcrun -SdkName "iphonesimulator")) {
         $appleBlockers.Add("iPhone Simulator SDK not available; install iOS platform support through Xcode components") |
             Out-Null
     }
 
-    if (-not (Test-AppleSdkAvailable "iphoneos")) {
+    if (-not (Test-XcrunSdkAvailable -Xcrun $xcrun -SdkName "iphoneos")) {
         $appleBlockers.Add("iPhoneOS SDK not available; install iOS platform support through Xcode components") |
             Out-Null
     }
 
-    $appleSimulatorReady = Test-IosSimulatorRuntimeAvailable
+    $appleSimulatorReady = Test-IosSimulatorRuntimeAvailable -Xcrun $xcrun
 }
 
 $appleSigningReady = -not [string]::IsNullOrWhiteSpace($env:MK_IOS_DEVELOPMENT_TEAM)
