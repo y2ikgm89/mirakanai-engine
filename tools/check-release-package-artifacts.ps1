@@ -18,24 +18,6 @@ if (-not (Get-Command Assert-ReleasePackageArtifacts -ErrorAction SilentlyContin
     Write-Error "Missing Assert-ReleasePackageArtifacts in $helperPath"
 }
 
-function Reset-TestDirectory {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Path
-    )
-
-    $tmpRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "out/tmp"))
-    $target = [System.IO.Path]::GetFullPath($Path)
-    if (-not $target.StartsWith($tmpRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "Refusing to reset path outside out/tmp: $target"
-    }
-
-    if (Test-Path -LiteralPath $target) {
-        Remove-Item -LiteralPath $target -Recurse -Force
-    }
-    New-Item -ItemType Directory -Force -Path $target | Out-Null
-}
-
 function Add-TestFile {
     param(
         [Parameter(Mandatory = $true)]
@@ -59,7 +41,7 @@ function New-FakeReleaseBuild {
     )
 
     $buildDir = Join-Path $repoRoot "out/tmp/release-package-artifacts-check/$Name"
-    Reset-TestDirectory -Path $buildDir
+    Reset-RepoTmpDirectory -Path $buildDir
 
     $packageBaseName = "Mirakanai-0.1.0-Windows-AMD64"
     $cpackConfig = @"

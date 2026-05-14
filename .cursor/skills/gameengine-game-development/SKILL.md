@@ -5,6 +5,7 @@ paths:
   - "games/**"
   - "tools/new-game.ps1"
   - "tools/new-game-helpers.ps1"
+  - "tools/new-game-templates.ps1"
   - "docs/ai-game-development.md"
 ---
 

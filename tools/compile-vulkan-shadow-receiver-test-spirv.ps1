@@ -28,30 +28,9 @@ if ([string]::IsNullOrWhiteSpace($OutDir)) {
 }
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-function Get-WindowsSdkDxcCandidates {
-    $kitsRoot = "C:\Program Files (x86)\Windows Kits\10\bin"
-    if (-not (Test-Path -LiteralPath $kitsRoot -PathType Container)) {
-        return @()
-    }
-
-    return @(Get-ChildItem -LiteralPath $kitsRoot -Directory | Sort-Object -Property Name -Descending | ForEach-Object {
-        Join-Path $_.FullName "x64\dxc.exe"
-    })
-}
-
-function Get-FirstExistingPath($paths) {
-    foreach ($p in $paths) {
-        if (-not [string]::IsNullOrWhiteSpace($p) -and (Test-Path -LiteralPath $p -PathType Leaf)) {
-            return (Resolve-Path -LiteralPath $p).Path
-        }
-    }
-
-    return $null
-}
-
 $dxc = Find-CommandOnCombinedPath "dxc"
 if ([string]::IsNullOrWhiteSpace($dxc)) {
-    $dxc = Get-FirstExistingPath (Get-WindowsSdkDxcCandidates)
+    $dxc = Get-FirstExistingFile (Get-WindowsSdkDxcCandidates)
 }
 
 if ([string]::IsNullOrWhiteSpace($dxc)) {

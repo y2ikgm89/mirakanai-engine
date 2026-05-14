@@ -113,6 +113,7 @@ $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
 Assert-DoesNotContainAny $validateWorkflow @(
     "actions/checkout@v4",
     "actions/upload-artifact@v4",
+    "if: always()",
     "runs-on: windows-latest",
     "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24",
     "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION"
@@ -162,6 +163,8 @@ Assert-ContainsAll $windowsJob @(
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1",
     "run: ./tools/evaluate-cpp23.ps1 -Release",
+    'if: ${{ always() && !cancelled() }}',
+    'if: ${{ success() && !cancelled() }}',
     "actions/upload-artifact@v7",
     "name: windows-test-logs",
     "out/build/dev/Testing/**/*.log",
@@ -170,8 +173,23 @@ Assert-ContainsAll $windowsJob @(
     "name: windows-packages",
     "out/build/cpp23-release-preset-eval/*.zip",
     "out/build/cpp23-release-preset-eval/*.zip.sha256",
-    "if-no-files-found: warn"
+    "if-no-files-found: error"
 ) ".github/workflows/validate.yml windows job"
+
+$agentStaticJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "agent-static" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $agentStaticJob @(
+    "name: Agent Static Guards",
+    "needs: changes",
+    "if: github.event_name == 'pull_request'",
+    "runs-on: ubuntu-latest",
+    "actions/checkout@v6",
+    "fetch-depth: 0",
+    'git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}',
+    "run: ./tools/check-agents.ps1",
+    "run: ./tools/check-json-contracts.ps1",
+    "run: ./tools/check-ai-integration.ps1",
+    "run: ./tools/check-ci-matrix.ps1"
+) ".github/workflows/validate.yml agent-static job"
 
 $linuxJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $linuxJob @(
@@ -185,6 +203,7 @@ Assert-ContainsAll $linuxJob @(
     "cmake --build --preset ci-linux-clang",
     "ctest --preset ci-linux-clang --output-on-failure",
     "./tools/check-coverage.ps1 -Strict",
+    'if: ${{ always() && !cancelled() }}',
     "actions/upload-artifact@v7",
     "name: linux-test-logs",
     "out/build/ci-linux-clang/Testing/**/*.log",
@@ -206,6 +225,7 @@ Assert-ContainsAll $sanitizerJob @(
     "cmake --build --preset clang-asan-ubsan",
     "UBSAN_OPTIONS: print_stacktrace=1",
     "ctest --preset clang-asan-ubsan --output-on-failure",
+    'if: ${{ always() && !cancelled() }}',
     "actions/upload-artifact@v7",
     "name: linux-sanitizer-test-logs",
     "out/build/clang-asan-ubsan/Testing/**/*.log",
@@ -226,6 +246,7 @@ Assert-ContainsAll $macosJob @(
     "cmake --preset ci-macos-appleclang",
     "cmake --build --preset ci-macos-appleclang",
     "ctest --preset ci-macos-appleclang --output-on-failure",
+    'if: ${{ always() && !cancelled() }}',
     "actions/upload-artifact@v7",
     "name: macos-test-logs",
     "out/build/ci-macos-appleclang/Testing/**/*.log",
@@ -243,6 +264,7 @@ Assert-ContainsAll $staticAnalysisJob @(
     "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
     "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
     "-Jobs 0",
+    'if: ${{ always() && !cancelled() }}',
     "actions/upload-artifact@v7",
     "name: static-analysis-tidy-logs",
     "out/build/ci-linux-tidy/compile_commands.json",
@@ -254,12 +276,13 @@ $prGateJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "pr-ga
 Assert-ContainsAll $prGateJob @(
     "name: PR Gate",
     "- changes",
+    "- agent-static",
     "- windows",
     "- linux",
     "- linux-sanitizers",
     "- static-analysis",
     "- macos",
-    "if: always()",
+    'if: ${{ always() && !cancelled() }}',
     'toJson(needs)',
     'failure',
     'cancelled',
@@ -270,6 +293,7 @@ $iosWorkflow = Read-RequiredText ".github/workflows/ios-validate.yml"
 Assert-DoesNotContainAny $iosWorkflow @(
     "actions/checkout@v4",
     "actions/upload-artifact@v4",
+    "if: always()",
     "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24",
     "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION"
 ) ".github/workflows/ios-validate.yml Node 24 CI contract"
@@ -305,6 +329,7 @@ Assert-ContainsAll $iosJob @(
     "xcrun simctl list runtimes",
     "./tools/check-mobile-packaging.ps1 -RequireApple",
     "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2",
+    'if: ${{ always() && !cancelled() }}',
     "actions/upload-artifact@v7",
     "name: ios-simulator-build",
     "out/build/ios-Simulator-sample_headless-Debug/**/*.app",
@@ -313,6 +338,7 @@ Assert-ContainsAll $iosJob @(
 ) ".github/workflows/ios-validate.yml simulator-smoke job"
 
 Assert-MatchesText $validateWorkflow "^  windows:\s*$" ".github/workflows/validate.yml windows job id"
+Assert-MatchesText $validateWorkflow "^  agent-static:\s*$" ".github/workflows/validate.yml agent-static job id"
 Assert-MatchesText $validateWorkflow "^  linux:\s*$" ".github/workflows/validate.yml linux job id"
 Assert-MatchesText $validateWorkflow "^  linux-sanitizers:\s*$" ".github/workflows/validate.yml linux-sanitizers job id"
 Assert-MatchesText $validateWorkflow "^  static-analysis:\s*$" ".github/workflows/validate.yml static-analysis job id"

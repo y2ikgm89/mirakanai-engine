@@ -1,13 +1,15 @@
 ---
 name: gameengine-agent-integration
-description: Keeps Codex, Claude Code, Cursor, manifests, skills, rules, and validation scripts aligned with the engine agent contract. Use when editing AGENTS.md, agent manifest fragments, check-ai-integration needles, or cross-tool agent surfaces.
+description: Keeps Codex, Claude, Cursor, manifests, skills, rules, and validation scripts aligned with the engine agent contract. Use for AGENTS.md, manifest fragments, check-ai-integration needles, or cross-tool agent surfaces.
 paths:
   - "AGENTS.md"
   - "CLAUDE.md"
   - "engine/agent/**"
   - "schemas/**"
   - "tools/agent-context.ps1"
-  - "tools/check-ai-integration.ps1"
+  - "tools/check-ai-integration*.ps1"
+  - "tools/check-json-contracts*.ps1"
+  - "tools/static-contract-ledger.ps1"
   - "tools/check-agents.ps1"
   - "tools/compose-agent-manifest.ps1"
   - ".agents/**"
@@ -28,6 +30,7 @@ paths:
 - `engine/agent/manifest.json` is the machine-readable **canonical** engine contract (compose output only). **Edit** `engine/agent/manifest.fragments/*.json` (see `engine/agent/manifest.fragments/README.md` and `docs/adr/0002-agent-manifest-fragments-compose.md`), then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`. `tools/check-json-contracts.ps1` verifies the committed canonical file matches compose output.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` prints the current agent context as JSON, including public headers, module ownership, sample games, asset/importer capabilities, platform targets, and validation recipes. Use `-ContextProfile Full|Standard|Minimal` (default `Full`) when you want a smaller summary.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` validates agent-facing files.
+- thin static-contract ledger entrypoints: `tools/static-contract-ledger.ps1`.
 - Every implementation change, improvement, bug fix, refactor, and architecture/toolchain/workflow/validation/packaging change includes a targeted **agent-surface drift check** before completion. When durable guidance or AI-operable contracts are stale, update the relevant `AGENTS.md`, `CLAUDE.md`, docs, Codex/Claude/Cursor skills, rules, settings, subagents, manifest fragments plus compose output, schemas, validation checks, and tracked `.clangd` in the same task; do not leave that synchronization as a separate follow-up or load every agent surface when no durable guidance changed.
 - **`MK_tools` paths:** Implementation `.cpp` files live under `engine/tools/{shader,gltf,asset,scene}/`; public headers stay `engine/tools/include/mirakana/tools/` (see `docs/adr/0003-directory-layout-clean-break.md`, `docs/specs/2026-05-11-directory-layout-target-v1.md`). Moving those sources requires updating `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and the matching `engine/tools/*/CMakeLists.txt` needles in the same change. When new tool implementation code depends on additional `mirakana/*` modules, add the corresponding `MK_*` to that **cluster's** `OBJECT` target in `engine/tools/<cluster>/CMakeLists.txt`; the `MK_tools` umbrella keeps the full `PUBLIC` link set for consumers (spec invariant 4).
 - Every tracked `tools/*.ps1` declares `#requires -Version 7.0` immediately followed by `#requires -PSEdition Core`; run repository automation with **`pwsh`** only (not Windows PowerShell 5.1). Scripts must be **UTF-8 without BOM**; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` (via `validate.ps1`) enforces the contiguous `#requires` pair and rejects BOM prefixes. Name `function` cmdlets with [PowerShell approved verbs](https://learn.microsoft.com/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands) so local **PSScriptAnalyzer** (`PSAvoidUsingUnapprovedVerbs`, and related verb rules) stays satisfied when enabled (for path normalization helpers prefer **`ConvertTo-*` / `Join-*` / `Resolve-*`** over unapproved **`Normalize-*`** verbs). Shared helpers live in `tools/common.ps1` (`Get-RepoRoot` returns a **string** path—use `$root` in `Join-Path` / string operations, never `$root.Path`; `Invoke-CheckedCommand`, and related helpers).

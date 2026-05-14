@@ -13,11 +13,15 @@ paths:
   - "engine/agent/manifest.fragments/**"
   - "tools/check-agents.ps1"
   - "tools/check-ai-integration.ps1"
+  - "tools/check-ai-integration-*.ps1"
   - "tools/check-json-contracts.ps1"
+  - "tools/check-json-contracts-*.ps1"
   - "tools/check-tidy.ps1"
   - "tools/common.ps1"
   - "tools/manifest-command-surface-legacy-guard.ps1"
+  - "tools/static-contract-ledger.ps1"
   - "tools/new-game-helpers.ps1"
+  - "tools/new-game-templates.ps1"
   - "docs/README.md"
   - "docs/roadmap.md"
   - "docs/workflows.md"
@@ -50,6 +54,7 @@ paths:
 - Keep PR validation cost proportional to risk. Required GitHub checks must be always-running or aggregate-gated, never path-filtered required workflows. For docs, skills, rules, settings, subagents, and other agent-only PRs, run lightweight static validation (`git diff --check`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, plus targeted JSON/CI guards) instead of unrelated Windows/MSVC, macOS, or full repository clang-tidy lanes. Use those heavy lanes only when the touched files can affect CI execution, CMake/vcpkg, build/test/package tooling, runtime code/assets, packaging, validation scripts that run builds, or public/runtime contracts.
 - Keep tests scoped to the smallest externally meaningful behavior/API/regression guarantee; prefer existing-test updates when they already cover the contract, and avoid implementation-mirroring, duplicate, or incidentally order-sensitive tests.
 - Validate agent-facing files with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` (via `validate.ps1`) also enforces `.agents/skills/`, `.claude/skills/`, and `.cursor/skills/` frontmatter, Codex ↔ Claude `gameengine-*` skill twins via `claudeToCodexSkillMap`, and Cursor thin-pointer directory names against `.claude/skills/`. When `check-ai-integration.ps1` gains new Needles for retained editor ids or manifest/editor-shell literals, update the scoped skill/manifest needles in the same task so each needle matches intended files (avoid duplicate ambiguous substrings).
+- Keep `tools/check-ai-integration.ps1` and `tools/check-json-contracts.ps1` as thin static-contract ledger entrypoints. Register chapter files, core files, and line budgets in `tools/static-contract-ledger.ps1`; keep dispatchers data-driven from that ledger instead of adding hard-coded chapter lists to entry scripts.
 - When a hosted PR check failure exposes missing project guidance, update the relevant `AGENTS.md`, skills, subagents, docs, and static checks. Rules/permissions stay narrow command gates; do not put diagnostic procedure in `.codex/rules` or loosen `.claude/settings.json` to make a failing PR easier to merge.
 - Keep always-loaded instruction files specific, concise, verifiable, and durable. Avoid long procedures, stale status snapshots, personal preferences, credentials, API keys, MCP connection state, or machine-specific paths; use skills, path-scoped rules, subagents, and the composed `engine/agent/manifest.json` (maintained via `engine/agent/manifest.fragments/` + `tools/compose-agent-manifest.ps1`) instead.
 - Keep `AGENTS.md` small enough for Codex's default project-doc budget when practical; put reusable workflows in skills and detailed operating procedures in docs.

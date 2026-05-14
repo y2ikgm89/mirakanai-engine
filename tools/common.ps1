@@ -11,6 +11,71 @@ function Get-RepoRoot {
     return (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 }
 
+function Read-Json {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath,
+
+        [string]$Root = ""
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Root)) {
+        $Root = Get-RepoRoot
+    }
+
+    $path = if ([System.IO.Path]::IsPathRooted($RelativePath)) {
+        $RelativePath
+    } else {
+        Join-Path $Root $RelativePath
+    }
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        Write-Error "Missing JSON file: $RelativePath"
+    }
+
+    return Get-Content -LiteralPath $path -Encoding utf8 -Raw | ConvertFrom-Json
+}
+
+function ConvertTo-LfText {
+    param([string]$Text)
+
+    return $Text.Replace("`r`n", "`n").Replace("`r", "`n")
+}
+
+function Test-TextStartsWithLine {
+    param(
+        [string]$Text,
+        [string]$Line
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+
+    $normalizedText = ConvertTo-LfText $Text
+    return $normalizedText.StartsWith("$Line`n") -or $normalizedText -eq $Line
+}
+
+function ConvertTo-RepoPath {
+    param([string]$Path)
+
+    return $Path.Replace("\", "/")
+}
+
+function Get-RelativeRepoPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FullPath,
+
+        [string]$Root = ""
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Root)) {
+        $Root = Get-RepoRoot
+    }
+
+    return ConvertTo-RepoPath $FullPath.Substring($Root.Length + 1)
+}
+
 function Get-EnvironmentVariableAnyScope {
     param([Parameter(Mandatory = $true)][string]$Name)
 
@@ -124,6 +189,59 @@ function Find-CommandOnCombinedPath {
     }
 
     return $null
+}
+
+function Get-FirstExistingFile {
+    param([Parameter(Mandatory = $true)]$Paths)
+
+    foreach ($path in $Paths) {
+        if (-not [string]::IsNullOrWhiteSpace($path) -and (Test-Path -LiteralPath $path -PathType Leaf)) {
+            return (Resolve-Path -LiteralPath $path).Path
+        }
+    }
+
+    return $null
+}
+
+function Get-WindowsSdkDxcCandidates {
+    if (-not [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
+            [System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        return @()
+    }
+
+    $kitsRoot = "C:\Program Files (x86)\Windows Kits\10\bin"
+    if (-not (Test-Path -LiteralPath $kitsRoot -PathType Container)) {
+        return @()
+    }
+
+    return @(Get-ChildItem -LiteralPath $kitsRoot -Directory | Sort-Object -Property Name -Descending | ForEach-Object {
+        Join-Path $_.FullName "x64\dxc.exe"
+    })
+}
+
+function Reset-RepoTmpDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path,
+
+        [string]$Root = ""
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Root)) {
+        $Root = Get-RepoRoot
+    }
+
+    $tmpRoot = [System.IO.Path]::GetFullPath((Join-Path $Root "out/tmp"))
+    $target = [System.IO.Path]::GetFullPath($Path)
+    $separator = [System.IO.Path]::DirectorySeparatorChar
+    if ($target -ne $tmpRoot -and -not $target.StartsWith($tmpRoot + $separator, [System.StringComparison]::OrdinalIgnoreCase)) {
+        Write-Error "Refusing to reset path outside out/tmp: $target"
+    }
+
+    if (Test-Path -LiteralPath $target) {
+        Remove-Item -LiteralPath $target -Recurse -Force
+    }
+    New-Item -ItemType Directory -Force -Path $target | Out-Null
 }
 
 function Set-ProcessEnvironmentFromAnyScope {
