@@ -27,6 +27,8 @@ MSVC builds use `MK_MSVC_CXX23_STANDARD_OPTION=/std:c++23preview` by default.
 
 This overrides CMake's current MSVC C++23 mapping from `/std:c++latest` to the selected C++23-only option. The goal is to use the ISO C++23 mode and avoid accidentally accepting later working-draft features. Today the selected option is `/std:c++23preview`. When MSVC and CMake expose a stable `/std:c++23` path, change `MK_MSVC_CXX23_STANDARD_OPTION` in the cache default and presets to `/std:c++23`; validation checks derive the generated-project expectation from that cache value.
 
+Visual Studio generators may encode the selected mode either as a raw `/std:c++23preview` or `/std:c++23` option in `AdditionalOptions`, or as a `.vcxproj` `<LanguageStandard>` value such as `stdcpp23preview` / `stdcpp23`. The validation contract accepts those C++23-only representations and continues to reject `stdcpplatest`, `stdcpp26`, or `/std:c++latest`.
+
 ## Modules And `import std`
 
 Project C++ modules are allowed and should be added with CMake `FILE_SET CXX_MODULES`.
@@ -87,7 +89,7 @@ Results:
 
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: passed, 12/12 default tests.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release -Gui`: passed, 12/12 Debug tests, 12/12 Release tests, generated `Mirakanai-0.1.0-Windows-AMD64.zip`, and passed 13/13 SDL3/Dear ImGui GUI tests.
-- CMake generated Visual Studio projects with the configured `MK_MSVC_CXX23_STANDARD_OPTION` in target options and no `stdcpplatest` language standard entries in the checked default build.
+- CMake generated Visual Studio projects with the configured `MK_MSVC_CXX23_STANDARD_OPTION` in target options, or an equivalent C++23-only Visual Studio `LanguageStandard` representation, and no `stdcpplatest` language standard entries in the checked default build.
 - MSVC targets explicitly use `/EHsc` so C++ exception unwinding stays enabled.
 
 ## Recommendation
@@ -108,4 +110,3 @@ Outstanding work is platform breadth, not a migration blocker:
 - MSVC documents `/std:c++23preview` as the C++23 preview mode and `/std:c++latest` as including currently implemented future-draft and in-progress features.
 - CMake module scanning should use `FILE_SET CXX_MODULES`; CMake-managed `import std;` depends on `CMAKE_CXX_COMPILER_IMPORT_STD` and generator/toolchain support.
 - GCC and Clang document partial or experimental C++23 support depending on compiler and standard-library version.
-

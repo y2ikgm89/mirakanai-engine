@@ -187,6 +187,10 @@ if ($manifest.engine.languagePolicy.msvcModeCacheVariable -ne "MK_MSVC_CXX23_STA
 
 Assert-TextContains "docs/cpp-standard.md" 'C\+\+23' "C++ standard policy doc"
 Assert-TextContains "docs/cpp-standard.md" 'Recommendation' "C++ standard policy doc"
+Assert-TextContains "docs/cpp-standard.md" 'LanguageStandard' "C++ standard policy doc"
+Assert-TextContains "docs/cpp-standard.md" 'stdcpp23preview' "C++ standard policy doc"
+Assert-TextContains "docs/cpp-standard.md" 'stdcpp23' "C++ standard policy doc"
+Assert-TextContains "docs/cpp-standard.md" 'stdcpplatest' "C++ standard policy doc"
 
 Assert-TextContains "tools/coverage-thresholds.json" 'minLineCoveragePercent' "coverage thresholds policy file"
 
