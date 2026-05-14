@@ -26,15 +26,22 @@ if (-not (Test-Path $cachePath)) {
     Write-Error "generated-msvc-cxx23-mode-check requires CMakeCache.txt in the dev build directory"
 }
 
+$msvcCxx23OptionRegex = [regex]"^MK_MSVC_CXX23_STANDARD_OPTION:[^=]+=(/std:c\+\+23(?:preview)?)$"
 $cacheLine = Get-Content -LiteralPath $cachePath |
-    Where-Object { $_ -match "^MK_MSVC_CXX23_STANDARD_OPTION:[^=]+=(/std:c\+\+23(?:preview)?)$" } |
+    Where-Object { $msvcCxx23OptionRegex.IsMatch($_) } |
     Select-Object -First 1
 if (-not $cacheLine) {
     Write-Error "CMakeCache.txt must define MK_MSVC_CXX23_STANDARD_OPTION as /std:c++23preview or /std:c++23"
 }
-$cacheLine -match "^MK_MSVC_CXX23_STANDARD_OPTION:[^=]+=(/std:c\+\+23(?:preview)?)$" | Out-Null
-$expectedOption = $Matches[1]
+$cacheMatch = $msvcCxx23OptionRegex.Match($cacheLine)
+$expectedOption = $cacheMatch.Groups[1].Value
 $expectedOptionPattern = [regex]::Escape($expectedOption)
+$expectedLanguageStandards = if ($expectedOption -eq "/std:c++23") {
+    @("stdcpp23")
+} else {
+    @("stdcpp23preview", "stdcpp23")
+}
+$latestLanguageStandardPattern = "<LanguageStandard>\s*stdcpp(?:latest|26)\s*</LanguageStandard>"
 
 foreach ($project in $projects) {
     if ($project.FullName -match "\\CMakeFiles\\") {
@@ -46,10 +53,24 @@ foreach ($project in $projects) {
         continue
     }
 
-    if ($content -match "stdcpplatest" -or $content -match "std:c\+\+latest") {
+    if ($content -match "stdcpplatest" -or
+        $content -match "std:c\+\+latest" -or
+        $content -match $latestLanguageStandardPattern) {
         $badLatest += $project.FullName
     }
-    if ($content -match $expectedOptionPattern) {
+    $matchesExpectedRawOption = $content -match $expectedOptionPattern
+    $matchesExpectedLanguageStandard = $false
+    $projectXml = [xml]$content
+    $languageStandardNodes = $projectXml.SelectNodes("//*[local-name()='LanguageStandard']")
+    foreach ($node in $languageStandardNodes) {
+        $languageStandard = $node.InnerText.Trim()
+        if ($expectedLanguageStandards -contains $languageStandard) {
+            $matchesExpectedLanguageStandard = $true
+            break
+        }
+    }
+
+    if ($matchesExpectedRawOption -or $matchesExpectedLanguageStandard) {
         $matchingProjects += $project.FullName
     }
 }
@@ -59,7 +80,7 @@ if ($badLatest.Count -gt 0) {
 }
 
 if ($matchingProjects.Count -eq 0) {
-    Write-Error "Generated MSVC projects did not contain $expectedOption in any C++ target."
+    Write-Error "Generated MSVC projects did not contain $expectedOption or an equivalent C++23 LanguageStandard in any C++ target."
 }
 
 Write-Host "generated-msvc-cxx23-mode-check: ok"
