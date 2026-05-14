@@ -37,11 +37,7 @@ jobs:
         run: |
           $runAll = "${{ github.event_name }}" -ne "pull_request"
           if ($runAll) {
-            "windows=true" >> $env:GITHUB_OUTPUT
-            "linux=true" >> $env:GITHUB_OUTPUT
-            "linux_sanitizers=true" >> $env:GITHUB_OUTPUT
-            "static_analysis=true" >> $env:GITHUB_OUTPUT
-            "macos=true" >> $env:GITHUB_OUTPUT
+            ./tools/classify-pr-validation-tier.ps1 -RunAll -GitHubOutputPath $env:GITHUB_OUTPUT
             return
           }
 
@@ -52,41 +48,7 @@ jobs:
             Write-Error "failed to compute PR file diff"
           }
 
-          $ciOrWorkflow = $false
-          $runtimeOrBuild = $false
-          $staticPolicy = $false
-          # Docs/agent/rules/subagent-only changes leave heavy hosted lanes disabled.
-          foreach ($file in $files) {
-            $path = $file -replace "\\", "/"
-            if ($path -match "^\.github/workflows/") {
-              $ciOrWorkflow = $true
-            }
-            if (
-              $path -eq "CMakeLists.txt" -or
-              $path -match "/CMakeLists\.txt$" -or
-              $path -eq "CMakePresets.json" -or
-              $path -match "^(cmake|engine|editor|games|platform|runtime|shaders|examples|tests)/" -or
-              $path -eq "vcpkg.json" -or
-              $path -match "^tools/(validate|build|test|bootstrap-deps|check-toolchain|check-tidy|check-format|check-coverage|check-dependency-policy|check-cpp-standard-policy|evaluate-cpp23|package|package-desktop-runtime|check-public-api-boundaries|check-shader-toolchain|run-validation-recipe|common)\.ps1$"
-            ) {
-              $runtimeOrBuild = $true
-            }
-            if ($path -eq ".clang-tidy" -or $path -eq ".clang-format" -or $path -match "^tools/check-tidy\.ps1$") {
-              $staticPolicy = $true
-            }
-          }
-
-          $windows = $ciOrWorkflow -or $runtimeOrBuild
-          $linux = $ciOrWorkflow -or $runtimeOrBuild
-          $linuxSanitizers = $ciOrWorkflow -or $runtimeOrBuild
-          $staticAnalysis = $ciOrWorkflow -or $runtimeOrBuild -or $staticPolicy
-          $macos = $ciOrWorkflow -or $runtimeOrBuild
-
-          "windows=$($windows.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-          "linux=$($linux.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-          "linux_sanitizers=$($linuxSanitizers.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-          "static_analysis=$($staticAnalysis.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-          "macos=$($macos.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          ./tools/classify-pr-validation-tier.ps1 -ChangedPath $files -GitHubOutputPath $env:GITHUB_OUTPUT
 
   agent-static:
     name: Agent Static Guards

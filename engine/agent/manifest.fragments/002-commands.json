@@ -19,6 +19,7 @@
     "appleHostEvidenceCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1",
     "productionReadinessAuditCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1",
     "ciMatrixCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1",
+    "classifyPrValidationTier": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/classify-pr-validation-tier.ps1 -ChangedPath <repo-relative-path>",
     "validateInstalledSdk": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-installed-sdk.ps1",
     "validateInstalledDesktopRuntime": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-installed-desktop-runtime.ps1",
     "format": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1",

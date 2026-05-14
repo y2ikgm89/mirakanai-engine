@@ -94,6 +94,60 @@ function Get-WorkflowJobText {
     return $match.Value
 }
 
+function Assert-ValidationTierSelection {
+    param(
+        [Parameter(Mandatory = $true)][string]$Label,
+        [string[]]$ChangedPath = @(),
+        [switch]$RunAll,
+        [Parameter(Mandatory = $true)][bool]$ExpectedWindows,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
+        [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
+        [Parameter(Mandatory = $true)][bool]$ExpectedMacos
+    )
+
+    $classifierPath = Join-Path $repoRoot "tools/classify-pr-validation-tier.ps1"
+    if (-not (Test-Path -LiteralPath $classifierPath -PathType Leaf)) {
+        Write-Error "ci-matrix-check: missing PR validation tier classifier: tools/classify-pr-validation-tier.ps1"
+    }
+
+    $arguments = @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        $classifierPath
+    )
+    if ($RunAll) {
+        $arguments += "-RunAll"
+    }
+    if ($ChangedPath.Count -gt 0) {
+        $arguments += "-ChangedPath"
+        $arguments += ($ChangedPath -join ",")
+    }
+
+    $output = & pwsh @arguments
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "ci-matrix-check: PR validation tier classifier failed for $Label"
+    }
+
+    $selection = $output | ConvertFrom-Json
+    $expectations = @{
+        windows = $ExpectedWindows
+        linux = $ExpectedLinux
+        linux_sanitizers = $ExpectedLinuxSanitizers
+        static_analysis = $ExpectedStaticAnalysis
+        macos = $ExpectedMacos
+    }
+
+    foreach ($expectation in $expectations.GetEnumerator()) {
+        $actual = [bool]$selection.($expectation.Key)
+        if ($actual -ne $expectation.Value) {
+            Write-Error "ci-matrix-check: PR validation tier classifier $Label expected $($expectation.Key)=$($expectation.Value) but got $actual"
+        }
+    }
+}
+
 $validateScript = Read-RequiredText "tools/validate.ps1"
 Assert-ContainsText $validateScript "check-ci-matrix.ps1" "tools/validate.ps1 default validation hook"
 
@@ -108,6 +162,60 @@ $cpp23ArtifactAssertIndex = $cpp23EvaluationScript.IndexOf('Assert-ReleasePackag
 if ($cpp23CpackCallIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt $cpp23CpackCallIndex) {
     Write-Error "ci-matrix-check: tools/evaluate-cpp23.ps1 must run Assert-ReleasePackageArtifacts after CPack for the C++23 release lane"
 }
+
+Assert-ValidationTierSelection `
+    -Label "docs-only PR" `
+    -ChangedPath @("docs/testing.md", "AGENTS.md", ".agents/skills/gameengine-agent-integration/SKILL.md") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "static policy PR" `
+    -ChangedPath @(".clang-tidy") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedStaticAnalysis $true `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "runtime PR" `
+    -ChangedPath @("engine/core/src/example.cpp") `
+    -ExpectedWindows $true `
+    -ExpectedLinux $true `
+    -ExpectedLinuxSanitizers $true `
+    -ExpectedStaticAnalysis $true `
+    -ExpectedMacos $true
+
+Assert-ValidationTierSelection `
+    -Label "workflow PR" `
+    -ChangedPath @(".github/workflows/validate.yml") `
+    -ExpectedWindows $true `
+    -ExpectedLinux $true `
+    -ExpectedLinuxSanitizers $true `
+    -ExpectedStaticAnalysis $true `
+    -ExpectedMacos $true
+
+Assert-ValidationTierSelection `
+    -Label "classifier policy PR" `
+    -ChangedPath @("tools/classify-pr-validation-tier.ps1") `
+    -ExpectedWindows $true `
+    -ExpectedLinux $true `
+    -ExpectedLinuxSanitizers $true `
+    -ExpectedStaticAnalysis $true `
+    -ExpectedMacos $true
+
+Assert-ValidationTierSelection `
+    -Label "non-PR run" `
+    -RunAll `
+    -ExpectedWindows $true `
+    -ExpectedLinux $true `
+    -ExpectedLinuxSanitizers $true `
+    -ExpectedStaticAnalysis $true `
+    -ExpectedMacos $true
 
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
 Assert-DoesNotContainAny $validateWorkflow @(
@@ -144,11 +252,8 @@ Assert-ContainsAll $changesJob @(
     "name: Classify touched surfaces",
     'github.event_name',
     'git diff --name-only $base $head',
-    "Docs/agent/rules/subagent-only",
-    "CMakePresets.json",
-    "^tools/(validate|build|test|bootstrap-deps",
-    "windows=`$(`$windows.ToString().ToLowerInvariant())",
-    "static_analysis=`$(`$staticAnalysis.ToString().ToLowerInvariant())"
+    "tools/classify-pr-validation-tier.ps1 -RunAll -GitHubOutputPath `$env:GITHUB_OUTPUT",
+    "tools/classify-pr-validation-tier.ps1 -ChangedPath `$files -GitHubOutputPath `$env:GITHUB_OUTPUT"
 ) ".github/workflows/validate.yml changes job"
 
 $windowsJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows" -Label ".github/workflows/validate.yml"
