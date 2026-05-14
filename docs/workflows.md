@@ -114,7 +114,16 @@ Documentation-only or similarly narrow non-runtime slices should use the cheapes
 
 ### Commit, Push, And Pull Request Workflow
 
-Use GitHub's official GitHub Flow for agent publishing: make a separate topic branch for each unrelated change, create a pull request for review, merge only after required reviews/checks pass, then delete the merged branch. Use commits and pushes at coherent, validated checkpoints without asking for per-action confirmation once a task is underway. Publish only task-owned changes and keep branch selection conservative.
+Use GitHub's official GitHub Flow for agent publishing: make a separate topic branch for each unrelated change, create a pull request for review, merge only after required reviews/checks pass, then delete the merged branch. Use commits and pushes at coherent, validated checkpoints without asking for per-action confirmation once a task is underway. Push cadence is checkpoint-based, not commit-count-based: multiple local commits may be pushed together when they form one validated, reviewable slice. Publish only task-owned changes and keep branch selection conservative.
+
+Checkpoint guidance:
+
+| Situation | Commit when | Push when |
+| --- | --- | --- |
+| Runtime, C++, build, packaging, or validation behavior | The slice is coherent, task-owned, and has the focused validation needed for the touched surface. | The slice-closing validation has passed, or a concrete environment blocker is recorded for the PR body. |
+| Documentation, agent, rules, settings, or subagent-only work | The staged patch is task-owned and the narrow static checks for the changed contract pass. | The lightweight static validation tier proves the contract, or the blocker is recorded. |
+| Review feedback | Each follow-up is an isolated, understandable fix or a small batch of related fixes. | The response batch is ready for reviewers; the PR will update automatically after the push. |
+| End of session or handoff | Only if the local state is coherent enough to preserve as history. | Push a task-owned topic branch when remote backup, CI, or review visibility is useful; do not push known-broken intermediate work just because a commit exists. |
 
 1. Inspect the branch and worktree before staging:
 
@@ -134,7 +143,7 @@ git diff --cached --check
 
 3. Commit only a coherent, validated slice. Do not include unrelated user changes, ignored scratch output, generated logs, credentials, signing keys, local overrides, `.claude/settings.local.json`, `.mcp.json`, or `AGENTS.override.md`. Use a concise imperative commit subject and avoid AI-generated trailers unless the user asks for them.
 
-4. Push only a reviewed topic branch. Prefer `codex/<topic>` for Codex-created branches unless the user asks for another name:
+4. Push only a reviewed topic branch at a validated checkpoint. Prefer `codex/<topic>` for Codex-created branches unless the user asks for another name:
 
 ```powershell
 git branch --show-current
