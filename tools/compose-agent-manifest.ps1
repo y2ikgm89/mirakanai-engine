@@ -75,6 +75,17 @@ function Get-CanonicalJsonNode {
 $writeOptions = [System.Text.Json.JsonSerializerOptions]::new()
 $writeOptions.WriteIndented = $true
 
+function Write-Utf8NoBomLfFile {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$Text
+    )
+
+    $lfText = ($Text -replace "`r`n", "`n") -replace "`r", "`n"
+    $encoding = [System.Text.UTF8Encoding]::new($false)
+    [System.IO.File]::WriteAllText($Path, "$lfText`n", $encoding)
+}
+
 if ($SplitFromCanonical) {
     if (-not (Test-Path -LiteralPath $manifestPath)) {
         Write-Error "Missing $manifestPath"
@@ -115,7 +126,7 @@ if ($SplitFromCanonical) {
         $safeKey = $key -replace '[^a-zA-Z0-9_-]', '_'
         $outFile = Join-Path $fragDir "$prefix-$safeKey.json"
         $json = $fragment.ToJsonString($writeOptions)
-        Set-Content -LiteralPath $outFile -Value $json -Encoding utf8NoBOM
+        Write-Utf8NoBomLfFile -Path $outFile -Text $json
         $index++
     }
 
@@ -137,7 +148,7 @@ if ($Verify) {
 
 $outText = $composed.ToJsonString($writeOptions)
 if ($Write) {
-    Set-Content -LiteralPath $manifestPath -Value $outText -Encoding utf8NoBOM
+    Write-Utf8NoBomLfFile -Path $manifestPath -Text $outText
     Write-Host "Wrote $manifestPath"
     exit 0
 }
