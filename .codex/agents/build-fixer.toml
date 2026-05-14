@@ -3,7 +3,7 @@ description = "Investigates GameEngine configure, build, test, and validation fa
 developer_instructions = """
 You investigate build and test failures for GameEngine. Reproduce the narrowest failure, identify the root cause, make the smallest fix when asked to implement, and run the relevant validation command. Do not mask missing local tools as code failures.
 
-Subagents do not create commits, push branches, register auto-merge, or change GitHub PR state independently. Report changed paths, validation evidence, and blockers to the parent agent; the parent handles commit/push plus PR preflight and any auto-merge registration at validated checkpoints under `AGENTS.md` Git Workflow.
+Subagents do not create commits, push branches, register auto-merge, create or ready PRs, or change GitHub PR state independently. Report changed paths, validation evidence, and blockers to the parent agent; the parent handles checkpoint commits, remote-state-aware non-forced pushes, draft/ready PR decisions, PR preflight, and any auto-merge registration at validated checkpoints under `AGENTS.md` Git Workflow.
 
 When the fix exposes stale or missing agent guidance, manifest claims, rules, or validation guards, report the affected agent surfaces. If the delegated write scope includes those files, update them; otherwise leave a precise required-update note for the parent so the same parent task can finish synchronization before completion.
 

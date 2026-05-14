@@ -117,7 +117,7 @@ Documentation-only or similarly narrow non-runtime slices should use the cheapes
 
 ### Commit, Push, And Pull Request Workflow
 
-Use GitHub's official GitHub Flow for agent publishing: make a separate topic branch for each unrelated change, create a pull request for review, merge only after required reviews/checks pass, then delete the merged branch. Use commits and pushes at coherent, validated checkpoints without asking for per-action confirmation once a task is underway. Push cadence is checkpoint-based, not commit-count-based: multiple local commits may be pushed together when they form one validated, reviewable slice. Publish only task-owned changes and keep branch selection conservative.
+Use GitHub's official GitHub Flow for agent publishing: make a separate topic branch for each unrelated change, create a pull request for review, merge only after required reviews/checks pass, then delete the merged branch. Use commits and pushes at coherent, validated checkpoints without asking for per-action confirmation once a task is underway. Push cadence is checkpoint-based, not commit-count-based: multiple local commits may be pushed together when they form one validated, reviewable slice. Keep local commits backed up and reviewable by pushing at slice, handoff, or PR-feedback checkpoints instead of holding finished work locally for long stretches. Publish only task-owned changes and keep branch selection conservative.
 
 Treat publishing as a slice-closing gate, not an optional epilogue. Unless the user explicitly asks for local-only/no-PR work, do not report a task complete while task-owned changes only exist locally after validation. Complete branch creation, task-owned staging, commit, non-forced push, and PR creation/update with validation evidence in the same turn; if any step is blocked by permissions, authentication, command policy, branch protection, or dirty unrelated files that prevent safe staging, report that exact blocker. If the preferred `codex/<topic>` branch form conflicts with existing ref namespaces, use a conservative non-default fallback such as `codex-<topic>`.
 
@@ -129,6 +129,8 @@ Checkpoint guidance:
 | Documentation, agent, rules, settings, or subagent-only work | The staged patch is task-owned and the narrow static checks for the changed contract pass. | The lightweight static validation tier proves the contract, or the blocker is recorded. |
 | Review feedback | Each follow-up is an isolated, understandable fix or a small batch of related fixes. | The response batch is ready for reviewers; the PR will update automatically after the push. |
 | End of session or handoff | Only if the local state is coherent enough to preserve as history. | Push a task-owned topic branch when remote backup, CI, or review visibility is useful; do not push known-broken intermediate work just because a commit exists. |
+
+For large or review-sensitive slices, open a draft PR after the first coherent validated push rather than waiting for the final local polish pass. Draft PRs are the preferred early feedback surface; keep them draft while follow-up checkpoint commits are still expected, and move to ready-for-review only after final validation, branch preflight, and task-owned PR evidence are in place. In unattended Codex sessions, `gh pr ready` and other PR state changes remain prompt-gated; use GitHub Web/Desktop or an approval-capable session when conversion is required and approvals are unavailable.
 
 1. Inspect the branch and worktree before staging:
 
@@ -148,11 +150,12 @@ git diff --cached --check
 
 3. Commit only a coherent, validated slice. Do not include unrelated user changes, ignored scratch output, generated logs, credentials, signing keys, local overrides, `.claude/settings.local.json`, `.mcp.json`, or `AGENTS.override.md`. Use a concise imperative commit subject and avoid AI-generated trailers unless the user asks for them.
 
-4. Push only a reviewed topic branch at a validated checkpoint. Prefer `codex/<topic>` for Codex-created branches unless the user asks for another name:
+4. Push only a reviewed topic branch at a validated checkpoint. Prefer `codex/<topic>` for Codex-created branches unless the user asks for another name. Before pushing, refresh or inspect the remote state so the push is based on the current upstream view:
 
 ```powershell
 git branch --show-current
 git remote -v
+git fetch origin
 git push -u origin <branch>
 ```
 
@@ -191,7 +194,7 @@ Keep required job names unique across workflows. If branch protection or merge q
 gh pr create --base <base-branch> --head <branch> --title "<title>" --body "<validation summary>"
 ```
 
-In unattended Codex sessions, `gh pr create` may run automatically after the branch is pushed and the validation evidence is ready. The PR body must include actual validation evidence or blockers, and the head branch must be task-owned.
+In unattended Codex sessions, `gh pr create` may run automatically after the branch is pushed and the validation evidence is ready. Use `--draft` for large slices or early feedback; create a ready PR only when the work is ready for review. The PR body must include actual validation evidence or blockers, and the head branch must be task-owned.
 
 The PR can also be created or updated through GitHub Web or GitHub Desktop. If authentication, branch protection, required reviews, required status checks, or remote permissions block the push or PR, report the blocker and stop instead of bypassing policy or asking to weaken safeguards.
 
@@ -356,4 +359,3 @@ Android Release Device Matrix v1 current evidence uses `sample_headless` on the 
 Apple package attempts use `tools/build-mobile-apple.ps1` and the `platform/ios` CMake/Xcode bundle template. The template packages `games/<game_name>/game.agent.json` into bundle resources, creates a Metal-backed UIKit view, maps Application Support/Caches/Documents into first-party save/cache/shared storage roots, supports `-Platform Simulator|Device`, disables simulator signing when no team is supplied, and accepts `MK_IOS_BUNDLE_IDENTIFIER`, `MK_IOS_DEVELOPMENT_TEAM`, and `MK_IOS_CODE_SIGN_IDENTITY` or the matching script parameters for Xcode signing. The Apple package script configures the package tree with `BUILD_TESTING=OFF` and builds only the `MirakanaiIOS` bundle target, keeping iOS smoke focused on the app package instead of Xcode `ALL_BUILD` unit-test targets. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug` builds the Simulator bundle, selects an available iPhone Simulator, boots it when needed, installs the app, verifies the app container, launches the bundle, terminates it, and shuts down only the simulator booted by the script. These scripts validate `games/<game_name>/game.agent.json` before building.
 
 Apple Metal iOS Host Evidence v1 current Windows evidence is host-gated: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1` reports `host=windows`, `xcode=blocked`, `ios-simulator=blocked`, `metal-library=blocked`, missing `xcodebuild`, missing `xcrun`, missing iOS SDK/runtime access, missing `metal`, missing `metallib`, and present iOS Simulator/macOS Metal workflow coverage. Run `tools/check-apple-host-evidence.ps1 -RequireReady` only on a macOS/full-Xcode host when the task requires hard Apple-ready evidence.
-
