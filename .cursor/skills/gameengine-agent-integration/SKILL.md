@@ -11,6 +11,7 @@ paths:
   - "tools/check-json-contracts*.ps1"
   - "tools/static-contract-ledger.ps1"
   - "tools/check-agents.ps1"
+  - "tools/*text-format*.ps1"
   - "tools/prepare-worktree.ps1"
   - "tools/remove-merged-worktree.ps1"
   - "tools/compose-agent-manifest.ps1"
@@ -34,7 +35,7 @@ Full workflow lives in shared skills. Read these canonical files (ASCII paths):
 | Baseline | `AGENTS.md` |
 | Consistency checklist | `docs/workflows.md` (**Repository consistency checklist**) |
 
-`tools/*.ps1` hygiene also includes **UTF-8 without BOM**, contiguous `#requires`, **approved-verb** `function` names, and **PSScriptAnalyzer-friendly** patterns (no automatic-variable reuse such as **`$input` / `$matches`**—including **`foreach ($input in ...)`** and **`$matches = [Regex]::Matches(...)`**—no shadowing **`$Is*`** platform automatics, **`$null =`** for intentional discard, **`Write-Information -InformationAction Continue`** instead of **`Write-Host`** for non-pipeline status, non-empty **`catch`**, **`ShouldProcess`** on host-mutating **`Set-*`** helpers—see checklist step 2 and `AGENTS.md` **Repository command entrypoints**). `tools/check-format.ps1` / `tools/format.ps1` cover C++ `clang-format` plus tracked text normalization; `tools/check-text-format.ps1` / `tools/format-text.ps1` are the text-only loops for LF, UTF-8 without BOM, a single final newline, and no trailing EOF blank lines. Run **`Invoke-ScriptAnalyzer`** on edited scripts when the module is installed.
+`tools/*.ps1` hygiene also includes **UTF-8 without BOM**, contiguous `#requires`, **approved-verb** `function` names, and **PSScriptAnalyzer-friendly** patterns (no automatic-variable reuse such as **`$input` / `$matches`**—including **`foreach ($input in ...)`** and **`$matches = [Regex]::Matches(...)`**—no shadowing **`$Is*`** platform automatics, **`$null =`** for intentional discard, **`Write-Information -InformationAction Continue`** instead of **`Write-Host`** for non-pipeline status, non-empty **`catch`**, **`ShouldProcess`** on host-mutating **`Set-*`** helpers—see checklist step 2 and `AGENTS.md` **Repository command entrypoints**). `tools/check-format.ps1` / `tools/format.ps1` cover C++ plus tracked text normalization, excluding hashed `games/*/runtime/**`; `tools/check-text-format.ps1` / `tools/format-text.ps1` are text-only. Run **`Invoke-ScriptAnalyzer`** on edited scripts when the module is installed.
 
 Static contract ledger entrypoints stay thin; `tools/static-contract-ledger.ps1`.
 

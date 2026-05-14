@@ -45,5 +45,3 @@ Add core unit tests for:
 - scoped profile zones closing through RAII
 
 Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` before reporting completion.
-
-

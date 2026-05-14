@@ -187,4 +187,3 @@ Assert-TextContains "docs/cpp-standard.md" 'stdcpplatest' "C++ standard policy d
 Assert-TextContains "tools/coverage-thresholds.json" 'minLineCoveragePercent' "coverage thresholds policy file"
 
 Write-Host "cpp-standard-policy-check: ok"
-

@@ -164,4 +164,3 @@ androidComponents {
         assets.addGeneratedSourceDirectory(prepareGameAssets) { it.outputDirectory }
     }
 }
-

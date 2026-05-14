@@ -30,5 +30,3 @@ Describe how the game ends or how progress is measured.
 State what executable output, test, or behavior proves the game works.
 
 Mirror that proof in `game.agent.json` `validationRecipes`.
-
-

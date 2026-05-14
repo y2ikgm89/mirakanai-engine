@@ -109,4 +109,3 @@ Invoke-CheckedCommand $tools.CMake --install $buildDir --config Release --prefix
 Invoke-CheckedCommand $tools.CPack --preset desktop-runtime-release
 
 Write-Host "desktop-runtime-package: ok ($GameTarget)"
-

@@ -61,7 +61,3 @@ This is SDK payload validation only. It does not add package signing, upload, no
 CPack emits ZIP packages named with the engine version, host system, and host processor. `tools/package.ps1` runs `Assert-ReleasePackageArtifacts` from `tools/release-package-artifacts.ps1` after CPack generation. The validator derives the expected artifact basename from the current build's `CPackConfig.cmake`, verifies the matching `.zip.sha256` sidecar against the ZIP bytes, ignores unrelated stale ZIPs, and inspects the ZIP central directory without extraction for the installed CMake package files, SDK manifest/schemas, workflow tools, installed consumer example, docs README, third-party notices, and proprietary license payload.
 
 This is desktop SDK artifact integrity validation only. It does not add signing, upload, notarization, symbol-server publication, crash/telemetry backends, desktop-runtime selected-game package proof, Android device matrix evidence, or Apple-host validation.
-
-
-
-

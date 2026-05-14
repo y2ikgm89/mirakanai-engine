@@ -2284,4 +2284,3 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
     # Vulkan strict package smoke can use --require-vulkan-scene-shaders with -RequireVulkanShaders.
 endif()
-

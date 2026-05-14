@@ -43,4 +43,3 @@ endif()
 
 enable_testing()
 add_test(NAME gameengine_installed_consumer COMMAND gameengine_installed_consumer)
-

@@ -37,5 +37,3 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-android-package.ps1 -C
 ```
 
 The template accepts `-Pmirakanai.game=<games directory name>`, validates that `games/<name>/game.agent.json` exists before attempting a package build, packages that manifest under app assets, and copies `games/<name>/assets` when present. The native bridge exposes the required Android Vulkan surface extension name, creates `VK_KHR_android_surface` surfaces from the private `ANativeWindow`, and starts/stops a private low-latency AAudio float32 output stream on lifecycle events.
-
-

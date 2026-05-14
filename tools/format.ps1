@@ -21,19 +21,20 @@ $files = foreach ($sourceRoot in $sourceRoots) {
 
 if (-not $files) {
     Write-Host "format: no C++ files found"
-    exit 0
-}
-
-# Same batching rationale as `check-format.ps1` (Windows argv length limit).
-$paths = @($files | ForEach-Object { $_.FullName })
-$batchSize = 40
-for ($i = 0; $i -lt $paths.Length; $i += $batchSize) {
-    $end = [Math]::Min($i + $batchSize - 1, $paths.Length - 1)
-    $batch = $paths[$i..$end]
-    & $format -i @batch
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "format failed"
+} else {
+    # Same batching rationale as `check-format.ps1` (Windows argv length limit).
+    $paths = @($files | ForEach-Object { $_.FullName })
+    $batchSize = 40
+    for ($i = 0; $i -lt $paths.Length; $i += $batchSize) {
+        $end = [Math]::Min($i + $batchSize - 1, $paths.Length - 1)
+        $batch = $paths[$i..$end]
+        & $format -i @batch
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "format failed"
+        }
     }
 }
+
+& (Join-Path $PSScriptRoot "format-text.ps1")
 
 Write-Host "format: ok"

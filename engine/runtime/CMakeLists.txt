@@ -25,4 +25,3 @@ mirakana_apply_common_target_options(mirakana_runtime)
 if(NOT TARGET MK_runtime)
     add_library(MK_runtime ALIAS mirakana_runtime)
 endif()
-

@@ -73,5 +73,3 @@ The project uses a first-party test harness and CTest. Tests validate determinis
 ## Legal
 
 All first-party files use `LicenseRef-Proprietary`. No third-party distributable material is included in the MVP.
-
-

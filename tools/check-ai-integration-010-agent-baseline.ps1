@@ -54,7 +54,9 @@ Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -Fil
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" "AGENTS.md"
 Assert-ContainsText $agentsContent "normalized-configure-environment" "AGENTS.md"
 Assert-ContainsText $agentsContent "normalized-build-environment" "AGENTS.md"
-Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "tools/check-format.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "tools/check-text-format.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "tools/format-text.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "direct-clang-format-status" "AGENTS.md"
 Assert-ContainsText $agentsContent "CMake File API" "AGENTS.md"
 Assert-ContainsText $agentsContent "VCPKG_MANIFEST_INSTALL=OFF" "AGENTS.md"
@@ -166,6 +168,8 @@ Assert-ContainsText $workflowsContent "specific, concise, verifiable" "docs/work
 Assert-ContainsText $workflowsContent "machine-readable capability/status claims" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "direct-clang-format-status" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "tools/check-text-format.ps1" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "tools/format-text.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "CMake File API codemodel" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "normalized-configure-environment" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "normalized-build-environment" "docs/workflows.md"
@@ -176,6 +180,8 @@ foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows 
 $testingContent = Get-Content -LiteralPath $testingPath -Raw
 Assert-ContainsText $testingContent "direct-clang-format-status" "docs/testing.md"
 Assert-ContainsText $testingContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" "docs/testing.md"
+Assert-ContainsText $testingContent "tools/check-text-format.ps1" "docs/testing.md"
+Assert-ContainsText $testingContent "tools/format-text.ps1" "docs/testing.md"
 Assert-ContainsText $testingContent "CMake File API codemodel" "docs/testing.md"
 Assert-ContainsText $testingContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/testing.md"
 Assert-ContainsText $testingContent "normalized-configure-environment" "docs/testing.md"
@@ -270,6 +276,7 @@ Assert-ContainsText $cursorBaselineSkillText 'pending-only `UNSTABLE` / `BLOCKED
 Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "tools/remove-merged-worktree.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "tools/check-text-format.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "docs/agent/rules/subagent-only PRs should use lightweight static validation" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 $cursorAgentIntegrationSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -278,6 +285,7 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cu
 Assert-ContainsText $cursorAgentIntegrationSkillText "final completion report must not stop after local validation" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Direct default-branch pushes are forbidden" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "tools/remove-merged-worktree.ps1" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "tools/check-text-format.ps1" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Use lightweight static validation for docs/agent/rules/subagent-only PRs" ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -376,6 +384,16 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("composeAgentManif
 } elseif ($manifest.commands.composeAgentManifest -ne $composeAgentManifestCmd) {
     Write-Error "engine/agent/manifest.json commands.composeAgentManifest must be $composeAgentManifestCmd"
 }
+if (-not $manifest.commands.PSObject.Properties.Name.Contains("textFormat")) {
+    Write-Error "engine/agent/manifest.json commands missing required command: textFormat"
+} elseif ($manifest.commands.textFormat -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format-text.ps1") {
+    Write-Error "engine/agent/manifest.json commands.textFormat must expose tools/format-text.ps1"
+}
+if (-not $manifest.commands.PSObject.Properties.Name.Contains("textFormatCheck")) {
+    Write-Error "engine/agent/manifest.json commands missing required command: textFormatCheck"
+} elseif ($manifest.commands.textFormatCheck -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1") {
+    Write-Error "engine/agent/manifest.json commands.textFormatCheck must expose tools/check-text-format.ps1"
+}
 if (-not $manifest.commands.PSObject.Properties.Name.Contains("toolchainCheck")) {
     Write-Error "engine/agent/manifest.json commands missing required command: toolchainCheck"
 } elseif ($manifest.commands.toolchainCheck -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1") {
@@ -392,6 +410,8 @@ Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "OpenAI develo
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "direct-clang-format-status" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "CMake File API codemodel" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "tools/check-text-format.ps1" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "tools/format-text.ps1" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "runtime-resource-v2 next" "engine/agent/manifest.json"
 foreach ($windowsDiagnosticsNeedle in @("windowsDiagnosticsToolchain", "Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit", "Tools.Graphics.DirectX~~~~0.0.1.0", "d3d12SDKLayers.dll", "pixtool --help", "srv*C:\\Symbols*https://msdl.microsoft.com/download/symbols")) {
     Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) $windowsDiagnosticsNeedle "engine/agent/manifest.json"

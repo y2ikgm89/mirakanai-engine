@@ -23,4 +23,3 @@ First-party mesh source documents can now preserve optional `mesh.vertex_data_he
 - Invalid metadata and missing byte payloads fail before creating RHI resources.
 - Runtime RHI tests cover success and failure paths.
 - Manifest, roadmap, gap analysis, and AI guidance describe mesh upload readiness honestly.
-

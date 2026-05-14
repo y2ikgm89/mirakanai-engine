@@ -439,4 +439,3 @@ Rules:
 - View-only toggles may remain regular commands until layout history is intentionally supported.
 
 The desktop editor currently wires scene replacement actions through this stack for New Scene, Add Empty Node, transform edits, Undo, and Redo.
-

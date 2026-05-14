@@ -29,5 +29,3 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-apple.ps1 -Game
 ```
 
 The template packages `games/<name>/game.agent.json` into bundle resources, creates a `CAMetalLayer`-backed UIKit root view, maps Application Support to save data, Caches to cache data, and Documents to shared data through `mirakana::MobileStorageRoots`, and accepts bundle identifier, development team, optional code-sign identity, and simulator/device platform inputs without exposing UIKit, Metal, storage, or signing details to game code. `.github/workflows/ios-validate.yml` mirrors the Simulator smoke path on a hosted macOS runner.
-
-

@@ -21,4 +21,3 @@ mirakana_apply_common_target_options(mirakana_runtime_scene_rhi)
 if(NOT TARGET MK_runtime_scene_rhi)
     add_library(MK_runtime_scene_rhi ALIAS mirakana_runtime_scene_rhi)
 endif()
-

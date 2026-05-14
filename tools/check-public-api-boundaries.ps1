@@ -143,5 +143,3 @@ if ($violations.Count -gt 0) {
 }
 
 Write-Host "public-api-boundary-check: ok"
-
-

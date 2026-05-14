@@ -51,5 +51,3 @@ Start with [the plan registry](superpowers/plans/README.md) before editing an im
 3. Read [roadmap](roadmap.md) for priorities and next work.
 4. Read subsystem docs only for the area you are changing.
 5. Read the relevant spec or implementation plan last, after checking whether it is current, historical, or host-gated.
-
-

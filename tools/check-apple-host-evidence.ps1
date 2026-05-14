@@ -146,4 +146,3 @@ if ($status -eq "ready") {
 if ($RequireReady -and $status -ne "ready") {
     Write-Error "Apple host evidence is host-gated; run on a macOS host with full Xcode, iOS Simulator runtime, and Metal compiler tools."
 }
-

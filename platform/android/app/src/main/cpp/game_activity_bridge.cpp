@@ -120,4 +120,3 @@ extern "C" void android_main(android_app* app) {
     stop_audio(app);
     app->userData = nullptr;
 }
-

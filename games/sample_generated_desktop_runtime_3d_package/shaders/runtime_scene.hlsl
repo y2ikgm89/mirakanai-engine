@@ -302,4 +302,3 @@ float4 ps_shadow_receiver(VsOut input) : SV_Target {
     const float shadow_factor = lerp(1.0, 0.42, directional_shadow_pcf_3x3(atlas_uv, receiver_depth));
     return float4(saturate(evaluate_lit_color(input, sampled, shadow_factor)), sampled.a * base_color.a);
 }
-

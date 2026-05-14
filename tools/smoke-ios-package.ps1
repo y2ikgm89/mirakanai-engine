@@ -212,4 +212,3 @@ finally {
         [void](Invoke-XcrunAllowFailure @("simctl", "shutdown", $selectedDevice.Udid))
     }
 }
-

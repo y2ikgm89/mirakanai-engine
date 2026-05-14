@@ -230,5 +230,3 @@ Done when for the completed animation CPU skinning foundation slice:
 - CPU skinning applies palette matrices to bind positions using normalized influence weights while preserving deterministic vertex order.
 - Tests prove skeleton-derived palette deformation, direct palette rotation/scale, deterministic replay, diagnostics, and throwing invalid paths.
 - Focused animation tests, API-boundary/static checks, cpp-reviewer, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` pass with existing host/toolchain gates recorded.
-
-

@@ -158,4 +158,3 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1
 ## License
 
 The project is currently all rights reserved under `LicenseRef-Proprietary`. Third-party code and assets must be recorded before they are introduced.
-

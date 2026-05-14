@@ -321,6 +321,3 @@ This maps directly onto Direct3D 12 command queues/lists/fences plus root signat
 - Metal heaps: https://developer.apple.com/documentation/metal/memory-heaps
 - Metal render command encoder resource binding: https://developer.apple.com/documentation/metal/mtlrendercommandencoder
 - Metal command structure: https://developer.apple.com/documentation/metal/setting-up-a-command-structure
-
-
-

@@ -29,4 +29,3 @@ mirakana_apply_common_target_options(mirakana_assets)
 if(NOT TARGET MK_assets)
     add_library(MK_assets ALIAS mirakana_assets)
 endif()
-

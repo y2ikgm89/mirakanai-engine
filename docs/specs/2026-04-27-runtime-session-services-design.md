@@ -32,5 +32,3 @@ Add the first host-independent runtime services every generated game needs per s
 - `mirakana_runtime` exposes the new public header and source through CMake.
 - `engine/agent/manifest.json`, `docs/roadmap.md`, gap analysis, and generated-game guidance describe the implemented and missing scope honestly.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passes or reports concrete environment blockers.
-
-

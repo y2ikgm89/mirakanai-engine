@@ -19,4 +19,3 @@ $tools = Assert-CppBuildTools
 Invoke-CheckedCommand $tools.CMake --preset desktop-gui
 Invoke-CheckedCommand $tools.CMake --build --preset desktop-gui
 Invoke-CheckedCommand $tools.CTest --preset desktop-gui --output-on-failure
-

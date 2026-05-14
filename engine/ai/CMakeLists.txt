@@ -14,4 +14,3 @@ mirakana_apply_common_target_options(mirakana_ai)
 if(NOT TARGET MK_ai)
     add_library(MK_ai ALIAS mirakana_ai)
 endif()
-

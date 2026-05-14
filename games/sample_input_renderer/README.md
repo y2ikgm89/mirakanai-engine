@@ -9,4 +9,3 @@ This sample demonstrates AI-friendly gameplay using the current headless engine 
 - `mirakana::GameApp` and `mirakana::HeadlessRunner` for runtime flow
 
 The sample simulates holding the right key for four frames and verifies that the player moved to `x = 4`.
-

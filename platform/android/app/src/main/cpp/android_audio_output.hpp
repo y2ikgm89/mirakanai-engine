@@ -47,4 +47,3 @@ class AndroidAudioOutput final {
 [[nodiscard]] bool android_audio_output_format_supported(mirakana::AudioDeviceFormat format) noexcept;
 
 } // namespace mirakana_android
-

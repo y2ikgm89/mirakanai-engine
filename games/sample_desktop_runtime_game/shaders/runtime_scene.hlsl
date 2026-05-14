@@ -258,5 +258,3 @@ VsOut vs_skinned(VsSkinnedIn input) {
     output.uv = input.uv;
     return output;
 }
-
-

@@ -53,4 +53,3 @@ if(WIN32 AND TARGET MK_rhi_vulkan)
 endif()
 
 MK_apply_common_target_options(MK_runtime_host_sdl3_presentation)
-

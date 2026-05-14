@@ -10,5 +10,3 @@ Validate through:
 cmake --build --preset dev --target sample_ai_navigation
 ctest --preset dev --output-on-failure -R "^sample_ai_navigation$"
 ```
-
-

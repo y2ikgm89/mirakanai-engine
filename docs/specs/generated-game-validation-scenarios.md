@@ -172,6 +172,3 @@ For editor-assisted packaged playtests, use Editor Playtest Package Review Loop 
 - Game runtime code must not parse source PNG, glTF, common audio, or source scene files directly; source parsing belongs in tools/editor workflows and runtime gameplay consumes cooked packages.
 - Vulkan package and visible claims require the strict Vulkan host/toolchain/runtime validation recipes. Metal visible rendering remains Apple-host gated.
 - Apple iOS bundle/device output remains macOS/Xcode/signing gated; Android package output is available only on Android-ready hosts and must not be faked when `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` reports blockers.
-
-
-

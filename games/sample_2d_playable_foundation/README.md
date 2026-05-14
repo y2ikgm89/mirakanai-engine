@@ -14,4 +14,3 @@ Validate through the default source-tree lane:
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
-

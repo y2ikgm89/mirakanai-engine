@@ -143,4 +143,3 @@ All long-lived decisions should be recorded in `docs/adr/`. Feature work starts 
 ## Source Guidance
 
 This architecture is informed by official platform documentation and publicly available architecture summaries, not copied implementations. Primary sources include Khronos Vulkan documentation, Microsoft Direct3D 12 documentation, Microsoft Win32 process documentation, Apple Metal documentation, Android NDK/GameActivity documentation, SDL3 documentation, CMake documentation, SPDX, REUSE, OSI, Creative Commons, and OpenAI Codex documentation.
-

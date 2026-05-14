@@ -24,4 +24,3 @@ endif()
 
 add_subdirectory(vulkan)
 add_subdirectory(metal)
-

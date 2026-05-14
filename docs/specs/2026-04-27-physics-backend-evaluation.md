@@ -55,5 +55,3 @@ For Physics 1.0, the machine-readable decision lives in `engine/agent/manifest.j
 - NVIDIA PhysX license docs: [https://nvidia-omniverse.github.io/PhysX/physx/5.1.1/docs/License.html](https://nvidia-omniverse.github.io/PhysX/physx/5.1.1/docs/License.html)
 - Bullet documentation: [https://pybullet.org/Bullet/BulletFull/](https://pybullet.org/Bullet/BulletFull/)
 - ReactPhysics3D documentation: [https://www.reactphysics3d.com/documentation/](https://www.reactphysics3d.com/documentation/)
-
-

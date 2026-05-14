@@ -39,7 +39,7 @@ function Test-RuntimeOrBuildPath {
         $Path -eq "CMakePresets.json" -or
         $Path -match "^(cmake|engine|editor|games|platform|runtime|shaders|examples|tests)/" -or
         $Path -eq "vcpkg.json" -or
-        $Path -match "^tools/(validate|build|test|bootstrap-deps|check-toolchain|check-tidy|check-format|check-coverage|check-dependency-policy|check-cpp-standard-policy|evaluate-cpp23|package|package-desktop-runtime|check-public-api-boundaries|check-shader-toolchain|run-validation-recipe|common)\.ps1$"
+        $Path -match "^tools/(validate|build|test|bootstrap-deps|check-toolchain|check-tidy|check-format|check-text-format|format|format-text|text-format-core|check-coverage|check-dependency-policy|check-cpp-standard-policy|evaluate-cpp23|package|package-desktop-runtime|check-public-api-boundaries|check-shader-toolchain|run-validation-recipe|common)\.ps1$"
     )
 }
 
