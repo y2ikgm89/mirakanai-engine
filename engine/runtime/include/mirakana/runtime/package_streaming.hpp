@@ -26,6 +26,7 @@ enum class RuntimePackageStreamingExecutionStatus : std::uint8_t {
     safe_point_replacement_failed,
     committed,
     resident_mount_failed,
+    resident_replace_failed,
     resident_catalog_refresh_failed,
 };
 
@@ -61,6 +62,7 @@ struct RuntimePackageStreamingExecutionResult {
     std::uint32_t resident_mount_generation{0};
     RuntimePackageSafePointReplacementResult replacement;
     RuntimeResidentPackageMountResultV2 resident_mount;
+    RuntimeResidentPackageReplaceCommitResultV2 resident_replace;
     RuntimeResidentCatalogCacheRefreshResultV2 resident_catalog_refresh;
     std::vector<RuntimePackageStreamingExecutionDiagnostic> diagnostics;
 
@@ -75,5 +77,13 @@ struct RuntimePackageStreamingExecutionResult {
     RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
     RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc, RuntimeAssetPackageLoadResult loaded_package);
+
+[[nodiscard]] RuntimePackageStreamingExecutionResult
+execute_selected_runtime_package_streaming_resident_replace_safe_point(RuntimeResidentPackageMountSetV2& mount_set,
+                                                                       RuntimeResidentCatalogCacheV2& catalog_cache,
+                                                                       RuntimeResidentPackageMountIdV2 mount_id,
+                                                                       RuntimePackageMountOverlay overlay,
+                                                                       const RuntimePackageStreamingExecutionDesc& desc,
+                                                                       RuntimeAssetPackageLoadResult loaded_package);
 
 } // namespace mirakana::runtime
