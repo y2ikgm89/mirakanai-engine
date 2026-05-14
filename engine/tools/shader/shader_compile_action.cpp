@@ -297,9 +297,8 @@ reconcile_shader_pipeline_cache_index(IFileSystem& filesystem,
     }
 
     std::ranges::sort(result.written_cache_index_paths);
-    result.written_cache_index_paths.erase(
-        std::unique(result.written_cache_index_paths.begin(), result.written_cache_index_paths.end()),
-        result.written_cache_index_paths.end());
+    result.written_cache_index_paths.erase(std::ranges::unique(result.written_cache_index_paths).begin(),
+                                           result.written_cache_index_paths.end());
     return result;
 }
 

@@ -16,7 +16,7 @@
 
 namespace mirakana {
 
-enum class MobileLifecycleEventKind {
+enum class MobileLifecycleEventKind : std::uint8_t {
     unknown = 0,
     started,
     resumed,
@@ -27,7 +27,7 @@ enum class MobileLifecycleEventKind {
     destroyed,
 };
 
-enum class MobileOrientation {
+enum class MobileOrientation : std::uint8_t {
     unknown = 0,
     portrait,
     portrait_upside_down,
@@ -49,7 +49,7 @@ struct MobileViewportState {
     float pixel_density{1.0F};
 };
 
-enum class MobileTouchPhase {
+enum class MobileTouchPhase : std::uint8_t {
     unknown = 0,
     pressed,
     moved,
@@ -64,7 +64,7 @@ struct MobileTouchSample {
     float pressure{0.0F};
 };
 
-enum class MobilePermissionKind {
+enum class MobilePermissionKind : std::uint8_t {
     unknown = 0,
     storage,
     microphone,
@@ -72,7 +72,7 @@ enum class MobilePermissionKind {
     count,
 };
 
-enum class MobilePermissionStatus {
+enum class MobilePermissionStatus : std::uint8_t {
     unknown = 0,
     not_determined,
     granted,

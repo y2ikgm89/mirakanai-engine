@@ -129,19 +129,20 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         tilemap_diagnostics_ = tilemap_sample.diagnostic_count;
 
         ui_ok_ = build_hud();
-        theme_.add(mirakana::UiThemeColor{"hud.panel", mirakana::Color{0.06F, 0.08F, 0.09F, 1.0F}});
+        theme_.add(mirakana::UiThemeColor{.token = "hud.panel",
+                                          .color = mirakana::Color{.r = 0.06F, .g = 0.08F, .b = 0.09F, .a = 1.0F}});
 
         audio_clip_registered_ = mixer_.register_clip(mirakana::AudioClipDesc{
-            audio_samples_.clip,
-            audio_samples_.format.sample_rate,
-            audio_samples_.format.channel_count,
-            audio_samples_.frame_count,
-            mirakana::AudioSampleFormat::float32,
-            false,
-            audio_samples_.frame_count,
+            .clip = audio_samples_.clip,
+            .sample_rate = audio_samples_.format.sample_rate,
+            .channel_count = audio_samples_.format.channel_count,
+            .frame_count = audio_samples_.frame_count,
+            .sample_format = mirakana::AudioSampleFormat::float32,
+            .streaming = false,
+            .buffered_frame_count = audio_samples_.frame_count,
         });
 
-        renderer_.set_clear_color(mirakana::Color{0.02F, 0.03F, 0.04F, 1.0F});
+        renderer_.set_clear_color(mirakana::Color{.r = 0.02F, .g = 0.03F, .b = 0.04F, .a = 1.0F});
     }
 
     bool on_update(mirakana::EngineContext&, double) override {
@@ -150,9 +151,9 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         }
 
         const mirakana::runtime::RuntimeInputStateView input_state{
-            &input_,
-            nullptr,
-            nullptr,
+            .keyboard = &input_,
+            .pointer = nullptr,
+            .gamepad = nullptr,
         };
 
         auto* player = scene_.scene->find_node(kPlayerNode);
@@ -162,7 +163,8 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
         player->transform.position.x += actions_.axis_value("move_x", input_state);
         if (jump_voice_ == mirakana::null_audio_voice && actions_.action_down("jump", input_state)) {
-            jump_voice_ = mixer_.play(mirakana::AudioVoiceDesc{audio_samples_.clip, "master", 1.0F, false});
+            jump_voice_ = mixer_.play(
+                mirakana::AudioVoiceDesc{.clip = audio_samples_.clip, .bus = "master", .gain = 1.0F, .looping = false});
         }
 
         const auto animation_result = mirakana::sample_and_apply_runtime_scene_render_sprite_animation(
@@ -193,20 +195,21 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         primary_camera_seen_ = primary_camera_seen_ || scene_submit.has_primary_camera;
 
         update_hud_text();
-        const auto layout = mirakana::ui::solve_layout(hud_, mirakana::ui::ElementId{"hud.root"},
-                                                       mirakana::ui::Rect{0.0F, 0.0F, 320.0F, 180.0F});
+        const auto layout =
+            mirakana::ui::solve_layout(hud_, mirakana::ui::ElementId{"hud.root"},
+                                       mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 320.0F, .height = 180.0F});
         const auto submission = mirakana::ui::build_renderer_submission(hud_, layout);
-        const auto hud_submit =
-            mirakana::submit_ui_renderer_submission(renderer_, submission, mirakana::UiRenderSubmitDesc{&theme_});
+        const auto hud_submit = mirakana::submit_ui_renderer_submission(renderer_, submission,
+                                                                        mirakana::UiRenderSubmitDesc{.theme = &theme_});
         hud_boxes_submitted_ += hud_submit.boxes_submitted;
         renderer_.end_frame();
 
         const auto audio = mixer_.render_interleaved_float(
             mirakana::AudioRenderRequest{
-                audio_samples_.format,
-                4,
-                static_cast<std::uint64_t>(frames_) * 4U,
-                4,
+                .format = audio_samples_.format,
+                .frame_count = 4,
+                .device_frame = static_cast<std::uint64_t>(frames_) * 4U,
+                .underrun_warning_threshold_frames = 4,
             },
             std::span<const mirakana::AudioClipSampleData>{&audio_samples_, 1});
         audio_commands_ += audio.plan.commands.size();
@@ -339,7 +342,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         root.id = mirakana::ui::ElementId{"hud.root"};
         root.role = mirakana::ui::SemanticRole::root;
         root.style.layout = mirakana::ui::LayoutMode::column;
-        root.style.padding = mirakana::ui::EdgeInsets{8.0F, 8.0F, 8.0F, 8.0F};
+        root.style.padding = mirakana::ui::EdgeInsets{.top = 8.0F, .right = 8.0F, .bottom = 8.0F, .left = 8.0F};
         if (!hud_.try_add_element(root)) {
             return false;
         }
@@ -348,8 +351,9 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         score.id = mirakana::ui::ElementId{"hud.score"};
         score.parent = root.id;
         score.role = mirakana::ui::SemanticRole::label;
-        score.bounds = mirakana::ui::Rect{0.0F, 0.0F, 96.0F, 24.0F};
-        score.text = mirakana::ui::TextContent{"Score 0", "hud.score", "engine-default"};
+        score.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 96.0F, .height = 24.0F};
+        score.text = mirakana::ui::TextContent{
+            .label = "Score 0", .localization_key = "hud.score", .font_family = "engine-default"};
         score.style.background_token = "hud.panel";
         score.accessibility_label = "Score";
         return hud_.try_add_element(score);
@@ -358,8 +362,10 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     void update_hud_text() {
         const auto score = std::string{"Score "} + std::to_string((frames_ + 1U) * 100U);
         ui_text_updates_ok_ =
-            ui_text_updates_ok_ && hud_.set_text(mirakana::ui::ElementId{"hud.score"},
-                                                 mirakana::ui::TextContent{score, "hud.score", "engine-default"});
+            ui_text_updates_ok_ &&
+            hud_.set_text(mirakana::ui::ElementId{"hud.score"},
+                          mirakana::ui::TextContent{
+                              .label = score, .localization_key = "hud.score", .font_family = "engine-default"});
     }
 
     mirakana::VirtualInput& input_;
@@ -529,7 +535,7 @@ void print_usage() {
 
 [[nodiscard]] std::filesystem::path executable_directory(const char* executable_path) {
     try {
-        if (executable_path != nullptr && std::string_view{executable_path}.size() > 0) {
+        if (executable_path != nullptr && !std::string_view{executable_path}.empty()) {
             const auto absolute_path = std::filesystem::absolute(std::filesystem::path{executable_path});
             if (absolute_path.has_parent_path()) {
                 return absolute_path.parent_path();
@@ -604,7 +610,7 @@ to_presentation_shader_bytecode(const mirakana::DesktopShaderBytecodeBlob& bytec
             std::cerr << "required config is empty: " << config_path << '\n';
             return false;
         }
-        if (config_text.rfind(kExpectedConfigFormat, 0) != 0) {
+        if (!config_text.starts_with(kExpectedConfigFormat)) {
             std::cerr << "required config has unexpected format: " << config_path << '\n';
             return false;
         }
@@ -642,10 +648,12 @@ make_audio_samples(const mirakana::runtime::RuntimeAudioPayload& payload) {
     }
 
     return mirakana::AudioClipSampleData{
-        payload.asset,
-        mirakana::AudioDeviceFormat{payload.sample_rate, payload.channel_count, mirakana::AudioSampleFormat::float32},
-        payload.frame_count,
-        std::move(samples),
+        .clip = payload.asset,
+        .format = mirakana::AudioDeviceFormat{.sample_rate = payload.sample_rate,
+                                              .channel_count = payload.channel_count,
+                                              .sample_format = mirakana::AudioSampleFormat::float32},
+        .frame_count = payload.frame_count,
+        .interleaved_float_samples = std::move(samples),
     };
 }
 
@@ -743,8 +751,8 @@ load_required_2d_package(const char* executable_path, std::string_view package_p
 
         scene = std::move(instance);
         audio_samples = std::move(samples);
-        sprite_animation = std::move(animation_payload.payload);
-        tilemap = std::move(tilemap_payload.payload);
+        sprite_animation = animation_payload.payload;
+        tilemap = tilemap_payload.payload;
         runtime_package = std::move(package_result.package);
     } catch (const std::exception& exception) {
         std::cerr << "failed to read required 2D package '" << package_path << "': " << exception.what() << '\n';
@@ -899,7 +907,7 @@ int main(int argc, char** argv) {
 
     mirakana::SdlDesktopGameHostDesc host_desc{
         .title = "Sample 2D Desktop Runtime Package",
-        .extent = mirakana::WindowExtent{960, 540},
+        .extent = mirakana::WindowExtent{.width = 960, .height = 540},
         .video_driver_hint = options.video_driver_hint,
         .prefer_vulkan = options.require_vulkan_renderer,
     };

@@ -107,7 +107,7 @@ struct D3d12SharedTextureExportResult {
     Format format{Format::unknown};
 };
 
-enum class NativeDescriptorHeapKind { cbv_srv_uav = 0, sampler };
+enum class NativeDescriptorHeapKind : std::uint8_t { cbv_srv_uav = 0, sampler };
 
 struct NativeSwapchainDesc {
     NativeWindowHandle window;
@@ -291,7 +291,7 @@ struct DeviceContextStats {
     std::uint64_t shared_texture_handles_created{0};
 };
 
-enum class QueueTimestampMeasurementStatus {
+enum class QueueTimestampMeasurementStatus : std::uint8_t {
     unsupported = 0,
     failed,
     ready,
@@ -314,7 +314,7 @@ struct QueueTimestampInterval {
     std::string_view diagnostic;
 };
 
-enum class QueueClockCalibrationStatus {
+enum class QueueClockCalibrationStatus : std::uint8_t {
     unsupported = 0,
     failed,
     ready,
@@ -329,7 +329,7 @@ struct QueueClockCalibration {
     std::string_view diagnostic;
 };
 
-enum class QueueCalibratedTimingStatus {
+enum class QueueCalibratedTimingStatus : std::uint8_t {
     unsupported = 0,
     failed,
     ready,
@@ -352,7 +352,7 @@ struct QueueCalibratedTiming {
     std::string_view diagnostic;
 };
 
-enum class SubmittedCommandCalibratedTimingStatus {
+enum class SubmittedCommandCalibratedTimingStatus : std::uint8_t {
     unsupported = 0,
     not_submitted,
     not_ready,
@@ -378,7 +378,7 @@ struct SubmittedCommandCalibratedTiming {
     std::string_view diagnostic;
 };
 
-enum class QueueCalibratedOverlapStatus {
+enum class QueueCalibratedOverlapStatus : std::uint8_t {
     not_requested = 0,
     missing_schedule_evidence,
     missing_timing_evidence,

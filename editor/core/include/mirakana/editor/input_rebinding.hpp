@@ -8,6 +8,7 @@
 #include "mirakana/ui/ui.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -15,7 +16,7 @@
 
 namespace mirakana::editor {
 
-enum class EditorInputRebindingProfileReviewStatus { ready, blocked };
+enum class EditorInputRebindingProfileReviewStatus : std::uint8_t { ready, blocked };
 
 struct EditorInputRebindingProfileReviewRow {
     std::string id;
@@ -51,8 +52,8 @@ struct EditorInputRebindingProfileReviewModel {
     std::vector<std::string> diagnostics;
 };
 
-enum class EditorInputRebindingProfilePanelStatus { ready, blocked };
-enum class EditorInputRebindingCaptureStatus { waiting, captured, blocked };
+enum class EditorInputRebindingProfilePanelStatus : std::uint8_t { ready, blocked };
+enum class EditorInputRebindingCaptureStatus : std::uint8_t { waiting, captured, blocked };
 
 struct EditorInputRebindingProfileBindingRow {
     std::string id;

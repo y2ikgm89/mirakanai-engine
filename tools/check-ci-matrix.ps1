@@ -92,7 +92,12 @@ Assert-ContainsAll $validateWorkflow @(
     "branches:",
     "- main",
     "- master",
-    "pull_request:"
+    "pull_request:",
+    "permissions:",
+    "contents: read",
+    "concurrency:",
+    'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+    "cancel-in-progress: `${{ github.event_name == 'pull_request' }}"
 ) ".github/workflows/validate.yml triggers"
 
 $windowsJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows" -Label ".github/workflows/validate.yml"
@@ -167,6 +172,7 @@ Assert-ContainsAll $staticAnalysisJob @(
     "actions/checkout@v4",
     "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
     "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
+    "-Jobs 0",
     "actions/upload-artifact@v4",
     "name: static-analysis-tidy-logs",
     "out/build/ci-linux-tidy/compile_commands.json",
@@ -187,7 +193,12 @@ Assert-ContainsAll $iosWorkflow @(
     '"platform/ios/**"',
     '"tools/build-mobile-apple.ps1"',
     '"tools/check-mobile-packaging.ps1"',
-    '"tools/smoke-ios-package.ps1"'
+    '"tools/smoke-ios-package.ps1"',
+    "permissions:",
+    "contents: read",
+    "concurrency:",
+    'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
+    "cancel-in-progress: `${{ github.event_name == 'pull_request' }}"
 ) ".github/workflows/ios-validate.yml triggers and path filters"
 
 $iosJob = Get-WorkflowJobText -WorkflowText $iosWorkflow -JobName "simulator-smoke" -Label ".github/workflows/ios-validate.yml"
@@ -200,7 +211,7 @@ Assert-ContainsAll $iosJob @(
     "xcrun --sdk iphonesimulator --show-sdk-path",
     "xcrun simctl list runtimes",
     "./tools/check-mobile-packaging.ps1 -RequireApple",
-    "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug",
+    "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2",
     "actions/upload-artifact@v4",
     "name: ios-simulator-build",
     "out/build/ios-Simulator-sample_headless-Debug/**/*.app",

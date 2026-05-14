@@ -8,7 +8,7 @@
 
 namespace mirakana {
 
-enum class LifecycleEventKind {
+enum class LifecycleEventKind : std::uint8_t {
     quit_requested,
     terminating,
     low_memory,

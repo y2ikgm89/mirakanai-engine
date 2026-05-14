@@ -4533,7 +4533,9 @@ foreach ($needle in @(
     "linux-sanitizer-test-logs",
     "static-analysis-tidy-logs",
     "macos-test-logs",
-    "ios-simulator-build"
+    "ios-simulator-build",
+    "contents: read",
+    "cancel-in-progress"
 )) {
     if (-not $ciMatrixCheckText.Contains($needle)) {
         Write-Error "tools/check-ci-matrix.ps1 missing required CI matrix contract text: $needle"
@@ -4545,6 +4547,7 @@ foreach ($needle in @(
     "runs-on: ubuntu-latest",
     "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
     "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
+    "-Jobs 0",
     "static-analysis-tidy-logs"
 )) {
     if (-not $validateWorkflowText.Contains($needle)) {

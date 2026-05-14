@@ -7,13 +7,14 @@
 #include "mirakana/platform/filesystem.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::editor {
 
-enum class ViewportShaderArtifactStatus {
+enum class ViewportShaderArtifactStatus : std::uint8_t {
     missing,
     empty,
     ready,

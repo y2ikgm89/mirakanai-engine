@@ -33,8 +33,8 @@ MK_TEST("sprite atlas packing places two 1x1 sprites side by side") {
     constexpr auto px_a = std::to_array<std::uint8_t>({0xFF, 0x00, 0x00, 0xFF});
     constexpr auto px_b = std::to_array<std::uint8_t>({0x00, 0xFF, 0x00, 0xFF});
     const auto items = std::array<mirakana::SpriteAtlasPackingItemView, 2>{{
-        {1, 1, px_a},
-        {1, 1, px_b},
+        {.width = 1, .height = 1, .rgba8_pixels = px_a},
+        {.width = 1, .height = 1, .rgba8_pixels = px_b},
     }};
     const auto result = mirakana::pack_sprite_atlas_rgba8_max_side(items);
     MK_REQUIRE(std::holds_alternative<mirakana::SpriteAtlasRgba8PackingOutput>(result));

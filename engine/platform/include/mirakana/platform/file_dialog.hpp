@@ -15,13 +15,13 @@ namespace mirakana {
 
 using FileDialogId = std::uint64_t;
 
-enum class FileDialogKind {
+enum class FileDialogKind : std::uint8_t {
     open_file,
     save_file,
     open_folder,
 };
 
-enum class FileDialogStatus {
+enum class FileDialogStatus : std::uint8_t {
     accepted,
     canceled,
     failed,

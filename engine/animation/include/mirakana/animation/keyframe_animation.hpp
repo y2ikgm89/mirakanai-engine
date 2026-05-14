@@ -57,7 +57,7 @@ struct FloatAnimationCurveSample {
     float value{0.0F};
 };
 
-enum class AnimationTransformComponent {
+enum class AnimationTransformComponent : std::uint8_t {
     translation_x,
     translation_y,
     translation_z,

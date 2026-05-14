@@ -1297,10 +1297,10 @@ make_runtime_compute_morph_skinned_mesh_gpu_binding(const RuntimeSkinnedMeshUplo
     };
 }
 
-std::string attach_skinned_mesh_joint_descriptor_set(rhi::IRhiDevice& device,
-                                                     const RuntimeSkinnedMeshUploadResult& upload,
-                                                     SkinnedMeshGpuBinding& out,
-                                                     rhi::DescriptorSetLayoutHandle& shared_layout_inout) {
+std::string
+attach_skinned_mesh_joint_descriptor_set(rhi::IRhiDevice& device, const RuntimeSkinnedMeshUploadResult& upload,
+                                         SkinnedMeshGpuBinding& out,
+                                         rhi::DescriptorSetLayoutHandle& shared_joint_descriptor_set_layout_inout) {
     try {
         if (!upload.succeeded()) {
             return "runtime skinned mesh joint descriptor attach requires a succeeded upload";
@@ -1314,17 +1314,18 @@ std::string attach_skinned_mesh_joint_descriptor_set(rhi::IRhiDevice& device,
         if (out.mesh.vertex_buffer.value == 0) {
             return "runtime skinned mesh joint descriptor attach requires mesh gpu binding fields to be populated";
         }
-        if (shared_layout_inout.value == 0) {
-            shared_layout_inout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{{
-                rhi::DescriptorBindingDesc{
-                    .binding = 0,
-                    .type = rhi::DescriptorType::uniform_buffer,
-                    .count = 1,
-                    .stages = rhi::ShaderStageVisibility::vertex,
-                },
-            }});
+        if (shared_joint_descriptor_set_layout_inout.value == 0) {
+            shared_joint_descriptor_set_layout_inout =
+                device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{{
+                    rhi::DescriptorBindingDesc{
+                        .binding = 0,
+                        .type = rhi::DescriptorType::uniform_buffer,
+                        .count = 1,
+                        .stages = rhi::ShaderStageVisibility::vertex,
+                    },
+                }});
         }
-        const auto set = device.allocate_descriptor_set(shared_layout_inout);
+        const auto set = device.allocate_descriptor_set(shared_joint_descriptor_set_layout_inout);
         device.update_descriptor_set(rhi::DescriptorWrite{
             .set = set,
             .binding = 0,

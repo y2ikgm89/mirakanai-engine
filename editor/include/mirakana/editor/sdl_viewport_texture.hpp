@@ -86,7 +86,7 @@ class SdlViewportTexture {
 
     SDL_Renderer* renderer_{nullptr};
     SDL_Texture* texture_{nullptr};
-    mirakana::Extent2D extent_{1, 1};
+    mirakana::Extent2D extent_{.width = 1, .height = 1};
     std::vector<std::uint8_t> pixels_;
     std::uint64_t version_{0};
     ViewportDisplayTexturePath display_path_{ViewportDisplayTexturePath::cpu_readback};

@@ -36,13 +36,14 @@ MK_TEST("sdl3 audio device opens dummy playback stream and queues pcm data") {
         "dummy",
     });
     mirakana::SdlAudioDevice device(mirakana::SdlAudioDeviceDesc{
-        mirakana::AudioDeviceFormat{
-            48000,
-            2,
-            mirakana::AudioSampleFormat::float32,
-        },
-        true,
-        "GameEngine Test Output",
+        .format =
+            mirakana::AudioDeviceFormat{
+                .sample_rate = 48000,
+                .channel_count = 2,
+                .sample_format = mirakana::AudioSampleFormat::float32,
+            },
+        .start_paused = true,
+        .stream_name = "GameEngine Test Output",
     });
 
     MK_REQUIRE(device.active());
@@ -58,27 +59,36 @@ MK_TEST("sdl3 audio device opens dummy playback stream and queues pcm data") {
 
     mirakana::AudioMixer mixer;
     const auto clip = mirakana::AssetId::from_name("audio/sdl3-rendered-tone");
-    mixer.add_clip(mirakana::AudioClipDesc{clip, 48000, 1, 64, mirakana::AudioSampleFormat::float32, false, 64});
-    (void)mixer.play(mirakana::AudioVoiceDesc{clip, "master", 0.25F, false});
+    mixer.add_clip(mirakana::AudioClipDesc{.clip = clip,
+                                           .sample_rate = 48000,
+                                           .channel_count = 1,
+                                           .frame_count = 64,
+                                           .sample_format = mirakana::AudioSampleFormat::float32,
+                                           .streaming = false,
+                                           .buffered_frame_count = 64});
+    (void)mixer.play(mirakana::AudioVoiceDesc{.clip = clip, .bus = "master", .gain = 0.25F, .looping = false});
     const std::vector<mirakana::AudioClipSampleData> source_samples{
         mirakana::AudioClipSampleData{
-            clip,
-            mirakana::AudioDeviceFormat{48000, 1, mirakana::AudioSampleFormat::float32},
-            64,
-            std::vector<float>(64, 1.0F),
+            .clip = clip,
+            .format = mirakana::AudioDeviceFormat{.sample_rate = 48000,
+                                                  .channel_count = 1,
+                                                  .sample_format = mirakana::AudioSampleFormat::float32},
+            .frame_count = 64,
+            .interleaved_float_samples = std::vector<float>(64, 1.0F),
         },
     };
     const auto queued_before_render = device.queued_frames();
-    const auto rendered = mirakana::render_audio_device_stream_interleaved_float(mixer,
-                                                                                 mirakana::AudioDeviceStreamRequest{
-                                                                                     device.format(),
-                                                                                     0,
-                                                                                     queued_before_render,
-                                                                                     queued_before_render + 64,
-                                                                                     64,
-                                                                                     0,
-                                                                                 },
-                                                                                 source_samples);
+    const auto rendered =
+        mirakana::render_audio_device_stream_interleaved_float(mixer,
+                                                               mirakana::AudioDeviceStreamRequest{
+                                                                   .format = device.format(),
+                                                                   .device_frame = 0,
+                                                                   .queued_frames = queued_before_render,
+                                                                   .target_queued_frames = queued_before_render + 64,
+                                                                   .max_render_frames = 64,
+                                                                   .underrun_warning_threshold_frames = 0,
+                                                               },
+                                                               source_samples);
 
     MK_REQUIRE(rendered.plan.status == mirakana::AudioDeviceStreamStatus::ready);
     MK_REQUIRE(rendered.buffer.interleaved_float_samples.size() ==

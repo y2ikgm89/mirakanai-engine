@@ -1316,8 +1316,7 @@ capture_first_keyboard_key_pair_axis_source(const RuntimeInputRebindingAxisCaptu
     if (held.size() < 2) {
         return std::nullopt;
     }
-    std::sort(held.begin(), held.end(),
-              [](Key left, Key right) { return static_cast<int>(left) < static_cast<int>(right); });
+    std::ranges::sort(held, [](Key left, Key right) { return static_cast<int>(left) < static_cast<int>(right); });
     const Key negative_key = held.front();
     const Key positive_key = held[1];
     return RuntimeInputAxisSource{.kind = RuntimeInputAxisSourceKind::key_pair,
@@ -1502,7 +1501,8 @@ present_action_trigger_tokens_safely(const std::vector<RuntimeInputActionTrigger
     for (const auto& trigger : triggers) {
         try {
             tokens.push_back(make_action_trigger_presentation_token(trigger));
-        } catch (const std::exception&) {
+        } catch (const std::exception& exception) {
+            (void)exception;
             // The presentation model carries validation diagnostics; malformed token rows are omitted.
         }
     }
@@ -1516,7 +1516,8 @@ present_axis_source_tokens_safely(const std::vector<RuntimeInputAxisSource>& sou
     for (const auto& source : sources) {
         try {
             tokens.push_back(make_axis_source_presentation_token(source));
-        } catch (const std::exception&) {
+        } catch (const std::exception& exception) {
+            (void)exception;
             // The presentation model carries validation diagnostics; malformed token rows are omitted.
         }
     }

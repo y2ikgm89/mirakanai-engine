@@ -80,11 +80,11 @@ struct AudioSpatialMixCommand {
     bool looping{false};
 };
 
-enum class AudioSampleFormat { unknown, float32, pcm16 };
+enum class AudioSampleFormat : std::uint8_t { unknown, float32, pcm16 };
 
-enum class AudioResamplingQuality { nearest, linear };
+enum class AudioResamplingQuality : std::uint8_t { nearest, linear };
 
-enum class AudioFormatConversion : std::uint32_t {
+enum class AudioFormatConversion : std::uint8_t {
     none = 0,
     resample = 1U << 0U,
     channel_convert = 1U << 1U,
@@ -173,9 +173,9 @@ struct AudioRenderBuffer {
     AudioRenderPlan plan;
 };
 
-enum class AudioDeviceStreamStatus { ready, no_work, invalid_request };
+enum class AudioDeviceStreamStatus : std::uint8_t { ready, no_work, invalid_request };
 
-enum class AudioDeviceStreamDiagnostic {
+enum class AudioDeviceStreamDiagnostic : std::uint8_t {
     none,
     invalid_format,
     invalid_queue_target,

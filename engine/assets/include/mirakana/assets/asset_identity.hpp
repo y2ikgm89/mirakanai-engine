@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/asset_registry.hpp"
 
+#include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
@@ -26,7 +27,7 @@ struct AssetIdentityDocumentV2 {
     std::vector<AssetIdentityRowV2> assets;
 };
 
-enum class AssetIdentityDiagnosticCodeV2 {
+enum class AssetIdentityDiagnosticCodeV2 : std::uint8_t {
     invalid_key,
     duplicate_key,
     invalid_kind,
@@ -54,7 +55,7 @@ struct AssetIdentityPlacementRowV2 {
     std::string source_path;
 };
 
-enum class AssetIdentityPlacementDiagnosticCodeV2 {
+enum class AssetIdentityPlacementDiagnosticCodeV2 : std::uint8_t {
     invalid_identity_document,
     invalid_placement,
     duplicate_placement,

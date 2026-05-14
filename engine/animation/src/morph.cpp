@@ -294,9 +294,9 @@ std::vector<Vec3> apply_animation_morph_targets_tangents_cpu(const AnimationMorp
     return out;
 }
 
-void push_weights_diagnostic(std::vector<AnimationMorphWeightsTrackDiagnostic>& diagnostics, std::size_t keyframe_index,
-                             std::size_t weight_index, AnimationMorphWeightsTrackDiagnosticCode code,
-                             std::string message) {
+static void push_weights_diagnostic(std::vector<AnimationMorphWeightsTrackDiagnostic>& diagnostics,
+                                    std::size_t keyframe_index, std::size_t weight_index,
+                                    AnimationMorphWeightsTrackDiagnosticCode code, std::string message) {
     diagnostics.push_back(AnimationMorphWeightsTrackDiagnostic{
         .keyframe_index = keyframe_index, .weight_index = weight_index, .code = code, .message = std::move(message)});
 }

@@ -11,7 +11,7 @@
 
 namespace mirakana {
 
-enum class DiagnosticSeverity { trace, debug, info, warning, error, fatal };
+enum class DiagnosticSeverity : std::uint8_t { trace, debug, info, warning, error, fatal };
 
 struct DiagnosticEvent {
     DiagnosticSeverity severity{DiagnosticSeverity::info};
@@ -78,9 +78,9 @@ struct DiagnosticsTraceImportResult {
     std::vector<std::string> diagnostics;
 };
 
-enum class DiagnosticsOpsArtifactKind { summary, trace_event_json, crash_dump_review, telemetry_upload };
+enum class DiagnosticsOpsArtifactKind : std::uint8_t { summary, trace_event_json, crash_dump_review, telemetry_upload };
 
-enum class DiagnosticsOpsArtifactStatus { ready, host_gated, unsupported };
+enum class DiagnosticsOpsArtifactStatus : std::uint8_t { ready, host_gated, unsupported };
 
 struct DiagnosticsOpsHostStatus {
     bool debugging_tools_for_windows_available{false};

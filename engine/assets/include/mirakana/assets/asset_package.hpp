@@ -36,7 +36,7 @@ struct AssetCookedPackageIndex {
     std::vector<AssetDependencyEdge> dependencies;
 };
 
-enum class AssetCookedPackageRecookDecisionKind {
+enum class AssetCookedPackageRecookDecisionKind : std::uint8_t {
     unknown,
     up_to_date,
     missing_from_previous_index,

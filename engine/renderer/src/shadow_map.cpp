@@ -333,7 +333,10 @@ ShadowReceiverPlan build_shadow_receiver_plan(const ShadowReceiverDesc& desc) {
     plan.filter_mode = desc.filter_mode;
     plan.filter_radius_texels = desc.filter_radius_texels;
 
-    if (desc.shadow_map == nullptr || !is_valid_shadow_map_plan_for_receiver(*desc.shadow_map)) {
+    const auto* shadow_map = desc.shadow_map;
+    const auto* light_space = desc.light_space;
+    const bool shadow_map_valid = shadow_map != nullptr && is_valid_shadow_map_plan_for_receiver(*shadow_map);
+    if (!shadow_map_valid) {
         append_diagnostic(plan, ShadowReceiverDiagnosticCode::invalid_shadow_map_plan,
                           "shadow receiver plan requires a successful shadow map plan");
     }
@@ -370,17 +373,17 @@ ShadowReceiverPlan build_shadow_receiver_plan(const ShadowReceiverDesc& desc) {
                           "shadow receiver filter radius must be finite and in [0, 8] texels");
     }
 
-    if (desc.shadow_map != nullptr && is_valid_shadow_map_plan_for_receiver(*desc.shadow_map)) {
-        if (desc.light_space == nullptr || !desc.light_space->succeeded()) {
+    if (shadow_map_valid) {
+        if (light_space == nullptr || !light_space->succeeded()) {
             append_diagnostic(plan, ShadowReceiverDiagnosticCode::invalid_light_space_plan,
                               "shadow receiver plan requires a successful directional shadow light-space plan");
         } else {
-            const auto cascade_count = desc.shadow_map->directional_cascade_count;
-            if (desc.light_space->clip_from_world_cascades.size() != static_cast<std::size_t>(cascade_count)) {
+            const auto cascade_count = shadow_map->directional_cascade_count;
+            if (light_space->clip_from_world_cascades.size() != static_cast<std::size_t>(cascade_count)) {
                 append_diagnostic(plan, ShadowReceiverDiagnosticCode::light_space_cascade_mismatch,
                                   "shadow receiver light-space clip matrix count must match shadow map cascade count");
-            } else if (cascade_count > 1 && desc.light_space->cascade_split_distances.size() !=
-                                                static_cast<std::size_t>(cascade_count) + 1U) {
+            } else if (cascade_count > 1 &&
+                       light_space->cascade_split_distances.size() != static_cast<std::size_t>(cascade_count) + 1U) {
                 append_diagnostic(plan, ShadowReceiverDiagnosticCode::light_space_cascade_mismatch,
                                   "shadow receiver light-space cascade split count must be cascade_count + 1");
             }
@@ -390,13 +393,18 @@ ShadowReceiverPlan build_shadow_receiver_plan(const ShadowReceiverDesc& desc) {
     if (!plan.diagnostics.empty()) {
         return plan;
     }
+    if (shadow_map == nullptr || light_space == nullptr) {
+        append_diagnostic(plan, ShadowReceiverDiagnosticCode::invalid_shadow_map_plan,
+                          "shadow receiver plan requires successful shadow map and light-space plans");
+        return plan;
+    }
 
-    plan.depth_texture = desc.shadow_map->depth_texture;
-    plan.receiver_count = desc.shadow_map->receiver_count;
-    plan.directional_cascade_count = desc.shadow_map->directional_cascade_count;
-    plan.cascade_tile_extent = desc.shadow_map->cascade_tile_extent;
-    plan.clip_from_world_cascades = desc.light_space->clip_from_world_cascades;
-    plan.cascade_split_distances = desc.light_space->cascade_split_distances;
+    plan.depth_texture = shadow_map->depth_texture;
+    plan.receiver_count = shadow_map->receiver_count;
+    plan.directional_cascade_count = shadow_map->directional_cascade_count;
+    plan.cascade_tile_extent = shadow_map->cascade_tile_extent;
+    plan.clip_from_world_cascades = light_space->clip_from_world_cascades;
+    plan.cascade_split_distances = light_space->cascade_split_distances;
     plan.filter_tap_count = shadow_receiver_filter_tap_count(desc.filter_mode);
     plan.sampler = rhi::SamplerDesc{
         .min_filter = rhi::SamplerFilter::nearest,
@@ -467,7 +475,9 @@ DirectionalShadowLightSpacePlan build_directional_shadow_light_space_plan(const 
     plan.depth_radius = desc.depth_radius;
     plan.texel_snap = desc.texel_snap;
 
-    if (desc.shadow_map == nullptr || !is_valid_shadow_map_plan_for_receiver(*desc.shadow_map)) {
+    const auto* shadow_map = desc.shadow_map;
+    const bool shadow_map_valid = shadow_map != nullptr && is_valid_shadow_map_plan_for_receiver(*shadow_map);
+    if (!shadow_map_valid) {
         append_diagnostic(plan, DirectionalShadowLightSpaceDiagnosticCode::invalid_shadow_map_plan,
                           "directional shadow light-space policy requires a successful shadow map plan");
     }
@@ -496,10 +506,14 @@ DirectionalShadowLightSpacePlan build_directional_shadow_light_space_plan(const 
     if (!plan.diagnostics.empty()) {
         return plan;
     }
+    if (shadow_map == nullptr || !shadow_map_valid) {
+        append_diagnostic(plan, DirectionalShadowLightSpaceDiagnosticCode::invalid_shadow_map_plan,
+                          "directional shadow light-space policy requires a successful shadow map plan");
+        return plan;
+    }
 
-    const auto& shadow_map = *desc.shadow_map;
-    const auto cascade_count = shadow_map.directional_cascade_count;
-    const auto tile_width = shadow_map.cascade_tile_extent.width;
+    const auto cascade_count = shadow_map->directional_cascade_count;
+    const auto tile_width = shadow_map->cascade_tile_extent.width;
     if (tile_width == 0) {
         append_diagnostic(plan, DirectionalShadowLightSpaceDiagnosticCode::invalid_shadow_map_plan,
                           "directional shadow light-space policy requires a non-zero cascade tile width");

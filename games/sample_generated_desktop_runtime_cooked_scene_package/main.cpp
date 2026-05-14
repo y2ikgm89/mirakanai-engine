@@ -116,7 +116,7 @@ class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
         : input_(input), renderer_(renderer), throttle_(throttle), scene_(std::move(scene)) {}
 
     void on_start(mirakana::EngineContext&) override {
-        renderer_.set_clear_color(mirakana::Color{0.025F, 0.035F, 0.045F, 1.0F});
+        renderer_.set_clear_color(mirakana::Color{.r = 0.025F, .g = 0.035F, .b = 0.045F, .a = 1.0F});
     }
 
     bool on_update(mirakana::EngineContext&, double) override {
@@ -126,7 +126,7 @@ class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
             const auto scene_submit = mirakana::submit_scene_render_packet(
                 renderer_, scene_->render_packet,
                 mirakana::SceneRenderSubmitDesc{
-                    .fallback_mesh_color = mirakana::Color{0.35F, 0.75F, 0.45F, 1.0F},
+                    .fallback_mesh_color = mirakana::Color{.r = 0.35F, .g = 0.75F, .b = 0.45F, .a = 1.0F},
                     .material_palette = &scene_->material_palette,
                 });
             scene_meshes_submitted_ += scene_submit.meshes_submitted;
@@ -135,7 +135,8 @@ class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
             const auto axis =
                 input_.digital_axis(mirakana::Key::left, mirakana::Key::right, mirakana::Key::down, mirakana::Key::up);
             transform_.position = transform_.position + axis;
-            renderer_.draw_sprite(mirakana::SpriteCommand{transform_, mirakana::Color{0.35F, 0.75F, 0.45F, 1.0F}});
+            renderer_.draw_sprite(mirakana::SpriteCommand{
+                .transform = transform_, .color = mirakana::Color{.r = 0.35F, .g = 0.75F, .b = 0.45F, .a = 1.0F}});
         }
 
         renderer_.end_frame();
@@ -297,7 +298,7 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
 
 [[nodiscard]] std::filesystem::path executable_directory(const char* executable_path) {
     try {
-        if (executable_path != nullptr && std::string_view{executable_path}.size() > 0) {
+        if (executable_path != nullptr && !std::string_view{executable_path}.empty()) {
             const auto absolute_path = std::filesystem::absolute(std::filesystem::path{executable_path});
             if (absolute_path.has_parent_path()) {
                 return absolute_path.parent_path();
@@ -326,7 +327,7 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
             std::cerr << "required config is empty: " << config_path << '\n';
             return false;
         }
-        if (config_text.rfind(kExpectedConfigFormat, 0) != 0) {
+        if (!config_text.starts_with(kExpectedConfigFormat)) {
             std::cerr << "required config has unexpected format: " << config_path << '\n';
             return false;
         }
@@ -598,7 +599,7 @@ int main(int argc, char** argv) {
 
     mirakana::SdlDesktopGameHostDesc host_desc{
         .title = "sample-generated-desktop-runtime-cooked-scene-package",
-        .extent = mirakana::WindowExtent{960, 540},
+        .extent = mirakana::WindowExtent{.width = 960, .height = 540},
         .video_driver_hint = options.video_driver_hint,
         .prefer_vulkan = options.require_vulkan_renderer,
     };

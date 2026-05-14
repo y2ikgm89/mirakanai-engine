@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <limits>
+#include <ranges>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -225,9 +226,9 @@ void restore_changed_file(IFileSystem& filesystem, const ChangedFileSnapshot& sn
 
 void remove_created_directories(IFileSystem& filesystem, const std::vector<std::string>& directories,
                                 std::string& rollback_diagnostic) {
-    for (auto it = directories.rbegin(); it != directories.rend(); ++it) {
+    for (const auto& directory : std::views::reverse(directories)) {
         try {
-            filesystem.remove_empty_directory(*it);
+            filesystem.remove_empty_directory(directory);
         } catch (const std::exception& error) {
             if (!rollback_diagnostic.empty()) {
                 rollback_diagnostic += "; ";
@@ -255,9 +256,9 @@ void write_changed_files_transactionally(IFileSystem& filesystem,
     } catch (const std::exception& error) {
         std::string diagnostic = error.what();
         std::string rollback_diagnostic;
-        for (auto it = attempted_indices.rbegin(); it != attempted_indices.rend(); ++it) {
+        for (const auto attempted_index : std::views::reverse(attempted_indices)) {
             try {
-                restore_changed_file(filesystem, snapshot.files[*it]);
+                restore_changed_file(filesystem, snapshot.files[attempted_index]);
             } catch (const std::exception& rollback_error) {
                 if (!rollback_diagnostic.empty()) {
                     rollback_diagnostic += "; ";
@@ -339,13 +340,13 @@ void validate_package_index_entry_paths(std::vector<CookedUiAtlasAuthoringFailur
 void canonicalize_package_index(AssetCookedPackageIndex& index) {
     for (auto& entry : index.entries) {
         sort_asset_ids(entry.dependencies);
-        entry.dependencies.erase(std::unique(entry.dependencies.begin(), entry.dependencies.end(),
-                                             [](AssetId lhs, AssetId rhs) { return lhs == rhs; }),
-                                 entry.dependencies.end());
+        entry.dependencies.erase(
+            std::ranges::unique(entry.dependencies, [](AssetId lhs, AssetId rhs) { return lhs == rhs; }).begin(),
+            entry.dependencies.end());
     }
     sort_package_entries(index.entries);
     sort_dependency_edges(index.dependencies);
-    index.dependencies.erase(std::unique(index.dependencies.begin(), index.dependencies.end(), edge_same_identity),
+    index.dependencies.erase(std::ranges::unique(index.dependencies, edge_same_identity).begin(),
                              index.dependencies.end());
 }
 
@@ -476,9 +477,8 @@ CookedUiAtlasAuthoringResult author_cooked_ui_atlas_metadata(const CookedUiAtlas
         page_assets.push_back(page.asset);
     }
     sort_asset_ids(page_assets);
-    page_assets.erase(
-        std::unique(page_assets.begin(), page_assets.end(), [](AssetId lhs, AssetId rhs) { return lhs == rhs; }),
-        page_assets.end());
+    page_assets.erase(std::ranges::unique(page_assets, [](AssetId lhs, AssetId rhs) { return lhs == rhs; }).begin(),
+                      page_assets.end());
 
     result.dependency_edges.reserve(page_assets.size());
     for (const auto page_asset : page_assets) {

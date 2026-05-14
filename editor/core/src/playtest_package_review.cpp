@@ -1500,7 +1500,7 @@ make_editor_ai_playtest_evidence_import_model(const EditorAiPlaytestEvidenceImpo
                             if (value.empty()) {
                                 row.evidence.exit_code.reset();
                             } else if (const auto parsed = parse_import_exit_code(value); parsed.has_value()) {
-                                row.evidence.exit_code = *parsed;
+                                row.evidence.exit_code = parsed;
                             } else {
                                 add_import_blocker(row, "invalid-exit-code", "invalid exit_code '" + value + "'");
                             }

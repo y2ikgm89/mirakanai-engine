@@ -12,6 +12,7 @@
 #include "mirakana/scene/scene.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -20,7 +21,7 @@
 
 namespace mirakana::runtime_scene {
 
-enum class RuntimeSceneDiagnosticCode {
+enum class RuntimeSceneDiagnosticCode : std::uint8_t {
     none,
     missing_scene_asset,
     wrong_asset_kind,
@@ -30,7 +31,7 @@ enum class RuntimeSceneDiagnosticCode {
     duplicate_node_name,
 };
 
-enum class RuntimeSceneReferenceKind { mesh, material, sprite };
+enum class RuntimeSceneReferenceKind : std::uint8_t { mesh, material, sprite };
 
 struct RuntimeSceneReference {
     SceneNodeId node;
@@ -39,7 +40,7 @@ struct RuntimeSceneReference {
     AssetKind expected_kind{AssetKind::unknown};
 };
 
-enum class RuntimeSceneAssetIdentityDiagnosticCode {
+enum class RuntimeSceneAssetIdentityDiagnosticCode : std::uint8_t {
     invalid_identity_document,
     missing_identity,
     kind_mismatch,
@@ -101,7 +102,7 @@ struct RuntimeSceneLoadResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
-enum class RuntimeSceneAnimationTransformBindingDiagnosticCode {
+enum class RuntimeSceneAnimationTransformBindingDiagnosticCode : std::uint8_t {
     none,
     invalid_binding_document,
     missing_node,

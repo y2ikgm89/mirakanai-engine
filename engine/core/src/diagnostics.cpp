@@ -28,6 +28,15 @@ template <typename T> void push_bounded(std::vector<T>& records, std::size_t cap
     records.push_back(std::move(record));
 }
 
+[[nodiscard]] bool try_record_profile_sample(DiagnosticsRecorder& recorder, ProfileSample sample) noexcept {
+    try {
+        recorder.record_profile_sample(std::move(sample));
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
 void append_json_string(std::string& output, std::string_view value) {
     output.push_back('"');
     for (const auto character : value) {
@@ -1032,16 +1041,13 @@ void ScopedProfileZone::close() noexcept {
     const auto end_time_ns = clock_->now_ns();
     const auto duration_ns = end_time_ns >= start_time_ns_ ? end_time_ns - start_time_ns_ : 0;
 
-    try {
-        recorder_->record_profile_sample(ProfileSample{
-            .name = std::move(name_),
-            .frame_index = frame_index_,
-            .start_time_ns = start_time_ns_,
-            .duration_ns = duration_ns,
-            .depth = depth_,
-        });
-    } catch (...) {
-    }
+    (void)try_record_profile_sample(*recorder_, ProfileSample{
+                                                    .name = std::move(name_),
+                                                    .frame_index = frame_index_,
+                                                    .start_time_ns = start_time_ns_,
+                                                    .duration_ns = duration_ns,
+                                                    .depth = depth_,
+                                                });
 
     recorder_->end_profile_zone();
     recorder_ = nullptr;

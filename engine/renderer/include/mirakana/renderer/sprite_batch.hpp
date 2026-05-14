@@ -12,9 +12,9 @@
 
 namespace mirakana {
 
-enum class SpriteBatchKind { solid_color, textured };
+enum class SpriteBatchKind : std::uint8_t { solid_color, textured };
 
-enum class SpriteBatchDiagnosticCode {
+enum class SpriteBatchDiagnosticCode : std::uint8_t {
     none,
     missing_texture_atlas,
     invalid_uv_rect,

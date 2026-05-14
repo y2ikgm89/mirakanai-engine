@@ -6,6 +6,7 @@
 #include "mirakana/navigation/navigation_grid.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <vector>
 
@@ -31,7 +32,7 @@ struct NavigationGridPointMapping {
     bool use_cell_centers{true};
 };
 
-enum class NavigationPointPathBuildStatus {
+enum class NavigationPointPathBuildStatus : std::uint8_t {
     success,
     invalid_mapping,
 };
@@ -41,7 +42,7 @@ struct NavigationPointPathBuildResult {
     std::vector<NavigationPoint2> points;
 };
 
-enum class NavigationPathFollowStatus {
+enum class NavigationPathFollowStatus : std::uint8_t {
     advanced,
     reached_destination,
     invalid_path,
@@ -66,7 +67,7 @@ struct NavigationPathFollowResult {
     bool reached_destination{false};
 };
 
-enum class NavigationArriveSteeringStatus {
+enum class NavigationArriveSteeringStatus : std::uint8_t {
     moving,
     reached_target,
     invalid_request,

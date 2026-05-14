@@ -29,7 +29,7 @@ struct RhiUploadAllocationHandle {
     }
 };
 
-enum class RhiUploadDiagnosticCode {
+enum class RhiUploadDiagnosticCode : std::uint8_t {
     invalid_allocation = 0,
     invalid_copy_range,
     stale_generation,
@@ -81,7 +81,7 @@ struct RhiTextureUploadDesc {
     std::string debug_name;
 };
 
-enum class RhiUploadCopyKind { buffer = 0, texture };
+enum class RhiUploadCopyKind : std::uint8_t { buffer = 0, texture };
 
 struct RhiUploadCopyRecord {
     RhiUploadCopyKind kind{RhiUploadCopyKind::buffer};

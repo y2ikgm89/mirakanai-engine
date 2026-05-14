@@ -16,13 +16,13 @@ struct ViewportExtent {
     std::uint32_t height{0};
 };
 
-enum class ViewportRunMode {
+enum class ViewportRunMode : std::uint8_t {
     edit,
     play,
     paused,
 };
 
-enum class ViewportTool {
+enum class ViewportTool : std::uint8_t {
     select,
     translate,
     rotate,

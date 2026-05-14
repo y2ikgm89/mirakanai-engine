@@ -4,12 +4,13 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <optional>
 #include <string_view>
 
 namespace mirakana::editor {
 
-enum class EditorRenderBackend {
+enum class EditorRenderBackend : std::uint8_t {
     automatic,
     null,
     d3d12,
@@ -17,7 +18,7 @@ enum class EditorRenderBackend {
     metal,
 };
 
-enum class EditorRenderBackendHost {
+enum class EditorRenderBackendHost : std::uint8_t {
     windows,
     linux,
     android,

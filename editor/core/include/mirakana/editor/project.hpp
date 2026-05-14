@@ -9,6 +9,7 @@
 #include "mirakana/ui/ui.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -40,7 +41,7 @@ struct ProjectMigrationResult {
     bool migrated{false};
 };
 
-enum class EditorProjectFileDialogMode { open, save };
+enum class EditorProjectFileDialogMode : std::uint8_t { open, save };
 
 struct EditorProjectFileDialogRow {
     std::string id;

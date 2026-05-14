@@ -24,7 +24,7 @@ struct PhysicsBody3DId {
 
 inline constexpr PhysicsBody3DId null_physics_body_3d{};
 
-enum class PhysicsShape3DKind { aabb, sphere, capsule };
+enum class PhysicsShape3DKind : std::uint8_t { aabb, sphere, capsule };
 
 struct PhysicsWorld3DConfig {
     Vec3 gravity{.x = 0.0F, .y = -9.80665F, .z = 0.0F};
@@ -189,9 +189,9 @@ struct PhysicsQueryFilter3D {
     bool include_triggers{true};
 };
 
-enum class PhysicsExactShapeSweep3DStatus { hit, no_hit, invalid_request };
+enum class PhysicsExactShapeSweep3DStatus : std::uint8_t { hit, no_hit, invalid_request };
 
-enum class PhysicsExactShapeSweep3DDiagnostic { none, invalid_request };
+enum class PhysicsExactShapeSweep3DDiagnostic : std::uint8_t { none, invalid_request };
 
 struct PhysicsExactShapeSweep3DDesc {
     Vec3 origin{.x = 0.0F, .y = 0.0F, .z = 0.0F};
@@ -215,9 +215,9 @@ struct PhysicsExactShapeSweep3DResult {
     std::optional<PhysicsExactShapeSweep3DHit> hit;
 };
 
-enum class PhysicsContinuousStep3DStatus { stepped, invalid_request };
+enum class PhysicsContinuousStep3DStatus : std::uint8_t { stepped, invalid_request };
 
-enum class PhysicsContinuousStep3DDiagnostic { none, invalid_delta_seconds, invalid_config };
+enum class PhysicsContinuousStep3DDiagnostic : std::uint8_t { none, invalid_delta_seconds, invalid_config };
 
 struct PhysicsContinuousStep3DConfig {
     float skin_width{0.001F};
@@ -242,9 +242,9 @@ struct PhysicsContinuousStep3DResult {
     std::vector<PhysicsContinuousStep3DRow> rows;
 };
 
-enum class PhysicsExactSphereCast3DStatus { hit, no_hit, invalid_request };
+enum class PhysicsExactSphereCast3DStatus : std::uint8_t { hit, no_hit, invalid_request };
 
-enum class PhysicsExactSphereCast3DDiagnostic { none, invalid_request };
+enum class PhysicsExactSphereCast3DDiagnostic : std::uint8_t { none, invalid_request };
 
 struct PhysicsExactSphereCast3DDesc {
     Vec3 origin{.x = 0.0F, .y = 0.0F, .z = 0.0F};
@@ -270,9 +270,20 @@ struct PhysicsExactSphereCast3DResult {
     std::optional<PhysicsExactSphereCast3DHit> hit;
 };
 
-enum class PhysicsCharacterController3DStatus { moved, constrained, blocked, initial_overlap, invalid_request };
+enum class PhysicsCharacterController3DStatus : std::uint8_t {
+    moved,
+    constrained,
+    blocked,
+    initial_overlap,
+    invalid_request
+};
 
-enum class PhysicsCharacterController3DDiagnostic { none, invalid_request, initial_overlap, iteration_limit };
+enum class PhysicsCharacterController3DDiagnostic : std::uint8_t {
+    none,
+    invalid_request,
+    initial_overlap,
+    iteration_limit
+};
 
 struct PhysicsCharacterController3DDesc {
     Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
@@ -305,11 +316,22 @@ struct PhysicsCharacterController3DResult {
     std::vector<PhysicsCharacterController3DContact> contacts;
 };
 
-enum class PhysicsCharacterDynamicPolicy3DStatus { moved, constrained, stepped, initial_overlap, invalid_request };
+enum class PhysicsCharacterDynamicPolicy3DStatus : std::uint8_t {
+    moved,
+    constrained,
+    stepped,
+    initial_overlap,
+    invalid_request
+};
 
-enum class PhysicsCharacterDynamicPolicy3DDiagnostic { none, invalid_request, initial_overlap, step_blocked };
+enum class PhysicsCharacterDynamicPolicy3DDiagnostic : std::uint8_t {
+    none,
+    invalid_request,
+    initial_overlap,
+    step_blocked
+};
 
-enum class PhysicsCharacterDynamicPolicy3DRowKind {
+enum class PhysicsCharacterDynamicPolicy3DRowKind : std::uint8_t {
     solid_contact,
     trigger_overlap,
     dynamic_push,
@@ -356,9 +378,9 @@ struct PhysicsCharacterDynamicPolicy3DResult {
     std::vector<PhysicsCharacterDynamicPolicy3DRow> rows;
 };
 
-enum class PhysicsJoint3DStatus { solved, invalid_request };
+enum class PhysicsJoint3DStatus : std::uint8_t { solved, invalid_request };
 
-enum class PhysicsJoint3DDiagnostic {
+enum class PhysicsJoint3DDiagnostic : std::uint8_t {
     none,
     invalid_config,
     invalid_joint,
@@ -404,9 +426,9 @@ struct PhysicsJointSolve3DResult {
     std::vector<PhysicsJointSolve3DRow> rows;
 };
 
-enum class PhysicsDeterminismGate3DStatus { passed, budget_exceeded, invalid_request };
+enum class PhysicsDeterminismGate3DStatus : std::uint8_t { passed, budget_exceeded, invalid_request };
 
-enum class PhysicsDeterminismGate3DDiagnostic {
+enum class PhysicsDeterminismGate3DDiagnostic : std::uint8_t {
     none,
     invalid_config,
     bodies_exceeded,
@@ -447,7 +469,7 @@ struct PhysicsDeterminismGate3DResult {
     PhysicsReplaySignature3D replay_signature{};
 };
 
-enum class PhysicsAuthoredCollision3DBuildStatus {
+enum class PhysicsAuthoredCollision3DBuildStatus : std::uint8_t {
     success,
     invalid_request,
     invalid_body,
@@ -455,7 +477,7 @@ enum class PhysicsAuthoredCollision3DBuildStatus {
     unsupported_native_backend,
 };
 
-enum class PhysicsAuthoredCollision3DDiagnostic {
+enum class PhysicsAuthoredCollision3DDiagnostic : std::uint8_t {
     none,
     invalid_world_gravity,
     invalid_body_name,

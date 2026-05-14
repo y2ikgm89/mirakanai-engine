@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -10,14 +11,14 @@
 
 namespace mirakana {
 
-enum class DynamicLibraryLoadStatus {
+enum class DynamicLibraryLoadStatus : std::uint8_t {
     loaded,
     blocked,
     failed,
     unsupported,
 };
 
-enum class DynamicLibrarySymbolStatus {
+enum class DynamicLibrarySymbolStatus : std::uint8_t {
     resolved,
     blocked,
     missing,

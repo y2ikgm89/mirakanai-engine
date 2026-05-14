@@ -27,14 +27,14 @@ struct NavigationGridCoord {
     }
 };
 
-enum class NavigationAdjacency { cardinal4 };
+enum class NavigationAdjacency : std::uint8_t { cardinal4 };
 
 struct NavigationCell {
     bool walkable{true};
     std::uint32_t traversal_cost{1};
 };
 
-enum class NavigationPathStatus {
+enum class NavigationPathStatus : std::uint8_t {
     success,
     invalid_endpoint,
     blocked_endpoint,

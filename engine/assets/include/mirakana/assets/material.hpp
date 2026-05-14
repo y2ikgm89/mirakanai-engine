@@ -14,15 +14,15 @@
 
 namespace mirakana {
 
-enum class MaterialShadingModel { unknown, unlit, lit };
+enum class MaterialShadingModel : std::uint8_t { unknown, unlit, lit };
 
-enum class MaterialSurfaceMode { unknown, opaque, masked, transparent };
+enum class MaterialSurfaceMode : std::uint8_t { unknown, opaque, masked, transparent };
 
-enum class MaterialTextureSlot { unknown, base_color, normal, metallic_roughness, emissive, occlusion };
+enum class MaterialTextureSlot : std::uint8_t { unknown, base_color, normal, metallic_roughness, emissive, occlusion };
 
-enum class MaterialBindingResourceKind { unknown, uniform_buffer, sampled_texture, sampler };
+enum class MaterialBindingResourceKind : std::uint8_t { unknown, uniform_buffer, sampled_texture, sampler };
 
-enum class MaterialShaderStageMask : std::uint32_t {
+enum class MaterialShaderStageMask : std::uint8_t {
     none = 0,
     vertex = 1U << 0U,
     fragment = 1U << 1U,

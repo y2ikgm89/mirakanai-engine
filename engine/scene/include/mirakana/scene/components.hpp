@@ -7,11 +7,12 @@
 #include "mirakana/math/vec.hpp"
 
 #include <array>
+#include <cstdint>
 #include <optional>
 
 namespace mirakana {
 
-enum class CameraProjectionMode { unknown, perspective, orthographic };
+enum class CameraProjectionMode : std::uint8_t { unknown, perspective, orthographic };
 
 struct CameraComponent {
     CameraProjectionMode projection{CameraProjectionMode::perspective};
@@ -22,7 +23,7 @@ struct CameraComponent {
     bool primary{false};
 };
 
-enum class LightType { unknown, directional, point, spot };
+enum class LightType : std::uint8_t { unknown, directional, point, spot };
 
 struct LightComponent {
     LightType type{LightType::directional};

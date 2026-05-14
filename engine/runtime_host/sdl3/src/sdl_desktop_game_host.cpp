@@ -27,7 +27,7 @@ namespace {
                                                                 SdlWindow& window) noexcept {
     return SdlDesktopPresentationDesc{
         .window = &window,
-        .extent = Extent2D{desc.extent.width, desc.extent.height},
+        .extent = Extent2D{.width = desc.extent.width, .height = desc.extent.height},
         .prefer_d3d12 = desc.prefer_d3d12,
         .prefer_vulkan = desc.prefer_vulkan,
         .allow_null_fallback = desc.allow_null_fallback,
@@ -49,8 +49,8 @@ struct SdlDesktopGameHost::Impl {
           logger(desc.logger != nullptr ? desc.logger : &default_logger),
           registry(desc.registry != nullptr ? desc.registry : &default_registry),
           runtime(SdlRuntimeDesc{.video_driver_hint = desc.video_driver_hint}),
-          window(WindowDesc{desc.title, desc.extent}), presentation(make_presentation_desc(desc, window)),
-          event_pump(window) {}
+          window(WindowDesc{.title = desc.title, .extent = desc.extent}),
+          presentation(make_presentation_desc(desc, window)), event_pump(window) {}
 
     RingBufferLogger default_logger;
     Registry default_registry;

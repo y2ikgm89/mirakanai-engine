@@ -97,7 +97,7 @@ constexpr std::size_t k_max_capture_execution_diagnostic_chars = 512;
         }
     }
     std::ranges::sort(sanitized);
-    sanitized.erase(std::unique(sanitized.begin(), sanitized.end()), sanitized.end());
+    sanitized.erase(std::ranges::unique(sanitized).begin(), sanitized.end());
     return sanitized;
 }
 

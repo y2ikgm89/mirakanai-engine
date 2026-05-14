@@ -85,7 +85,7 @@ struct RuntimeLocalizationCatalogLoadResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
-enum class RuntimeInputActionTriggerKind {
+enum class RuntimeInputActionTriggerKind : std::uint8_t {
     key,
     pointer,
     gamepad_button,
@@ -111,7 +111,7 @@ struct RuntimeInputActionBinding {
     std::vector<RuntimeInputActionTrigger> triggers;
 };
 
-enum class RuntimeInputAxisSourceKind {
+enum class RuntimeInputAxisSourceKind : std::uint8_t {
     key_pair,
     gamepad_axis,
 };
@@ -212,7 +212,7 @@ struct RuntimeInputRebindingProfile {
     std::vector<RuntimeInputRebindingAxisOverride> axis_overrides;
 };
 
-enum class RuntimeInputRebindingDiagnosticCode {
+enum class RuntimeInputRebindingDiagnosticCode : std::uint8_t {
     unsupported_format,
     invalid_profile_id,
     invalid_context,
@@ -253,7 +253,7 @@ struct RuntimeInputRebindingProfileApplyResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
-enum class RuntimeInputRebindingCaptureStatus {
+enum class RuntimeInputRebindingCaptureStatus : std::uint8_t {
     waiting,
     captured,
     blocked,
@@ -322,7 +322,7 @@ struct RuntimeInputRebindingFocusCaptureResult {
     [[nodiscard]] bool blocked() const noexcept;
 };
 
-enum class RuntimeInputRebindingPresentationTokenKind {
+enum class RuntimeInputRebindingPresentationTokenKind : std::uint8_t {
     key,
     pointer,
     gamepad_button,
@@ -345,7 +345,7 @@ struct RuntimeInputRebindingPresentationToken {
     float deadzone{0.0F};
 };
 
-enum class RuntimeInputRebindingPresentationRowKind {
+enum class RuntimeInputRebindingPresentationRowKind : std::uint8_t {
     action,
     axis,
 };

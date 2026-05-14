@@ -11,13 +11,14 @@
 #include "mirakana/ui/ui.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::editor {
 
-enum class PrefabVariantAuthoringDiagnosticKind { invalid_variant, missing_asset, wrong_asset_kind };
+enum class PrefabVariantAuthoringDiagnosticKind : std::uint8_t { invalid_variant, missing_asset, wrong_asset_kind };
 
 struct PrefabVariantAuthoringDiagnostic {
     PrefabVariantAuthoringDiagnosticKind kind{PrefabVariantAuthoringDiagnosticKind::invalid_variant};
@@ -55,9 +56,9 @@ struct PrefabVariantAuthoringModel {
     }
 };
 
-enum class PrefabVariantConflictStatus { ready, warning, blocked };
+enum class PrefabVariantConflictStatus : std::uint8_t { ready, warning, blocked };
 
-enum class PrefabVariantConflictKind {
+enum class PrefabVariantConflictKind : std::uint8_t {
     clean,
     missing_node,
     source_node_mismatch,
@@ -67,7 +68,12 @@ enum class PrefabVariantConflictKind {
     component_family_replacement,
 };
 
-enum class PrefabVariantConflictResolutionKind { none, remove_override, retarget_override, accept_current_node };
+enum class PrefabVariantConflictResolutionKind : std::uint8_t {
+    none,
+    remove_override,
+    retarget_override,
+    accept_current_node
+};
 
 struct PrefabVariantConflictBatchResolutionPlan {
     std::string id{"apply_all_reviewed_resolutions"};
@@ -140,9 +146,9 @@ struct PrefabVariantConflictBatchResolutionResult {
     std::string diagnostic;
 };
 
-enum class PrefabVariantBaseRefreshStatus { ready, warning, blocked };
+enum class PrefabVariantBaseRefreshStatus : std::uint8_t { ready, warning, blocked };
 
-enum class PrefabVariantBaseRefreshRowKind {
+enum class PrefabVariantBaseRefreshRowKind : std::uint8_t {
     preserve_index,
     retarget_by_source_name,
     missing_source_node_hint,
@@ -194,7 +200,7 @@ struct PrefabVariantBaseRefreshResult {
     std::string diagnostic;
 };
 
-enum class EditorPrefabVariantFileDialogMode { open, save };
+enum class EditorPrefabVariantFileDialogMode : std::uint8_t { open, save };
 
 struct EditorPrefabVariantFileDialogRow {
     std::string id;

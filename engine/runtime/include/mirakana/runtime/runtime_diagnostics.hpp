@@ -7,15 +7,16 @@
 #include "mirakana/runtime/session_services.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::runtime {
 
-enum class RuntimeDiagnosticSeverity { unknown, info, warning, error };
+enum class RuntimeDiagnosticSeverity : std::uint8_t { unknown, info, warning, error };
 
-enum class RuntimeDiagnosticDomain { unknown, asset_package, payload, scene, session };
+enum class RuntimeDiagnosticDomain : std::uint8_t { unknown, asset_package, payload, scene, session };
 
 struct RuntimeDiagnostic {
     RuntimeDiagnosticSeverity severity{RuntimeDiagnosticSeverity::unknown};

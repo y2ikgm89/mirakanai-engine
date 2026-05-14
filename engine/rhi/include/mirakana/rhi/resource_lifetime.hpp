@@ -17,7 +17,7 @@ struct RhiResourceId {
     }
 };
 
-enum class RhiResourceKind {
+enum class RhiResourceKind : std::uint8_t {
     unknown = 0,
     buffer,
     texture,
@@ -31,9 +31,9 @@ enum class RhiResourceKind {
     compute_pipeline,
 };
 
-enum class RhiResourceLifetimeState { live = 0, deferred_release };
+enum class RhiResourceLifetimeState : std::uint8_t { live = 0, deferred_release };
 
-enum class RhiResourceLifetimeEventKind {
+enum class RhiResourceLifetimeEventKind : std::uint8_t {
     register_resource = 0,
     rename,
     defer_release,
@@ -45,7 +45,7 @@ enum class RhiResourceLifetimeEventKind {
     invalid_debug_name,
 };
 
-enum class RhiResourceLifetimeDiagnosticCode {
+enum class RhiResourceLifetimeDiagnosticCode : std::uint8_t {
     invalid_resource = 0,
     duplicate_release,
     stale_generation,

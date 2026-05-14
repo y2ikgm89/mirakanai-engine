@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <array>
 #include <exception>
+#include <ranges>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -190,11 +192,12 @@ make_skinned_position_payload(const runtime::RuntimeSkinnedMeshPayload& skinned_
     std::vector<std::uint8_t> position_bytes;
     position_bytes.reserve(static_cast<std::size_t>(skinned_payload.vertex_count) *
                            runtime_rhi::runtime_mesh_position_vertex_stride_bytes);
+    const std::span<const std::uint8_t> skinned_vertex_bytes{skinned_payload.vertex_bytes};
     for (std::uint32_t vertex = 0; vertex < skinned_payload.vertex_count; ++vertex) {
         const auto offset = static_cast<std::size_t>(vertex) * runtime_rhi::runtime_skinned_mesh_vertex_stride_bytes;
-        position_bytes.insert(position_bytes.end(), skinned_payload.vertex_bytes.begin() + offset,
-                              skinned_payload.vertex_bytes.begin() + offset +
-                                  runtime_rhi::runtime_mesh_position_vertex_stride_bytes);
+        const auto position_vertex_bytes =
+            skinned_vertex_bytes.subspan(offset, runtime_rhi::runtime_mesh_position_vertex_stride_bytes);
+        position_bytes.insert(position_bytes.end(), position_vertex_bytes.begin(), position_vertex_bytes.end());
     }
 
     return RuntimeSceneSkinnedPositionPayloadResult{
@@ -774,9 +777,8 @@ RuntimeSceneGpuUploadExecutionResult execute_runtime_scene_gpu_upload(const Runt
     return result;
 }
 
-[[nodiscard]] bool validate_runtime_scene_gpu_binding_device_ownership(const rhi::IRhiDevice& device,
-                                                                       const RuntimeSceneGpuBindingResult& bindings,
-                                                                       std::string& diagnostic_out) {
+[[nodiscard]] static bool validate_runtime_scene_gpu_binding_device_ownership(
+    const rhi::IRhiDevice& device, const RuntimeSceneGpuBindingResult& bindings, std::string& diagnostic_out) {
     for (const auto& mesh : bindings.mesh_uploads) {
         if (mesh.upload.owner_device != nullptr && mesh.upload.owner_device != &device) {
             diagnostic_out = "runtime scene mesh gpu upload owner_device does not match safe-point teardown device";
@@ -827,9 +829,9 @@ RuntimeSceneGpuUploadExecutionResult execute_runtime_scene_gpu_upload(const Runt
     return true;
 }
 
-void release_descriptor_write_resources(rhi::NullRhiDevice& device,
-                                        const mirakana::runtime_rhi::RuntimeMaterialGpuBinding& binding,
-                                        RuntimeSceneGpuSafePointTeardownReport& report) {
+static void release_descriptor_write_resources(rhi::NullRhiDevice& device,
+                                               const mirakana::runtime_rhi::RuntimeMaterialGpuBinding& binding,
+                                               RuntimeSceneGpuSafePointTeardownReport& report) {
     for (const auto& write : binding.writes) {
         for (const auto& resource : write.resources) {
             if (resource.type == rhi::DescriptorType::uniform_buffer ||
@@ -851,14 +853,13 @@ void release_descriptor_write_resources(rhi::NullRhiDevice& device,
     }
 }
 
-void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& device,
-                                                        const RuntimeSceneGpuBindingResult& bindings,
-                                                        RuntimeSceneGpuSafePointTeardownReport& report) {
+static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& device,
+                                                               const RuntimeSceneGpuBindingResult& bindings,
+                                                               RuntimeSceneGpuSafePointTeardownReport& report) {
     std::unordered_set<std::uint32_t> released_pipeline_layouts;
     std::unordered_set<std::uint32_t> released_descriptor_set_layouts;
 
-    for (auto it = bindings.material_bindings.rbegin(); it != bindings.material_bindings.rend(); ++it) {
-        const auto& material = *it;
+    for (const auto& material : std::views::reverse(bindings.material_bindings)) {
         if (device.null_mark_descriptor_set_released(material.binding.descriptor_set)) {
             ++report.descriptor_sets_released;
         }
@@ -895,11 +896,11 @@ void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& devi
         }
     }
 
-    for (auto it = bindings.material_pipeline_layouts.rbegin(); it != bindings.material_pipeline_layouts.rend(); ++it) {
-        if (released_pipeline_layouts.contains(it->value)) {
+    for (const auto& pipeline_layout : std::views::reverse(bindings.material_pipeline_layouts)) {
+        if (released_pipeline_layouts.contains(pipeline_layout.value)) {
             continue;
         }
-        if (device.null_mark_pipeline_layout_released(*it)) {
+        if (device.null_mark_pipeline_layout_released(pipeline_layout)) {
             ++report.pipeline_layouts_released;
         }
     }
@@ -915,8 +916,8 @@ void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& devi
         }
     }
 
-    for (auto it = bindings.skinned_mesh_uploads.rbegin(); it != bindings.skinned_mesh_uploads.rend(); ++it) {
-        const auto& upload = it->upload;
+    for (const auto& skinned_upload : std::views::reverse(bindings.skinned_mesh_uploads)) {
+        const auto& upload = skinned_upload.upload;
         if (device.null_mark_buffer_released(upload.vertex_buffer)) {
             ++report.buffers_released;
         }
@@ -937,10 +938,9 @@ void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& devi
         }
     }
 
-    for (auto it = bindings.compute_morph_skinned_mesh_bindings.rbegin();
-         it != bindings.compute_morph_skinned_mesh_bindings.rend(); ++it) {
-        const auto& base_upload = it->base_position_upload;
-        const auto& compute_binding = it->compute_binding;
+    for (const auto& morph_binding : std::views::reverse(bindings.compute_morph_skinned_mesh_bindings)) {
+        const auto& base_upload = morph_binding.base_position_upload;
+        const auto& compute_binding = morph_binding.compute_binding;
 
         if (device.null_mark_descriptor_set_released(compute_binding.descriptor_set)) {
             ++report.descriptor_sets_released;
@@ -989,8 +989,8 @@ void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& devi
         }
     }
 
-    for (auto it = bindings.mesh_uploads.rbegin(); it != bindings.mesh_uploads.rend(); ++it) {
-        const auto& upload = it->upload;
+    for (const auto& mesh_upload : std::views::reverse(bindings.mesh_uploads)) {
+        const auto& upload = mesh_upload.upload;
         if (device.null_mark_buffer_released(upload.vertex_buffer)) {
             ++report.buffers_released;
         }
@@ -1016,8 +1016,8 @@ void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& devi
         }
     }
 
-    for (auto it = bindings.morph_mesh_uploads.rbegin(); it != bindings.morph_mesh_uploads.rend(); ++it) {
-        const auto& upload = it->upload;
+    for (const auto& morph_upload : std::views::reverse(bindings.morph_mesh_uploads)) {
+        const auto& upload = morph_upload.upload;
         if (device.null_mark_buffer_released(upload.position_delta_buffer)) {
             ++report.buffers_released;
         }
@@ -1044,8 +1044,8 @@ void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevice& devi
         }
     }
 
-    for (auto it = bindings.texture_uploads.rbegin(); it != bindings.texture_uploads.rend(); ++it) {
-        const auto& upload = it->upload;
+    for (const auto& texture_upload : std::views::reverse(bindings.texture_uploads)) {
+        const auto& upload = texture_upload.upload;
         if (device.null_mark_texture_released(upload.texture)) {
             ++report.textures_released;
         }

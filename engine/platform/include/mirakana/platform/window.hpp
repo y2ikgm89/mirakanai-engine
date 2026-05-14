@@ -52,7 +52,7 @@ struct WindowDisplayState {
     DisplayRect safe_area{};
 };
 
-enum class DisplaySelectionPolicy {
+enum class DisplaySelectionPolicy : std::uint8_t {
     primary,
     specific,
     highest_content_scale,
@@ -64,7 +64,7 @@ struct DisplaySelectionRequest {
     DisplayId display_id{0};
 };
 
-enum class WindowPlacementPolicy {
+enum class WindowPlacementPolicy : std::uint8_t {
     centered,
     top_left,
     absolute,

@@ -143,7 +143,7 @@ make_quaternion_animation_tracks(const mirakana::runtime::RuntimeAnimationQuater
 constexpr mirakana::SceneNodeId kPackagedMeshNode{1};
 constexpr mirakana::SceneNodeId kPrimaryCameraNode{3};
 
-enum class UiAtlasMetadataStatus {
+enum class UiAtlasMetadataStatus : std::uint8_t {
     not_requested,
     missing,
     malformed,
@@ -277,8 +277,9 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
     void on_start(mirakana::EngineContext&) override {
         input_.press(mirakana::Key::right);
         ui_ok_ = build_hud();
-        theme_.add(mirakana::UiThemeColor{"hud.panel", mirakana::Color{0.06F, 0.08F, 0.09F, 1.0F}});
-        renderer_.set_clear_color(mirakana::Color{0.02F, 0.03F, 0.035F, 1.0F});
+        theme_.add(mirakana::UiThemeColor{.token = "hud.panel",
+                                          .color = mirakana::Color{.r = 0.06F, .g = 0.08F, .b = 0.09F, .a = 1.0F}});
+        renderer_.set_clear_color(mirakana::Color{.r = 0.02F, .g = 0.03F, .b = 0.035F, .a = 1.0F});
     }
 
     bool on_update(mirakana::EngineContext&, double) override {
@@ -288,7 +289,8 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
             input_.digital_axis(mirakana::Key::left, mirakana::Key::right, mirakana::Key::down, mirakana::Key::up);
         if (!scene_gpu_mode_) {
             transform_.position = transform_.position + axis;
-            renderer_.draw_sprite(mirakana::SpriteCommand{transform_, mirakana::Color{0.8F, 0.35F, 0.15F, 1.0F}});
+            renderer_.draw_sprite(mirakana::SpriteCommand{
+                .transform = transform_, .color = mirakana::Color{.r = 0.8F, .g = 0.35F, .b = 0.15F, .a = 1.0F}});
         }
         if (scene_.has_value()) {
             std::optional<mirakana::SceneRenderPacket> rebuilt_packet;
@@ -344,11 +346,12 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
                                                    static_cast<float>(renderer_.backbuffer_extent().height)
                                              : (16.0F / 9.0F);
                     mirakana::SceneCameraMatrices camera{};
-                    mirakana::Vec3 cam_pos{0.0F, 0.0F, 5.0F};
+                    mirakana::Vec3 cam_pos{.x = 0.0F, .y = 0.0F, .z = 5.0F};
                     if (const auto* primary = render_packet->primary_camera(); primary != nullptr) {
                         camera = mirakana::make_scene_camera_matrices(*primary, aspect);
-                        cam_pos = mirakana::Vec3{primary->world_from_node.at(0, 3), primary->world_from_node.at(1, 3),
-                                                 primary->world_from_node.at(2, 3)};
+                        cam_pos = mirakana::Vec3{.x = primary->world_from_node.at(0, 3),
+                                                 .y = primary->world_from_node.at(1, 3),
+                                                 .z = primary->world_from_node.at(2, 3)};
                     }
                     pbr_gpu.device = device;
                     pbr_gpu.scene_frame_uniform = scene_ubo;
@@ -361,7 +364,7 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
             const auto scene_submit = mirakana::submit_scene_render_packet(
                 renderer_, *render_packet,
                 mirakana::SceneRenderSubmitDesc{
-                    .fallback_mesh_color = mirakana::Color{0.8F, 0.35F, 0.15F, 1.0F},
+                    .fallback_mesh_color = mirakana::Color{.r = 0.8F, .g = 0.35F, .b = 0.15F, .a = 1.0F},
                     .material_palette = &scene_->material_palette,
                     .pbr_gpu = pbr_ptr,
                 });
@@ -371,8 +374,9 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
         }
 
         update_hud_text();
-        const auto layout = mirakana::ui::solve_layout(hud_, mirakana::ui::ElementId{"hud.root"},
-                                                       mirakana::ui::Rect{0.0F, 0.0F, 320.0F, 180.0F});
+        const auto layout =
+            mirakana::ui::solve_layout(hud_, mirakana::ui::ElementId{"hud.root"},
+                                       mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 320.0F, .height = 180.0F});
         const auto submission = mirakana::ui::build_renderer_submission(hud_, layout);
         mirakana::UiRenderSubmitDesc ui_submit_desc;
         ui_submit_desc.theme = &theme_;
@@ -505,7 +509,7 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
         root.id = mirakana::ui::ElementId{"hud.root"};
         root.role = mirakana::ui::SemanticRole::root;
         root.style.layout = mirakana::ui::LayoutMode::column;
-        root.style.padding = mirakana::ui::EdgeInsets{8.0F, 8.0F, 8.0F, 8.0F};
+        root.style.padding = mirakana::ui::EdgeInsets{.top = 8.0F, .right = 8.0F, .bottom = 8.0F, .left = 8.0F};
         root.style.gap = 4.0F;
         if (!hud_.try_add_element(root)) {
             return false;
@@ -515,8 +519,9 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
         status.id = mirakana::ui::ElementId{"hud.status"};
         status.parent = root.id;
         status.role = mirakana::ui::SemanticRole::label;
-        status.bounds = mirakana::ui::Rect{0.0F, 0.0F, 144.0F, 24.0F};
-        status.text = mirakana::ui::TextContent{"3D Meshes 0", "hud.status", "engine-default"};
+        status.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 144.0F, .height = 24.0F};
+        status.text = mirakana::ui::TextContent{
+            .label = "3D Meshes 0", .localization_key = "hud.status", .font_family = "engine-default"};
         status.style.background_token = "hud.panel";
         status.accessibility_label = "3D diagnostics";
         if (!hud_.try_add_element(status)) {
@@ -530,7 +535,7 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
         atlas_image.id = mirakana::ui::ElementId{"hud.texture_atlas_proof"};
         atlas_image.parent = root.id;
         atlas_image.role = mirakana::ui::SemanticRole::image;
-        atlas_image.bounds = mirakana::ui::Rect{0.0F, 0.0F, 32.0F, 32.0F};
+        atlas_image.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 32.0F};
         atlas_image.image.resource_id = std::string{kHudAtlasProofResourceId};
         atlas_image.image.asset_uri = std::string{kHudAtlasProofAssetUri};
         atlas_image.accessibility_label = "Texture atlas proof";
@@ -540,8 +545,10 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
     void update_hud_text() {
         const auto text = std::string{"3D Meshes "} + std::to_string(scene_meshes_submitted_);
         ui_text_updates_ok_ =
-            ui_text_updates_ok_ && hud_.set_text(mirakana::ui::ElementId{"hud.status"},
-                                                 mirakana::ui::TextContent{text, "hud.status", "engine-default"});
+            ui_text_updates_ok_ &&
+            hud_.set_text(mirakana::ui::ElementId{"hud.status"},
+                          mirakana::ui::TextContent{
+                              .label = text, .localization_key = "hud.status", .font_family = "engine-default"});
     }
 
     mirakana::VirtualInput& input_;
@@ -777,7 +784,7 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
 
 [[nodiscard]] std::filesystem::path executable_directory(const char* executable_path) {
     try {
-        if (executable_path != nullptr && std::string_view{executable_path}.size() > 0) {
+        if (executable_path != nullptr && !std::string_view{executable_path}.empty()) {
             const auto absolute_path = std::filesystem::absolute(std::filesystem::path{executable_path});
             if (absolute_path.has_parent_path()) {
                 return absolute_path.parent_path();
@@ -806,7 +813,7 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
             std::cerr << "required config is empty: " << config_path << '\n';
             return false;
         }
-        if (config_text.rfind(kExpectedConfigFormat, 0) != 0) {
+        if (!config_text.starts_with(kExpectedConfigFormat)) {
             std::cerr << "required config has unexpected format: " << config_path << '\n';
             return false;
         }
@@ -1346,7 +1353,7 @@ int main(int argc, char** argv) {
 
     mirakana::SdlDesktopGameHostDesc host_desc{
         .title = "Sample Desktop Runtime Game",
-        .extent = mirakana::WindowExtent{800, 450},
+        .extent = mirakana::WindowExtent{.width = 800, .height = 450},
         .video_driver_hint = options.video_driver_hint,
         .prefer_vulkan = options.require_vulkan_renderer,
     };

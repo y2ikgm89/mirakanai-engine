@@ -4,13 +4,14 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::editor {
 
-enum class PanelId {
+enum class PanelId : std::uint8_t {
     scene = 0,
     inspector,
     assets,

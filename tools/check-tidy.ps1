@@ -6,6 +6,7 @@ param(
     [string]$Configuration = "Debug",
     [switch]$Strict,
     [int]$MaxFiles = 0,
+    [int]$Jobs = 0,
     [string[]]$Files = @()
 )
 
@@ -414,11 +415,87 @@ if ($MaxFiles -gt 0 -and $tidyFiles.Count -gt $MaxFiles) {
     $tidyFiles = [System.Collections.Generic.List[string]]($tidyFiles | Select-Object -First $MaxFiles)
 }
 
-foreach ($file in $tidyFiles) {
-    & $clangTidy "--quiet" "-p" $buildDir $file | Out-Host
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "clang-tidy failed for $file"
+if ($Jobs -lt 0) {
+    Write-Error "tidy-check: -Jobs must be 0 for automatic CPU-count parallelism or a positive explicit job count"
+}
+
+$effectiveJobs = if ($Jobs -eq 0) {
+    [Math]::Max(1, [Environment]::ProcessorCount)
+}
+else {
+    $Jobs
+}
+$effectiveJobs = [Math]::Max(1, $effectiveJobs)
+if ($tidyFiles.Count -gt 0) {
+    $effectiveJobs = [Math]::Min($effectiveJobs, $tidyFiles.Count)
+}
+
+$suppressedWarningSummaryCount = 0
+$failedTidyFiles = [System.Collections.Generic.List[string]]::new()
+if ($effectiveJobs -eq 1 -or $tidyFiles.Count -le 1) {
+    foreach ($file in $tidyFiles) {
+        $tidyArguments = @("--quiet", "-p", $buildDir)
+        if ($Strict) {
+            $tidyArguments += "--warnings-as-errors=*"
+        }
+        $tidyArguments += $file
+
+        $tidyOutput = & $clangTidy @tidyArguments 2>&1
+        $tidyExitCode = $LASTEXITCODE
+        foreach ($line in @($tidyOutput)) {
+            if ([string]$line -match '^\d+ warnings generated\.$') {
+                $suppressedWarningSummaryCount++
+                continue
+            }
+            $line | Out-Host
+        }
+        if ($tidyExitCode -ne 0) {
+            $failedTidyFiles.Add($file) | Out-Null
+        }
+    }
+} else {
+    Write-Host "tidy-check: running clang-tidy with $effectiveJobs parallel jobs"
+    $indexedTidyFiles = for ($index = 0; $index -lt $tidyFiles.Count; ++$index) {
+        [pscustomobject]@{
+            Index = $index
+            File = $tidyFiles[$index]
+        }
+    }
+    $tidyResults = $indexedTidyFiles | ForEach-Object -Parallel {
+        $tidyArguments = @("--quiet", "-p", $using:buildDir)
+        if ($using:Strict) {
+            $tidyArguments += "--warnings-as-errors=*"
+        }
+        $tidyArguments += $_.File
+
+        $tidyOutput = @(& $using:clangTidy @tidyArguments 2>&1 | ForEach-Object { [string]$_ })
+        [pscustomobject]@{
+            Index = $_.Index
+            File = $_.File
+            ExitCode = $LASTEXITCODE
+            Output = $tidyOutput
+        }
+    } -ThrottleLimit $effectiveJobs
+
+    foreach ($tidyResult in ($tidyResults | Sort-Object Index)) {
+        foreach ($line in @($tidyResult.Output)) {
+            if ([string]$line -match '^\d+ warnings generated\.$') {
+                $suppressedWarningSummaryCount++
+                continue
+            }
+            $line | Out-Host
+        }
+        if ($tidyResult.ExitCode -ne 0) {
+            $failedTidyFiles.Add($tidyResult.File) | Out-Null
+        }
     }
 }
 
+if ($failedTidyFiles.Count -gt 0) {
+    Write-Error "clang-tidy failed for $($failedTidyFiles.Count) file(s): $($failedTidyFiles -join '; ')"
+}
+
+if ($suppressedWarningSummaryCount -gt 0) {
+    Write-Host "tidy-check: suppressed clang frontend warning summaries ($suppressedWarningSummaryCount)"
+}
 Write-Host "tidy-check: ok ($($tidyFiles.Count) files)"

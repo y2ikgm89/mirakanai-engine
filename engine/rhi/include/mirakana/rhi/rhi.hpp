@@ -15,38 +15,47 @@
 
 namespace mirakana::rhi {
 
-enum class BackendKind { null = 0, d3d12, vulkan, metal };
+enum class BackendKind : std::uint8_t { null = 0, d3d12, vulkan, metal };
 
-enum class QueueKind { graphics = 0, compute, copy };
+enum class QueueKind : std::uint8_t { graphics = 0, compute, copy };
 
-enum class ShaderStage { vertex = 0, fragment, compute };
+enum class ShaderStage : std::uint8_t { vertex = 0, fragment, compute };
 
-enum class ShaderStageVisibility : std::uint32_t {
+enum class ShaderStageVisibility : std::uint8_t {
     none = 0,
     vertex = 1U << 0U,
     fragment = 1U << 1U,
     compute = 1U << 2U
 };
 
-enum class PrimitiveTopology { triangle_list = 0, line_list };
+enum class PrimitiveTopology : std::uint8_t { triangle_list = 0, line_list };
 
-enum class IndexFormat { unknown = 0, uint16, uint32 };
+enum class IndexFormat : std::uint8_t { unknown = 0, uint16, uint32 };
 
-enum class VertexFormat { unknown = 0, float32x2, float32x3, float32x4, uint16x4 };
+enum class VertexFormat : std::uint8_t { unknown = 0, float32x2, float32x3, float32x4, uint16x4 };
 
-enum class VertexInputRate { vertex = 0, instance };
+enum class VertexInputRate : std::uint8_t { vertex = 0, instance };
 
-enum class VertexSemantic { position = 0, normal, tangent, texcoord, color, custom, joint_indices, joint_weights };
+enum class VertexSemantic : std::uint8_t {
+    position = 0,
+    normal,
+    tangent,
+    texcoord,
+    color,
+    custom,
+    joint_indices,
+    joint_weights
+};
 
-enum class LoadAction { load = 0, clear, dont_care };
+enum class LoadAction : std::uint8_t { load = 0, clear, dont_care };
 
-enum class StoreAction { store = 0, dont_care };
+enum class StoreAction : std::uint8_t { store = 0, dont_care };
 
-enum class CompareOp { never = 0, less, equal, less_equal, greater, not_equal, greater_equal, always };
+enum class CompareOp : std::uint8_t { never = 0, less, equal, less_equal, greater, not_equal, greater_equal, always };
 
-enum class Format { unknown = 0, rgba8_unorm, bgra8_unorm, depth24_stencil8 };
+enum class Format : std::uint8_t { unknown = 0, rgba8_unorm, bgra8_unorm, depth24_stencil8 };
 
-enum class ResourceState {
+enum class ResourceState : std::uint8_t {
     undefined = 0,
     copy_source,
     copy_destination,
@@ -56,13 +65,19 @@ enum class ResourceState {
     present
 };
 
-enum class DescriptorType { uniform_buffer = 0, storage_buffer, sampled_texture, storage_texture, sampler };
+enum class DescriptorType : std::uint8_t {
+    uniform_buffer = 0,
+    storage_buffer,
+    sampled_texture,
+    storage_texture,
+    sampler
+};
 
-enum class SamplerFilter { nearest = 0, linear };
+enum class SamplerFilter : std::uint8_t { nearest = 0, linear };
 
-enum class SamplerAddressMode { repeat = 0, clamp_to_edge };
+enum class SamplerAddressMode : std::uint8_t { repeat = 0, clamp_to_edge };
 
-enum class BufferUsage : std::uint32_t {
+enum class BufferUsage : std::uint8_t {
     none = 0,
     vertex = 1U << 0U,
     index = 1U << 1U,
@@ -72,7 +87,7 @@ enum class BufferUsage : std::uint32_t {
     copy_destination = 1U << 5U
 };
 
-enum class TextureUsage : std::uint32_t {
+enum class TextureUsage : std::uint8_t {
     none = 0,
     shader_resource = 1U << 0U,
     render_target = 1U << 1U,
@@ -392,7 +407,7 @@ struct TransientTexture {
     TextureHandle texture;
 };
 
-enum class TransientResourceKind { buffer = 0, texture };
+enum class TransientResourceKind : std::uint8_t { buffer = 0, texture };
 
 struct RhiStats {
     std::uint64_t buffers_created{0};
@@ -475,7 +490,7 @@ struct RhiStats {
     std::uint64_t gpu_debug_markers_inserted{0};
 };
 
-enum class RhiAsyncOverlapReadinessStatus {
+enum class RhiAsyncOverlapReadinessStatus : std::uint8_t {
     not_requested = 0,
     missing_queue_evidence,
     missing_pipelined_slot_evidence,

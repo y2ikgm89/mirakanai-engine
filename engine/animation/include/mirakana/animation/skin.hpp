@@ -35,7 +35,7 @@ struct AnimationSkinPayloadDesc {
     std::vector<AnimationSkinVertexWeights> vertices;
 };
 
-enum class AnimationSkinDiagnosticCode {
+enum class AnimationSkinDiagnosticCode : std::uint8_t {
     invalid_skeleton,
     empty_skin,
     invalid_skin_joint,
@@ -81,7 +81,7 @@ struct AnimationCpuSkinnedVertexStream {
     std::vector<Vec3> bitangents;
 };
 
-enum class AnimationCpuSkinningDiagnosticCode {
+enum class AnimationCpuSkinningDiagnosticCode : std::uint8_t {
     empty_bind_positions,
     vertex_count_mismatch,
     palette_count_mismatch,

@@ -7,12 +7,13 @@
 #include "mirakana/assets/asset_hot_reload.hpp"
 #include "mirakana/assets/asset_import_metadata.hpp"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace mirakana {
 
-enum class AssetImportActionKind {
+enum class AssetImportActionKind : std::uint8_t {
     unknown,
     texture,
     mesh,

@@ -21,7 +21,7 @@ constexpr std::uint32_t sprite_atlas_packing_max_side = 16384;
 /// Hard cap on sprite count for deterministic host-side packing.
 constexpr std::size_t sprite_atlas_packing_max_items = 4096;
 
-enum class SpriteAtlasPackingDiagnosticCode {
+enum class SpriteAtlasPackingDiagnosticCode : std::uint8_t {
     ok,
     empty_items,
     too_many_items,

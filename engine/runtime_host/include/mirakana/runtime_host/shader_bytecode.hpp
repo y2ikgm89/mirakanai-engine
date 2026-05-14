@@ -12,7 +12,7 @@
 
 namespace mirakana {
 
-enum class DesktopShaderBytecodeLoadStatus {
+enum class DesktopShaderBytecodeLoadStatus : std::uint8_t {
     ready = 0,
     missing,
     empty,

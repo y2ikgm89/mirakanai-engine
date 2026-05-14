@@ -10,7 +10,7 @@
 
 namespace mirakana::editor {
 
-[[nodiscard]] bool material_preview_ascii_iequals(std::string_view left, std::string_view right) noexcept {
+[[nodiscard]] static bool material_preview_ascii_iequals(std::string_view left, std::string_view right) noexcept {
     if (left.size() != right.size()) {
         return false;
     }
@@ -26,7 +26,7 @@ namespace mirakana::editor {
     return true;
 }
 
-[[nodiscard]] std::string_view
+[[nodiscard]] static std::string_view
 gpu_preview_visible_refresh_evidence_for_backend(const EditorMaterialGpuPreviewExecutionSnapshot& snapshot,
                                                  std::string_view backend_token) noexcept {
     if (!material_preview_ascii_iequals(snapshot.backend_label, backend_token)) {

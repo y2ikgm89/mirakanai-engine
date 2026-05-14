@@ -14,6 +14,7 @@
 #include <numbers>
 #include <numeric>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <string>
 #include <utility>
@@ -141,7 +142,7 @@ constexpr std::size_t max_iterations = 128U;
         switch (*desc.bend_side) {
         case AnimationFabrikIkXyBendSide::positive:
         case AnimationFabrikIkXyBendSide::negative:
-            bend_side = *desc.bend_side;
+            bend_side = desc.bend_side;
             break;
         default:
             diagnostic = "FABRIK IK bend side is invalid";
@@ -752,8 +753,8 @@ struct LocalRotationLimit3dClamp {
     }
 
     auto rotation = Quat::identity();
-    for (auto iter = lineage.rbegin(); iter != lineage.rend(); ++iter) {
-        rotation = normalize_quat(rotation * pose.joints[*iter].rotation);
+    for (const auto joint : std::views::reverse(lineage)) {
+        rotation = normalize_quat(rotation * pose.joints[joint].rotation);
     }
     return rotation;
 }

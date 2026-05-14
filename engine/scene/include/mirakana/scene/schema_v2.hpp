@@ -5,6 +5,7 @@
 
 #include "mirakana/math/transform.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -64,7 +65,7 @@ struct PrefabVariantDocumentV2 {
     std::vector<PrefabOverrideV2> overrides;
 };
 
-enum class SceneSchemaV2DiagnosticCode {
+enum class SceneSchemaV2DiagnosticCode : std::uint8_t {
     invalid_scene_name,
     invalid_authoring_id,
     duplicate_node_id,

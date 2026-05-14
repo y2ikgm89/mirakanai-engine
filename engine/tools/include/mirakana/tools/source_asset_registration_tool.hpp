@@ -13,7 +13,7 @@
 
 namespace mirakana {
 
-enum class SourceAssetRegistrationCommandKind {
+enum class SourceAssetRegistrationCommandKind : std::uint8_t {
     register_source_asset,
     free_form_edit,
 };

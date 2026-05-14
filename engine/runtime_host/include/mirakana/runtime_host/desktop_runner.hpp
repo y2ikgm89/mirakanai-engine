@@ -31,7 +31,7 @@ struct DesktopRunConfig {
     bool resize_renderer_to_window{true};
 };
 
-enum class DesktopRunStatus {
+enum class DesktopRunStatus : std::uint8_t {
     completed,
     stopped_by_app,
     window_closed,

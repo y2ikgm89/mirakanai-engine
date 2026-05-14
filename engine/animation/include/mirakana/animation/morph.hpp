@@ -6,6 +6,7 @@
 #include "mirakana/math/vec.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -50,7 +51,7 @@ struct AnimationMorphWeightsTrackDesc {
     std::vector<AnimationMorphWeightsKeyframeDesc> keyframes;
 };
 
-enum class AnimationMorphWeightsTrackDiagnosticCode {
+enum class AnimationMorphWeightsTrackDiagnosticCode : std::uint8_t {
     morph_target_count_zero,
     empty_keyframes,
     invalid_time,
@@ -66,7 +67,7 @@ struct AnimationMorphWeightsTrackDiagnostic {
     std::string message;
 };
 
-enum class AnimationMorphMeshDiagnosticCode {
+enum class AnimationMorphMeshDiagnosticCode : std::uint8_t {
     empty_bind_positions,
     target_weight_count_mismatch,
     morph_vertex_count_mismatch,

@@ -732,8 +732,7 @@ merge_package_indexes(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& d
     base.dependencies.insert(base.dependencies.end(), selected.dependencies.begin(), selected.dependencies.end());
     sort_entries(base.entries);
     sort_edges(base.dependencies);
-    base.dependencies.erase(std::unique(base.dependencies.begin(), base.dependencies.end(), same_edge),
-                            base.dependencies.end());
+    base.dependencies.erase(std::ranges::unique(base.dependencies, same_edge).begin(), base.dependencies.end());
     return base;
 }
 

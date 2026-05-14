@@ -6,13 +6,14 @@
 #include "mirakana/assets/shader_pipeline.hpp"
 #include "mirakana/tools/shader_compile_action.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::editor {
 
-enum class EditorShaderCompileStatus { unknown, pending, cached, compiled, failed };
+enum class EditorShaderCompileStatus : std::uint8_t { unknown, pending, cached, compiled, failed };
 
 struct EditorShaderCompileItem {
     AssetId shader;

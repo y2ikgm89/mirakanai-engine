@@ -15,7 +15,7 @@ inline constexpr PointerId touch_pointer_payload_mask = 0x7FFFFFFFU;
 
 } // namespace
 
-Key sdl3_key_to_key(std::int32_t keycode) noexcept {
+Key sdl3_key_to_key(std::uint32_t keycode) noexcept {
     switch (keycode) {
     case SDLK_LEFT:
         return Key::left;
@@ -48,18 +48,19 @@ PointerId sdl3_touch_pointer_id(std::uint64_t finger_id) noexcept {
 }
 
 PointerSample sdl3_mouse_pointer_sample(float x, float y) noexcept {
-    return PointerSample{primary_pointer_id, PointerKind::mouse, Vec2{x, y}};
+    return PointerSample{.id = primary_pointer_id, .kind = PointerKind::mouse, .position = Vec2{.x = x, .y = y}};
 }
 
 PointerSample sdl3_touch_pointer_sample(std::uint64_t finger_id, float normalized_x, float normalized_y,
                                         WindowExtent extent) noexcept {
     return PointerSample{
-        sdl3_touch_pointer_id(finger_id),
-        PointerKind::touch,
-        Vec2{
-            normalized_x * static_cast<float>(extent.width),
-            normalized_y * static_cast<float>(extent.height),
-        },
+        .id = sdl3_touch_pointer_id(finger_id),
+        .kind = PointerKind::touch,
+        .position =
+            Vec2{
+                .x = normalized_x * static_cast<float>(extent.width),
+                .y = normalized_y * static_cast<float>(extent.height),
+            },
     };
 }
 

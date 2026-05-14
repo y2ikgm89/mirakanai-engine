@@ -13,7 +13,7 @@
 
 namespace mirakana {
 
-enum class MaterialGraphNodeKind {
+enum class MaterialGraphNodeKind : std::uint8_t {
     unknown,
     graph_output,
     constant_vec4,
@@ -55,7 +55,7 @@ struct MaterialGraphDesc {
 [[nodiscard]] bool operator==(const MaterialGraphEdge& lhs, const MaterialGraphEdge& rhs) noexcept;
 [[nodiscard]] bool operator==(const MaterialGraphDesc& lhs, const MaterialGraphDesc& rhs) noexcept;
 
-enum class MaterialGraphDiagnosticCode {
+enum class MaterialGraphDiagnosticCode : std::uint8_t {
     unknown,
     invalid_format,
     duplicate_key,

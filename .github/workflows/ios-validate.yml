@@ -30,6 +30,13 @@ on:
       - "tools/common.ps1"
       - "tools/smoke-ios-package.ps1"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   simulator-smoke:
     name: iOS Simulator smoke
@@ -53,7 +60,7 @@ jobs:
 
       - name: Build and launch sample_headless on iOS Simulator
         shell: pwsh
-        run: ./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug
+        run: ./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2
 
       - name: Upload iOS build output
         if: always()

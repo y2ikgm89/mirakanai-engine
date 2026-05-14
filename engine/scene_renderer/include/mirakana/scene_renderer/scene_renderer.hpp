@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
@@ -136,7 +137,7 @@ struct SceneRenderSubmitResult {
     bool has_primary_camera{false};
 };
 
-enum class SceneMeshDrawPlanDiagnosticCode {
+enum class SceneMeshDrawPlanDiagnosticCode : std::uint8_t {
     invalid_mesh_asset,
     invalid_material_asset,
 };

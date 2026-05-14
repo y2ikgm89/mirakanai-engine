@@ -13,13 +13,13 @@
 
 namespace mirakana {
 
-enum class ShaderSourceLanguage { unknown, hlsl, glsl, msl, wgsl };
+enum class ShaderSourceLanguage : std::uint8_t { unknown, hlsl, glsl, msl, wgsl };
 
-enum class ShaderSourceStage { unknown, vertex, fragment, compute };
+enum class ShaderSourceStage : std::uint8_t { unknown, vertex, fragment, compute };
 
-enum class ShaderArtifactFormat { unknown, dxil, spirv, metal_ir, metallib };
+enum class ShaderArtifactFormat : std::uint8_t { unknown, dxil, spirv, metal_ir, metallib };
 
-enum class ShaderDescriptorResourceKind {
+enum class ShaderDescriptorResourceKind : std::uint8_t {
     unknown,
     uniform_buffer,
     storage_buffer,

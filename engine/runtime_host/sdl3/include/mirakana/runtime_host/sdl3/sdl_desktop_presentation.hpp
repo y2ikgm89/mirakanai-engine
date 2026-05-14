@@ -23,20 +23,20 @@ class RuntimeAssetPackage;
 
 struct SceneRenderPacket;
 
-enum class SdlDesktopPresentationBackend {
+enum class SdlDesktopPresentationBackend : std::uint8_t {
     null_renderer = 0,
     d3d12,
     vulkan,
 };
 
-enum class SdlDesktopPresentationFallbackReason {
+enum class SdlDesktopPresentationFallbackReason : std::uint8_t {
     none = 0,
     native_surface_unavailable,
     native_backend_unavailable,
     runtime_pipeline_unavailable,
 };
 
-enum class SdlDesktopPresentationBackendReportStatus {
+enum class SdlDesktopPresentationBackendReportStatus : std::uint8_t {
     not_requested = 0,
     missing_request,
     native_surface_unavailable,
@@ -57,7 +57,7 @@ struct SdlDesktopPresentationBackendReport {
     std::string message;
 };
 
-enum class SdlDesktopPresentationSceneGpuBindingStatus {
+enum class SdlDesktopPresentationSceneGpuBindingStatus : std::uint8_t {
     not_requested = 0,
     unavailable,
     invalid_request,
@@ -108,7 +108,7 @@ struct SdlDesktopPresentationSceneGpuBindingStats {
     std::uint64_t compute_morph_output_position_bytes{0};
 };
 
-enum class SdlDesktopPresentationPostprocessStatus {
+enum class SdlDesktopPresentationPostprocessStatus : std::uint8_t {
     not_requested = 0,
     unavailable,
     invalid_request,
@@ -121,7 +121,7 @@ struct SdlDesktopPresentationPostprocessDiagnostic {
     std::string message;
 };
 
-enum class SdlDesktopPresentationDirectionalShadowStatus {
+enum class SdlDesktopPresentationDirectionalShadowStatus : std::uint8_t {
     not_requested = 0,
     unavailable,
     invalid_request,
@@ -129,7 +129,7 @@ enum class SdlDesktopPresentationDirectionalShadowStatus {
     ready,
 };
 
-enum class SdlDesktopPresentationDirectionalShadowFilterMode {
+enum class SdlDesktopPresentationDirectionalShadowFilterMode : std::uint8_t {
     none = 0,
     fixed_pcf_3x3,
 };
@@ -139,7 +139,7 @@ struct SdlDesktopPresentationDirectionalShadowDiagnostic {
     std::string message;
 };
 
-enum class SdlDesktopPresentationNativeUiOverlayStatus {
+enum class SdlDesktopPresentationNativeUiOverlayStatus : std::uint8_t {
     not_requested = 0,
     unavailable,
     invalid_request,
@@ -152,7 +152,7 @@ struct SdlDesktopPresentationNativeUiOverlayDiagnostic {
     std::string message;
 };
 
-enum class SdlDesktopPresentationNativeUiTextureOverlayStatus {
+enum class SdlDesktopPresentationNativeUiTextureOverlayStatus : std::uint8_t {
     not_requested = 0,
     unavailable,
     invalid_request,
@@ -211,7 +211,7 @@ struct SdlDesktopPresentationReport {
     std::size_t native_ui_texture_overlay_diagnostics_count{0};
 };
 
-enum class SdlDesktopPresentationQualityGateStatus {
+enum class SdlDesktopPresentationQualityGateStatus : std::uint8_t {
     not_requested = 0,
     blocked,
     ready,

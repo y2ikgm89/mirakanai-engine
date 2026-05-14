@@ -1057,7 +1057,7 @@ static void d3d12_set_object_name_fmt(ID3D12Object* object, const wchar_t* forma
         return;
     }
     std::array<wchar_t, 256> buffer{};
-    va_list args;
+    std::va_list args{};
     va_start(args, format);
     (void)_vsnwprintf_s(buffer.data(), buffer.size(), _TRUNCATE, format, args);
     va_end(args);
@@ -4262,7 +4262,7 @@ struct D3d12DescriptorSetRootTables {
     std::uint32_t sampler{invalid_root_parameter};
 };
 
-[[nodiscard]] bool has_root_parameter(std::uint32_t root_parameter) noexcept {
+[[nodiscard]] static bool has_root_parameter(std::uint32_t root_parameter) noexcept {
     return root_parameter != D3d12DescriptorSetRootTables::invalid_root_parameter;
 }
 

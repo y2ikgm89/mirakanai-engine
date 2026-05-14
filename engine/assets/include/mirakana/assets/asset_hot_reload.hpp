@@ -21,7 +21,7 @@ struct AssetFileSnapshot {
     std::uint64_t size_bytes{0};
 };
 
-enum class AssetHotReloadEventKind { unknown, added, modified, removed };
+enum class AssetHotReloadEventKind : std::uint8_t { unknown, added, modified, removed };
 
 struct AssetHotReloadEvent {
     AssetHotReloadEventKind kind{AssetHotReloadEventKind::unknown};
@@ -33,7 +33,7 @@ struct AssetHotReloadEvent {
     std::uint64_t current_size_bytes{0};
 };
 
-enum class AssetHotReloadRecookReason {
+enum class AssetHotReloadRecookReason : std::uint8_t {
     unknown,
     source_added,
     source_modified,
@@ -73,7 +73,7 @@ class AssetHotReloadRecookScheduler final {
     std::unordered_map<AssetId, AssetHotReloadRecookRequest, AssetIdHash> pending_by_asset_;
 };
 
-enum class AssetHotReloadApplyResultKind {
+enum class AssetHotReloadApplyResultKind : std::uint8_t {
     unknown,
     staged,
     applied,

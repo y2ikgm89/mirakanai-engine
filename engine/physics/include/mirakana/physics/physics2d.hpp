@@ -21,7 +21,7 @@ struct PhysicsBody2DId {
 
 inline constexpr PhysicsBody2DId null_physics_body_2d{};
 
-enum class PhysicsShape2DKind { aabb, circle };
+enum class PhysicsShape2DKind : std::uint8_t { aabb, circle };
 
 struct PhysicsWorld2DConfig {
     Vec2 gravity{.x = 0.0F, .y = -9.80665F};

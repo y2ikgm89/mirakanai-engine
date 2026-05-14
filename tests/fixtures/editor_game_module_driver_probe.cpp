@@ -25,7 +25,10 @@ struct ProbeState {
     double last_delta{0.0};
 };
 
-ProbeState g_probe_state;
+ProbeState& probe_state() noexcept {
+    static ProbeState state;
+    return state;
+}
 
 void probe_begin(void* user_data, mirakana::Scene* scene) {
     auto* state = static_cast<ProbeState*>(user_data);
@@ -68,7 +71,7 @@ extern "C" MK_EDITOR_GAME_MODULE_DRIVER_PROBE_EXPORT mirakana::editor::EditorGam
 mirakana_create_editor_game_module_driver_v1() {
     mirakana::editor::EditorGameModuleDriverApi api;
     api.abi_version = mirakana::editor::editor_game_module_driver_abi_version_v1;
-    api.user_data = &g_probe_state;
+    api.user_data = &probe_state();
     api.begin = probe_begin;
     api.tick = probe_tick;
     api.end = probe_end;
@@ -77,30 +80,30 @@ mirakana_create_editor_game_module_driver_v1() {
 }
 
 extern "C" MK_EDITOR_GAME_MODULE_DRIVER_PROBE_EXPORT void MK_editor_game_module_driver_probe_reset() {
-    g_probe_state = ProbeState{};
+    probe_state() = ProbeState{};
 }
 
 extern "C" MK_EDITOR_GAME_MODULE_DRIVER_PROBE_EXPORT int MK_editor_game_module_driver_probe_begin_count() {
-    return g_probe_state.begin_count;
+    return probe_state().begin_count;
 }
 
 extern "C" MK_EDITOR_GAME_MODULE_DRIVER_PROBE_EXPORT int MK_editor_game_module_driver_probe_tick_count() {
-    return g_probe_state.tick_count;
+    return probe_state().tick_count;
 }
 
 extern "C" MK_EDITOR_GAME_MODULE_DRIVER_PROBE_EXPORT int MK_editor_game_module_driver_probe_end_count() {
-    return g_probe_state.end_count;
+    return probe_state().end_count;
 }
 
 extern "C" MK_EDITOR_GAME_MODULE_DRIVER_PROBE_EXPORT int MK_editor_game_module_driver_probe_destroy_count() {
-    return g_probe_state.destroy_count;
+    return probe_state().destroy_count;
 }
 
 extern "C" MK_EDITOR_GAME_MODULE_DRIVER_PROBE_EXPORT std::uint64_t
 MK_editor_game_module_driver_probe_last_frame_index() {
-    return g_probe_state.last_frame_index;
+    return probe_state().last_frame_index;
 }
 
 extern "C" MK_EDITOR_GAME_MODULE_DRIVER_PROBE_EXPORT double MK_editor_game_module_driver_probe_last_delta() {
-    return g_probe_state.last_delta;
+    return probe_state().last_delta;
 }

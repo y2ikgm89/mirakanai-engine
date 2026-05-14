@@ -17,7 +17,7 @@
 
 namespace mirakana::editor {
 
-enum class EditorMaterialAssetPreviewPanelStatus { empty, ready, attention };
+enum class EditorMaterialAssetPreviewPanelStatus : std::uint8_t { empty, ready, attention };
 
 struct EditorMaterialAssetPreviewTexturePayloadRow {
     std::string id;

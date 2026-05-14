@@ -20,27 +20,27 @@ class RuntimeAssetPackage;
 
 namespace mirakana::editor {
 
-enum class EditorPlaytestReviewStepStatus { ready, blocked, host_gated };
+enum class EditorPlaytestReviewStepStatus : std::uint8_t { ready, blocked, host_gated };
 
-enum class EditorAiPackageAuthoringDiagnosticStatus { ready, blocked, host_gated };
+enum class EditorAiPackageAuthoringDiagnosticStatus : std::uint8_t { ready, blocked, host_gated };
 
-enum class EditorAiPlaytestEvidenceStatus { passed, failed, blocked, host_gated, missing };
+enum class EditorAiPlaytestEvidenceStatus : std::uint8_t { passed, failed, blocked, host_gated, missing };
 
-enum class EditorAiPlaytestRemediationCategory {
+enum class EditorAiPlaytestRemediationCategory : std::uint8_t {
     investigate_failure,
     resolve_blocker,
     collect_missing_evidence,
     satisfy_host_gate
 };
 
-enum class EditorAiPlaytestRemediationHandoffActionKind {
+enum class EditorAiPlaytestRemediationHandoffActionKind : std::uint8_t {
     investigate_external_failure,
     resolve_external_blocker,
     collect_external_evidence,
     satisfy_host_gate
 };
 
-enum class EditorAiPlaytestOperatorWorkflowStageStatus {
+enum class EditorAiPlaytestOperatorWorkflowStageStatus : std::uint8_t {
     ready,
     blocked,
     host_gated,
@@ -50,9 +50,9 @@ enum class EditorAiPlaytestOperatorWorkflowStageStatus {
     closed
 };
 
-enum class EditorAiPlaytestEvidenceImportStatus { importable, missing, blocked };
+enum class EditorAiPlaytestEvidenceImportStatus : std::uint8_t { importable, missing, blocked };
 
-enum class EditorRuntimeScenePackageValidationExecutionStatus { ready, blocked, passed, failed };
+enum class EditorRuntimeScenePackageValidationExecutionStatus : std::uint8_t { ready, blocked, passed, failed };
 
 struct RuntimeSceneValidationTargetRow {
     std::string id;

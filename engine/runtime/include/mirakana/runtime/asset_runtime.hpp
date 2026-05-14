@@ -273,7 +273,7 @@ class RuntimeAssetPackage {
 };
 
 /// Determines which mounted package wins when the same `AssetId` appears in multiple resident packages.
-enum class RuntimePackageMountOverlay {
+enum class RuntimePackageMountOverlay : std::uint8_t {
     /// Earlier mounts in the `mounts` vector keep their asset rows; later duplicates are ignored.
     first_mount_wins,
     /// Later mounts overwrite earlier rows for the same `AssetId`.

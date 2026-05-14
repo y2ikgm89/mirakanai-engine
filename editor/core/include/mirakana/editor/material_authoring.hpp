@@ -9,15 +9,16 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::editor {
 
-enum class MaterialAuthoringFactor { unknown, base_color, emissive, metallic, roughness };
+enum class MaterialAuthoringFactor : std::uint8_t { unknown, base_color, emissive, metallic, roughness };
 
-enum class MaterialAuthoringDiagnosticCode {
+enum class MaterialAuthoringDiagnosticCode : std::uint8_t {
     unknown,
     invalid_factor,
     invalid_texture_binding,
@@ -25,7 +26,7 @@ enum class MaterialAuthoringDiagnosticCode {
     missing_binding_metadata,
 };
 
-enum class MaterialAuthoringTextureStatus { unknown, empty, resolved, missing, wrong_kind };
+enum class MaterialAuthoringTextureStatus : std::uint8_t { unknown, empty, resolved, missing, wrong_kind };
 
 struct MaterialAuthoringDiagnostic {
     MaterialAuthoringDiagnosticCode code{MaterialAuthoringDiagnosticCode::unknown};
