@@ -116,6 +116,8 @@ Documentation-only or similarly narrow non-runtime slices should use the cheapes
 
 Use GitHub's official GitHub Flow for agent publishing: make a separate topic branch for each unrelated change, create a pull request for review, merge only after required reviews/checks pass, then delete the merged branch. Use commits and pushes at coherent, validated checkpoints without asking for per-action confirmation once a task is underway. Push cadence is checkpoint-based, not commit-count-based: multiple local commits may be pushed together when they form one validated, reviewable slice. Publish only task-owned changes and keep branch selection conservative.
 
+Treat publishing as a slice-closing gate, not an optional epilogue. Unless the user explicitly asks for local-only/no-PR work, do not report a task complete while task-owned changes only exist locally after validation. Complete branch creation, task-owned staging, commit, non-forced push, and PR creation/update with validation evidence in the same turn; if any step is blocked by permissions, authentication, command policy, branch protection, or dirty unrelated files that prevent safe staging, report that exact blocker. If the preferred `codex/<topic>` branch form conflicts with existing ref namespaces, use a conservative non-default fallback such as `codex-<topic>`.
+
 Checkpoint guidance:
 
 | Situation | Commit when | Push when |

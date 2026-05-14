@@ -1268,6 +1268,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "merge/delete-branch" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "auto-merge registration" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "official GitHub Flow" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "final completion report must not stop after local validation" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Direct default-branch pushes are forbidden" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "mergeStateStatus" $agentIntegrationSkill
@@ -1403,6 +1404,7 @@ Assert-ContainsText $aiAgentRuleText "OpenAI developer documentation MCP" ".clau
 Assert-ContainsText $aiAgentRuleText "official Anthropic docs" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "mergeStateStatus" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "--match-head-commit <headRefOid>" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "final completion report must not stop after local validation" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Rules/permissions stay narrow command gates" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "hosted PR check failure" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "HeaderFilterRegex" ".claude/rules/ai-agent-integration.md"
