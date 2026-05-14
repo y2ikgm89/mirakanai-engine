@@ -278,6 +278,7 @@ if ($hostGatedPackageStreamingLoop.Count -ne 1) {
         "commit-safe-point-package-streaming-replacement",
         "commit-resident-package-streaming-mount",
         "commit-resident-package-streaming-replacement",
+        "commit-resident-package-streaming-unmount",
         "report-streaming-execution-diagnostics",
         "keep-renderer-rhi-teardown-host-owned"
     )
@@ -303,7 +304,7 @@ if ($hostGatedPackageStreamingLoop.Count -ne 1) {
             Write-Error "engine manifest host-gated-package-streaming-execution preflightGates missing: $gate"
         }
     }
-    foreach ($field in @("status", "target_id", "package_index_path", "runtime_scene_validation_target_id", "estimated_resident_bytes", "resident_budget_bytes", "replacement_status", "resident_mount_status", "resident_replace_status", "resident_catalog_refresh_status", "resident_package_count", "resident_mount_generation", "stale_handle_count", "diagnostics")) {
+    foreach ($field in @("status", "target_id", "package_index_path", "runtime_scene_validation_target_id", "estimated_resident_bytes", "resident_budget_bytes", "replacement_status", "resident_mount_status", "resident_replace_status", "resident_unmount_status", "resident_catalog_refresh_status", "resident_package_count", "resident_mount_generation", "stale_handle_count", "diagnostics")) {
         if (@($hostGatedPackageStreamingLoop[0].resultFields) -notcontains $field) {
             Write-Error "engine manifest host-gated-package-streaming-execution resultFields missing: $field"
         }
