@@ -6,6 +6,8 @@ vcpkg_installed/
 .cache/
 .vs/
 .vscode/
+.worktrees/
+.claude/worktrees/
 compile_commands.json
 CMakeUserPresets.json
 imgui.ini

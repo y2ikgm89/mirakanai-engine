@@ -113,7 +113,7 @@ Documentation-only or similarly narrow non-runtime slices may use a narrower val
 
 ### Commit, Push, And Pull Request Workflow
 
-Use commits and pushes at coherent, validated checkpoints without asking for per-action confirmation once a task is underway. Publish only task-owned changes and keep branch selection conservative.
+Use GitHub's official GitHub Flow for agent publishing: make a separate topic branch for each unrelated change, create a pull request for review, merge only after required reviews/checks pass, then delete the merged branch. Use commits and pushes at coherent, validated checkpoints without asking for per-action confirmation once a task is underway. Publish only task-owned changes and keep branch selection conservative.
 
 1. Inspect the branch and worktree before staging:
 
@@ -152,7 +152,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 
 For documentation-only or other narrow non-runtime slices, use the narrower tier described above and include the justification in the PR body. Do not use the narrow tier for C++, build scripts, packaging, runtime assets, agent manifests, or validation policy changes unless the matching static checks prove the touched surface.
 
-6. Do not push directly to the default branch or protected branches. Do not use `--force`; use `--force-with-lease` only when the user explicitly requests history rewriting and the branch is known to be task-owned.
+6. Do not push directly to the default branch or protected branches; that is outside the official GitHub Flow publishing path. Do not use `--force`; use `--force-with-lease` only when the user explicitly requests history rewriting and the branch is known to be task-owned.
 
 7. Prefer a GitHub pull request for shared or release-facing work:
 
@@ -180,7 +180,7 @@ For unattended Codex sessions, prefer GitHub auto-merge registration so GitHub p
 gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>
 ```
 
-Run the merge command from the task branch whose PR was preflighted. Use `--delete-branch` only for a task-owned head branch that is no longer needed. GitHub auto-merge must be enabled for the repository and PR; if `gh` reports auto-merge is unavailable, if branch protection or required checks are absent in a way that would merge pending/failing work immediately, or if the PR state is ambiguous, stop and report the blocker. Immediate merge commands such as `gh pr merge --merge --delete-branch`, `--squash`, `--rebase`, or `--admin` remain prompt-gated unless the user explicitly requests them in an approval-capable session with fresh passing evidence.
+Run the merge command from the task branch whose PR was preflighted. Use `--delete-branch` only for a task-owned head branch that is no longer needed. GitHub auto-merge must be enabled for the repository and PR; if `gh` reports auto-merge is unavailable, if branch protection or required checks are absent in a way that would merge pending/failing work immediately, or if the PR state is ambiguous, stop and report the blocker. Immediate merge commands such as `gh pr merge --merge --delete-branch`, `--squash`, `--rebase`, or `--admin` are not part of the unattended agent path and remain prompt-gated unless the user explicitly requests them in an approval-capable session with fresh passing evidence.
 
 9. After GitHub deletes a merged head branch, optionally prune stale remote-tracking refs in local workspaces:
 
@@ -243,13 +243,20 @@ Use subagents only when the user explicitly asks for subagent delegation or para
 - `gameplay-builder`: C++ sample game or gameplay implementation against public APIs
 - `rendering-auditor`: rendering/RHI/shader changes
 
+## Worktree And Parallel Agent Workflow
+
+- Prefer native product worktree support before manual Git commands: Codex app Worktree/Handoff for Codex threads, and Claude Code `--worktree` or subagent `isolation: worktree` for Claude sessions that need file isolation.
+- Use worktrees for parallel write-capable sessions so Local stays the foreground checkout. Keep immediate blocking work local, split parallel work by file ownership, and avoid two agents editing the same file.
+- `.worktrees/` and `.claude/worktrees/` are ignored repository-local worktree roots. Do not copy secrets into tracked files; use `.worktreeinclude` only for gitignored local files that an operator intentionally wants copied into new Claude worktrees.
+- Manual fallback is `git worktree list`, `git worktree add <path> -b <branch> [<base>]`, `git worktree remove <path>`, and `git worktree prune`. Treat remove/prune/repair as cleanup operations that require status inspection; do not delete worktree directories with `Remove-Item`.
+
 ## Agent Surface Governance
 
 - Keep Codex and Claude Code behavior synchronized through `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.codex/agents/`, `.codex/rules/`, `.claude/settings.json`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/`, `engine/agent/manifest.fragments/` + composed `engine/agent/manifest.json`, and `tools/check-ai-integration.ps1`.
 - Use the OpenAI developer documentation MCP, or official OpenAI documentation when MCP is unavailable, for OpenAI API, Codex, ChatGPT Apps SDK, OpenAI agent, and OpenAI model behavior. Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagents.
 - Keep always-loaded instructions specific, concise, verifiable, and durable. Keep `AGENTS.md` under Codex's default 32 KiB `project_doc_max_bytes` budget, keep selected `SKILL.md` bodies as concise routers, and keep subagents narrowly scoped; put long procedures in skill-local `references/*.md` or docs, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the composed `engine/agent/manifest.json` (edit `engine/agent/manifest.fragments/*.json`, then `tools/compose-agent-manifest.ps1 -Write`).
-- Keep Codex project rules narrow with `match` / `not_match` examples. Cover Windows PowerShell deletion/network/host-servicing commands as well as POSIX-like spellings. Do not add broad allow rules for shells, package managers, network tools, destructive commands, direct default-branch pushes, force-pushes, or immediate PR merges.
-- Keep Claude Code shared project permissions in `.claude/settings.json` with the official JSON schema: deny secret-bearing files, allow read-only PR preflight, task-owned PR creation, and auto-merge registration after validation checkpoints plus safe PR preflight, and require approval for destructive, network, dependency-bootstrap, mobile signing/smoke, force-push, and non-auto PR state-change commands.
+- Keep Codex project rules narrow with `match` / `not_match` examples. Cover Windows PowerShell deletion/network/host-servicing commands as well as POSIX-like spellings. Do not add broad allow rules for shells, package managers, network tools, destructive commands, force-pushes, or immediate PR merges; direct default-branch pushes must stay forbidden.
+- Keep Claude Code shared project permissions in `.claude/settings.json` with the official JSON schema: deny secret-bearing files and direct default-branch pushes, allow read-only PR preflight, task-owned PR creation, and auto-merge registration after validation checkpoints plus official GitHub Flow PR preflight, and require approval for destructive, network, dependency-bootstrap, mobile signing/smoke, force-push, and non-auto PR state-change commands.
 - Keep local override and credential-bearing config uncommitted: `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md`.
 
 ## Repository consistency checklist (recommended)

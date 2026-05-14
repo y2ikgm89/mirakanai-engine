@@ -42,9 +42,25 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["git", "push", "origin", ["main", "master"]],
+    pattern = ["git", "worktree", ["remove", "prune", "repair"]],
     decision = "prompt",
-    justification = "Direct pushes to default or protected branches bypass the topic-branch PR workflow and require explicit review.",
+    justification = "Worktree cleanup can discard isolated session files or mutate shared Git administrative state; inspect the target and status first.",
+    match = [
+        "git worktree remove .worktrees/codex/example",
+        "git worktree remove ../GameEngine-example",
+        "git worktree prune",
+        "git worktree repair",
+    ],
+    not_match = [
+        "git worktree list",
+        "git worktree add ../GameEngine-example -b codex/example",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "push", "origin", ["main", "master"]],
+    decision = "forbidden",
+    justification = "Direct pushes to default or protected branches are outside GitHub Flow; push a topic branch and use a pull request with branch protection instead.",
     match = [
         "git push origin main",
         "git push origin master",
@@ -52,6 +68,52 @@ prefix_rule(
     not_match = [
         "git push -u origin codex/example",
         "git push origin codex/example",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["-u", "--set-upstream"], "origin", ["main", "master"]],
+    decision = "forbidden",
+    justification = "Setting upstream while pushing the default branch bypasses the official GitHub Flow branch plus pull request path.",
+    match = [
+        "git push -u origin main",
+        "git push -u origin master",
+        "git push --set-upstream origin main",
+        "git push --set-upstream origin master",
+    ],
+    not_match = [
+        "git push -u origin codex/example",
+        "git push --set-upstream origin codex/example",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "push", "origin", ["HEAD:main", "HEAD:master"]],
+    decision = "forbidden",
+    justification = "Pushing HEAD directly to the default branch bypasses the official GitHub Flow branch plus pull request path.",
+    match = [
+        "git push origin HEAD:main",
+        "git push origin HEAD:master",
+    ],
+    not_match = [
+        "git push origin HEAD:codex/example",
+        "git push origin codex/example",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "--force-with-lease"], "origin", ["main", "master"]],
+    decision = "forbidden",
+    justification = "History rewriting the default branch is outside GitHub Flow and must be blocked by branch protection.",
+    match = [
+        "git push --force origin main",
+        "git push --force origin master",
+        "git push --force-with-lease origin main",
+        "git push --force-with-lease origin master",
+    ],
+    not_match = [
+        "git push --force-with-lease origin codex/example",
+        "git push --force origin codex/example",
     ],
 )
 
@@ -99,7 +161,7 @@ prefix_rule(
 prefix_rule(
     pattern = ["gh", "pr", "merge", "--auto", "--merge", "--delete-branch"],
     decision = "allow",
-    justification = "Register GitHub auto-merge only after docs/workflows.md PR preflight confirms a task-owned PR, safe mergeStateStatus, no failed checks, and fresh validation; prefer --match-head-commit.",
+    justification = "Register GitHub auto-merge only after docs/workflows.md PR preflight confirms a task-owned PR, acceptable mergeStateStatus, no failed checks, and fresh validation; prefer --match-head-commit.",
     match = [
         "gh pr merge --auto --merge --delete-branch",
         "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
@@ -112,14 +174,30 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["gh", "pr", ["edit", "merge", "ready", "close", "reopen"]],
+    pattern = ["gh", "pr", "merge", ["--merge", "--squash", "--rebase", "--admin"]],
     decision = "prompt",
-    justification = "GitHub pull request state changes outside the approved create plus auto-merge path require explicit review of target branch, title, body, and validation evidence.",
+    justification = "Immediate GitHub pull request merge commands are outside the unattended GitHub Flow auto-merge path and require explicit review.",
     match = [
         "gh pr merge --merge --delete-branch",
         "gh pr merge --squash --delete-branch",
+        "gh pr merge --rebase --delete-branch",
+        "gh pr merge --admin --merge --delete-branch",
+    ],
+    not_match = [
+        "gh pr merge --auto --merge --delete-branch",
+        "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["edit", "ready", "close", "reopen"]],
+    decision = "prompt",
+    justification = "GitHub pull request state changes outside the approved create plus auto-merge path require explicit review of target branch, title, body, and validation evidence.",
+    match = [
         "gh pr edit --base main",
         "gh pr ready",
+        "gh pr close",
+        "gh pr reopen",
     ],
     not_match = [
         "gh pr status",
