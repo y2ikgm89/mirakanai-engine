@@ -192,6 +192,9 @@ Assert-ContainsAll $macosJob @(
     "name: macOS Metal CMake",
     "runs-on: macos-latest",
     "actions/checkout@v6",
+    "name: Ensure Ninja is available",
+    "command -v ninja",
+    "ninja --version",
     "brew install ninja",
     "cmake --preset ci-macos-appleclang",
     "cmake --build --preset ci-macos-appleclang",
@@ -201,6 +204,7 @@ Assert-ContainsAll $macosJob @(
     "out/build/ci-macos-appleclang/Testing/**/*.log",
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml macos job"
+Assert-DoesNotContainText $macosJob "run: brew install ninja" ".github/workflows/validate.yml macos job"
 
 $staticAnalysisJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "static-analysis" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $staticAnalysisJob @(
