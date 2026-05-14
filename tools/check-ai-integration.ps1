@@ -618,6 +618,8 @@ foreach ($needle in @(".claude/settings.local.json", ".mcp.json", "AGENTS.overri
 foreach ($needle in @("Instruction Hygiene", "specific, concise, verifiable", "MCP connection state", "machine-readable capability/status claims")) {
     Assert-ContainsText $agentsContent $needle "AGENTS.md"
 }
+Assert-ContainsText $agentsContent "agent-surface drift check" "AGENTS.md"
+Assert-ContainsText $agentsContent "do not broad-load every agent surface" "AGENTS.md"
 if ($agentsContent -notmatch "docs/README\.md" -or $agentsContent -notmatch "docs/superpowers/plans/README\.md") {
     Write-Error "AGENTS.md must document the docs entrypoint and implementation plan registry"
 }
@@ -676,6 +678,8 @@ foreach ($productionPromptNeedle in @("Production Completion Prompt", "currentAc
     Assert-ContainsText $workflowsContent $productionPromptNeedle "docs/workflows.md"
 }
 Assert-ContainsText $workflowsContent "Agent Surface Governance" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "agent-surface drift check" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "Keep drift checks targeted" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "OpenAI developer documentation MCP" "docs/workflows.md"
 Assert-ContainsText $workflowsContent ".codex/rules" "docs/workflows.md"
 Assert-ContainsText $workflowsContent ".claude/settings.json" "docs/workflows.md"
@@ -812,6 +816,7 @@ Assert-ContainsText $cursorAgentIntegrationSkillText 'pending-only `UNSTABLE` / 
 Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "HeaderFilterRegex" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "NN warnings generated." ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "agent-surface drift check" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 $cursorCmakeSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText $cursorCmakeSkillText "lcov --ignore-errors unused" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText $cursorCmakeSkillText "tools/check-coverage-thresholds.ps1" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
@@ -826,6 +831,8 @@ Assert-ContainsText $aiIntegrationContent 'Path`/`PATH' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Instruction Hygiene" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "specific, concise, verifiable" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Personal preferences, credentials" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "agent-surface drift check" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "Keep drift checks targeted" "docs/ai-integration.md"
 foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down or milestone", "behavior/API/validation boundary", "validation-only follow-up", "historical implementation evidence")) {
     Assert-ContainsText $aiIntegrationContent $planVolumeNeedle "docs/ai-integration.md"
 }
@@ -13123,6 +13130,8 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "docs/superpowers/plans/README.md" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "agent-surface drift check" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "targeted drift checks" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Context7" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $agentIntegrationSkill
@@ -13275,6 +13284,8 @@ Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integra
 Assert-ContainsText $aiAgentRuleText "AGENTS.override.md" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "specific, concise, verifiable" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "MCP connection state" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "agent-surface drift check" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "no durable guidance changed" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "OpenAI developer documentation MCP" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "official Anthropic docs" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "mergeStateStatus" ".claude/rules/ai-agent-integration.md"
@@ -13316,6 +13327,16 @@ foreach ($relativePath in @(
     ".claude/agents/rendering-auditor.md"
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $relativePath) "register auto-merge" $relativePath
+    Assert-ContainsText (Get-AgentSurfaceText $relativePath) "stale or missing agent guidance" $relativePath
+}
+
+foreach ($relativePath in @(
+    ".codex/agents/build-fixer.toml",
+    ".codex/agents/gameplay-builder.toml",
+    ".claude/agents/build-fixer.md",
+    ".claude/agents/gameplay-builder.md"
+)) {
+    Assert-ContainsText (Get-AgentSurfaceText $relativePath) "same parent task can finish synchronization before completion" $relativePath
 }
 
 foreach ($relativePath in @(

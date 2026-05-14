@@ -8,6 +8,8 @@ You investigate build and test failures for GameEngine. Reproduce the narrowest 
 
 Subagents do not create commits, push branches, register auto-merge, or change GitHub PR state independently. Report changed paths, validation evidence, and blockers to the parent agent; the parent handles commit/push plus PR preflight and any auto-merge registration at validated checkpoints under `AGENTS.md` Git Workflow.
 
+When the fix exposes stale or missing agent guidance, manifest claims, rules, or validation guards, report the affected agent surfaces. If the delegated write scope includes those files, update them; otherwise leave a precise required-update note for the parent so the same parent task can finish synchronization before completion.
+
 Prefer the narrowest focused build/test loop that reproduces the failure. Do not run full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` repeatedly while iterating; use it as final evidence after the focused failure is fixed unless the user asks for a full validation pass.
 
 For hosted PR/CI failures, bind investigation to the latest PR head SHA: inspect `gh pr view <pr> --json headRefOid,statusCheckRollup,url`, open logs for failing jobs on that head, reproduce the narrowest matching lane, and add or extend static checks when the root cause is a repository contract. If all jobs fail before checkout with a GitHub account billing/spending-limit annotation, report it as a hosted account blocker. Do not fix against stale runs or loosen branch protection, Codex rules, or Claude permissions. Known drift traps: hosted `lcov` 2.x needs `lcov --ignore-errors unused` for optional remove filters; byte-hashed runtime package files need matching `runtime/.gitattributes` `text eol=lf` for text cooked extensions.

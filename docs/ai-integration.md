@@ -73,6 +73,10 @@ Some operator environments inject Superpowers guidance that references a Claude 
 
 Keep always-loaded instructions specific, concise, verifiable, and durable. `AGENTS.md` is for repository-wide standards, must stay below the official Codex default 32 KiB project-doc budget, and is checked by `tools/check-agents.ps1`; `CLAUDE.md` imports it for Claude Code parity. Keep `SKILL.md` files as trigger/router guidance and move long procedures to skill-local `references/*.md` or docs (including [`docs/agent-operational-reference.md`](agent-operational-reference.md)); `tools/check-ai-integration.ps1` reads those references when validating shared needles. Path-specific guidance belongs in rules, specialized work belongs in subagents, and capability/status claims belong in `engine/agent/manifest.json`. Personal preferences, credentials, API keys, MCP connection state, and machine-specific paths must stay in user/local configuration rather than tracked instructions.
 
+Every implementation change, improvement, bug fix, refactor, and architecture/toolchain/workflow/validation/packaging change must include an agent-surface drift check before completion. If the change reveals missing or stale durable guidance, update the relevant `AGENTS.md`, `CLAUDE.md`, docs, skills, rules, settings, subagents, manifest fragments plus compose output, schemas, validation checks, and tracked `.clangd` in the same task instead of leaving a follow-up. Keep the result clean-breaking for this greenfield engine unless a future release policy explicitly requires compatibility.
+
+Keep drift checks targeted: compare the changed behavior/API/workflow against the owning docs, skills, rules, subagents, manifest fragments, schemas, and validation guards; do not load every agent surface when the change is local and no durable guidance changed.
+
 ## Codex
 
 Codex reads:
