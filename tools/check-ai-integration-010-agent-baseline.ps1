@@ -49,6 +49,7 @@ if ($agentsContent -notmatch "docs/README\.md" -or $agentsContent -notmatch "doc
 }
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" "AGENTS.md"
 Assert-ContainsText $agentsContent "normalized-configure-environment" "AGENTS.md"
@@ -135,6 +136,8 @@ Assert-ContainsText $workflowsContent "mergeStateStatus" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "pending required checks or reviews" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git fetch --prune origin" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "post-merge worktree cleanup" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Hosted PR Check Failure Triage" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Hosted PR Check Selection" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "always-running required gate" "docs/workflows.md"
@@ -247,6 +250,7 @@ Assert-ContainsText $aiIntegrationContent "credential-manager-core" "docs/ai-int
 Assert-ContainsText $aiIntegrationContent "approval-capable session" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Codex app Worktree/Handoff" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'worktree.baseRef = "head"' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Cursor global instructions" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "OpenAI developer docs MCP" "docs/ai-integration.md"
@@ -265,6 +269,7 @@ Assert-ContainsText $cursorBaselineSkillText "official GitHub Flow" ".cursor/ski
 Assert-ContainsText $cursorBaselineSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "tools/remove-merged-worktree.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "docs/agent/rules/subagent-only PRs should use lightweight static validation" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 $cursorAgentIntegrationSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -272,6 +277,7 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headR
 Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "final completion report must not stop after local validation" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Direct default-branch pushes are forbidden" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "tools/remove-merged-worktree.ps1" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Use lightweight static validation for docs/agent/rules/subagent-only PRs" ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -358,6 +364,11 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("prepareWorktree")
     Write-Error "engine/agent/manifest.json commands missing required command: prepareWorktree"
 } elseif ($manifest.commands.prepareWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1") {
     Write-Error "engine/agent/manifest.json commands.prepareWorktree must be pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1"
+}
+if (-not $manifest.commands.PSObject.Properties.Name.Contains("removeMergedWorktree")) {
+    Write-Error "engine/agent/manifest.json commands missing required command: removeMergedWorktree"
+} elseif ($manifest.commands.removeMergedWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-DeleteLocalBranch]") {
+    Write-Error "engine/agent/manifest.json commands.removeMergedWorktree must expose the guarded post-merge worktree cleanup command"
 }
 $composeAgentManifestCmd = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 [-Write|-Verify|-SplitFromCanonical]"
 if (-not $manifest.commands.PSObject.Properties.Name.Contains("composeAgentManifest")) {

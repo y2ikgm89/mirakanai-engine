@@ -30,7 +30,8 @@ function Test-RepositoryLineEndingContract {
             "root = true",
             "charset = utf-8",
             "end_of_line = lf",
-            "insert_final_newline = true"
+            "insert_final_newline = true",
+            "trim_trailing_whitespace = true"
         )) {
         if ($editorConfigText -notmatch "(?m)^\s*$([regex]::Escape($requiredLine))\s*$") {
             Write-Error "Repository root .editorconfig must declare '$requiredLine'."
@@ -222,7 +223,8 @@ if (Test-Path $codexRuleRoot) {
         $approvedAllowPatterns = @(
             'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]',
             'pattern\s*=\s*\["gh",\s*"pr",\s*"create"\]',
-            'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--delete-branch"\]'
+            'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--delete-branch"\]',
+            'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/remove-merged-worktree\.ps1"\]'
         )
         foreach ($allowRuleBlock in $allowRuleBlocks) {
             $approvedAllow = $false

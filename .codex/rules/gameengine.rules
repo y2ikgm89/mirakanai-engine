@@ -58,6 +58,20 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/remove-merged-worktree.ps1"],
+    decision = "allow",
+    justification = "Guarded post-merge cleanup is allowed because the repository script verifies a standard ignored worktree root, clean status, and branch ancestry before invoking Git worktree removal.",
+    match = [
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .worktrees/codex/example -BaseRef origin/main -DeleteLocalBranch",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .claude/worktrees/example -BaseRef origin/main",
+    ],
+    not_match = [
+        "git worktree remove .worktrees/codex/example",
+        "Remove-Item -LiteralPath .worktrees/codex/example -Recurse -Force",
+    ],
+)
+
+prefix_rule(
     pattern = ["git", "push", "origin", ["main", "master"]],
     decision = "forbidden",
     justification = "Direct pushes to default or protected branches are outside GitHub Flow; push a topic branch and use a pull request with branch protection instead.",

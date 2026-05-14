@@ -1244,6 +1244,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Context7" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "normalized-configure-environment" $agentIntegrationSkill
@@ -1290,6 +1291,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "NN warnings generated." $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "not troubleshooting playbooks" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "post-merge remote-tracking cleanup" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "post-merge worktree cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "credential-manager-core" $agentIntegrationSkill
@@ -1323,6 +1325,7 @@ Assert-ContainsText $codexRuleText "git restore" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git worktree remove" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git worktree prune" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "tools/remove-merged-worktree.ps1" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText 'decision = "allow"' ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr view" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr create" ".codex/rules/gameengine.rules"
@@ -1347,7 +1350,7 @@ if (-not $claudeSettings.PSObject.Properties.Name.Contains("permissions")) {
 if (-not $claudeSettings.PSObject.Properties.Name.Contains("worktree") -or $claudeSettings.worktree.baseRef -ne "head") {
     Write-Error ".claude/settings.json must set worktree.baseRef to head for project subagent worktree isolation"
 }
-foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)")) {
+foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)")) {
     if (@($claudeSettings.permissions.allow) -notcontains $allowRule) {
         Write-Error ".claude/settings.json permissions.allow missing $allowRule"
     }
@@ -1357,7 +1360,7 @@ foreach ($askRule in @("Bash(git push --force:*)", "Bash(git push --force-with-l
         Write-Error ".claude/settings.json permissions.ask missing $askRule"
     }
 }
-foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)")) {
+foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)")) {
     if (@($claudeSettings.permissions.ask) -contains $automaticGitRule) {
         Write-Error ".claude/settings.json permissions.ask should not prompt routine automatic checkpoint command $automaticGitRule"
     }
@@ -1398,6 +1401,7 @@ Assert-ContainsText $aiAgentRuleText "approval-capable session" ".claude/rules/a
 Assert-ContainsText $aiAgentRuleText "Codex app Worktree/Handoff" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "isolation: worktree" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.local.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integration.md"

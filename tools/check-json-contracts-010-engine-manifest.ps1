@@ -220,7 +220,10 @@ foreach ($needle in @(
         Write-Error "engine manifest gameCodeGuidance.currentEditorContentBrowserImportDiagnostics missing: $needle"
     }
 }
-Assert-Properties $engine.commands @("validate", "toolchainCheck", "directToolchainCheck", "bootstrapDeps", "build", "buildGui", "buildAssetImporters", "test", "dependencyCheck", "cppStandardCheck", "evaluateCpp23", "shaderToolchainCheck", "agentContext", "agentCheck", "newGame", "ciMatrixCheck", "classifyPrValidationTier") "engine manifest commands"
+Assert-Properties $engine.commands @("validate", "prepareWorktree", "removeMergedWorktree", "toolchainCheck", "directToolchainCheck", "bootstrapDeps", "build", "buildGui", "buildAssetImporters", "test", "dependencyCheck", "cppStandardCheck", "evaluateCpp23", "shaderToolchainCheck", "agentContext", "agentCheck", "newGame", "ciMatrixCheck", "classifyPrValidationTier") "engine manifest commands"
+if ($engine.commands.removeMergedWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-DeleteLocalBranch]") {
+    Write-Error "engine manifest commands.removeMergedWorktree must expose the guarded post-merge worktree cleanup command"
+}
 if ($engine.commands.ciMatrixCheck -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1") {
     Write-Error "engine manifest commands.ciMatrixCheck must expose pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1"
 }
