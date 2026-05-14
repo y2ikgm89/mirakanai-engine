@@ -2,6 +2,7 @@
   "commands": {
     "validate": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
     "prepareWorktree": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1",
+    "removeMergedWorktree": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-DeleteLocalBranch]",
     "toolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1",
     "directToolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake",
     "bootstrapDeps": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1",
@@ -24,6 +25,8 @@
     "validateInstalledDesktopRuntime": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-installed-desktop-runtime.ps1",
     "format": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1",
     "formatCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1",
+    "textFormat": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format-text.ps1",
+    "textFormatCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1",
     "tidyCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1",
     "shaderToolchainCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1",
     "coverageCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1",
