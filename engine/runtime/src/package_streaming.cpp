@@ -116,6 +116,28 @@ void set_resident_mount_failure(RuntimePackageStreamingExecutionResult& result,
     add_diagnostic(result, std::move(code), std::move(message));
 }
 
+void set_resident_replace_failure(RuntimePackageStreamingExecutionResult& result,
+                                  RuntimeResidentPackageMountIdV2 mount_id,
+                                  RuntimeResidentPackageReplaceCommitStatusV2 status, std::string code,
+                                  std::string message) {
+    result.resident_replace = RuntimeResidentPackageReplaceCommitResultV2{
+        .status = status,
+        .diagnostic =
+            RuntimeResidentPackageMountDiagnosticV2{
+                .mount = mount_id,
+                .code = code,
+                .message = message,
+            },
+        .candidate_catalog_build = {},
+        .catalog_refresh = {},
+        .previous_mount_generation = result.resident_mount_generation,
+        .mount_generation = result.resident_mount_generation,
+        .mounted_package_count = result.resident_package_count,
+        .invoked_candidate_catalog_build = false,
+    };
+    add_diagnostic(result, std::move(code), std::move(message));
+}
+
 bool validate_resident_mount_id(const RuntimeResidentPackageMountSetV2& mount_set,
                                 RuntimeResidentPackageMountIdV2 mount_id,
                                 RuntimePackageStreamingExecutionResult& result) {
@@ -127,6 +149,24 @@ bool validate_resident_mount_id(const RuntimeResidentPackageMountSetV2& mount_se
     if (contains_mount_id(mount_set, mount_id)) {
         set_resident_mount_failure(result, mount_id, RuntimeResidentPackageMountStatusV2::duplicate_mount_id,
                                    "duplicate-mount-id", "resident package streaming mount id is already mounted");
+        return false;
+    }
+    return true;
+}
+
+bool validate_resident_replace_mount_id(const RuntimeResidentPackageMountSetV2& mount_set,
+                                        RuntimeResidentPackageMountIdV2 mount_id,
+                                        RuntimePackageStreamingExecutionResult& result) {
+    if (mount_id.value == 0) {
+        set_resident_replace_failure(result, mount_id, RuntimeResidentPackageReplaceCommitStatusV2::invalid_mount_id,
+                                     "invalid-mount-id",
+                                     "resident package streaming replacement mount id must be non-zero");
+        return false;
+    }
+    if (!contains_mount_id(mount_set, mount_id)) {
+        set_resident_replace_failure(result, mount_id, RuntimeResidentPackageReplaceCommitStatusV2::missing_mount_id,
+                                     "missing-mount-id",
+                                     "resident package streaming replacement mount id is not mounted");
         return false;
     }
     return true;
@@ -172,6 +212,13 @@ void add_catalog_refresh_diagnostics(RuntimePackageStreamingExecutionResult& res
         add_diagnostic(result, diagnostic.code, diagnostic.message);
     }
     for (const auto& diagnostic : refresh.catalog_build.diagnostics) {
+        add_diagnostic(result, "catalog-build-failed", diagnostic.diagnostic);
+    }
+}
+
+void add_candidate_catalog_build_diagnostics(RuntimePackageStreamingExecutionResult& result,
+                                             const RuntimeResourceCatalogBuildResultV2& catalog_build) {
+    for (const auto& diagnostic : catalog_build.diagnostics) {
         add_diagnostic(result, "catalog-build-failed", diagnostic.diagnostic);
     }
 }
@@ -381,6 +428,103 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
 
     result.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
     result.resident_mount_generation = mount_set.generation();
+    result.status = RuntimePackageStreamingExecutionStatus::committed;
+    return result;
+}
+
+RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_resident_replace_safe_point(
+    RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    const RuntimePackageStreamingExecutionDesc& desc, RuntimeAssetPackageLoadResult loaded_package) {
+    RuntimePackageStreamingExecutionResult result;
+    result.target_id = desc.target_id;
+    result.package_index_path = desc.package_index_path;
+    result.runtime_scene_validation_target_id = desc.runtime_scene_validation_target_id;
+    result.resident_budget_bytes = desc.resident_budget_bytes;
+    result.resident_mount_generation = mount_set.generation();
+    result.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
+
+    if (!validate_descriptor(desc, result)) {
+        result.status = RuntimePackageStreamingExecutionStatus::invalid_descriptor;
+        return result;
+    }
+
+    if (!desc.runtime_scene_validation_succeeded) {
+        result.status = RuntimePackageStreamingExecutionStatus::validation_preflight_required;
+        add_diagnostic(result, "runtime-scene-validation-required",
+                       "validate-runtime-scene-package must succeed before selected package streaming execution");
+        return result;
+    }
+
+    if (!loaded_package.succeeded()) {
+        result.status = RuntimePackageStreamingExecutionStatus::package_load_failed;
+        if (loaded_package.failures.empty()) {
+            add_diagnostic(result, "package-load-failed", "runtime package load failed");
+        }
+        for (const auto& failure : loaded_package.failures) {
+            std::string message = failure.diagnostic;
+            if (!failure.path.empty()) {
+                message += " at ";
+                message += failure.path;
+            }
+            add_diagnostic(result, "package-load-failed", std::move(message));
+        }
+        return result;
+    }
+
+    if (!validate_resident_replace_mount_id(mount_set, mount_id, result)) {
+        result.status = RuntimePackageStreamingExecutionStatus::resident_replace_failed;
+        return result;
+    }
+
+    const auto projected_resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
+    if (!validate_residency_hints(desc, loaded_package.package, result, projected_resident_package_count)) {
+        result.status = RuntimePackageStreamingExecutionStatus::residency_hint_failed;
+        return result;
+    }
+
+    const RuntimeResourceResidencyBudgetV2 budget{
+        .max_resident_content_bytes = desc.resident_budget_bytes,
+        .max_resident_asset_records = {},
+    };
+    result.resident_replace = commit_runtime_resident_package_replace_v2(
+        mount_set, catalog_cache, mount_id, std::move(loaded_package.package), overlay, budget);
+    result.resident_catalog_refresh = result.resident_replace.catalog_refresh;
+    result.resident_mount_generation = result.resident_replace.mount_generation;
+    result.resident_package_count = static_cast<std::uint32_t>(result.resident_replace.mounted_package_count);
+    result.estimated_resident_bytes =
+        result.resident_replace.catalog_refresh.budget_execution.estimated_resident_content_bytes;
+
+    if (!result.resident_replace.succeeded()) {
+        switch (result.resident_replace.status) {
+        case RuntimeResidentPackageReplaceCommitStatusV2::invalid_mount_id:
+        case RuntimeResidentPackageReplaceCommitStatusV2::missing_mount_id:
+            result.status = RuntimePackageStreamingExecutionStatus::resident_replace_failed;
+            if (!result.resident_replace.diagnostic.code.empty()) {
+                add_diagnostic(result, result.resident_replace.diagnostic.code,
+                               result.resident_replace.diagnostic.message);
+            }
+            break;
+        case RuntimeResidentPackageReplaceCommitStatusV2::budget_failed:
+            result.status = RuntimePackageStreamingExecutionStatus::over_budget_intent;
+            add_budget_diagnostics(result, result.resident_replace.catalog_refresh.budget_execution);
+            break;
+        case RuntimeResidentPackageReplaceCommitStatusV2::catalog_build_failed:
+            result.status = RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed;
+            if (result.resident_replace.invoked_candidate_catalog_build &&
+                !result.resident_replace.candidate_catalog_build.succeeded()) {
+                add_candidate_catalog_build_diagnostics(result, result.resident_replace.candidate_catalog_build);
+            } else {
+                add_catalog_refresh_diagnostics(result, result.resident_replace.catalog_refresh);
+            }
+            break;
+        case RuntimeResidentPackageReplaceCommitStatusV2::replaced:
+            result.status = RuntimePackageStreamingExecutionStatus::committed;
+            break;
+        }
+        return result;
+    }
+
     result.status = RuntimePackageStreamingExecutionStatus::committed;
     return result;
 }

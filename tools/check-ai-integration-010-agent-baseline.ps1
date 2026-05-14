@@ -1059,6 +1059,8 @@ if ($hostGatedPackageStreamingLoop.Count -eq 1) {
         "validate-runtime-scene-package",
         "load-selected-runtime-package",
         "commit-safe-point-package-streaming-replacement",
+        "commit-resident-package-streaming-mount",
+        "commit-resident-package-streaming-replacement",
         "report-streaming-execution-diagnostics",
         "keep-renderer-rhi-teardown-host-owned"
     )
@@ -1081,7 +1083,7 @@ if ($hostGatedPackageStreamingLoop.Count -eq 1) {
             Write-Error "engine/agent/manifest.json host-gated-package-streaming-execution preflightGates missing: $gate"
         }
     }
-    foreach ($field in @("status", "target_id", "package_index_path", "runtime_scene_validation_target_id", "estimated_resident_bytes", "resident_budget_bytes", "replacement_status", "stale_handle_count", "diagnostics")) {
+    foreach ($field in @("status", "target_id", "package_index_path", "runtime_scene_validation_target_id", "estimated_resident_bytes", "resident_budget_bytes", "replacement_status", "resident_mount_status", "resident_replace_status", "resident_catalog_refresh_status", "resident_package_count", "resident_mount_generation", "stale_handle_count", "diagnostics")) {
         if (@($hostGatedPackageStreamingLoop[0].resultFields) -notcontains $field) {
             Write-Error "engine/agent/manifest.json host-gated-package-streaming-execution resultFields missing: $field"
         }
@@ -1326,6 +1328,8 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "withou
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "full package/build matrix readiness" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "next-production-gap-selection" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "arbitrary importer adapters" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Streaming Resident Replace v1 completes" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_selected_runtime_package_streaming_resident_replace_safe_point" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Editor Content Browser Import Diagnostics v1" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "EditorContentBrowserImportPanelModel" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "make_content_browser_import_panel_ui_model" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.completedContext"

@@ -1591,6 +1591,8 @@ if ($assetIdentityGap.Count -ne 0) {
 }
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Asset Identity v2 Reference Cleanup Milestone v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "audit_runtime_scene_asset_identity" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Streaming Resident Replace v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_selected_runtime_package_streaming_resident_replace_safe_point" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime-resource-v2 next" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 foreach ($check in @(
     @{
@@ -1639,6 +1641,8 @@ if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentCatalogCacheV2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageMountIdV2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_resident_package_replace_v2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("execute_selected_runtime_package_streaming_resident_replace_safe_point") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("resident_replace result rows") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("slot-preserving") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("projected resident budget") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("raw loaded-package catalog") -or
@@ -1716,9 +1720,12 @@ foreach ($check in @(
         Path = "engine/runtime/include/mirakana/runtime/package_streaming.hpp"
         Needles = @(
             "resident_mount_failed",
+            "resident_replace_failed",
             "resident_catalog_refresh_failed",
             "RuntimeResidentCatalogCacheV2& catalog_cache",
             "RuntimeResidentPackageMountIdV2 mount_id",
+            "RuntimeResidentPackageReplaceCommitResultV2 resident_replace",
+            "execute_selected_runtime_package_streaming_resident_replace_safe_point",
             "resident_catalog_refresh"
         )
     },
@@ -1728,6 +1735,10 @@ foreach ($check in @(
             "project_resident_packages",
             "evaluate_projected_resident_budget",
             "validate_loaded_package_catalog_before_mount",
+            "validate_resident_replace_mount_id",
+            "commit_runtime_resident_package_replace_v2",
+            "add_candidate_catalog_build_diagnostics",
+            "resident_replace_failed",
             "resident_catalog_refresh_failed",
             "mount_set.unmount(mount_id)"
         )
@@ -1738,7 +1749,11 @@ foreach ($check in @(
             "runtime package streaming resident mount commit mounts package and refreshes resident catalog",
             "runtime package streaming resident mount commit rejects duplicate mount id before mutation",
             "runtime package streaming resident mount commit rejects duplicate records before mutation",
-            "runtime package streaming resident mount commit preserves catalog on projected budget failure"
+            "runtime package streaming resident mount commit preserves catalog on projected budget failure",
+            "runtime package streaming resident replace commit replaces mounted package and refreshes resident catalog",
+            "runtime package streaming resident replace commit rejects invalid and missing ids before mutation",
+            "runtime package streaming resident replace commit preserves state on candidate catalog failure",
+            "runtime package streaming resident replace commit preserves state on projected budget failure"
         )
     },
     @{
@@ -1767,6 +1782,8 @@ foreach ($check in @(
             "Resident catalog cache",
             "RuntimeResidentCatalogCacheV2",
             "Resident package streaming mount commit",
+            "Resident package streaming replace commit",
+            "execute_selected_runtime_package_streaming_resident_replace_safe_point",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
             "commit_runtime_resident_package_unmount_v2",
@@ -1781,6 +1798,8 @@ foreach ($check in @(
             "Runtime Resource Streaming Resident Mount Commit v1 coverage",
             "Runtime Resource Resident Unmount Cache Refresh v1 coverage",
             "Runtime Resource Resident Package Replacement Commit v1 coverage",
+            "Runtime Package Streaming Resident Replace v1 coverage",
+            "execute_selected_runtime_package_streaming_resident_replace_safe_point",
             "rejects zero/duplicate/missing mount ids"
         )
     }
