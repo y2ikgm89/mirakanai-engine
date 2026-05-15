@@ -852,6 +852,91 @@ commit_runtime_package_discovery_resident_mount_with_reviewed_evictions_v2(
     IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
     const RuntimePackageDiscoveryResidentMountReviewedEvictionsDescV2& desc);
 
+enum class RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2 : std::uint8_t {
+    committed = 0,
+    invalid_descriptor,
+    invalid_mount_id,
+    missing_mount_id,
+    discovery_failed,
+    candidate_not_found,
+    candidate_load_failed,
+    resident_replace_failed,
+    invalid_eviction_candidate_mount_id,
+    duplicate_eviction_candidate_mount_id,
+    missing_eviction_candidate_mount_id,
+    protected_eviction_candidate_mount_id,
+    budget_failed,
+    catalog_refresh_failed,
+};
+
+enum class RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2 : std::uint8_t {
+    descriptor = 0,
+    resident_replace,
+    discovery,
+    candidate_selection,
+    candidate_load,
+    candidate_catalog,
+    eviction_plan,
+    resident_budget,
+    catalog_refresh,
+    resident_commit,
+};
+
+struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2 {
+    RuntimePackageIndexDiscoveryDescV2 discovery;
+    std::string selected_package_index_path;
+    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    RuntimeResourceResidencyBudgetV2 budget{};
+    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+};
+
+struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticV2 {
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase{
+        RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_selection};
+    AssetId asset;
+    RuntimeResidentPackageMountIdV2 mount;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2 {
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2 status{
+        RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::invalid_descriptor};
+    RuntimePackageIndexDiscoveryResultV2 discovery;
+    RuntimePackageIndexDiscoveryCandidateV2 selected_candidate;
+    RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2 candidate_resident_replace;
+    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
+    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+    std::vector<RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticV2> diagnostics;
+    std::size_t loaded_record_count{0};
+    std::uint64_t loaded_resident_bytes{0};
+    std::uint64_t projected_resident_bytes{0};
+    std::uint32_t previous_mount_generation{0};
+    std::uint32_t mount_generation{0};
+    std::size_t previous_mount_count{0};
+    std::size_t mounted_package_count{0};
+    std::size_t evicted_mount_count{0};
+    bool invoked_discovery{false};
+    bool invoked_resident_commit{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Discovers reviewed package-index candidates from a caller-owned VFS root, selects one exact package index path,
+/// then delegates to the reviewed eviction-assisted candidate resident replacement helper. Selected-path and existing
+/// mount-id preflight happens before discovery/package reads, and live mount/cache state changes only after the
+/// delegated copy-then-commit path succeeds. This helper does not infer content roots, stream in the background, choose
+/// eviction policy, hot reload, upload/stage renderer resources, enforce GPU budgets, or touch renderer/RHI/native
+/// handles.
+[[nodiscard]] RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2
+commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    const RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2& desc);
+
 [[nodiscard]] std::optional<RuntimeResourceHandleV2> find_runtime_resource_v2(const RuntimeResourceCatalogV2& catalog,
                                                                               AssetId asset) noexcept;
 [[nodiscard]] bool is_runtime_resource_handle_live_v2(const RuntimeResourceCatalogV2& catalog,
