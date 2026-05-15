@@ -133,6 +133,91 @@ void add_candidate_resident_replace_diagnostic(RuntimePackageCandidateResidentRe
     add_candidate_resident_replace_diagnostic(result, phase, AssetId{}, mount, {}, std::move(code), std::move(message));
 }
 
+void add_discovery_resident_commit_diagnostic(RuntimePackageDiscoveryResidentCommitResultV2& result,
+                                              RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2 phase,
+                                              RuntimeResidentPackageMountIdV2 mount, std::string path, std::string code,
+                                              std::string message) {
+    result.diagnostics.push_back(RuntimePackageDiscoveryResidentCommitDiagnosticV2{
+        .phase = phase,
+        .mount = mount,
+        .path = std::move(path),
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_discovery_resident_commit_diagnostic(RuntimePackageDiscoveryResidentCommitResultV2& result,
+                                              RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2 phase,
+                                              RuntimeResidentPackageMountIdV2 mount, std::string code,
+                                              std::string message) {
+    add_discovery_resident_commit_diagnostic(result, phase, mount, {}, std::move(code), std::move(message));
+}
+
+void add_discovery_diagnostics(RuntimePackageDiscoveryResidentCommitResultV2& result,
+                               const RuntimePackageIndexDiscoveryResultV2& discovery,
+                               RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2 phase) {
+    for (const auto& diagnostic : discovery.diagnostics) {
+        add_discovery_resident_commit_diagnostic(result, phase, {}, diagnostic.path, diagnostic.code,
+                                                 diagnostic.message);
+    }
+}
+
+[[nodiscard]] RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2
+resident_operation_phase(RuntimePackageDiscoveryResidentCommitModeV2 mode) noexcept {
+    return mode == RuntimePackageDiscoveryResidentCommitModeV2::replace
+               ? RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_replace
+               : RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_mount;
+}
+
+[[nodiscard]] RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2
+map_mount_diagnostic_phase(RuntimePackageCandidateResidentMountDiagnosticPhaseV2 phase) noexcept {
+    switch (phase) {
+    case RuntimePackageCandidateResidentMountDiagnosticPhaseV2::resident_mount:
+        return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_mount;
+    case RuntimePackageCandidateResidentMountDiagnosticPhaseV2::candidate_load:
+        return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::candidate_load;
+    case RuntimePackageCandidateResidentMountDiagnosticPhaseV2::resident_budget:
+        return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_budget;
+    case RuntimePackageCandidateResidentMountDiagnosticPhaseV2::catalog_refresh:
+        return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::catalog_refresh;
+    }
+    return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_commit;
+}
+
+[[nodiscard]] RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2
+map_replace_diagnostic_phase(RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2 phase) noexcept {
+    switch (phase) {
+    case RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2::resident_replace:
+        return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_replace;
+    case RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2::candidate_load:
+        return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::candidate_load;
+    case RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2::candidate_catalog:
+        return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_commit;
+    case RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2::resident_budget:
+        return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_budget;
+    case RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2::catalog_refresh:
+        return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::catalog_refresh;
+    }
+    return RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_commit;
+}
+
+void add_mount_commit_diagnostics(RuntimePackageDiscoveryResidentCommitResultV2& result,
+                                  const RuntimePackageCandidateResidentMountResultV2& mount_result) {
+    for (const auto& diagnostic : mount_result.diagnostics) {
+        add_discovery_resident_commit_diagnostic(result, map_mount_diagnostic_phase(diagnostic.phase), diagnostic.mount,
+                                                 diagnostic.path, diagnostic.code, diagnostic.message);
+    }
+}
+
+void add_replace_commit_diagnostics(RuntimePackageDiscoveryResidentCommitResultV2& result,
+                                    const RuntimePackageCandidateResidentReplaceResultV2& replace_result) {
+    for (const auto& diagnostic : replace_result.diagnostics) {
+        add_discovery_resident_commit_diagnostic(result, map_replace_diagnostic_phase(diagnostic.phase),
+                                                 diagnostic.mount, diagnostic.path, diagnostic.code,
+                                                 diagnostic.message);
+    }
+}
+
 [[nodiscard]] bool path_is_under_root(std::string_view path, std::string_view root) {
     if (path.size() <= root.size()) {
         return false;
@@ -805,6 +890,176 @@ RuntimePackageCandidateResidentReplaceResultV2 commit_runtime_package_candidate_
     result.mount_generation = mount_set.generation();
     result.mounted_package_count = mount_set.mounts().size();
     result.committed = true;
+    return result;
+}
+
+bool RuntimePackageDiscoveryResidentCommitResultV2::succeeded() const noexcept {
+    return status == RuntimePackageDiscoveryResidentCommitStatusV2::committed && committed;
+}
+
+RuntimePackageDiscoveryResidentCommitResultV2
+commit_runtime_package_discovery_resident_v2(IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set,
+                                             RuntimeResidentCatalogCacheV2& catalog_cache,
+                                             const RuntimePackageDiscoveryResidentCommitDescV2& desc) {
+    RuntimePackageDiscoveryResidentCommitResultV2 result;
+    result.previous_mount_generation = mount_set.generation();
+    result.mount_generation = result.previous_mount_generation;
+    result.previous_mount_count = mount_set.mounts().size();
+    result.mounted_package_count = result.previous_mount_count;
+
+    if (!valid_relative_vfs_path(desc.selected_package_index_path) ||
+        !ends_with_package_index_extension(desc.selected_package_index_path)) {
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::invalid_descriptor;
+        add_discovery_resident_commit_diagnostic(
+            result, RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::descriptor, desc.mount_id,
+            desc.selected_package_index_path, "invalid-selected-package-index-path",
+            "runtime package discovery resident commit requires a relative selected .geindex path");
+        return result;
+    }
+
+    switch (desc.mode) {
+    case RuntimePackageDiscoveryResidentCommitModeV2::mount:
+    case RuntimePackageDiscoveryResidentCommitModeV2::replace:
+        break;
+    default:
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::invalid_descriptor;
+        add_discovery_resident_commit_diagnostic(
+            result, RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::descriptor, desc.mount_id,
+            "invalid-commit-mode", "runtime package discovery resident commit mode is not supported");
+        return result;
+    }
+
+    if (desc.mount_id.value == 0) {
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::invalid_mount_id;
+        add_discovery_resident_commit_diagnostic(result, resident_operation_phase(desc.mode), desc.mount_id,
+                                                 "invalid-mount-id", "resident package mount ids must be non-zero");
+        return result;
+    }
+    if (desc.mode == RuntimePackageDiscoveryResidentCommitModeV2::mount && has_mount_id(mount_set, desc.mount_id)) {
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::duplicate_mount_id;
+        add_discovery_resident_commit_diagnostic(
+            result, RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_mount, desc.mount_id,
+            "duplicate-mount-id", "resident package mount id is already mounted");
+        return result;
+    }
+    if (desc.mode == RuntimePackageDiscoveryResidentCommitModeV2::replace && !has_mount_id(mount_set, desc.mount_id)) {
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::missing_mount_id;
+        add_discovery_resident_commit_diagnostic(
+            result, RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::resident_replace, desc.mount_id,
+            "missing-mount-id", "resident package mount id is not mounted");
+        return result;
+    }
+
+    result.invoked_discovery = true;
+    result.discovery = discover_runtime_package_indexes_v2(filesystem, desc.discovery);
+    if (!result.discovery.succeeded()) {
+        const auto descriptor_failure =
+            result.discovery.status == RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor;
+        result.status = descriptor_failure ? RuntimePackageDiscoveryResidentCommitStatusV2::invalid_descriptor
+                                           : RuntimePackageDiscoveryResidentCommitStatusV2::discovery_failed;
+        add_discovery_diagnostics(result, result.discovery,
+                                  descriptor_failure
+                                      ? RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::descriptor
+                                      : RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::discovery);
+        return result;
+    }
+
+    const auto selected =
+        std::ranges::find_if(result.discovery.candidates, [&desc](const RuntimePackageIndexDiscoveryCandidateV2& item) {
+            return item.package_index_path == desc.selected_package_index_path;
+        });
+    if (selected == result.discovery.candidates.end()) {
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::candidate_not_found;
+        add_discovery_resident_commit_diagnostic(
+            result, RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::candidate_selection, desc.mount_id,
+            desc.selected_package_index_path, "candidate-not-found",
+            "selected runtime package index was not discovered under the reviewed root");
+        return result;
+    }
+    result.selected_candidate = *selected;
+
+    result.invoked_resident_commit = true;
+    if (desc.mode == RuntimePackageDiscoveryResidentCommitModeV2::mount) {
+        result.resident_mount =
+            commit_runtime_package_candidate_resident_mount_v2(filesystem, mount_set, catalog_cache,
+                                                               RuntimePackageCandidateResidentMountDescV2{
+                                                                   .candidate = result.selected_candidate,
+                                                                   .mount_id = desc.mount_id,
+                                                                   .overlay = desc.overlay,
+                                                                   .budget = desc.budget,
+                                                               });
+        result.catalog_refresh = result.resident_mount.catalog_refresh;
+        result.loaded_record_count = result.resident_mount.loaded_record_count;
+        result.loaded_resident_bytes = result.resident_mount.loaded_resident_bytes;
+        result.projected_resident_bytes = result.resident_mount.projected_resident_bytes;
+        result.mount_generation = result.resident_mount.mount_generation;
+        result.mounted_package_count = result.resident_mount.mounted_package_count;
+        add_mount_commit_diagnostics(result, result.resident_mount);
+
+        switch (result.resident_mount.status) {
+        case RuntimePackageCandidateResidentMountStatusV2::mounted:
+            result.status = RuntimePackageDiscoveryResidentCommitStatusV2::committed;
+            result.committed = true;
+            break;
+        case RuntimePackageCandidateResidentMountStatusV2::invalid_mount_id:
+            result.status = RuntimePackageDiscoveryResidentCommitStatusV2::invalid_mount_id;
+            break;
+        case RuntimePackageCandidateResidentMountStatusV2::duplicate_mount_id:
+            result.status = RuntimePackageDiscoveryResidentCommitStatusV2::duplicate_mount_id;
+            break;
+        case RuntimePackageCandidateResidentMountStatusV2::candidate_load_failed:
+            result.status = RuntimePackageDiscoveryResidentCommitStatusV2::candidate_load_failed;
+            break;
+        case RuntimePackageCandidateResidentMountStatusV2::budget_failed:
+            result.status = RuntimePackageDiscoveryResidentCommitStatusV2::budget_failed;
+            break;
+        case RuntimePackageCandidateResidentMountStatusV2::catalog_refresh_failed:
+            result.status = RuntimePackageDiscoveryResidentCommitStatusV2::catalog_refresh_failed;
+            break;
+        }
+        return result;
+    }
+
+    result.resident_replace =
+        commit_runtime_package_candidate_resident_replace_v2(filesystem, mount_set, catalog_cache,
+                                                             RuntimePackageCandidateResidentReplaceDescV2{
+                                                                 .candidate = result.selected_candidate,
+                                                                 .mount_id = desc.mount_id,
+                                                                 .overlay = desc.overlay,
+                                                                 .budget = desc.budget,
+                                                             });
+    result.catalog_refresh = result.resident_replace.catalog_refresh;
+    result.loaded_record_count = result.resident_replace.loaded_record_count;
+    result.loaded_resident_bytes = result.resident_replace.loaded_resident_bytes;
+    result.projected_resident_bytes = result.resident_replace.projected_resident_bytes;
+    result.mount_generation = result.resident_replace.mount_generation;
+    result.mounted_package_count = result.resident_replace.mounted_package_count;
+    add_replace_commit_diagnostics(result, result.resident_replace);
+
+    switch (result.resident_replace.status) {
+    case RuntimePackageCandidateResidentReplaceStatusV2::replaced:
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::committed;
+        result.committed = true;
+        break;
+    case RuntimePackageCandidateResidentReplaceStatusV2::invalid_mount_id:
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::invalid_mount_id;
+        break;
+    case RuntimePackageCandidateResidentReplaceStatusV2::missing_mount_id:
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::missing_mount_id;
+        break;
+    case RuntimePackageCandidateResidentReplaceStatusV2::candidate_load_failed:
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::candidate_load_failed;
+        break;
+    case RuntimePackageCandidateResidentReplaceStatusV2::resident_replace_failed:
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::resident_commit_failed;
+        break;
+    case RuntimePackageCandidateResidentReplaceStatusV2::budget_failed:
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::budget_failed;
+        break;
+    case RuntimePackageCandidateResidentReplaceStatusV2::catalog_refresh_failed:
+        result.status = RuntimePackageDiscoveryResidentCommitStatusV2::catalog_refresh_failed;
+        break;
+    }
     return result;
 }
 
