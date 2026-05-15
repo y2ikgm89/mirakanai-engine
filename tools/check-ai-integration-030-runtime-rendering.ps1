@@ -633,6 +633,8 @@ Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_packag
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "host-driven reviewed hot-reload replacement safe point" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_candidate_review_v2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadCandidateReviewResultV2" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_recook_change_review_v2" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadRecookChangeReviewResultV2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_replacement_intent_review_v2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadReplacementIntentReviewResultV2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "candidate/discovery root coherence" "MK_runtime module purpose"
