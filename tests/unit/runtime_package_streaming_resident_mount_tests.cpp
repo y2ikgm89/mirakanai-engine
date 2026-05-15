@@ -312,6 +312,208 @@ MK_TEST("runtime package streaming resident mount commit preserves catalog on pr
     MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), material).has_value());
 }
 
+MK_TEST("runtime package streaming candidate resident mount loads selected package and refreshes resident catalog") {
+    CountingFileSystem filesystem;
+    const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
+    const auto material = mirakana::AssetId::from_name("materials/base");
+    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture", payload, 19);
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                       .label = "base",
+                       .package = make_package(make_record(material, mirakana::AssetKind::material,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    auto desc = make_valid_desc(4096);
+    desc.required_preload_assets = {texture};
+    desc.resident_resource_kinds = {mirakana::AssetKind::texture};
+    desc.max_resident_packages = 2;
+
+    const auto result =
+        mirakana::runtime::execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, desc);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::committed);
+    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::loaded);
+    MK_REQUIRE(result.candidate_load.candidate.package_index_path == "runtime/game.geindex");
+    MK_REQUIRE(result.candidate_load.candidate.content_root == "runtime");
+    MK_REQUIRE(result.candidate_load.candidate.label == "packaged-scene-streaming");
+    MK_REQUIRE(result.candidate_load.loaded_record_count == 1);
+    MK_REQUIRE(result.candidate_load.estimated_resident_bytes == payload.size());
+    MK_REQUIRE(result.resident_mount.status == mirakana::runtime::RuntimeResidentPackageMountStatusV2::mounted);
+    MK_REQUIRE(result.resident_catalog_refresh.status ==
+               mirakana::runtime::RuntimeResidentCatalogCacheStatusV2::rebuilt);
+    MK_REQUIRE(result.resident_package_count == 2);
+    MK_REQUIRE(result.resident_mount_generation == mount_set.generation());
+    MK_REQUIRE(result.resident_mount_generation != previous_mount_generation);
+    MK_REQUIRE(catalog_cache.catalog().generation() != previous_catalog_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 2);
+    MK_REQUIRE(mount_set.mounts()[1].id == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2});
+    MK_REQUIRE(mount_set.mounts()[1].label == "packaged-scene-streaming");
+    MK_REQUIRE(mount_set.mounts()[1].package.records()[0].content == payload);
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), texture).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), material).has_value());
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(filesystem.read_text_count() == 2);
+}
+
+MK_TEST("runtime package streaming candidate resident mount rejects invalid and duplicate ids before reads") {
+    CountingFileSystem filesystem;
+    const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
+    write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture", "not read");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5},
+                       .label = "base",
+                       .package = make_package(make_record(texture, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    const auto invalid =
+        mirakana::runtime::execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, make_valid_desc(4096));
+    const auto duplicate =
+        mirakana::runtime::execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, make_valid_desc(4096));
+
+    MK_REQUIRE(invalid.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_mount_failed);
+    MK_REQUIRE(duplicate.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_mount_failed);
+    MK_REQUIRE(invalid.resident_mount.status ==
+               mirakana::runtime::RuntimeResidentPackageMountStatusV2::invalid_mount_id);
+    MK_REQUIRE(duplicate.resident_mount.status ==
+               mirakana::runtime::RuntimeResidentPackageMountStatusV2::duplicate_mount_id);
+    MK_REQUIRE(!invalid.candidate_load.invoked_load);
+    MK_REQUIRE(!duplicate.candidate_load.invoked_load);
+    MK_REQUIRE(invalid.diagnostics[0].code == "invalid-mount-id");
+    MK_REQUIRE(duplicate.diagnostics[0].code == "duplicate-mount-id");
+    MK_REQUIRE(filesystem.read_text_count() == 0);
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1);
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == "base");
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
+MK_TEST("runtime package streaming candidate resident mount preserves state on candidate load failure") {
+    CountingFileSystem filesystem;
+    filesystem.write_text("runtime/game.geindex", "not a cooked package index");
+    const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3},
+                       .label = "base",
+                       .package = make_package(make_record(texture, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    const auto result =
+        mirakana::runtime::execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 4},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, make_valid_desc(4096));
+
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::package_load_failed);
+    MK_REQUIRE(result.candidate_load.status ==
+               mirakana::runtime::RuntimePackageCandidateLoadStatusV2::package_load_failed);
+    MK_REQUIRE(result.candidate_load.invoked_load);
+    MK_REQUIRE(result.candidate_load.diagnostics[0].code == "package-index-invalid");
+    MK_REQUIRE(result.diagnostics[0].code == "package-index-invalid");
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1);
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == "base");
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
+MK_TEST("runtime package streaming candidate resident mount preserves state on residency hint failure") {
+    CountingFileSystem filesystem;
+    const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture", "candidate");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 6},
+                       .label = "base",
+                       .package = make_package(make_record(material, mirakana::AssetKind::material,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    auto desc = make_valid_desc(4096);
+    desc.required_preload_assets = {material};
+    desc.max_resident_packages = 2;
+
+    const auto result =
+        mirakana::runtime::execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, desc);
+
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::residency_hint_failed);
+    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::loaded);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].code == "preload-asset-missing");
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1);
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == "base");
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
+MK_TEST("runtime package streaming candidate resident mount preserves state on projected budget failure") {
+    CountingFileSystem filesystem;
+    const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
+    write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture",
+                  "candidate content that exceeds the projected resident budget");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 8},
+                       .label = "base",
+                       .package = make_package(make_record(texture, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    const auto result =
+        mirakana::runtime::execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 9},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, make_valid_desc(8));
+
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::over_budget_intent);
+    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::loaded);
+    MK_REQUIRE(!result.diagnostics.empty());
+    MK_REQUIRE(result.diagnostics[0].code == "resident-budget-intent-exceeded");
+    MK_REQUIRE(result.estimated_resident_bytes > result.resident_budget_bytes);
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1);
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == "base");
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
 MK_TEST("runtime package streaming resident replace commit replaces mounted package and refreshes resident catalog") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;

@@ -82,6 +82,12 @@ struct RuntimePackageStreamingExecutionResult {
     const RuntimePackageStreamingExecutionDesc& desc, RuntimeAssetPackageLoadResult loaded_package);
 
 [[nodiscard]] RuntimePackageStreamingExecutionResult
+execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    const RuntimePackageStreamingExecutionDesc& desc);
+
+[[nodiscard]] RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_resident_replace_safe_point(RuntimeResidentPackageMountSetV2& mount_set,
                                                                        RuntimeResidentCatalogCacheV2& catalog_cache,
                                                                        RuntimeResidentPackageMountIdV2 mount_id,
