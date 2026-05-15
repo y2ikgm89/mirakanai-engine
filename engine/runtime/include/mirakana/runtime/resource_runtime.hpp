@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "mirakana/assets/asset_hot_reload.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 
 #include <cstddef>
@@ -143,6 +144,63 @@ struct RuntimePackageHotReloadCandidateReviewResultV2 {
 /// in the background, apply eviction policy, or touch renderer/RHI/native handles.
 [[nodiscard]] RuntimePackageHotReloadCandidateReviewResultV2
 plan_runtime_package_hot_reload_candidate_review_v2(const RuntimePackageHotReloadCandidateReviewDescV2& desc);
+
+enum class RuntimePackageHotReloadRecookChangeReviewStatusV2 : std::uint8_t {
+    review_ready = 0,
+    no_recook_changes,
+    invalid_recook_apply_result,
+    failed_recook_apply_result,
+    candidate_review_failed,
+};
+
+enum class RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2 : std::uint8_t {
+    recook_apply_result = 0,
+    candidate_review,
+};
+
+struct RuntimePackageHotReloadRecookChangeReviewDescV2 {
+    std::vector<AssetHotReloadApplyResult> recook_apply_results;
+    std::vector<RuntimePackageIndexDiscoveryCandidateV2> candidates;
+};
+
+struct RuntimePackageHotReloadRecookChangeReviewDiagnosticV2 {
+    RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2 phase{
+        RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::recook_apply_result};
+    AssetId asset;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageHotReloadRecookChangeReviewResultV2 {
+    RuntimePackageHotReloadRecookChangeReviewStatusV2 status{
+        RuntimePackageHotReloadRecookChangeReviewStatusV2::no_recook_changes};
+    RuntimePackageHotReloadCandidateReviewDescV2 candidate_review_desc;
+    RuntimePackageHotReloadCandidateReviewResultV2 candidate_review;
+    std::vector<RuntimePackageHotReloadRecookChangeReviewDiagnosticV2> diagnostics;
+    std::size_t recook_apply_result_count{0};
+    std::size_t accepted_recook_change_count{0};
+    std::size_t staged_recook_change_count{0};
+    std::size_t applied_recook_change_count{0};
+    std::size_t failed_recook_apply_result_count{0};
+    std::size_t invalid_recook_apply_result_count{0};
+    bool invoked_candidate_review{false};
+    bool invoked_file_watch{false};
+    bool invoked_recook{false};
+    bool invoked_package_load{false};
+    bool invoked_resident_commit{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Converts reviewed recook apply-result rows into hot-reload candidate-review rows.
+/// `AssetHotReloadApplyResult::path` is treated as a caller-reviewed runtime package/index/content relative VFS path,
+/// not as a source-asset path. This pure planner validates apply rows, delegates exact package-index/content matching
+/// to `plan_runtime_package_hot_reload_candidate_review_v2`, and does not watch files, run recook, read packages,
+/// mutate resident state, stream in the background, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimePackageHotReloadRecookChangeReviewResultV2
+plan_runtime_package_hot_reload_recook_change_review_v2(const RuntimePackageHotReloadRecookChangeReviewDescV2& desc);
 
 struct RuntimeResourceHandleV2 {
     std::uint32_t index{0};

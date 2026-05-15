@@ -36,6 +36,10 @@ foreach ($check in @(
             "RuntimePackageHotReloadCandidateReviewDescV2",
             "RuntimePackageHotReloadCandidateReviewResultV2",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "RuntimePackageHotReloadRecookChangeReviewStatusV2",
+            "RuntimePackageHotReloadRecookChangeReviewDescV2",
+            "RuntimePackageHotReloadRecookChangeReviewResultV2",
+            "plan_runtime_package_hot_reload_recook_change_review_v2",
             "RuntimePackageHotReloadReplacementIntentReviewStatusV2",
             "invalid_overlay",
             "RuntimePackageHotReloadReplacementIntentReviewDescV2",
@@ -51,9 +55,13 @@ foreach ($check in @(
             "RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded",
             "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2::succeeded",
             "RuntimePackageHotReloadCandidateReviewResultV2::succeeded",
+            "RuntimePackageHotReloadRecookChangeReviewResultV2::succeeded",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2::succeeded",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "plan_runtime_package_hot_reload_recook_change_review_v2",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "invalid-recook-apply-result-asset",
+            "invalid-recook-apply-result-revision",
             "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
             "invalid-selected-candidate",
             "candidate-outside-discovery-root",
@@ -95,6 +103,8 @@ foreach ($check in @(
             "host-driven reviewed hot-reload replacement safe point",
             "Runtime Package Hot Reload Candidate Review v1",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "Runtime Package Hot Reload Recook Change Review v1",
+            "plan_runtime_package_hot_reload_recook_change_review_v2",
             "Runtime Package Hot Reload Replacement Intent Review v1",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2",
@@ -123,6 +133,9 @@ foreach ($check in @(
             "Runtime Package Hot Reload Candidate Review v1 coverage",
             "MK_runtime_package_hot_reload_candidate_review_tests",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "Runtime Package Hot Reload Recook Change Review v1 coverage",
+            "MK_runtime_package_hot_reload_recook_change_review_tests",
+            "plan_runtime_package_hot_reload_recook_change_review_v2",
             "Runtime Package Hot Reload Replacement Intent Review v1 coverage",
             "MK_runtime_package_hot_reload_replacement_intent_review_tests",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
@@ -150,6 +163,17 @@ foreach ($check in @(
             "runtime package hot reload candidate review deduplicates repeated matches for one candidate",
             "runtime package hot reload candidate review ignores invalid candidate rows before review",
             "runtime package hot reload candidate review returns typed no-match statuses without package reads"
+        )
+    },
+    @{
+        Path = "tests/unit/runtime_package_hot_reload_recook_change_review_tests.cpp"
+        Needles = @(
+            "runtime package hot reload recook change review maps staged and applied recook outputs",
+            "runtime package hot reload recook change review blocks failed recook rows before candidate review",
+            "runtime package hot reload recook change review rejects invalid recook rows before candidate review",
+            "static_cast<mirakana::AssetHotReloadApplyResultKind>(255)",
+            "runtime package hot reload recook change review reports no recook rows without reading packages",
+            "runtime package hot reload recook change review surfaces candidate review failures"
         )
     },
     @{

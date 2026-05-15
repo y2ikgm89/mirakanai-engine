@@ -1603,10 +1603,12 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Change Candidate Review v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_package_hot_reload_candidate_review_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Recook Change Review v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_package_hot_reload_recook_change_review_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Replacement Intent Review v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_package_hot_reload_replacement_intent_review_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime-resource-v2 next" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Runtime Package Hot Reload Replacement Intent Review v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Runtime Package Hot Reload Recook Change Review v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 foreach ($check in @(
     @{
         Path = "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
@@ -1674,6 +1676,9 @@ if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Replacement Intent Review v1") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_replacement_intent_review_v2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadReplacementIntentReviewResultV2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Change Review v1") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_recook_change_review_v2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookChangeReviewResultV2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("candidate/discovery root coherence") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("defined overlay") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("file watching/recook execution") -or
@@ -1729,6 +1734,10 @@ foreach ($check in @(
             "RuntimePackageHotReloadCandidateReviewDescV2",
             "RuntimePackageHotReloadCandidateReviewResultV2",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "RuntimePackageHotReloadRecookChangeReviewStatusV2",
+            "RuntimePackageHotReloadRecookChangeReviewDescV2",
+            "RuntimePackageHotReloadRecookChangeReviewResultV2",
+            "plan_runtime_package_hot_reload_recook_change_review_v2",
             "RuntimePackageHotReloadReplacementIntentReviewStatusV2",
             "invalid_overlay",
             "RuntimePackageHotReloadReplacementIntentReviewDescV2",
@@ -1753,9 +1762,13 @@ foreach ($check in @(
             "RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded",
             "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2::succeeded",
             "RuntimePackageHotReloadCandidateReviewResultV2::succeeded",
+            "RuntimePackageHotReloadRecookChangeReviewResultV2::succeeded",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2::succeeded",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "plan_runtime_package_hot_reload_recook_change_review_v2",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "invalid-recook-apply-result-asset",
+            "invalid-recook-apply-result-revision",
             "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
             "invalid-selected-candidate",
             "candidate-outside-discovery-root",
@@ -1917,6 +1930,17 @@ foreach ($check in @(
         )
     },
     @{
+        Path = "tests/unit/runtime_package_hot_reload_recook_change_review_tests.cpp"
+        Needles = @(
+            "runtime package hot reload recook change review maps staged and applied recook outputs",
+            "runtime package hot reload recook change review blocks failed recook rows before candidate review",
+            "runtime package hot reload recook change review rejects invalid recook rows before candidate review",
+            "static_cast<mirakana::AssetHotReloadApplyResultKind>(255)",
+            "runtime package hot reload recook change review reports no recook rows without reading packages",
+            "runtime package hot reload recook change review surfaces candidate review failures"
+        )
+    },
+    @{
         Path = "docs/current-capabilities.md"
         Needles = @(
             "Resident package mount set",
@@ -1936,6 +1960,8 @@ foreach ($check in @(
             "host-driven reviewed hot-reload replacement safe point",
             "Runtime Package Hot Reload Candidate Review v1",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "Runtime Package Hot Reload Recook Change Review v1",
+            "plan_runtime_package_hot_reload_recook_change_review_v2",
             "Runtime Package Hot Reload Replacement Intent Review v1",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2",
@@ -1967,6 +1993,9 @@ foreach ($check in @(
             "Runtime Package Hot Reload Candidate Review v1 coverage",
             "MK_runtime_package_hot_reload_candidate_review_tests",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "Runtime Package Hot Reload Recook Change Review v1 coverage",
+            "MK_runtime_package_hot_reload_recook_change_review_tests",
+            "plan_runtime_package_hot_reload_recook_change_review_v2",
             "Runtime Package Hot Reload Replacement Intent Review v1 coverage",
             "MK_runtime_package_hot_reload_replacement_intent_review_tests",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",

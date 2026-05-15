@@ -553,6 +553,19 @@ void add_hot_reload_candidate_review_diagnostic(RuntimePackageHotReloadCandidate
     });
 }
 
+void add_hot_reload_recook_change_review_diagnostic(RuntimePackageHotReloadRecookChangeReviewResultV2& result,
+                                                    RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2 phase,
+                                                    AssetId asset, std::string path, std::string code,
+                                                    std::string message) {
+    result.diagnostics.push_back(RuntimePackageHotReloadRecookChangeReviewDiagnosticV2{
+        .phase = phase,
+        .asset = asset,
+        .path = std::move(path),
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
 void add_hot_reload_replacement_intent_review_diagnostic(
     RuntimePackageHotReloadReplacementIntentReviewResultV2& result,
     RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2 phase, RuntimeResidentPackageMountIdV2 mount,
@@ -859,6 +872,106 @@ plan_runtime_package_hot_reload_candidate_review_v2(const RuntimePackageHotReloa
         result.status = RuntimePackageHotReloadCandidateReviewStatusV2::no_matches;
     }
 
+    return result;
+}
+
+bool RuntimePackageHotReloadRecookChangeReviewResultV2::succeeded() const noexcept {
+    return status == RuntimePackageHotReloadRecookChangeReviewStatusV2::review_ready && candidate_review.succeeded();
+}
+
+RuntimePackageHotReloadRecookChangeReviewResultV2
+plan_runtime_package_hot_reload_recook_change_review_v2(const RuntimePackageHotReloadRecookChangeReviewDescV2& desc) {
+    RuntimePackageHotReloadRecookChangeReviewResultV2 result;
+    result.recook_apply_result_count = desc.recook_apply_results.size();
+
+    if (desc.recook_apply_results.empty()) {
+        result.status = RuntimePackageHotReloadRecookChangeReviewStatusV2::no_recook_changes;
+        return result;
+    }
+
+    result.candidate_review_desc.candidates = desc.candidates;
+    result.candidate_review_desc.changed_paths.reserve(desc.recook_apply_results.size());
+    for (const auto& apply_result : desc.recook_apply_results) {
+        const bool is_staged = apply_result.kind == AssetHotReloadApplyResultKind::staged;
+        const bool is_applied = apply_result.kind == AssetHotReloadApplyResultKind::applied;
+        const bool is_failed = apply_result.kind == AssetHotReloadApplyResultKind::failed_rolled_back;
+
+        if (is_staged) {
+            ++result.staged_recook_change_count;
+        } else if (is_applied) {
+            ++result.applied_recook_change_count;
+        } else if (is_failed) {
+            ++result.failed_recook_apply_result_count;
+        }
+
+        if (apply_result.asset.value == 0) {
+            ++result.invalid_recook_apply_result_count;
+            result.status = RuntimePackageHotReloadRecookChangeReviewStatusV2::invalid_recook_apply_result;
+            add_hot_reload_recook_change_review_diagnostic(
+                result, RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::recook_apply_result,
+                apply_result.asset, apply_result.path, "invalid-recook-apply-result-asset",
+                "recook apply-result rows must reference a non-zero asset id");
+            return result;
+        }
+        if (!is_staged && !is_applied && !is_failed) {
+            ++result.invalid_recook_apply_result_count;
+            result.status = RuntimePackageHotReloadRecookChangeReviewStatusV2::invalid_recook_apply_result;
+            add_hot_reload_recook_change_review_diagnostic(
+                result, RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::recook_apply_result,
+                apply_result.asset, apply_result.path, "invalid-recook-result-kind",
+                "recook apply-result rows must be staged, applied, or failed_rolled_back");
+            return result;
+        }
+        if (!valid_relative_vfs_path(apply_result.path)) {
+            ++result.invalid_recook_apply_result_count;
+            result.status = RuntimePackageHotReloadRecookChangeReviewStatusV2::invalid_recook_apply_result;
+            add_hot_reload_recook_change_review_diagnostic(
+                result, RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::recook_apply_result,
+                apply_result.asset, apply_result.path, "invalid-recook-result-path",
+                "recook apply-result paths must be caller-reviewed relative runtime VFS paths");
+            return result;
+        }
+        if (is_applied && apply_result.active_revision == 0) {
+            ++result.invalid_recook_apply_result_count;
+            result.status = RuntimePackageHotReloadRecookChangeReviewStatusV2::invalid_recook_apply_result;
+            add_hot_reload_recook_change_review_diagnostic(
+                result, RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::recook_apply_result,
+                apply_result.asset, apply_result.path, "invalid-recook-apply-result-revision",
+                "applied recook apply-result rows must report a non-zero active revision");
+            return result;
+        }
+        if (is_failed) {
+            result.status = RuntimePackageHotReloadRecookChangeReviewStatusV2::failed_recook_apply_result;
+            add_hot_reload_recook_change_review_diagnostic(
+                result, RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::recook_apply_result,
+                apply_result.asset, apply_result.path, "recook-failed",
+                apply_result.diagnostic.empty() ? "recook apply-result row failed and was rolled back"
+                                                : apply_result.diagnostic);
+            return result;
+        }
+
+        result.candidate_review_desc.changed_paths.push_back(apply_result.path);
+    }
+
+    result.accepted_recook_change_count = result.candidate_review_desc.changed_paths.size();
+    if (result.candidate_review_desc.changed_paths.empty()) {
+        result.status = RuntimePackageHotReloadRecookChangeReviewStatusV2::no_recook_changes;
+        return result;
+    }
+
+    result.invoked_candidate_review = true;
+    result.candidate_review = plan_runtime_package_hot_reload_candidate_review_v2(result.candidate_review_desc);
+    if (!result.candidate_review.succeeded()) {
+        result.status = RuntimePackageHotReloadRecookChangeReviewStatusV2::candidate_review_failed;
+        for (const auto& diagnostic : result.candidate_review.diagnostics) {
+            add_hot_reload_recook_change_review_diagnostic(
+                result, RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::candidate_review, {},
+                diagnostic.path, diagnostic.code, diagnostic.message);
+        }
+        return result;
+    }
+
+    result.status = RuntimePackageHotReloadRecookChangeReviewStatusV2::review_ready;
     return result;
 }
 
