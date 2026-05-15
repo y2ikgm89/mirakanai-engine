@@ -23,7 +23,11 @@ foreach ($check in @(
             "RuntimeResidentPackageEvictionPlanStatusV2",
             "RuntimeResidentPackageEvictionPlanDescV2",
             "RuntimeResidentPackageEvictionPlanResultV2",
-            "plan_runtime_resident_package_evictions_v2"
+            "plan_runtime_resident_package_evictions_v2",
+            "RuntimeResidentPackageReviewedEvictionCommitStatusV2",
+            "RuntimeResidentPackageReviewedEvictionCommitDescV2",
+            "RuntimeResidentPackageReviewedEvictionCommitResultV2",
+            "commit_runtime_resident_package_reviewed_evictions_v2"
         )
     },
     @{
@@ -31,6 +35,8 @@ foreach ($check in @(
         Needles = @(
             "RuntimeResidentPackageReplaceCommitResultV2::succeeded",
             "RuntimeResidentPackageEvictionPlanResultV2::succeeded",
+            "RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded",
+            "map_reviewed_eviction_commit_plan_status",
             "contains_mount_id",
             "protected-candidate-mount-id",
             "budget_unreachable",
@@ -57,6 +63,8 @@ foreach ($check in @(
             "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
             "Resident package eviction plan",
             "plan_runtime_resident_package_evictions_v2",
+            "Resident package reviewed eviction commit",
+            "commit_runtime_resident_package_reviewed_evictions_v2",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
             "disk/VFS mount discovery"
@@ -69,11 +77,13 @@ foreach ($check in @(
             "Runtime Package Streaming Resident Replace v1 coverage",
             "Runtime Package Streaming Resident Unmount v1 coverage",
             "Runtime Resident Package Eviction Plan v1 coverage",
+            "Runtime Resident Package Reviewed Eviction Commit v1 coverage",
             "MK_runtime_resource_resident_replace_tests",
             "MK_runtime_package_streaming_resident_mount_tests",
             "commit_runtime_resident_package_replace_v2",
             "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
-            "plan_runtime_resident_package_evictions_v2"
+            "plan_runtime_resident_package_evictions_v2",
+            "commit_runtime_resident_package_reviewed_evictions_v2"
         )
     },
     @{
@@ -83,7 +93,11 @@ foreach ($check in @(
             "runtime resident package eviction plan returns reviewed candidate order until budget passes",
             "runtime resident package eviction plan rejects protected candidates before partial planning",
             "runtime resident package eviction plan rejects duplicate and missing candidates before partial planning",
-            "runtime resident package eviction plan reports unreachable budget without mutating mounts"
+            "runtime resident package eviction plan reports unreachable budget without mutating mounts",
+            "runtime resident package reviewed eviction commit applies reviewed candidates atomically",
+            "runtime resident package reviewed eviction commit succeeds as no op when current view fits",
+            "runtime resident package reviewed eviction commit rejects reviewed candidates before mutation",
+            "runtime resident package reviewed eviction commit preserves state when candidates are insufficient"
         )
     },
     @{

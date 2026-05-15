@@ -438,6 +438,66 @@ struct RuntimeResidentPackageEvictionPlanResultV2 {
 plan_runtime_resident_package_evictions_v2(const RuntimeResidentPackageMountSetV2& mount_set,
                                            const RuntimeResidentPackageEvictionPlanDescV2& desc);
 
+enum class RuntimeResidentPackageReviewedEvictionCommitStatusV2 : std::uint8_t {
+    committed = 0,
+    no_eviction_required,
+    invalid_candidate_mount_id,
+    duplicate_candidate_mount_id,
+    missing_candidate_mount_id,
+    protected_candidate_mount_id,
+    budget_failed,
+    catalog_refresh_failed,
+};
+
+enum class RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2 : std::uint8_t {
+    eviction_plan = 0,
+    resident_budget,
+    catalog_refresh,
+};
+
+struct RuntimeResidentPackageReviewedEvictionCommitDescV2 {
+    RuntimeResourceResidencyBudgetV2 target_budget;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    std::vector<RuntimeResidentPackageMountIdV2> candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+};
+
+struct RuntimeResidentPackageReviewedEvictionCommitDiagnosticV2 {
+    RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2 phase{
+        RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2::eviction_plan};
+    AssetId asset;
+    RuntimeResidentPackageMountIdV2 mount;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimeResidentPackageReviewedEvictionCommitResultV2 {
+    RuntimeResidentPackageReviewedEvictionCommitStatusV2 status{
+        RuntimeResidentPackageReviewedEvictionCommitStatusV2::budget_failed};
+    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
+    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+    std::vector<RuntimeResidentPackageReviewedEvictionCommitDiagnosticV2> diagnostics;
+    std::uint64_t projected_resident_bytes{0};
+    std::uint32_t previous_mount_generation{0};
+    std::uint32_t mount_generation{0};
+    std::size_t previous_mount_count{0};
+    std::size_t mounted_package_count{0};
+    std::size_t evicted_mount_count{0};
+    bool invoked_eviction_plan{false};
+    bool invoked_catalog_refresh{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Applies only caller-reviewed resident eviction candidates to a projected mount/cache view and commits the final
+/// state atomically. No packages are loaded or discovered, no eviction policy is inferred, and renderer/RHI/native
+/// handles are outside this host-independent safe point.
+[[nodiscard]] RuntimeResidentPackageReviewedEvictionCommitResultV2
+commit_runtime_resident_package_reviewed_evictions_v2(RuntimeResidentPackageMountSetV2& mount_set,
+                                                      RuntimeResidentCatalogCacheV2& catalog_cache,
+                                                      const RuntimeResidentPackageReviewedEvictionCommitDescV2& desc);
+
 enum class RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2 : std::uint8_t {
     mounted = 0,
     invalid_mount_id,

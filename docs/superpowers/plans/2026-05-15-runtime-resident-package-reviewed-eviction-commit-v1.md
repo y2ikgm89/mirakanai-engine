@@ -1,7 +1,7 @@
 # Runtime Resident Package Reviewed Eviction Commit v1 (2026-05-15)
 
 **Plan ID:** `runtime-resident-package-reviewed-eviction-commit-v1`
-**Status:** Active. Current child slice under `production-completion-master-plan-v1` / `runtime-resource-v2`
+**Status:** Completed. Current child slice under `production-completion-master-plan-v1` / `runtime-resource-v2`
 **Goal:** Add a host-independent safe-point helper that atomically applies a caller-reviewed resident eviction candidate order to `RuntimeResidentPackageMountSetV2` and `RuntimeResidentCatalogCacheV2`.
 
 ## Context
@@ -25,11 +25,11 @@
 
 ## Tasks
 
-- [ ] Add RED tests for standalone reviewed eviction commit success, no-op success, invalid/duplicate/missing/protected candidate rollback, insufficient reviewed candidates rollback, and catalog/budget rollback.
-- [ ] Add the public reviewed resident eviction commit overload/result evidence needed by the tests.
-- [ ] Implement reviewed planning, projected unmount execution, projected catalog refresh, diagnostic/status mapping, evidence propagation, and rollback preservation.
-- [ ] Update runtime docs, roadmap/current capabilities, plan registry/master plan, and manifest fragments/composed manifest.
-- [ ] Run focused build/test/static checks, then full `validate.ps1` and `build.ps1`.
+- [x] Add RED tests for standalone reviewed eviction commit success, no-op success, invalid/duplicate/missing/protected candidate rollback, insufficient reviewed candidates rollback, and catalog/budget rollback.
+- [x] Add the public reviewed resident eviction commit overload/result evidence needed by the tests.
+- [x] Implement reviewed planning, projected unmount execution, projected catalog refresh, diagnostic/status mapping, evidence propagation, and rollback preservation.
+- [x] Update runtime docs, roadmap/current capabilities, plan registry/master plan, and manifest fragments/composed manifest.
+- [x] Run focused build/test/static checks, then full `validate.ps1` and `build.ps1`.
 
 ## Done When
 
@@ -42,13 +42,13 @@
 
 | Command | Result | Notes |
 | --- | --- | --- |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. (Join-Path (Get-Location) "tools/common.ps1"); $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_runtime_resource_resident_unmount_tests'` | Pending | RED first, then GREEN after implementation. |
-| `ctest --preset dev --output-on-failure -R MK_runtime_resource_resident_unmount_tests` | Pending | Focused resident unmount/eviction suite. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Pending | Public runtime API surface may change. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pending | Formatting guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/resource_runtime.cpp,tests/unit/runtime_resource_resident_unmount_tests.cpp` | Pending | Focused clang-tidy guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pending | Manifest JSON contract and composed manifest checks. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pending | Agent-surface parity and text-format checks. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pending | AI integration guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pending | Full repository validation. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pending | Standalone commit-preflight build. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. (Join-Path (Get-Location) "tools/common.ps1"); $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_runtime_resource_resident_unmount_tests'` | PASS | RED failed before implementation on missing reviewed-eviction commit API; GREEN passed after implementation and docs sync. |
+| `ctest --preset dev --output-on-failure -R MK_runtime_resource_resident_unmount_tests` | PASS | Focused resident unmount/eviction suite passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS | Public runtime API boundary passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Formatting guard passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/resource_runtime.cpp,tests/unit/runtime_resource_resident_unmount_tests.cpp` | PASS | Focused clang-tidy guard passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | Manifest JSON contract and composed manifest checks passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS | Agent-surface parity and text-format checks passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | AI integration guard passed after manifest reason/history and reviewed-eviction needles were synchronized. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full repository validation passed; CTest reported 60/60 tests passed, with existing Apple/Metal host gates remaining diagnostic-only on this Windows host. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Standalone commit-preflight build passed; MSBuild repeated existing shared-intermediate-directory warnings. |
