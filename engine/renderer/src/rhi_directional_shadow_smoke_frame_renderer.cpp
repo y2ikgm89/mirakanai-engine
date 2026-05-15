@@ -562,6 +562,16 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
                 .current_state = scene_depth_state_,
             },
         };
+        const std::vector<FrameGraphTextureFinalState> final_states{
+            FrameGraphTextureFinalState{
+                .resource = "scene_depth",
+                .state = rhi::ResourceState::depth_write,
+            },
+            FrameGraphTextureFinalState{
+                .resource = "shadow_depth",
+                .state = rhi::ResourceState::depth_write,
+            },
+        };
         const auto set_texture_binding_state = [&texture_bindings](std::string_view resource,
                                                                    rhi::ResourceState state) {
             for (auto& binding : texture_bindings) {
@@ -707,6 +717,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             .schedule = shadow_smoke_frame_graph_execution_,
             .texture_bindings = texture_bindings,
             .pass_callbacks = pass_callbacks,
+            .final_states = final_states,
         });
         if (!frame_graph_execution.succeeded()) {
             throw std::runtime_error("rhi shadow smoke renderer frame graph rhi texture execution failed");
@@ -720,14 +731,6 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             } else if (binding.resource == "scene_depth") {
                 scene_depth_state_ = binding.current_state;
             }
-        }
-        if (scene_depth_state_ != rhi::ResourceState::depth_write) {
-            commands_->transition_texture(scene_depth_texture_, scene_depth_state_, rhi::ResourceState::depth_write);
-            scene_depth_state_ = rhi::ResourceState::depth_write;
-        }
-        if (shadow_depth_state_ != rhi::ResourceState::depth_write) {
-            commands_->transition_texture(shadow_depth_texture_, shadow_depth_state_, rhi::ResourceState::depth_write);
-            shadow_depth_state_ = rhi::ResourceState::depth_write;
         }
         commands_->present(swapchain_frame_);
         swapchain_frame_presented_ = true;
