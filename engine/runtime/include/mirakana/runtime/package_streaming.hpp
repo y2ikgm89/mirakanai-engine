@@ -118,6 +118,17 @@ execute_selected_runtime_package_streaming_candidate_resident_replace_safe_point
     RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc);
 
+/// Builds the descriptor-selected package candidate, delegates projected resident replacement and caller-reviewed
+/// evictions to the reviewed candidate helper, validates selected streaming residency hints, and commits the live
+/// mount/cache state only after every projected step succeeds.
+[[nodiscard]] RuntimePackageStreamingExecutionResult
+execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    const RuntimePackageStreamingExecutionDesc& desc,
+    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order,
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids);
+
 [[nodiscard]] RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_resident_unmount_safe_point(
     RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
