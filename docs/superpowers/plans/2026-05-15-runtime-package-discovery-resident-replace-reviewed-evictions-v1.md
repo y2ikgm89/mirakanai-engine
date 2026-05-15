@@ -1,7 +1,7 @@
 # Runtime Package Discovery Resident Replace Reviewed Evictions v1 (2026-05-15)
 
 **Plan ID:** `runtime-package-discovery-resident-replace-reviewed-evictions-v1`
-**Status:** Active. Child slice under `production-completion-master-plan-v1` / `runtime-resource-v2`
+**Status:** Completed.
 **Goal:** Add a reviewed discovery-selected resident replacement helper that discovers `.geindex` candidates, selects one exact reviewed package index path, delegates to candidate resident replacement with caller-reviewed evictions, and commits only after all projected state passes.
 
 ## Context
@@ -25,11 +25,11 @@
 
 ## Tasks
 
-- [ ] Add RED tests and a `MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests` target for successful discovery-selected replacement with reviewed eviction, no-eviction replacement, invalid selected path before reads, invalid/missing mount id before reads, discovery failure rollback, selected candidate not found, delegated candidate load rollback, delegated protected/invalid/duplicate/missing eviction rollback, and insufficient reviewed eviction rollback.
-- [ ] Add public `RuntimePackageDiscoveryResidentReplaceReviewedEvictions*V2` value contracts and `commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2`.
-- [ ] Implement descriptor validation, existing mount-id preflight, discovery, exact candidate selection, delegated `commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2` execution, diagnostic/status mapping, evidence propagation, and rollback-preserving commit.
-- [ ] Update runtime docs, roadmap/current capabilities, plan registry/master plan, and manifest fragments/composed manifest.
-- [ ] Run focused build/test/static checks, then full `validate.ps1` and `build.ps1`.
+- [x] Add RED tests and a `MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests` target for successful discovery-selected replacement with reviewed eviction, no-eviction replacement, invalid selected path before reads, invalid/missing mount id before reads, discovery failure rollback, selected candidate not found, delegated candidate load rollback, delegated protected/invalid/duplicate/missing eviction rollback, and insufficient reviewed eviction rollback.
+- [x] Add public `RuntimePackageDiscoveryResidentReplaceReviewedEvictions*V2` value contracts and `commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2`.
+- [x] Implement descriptor validation, existing mount-id preflight, discovery, exact candidate selection, delegated `commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2` execution, diagnostic/status mapping, evidence propagation, and rollback-preserving commit.
+- [x] Update runtime docs, roadmap/current capabilities, plan registry/master plan, and manifest fragments/composed manifest.
+- [x] Run focused build/test/static checks, then full `validate.ps1` and `build.ps1`.
 
 ## Done When
 
@@ -43,13 +43,13 @@
 
 | Command | Result | Notes |
 | --- | --- | --- |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. (Join-Path (Get-Location) "tools/common.ps1"); $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests'` | Pending | RED first, then GREEN after implementation. |
-| `ctest --preset dev --output-on-failure -R MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests` | Pending | Focused discovery-selected eviction-assisted resident replacement suite. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Pending | Public runtime API surface will change. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pending | Formatting guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/resource_runtime.cpp,tests/unit/runtime_package_discovery_resident_replace_reviewed_evictions_tests.cpp` | Pending | Focused clang-tidy guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pending | Manifest JSON contract and composed manifest checks. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pending | Agent-surface parity and text-format checks. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pending | AI integration guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pending | Full repository validation. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pending | Standalone commit-preflight build. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. (Join-Path (Get-Location) "tools/common.ps1"); $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests'` | RED/PASS | Initial RED reproduced the missing `RuntimePackageDiscoveryResidentReplaceReviewedEvictions*V2` contract and `commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2`; after implementation and formatting the focused target built. |
+| `ctest --preset dev --output-on-failure -R MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests` | PASS | Focused discovery-selected eviction-assisted resident replacement suite passed, including duplicate-asset `.geindex` rejection before replacement. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS | Public runtime API boundary guard passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Formatting guard passed after `tools/format.ps1` applied clang-format to the new test. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/resource_runtime.cpp,tests/unit/runtime_package_discovery_resident_replace_reviewed_evictions_tests.cpp` | PASS | Focused clang-tidy guard passed for runtime implementation and new test. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | Manifest JSON contract and composed manifest checks passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS | Agent-surface parity and text-format checks passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | AI integration guard passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full repository validation passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Standalone commit-preflight build passed. |

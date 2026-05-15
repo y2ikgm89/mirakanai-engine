@@ -329,6 +329,75 @@ void add_reviewed_evictions_mount_commit_diagnostics(
     }
 }
 
+void add_discovery_resident_replace_reviewed_evictions_diagnostic(
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2& result,
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase, AssetId asset,
+    RuntimeResidentPackageMountIdV2 mount, std::string path, std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticV2{
+        .phase = phase,
+        .asset = asset,
+        .mount = mount,
+        .path = std::move(path),
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_discovery_resident_replace_reviewed_evictions_diagnostic(
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2& result,
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase,
+    RuntimeResidentPackageMountIdV2 mount, std::string path, std::string code, std::string message) {
+    add_discovery_resident_replace_reviewed_evictions_diagnostic(result, phase, AssetId{}, mount, std::move(path),
+                                                                 std::move(code), std::move(message));
+}
+
+void add_discovery_resident_replace_reviewed_evictions_diagnostic(
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2& result,
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase,
+    RuntimeResidentPackageMountIdV2 mount, std::string code, std::string message) {
+    add_discovery_resident_replace_reviewed_evictions_diagnostic(result, phase, mount, {}, std::move(code),
+                                                                 std::move(message));
+}
+
+void add_discovery_diagnostics(RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2& result,
+                               const RuntimePackageIndexDiscoveryResultV2& discovery,
+                               RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase) {
+    for (const auto& diagnostic : discovery.diagnostics) {
+        add_discovery_resident_replace_reviewed_evictions_diagnostic(result, phase, {}, diagnostic.path,
+                                                                     diagnostic.code, diagnostic.message);
+    }
+}
+
+[[nodiscard]] RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2
+map_reviewed_evictions_replace_diagnostic_phase(
+    RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase) noexcept {
+    switch (phase) {
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_replace:
+        return RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_replace;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_load:
+        return RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_load;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_catalog:
+        return RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_catalog;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2::eviction_plan:
+        return RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::eviction_plan;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_budget:
+        return RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_budget;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2::catalog_refresh:
+        return RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::catalog_refresh;
+    }
+    return RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_commit;
+}
+
+void add_reviewed_evictions_replace_commit_diagnostics(
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2& result,
+    const RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2& replace_result) {
+    for (const auto& diagnostic : replace_result.diagnostics) {
+        add_discovery_resident_replace_reviewed_evictions_diagnostic(
+            result, map_reviewed_evictions_replace_diagnostic_phase(diagnostic.phase), diagnostic.asset,
+            diagnostic.mount, diagnostic.path, diagnostic.code, diagnostic.message);
+    }
+}
+
 void add_reviewed_evictions_candidate_load_diagnostics(
     RuntimePackageCandidateResidentMountReviewedEvictionsResultV2& result,
     const RuntimePackageCandidateLoadResultV2& load_result, RuntimeResidentPackageMountIdV2 mount) {
@@ -1587,6 +1656,138 @@ commit_runtime_package_discovery_resident_mount_with_reviewed_evictions_v2(
         break;
     case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::catalog_refresh_failed:
         result.status = RuntimePackageDiscoveryResidentMountReviewedEvictionsStatusV2::catalog_refresh_failed;
+        break;
+    }
+    return result;
+}
+
+bool RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2::succeeded() const noexcept {
+    return status == RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::committed && committed;
+}
+
+RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2
+commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    const RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2& desc) {
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2 result;
+    result.previous_mount_generation = mount_set.generation();
+    result.mount_generation = result.previous_mount_generation;
+    result.previous_mount_count = mount_set.mounts().size();
+    result.mounted_package_count = result.previous_mount_count;
+
+    if (!valid_relative_vfs_path(desc.selected_package_index_path) ||
+        !ends_with_package_index_extension(desc.selected_package_index_path)) {
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::invalid_descriptor;
+        add_discovery_resident_replace_reviewed_evictions_diagnostic(
+            result, RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::descriptor, desc.mount_id,
+            desc.selected_package_index_path, "invalid-selected-package-index-path",
+            "runtime package discovery reviewed-eviction replacement requires a relative selected .geindex path");
+        return result;
+    }
+
+    if (desc.mount_id.value == 0) {
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::invalid_mount_id;
+        add_discovery_resident_replace_reviewed_evictions_diagnostic(
+            result, RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_replace,
+            desc.mount_id, "invalid-mount-id", "resident package mount ids must be non-zero");
+        return result;
+    }
+    if (!has_mount_id(mount_set, desc.mount_id)) {
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::missing_mount_id;
+        add_discovery_resident_replace_reviewed_evictions_diagnostic(
+            result, RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_replace,
+            desc.mount_id, "missing-mount-id", "resident package mount id is not mounted");
+        return result;
+    }
+
+    result.invoked_discovery = true;
+    result.discovery = discover_runtime_package_indexes_v2(filesystem, desc.discovery);
+    if (!result.discovery.succeeded()) {
+        const auto descriptor_failure =
+            result.discovery.status == RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor;
+        result.status = descriptor_failure
+                            ? RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::invalid_descriptor
+                            : RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::discovery_failed;
+        add_discovery_diagnostics(
+            result, result.discovery,
+            descriptor_failure ? RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::descriptor
+                               : RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::discovery);
+        return result;
+    }
+
+    const auto selected =
+        std::ranges::find_if(result.discovery.candidates, [&desc](const RuntimePackageIndexDiscoveryCandidateV2& item) {
+            return item.package_index_path == desc.selected_package_index_path;
+        });
+    if (selected == result.discovery.candidates.end()) {
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::candidate_not_found;
+        add_discovery_resident_replace_reviewed_evictions_diagnostic(
+            result, RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_selection,
+            desc.mount_id, desc.selected_package_index_path, "candidate-not-found",
+            "selected runtime package index was not discovered under the reviewed root");
+        return result;
+    }
+    result.selected_candidate = *selected;
+
+    result.invoked_resident_commit = true;
+    result.candidate_resident_replace = commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2(
+        filesystem, mount_set, catalog_cache,
+        RuntimePackageCandidateResidentReplaceReviewedEvictionsDescV2{
+            .candidate = result.selected_candidate,
+            .mount_id = desc.mount_id,
+            .overlay = desc.overlay,
+            .budget = desc.budget,
+            .eviction_candidate_unmount_order = desc.eviction_candidate_unmount_order,
+            .protected_mount_ids = desc.protected_mount_ids,
+        });
+    result.eviction_plan = result.candidate_resident_replace.eviction_plan;
+    result.catalog_refresh = result.candidate_resident_replace.catalog_refresh;
+    result.loaded_record_count = result.candidate_resident_replace.loaded_record_count;
+    result.loaded_resident_bytes = result.candidate_resident_replace.loaded_resident_bytes;
+    result.projected_resident_bytes = result.candidate_resident_replace.projected_resident_bytes;
+    result.mount_generation = result.candidate_resident_replace.mount_generation;
+    result.mounted_package_count = result.candidate_resident_replace.mounted_package_count;
+    result.evicted_mount_count = result.candidate_resident_replace.evicted_mount_count;
+    add_reviewed_evictions_replace_commit_diagnostics(result, result.candidate_resident_replace);
+
+    switch (result.candidate_resident_replace.status) {
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::replaced:
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::committed;
+        result.committed = true;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::invalid_mount_id:
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::invalid_mount_id;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::missing_mount_id:
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::missing_mount_id;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::candidate_load_failed:
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::candidate_load_failed;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::resident_replace_failed:
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::resident_replace_failed;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::invalid_eviction_candidate_mount_id:
+        result.status =
+            RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::invalid_eviction_candidate_mount_id;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::duplicate_eviction_candidate_mount_id:
+        result.status =
+            RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::duplicate_eviction_candidate_mount_id;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::missing_eviction_candidate_mount_id:
+        result.status =
+            RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::missing_eviction_candidate_mount_id;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::protected_eviction_candidate_mount_id:
+        result.status =
+            RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::protected_eviction_candidate_mount_id;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::budget_failed:
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::budget_failed;
+        break;
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::catalog_refresh_failed:
+        result.status = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::catalog_refresh_failed;
         break;
     }
     return result;
