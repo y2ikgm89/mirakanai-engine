@@ -301,8 +301,11 @@ $rhiPostprocessSource = Get-Content -LiteralPath (Join-Path $root "engine/render
 $rhiDirectionalShadowSource = Get-Content -LiteralPath (Join-Path $root "engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp") -Raw
 if ($rhiPostprocessSource.Contains("void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`r`n    require_active_frame();`r`n    commands_->draw(3, 1);") -or
     $rhiPostprocessSource.Contains("void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`n    require_active_frame();`n    commands_->draw(3, 1);") -or
+    -not $rhiPostprocessSource.Contains("execute_frame_graph_rhi_texture_schedule") -or
+    -not $rhiPostprocessSource.Contains("frame_graph_execution.barriers_recorded") -or
+    -not $rhiPostprocessSource.Contains("frame_graph_execution.pass_callbacks_invoked") -or
     $rhiDirectionalShadowSource.Contains("pending_sprites_")) {
-    Write-Error "3D scene/postprocess renderers must not draw HUD sprites through the scene material pipeline"
+    Write-Error "3D scene/postprocess renderers must keep HUD sprites out of the scene material pipeline and route postprocess scheduled transitions through the Frame Graph RHI executor"
 }
 
 $moduleNames = @{}

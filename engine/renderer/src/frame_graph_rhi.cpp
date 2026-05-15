@@ -136,6 +136,32 @@ template <typename Result>
     return true;
 }
 
+template <typename Result>
+[[nodiscard]] bool validate_barrier_recordability(Result& result, const FrameGraphBarrier& barrier,
+                                                  const std::map<std::string, std::size_t>& binding_indices) {
+    const auto before = frame_graph_texture_state_for_access(barrier.from);
+    const auto after = frame_graph_texture_state_for_access(barrier.to);
+    if (!before.has_value() || !after.has_value()) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, barrier.to_pass,
+                                          barrier.resource,
+                                          "frame graph texture barrier access is not texture-recordable");
+        return false;
+    }
+    if (*before == *after) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, barrier.to_pass,
+                                          barrier.resource, "frame graph texture barrier maps to identical RHI states");
+        return false;
+    }
+
+    if (!binding_indices.contains(barrier.resource)) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, barrier.to_pass,
+                                          barrier.resource, "frame graph texture barrier has no texture binding");
+        return false;
+    }
+
+    return true;
+}
+
 [[nodiscard]] std::vector<rhi::ResourceState>
 copy_binding_states(std::span<const FrameGraphTextureBinding> texture_bindings) {
     std::vector<rhi::ResourceState> states;
@@ -253,13 +279,10 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
 
     const auto binding_indices = build_binding_index(result, desc.texture_bindings);
     const auto pass_callbacks = build_pass_callback_index(result, desc.pass_callbacks);
-    auto simulated_states = copy_binding_states(desc.texture_bindings);
-    std::vector<PlannedTextureBarrier> planned_barriers;
-    planned_barriers.reserve(desc.schedule.size());
     for (const auto& step : desc.schedule) {
         switch (step.kind) {
         case FrameGraphExecutionStep::Kind::barrier:
-            (void)plan_barrier(result, planned_barriers, step.barrier, binding_indices, simulated_states);
+            (void)validate_barrier_recordability(result, step.barrier, binding_indices);
             break;
         case FrameGraphExecutionStep::Kind::pass_invoke:
             if (step.pass_name.empty()) {
@@ -280,19 +303,21 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
         return result;
     }
 
-    std::size_t next_planned_barrier = 0;
     for (const auto& step : desc.schedule) {
         switch (step.kind) {
-        case FrameGraphExecutionStep::Kind::barrier:
-            if (next_planned_barrier < planned_barriers.size() &&
-                planned_barriers[next_planned_barrier].barrier == &step.barrier) {
-                if (!record_planned_texture_barrier(result, *desc.commands, desc.texture_bindings,
-                                                    planned_barriers[next_planned_barrier])) {
+        case FrameGraphExecutionStep::Kind::barrier: {
+            auto current_states = copy_binding_states(desc.texture_bindings);
+            std::vector<PlannedTextureBarrier> planned_barriers;
+            planned_barriers.reserve(1);
+            if (!plan_barrier(result, planned_barriers, step.barrier, binding_indices, current_states)) {
+                return result;
+            }
+            for (const auto& planned_barrier : planned_barriers) {
+                if (!record_planned_texture_barrier(result, *desc.commands, desc.texture_bindings, planned_barrier)) {
                     return result;
                 }
-                ++next_planned_barrier;
             }
-            break;
+        } break;
         case FrameGraphExecutionStep::Kind::pass_invoke: {
             const auto callback = pass_callbacks.find(step.pass_name);
             FrameGraphExecutionCallbackResult callback_result;

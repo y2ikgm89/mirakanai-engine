@@ -4,6 +4,7 @@
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 
 #include "mirakana/renderer/frame_graph.hpp"
+#include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "rhi_native_ui_overlay.hpp"
 
 #include <stdexcept>
@@ -607,79 +608,158 @@ void RhiPostprocessFrameRenderer::end_frame() {
     require_active_frame();
     try {
         commands_->end_render_pass();
-        commands_->transition_texture(scene_color_texture_, rhi::ResourceState::render_target,
-                                      rhi::ResourceState::shader_read);
+
+        std::vector<FrameGraphTextureBinding> texture_bindings{
+            FrameGraphTextureBinding{
+                .resource = "scene_color",
+                .texture = scene_color_texture_,
+                .current_state = rhi::ResourceState::render_target,
+            },
+        };
         if (depth_input_enabled_) {
-            commands_->transition_texture(scene_depth_texture_, rhi::ResourceState::depth_write,
-                                          rhi::ResourceState::shader_read);
+            texture_bindings.push_back(FrameGraphTextureBinding{
+                .resource = "scene_depth",
+                .texture = scene_depth_texture_,
+                .current_state = rhi::ResourceState::depth_write,
+            });
         }
         const auto overlay_draw = native_ui_overlay_ready()
                                       ? native_ui_overlay_->prepare(pending_overlay_sprites_, *commands_)
                                       : RhiNativeUiOverlayPreparedDraw{};
+
+        const auto set_texture_binding_state = [&texture_bindings](std::string_view resource,
+                                                                   rhi::ResourceState state) {
+            for (auto& binding : texture_bindings) {
+                if (binding.resource == resource) {
+                    binding.current_state = state;
+                    return;
+                }
+            }
+        };
+
+        std::vector<FrameGraphPassExecutionBinding> pass_callbacks;
+        pass_callbacks.reserve(postprocess_frame_graph_plan_.ordered_passes.size());
+        pass_callbacks.push_back(FrameGraphPassExecutionBinding{
+            .pass_name = "scene_color",
+            .callback =
+                [&set_texture_binding_state, this](std::string_view) {
+                    set_texture_binding_state("scene_color", rhi::ResourceState::render_target);
+                    if (depth_input_enabled_) {
+                        set_texture_binding_state("scene_depth", rhi::ResourceState::depth_write);
+                    }
+                    return FrameGraphExecutionCallbackResult{};
+                },
+        });
         if (postprocess_stage_count_ == 1) {
-            commands_->begin_render_pass(rhi::RenderPassDesc{
-                .color =
-                    rhi::RenderPassColorAttachment{
-                        .texture = rhi::TextureHandle{},
-                        .load_action = rhi::LoadAction::clear,
-                        .store_action = rhi::StoreAction::store,
-                        .swapchain_frame = swapchain_frame_,
-                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            pass_callbacks.push_back(FrameGraphPassExecutionBinding{
+                .pass_name = "postprocess",
+                .callback =
+                    [&overlay_draw, this](std::string_view) {
+                        commands_->begin_render_pass(rhi::RenderPassDesc{
+                            .color =
+                                rhi::RenderPassColorAttachment{
+                                    .texture = rhi::TextureHandle{},
+                                    .load_action = rhi::LoadAction::clear,
+                                    .store_action = rhi::StoreAction::store,
+                                    .swapchain_frame = swapchain_frame_,
+                                    .clear_color =
+                                        rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                                },
+                        });
+                        commands_->bind_graphics_pipeline(postprocess_first_pipeline_);
+                        commands_->bind_descriptor_set(postprocess_first_pipeline_layout_, 0,
+                                                       postprocess_first_descriptor_set_);
+                        commands_->draw(3, 1);
+                        if (native_ui_overlay_ready()) {
+                            native_ui_overlay_->record_draw(overlay_draw, *commands_);
+                        }
+                        commands_->end_render_pass();
+                        return FrameGraphExecutionCallbackResult{};
                     },
             });
-            commands_->bind_graphics_pipeline(postprocess_first_pipeline_);
-            commands_->bind_descriptor_set(postprocess_first_pipeline_layout_, 0, postprocess_first_descriptor_set_);
-            commands_->draw(3, 1);
-            if (native_ui_overlay_ready()) {
-                native_ui_overlay_->record_draw(overlay_draw, *commands_);
-            }
-            commands_->end_render_pass();
         } else {
-            commands_->transition_texture(post_chain_work_texture_, post_chain_work_state_,
-                                          rhi::ResourceState::render_target);
-            post_chain_work_state_ = rhi::ResourceState::render_target;
-            commands_->begin_render_pass(rhi::RenderPassDesc{
-                .color =
-                    rhi::RenderPassColorAttachment{
-                        .texture = post_chain_work_texture_,
-                        .load_action = rhi::LoadAction::clear,
-                        .store_action = rhi::StoreAction::store,
-                        .swapchain_frame = rhi::SwapchainFrameHandle{},
-                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            texture_bindings.push_back(FrameGraphTextureBinding{
+                .resource = "post_work",
+                .texture = post_chain_work_texture_,
+                .current_state = post_chain_work_state_,
+            });
+            pass_callbacks.push_back(FrameGraphPassExecutionBinding{
+                .pass_name = "postprocess_chain_0",
+                .callback =
+                    [&set_texture_binding_state, this](std::string_view) {
+                        commands_->transition_texture(post_chain_work_texture_, post_chain_work_state_,
+                                                      rhi::ResourceState::render_target);
+                        post_chain_work_state_ = rhi::ResourceState::render_target;
+                        set_texture_binding_state("post_work", rhi::ResourceState::render_target);
+                        commands_->begin_render_pass(rhi::RenderPassDesc{
+                            .color =
+                                rhi::RenderPassColorAttachment{
+                                    .texture = post_chain_work_texture_,
+                                    .load_action = rhi::LoadAction::clear,
+                                    .store_action = rhi::StoreAction::store,
+                                    .swapchain_frame = rhi::SwapchainFrameHandle{},
+                                    .clear_color =
+                                        rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                                },
+                        });
+                        commands_->bind_graphics_pipeline(postprocess_first_pipeline_);
+                        commands_->bind_descriptor_set(postprocess_first_pipeline_layout_, 0,
+                                                       postprocess_first_descriptor_set_);
+                        commands_->draw(3, 1);
+                        commands_->end_render_pass();
+                        return FrameGraphExecutionCallbackResult{};
                     },
             });
-            commands_->bind_graphics_pipeline(postprocess_first_pipeline_);
-            commands_->bind_descriptor_set(postprocess_first_pipeline_layout_, 0, postprocess_first_descriptor_set_);
-            commands_->draw(3, 1);
-            commands_->end_render_pass();
-            commands_->transition_texture(post_chain_work_texture_, rhi::ResourceState::render_target,
-                                          rhi::ResourceState::shader_read);
-            post_chain_work_state_ = rhi::ResourceState::shader_read;
-            if (depth_input_enabled_) {
-                commands_->transition_texture(scene_depth_texture_, rhi::ResourceState::shader_read,
-                                              rhi::ResourceState::depth_write);
-            }
-            commands_->begin_render_pass(rhi::RenderPassDesc{
-                .color =
-                    rhi::RenderPassColorAttachment{
-                        .texture = rhi::TextureHandle{},
-                        .load_action = rhi::LoadAction::clear,
-                        .store_action = rhi::StoreAction::store,
-                        .swapchain_frame = swapchain_frame_,
-                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            pass_callbacks.push_back(FrameGraphPassExecutionBinding{
+                .pass_name = "postprocess_chain_1",
+                .callback =
+                    [&overlay_draw, this](std::string_view) {
+                        commands_->begin_render_pass(rhi::RenderPassDesc{
+                            .color =
+                                rhi::RenderPassColorAttachment{
+                                    .texture = rhi::TextureHandle{},
+                                    .load_action = rhi::LoadAction::clear,
+                                    .store_action = rhi::StoreAction::store,
+                                    .swapchain_frame = swapchain_frame_,
+                                    .clear_color =
+                                        rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                                },
+                        });
+                        commands_->bind_graphics_pipeline(postprocess_chain_pipeline_);
+                        commands_->bind_descriptor_set(postprocess_chain_pipeline_layout_, 0,
+                                                       postprocess_chain_descriptor_set_);
+                        commands_->draw(3, 1);
+                        if (native_ui_overlay_ready()) {
+                            native_ui_overlay_->record_draw(overlay_draw, *commands_);
+                        }
+                        commands_->end_render_pass();
+                        return FrameGraphExecutionCallbackResult{};
                     },
             });
-            commands_->bind_graphics_pipeline(postprocess_chain_pipeline_);
-            commands_->bind_descriptor_set(postprocess_chain_pipeline_layout_, 0, postprocess_chain_descriptor_set_);
-            commands_->draw(3, 1);
-            if (native_ui_overlay_ready()) {
-                native_ui_overlay_->record_draw(overlay_draw, *commands_);
-            }
-            commands_->end_render_pass();
         }
-        if (depth_input_enabled_ && postprocess_stage_count_ == 1) {
-            commands_->transition_texture(scene_depth_texture_, rhi::ResourceState::shader_read,
-                                          rhi::ResourceState::depth_write);
+
+        const auto frame_graph_execution = execute_frame_graph_rhi_texture_schedule(FrameGraphRhiTextureExecutionDesc{
+            .commands = commands_.get(),
+            .schedule = postprocess_frame_graph_execution_,
+            .texture_bindings = texture_bindings,
+            .pass_callbacks = pass_callbacks,
+        });
+        if (!frame_graph_execution.succeeded()) {
+            throw std::runtime_error("rhi postprocess renderer frame graph rhi texture execution failed");
+        }
+
+        for (const auto& binding : texture_bindings) {
+            if (binding.resource == "scene_color") {
+                scene_color_state_ = binding.current_state;
+            } else if (binding.resource == "scene_depth") {
+                scene_depth_state_ = binding.current_state;
+            } else if (binding.resource == "post_work") {
+                post_chain_work_state_ = binding.current_state;
+            }
+        }
+        if (depth_input_enabled_) {
+            commands_->transition_texture(scene_depth_texture_, scene_depth_state_, rhi::ResourceState::depth_write);
+            scene_depth_state_ = rhi::ResourceState::depth_write;
         }
         commands_->present(swapchain_frame_);
         swapchain_frame_presented_ = true;
@@ -693,22 +773,11 @@ void RhiPostprocessFrameRenderer::end_frame() {
         commands_.reset();
         swapchain_frame_ = {};
         swapchain_frame_presented_ = false;
-        scene_color_state_ = rhi::ResourceState::shader_read;
-        if (depth_input_enabled_) {
-            scene_depth_state_ = rhi::ResourceState::depth_write;
-        }
-        if (postprocess_stage_count_ >= 2) {
-            post_chain_work_state_ = rhi::ResourceState::shader_read;
-        }
         pending_overlay_sprites_.clear();
         frame_active_ = false;
         ++stats_.frames_finished;
-        for (const auto& step : postprocess_frame_graph_execution_) {
-            if (step.kind == FrameGraphExecutionStep::Kind::barrier) {
-                ++stats_.framegraph_barrier_steps_executed;
-            }
-        }
-        stats_.framegraph_passes_executed += frame_graph_pass_count();
+        stats_.framegraph_barrier_steps_executed += frame_graph_execution.barriers_recorded;
+        stats_.framegraph_passes_executed += frame_graph_execution.pass_callbacks_invoked;
         stats_.postprocess_passes_executed += postprocess_stage_count_;
         if (overlay_draw.vertex_count != 0) {
             ++stats_.native_ui_overlay_draws;
