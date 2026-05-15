@@ -609,6 +609,85 @@ struct RuntimePackageCandidateResidentReplaceResultV2 {
     IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
     const RuntimePackageCandidateResidentReplaceDescV2& desc);
 
+enum class RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2 : std::uint8_t {
+    replaced = 0,
+    invalid_mount_id,
+    missing_mount_id,
+    candidate_load_failed,
+    resident_replace_failed,
+    invalid_eviction_candidate_mount_id,
+    duplicate_eviction_candidate_mount_id,
+    missing_eviction_candidate_mount_id,
+    protected_eviction_candidate_mount_id,
+    budget_failed,
+    catalog_refresh_failed,
+};
+
+enum class RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2 : std::uint8_t {
+    resident_replace = 0,
+    candidate_load,
+    candidate_catalog,
+    eviction_plan,
+    resident_budget,
+    catalog_refresh,
+};
+
+struct RuntimePackageCandidateResidentReplaceReviewedEvictionsDescV2 {
+    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    RuntimeResourceResidencyBudgetV2 budget{};
+    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+};
+
+struct RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticV2 {
+    RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase{
+        RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_load};
+    AssetId asset;
+    RuntimeResidentPackageMountIdV2 mount;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2 {
+    RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2 status{
+        RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::candidate_load_failed};
+    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+    RuntimeAssetPackageDesc package_desc;
+    RuntimePackageCandidateLoadResultV2 candidate_load;
+    RuntimeResidentPackageReplaceCommitResultV2 resident_replace;
+    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
+    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+    std::vector<RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticV2> diagnostics;
+    std::size_t loaded_record_count{0};
+    std::uint64_t loaded_resident_bytes{0};
+    std::uint64_t projected_resident_bytes{0};
+    std::uint32_t previous_mount_generation{0};
+    std::uint32_t mount_generation{0};
+    std::size_t previous_mount_count{0};
+    std::size_t mounted_package_count{0};
+    std::size_t evicted_mount_count{0};
+    bool invoked_candidate_load{false};
+    bool invoked_resident_replace{false};
+    bool invoked_eviction_plan{false};
+    bool invoked_catalog_refresh{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Loads one reviewed package-index candidate, replaces one existing explicit resident mount in a projected view,
+/// applies only caller-reviewed eviction candidates when the projected view exceeds the target budget, and commits the
+/// final mount/cache view atomically. The replacement mount id is always protected from eviction. This helper does not
+/// discover packages, infer eviction policy, stream in the background, hot reload, upload/stage renderer resources,
+/// enforce GPU budgets, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2
+commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    const RuntimePackageCandidateResidentReplaceReviewedEvictionsDescV2& desc);
+
 enum class RuntimePackageDiscoveryResidentCommitModeV2 : std::uint8_t {
     mount = 0,
     replace,
