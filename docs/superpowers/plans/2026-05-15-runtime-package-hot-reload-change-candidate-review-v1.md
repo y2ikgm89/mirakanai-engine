@@ -1,7 +1,7 @@
 # Runtime Package Hot Reload Change Candidate Review v1 (2026-05-15)
 
 **Plan ID:** `runtime-package-hot-reload-change-candidate-review-v1`
-**Status:** Active. Current child slice under `production-completion-master-plan-v1` / `runtime-resource-v2`
+**Status:** Completed. Current child slice under `production-completion-master-plan-v1` / `runtime-resource-v2`
 **Goal:** Add a host-independent reviewed hot-reload change-candidate planner that turns caller-reviewed changed package/index/content paths into exact `.geindex` replacement candidate review rows without file watching, recook execution, background workers, or live mutation.
 
 ## Context
@@ -24,11 +24,11 @@
 
 ## Tasks
 
-- [ ] Add RED tests for changed `.geindex` candidate matching, changed payload path candidate matching, invalid path diagnostics, unmatched paths, duplicate candidate de-duplication, and no filesystem/package reads.
-- [ ] Add the public hot-reload change-candidate review descriptor/result/status needed by the tests.
-- [ ] Implement deterministic reviewed changed-path to discovered-candidate matching with diagnostics and stable ordering.
-- [ ] Update runtime docs, roadmap/current capabilities, plan registry/master plan, and manifest fragments/composed manifest.
-- [ ] Run focused build/test/static checks, then full `validate.ps1` and `build.ps1`.
+- [x] Add RED tests for changed `.geindex` candidate matching, changed payload path candidate matching, invalid path diagnostics, unmatched paths, duplicate candidate de-duplication, and no filesystem/package reads.
+- [x] Add the public hot-reload change-candidate review descriptor/result/status needed by the tests.
+- [x] Implement deterministic reviewed changed-path to discovered-candidate matching with diagnostics and stable ordering.
+- [x] Update runtime docs, roadmap/current capabilities, plan registry/master plan, and manifest fragments/composed manifest.
+- [x] Run focused build/test/static checks, then full `validate.ps1` and `build.ps1`.
 
 ## Done When
 
@@ -40,13 +40,13 @@
 
 | Command | Result | Notes |
 | --- | --- | --- |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. (Join-Path (Get-Location) "tools/common.ps1"); $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_runtime_package_hot_reload_candidate_review_tests'` | Pending | RED first, then GREEN after implementation. |
-| `ctest --preset dev --output-on-failure -R MK_runtime_package_hot_reload_candidate_review_tests` | Pending | Focused hot-reload change-candidate review suite. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Pending | Public runtime API surface may change. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pending | Formatting guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/resource_runtime.cpp,tests/unit/runtime_package_hot_reload_candidate_review_tests.cpp` | Pending | Focused clang-tidy guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pending | Manifest JSON contract and composed manifest checks. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pending | Agent-surface parity and text-format checks. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pending | AI integration guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pending | Full repository validation. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pending | Standalone commit-preflight build. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. (Join-Path (Get-Location) "tools/common.ps1"); $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --preset dev; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_runtime_package_hot_reload_candidate_review_tests'` | PASS (RED expected failure before implementation) | The first focused build failed on missing public hot-reload candidate review API/types, proving the new tests were red before implementation. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. (Join-Path (Get-Location) "tools/common.ps1"); $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_runtime_package_hot_reload_candidate_review_tests; Invoke-CheckedCommand $tools.CTest --preset dev --output-on-failure -R MK_runtime_package_hot_reload_candidate_review_tests'` | PASS | Focused hot-reload change-candidate review target built and the CTest filter passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS | Public runtime API boundary check passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Formatting guard passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/resource_runtime.cpp,tests/unit/runtime_package_hot_reload_candidate_review_tests.cpp` | PASS | Focused clang-tidy guard passed for the runtime implementation and focused test file. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | Manifest compose and JSON/static contract checks passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS | Agent-surface parity and text-format checks passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | AI integration guard passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full repository validation passed; CTest reported 61/61 tests passed, with Metal/Apple checks remaining diagnostic/host-gated as expected on this Windows host. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Standalone commit-preflight build passed. |

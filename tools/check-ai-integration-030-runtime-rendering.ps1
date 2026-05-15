@@ -631,6 +631,8 @@ Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_reside
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_resident_package_unmount_v2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "host-driven reviewed hot-reload replacement safe point" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_candidate_review_v2" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadCandidateReviewResultV2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "file watching/recook execution" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "foundation-only" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "package streaming" "MK_runtime module purpose"

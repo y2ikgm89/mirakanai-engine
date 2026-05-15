@@ -88,6 +88,62 @@ discover_runtime_package_indexes_v2(const IFileSystem& filesystem, const Runtime
 [[nodiscard]] RuntimePackageCandidateLoadResultV2
 load_runtime_package_candidate_v2(IFileSystem& filesystem, const RuntimePackageIndexDiscoveryCandidateV2& candidate);
 
+enum class RuntimePackageHotReloadCandidateReviewStatusV2 : std::uint8_t {
+    review_ready = 0,
+    no_changes,
+    no_candidates,
+    no_matches,
+};
+
+enum class RuntimePackageHotReloadCandidateReviewMatchKindV2 : std::uint8_t {
+    package_index = 0,
+    content,
+};
+
+struct RuntimePackageHotReloadCandidateReviewDescV2 {
+    std::vector<std::string> changed_paths;
+    std::vector<RuntimePackageIndexDiscoveryCandidateV2> candidates;
+};
+
+struct RuntimePackageHotReloadCandidateReviewChangeV2 {
+    std::string path;
+    RuntimePackageHotReloadCandidateReviewMatchKindV2 kind{
+        RuntimePackageHotReloadCandidateReviewMatchKindV2::package_index};
+};
+
+struct RuntimePackageHotReloadCandidateReviewRowV2 {
+    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+    std::vector<RuntimePackageHotReloadCandidateReviewChangeV2> matched_changes;
+};
+
+struct RuntimePackageHotReloadCandidateReviewDiagnosticV2 {
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageHotReloadCandidateReviewResultV2 {
+    RuntimePackageHotReloadCandidateReviewStatusV2 status{RuntimePackageHotReloadCandidateReviewStatusV2::no_matches};
+    std::vector<RuntimePackageHotReloadCandidateReviewRowV2> rows;
+    std::vector<RuntimePackageHotReloadCandidateReviewDiagnosticV2> diagnostics;
+    std::size_t changed_path_count{0};
+    std::size_t matched_changed_path_count{0};
+    std::size_t invalid_changed_path_count{0};
+    std::size_t unmatched_changed_path_count{0};
+    std::size_t review_candidate_count{0};
+    bool invoked_package_load{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Plans exact package-index candidates a host should review after already-reviewed package/index/content path changes.
+/// This pure planner consumes caller-provided changed relative VFS paths and already-discovered candidate rows only; it
+/// does not read files, load packages, infer content roots, mutate resident state, watch files, recook assets, stream
+/// in the background, apply eviction policy, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimePackageHotReloadCandidateReviewResultV2
+plan_runtime_package_hot_reload_candidate_review_v2(const RuntimePackageHotReloadCandidateReviewDescV2& desc);
+
 struct RuntimeResourceHandleV2 {
     std::uint32_t index{0};
     std::uint32_t generation{0};
