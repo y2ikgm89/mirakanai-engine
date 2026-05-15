@@ -179,9 +179,9 @@ foreach ($check in @(
     @{
         Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
-            "Latest narrow child",
-            "Runtime Hot Reload Recook Package Replacement Execution v1",
-            "reviewed recook-to-runtime-package replacement execution slice"
+            "Runtime Resource v2 1.0 Scope Closeout v1",
+            "registered asset watch-tick orchestration",
+            "renderer-rhi-resource-foundation"
         )
     },
     @{
@@ -437,13 +437,13 @@ if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
 }
 foreach ($needle in @(
-    "Physics 1.0 Collision System Closeout v1 is complete",
-    "first-party MK_physics 1.0 ready surface",
-    "dynamic-vs-dynamic TOI, rotational CCD, 2D CCD, oriented boxes, mesh/convex casts",
-    "runtime-resource-v2 next"
+    "Runtime Resource v2 1.0 Scope Closeout v1",
+    "removing runtime-resource-v2 from unsupportedProductionGaps",
+    "registered asset watch-tick",
+    "renderer-rhi-resource-foundation"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe Physics 1.0 closeout and next gap: $needle"
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe runtime-resource closeout and next gap: $needle"
     }
 }
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })

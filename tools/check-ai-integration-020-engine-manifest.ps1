@@ -83,9 +83,9 @@ Assert-ContainsText $roadmapRuntimePresentationFoundationRow.Value "symbolic gly
 $masterPlanRuntimeUiLedgerNote = [regex]::Match($masterPlanText, '(?m)^Runtime UI and input ledger note:.*$')
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "RuntimeInputRebindingPresentationModel" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "platform input glyph generation" "master plan runtime UI ledger note"
-Assert-ContainsText $masterPlanText "Latest narrow child" "production master plan latest narrow child pointer"
-Assert-ContainsText $masterPlanText "Runtime Hot Reload Recook Package Replacement Execution v1" "production master plan latest narrow child pointer"
-Assert-ContainsText $masterPlanText "reviewed recook-to-runtime-package replacement execution slice" "production master plan next narrow child pointer"
+Assert-ContainsText $masterPlanText "Completed gap burn-down" "production master plan completed gap pointer"
+Assert-ContainsText $masterPlanText "Runtime Resource v2 1.0 Scope Closeout v1" "production master plan runtime-resource closeout pointer"
+Assert-ContainsText $masterPlanText "renderer-rhi-resource-foundation" "production master plan next foundation gap pointer"
 Assert-ContainsText $rhiPublicHeaderText "struct ComputePipelineDesc" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "create_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "bind_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
@@ -1556,7 +1556,6 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
 
 $requiredProductionGapIds = @(
     "scene-component-prefab-schema-v2",
-    "runtime-resource-v2",
     "renderer-rhi-resource-foundation",
     "frame-graph-v1",
     "upload-staging-v1",
@@ -1592,595 +1591,74 @@ $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object {
 if ($assetIdentityGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop asset-identity-v2 gap must leave unsupportedProductionGaps after reference cleanup closeout"
 }
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Asset Identity v2 Reference Cleanup Milestone v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "audit_runtime_scene_asset_identity" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Streaming Resident Replace v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_selected_runtime_package_streaming_resident_replace_safe_point" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Streaming Resident Unmount v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_selected_runtime_package_streaming_resident_unmount_safe_point" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Resident Package Eviction Plan v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_resident_package_evictions_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Resident Package Reviewed Eviction Commit v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "commit_runtime_resident_package_reviewed_evictions_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Reviewed Replacement v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Change Candidate Review v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_package_hot_reload_candidate_review_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Recook Change Review v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_package_hot_reload_recook_change_review_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Replacement Intent Review v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_package_hot_reload_replacement_intent_review_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Recook Replacement Safe Point v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "commit_runtime_package_hot_reload_recook_replacement_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Hot Reload Recook Package Replacement Execution v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_asset_runtime_package_hot_reload_replacement_safe_point" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "selected package matched AssetRuntimeReplacementState" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime-resource-v2 next" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Runtime Hot Reload Recook Package Replacement Execution v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Runtime Package Hot Reload Recook Replacement Safe Point v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-foreach ($check in @(
-    @{
-        Path = "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
-        Needles = @(
-            "RuntimeSceneAssetIdentityAudit",
-            "RuntimeSceneAssetIdentityReferenceRow",
-            "audit_runtime_scene_asset_identity"
-        )
-    },
-    @{
-        Path = "engine/runtime_scene/src/runtime_scene.cpp"
-        Needles = @(
-            "make_identity_lookup",
-            "append_asset_identity_audit",
-            "asset_id_from_key_v2"
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_scene_tests.cpp"
-        Needles = @(
-            "runtime scene audits asset identity keys for component references",
-            "runtime scene asset identity audit reports missing and wrong-kind rows"
-        )
-    },
-    @{
-        Path = "tools/new-game-templates.ps1"
-        Needles = @(
-            "asset_id_from_game_asset_key",
-            "asset_id_from_key_v2"
-        )
-    }
-)) {
-    $fileText = Get-AgentSurfaceText $check.Path
-    foreach ($needle in $check.Needles) {
-        Assert-ContainsText $fileText $needle "$($check.Path) asset identity reference cleanup evidence"
-    }
-}
 $runtimeResourceGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "runtime-resource-v2" })
-if ($runtimeResourceGap.Count -ne 1 -or $runtimeResourceGap[0].status -ne "implemented-foundation-only") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop runtime-resource-v2 gap must be implemented-foundation-only"
+if ($runtimeResourceGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop runtime-resource-v2 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-$runtimeResourceGapEvidence = (([string]$runtimeResourceGap[0].notes), (@($runtimeResourceGap[0].implementedFoundationEvidence) -join " ")) -join " "
-if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("generation-checked handles") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageMountSetV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentCatalogCacheV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageMountIdV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_resident_package_replace_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("execute_selected_runtime_package_streaming_resident_replace_safe_point") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("resident_replace result rows") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("execute_selected_runtime_package_streaming_resident_unmount_safe_point") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("resident_unmount result rows") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("projected remaining preload/kind/count") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_resident_package_evictions_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageEvictionPlanStatusV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("reviewed explicit candidate unmount order") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("budget_unreachable") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_resident_package_reviewed_evictions_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageReviewedEvictionCommitStatusV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("standalone reviewed resident eviction execution") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Reviewed Replacement v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("host-driven reviewed hot-reload replacement safe point") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Candidate Review v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_candidate_review_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadCandidateReviewResultV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Replacement Intent Review v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_replacement_intent_review_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadReplacementIntentReviewResultV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Change Review v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_recook_change_review_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookChangeReviewResultV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Replacement Safe Point v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_package_hot_reload_recook_replacement_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookReplacementResultV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Hot Reload Recook Package Replacement Execution v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("execute_asset_runtime_package_hot_reload_replacement_safe_point") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("selected package matched AssetRuntimeReplacementState") -or
-    -not $runtimeResourceGapEvidence.Contains("Runtime Hot Reload Registered Asset Watch Tick v1") -or
-    -not $runtimeResourceGapEvidence.Contains("execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point") -or
-    -not $runtimeResourceGapEvidence.Contains("AssetHotReloadRecookScheduler") -or
-    -not $runtimeResourceGapEvidence.Contains("keep ready scheduler rows retryable") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("candidate/discovery root coherence") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("defined overlay") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("file watching/recook execution") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("slot-preserving") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("projected resident budget") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("raw loaded-package catalog") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("mount-set generations") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("package streaming") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("required preload asset") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("resident resource kind") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("renderer/RHI resource ownership")) {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop runtime-resource-v2 gap must keep remaining unsupported claims explicit"
-}
-$runtimeResourceRequiredClaims = @($runtimeResourceGap[0].requiredBeforeReadyClaim)
-if ($runtimeResourceRequiredClaims -contains "production package mounts") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop runtime-resource-v2 production package mounts claim must be closed by resident package mount set"
-}
-foreach ($requiredClaim in @("resource residency", "hot reload", "renderer/RHI resource ownership", "package streaming")) {
-    if ($runtimeResourceRequiredClaims -notcontains $requiredClaim) {
-        Write-Error "engine/agent/manifest.json aiOperableProductionLoop runtime-resource-v2 remaining claim missing: $requiredClaim"
-    }
+$recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+foreach ($needle in @(
+    "Runtime Resource v2 1.0 Scope Closeout v1",
+    "removing runtime-resource-v2 from unsupportedProductionGaps",
+    "reviewed safe-point package streaming",
+    "resident mount/cache",
+    "reviewed eviction",
+    "package discovery/candidate load",
+    "registered asset watch-tick",
+    "native watcher ownership",
+    "broad hot reload productization",
+    "renderer-rhi-resource-foundation"
+)) {
+    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime-resource closeout"
 }
 foreach ($check in @(
     @{
         Path = "engine/runtime/include/mirakana/runtime/resource_runtime.hpp"
         Needles = @(
             "RuntimeResidentPackageMountSetV2",
-            "RuntimeResidentPackageMountIdV2",
-            "RuntimeResidentPackageMountStatusV2",
-            "RuntimeResidentPackageMountCatalogBuildResultV2",
-            "build_runtime_resource_catalog_v2_from_resident_mount_set",
             "RuntimeResidentCatalogCacheV2",
-            "RuntimeResidentCatalogCacheStatusV2",
-            "RuntimeResidentPackageReplaceCommitStatusV2",
-            "RuntimeResidentPackageReplaceCommitResultV2",
-            "commit_runtime_resident_package_replace_v2",
-            "RuntimeResidentPackageUnmountCommitStatusV2",
-            "RuntimeResidentPackageUnmountCommitResultV2",
-            "commit_runtime_resident_package_unmount_v2",
-            "RuntimeResidentPackageEvictionPlanStatusV2",
-            "RuntimeResidentPackageEvictionPlanDescV2",
-            "RuntimeResidentPackageEvictionPlanResultV2",
-            "plan_runtime_resident_package_evictions_v2",
-            "RuntimeResidentPackageReviewedEvictionCommitStatusV2",
-            "RuntimeResidentPackageReviewedEvictionCommitDescV2",
-            "RuntimeResidentPackageReviewedEvictionCommitResultV2",
             "commit_runtime_resident_package_reviewed_evictions_v2",
-            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2",
-            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2",
-            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2",
             "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
-            "RuntimePackageHotReloadCandidateReviewStatusV2",
-            "RuntimePackageHotReloadCandidateReviewDescV2",
-            "RuntimePackageHotReloadCandidateReviewResultV2",
-            "plan_runtime_package_hot_reload_candidate_review_v2",
-            "RuntimePackageHotReloadRecookChangeReviewStatusV2",
-            "RuntimePackageHotReloadRecookChangeReviewDescV2",
-            "RuntimePackageHotReloadRecookChangeReviewResultV2",
-            "plan_runtime_package_hot_reload_recook_change_review_v2",
-            "RuntimePackageHotReloadReplacementIntentReviewStatusV2",
-            "invalid_overlay",
-            "RuntimePackageHotReloadReplacementIntentReviewDescV2",
-            "RuntimePackageHotReloadReplacementIntentReviewResultV2",
-            "plan_runtime_package_hot_reload_replacement_intent_review_v2",
-            "RuntimePackageHotReloadRecookReplacementStatusV2",
-            "RuntimePackageHotReloadRecookReplacementDescV2",
-            "RuntimePackageHotReloadRecookReplacementResultV2",
             "commit_runtime_package_hot_reload_recook_replacement_v2"
-        )
-    },
-    @{
-        Path = "engine/runtime/src/resource_runtime.cpp"
-        Needles = @(
-            "duplicate-mount-id",
-            "missing-mount-id",
-            "mount_set.generation()",
-            "build_runtime_resource_catalog_v2_from_resident_mount_set",
-            "RuntimeResidentCatalogCacheV2::refresh",
-            "RuntimeResidentCatalogCacheStatusV2::cache_hit",
-            "RuntimeResidentPackageReplaceCommitResultV2::succeeded",
-            "RuntimeResidentPackageMountSetReplaceAccessV2",
-            "invoked_candidate_catalog_build",
-            "RuntimeResidentPackageUnmountCommitResultV2::succeeded",
-            "RuntimeResidentPackageEvictionPlanResultV2::succeeded",
-            "RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded",
-            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2::succeeded",
-            "RuntimePackageHotReloadCandidateReviewResultV2::succeeded",
-            "RuntimePackageHotReloadRecookChangeReviewResultV2::succeeded",
-            "RuntimePackageHotReloadReplacementIntentReviewResultV2::succeeded",
-            "RuntimePackageHotReloadRecookReplacementResultV2::succeeded",
-            "plan_runtime_package_hot_reload_candidate_review_v2",
-            "plan_runtime_package_hot_reload_recook_change_review_v2",
-            "plan_runtime_package_hot_reload_replacement_intent_review_v2",
-            "commit_runtime_package_hot_reload_recook_replacement_v2",
-            "map_hot_reload_recook_replacement_commit_diagnostic_phase",
-            "RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::candidate_load",
-            "RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::resident_budget",
-            "replacement-commit-failed",
-            "invalid-recook-apply-result-asset",
-            "invalid-recook-apply-result-revision",
-            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
-            "invalid-selected-candidate",
-            "candidate-outside-discovery-root",
-            "candidate-content-root-mismatch",
-            "invalid-overlay",
-            "protected-eviction-candidate-mount-id",
-            "map_reviewed_evictions_replace_diagnostic_phase",
-            "add_reviewed_evictions_replace_commit_diagnostics",
-            "map_reviewed_eviction_commit_plan_status",
-            "contains_mount_id",
-            "protected-candidate-mount-id",
-            "budget_unreachable",
-            "projected_mount_set.unmount",
-            "RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set",
-            "RuntimeResidentCatalogCacheV2 projected_catalog_cache = catalog_cache",
-            "mount_set = std::move(projected_mount_set)",
-            "catalog_cache = std::move(projected_catalog_cache)"
-        )
-    },
-    @{
-        Path = "tests/unit/asset_identity_runtime_resource_tests.cpp"
-        Needles = @(
-            "runtime resident package mount set rebuilds catalog from explicit mount order",
-            "runtime resident package mount set rejects duplicate invalid and missing ids",
-            "runtime resident package mount set unmounts package and invalidates catalog handles on rebuild"
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_resource_resident_cache_tests.cpp"
-        Needles = @(
-            "runtime resident catalog cache reuses catalog for unchanged mount generation and budget",
-            "runtime resident catalog cache rebuilds when mount set generation changes",
-            "runtime resident catalog cache rejects budget changes without replacing cached catalog"
         )
     },
     @{
         Path = "engine/runtime/include/mirakana/runtime/package_streaming.hpp"
         Needles = @(
-            "resident_mount_failed",
-            "resident_replace_failed",
-            "resident_unmount_failed",
-            "resident_catalog_refresh_failed",
-            "resident_eviction_plan_failed",
-            "RuntimeResidentCatalogCacheV2& catalog_cache",
-            "RuntimeResidentPackageMountIdV2 mount_id",
-            "RuntimeResidentPackageReplaceCommitResultV2 resident_replace",
-            "RuntimeResidentPackageUnmountCommitResultV2 resident_unmount",
             "execute_selected_runtime_package_streaming_candidate_resident_mount_with_reviewed_evictions_safe_point",
-            "execute_selected_runtime_package_streaming_resident_replace_safe_point",
-            "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
-            "RuntimeResidentPackageEvictionPlanResultV2 eviction_plan",
-            "resident_catalog_refresh"
-        )
-    },
-    @{
-        Path = "engine/runtime/src/package_streaming.cpp"
-        Needles = @(
-            "project_resident_packages",
-            "evaluate_projected_resident_budget",
-            "validate_loaded_package_catalog_before_mount",
-            "validate_resident_replace_mount_id",
-            "validate_projected_resident_catalog_hints",
-            "commit_runtime_resident_package_replace_v2",
-            "commit_runtime_resident_package_unmount_v2",
-            "add_candidate_catalog_build_diagnostics",
-            "map_reviewed_evictions_mount_status",
-            "map_reviewed_evictions_replace_status",
-            "commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2",
-            "commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2",
             "execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point",
-            "resident_replace_failed",
-            "resident_unmount_failed",
-            "resident_catalog_refresh_failed",
-            "resident_eviction_plan_failed",
-            "mount_set.unmount(mount_id)"
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_package_streaming_resident_mount_tests.cpp"
-        Needles = @(
-            "runtime package streaming resident mount commit mounts package and refreshes resident catalog",
-            "runtime package streaming resident mount commit rejects duplicate mount id before mutation",
-            "runtime package streaming resident mount commit rejects duplicate records before mutation",
-            "runtime package streaming resident mount commit preserves catalog on projected budget failure",
-            "runtime package streaming resident replace commit replaces mounted package and refreshes resident catalog",
-            "runtime package streaming resident replace commit rejects invalid and missing ids before mutation",
-            "runtime package streaming resident replace commit preserves state on candidate catalog failure",
-            "runtime package streaming resident replace commit preserves state on projected budget failure",
-            "runtime package streaming candidate resident mount with reviewed evictions commits after eviction",
-            "runtime package streaming candidate resident mount with reviewed evictions rejects reviewed eviction ",
-            "runtime package streaming candidate resident replace with reviewed evictions commits after eviction",
-            "runtime package streaming candidate resident replace with reviewed evictions rejects reviewed eviction ",
-            "runtime package streaming candidate resident replace with reviewed evictions preserves state when candidates ",
-            "runtime package streaming resident unmount commit removes mounted package and refreshes resident catalog",
-            "runtime package streaming resident unmount commit rejects invalid and missing ids before mutation",
-            "runtime package streaming resident unmount commit preserves state on projected residency hint failure"
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_resource_resident_unmount_tests.cpp"
-        Needles = @(
-            "runtime resident package unmount commit refreshes catalog cache",
-            "runtime resident package unmount commit rejects missing id before mutation",
-            "runtime resident package unmount commit preserves state on projected remaining budget failure",
-            "runtime resident package eviction plan is no op when current view is within budget",
-            "runtime resident package eviction plan returns reviewed candidate order until budget passes",
-            "runtime resident package eviction plan rejects protected candidates before partial planning",
-            "runtime resident package eviction plan rejects duplicate and missing candidates before partial planning",
-            "runtime resident package eviction plan reports unreachable budget without mutating mounts",
-            "runtime resident package reviewed eviction commit applies reviewed candidates atomically",
-            "runtime resident package reviewed eviction commit succeeds as no op when current view fits",
-            "runtime resident package reviewed eviction commit rejects reviewed candidates before mutation",
-            "runtime resident package reviewed eviction commit preserves state when candidates are insufficient",
-            "result.catalog_refresh.mounted_package_count == 1"
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_resource_resident_replace_tests.cpp"
-        Needles = @(
-            "runtime resident package replacement commit preserves mount slot and refreshes catalog cache",
-            "runtime resident package replacement commit rejects invalid and missing ids before mutation",
-            "runtime resident package replacement commit rejects duplicate candidate records before mutation",
-            "runtime resident package replacement commit preserves state on projected budget failure"
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_package_discovery_resident_replace_reviewed_evictions_tests.cpp"
-        Needles = @(
-            "runtime package discovery resident replace with reviewed evictions commits selected candidate after eviction",
-            "runtime package discovery resident replace with reviewed evictions skips eviction when projected view fits",
-            "runtime package discovery resident replace with reviewed evictions rejects descriptors before scans",
-            "runtime package discovery resident replace with reviewed evictions reports missing candidate before package ",
-            "runtime package discovery resident replace with reviewed evictions preserves state on delegated load failure",
-            "runtime package discovery resident replace with reviewed evictions rejects duplicate-asset indexes before ",
-            "runtime package discovery resident replace with reviewed evictions maps reviewed eviction failures",
-            "runtime package discovery resident replace with reviewed evictions preserves state when candidates are "
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_package_hot_reload_candidate_review_tests.cpp"
-        Needles = @(
-            "runtime package hot reload candidate review maps package index paths in stable order",
-            "runtime package hot reload candidate review maps changed payload paths under candidate content roots",
-            "runtime package hot reload candidate review rejects invalid and reports unmatched changed paths",
-            "runtime package hot reload candidate review deduplicates repeated matches for one candidate",
-            "runtime package hot reload candidate review ignores invalid candidate rows before review",
-            "runtime package hot reload candidate review returns typed no-match statuses without package reads"
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_package_hot_reload_replacement_intent_review_tests.cpp"
-        Needles = @(
-            "runtime package hot reload replacement intent review builds safe point descriptor",
-            "runtime package hot reload replacement intent review rejects invalid candidate rows",
-            "runtime package hot reload replacement intent review rejects invalid and missing mount ids",
-            "runtime package hot reload replacement intent review rejects unsafe discovery descriptors",
-            "runtime package hot reload replacement intent review rejects invalid overlay intent",
-            "runtime package hot reload replacement intent review validates reviewed eviction candidates"
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_package_hot_reload_recook_change_review_tests.cpp"
-        Needles = @(
-            "runtime package hot reload recook change review maps staged and applied recook outputs",
-            "runtime package hot reload recook change review blocks failed recook rows before candidate review",
-            "runtime package hot reload recook change review rejects invalid recook rows before candidate review",
-            "static_cast<mirakana::AssetHotReloadApplyResultKind>(255)",
-            "runtime package hot reload recook change review reports no recook rows without reading packages",
-            "runtime package hot reload recook change review surfaces candidate review failures"
-        )
-    },
-    @{
-        Path = "tests/unit/runtime_package_hot_reload_recook_replacement_tests.cpp"
-        Needles = @(
-            "runtime package hot reload recook replacement commits reviewed selected package at safe point",
-            "runtime package hot reload recook replacement blocks failed recook rows before package reads",
-            "runtime package hot reload recook replacement requires selected reviewed candidate",
-            "runtime package hot reload recook replacement blocks invalid intent before discovery",
-            "runtime package hot reload recook replacement preserves state when commit stage fails",
-            "runtime package hot reload recook replacement preserves state when reviewed evictions are insufficient"
-        )
-    },
-    @{
-        Path = "tests/unit/tools_runtime_hot_reload_package_tests.cpp"
-        Needles = @(
-            "asset runtime package hot reload replacement commits recook and resident safe point",
-            "asset runtime package hot reload replacement commits only the selected package recook assets",
-            "asset runtime package hot reload replacement passes external import options into recook",
-            "asset runtime package hot reload replacement blocks recook failure before runtime package reads",
-            "asset runtime package hot reload replacement reports recook descriptor exceptions",
-            "asset runtime package hot reload replacement preserves staged recook when runtime commit fails",
-            "asset runtime package registered watch tick primes without recook or native watcher",
-            "asset runtime package registered watch tick debounces and commits reviewed runtime package replacement",
-            "asset runtime package registered watch tick forwards dependency invalidated recook requests",
-            "asset runtime package registered watch tick reports recook failures before runtime package reads",
-            "asset runtime package registered watch tick reports scan exceptions before runtime package reads"
+            "execute_selected_runtime_package_streaming_resident_unmount_safe_point"
         )
     },
     @{
         Path = "engine/tools/include/mirakana/tools/asset_runtime_package_hot_reload_tool.hpp"
         Needles = @(
-            "AssetRuntimePackageHotReloadReplacementDesc",
-            "AssetRuntimePackageHotReloadRuntimeReplacementDesc",
-            "AssetRuntimePackageHotReloadReplacementResult",
             "execute_asset_runtime_package_hot_reload_replacement_safe_point",
-            "AssetRuntimePackageHotReloadRegisteredAssetWatchTickState",
-            "AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc",
-            "AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult",
-            "recook_execution",
-            "execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point"
-        )
-    },
-    @{
-        Path = "engine/tools/asset/asset_runtime_package_hot_reload_tool.cpp"
-        Needles = @(
-            "execute_asset_runtime_recook",
-            "commit_runtime_package_hot_reload_recook_replacement_v2",
-            "plan_runtime_package_hot_reload_recook_change_review_v2",
-            "commit_safe_point(selected_assets)",
-            "scan_asset_files_for_hot_reload",
-            "tick_state.tracker.update",
-            "tick_state.scheduler.enqueue",
-            "tick_state.scheduler.ready"
-        )
-    },
-    @{
-        Path = "CMakeLists.txt"
-        Needles = @(
-            "MK_tools_runtime_hot_reload_package_tests",
-            "tests/unit/tools_runtime_hot_reload_package_tests.cpp"
-        )
-    },
-    @{
-        Path = "docs/current-capabilities.md"
-        Needles = @(
-            "Resident package mount set",
-            "RuntimeResidentPackageMountSetV2",
-            "Resident catalog cache",
-            "RuntimeResidentCatalogCacheV2",
-            "Resident package streaming mount commit",
-            "Resident package streaming replace commit",
-            "execute_selected_runtime_package_streaming_resident_replace_safe_point",
-            "Runtime Package Streaming Resident Unmount v1",
-            "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
-            "Resident package eviction plan",
-            "plan_runtime_resident_package_evictions_v2",
-            "Resident package reviewed eviction commit",
-            "commit_runtime_resident_package_reviewed_evictions_v2",
-            "Runtime Package Hot Reload Reviewed Replacement v1",
-            "host-driven reviewed hot-reload replacement safe point",
-            "Runtime Package Hot Reload Candidate Review v1",
-            "plan_runtime_package_hot_reload_candidate_review_v2",
-            "Runtime Package Hot Reload Recook Change Review v1",
-            "plan_runtime_package_hot_reload_recook_change_review_v2",
-            "Runtime Package Hot Reload Replacement Intent Review v1",
-            "plan_runtime_package_hot_reload_replacement_intent_review_v2",
-            "RuntimePackageHotReloadReplacementIntentReviewResultV2",
-            "Runtime Package Hot Reload Recook Replacement Safe Point v1",
-            "commit_runtime_package_hot_reload_recook_replacement_v2",
-            "RuntimePackageHotReloadRecookReplacementResultV2",
-            "Runtime Hot Reload Recook Package Replacement Execution v1",
-            "execute_asset_runtime_package_hot_reload_replacement_safe_point",
-            "Runtime Hot Reload Registered Asset Watch Tick v1",
             "execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point",
-            "AssetHotReloadRecookScheduler",
-            "ready scheduler rows retryable",
-            "selected package matched",
-            "invalid overlay modes",
-            "Resident package replacement commit",
-            "commit_runtime_resident_package_replace_v2",
-            "commit_runtime_resident_package_unmount_v2",
-            "disk/VFS mount discovery"
+            "AssetRuntimePackageHotReloadRegisteredAssetWatchTickState"
         )
     },
     @{
-        Path = "docs/testing.md"
+        Path = "tests/unit/tools_runtime_hot_reload_package_tests.cpp"
         Needles = @(
-            "Runtime Resource Resident Package Mount Set v1 coverage",
-            "Runtime Resource Resident Catalog Cache v1 coverage",
-            "Runtime Resource Streaming Resident Mount Commit v1 coverage",
-            "Runtime Resource Resident Unmount Cache Refresh v1 coverage",
-            "Runtime Resource Resident Package Replacement Commit v1 coverage",
-            "Runtime Package Streaming Resident Replace v1 coverage",
-            "execute_selected_runtime_package_streaming_resident_replace_safe_point",
-            "Runtime Package Streaming Resident Unmount v1 coverage",
-            "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
-            "Runtime Resident Package Eviction Plan v1 coverage",
-            "plan_runtime_resident_package_evictions_v2",
-            "Runtime Resident Package Reviewed Eviction Commit v1 coverage",
-            "commit_runtime_resident_package_reviewed_evictions_v2",
-            "Runtime Package Hot Reload Reviewed Replacement v1 coverage",
-            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
-            "Runtime Package Hot Reload Candidate Review v1 coverage",
-            "MK_runtime_package_hot_reload_candidate_review_tests",
-            "plan_runtime_package_hot_reload_candidate_review_v2",
-            "Runtime Package Hot Reload Recook Change Review v1 coverage",
-            "MK_runtime_package_hot_reload_recook_change_review_tests",
-            "plan_runtime_package_hot_reload_recook_change_review_v2",
-            "Runtime Package Hot Reload Replacement Intent Review v1 coverage",
-            "MK_runtime_package_hot_reload_replacement_intent_review_tests",
-            "plan_runtime_package_hot_reload_replacement_intent_review_v2",
-            "Runtime Package Hot Reload Recook Replacement Safe Point v1 coverage",
-            "MK_runtime_package_hot_reload_recook_replacement_tests",
-            "commit_runtime_package_hot_reload_recook_replacement_v2",
-            "Runtime Hot Reload Recook Package Replacement Execution v1 coverage",
-            "MK_tools_runtime_hot_reload_package_tests",
-            "execute_asset_runtime_package_hot_reload_replacement_safe_point",
-            "Runtime Hot Reload Registered Asset Watch Tick v1 coverage",
-            "execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point",
-            "dependency invalidated recook requests",
-            "preserves ready scheduler rows for retry",
-            "recook failures plus scan exceptions before runtime package reads",
-            "scan exceptions before runtime package reads",
-            "selected package commit isolation",
-            "candidate/discovery root mismatches",
-            "invalid overlay modes",
-            "rejects zero/duplicate/missing mount ids"
+            "asset runtime package registered watch tick",
+            "ready_recook_requests.size() == 2"
+        )
+    },
+    @{
+        Path = "docs/superpowers/plans/2026-05-16-runtime-resource-v2-1-0-scope-closeout-v1.md"
+        Needles = @(
+            "Runtime Resource v2 1.0 Scope Closeout",
+            "renderer-rhi-resource-foundation",
+            "native file watcher ownership"
         )
     }
 )) {
     $fileText = Get-AgentSurfaceText $check.Path
     foreach ($needle in $check.Needles) {
-        Assert-ContainsText $fileText $needle "$($check.Path) runtime resource resident package mount set evidence"
+        Assert-ContainsText $fileText $needle "$($check.Path) runtime-resource-v2 closeout evidence"
     }
 }
-foreach ($check in @(
-    @{
-        Path = "engine/runtime/include/mirakana/runtime/package_streaming.hpp"
-        Needles = @(
-            "residency_hint_failed",
-            "required_preload_assets",
-            "resident_resource_kinds",
-            "max_resident_packages",
-            "required_preload_asset_count",
-            "resident_resource_kind_count",
-            "resident_package_count"
-        )
-    },
-    @{
-        Path = "engine/runtime/src/package_streaming.cpp"
-        Needles = @(
-            "validate_residency_hints",
-            "preload-asset-missing",
-            "resident-resource-kind-disallowed",
-            "max-resident-packages-exceeded"
-        )
-    },
-    @{
-        Path = "tests/unit/asset_identity_runtime_resource_tests.cpp"
-        Needles = @(
-            "missing required preload asset hints",
-            "disallowed resident resource kinds",
-            "commits when residency hints match loaded package"
-        )
-    },
-    @{
-        Path = "docs/current-capabilities.md"
-        Needles = @(
-            "selected safe-point package streaming with required preload asset",
-            "broad/background package streaming"
-        )
-    },
-    @{
-        Path = "docs/roadmap.md"
-        Needles = @(
-            "rejects missing required preload assets",
-            "disallowed resident resource kinds"
-        )
-    },
-    @{
-        Path = "docs/testing.md"
-        Needles = @(
-            "Runtime Resource Residency Hints Execution v1 coverage",
-            "preserves the active package/catalog"
-        )
-    }
-)) {
-    $fileText = Get-AgentSurfaceText $check.Path
-    foreach ($needle in $check.Needles) {
-        Assert-ContainsText $fileText $needle "$($check.Path) runtime resource residency hints execution evidence"
-    }
-}
+
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })
 if ($rendererRhiGap.Count -ne 1 -or $rendererRhiGap[0].status -ne "implemented-foundation-only") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop renderer-rhi-resource-foundation gap must be implemented-foundation-only"
@@ -2236,10 +1714,10 @@ $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Objec
 if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
 }
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Physics 1.0 Collision System Closeout v1 is complete" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "first-party MK_physics 1.0 ready surface" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "dynamic-vs-dynamic TOI, rotational CCD, 2D CCD, oriented boxes, mesh/convex casts" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime-resource-v2 next" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Resource v2 1.0 Scope Closeout v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "removing runtime-resource-v2 from unsupportedProductionGaps" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "registered asset watch-tick" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "renderer-rhi-resource-foundation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must be partly-ready after Play-In-Editor Visible Viewport Wiring v1"
