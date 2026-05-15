@@ -31,7 +31,11 @@ foreach ($check in @(
             "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2",
             "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2",
             "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2",
-            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2"
+            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
+            "RuntimePackageHotReloadCandidateReviewStatusV2",
+            "RuntimePackageHotReloadCandidateReviewDescV2",
+            "RuntimePackageHotReloadCandidateReviewResultV2",
+            "plan_runtime_package_hot_reload_candidate_review_v2"
         )
     },
     @{
@@ -41,6 +45,8 @@ foreach ($check in @(
             "RuntimeResidentPackageEvictionPlanResultV2::succeeded",
             "RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded",
             "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2::succeeded",
+            "RuntimePackageHotReloadCandidateReviewResultV2::succeeded",
+            "plan_runtime_package_hot_reload_candidate_review_v2",
             "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
             "map_reviewed_evictions_replace_diagnostic_phase",
             "add_reviewed_evictions_replace_commit_diagnostics",
@@ -75,6 +81,8 @@ foreach ($check in @(
             "commit_runtime_resident_package_reviewed_evictions_v2",
             "Runtime Package Hot Reload Reviewed Replacement v1",
             "host-driven reviewed hot-reload replacement safe point",
+            "Runtime Package Hot Reload Candidate Review v1",
+            "plan_runtime_package_hot_reload_candidate_review_v2",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
             "disk/VFS mount discovery"
@@ -95,7 +103,21 @@ foreach ($check in @(
             "plan_runtime_resident_package_evictions_v2",
             "commit_runtime_resident_package_reviewed_evictions_v2",
             "Runtime Package Hot Reload Reviewed Replacement v1 coverage",
-            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2"
+            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
+            "Runtime Package Hot Reload Candidate Review v1 coverage",
+            "MK_runtime_package_hot_reload_candidate_review_tests",
+            "plan_runtime_package_hot_reload_candidate_review_v2"
+        )
+    },
+    @{
+        Path = "tests/unit/runtime_package_hot_reload_candidate_review_tests.cpp"
+        Needles = @(
+            "runtime package hot reload candidate review maps package index paths in stable order",
+            "runtime package hot reload candidate review maps changed payload paths under candidate content roots",
+            "runtime package hot reload candidate review rejects invalid and reports unmatched changed paths",
+            "runtime package hot reload candidate review deduplicates repeated matches for one candidate",
+            "runtime package hot reload candidate review ignores invalid candidate rows before review",
+            "runtime package hot reload candidate review returns typed no-match statuses without package reads"
         )
     },
     @{

@@ -536,6 +536,66 @@ map_replace_reviewed_evictions_plan_status(RuntimeResidentPackageEvictionPlanSta
     return path.size() > package_index_extension.size() && path.ends_with(package_index_extension);
 }
 
+[[nodiscard]] bool
+valid_hot_reload_candidate_review_candidate(const RuntimePackageIndexDiscoveryCandidateV2& candidate) noexcept {
+    return valid_relative_vfs_path(candidate.package_index_path) &&
+           ends_with_package_index_extension(candidate.package_index_path) &&
+           (candidate.content_root.empty() || valid_relative_vfs_path(candidate.content_root)) &&
+           valid_relative_vfs_path(candidate.label);
+}
+
+void add_hot_reload_candidate_review_diagnostic(RuntimePackageHotReloadCandidateReviewResultV2& result,
+                                                std::string path, std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimePackageHotReloadCandidateReviewDiagnosticV2{
+        .path = std::move(path),
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] bool has_matched_hot_reload_change(const RuntimePackageHotReloadCandidateReviewRowV2& row,
+                                                 std::string_view path,
+                                                 RuntimePackageHotReloadCandidateReviewMatchKindV2 kind) noexcept {
+    return std::ranges::any_of(row.matched_changes,
+                               [path, kind](const auto& change) { return change.path == path && change.kind == kind; });
+}
+
+void add_hot_reload_candidate_review_change(RuntimePackageHotReloadCandidateReviewRowV2& row, std::string_view path,
+                                            RuntimePackageHotReloadCandidateReviewMatchKindV2 kind) {
+    if (has_matched_hot_reload_change(row, path, kind)) {
+        return;
+    }
+    row.matched_changes.push_back(RuntimePackageHotReloadCandidateReviewChangeV2{
+        .path = std::string{path},
+        .kind = kind,
+    });
+}
+
+[[nodiscard]] bool
+hot_reload_candidate_matches_changed_path(const RuntimePackageIndexDiscoveryCandidateV2& candidate,
+                                          std::string_view changed_path,
+                                          RuntimePackageHotReloadCandidateReviewMatchKindV2& match_kind) {
+    if (!valid_hot_reload_candidate_review_candidate(candidate)) {
+        return false;
+    }
+    if (ends_with_package_index_extension(changed_path)) {
+        if (changed_path == candidate.package_index_path) {
+            match_kind = RuntimePackageHotReloadCandidateReviewMatchKindV2::package_index;
+            return true;
+        }
+        return false;
+    }
+
+    if (candidate.content_root.empty()) {
+        return false;
+    }
+    if (path_is_under_root(changed_path, candidate.content_root)) {
+        match_kind = RuntimePackageHotReloadCandidateReviewMatchKindV2::content;
+        return true;
+    }
+    return false;
+}
+
 [[nodiscard]] std::string package_index_label(std::string_view path, std::string_view root) {
     const auto relative = path.substr(root.size() + 1U);
     return std::string{relative.substr(0, relative.size() - package_index_extension.size())};
@@ -680,6 +740,91 @@ bool RuntimePackageIndexDiscoveryResultV2::succeeded() const noexcept {
 
 bool RuntimePackageCandidateLoadResultV2::succeeded() const noexcept {
     return status == RuntimePackageCandidateLoadStatusV2::loaded && loaded_package.succeeded();
+}
+
+bool RuntimePackageHotReloadCandidateReviewResultV2::succeeded() const noexcept {
+    return status == RuntimePackageHotReloadCandidateReviewStatusV2::review_ready && !rows.empty();
+}
+
+RuntimePackageHotReloadCandidateReviewResultV2
+plan_runtime_package_hot_reload_candidate_review_v2(const RuntimePackageHotReloadCandidateReviewDescV2& desc) {
+    RuntimePackageHotReloadCandidateReviewResultV2 result;
+    result.changed_path_count = desc.changed_paths.size();
+
+    if (desc.changed_paths.empty()) {
+        result.status = RuntimePackageHotReloadCandidateReviewStatusV2::no_changes;
+        return result;
+    }
+
+    std::vector<bool> valid_changed_paths(desc.changed_paths.size(), false);
+    std::vector<bool> matched_changed_paths(desc.changed_paths.size(), false);
+    for (std::size_t changed_path_index = 0; changed_path_index < desc.changed_paths.size(); ++changed_path_index) {
+        valid_changed_paths[changed_path_index] = valid_relative_vfs_path(desc.changed_paths[changed_path_index]);
+    }
+
+    std::vector<std::string> reviewed_candidate_paths;
+    reviewed_candidate_paths.reserve(desc.candidates.size());
+    for (const auto& candidate : desc.candidates) {
+        if (std::ranges::find(reviewed_candidate_paths, candidate.package_index_path) !=
+            reviewed_candidate_paths.end()) {
+            continue;
+        }
+
+        RuntimePackageHotReloadCandidateReviewRowV2 row;
+        row.candidate = candidate;
+        for (std::size_t changed_path_index = 0; changed_path_index < desc.changed_paths.size(); ++changed_path_index) {
+            if (!valid_changed_paths[changed_path_index]) {
+                continue;
+            }
+
+            RuntimePackageHotReloadCandidateReviewMatchKindV2 match_kind{
+                RuntimePackageHotReloadCandidateReviewMatchKindV2::package_index};
+            if (hot_reload_candidate_matches_changed_path(candidate, desc.changed_paths[changed_path_index],
+                                                          match_kind)) {
+                matched_changed_paths[changed_path_index] = true;
+                add_hot_reload_candidate_review_change(row, desc.changed_paths[changed_path_index], match_kind);
+            }
+        }
+
+        if (!row.matched_changes.empty()) {
+            reviewed_candidate_paths.push_back(candidate.package_index_path);
+            result.rows.push_back(std::move(row));
+        }
+    }
+
+    for (std::size_t changed_path_index = 0; changed_path_index < desc.changed_paths.size(); ++changed_path_index) {
+        if (!valid_changed_paths[changed_path_index]) {
+            ++result.invalid_changed_path_count;
+            add_hot_reload_candidate_review_diagnostic(
+                result, desc.changed_paths[changed_path_index], "invalid-changed-path",
+                "hot-reload changed paths must be non-empty relative VFS paths without backslashes or dot segments");
+            continue;
+        }
+        if (matched_changed_paths[changed_path_index]) {
+            ++result.matched_changed_path_count;
+            continue;
+        }
+
+        ++result.unmatched_changed_path_count;
+        add_hot_reload_candidate_review_diagnostic(
+            result, desc.changed_paths[changed_path_index], "unmatched-changed-path",
+            "hot-reload changed path did not match any reviewed runtime package index candidate");
+    }
+
+    result.review_candidate_count = result.rows.size();
+    std::ranges::sort(result.rows, [](const RuntimePackageHotReloadCandidateReviewRowV2& lhs,
+                                      const RuntimePackageHotReloadCandidateReviewRowV2& rhs) {
+        return lhs.candidate.package_index_path < rhs.candidate.package_index_path;
+    });
+    if (!result.rows.empty()) {
+        result.status = RuntimePackageHotReloadCandidateReviewStatusV2::review_ready;
+    } else if (desc.candidates.empty()) {
+        result.status = RuntimePackageHotReloadCandidateReviewStatusV2::no_candidates;
+    } else {
+        result.status = RuntimePackageHotReloadCandidateReviewStatusV2::no_matches;
+    }
+
+    return result;
 }
 
 RuntimePackageIndexDiscoveryResultV2
