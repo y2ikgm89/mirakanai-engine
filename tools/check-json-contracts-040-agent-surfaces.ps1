@@ -27,7 +27,11 @@ foreach ($check in @(
             "RuntimeResidentPackageReviewedEvictionCommitStatusV2",
             "RuntimeResidentPackageReviewedEvictionCommitDescV2",
             "RuntimeResidentPackageReviewedEvictionCommitResultV2",
-            "commit_runtime_resident_package_reviewed_evictions_v2"
+            "commit_runtime_resident_package_reviewed_evictions_v2",
+            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2",
+            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2",
+            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2",
+            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2"
         )
     },
     @{
@@ -36,6 +40,10 @@ foreach ($check in @(
             "RuntimeResidentPackageReplaceCommitResultV2::succeeded",
             "RuntimeResidentPackageEvictionPlanResultV2::succeeded",
             "RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded",
+            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2::succeeded",
+            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
+            "map_reviewed_evictions_replace_diagnostic_phase",
+            "add_reviewed_evictions_replace_commit_diagnostics",
             "map_reviewed_eviction_commit_plan_status",
             "contains_mount_id",
             "protected-candidate-mount-id",
@@ -65,6 +73,8 @@ foreach ($check in @(
             "plan_runtime_resident_package_evictions_v2",
             "Resident package reviewed eviction commit",
             "commit_runtime_resident_package_reviewed_evictions_v2",
+            "Runtime Package Hot Reload Reviewed Replacement v1",
+            "host-driven reviewed hot-reload replacement safe point",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
             "disk/VFS mount discovery"
@@ -83,7 +93,20 @@ foreach ($check in @(
             "commit_runtime_resident_package_replace_v2",
             "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
             "plan_runtime_resident_package_evictions_v2",
-            "commit_runtime_resident_package_reviewed_evictions_v2"
+            "commit_runtime_resident_package_reviewed_evictions_v2",
+            "Runtime Package Hot Reload Reviewed Replacement v1 coverage",
+            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2"
+        )
+    },
+    @{
+        Path = "tests/unit/runtime_package_discovery_resident_replace_reviewed_evictions_tests.cpp"
+        Needles = @(
+            "runtime package discovery resident replace with reviewed evictions commits selected candidate after eviction",
+            "runtime package discovery resident replace with reviewed evictions rejects descriptors before scans",
+            "runtime package discovery resident replace with reviewed evictions reports missing candidate before package ",
+            "runtime package discovery resident replace with reviewed evictions preserves state on delegated load failure",
+            "runtime package discovery resident replace with reviewed evictions maps reviewed eviction failures",
+            "runtime package discovery resident replace with reviewed evictions preserves state when candidates are "
         )
     },
     @{

@@ -1599,7 +1599,10 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_resident_package_evictions_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Resident Package Reviewed Eviction Commit v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "commit_runtime_resident_package_reviewed_evictions_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Reviewed Replacement v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime-resource-v2 next" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Runtime Package Hot Reload Change Candidate Review v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 foreach ($check in @(
     @{
         Path = "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
@@ -1659,6 +1662,9 @@ if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_resident_package_reviewed_evictions_v2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageReviewedEvictionCommitStatusV2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("standalone reviewed resident eviction execution") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Reviewed Replacement v1") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("host-driven reviewed hot-reload replacement safe point") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("file watching/recook execution") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("slot-preserving") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("projected resident budget") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("raw loaded-package catalog") -or
@@ -1702,7 +1708,11 @@ foreach ($check in @(
             "RuntimeResidentPackageReviewedEvictionCommitStatusV2",
             "RuntimeResidentPackageReviewedEvictionCommitDescV2",
             "RuntimeResidentPackageReviewedEvictionCommitResultV2",
-            "commit_runtime_resident_package_reviewed_evictions_v2"
+            "commit_runtime_resident_package_reviewed_evictions_v2",
+            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2",
+            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2",
+            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2",
+            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2"
         )
     },
     @{
@@ -1720,6 +1730,10 @@ foreach ($check in @(
             "RuntimeResidentPackageUnmountCommitResultV2::succeeded",
             "RuntimeResidentPackageEvictionPlanResultV2::succeeded",
             "RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded",
+            "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2::succeeded",
+            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
+            "map_reviewed_evictions_replace_diagnostic_phase",
+            "add_reviewed_evictions_replace_commit_diagnostics",
             "map_reviewed_eviction_commit_plan_status",
             "contains_mount_id",
             "protected-candidate-mount-id",
@@ -1838,6 +1852,19 @@ foreach ($check in @(
         )
     },
     @{
+        Path = "tests/unit/runtime_package_discovery_resident_replace_reviewed_evictions_tests.cpp"
+        Needles = @(
+            "runtime package discovery resident replace with reviewed evictions commits selected candidate after eviction",
+            "runtime package discovery resident replace with reviewed evictions skips eviction when projected view fits",
+            "runtime package discovery resident replace with reviewed evictions rejects descriptors before scans",
+            "runtime package discovery resident replace with reviewed evictions reports missing candidate before package ",
+            "runtime package discovery resident replace with reviewed evictions preserves state on delegated load failure",
+            "runtime package discovery resident replace with reviewed evictions rejects duplicate-asset indexes before ",
+            "runtime package discovery resident replace with reviewed evictions maps reviewed eviction failures",
+            "runtime package discovery resident replace with reviewed evictions preserves state when candidates are "
+        )
+    },
+    @{
         Path = "docs/current-capabilities.md"
         Needles = @(
             "Resident package mount set",
@@ -1853,6 +1880,8 @@ foreach ($check in @(
             "plan_runtime_resident_package_evictions_v2",
             "Resident package reviewed eviction commit",
             "commit_runtime_resident_package_reviewed_evictions_v2",
+            "Runtime Package Hot Reload Reviewed Replacement v1",
+            "host-driven reviewed hot-reload replacement safe point",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
             "commit_runtime_resident_package_unmount_v2",
@@ -1875,6 +1904,8 @@ foreach ($check in @(
             "plan_runtime_resident_package_evictions_v2",
             "Runtime Resident Package Reviewed Eviction Commit v1 coverage",
             "commit_runtime_resident_package_reviewed_evictions_v2",
+            "Runtime Package Hot Reload Reviewed Replacement v1 coverage",
+            "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
             "rejects zero/duplicate/missing mount ids"
         )
     }
