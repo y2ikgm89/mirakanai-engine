@@ -1392,6 +1392,7 @@ MK_TEST("frame graph rhi texture schedule execution interleaves barriers and pas
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .final_states = {},
     });
 
     MK_REQUIRE(result.succeeded());
@@ -1464,6 +1465,7 @@ MK_TEST("frame graph rhi texture schedule execution accepts writer-updated state
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .final_states = {},
     });
 
     MK_REQUIRE(result.succeeded());
@@ -1474,6 +1476,217 @@ MK_TEST("frame graph rhi texture schedule execution accepts writer-updated state
     MK_REQUIRE(observed_states[1] == mirakana::rhi::ResourceState::shader_read);
     MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::shader_read);
     MK_REQUIRE(device.stats().resource_transitions == 1);
+}
+
+MK_TEST("frame graph rhi texture schedule execution records final texture states after callbacks") {
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "scene",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "postprocess",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {},
+    });
+
+    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    MK_REQUIRE(plan.succeeded());
+    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->transition_texture(texture, mirakana::rhi::ResourceState::undefined,
+                                 mirakana::rhi::ResourceState::render_target);
+
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{mirakana::FrameGraphTextureBinding{
+        .resource = "scene-color",
+        .texture = texture,
+        .current_state = mirakana::rhi::ResourceState::render_target,
+    }};
+    const std::vector<mirakana::FrameGraphTextureFinalState> final_states{
+        mirakana::FrameGraphTextureFinalState{
+            .resource = "scene-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+    };
+    std::vector<mirakana::rhi::ResourceState> observed_states;
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "scene",
+            .callback =
+                [&bindings, &observed_states](std::string_view) {
+                    observed_states.push_back(bindings[0].current_state);
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "postprocess",
+            .callback =
+                [&bindings, &observed_states](std::string_view) {
+                    observed_states.push_back(bindings[0].current_state);
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = bindings,
+        .pass_callbacks = pass_callbacks,
+        .final_states = final_states,
+    });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.barriers_recorded == 2);
+    MK_REQUIRE(result.final_state_barriers_recorded == 1);
+    MK_REQUIRE(result.pass_callbacks_invoked == 2);
+    MK_REQUIRE(observed_states.size() == 2);
+    MK_REQUIRE(observed_states[0] == mirakana::rhi::ResourceState::render_target);
+    MK_REQUIRE(observed_states[1] == mirakana::rhi::ResourceState::shader_read);
+    MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::render_target);
+    MK_REQUIRE(device.stats().resource_transitions == 3);
+}
+
+MK_TEST("frame graph rhi texture schedule execution validates final states before callbacks") {
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("scene"),
+    };
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{mirakana::FrameGraphTextureBinding{
+        .resource = "scene-color",
+        .texture = texture,
+        .current_state = mirakana::rhi::ResourceState::render_target,
+    }};
+    const std::vector<mirakana::FrameGraphTextureFinalState> final_states{
+        mirakana::FrameGraphTextureFinalState{
+            .resource = "scene-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+        mirakana::FrameGraphTextureFinalState{
+            .resource = "scene-color",
+            .state = mirakana::rhi::ResourceState::shader_read,
+        },
+    };
+    std::size_t callbacks_invoked = 0;
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "scene",
+            .callback =
+                [&callbacks_invoked](std::string_view) {
+                    ++callbacks_invoked;
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = bindings,
+        .pass_callbacks = pass_callbacks,
+        .final_states = final_states,
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.barriers_recorded == 0);
+    MK_REQUIRE(result.final_state_barriers_recorded == 0);
+    MK_REQUIRE(result.pass_callbacks_invoked == 0);
+    MK_REQUIRE(callbacks_invoked == 0);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].resource == "scene-color");
+    MK_REQUIRE(result.diagnostics[0].message == "frame graph texture final state is declared more than once");
+}
+
+MK_TEST("frame graph rhi texture schedule execution reports final-state transition failures") {
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "scene",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "postprocess",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {},
+    });
+
+    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    MK_REQUIRE(plan.succeeded());
+    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+
+    ThrowingTransitionRhiDevice device;
+    device.throw_on_submit = false;
+    device.throw_on_transition = 3;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->transition_texture(texture, mirakana::rhi::ResourceState::undefined,
+                                 mirakana::rhi::ResourceState::render_target);
+
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{mirakana::FrameGraphTextureBinding{
+        .resource = "scene-color",
+        .texture = texture,
+        .current_state = mirakana::rhi::ResourceState::render_target,
+    }};
+    const std::vector<mirakana::FrameGraphTextureFinalState> final_states{
+        mirakana::FrameGraphTextureFinalState{
+            .resource = "scene-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+    };
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "scene",
+            .callback = [](std::string_view) { return mirakana::FrameGraphExecutionCallbackResult{}; },
+        },
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "postprocess",
+            .callback = [](std::string_view) { return mirakana::FrameGraphExecutionCallbackResult{}; },
+        },
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = bindings,
+        .pass_callbacks = pass_callbacks,
+        .final_states = final_states,
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.barriers_recorded == 1);
+    MK_REQUIRE(result.final_state_barriers_recorded == 0);
+    MK_REQUIRE(result.pass_callbacks_invoked == 2);
+    MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::shader_read);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].resource == "scene-color");
+    MK_REQUIRE(result.diagnostics[0].message == "frame graph texture final-state barrier recording failed");
 }
 
 MK_TEST("frame graph rhi texture schedule execution validates barriers before pass callbacks") {
@@ -1517,6 +1730,7 @@ MK_TEST("frame graph rhi texture schedule execution validates barriers before pa
         .schedule = schedule,
         .texture_bindings = no_bindings,
         .pass_callbacks = pass_callbacks,
+        .final_states = {},
     });
 
     MK_REQUIRE(!result.succeeded());
@@ -1572,6 +1786,7 @@ MK_TEST("frame graph rhi texture schedule execution validates pass callbacks bef
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .final_states = {},
     });
 
     MK_REQUIRE(!result.succeeded());
@@ -2458,7 +2673,7 @@ MK_TEST("rhi postprocess frame renderer can bind scene depth as a postprocess in
     MK_REQUIRE(renderer_stats.frames_finished == 2);
     MK_REQUIRE(renderer_stats.meshes_submitted == 2);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 4);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 4);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 6);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 2);
 
     const auto rhi_stats = device.stats();
@@ -2853,7 +3068,7 @@ MK_TEST("rhi directional shadow smoke frame renderer records a shadow receiver s
     MK_REQUIRE(renderer_stats.frames_finished == 1);
     MK_REQUIRE(renderer_stats.meshes_submitted == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 3);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 3);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 5);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 1);
 
     const auto rhi_stats = device.stats();
@@ -3119,7 +3334,7 @@ MK_TEST("rhi directional shadow smoke frame renderer records native ui overlay a
     MK_REQUIRE(renderer_stats.native_ui_overlay_sprites_submitted == 1);
     MK_REQUIRE(renderer_stats.native_ui_overlay_draws == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 3);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 3);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 5);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 1);
 
     const auto rhi_stats = device.stats();
@@ -3135,6 +3350,36 @@ MK_TEST("rhi directional shadow smoke frame renderer reports frame graph executo
     ThrowingTransitionRhiDevice device;
     device.throw_on_submit = false;
     device.throw_on_transition = 3;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = true,
+        .surface = mirakana::rhi::SurfaceHandle{1},
+    });
+    auto renderer = create_directional_shadow_smoke_test_renderer(device, swapchain);
+
+    renderer->begin_frame();
+
+    bool execution_failed = false;
+    try {
+        renderer->end_frame();
+    } catch (const std::runtime_error& ex) {
+        execution_failed =
+            std::string_view{ex.what()} == "rhi shadow smoke renderer frame graph rhi texture execution failed";
+    }
+
+    MK_REQUIRE(execution_failed);
+    MK_REQUIRE(!renderer->frame_active());
+    MK_REQUIRE(renderer->stats().frames_finished == 0);
+    MK_REQUIRE(device.stats().swapchain_frames_acquired == 1);
+    MK_REQUIRE(device.stats().swapchain_frames_released == 1);
+}
+
+MK_TEST("rhi directional shadow smoke frame renderer reports frame graph final-state transition failure") {
+    ThrowingTransitionRhiDevice device;
+    device.throw_on_submit = false;
+    device.throw_on_transition = 8;
     const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
         .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
         .format = mirakana::rhi::Format::bgra8_unorm,

@@ -27,6 +27,12 @@ struct PlannedTextureBarrier {
     const FrameGraphBarrier* barrier{nullptr};
 };
 
+struct PlannedTextureFinalState {
+    std::size_t binding_index{0};
+    rhi::ResourceState after{rhi::ResourceState::undefined};
+    const FrameGraphTextureFinalState* final_state{nullptr};
+};
+
 template <typename Result>
 void append_frame_graph_rhi_diagnostic(Result& result, FrameGraphDiagnosticCode code, std::string pass,
                                        std::string resource, std::string message) {
@@ -88,6 +94,51 @@ build_pass_callback_index(FrameGraphRhiTextureExecutionResult& result,
         }
     }
     return callbacks;
+}
+
+[[nodiscard]] std::vector<PlannedTextureFinalState>
+plan_final_texture_states(FrameGraphRhiTextureExecutionResult& result,
+                          const std::map<std::string, std::size_t>& binding_indices,
+                          std::span<const FrameGraphTextureFinalState> final_states) {
+    std::map<std::string, std::size_t> final_state_indices;
+    std::vector<PlannedTextureFinalState> planned_final_states;
+    planned_final_states.reserve(final_states.size());
+
+    for (std::size_t index = 0; index < final_states.size(); ++index) {
+        const auto& final_state = final_states[index];
+        if (final_state.resource.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, {},
+                                              "frame graph texture final state resource name is empty");
+            continue;
+        }
+        const auto [_, inserted] = final_state_indices.emplace(final_state.resource, index);
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
+                                              final_state.resource,
+                                              "frame graph texture final state is declared more than once");
+            continue;
+        }
+        const auto binding = binding_indices.find(final_state.resource);
+        if (binding == binding_indices.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
+                                              final_state.resource,
+                                              "frame graph texture final state has no texture binding");
+            continue;
+        }
+        if (final_state.state == rhi::ResourceState::undefined) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
+                                              final_state.resource,
+                                              "frame graph texture final state cannot be undefined");
+            continue;
+        }
+        planned_final_states.push_back(PlannedTextureFinalState{
+            .binding_index = binding->second,
+            .after = final_state.state,
+            .final_state = &final_state,
+        });
+    }
+
+    return planned_final_states;
 }
 
 template <typename Result>
@@ -198,6 +249,39 @@ template <typename Result>
     }
 }
 
+[[nodiscard]] bool record_planned_texture_final_state(FrameGraphRhiTextureExecutionResult& result,
+                                                      rhi::IRhiCommandList& commands,
+                                                      std::span<FrameGraphTextureBinding> texture_bindings,
+                                                      const PlannedTextureFinalState& planned) {
+    if (planned.final_state == nullptr) {
+        return true;
+    }
+
+    auto& texture_binding = texture_bindings[planned.binding_index];
+    if (texture_binding.current_state == planned.after) {
+        return true;
+    }
+
+    try {
+        commands.transition_texture(texture_binding.texture, texture_binding.current_state, planned.after);
+        texture_binding.current_state = planned.after;
+        ++result.barriers_recorded;
+        ++result.final_state_barriers_recorded;
+        return true;
+    } catch (const std::exception& ex) {
+        (void)ex;
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
+                                          planned.final_state->resource,
+                                          "frame graph texture final-state barrier recording failed");
+        return false;
+    } catch (...) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
+                                          planned.final_state->resource,
+                                          "frame graph texture final-state barrier recording failed");
+        return false;
+    }
+}
+
 } // namespace
 
 std::optional<rhi::ResourceState> frame_graph_texture_state_for_access(FrameGraphAccess access) noexcept {
@@ -279,6 +363,7 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
 
     const auto binding_indices = build_binding_index(result, desc.texture_bindings);
     const auto pass_callbacks = build_pass_callback_index(result, desc.pass_callbacks);
+    const auto planned_final_states = plan_final_texture_states(result, binding_indices, desc.final_states);
     for (const auto& step : desc.schedule) {
         switch (step.kind) {
         case FrameGraphExecutionStep::Kind::barrier:
@@ -344,6 +429,12 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
         default:
             append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
                                               "frame graph execution step kind is invalid");
+            return result;
+        }
+    }
+
+    for (const auto& planned_final_state : planned_final_states) {
+        if (!record_planned_texture_final_state(result, *desc.commands, desc.texture_bindings, planned_final_state)) {
             return result;
         }
     }

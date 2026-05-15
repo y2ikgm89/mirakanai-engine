@@ -623,6 +623,13 @@ void RhiPostprocessFrameRenderer::end_frame() {
                 .current_state = rhi::ResourceState::depth_write,
             });
         }
+        std::vector<FrameGraphTextureFinalState> final_states;
+        if (depth_input_enabled_) {
+            final_states.push_back(FrameGraphTextureFinalState{
+                .resource = "scene_depth",
+                .state = rhi::ResourceState::depth_write,
+            });
+        }
         const auto overlay_draw = native_ui_overlay_ready()
                                       ? native_ui_overlay_->prepare(pending_overlay_sprites_, *commands_)
                                       : RhiNativeUiOverlayPreparedDraw{};
@@ -743,6 +750,7 @@ void RhiPostprocessFrameRenderer::end_frame() {
             .schedule = postprocess_frame_graph_execution_,
             .texture_bindings = texture_bindings,
             .pass_callbacks = pass_callbacks,
+            .final_states = final_states,
         });
         if (!frame_graph_execution.succeeded()) {
             throw std::runtime_error("rhi postprocess renderer frame graph rhi texture execution failed");
@@ -756,10 +764,6 @@ void RhiPostprocessFrameRenderer::end_frame() {
             } else if (binding.resource == "post_work") {
                 post_chain_work_state_ = binding.current_state;
             }
-        }
-        if (depth_input_enabled_) {
-            commands_->transition_texture(scene_depth_texture_, scene_depth_state_, rhi::ResourceState::depth_write);
-            scene_depth_state_ = rhi::ResourceState::depth_write;
         }
         commands_->present(swapchain_frame_);
         swapchain_frame_presented_ = true;

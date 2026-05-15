@@ -29,15 +29,22 @@ struct FrameGraphTextureBarrierRecordResult {
     }
 };
 
+struct FrameGraphTextureFinalState {
+    std::string resource;
+    rhi::ResourceState state{rhi::ResourceState::undefined};
+};
+
 struct FrameGraphRhiTextureExecutionDesc {
     rhi::IRhiCommandList* commands{nullptr};
     std::span<const FrameGraphExecutionStep> schedule;
     std::span<FrameGraphTextureBinding> texture_bindings;
     std::span<const FrameGraphPassExecutionBinding> pass_callbacks;
+    std::span<const FrameGraphTextureFinalState> final_states;
 };
 
 struct FrameGraphRhiTextureExecutionResult {
     std::size_t barriers_recorded{0};
+    std::size_t final_state_barriers_recorded{0};
     std::size_t pass_callbacks_invoked{0};
     std::vector<FrameGraphDiagnostic> diagnostics;
 

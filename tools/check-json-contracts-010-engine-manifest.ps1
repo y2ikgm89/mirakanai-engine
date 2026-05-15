@@ -302,9 +302,13 @@ $rhiDirectionalShadowSource = Get-Content -LiteralPath (Join-Path $root "engine/
 if ($rhiPostprocessSource.Contains("void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`r`n    require_active_frame();`r`n    commands_->draw(3, 1);") -or
     $rhiPostprocessSource.Contains("void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`n    require_active_frame();`n    commands_->draw(3, 1);") -or
     -not $rhiPostprocessSource.Contains("execute_frame_graph_rhi_texture_schedule") -or
+    -not $rhiPostprocessSource.Contains("FrameGraphTextureFinalState") -or
+    -not $rhiPostprocessSource.Contains(".final_states = final_states") -or
     -not $rhiPostprocessSource.Contains("frame_graph_execution.barriers_recorded") -or
     -not $rhiPostprocessSource.Contains("frame_graph_execution.pass_callbacks_invoked") -or
     -not $rhiDirectionalShadowSource.Contains("execute_frame_graph_rhi_texture_schedule") -or
+    -not $rhiDirectionalShadowSource.Contains("FrameGraphTextureFinalState") -or
+    -not $rhiDirectionalShadowSource.Contains(".final_states = final_states") -or
     -not $rhiDirectionalShadowSource.Contains("frame_graph_execution.barriers_recorded") -or
     -not $rhiDirectionalShadowSource.Contains("frame_graph_execution.pass_callbacks_invoked") -or
     $rhiDirectionalShadowSource.Contains("pending_sprites_")) {
