@@ -431,6 +431,10 @@ if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource v2") -
     -not ([string]$geRuntimeModule[0].purpose).Contains("host-driven reviewed hot-reload replacement safe point") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("plan_runtime_package_hot_reload_candidate_review_v2") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadCandidateReviewResultV2") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("plan_runtime_package_hot_reload_replacement_intent_review_v2") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadReplacementIntentReviewResultV2") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("candidate/discovery root coherence") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("defined overlay") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("file watching/recook execution") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("foundation-only") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("package streaming") -or

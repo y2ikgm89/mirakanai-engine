@@ -912,6 +912,11 @@ if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentCatalogCacheV2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageMountIdV2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_resident_package_replace_v2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Replacement Intent Review v1") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_replacement_intent_review_v2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadReplacementIntentReviewResultV2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("candidate/discovery root coherence") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("defined overlay") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("slot-preserving") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("projected resident budget") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("raw loaded-package catalog") -or

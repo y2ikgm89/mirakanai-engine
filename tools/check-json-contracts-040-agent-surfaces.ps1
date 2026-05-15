@@ -35,7 +35,12 @@ foreach ($check in @(
             "RuntimePackageHotReloadCandidateReviewStatusV2",
             "RuntimePackageHotReloadCandidateReviewDescV2",
             "RuntimePackageHotReloadCandidateReviewResultV2",
-            "plan_runtime_package_hot_reload_candidate_review_v2"
+            "plan_runtime_package_hot_reload_candidate_review_v2",
+            "RuntimePackageHotReloadReplacementIntentReviewStatusV2",
+            "invalid_overlay",
+            "RuntimePackageHotReloadReplacementIntentReviewDescV2",
+            "RuntimePackageHotReloadReplacementIntentReviewResultV2",
+            "plan_runtime_package_hot_reload_replacement_intent_review_v2"
         )
     },
     @{
@@ -46,8 +51,15 @@ foreach ($check in @(
             "RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded",
             "RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2::succeeded",
             "RuntimePackageHotReloadCandidateReviewResultV2::succeeded",
+            "RuntimePackageHotReloadReplacementIntentReviewResultV2::succeeded",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "plan_runtime_package_hot_reload_replacement_intent_review_v2",
             "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
+            "invalid-selected-candidate",
+            "candidate-outside-discovery-root",
+            "candidate-content-root-mismatch",
+            "invalid-overlay",
+            "protected-eviction-candidate-mount-id",
             "map_reviewed_evictions_replace_diagnostic_phase",
             "add_reviewed_evictions_replace_commit_diagnostics",
             "map_reviewed_eviction_commit_plan_status",
@@ -83,6 +95,10 @@ foreach ($check in @(
             "host-driven reviewed hot-reload replacement safe point",
             "Runtime Package Hot Reload Candidate Review v1",
             "plan_runtime_package_hot_reload_candidate_review_v2",
+            "Runtime Package Hot Reload Replacement Intent Review v1",
+            "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "RuntimePackageHotReloadReplacementIntentReviewResultV2",
+            "invalid overlay modes",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
             "disk/VFS mount discovery"
@@ -106,7 +122,23 @@ foreach ($check in @(
             "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
             "Runtime Package Hot Reload Candidate Review v1 coverage",
             "MK_runtime_package_hot_reload_candidate_review_tests",
-            "plan_runtime_package_hot_reload_candidate_review_v2"
+            "plan_runtime_package_hot_reload_candidate_review_v2",
+            "Runtime Package Hot Reload Replacement Intent Review v1 coverage",
+            "MK_runtime_package_hot_reload_replacement_intent_review_tests",
+            "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "candidate/discovery root mismatches",
+            "invalid overlay modes"
+        )
+    },
+    @{
+        Path = "tests/unit/runtime_package_hot_reload_replacement_intent_review_tests.cpp"
+        Needles = @(
+            "runtime package hot reload replacement intent review builds safe point descriptor",
+            "runtime package hot reload replacement intent review rejects invalid candidate rows",
+            "runtime package hot reload replacement intent review rejects invalid and missing mount ids",
+            "runtime package hot reload replacement intent review rejects unsafe discovery descriptors",
+            "runtime package hot reload replacement intent review rejects invalid overlay intent",
+            "runtime package hot reload replacement intent review validates reviewed eviction candidates"
         )
     },
     @{

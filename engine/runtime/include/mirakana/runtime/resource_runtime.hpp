@@ -1053,6 +1053,71 @@ commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2(
     IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
     const RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2& desc);
 
+enum class RuntimePackageHotReloadReplacementIntentReviewStatusV2 : std::uint8_t {
+    review_ready = 0,
+    invalid_candidate,
+    missing_matched_change,
+    invalid_descriptor,
+    invalid_overlay,
+    invalid_mount_id,
+    missing_mount_id,
+    invalid_eviction_candidate_mount_id,
+    duplicate_eviction_candidate_mount_id,
+    missing_eviction_candidate_mount_id,
+    protected_eviction_candidate_mount_id,
+};
+
+enum class RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2 : std::uint8_t {
+    candidate = 0,
+    descriptor,
+    resident_replace,
+    eviction_plan,
+};
+
+struct RuntimePackageHotReloadReplacementIntentReviewDescV2 {
+    RuntimePackageHotReloadCandidateReviewRowV2 selected_candidate;
+    RuntimePackageIndexDiscoveryDescV2 discovery;
+    RuntimeResidentPackageMountIdV2 mount_id;
+    std::vector<RuntimeResidentPackageMountIdV2> reviewed_existing_mount_ids;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    RuntimeResourceResidencyBudgetV2 budget{};
+    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+};
+
+struct RuntimePackageHotReloadReplacementIntentReviewDiagnosticV2 {
+    RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2 phase{
+        RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::candidate};
+    RuntimeResidentPackageMountIdV2 mount;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageHotReloadReplacementIntentReviewResultV2 {
+    RuntimePackageHotReloadReplacementIntentReviewStatusV2 status{
+        RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_candidate};
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2 replacement_desc;
+    std::vector<RuntimePackageHotReloadReplacementIntentReviewDiagnosticV2> diagnostics;
+    std::size_t matched_change_count{0};
+    std::size_t eviction_candidate_count{0};
+    std::size_t protected_mount_count{0};
+    bool invoked_discovery{false};
+    bool invoked_package_load{false};
+    bool invoked_resident_commit{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Converts one reviewed hot-reload candidate row into an explicit resident replacement descriptor.
+/// This pure planner validates the selected candidate, caller-reviewed existing mount ids, discovery descriptor, and
+/// reviewed eviction ids only. It does not scan discovery roots, read package indexes, load packages, mutate resident
+/// state, watch files, recook assets, stream in the background, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimePackageHotReloadReplacementIntentReviewResultV2
+plan_runtime_package_hot_reload_replacement_intent_review_v2(
+    const RuntimePackageHotReloadReplacementIntentReviewDescV2& desc);
+
 [[nodiscard]] std::optional<RuntimeResourceHandleV2> find_runtime_resource_v2(const RuntimeResourceCatalogV2& catalog,
                                                                               AssetId asset) noexcept;
 [[nodiscard]] bool is_runtime_resource_handle_live_v2(const RuntimeResourceCatalogV2& catalog,
