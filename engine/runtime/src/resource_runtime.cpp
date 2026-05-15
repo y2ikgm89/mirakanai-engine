@@ -553,6 +553,19 @@ void add_hot_reload_candidate_review_diagnostic(RuntimePackageHotReloadCandidate
     });
 }
 
+void add_hot_reload_replacement_intent_review_diagnostic(
+    RuntimePackageHotReloadReplacementIntentReviewResultV2& result,
+    RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2 phase, RuntimeResidentPackageMountIdV2 mount,
+    std::string path, std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimePackageHotReloadReplacementIntentReviewDiagnosticV2{
+        .phase = phase,
+        .mount = mount,
+        .path = std::move(path),
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool has_matched_hot_reload_change(const RuntimePackageHotReloadCandidateReviewRowV2& row,
                                                  std::string_view path,
                                                  RuntimePackageHotReloadCandidateReviewMatchKindV2 kind) noexcept {
@@ -594,6 +607,28 @@ hot_reload_candidate_matches_changed_path(const RuntimePackageIndexDiscoveryCand
         return true;
     }
     return false;
+}
+
+[[nodiscard]] bool
+has_valid_hot_reload_replacement_intent_match(const RuntimePackageHotReloadCandidateReviewRowV2& row) {
+    for (const auto& change : row.matched_changes) {
+        if (!valid_relative_vfs_path(change.path)) {
+            continue;
+        }
+
+        RuntimePackageHotReloadCandidateReviewMatchKindV2 actual_kind{
+            RuntimePackageHotReloadCandidateReviewMatchKindV2::package_index};
+        if (hot_reload_candidate_matches_changed_path(row.candidate, change.path, actual_kind) &&
+            actual_kind == change.kind) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool valid_runtime_package_mount_overlay(RuntimePackageMountOverlay overlay) noexcept {
+    return overlay == RuntimePackageMountOverlay::first_mount_wins ||
+           overlay == RuntimePackageMountOverlay::last_mount_wins;
 }
 
 [[nodiscard]] std::string package_index_label(std::string_view path, std::string_view root) {
@@ -824,6 +859,150 @@ plan_runtime_package_hot_reload_candidate_review_v2(const RuntimePackageHotReloa
         result.status = RuntimePackageHotReloadCandidateReviewStatusV2::no_matches;
     }
 
+    return result;
+}
+
+bool RuntimePackageHotReloadReplacementIntentReviewResultV2::succeeded() const noexcept {
+    return status == RuntimePackageHotReloadReplacementIntentReviewStatusV2::review_ready;
+}
+
+RuntimePackageHotReloadReplacementIntentReviewResultV2 plan_runtime_package_hot_reload_replacement_intent_review_v2(
+    const RuntimePackageHotReloadReplacementIntentReviewDescV2& desc) {
+    RuntimePackageHotReloadReplacementIntentReviewResultV2 result;
+    result.matched_change_count = desc.selected_candidate.matched_changes.size();
+    result.eviction_candidate_count = desc.eviction_candidate_unmount_order.size();
+    result.protected_mount_count = desc.protected_mount_ids.size();
+
+    if (!valid_hot_reload_candidate_review_candidate(desc.selected_candidate.candidate)) {
+        result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_candidate;
+        add_hot_reload_replacement_intent_review_diagnostic(
+            result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::candidate, desc.mount_id,
+            desc.selected_candidate.candidate.package_index_path, "invalid-selected-candidate",
+            "selected hot-reload candidate must be a reviewed relative .geindex candidate with valid roots");
+        return result;
+    }
+
+    if (!has_valid_hot_reload_replacement_intent_match(desc.selected_candidate)) {
+        result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::missing_matched_change;
+        add_hot_reload_replacement_intent_review_diagnostic(
+            result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::candidate, desc.mount_id,
+            desc.selected_candidate.candidate.package_index_path, "missing-matched-change",
+            "selected hot-reload candidate requires at least one reviewed matching changed path");
+        return result;
+    }
+
+    const auto discovery_root = trim_trailing_slashes(desc.discovery.root);
+    if (!valid_relative_vfs_path(discovery_root)) {
+        result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_descriptor;
+        add_hot_reload_replacement_intent_review_diagnostic(
+            result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::descriptor, desc.mount_id,
+            discovery_root, "invalid-discovery-root",
+            "runtime package replacement intent discovery root must be a non-empty relative VFS directory");
+        return result;
+    }
+    if (!path_is_under_root(desc.selected_candidate.candidate.package_index_path, discovery_root)) {
+        result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_descriptor;
+        add_hot_reload_replacement_intent_review_diagnostic(
+            result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::descriptor, desc.mount_id,
+            desc.selected_candidate.candidate.package_index_path, "candidate-outside-discovery-root",
+            "selected hot-reload candidate package index must stay under the reviewed discovery root");
+        return result;
+    }
+
+    const auto discovery_content_root = trim_trailing_slashes(desc.discovery.content_root);
+    if (!discovery_content_root.empty() && !valid_relative_vfs_path(discovery_content_root)) {
+        result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_descriptor;
+        add_hot_reload_replacement_intent_review_diagnostic(
+            result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::descriptor, desc.mount_id,
+            discovery_content_root, "invalid-discovery-content-root",
+            "runtime package replacement intent discovery content root must be empty or a relative VFS directory");
+        return result;
+    }
+    const auto candidate_content_root = trim_trailing_slashes(desc.selected_candidate.candidate.content_root);
+    if (candidate_content_root != discovery_content_root) {
+        result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_descriptor;
+        add_hot_reload_replacement_intent_review_diagnostic(
+            result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::descriptor, desc.mount_id,
+            desc.selected_candidate.candidate.content_root, "candidate-content-root-mismatch",
+            "selected hot-reload candidate content root must match the reviewed discovery content root");
+        return result;
+    }
+
+    if (!valid_runtime_package_mount_overlay(desc.overlay)) {
+        result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_overlay;
+        add_hot_reload_replacement_intent_review_diagnostic(
+            result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::descriptor, desc.mount_id, {},
+            "invalid-overlay", "runtime package replacement intent overlay must be a known mount overlay mode");
+        return result;
+    }
+
+    if (desc.mount_id.value == 0) {
+        result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_mount_id;
+        add_hot_reload_replacement_intent_review_diagnostic(
+            result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::resident_replace, desc.mount_id,
+            {}, "invalid-mount-id", "resident package mount ids must be non-zero");
+        return result;
+    }
+    if (!contains_mount_id(desc.reviewed_existing_mount_ids, desc.mount_id)) {
+        result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::missing_mount_id;
+        add_hot_reload_replacement_intent_review_diagnostic(
+            result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::resident_replace, desc.mount_id,
+            {}, "missing-mount-id", "resident package mount id is not present in the reviewed existing mount set");
+        return result;
+    }
+
+    std::vector<RuntimeResidentPackageMountIdV2> seen_eviction_candidates;
+    seen_eviction_candidates.reserve(desc.eviction_candidate_unmount_order.size());
+    for (const auto candidate : desc.eviction_candidate_unmount_order) {
+        if (candidate.value == 0) {
+            result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_eviction_candidate_mount_id;
+            add_hot_reload_replacement_intent_review_diagnostic(
+                result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::eviction_plan, candidate, {},
+                "invalid-eviction-candidate-mount-id", "reviewed eviction candidate mount ids must be non-zero");
+            return result;
+        }
+        if (contains_mount_id(seen_eviction_candidates, candidate)) {
+            result.status =
+                RuntimePackageHotReloadReplacementIntentReviewStatusV2::duplicate_eviction_candidate_mount_id;
+            add_hot_reload_replacement_intent_review_diagnostic(
+                result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::eviction_plan, candidate, {},
+                "duplicate-eviction-candidate-mount-id", "reviewed eviction candidate mount id appears more than once");
+            return result;
+        }
+        if (!contains_mount_id(desc.reviewed_existing_mount_ids, candidate)) {
+            result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::missing_eviction_candidate_mount_id;
+            add_hot_reload_replacement_intent_review_diagnostic(
+                result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::eviction_plan, candidate, {},
+                "missing-eviction-candidate-mount-id",
+                "reviewed eviction candidate mount id is not present in the reviewed existing mount set");
+            return result;
+        }
+        if (candidate == desc.mount_id || contains_mount_id(desc.protected_mount_ids, candidate)) {
+            result.status =
+                RuntimePackageHotReloadReplacementIntentReviewStatusV2::protected_eviction_candidate_mount_id;
+            add_hot_reload_replacement_intent_review_diagnostic(
+                result, RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::eviction_plan, candidate, {},
+                "protected-eviction-candidate-mount-id",
+                "reviewed eviction candidate mount id is protected from eviction");
+            return result;
+        }
+        seen_eviction_candidates.push_back(candidate);
+    }
+
+    result.replacement_desc = RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2{
+        .discovery =
+            RuntimePackageIndexDiscoveryDescV2{
+                .root = discovery_root,
+                .content_root = discovery_content_root,
+            },
+        .selected_package_index_path = desc.selected_candidate.candidate.package_index_path,
+        .mount_id = desc.mount_id,
+        .overlay = desc.overlay,
+        .budget = desc.budget,
+        .eviction_candidate_unmount_order = desc.eviction_candidate_unmount_order,
+        .protected_mount_ids = desc.protected_mount_ids,
+    };
+    result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::review_ready;
     return result;
 }
 
