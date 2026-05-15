@@ -1,6 +1,7 @@
 add_library(MK_tools_asset OBJECT
     asset_file_scanner.cpp
     asset_import_adapters.cpp
+    asset_runtime_package_hot_reload_tool.cpp
     asset_import_tool.cpp
     asset_package_tool.cpp
     morph_mesh_cpu_source_bridge.cpp
@@ -20,6 +21,7 @@ target_link_libraries(MK_tools_asset PUBLIC
     MK_animation
     MK_assets
     MK_platform
+    MK_runtime
     MK_scene
     MK_ui
 )

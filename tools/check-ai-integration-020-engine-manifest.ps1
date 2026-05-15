@@ -84,8 +84,8 @@ $masterPlanRuntimeUiLedgerNote = [regex]::Match($masterPlanText, '(?m)^Runtime U
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "RuntimeInputRebindingPresentationModel" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "platform input glyph generation" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanText "Latest narrow child" "production master plan latest narrow child pointer"
-Assert-ContainsText $masterPlanText "Runtime Package Hot Reload Recook Replacement Safe Point v1" "production master plan latest narrow child pointer"
-Assert-ContainsText $masterPlanText "reviewed recook-to-replacement safe-point composition slice" "production master plan next narrow child pointer"
+Assert-ContainsText $masterPlanText "Runtime Hot Reload Recook Package Replacement Execution v1" "production master plan latest narrow child pointer"
+Assert-ContainsText $masterPlanText "reviewed recook-to-runtime-package replacement execution slice" "production master plan next narrow child pointer"
 Assert-ContainsText $rhiPublicHeaderText "struct ComputePipelineDesc" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "create_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "bind_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
@@ -1612,7 +1612,11 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_package_hot_reload_replacement_intent_review_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Recook Replacement Safe Point v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "commit_runtime_package_hot_reload_recook_replacement_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Hot Reload Recook Package Replacement Execution v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_asset_runtime_package_hot_reload_replacement_safe_point" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "selected package matched AssetRuntimeReplacementState" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime-resource-v2 next" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Runtime Hot Reload Recook Package Replacement Execution v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Runtime Package Hot Reload Recook Replacement Safe Point v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 foreach ($check in @(
     @{
@@ -1687,6 +1691,9 @@ if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Replacement Safe Point v1") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_package_hot_reload_recook_replacement_v2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookReplacementResultV2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Hot Reload Recook Package Replacement Execution v1") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("execute_asset_runtime_package_hot_reload_replacement_safe_point") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("selected package matched AssetRuntimeReplacementState") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("candidate/discovery root coherence") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("defined overlay") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("file watching/recook execution") -or
@@ -1970,6 +1977,42 @@ foreach ($check in @(
         )
     },
     @{
+        Path = "tests/unit/tools_runtime_hot_reload_package_tests.cpp"
+        Needles = @(
+            "asset runtime package hot reload replacement commits recook and resident safe point",
+            "asset runtime package hot reload replacement commits only the selected package recook assets",
+            "asset runtime package hot reload replacement passes external import options into recook",
+            "asset runtime package hot reload replacement blocks recook failure before runtime package reads",
+            "asset runtime package hot reload replacement reports recook descriptor exceptions",
+            "asset runtime package hot reload replacement preserves staged recook when runtime commit fails"
+        )
+    },
+    @{
+        Path = "engine/tools/include/mirakana/tools/asset_runtime_package_hot_reload_tool.hpp"
+        Needles = @(
+            "AssetRuntimePackageHotReloadReplacementDesc",
+            "AssetRuntimePackageHotReloadRuntimeReplacementDesc",
+            "AssetRuntimePackageHotReloadReplacementResult",
+            "execute_asset_runtime_package_hot_reload_replacement_safe_point"
+        )
+    },
+    @{
+        Path = "engine/tools/asset/asset_runtime_package_hot_reload_tool.cpp"
+        Needles = @(
+            "execute_asset_runtime_recook",
+            "commit_runtime_package_hot_reload_recook_replacement_v2",
+            "plan_runtime_package_hot_reload_recook_change_review_v2",
+            "commit_safe_point(selected_assets)"
+        )
+    },
+    @{
+        Path = "CMakeLists.txt"
+        Needles = @(
+            "MK_tools_runtime_hot_reload_package_tests",
+            "tests/unit/tools_runtime_hot_reload_package_tests.cpp"
+        )
+    },
+    @{
         Path = "docs/current-capabilities.md"
         Needles = @(
             "Resident package mount set",
@@ -1997,6 +2040,9 @@ foreach ($check in @(
             "Runtime Package Hot Reload Recook Replacement Safe Point v1",
             "commit_runtime_package_hot_reload_recook_replacement_v2",
             "RuntimePackageHotReloadRecookReplacementResultV2",
+            "Runtime Hot Reload Recook Package Replacement Execution v1",
+            "execute_asset_runtime_package_hot_reload_replacement_safe_point",
+            "selected package matched",
             "invalid overlay modes",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
@@ -2034,6 +2080,10 @@ foreach ($check in @(
             "Runtime Package Hot Reload Recook Replacement Safe Point v1 coverage",
             "MK_runtime_package_hot_reload_recook_replacement_tests",
             "commit_runtime_package_hot_reload_recook_replacement_v2",
+            "Runtime Hot Reload Recook Package Replacement Execution v1 coverage",
+            "MK_tools_runtime_hot_reload_package_tests",
+            "execute_asset_runtime_package_hot_reload_replacement_safe_point",
+            "selected package commit isolation",
             "candidate/discovery root mismatches",
             "invalid overlay modes",
             "rejects zero/duplicate/missing mount ids"

@@ -65,5 +65,8 @@ struct AssetRuntimeRecookExecutionResult {
 execute_asset_runtime_recook(IFileSystem& filesystem, const AssetImportPlan& import_plan,
                              AssetRuntimeReplacementState& replacements,
                              const std::vector<AssetHotReloadRecookRequest>& requests);
+[[nodiscard]] AssetRuntimeRecookExecutionResult execute_asset_runtime_recook(
+    IFileSystem& filesystem, const AssetImportPlan& import_plan, AssetRuntimeReplacementState& replacements,
+    const std::vector<AssetHotReloadRecookRequest>& requests, const AssetImportExecutionOptions& options);
 
 } // namespace mirakana

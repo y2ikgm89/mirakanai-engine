@@ -360,6 +360,34 @@ AssetHotReloadApplyResult AssetRuntimeReplacementState::mark_failed(const AssetH
     };
 }
 
+namespace {
+
+[[nodiscard]] std::vector<AssetRuntimeReplacement>
+select_pending_replacements(const std::unordered_map<AssetId, AssetRuntimeReplacement, AssetIdHash>& pending_by_asset,
+                            std::span<const AssetId> assets) {
+    std::vector<AssetRuntimeReplacement> pending;
+    pending.reserve(assets.size());
+    std::unordered_set<std::uint64_t> selected_assets;
+    selected_assets.reserve(assets.size());
+    for (const auto asset : assets) {
+        if (asset.value == 0) {
+            throw std::invalid_argument("asset runtime replacement commit asset is invalid");
+        }
+        if (!selected_assets.insert(asset.value).second) {
+            continue;
+        }
+        const auto it = pending_by_asset.find(asset);
+        if (it == pending_by_asset.end()) {
+            continue;
+        }
+        pending.push_back(it->second);
+    }
+    std::ranges::sort(pending, replacement_less);
+    return pending;
+}
+
+} // namespace
+
 std::vector<AssetHotReloadApplyResult> AssetRuntimeReplacementState::commit_safe_point() {
     std::vector<AssetRuntimeReplacement> pending;
     pending.reserve(pending_by_asset_.size());
@@ -388,6 +416,41 @@ std::vector<AssetHotReloadApplyResult> AssetRuntimeReplacementState::commit_safe
 
     pending_by_asset_.clear();
     return results;
+}
+
+std::vector<AssetHotReloadApplyResult>
+AssetRuntimeReplacementState::commit_safe_point(std::span<const AssetId> assets) {
+    auto pending = select_pending_replacements(pending_by_asset_, assets);
+
+    std::vector<AssetHotReloadApplyResult> results;
+    results.reserve(pending.size());
+    for (auto& replacement : pending) {
+        active_by_asset_[replacement.asset] = AssetHotReloadAppliedAsset{
+            .asset = replacement.asset,
+            .path = replacement.path,
+            .revision = replacement.cooked_revision,
+        };
+        results.push_back(AssetHotReloadApplyResult{
+            .kind = AssetHotReloadApplyResultKind::applied,
+            .asset = replacement.asset,
+            .path = std::move(replacement.path),
+            .requested_revision = replacement.requested_revision,
+            .active_revision = replacement.cooked_revision,
+            .diagnostic = {},
+        });
+        pending_by_asset_.erase(replacement.asset);
+    }
+
+    return results;
+}
+
+void AssetRuntimeReplacementState::discard_pending(std::span<const AssetId> assets) noexcept {
+    for (const auto asset : assets) {
+        if (asset.value == 0) {
+            continue;
+        }
+        pending_by_asset_.erase(asset);
+    }
 }
 
 void AssetRuntimeReplacementState::clear() noexcept {

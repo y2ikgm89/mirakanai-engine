@@ -4,6 +4,7 @@
 #include "test_framework.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
 
@@ -3584,6 +3585,63 @@ MK_TEST("runtime asset replacement stages recooked assets until a safe point") {
     const auto* active_after_safe_point = state.find_active(texture_id);
     MK_REQUIRE(active_after_safe_point != nullptr);
     MK_REQUIRE(active_after_safe_point->revision == 11);
+}
+
+MK_TEST("runtime asset replacement can commit only selected staged assets") {
+    const auto texture_id = mirakana::AssetId::from_name("textures/player.albedo");
+    const auto material_id = mirakana::AssetId::from_name("materials/player");
+    mirakana::AssetRuntimeReplacementState state;
+    state.seed({
+        mirakana::AssetFileSnapshot{
+            .asset = texture_id, .path = "assets/textures/player.texture", .revision = 10, .size_bytes = 100},
+        mirakana::AssetFileSnapshot{
+            .asset = material_id, .path = "assets/materials/player.material", .revision = 5, .size_bytes = 64},
+    });
+
+    const mirakana::AssetHotReloadRecookRequest texture_request{
+        .asset = texture_id,
+        .source_asset = texture_id,
+        .trigger_path = "source/textures/player.texture",
+        .trigger_event_kind = mirakana::AssetHotReloadEventKind::modified,
+        .reason = mirakana::AssetHotReloadRecookReason::source_modified,
+        .previous_revision = 10,
+        .current_revision = 11,
+        .ready_tick = 103,
+    };
+    const mirakana::AssetHotReloadRecookRequest material_request{
+        .asset = material_id,
+        .source_asset = material_id,
+        .trigger_path = "source/materials/player.material",
+        .trigger_event_kind = mirakana::AssetHotReloadEventKind::modified,
+        .reason = mirakana::AssetHotReloadRecookReason::source_modified,
+        .previous_revision = 5,
+        .current_revision = 6,
+        .ready_tick = 104,
+    };
+
+    MK_REQUIRE(state.stage(texture_request, "assets/textures/player.texture", 11).kind ==
+               mirakana::AssetHotReloadApplyResultKind::staged);
+    MK_REQUIRE(state.stage(material_request, "assets/materials/player.material", 6).kind ==
+               mirakana::AssetHotReloadApplyResultKind::staged);
+    MK_REQUIRE(state.pending_count() == 2);
+
+    const std::array selected_assets{texture_id};
+    const auto selected_results = state.commit_safe_point(selected_assets);
+    MK_REQUIRE(selected_results.size() == 1);
+    MK_REQUIRE(selected_results[0].asset == texture_id);
+    MK_REQUIRE(selected_results[0].active_revision == 11);
+    MK_REQUIRE(state.pending_count() == 1);
+    MK_REQUIRE(state.find_pending(texture_id) == nullptr);
+    MK_REQUIRE(state.find_pending(material_id) != nullptr);
+    MK_REQUIRE(state.find_active(texture_id)->revision == 11);
+    MK_REQUIRE(state.find_active(material_id)->revision == 5);
+
+    const auto remaining_results = state.commit_safe_point();
+    MK_REQUIRE(remaining_results.size() == 1);
+    MK_REQUIRE(remaining_results[0].asset == material_id);
+    MK_REQUIRE(remaining_results[0].active_revision == 6);
+    MK_REQUIRE(state.pending_count() == 0);
+    MK_REQUIRE(state.find_active(material_id)->revision == 6);
 }
 
 MK_TEST("runtime asset replacement rolls back failed recooks without losing the active asset") {

@@ -7,6 +7,7 @@
 #include "mirakana/assets/asset_registry.hpp"
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -125,6 +126,8 @@ class AssetRuntimeReplacementState final {
     [[nodiscard]] AssetHotReloadApplyResult mark_failed(const AssetHotReloadRecookRequest& request,
                                                         std::string diagnostic);
     [[nodiscard]] std::vector<AssetHotReloadApplyResult> commit_safe_point();
+    [[nodiscard]] std::vector<AssetHotReloadApplyResult> commit_safe_point(std::span<const AssetId> assets);
+    void discard_pending(std::span<const AssetId> assets) noexcept;
     void clear() noexcept;
 
     [[nodiscard]] const AssetHotReloadAppliedAsset* find_active(AssetId asset) const noexcept;
