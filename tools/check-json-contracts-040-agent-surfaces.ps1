@@ -388,6 +388,8 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("barrier intent") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_v1_schedule") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_texture_schedule") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("executor-recorded barriers") -or
     -not ([string]$frameGraphGap[0].notes).Contains("production render graph") -or
     -not ([string]$frameGraphGap[0].notes).Contains("2D/3D playable vertical slices")) {
     Write-Error "engine manifest aiOperableProductionLoop frame-graph-v1 gap must keep foundation-only follow-up limits explicit"

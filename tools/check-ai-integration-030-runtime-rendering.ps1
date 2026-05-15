@@ -1646,6 +1646,7 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph RHI Texture Schedule Execution v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiTextureExecutionDesc" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_rhi_texture_schedule" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiPostprocessFrameRenderer scheduled inter-pass texture transition adoption" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
@@ -1704,6 +1705,9 @@ $rhiPostprocessSource = Get-AgentSurfaceText "engine/renderer/src/rhi_postproces
 $rhiDirectionalShadowSource = Get-AgentSurfaceText "engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp"
 Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`r`n    require_active_frame();`r`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
 Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`n    require_active_frame();`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
+Assert-ContainsText $rhiPostprocessSource "execute_frame_graph_rhi_texture_schedule" "RHI postprocess frame graph RHI execution"
+Assert-ContainsText $rhiPostprocessSource "frame_graph_execution.barriers_recorded" "RHI postprocess frame graph RHI execution"
+Assert-ContainsText $rhiPostprocessSource "frame_graph_execution.pass_callbacks_invoked" "RHI postprocess frame graph RHI execution"
 Assert-DoesNotContainText $rhiDirectionalShadowSource "pending_sprites_" "RHI directional shadow sprite submission"
 foreach ($postprocessDepthGuidance in @(
     "docs/testing.md",
