@@ -282,6 +282,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_candidate_resident_mount_tests)
     add_test(NAME MK_runtime_package_candidate_resident_mount_tests COMMAND MK_runtime_package_candidate_resident_mount_tests)
 
+    add_executable(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests
+        tests/unit/runtime_package_candidate_resident_mount_reviewed_evictions_tests.cpp
+    )
+    target_link_libraries(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests PRIVATE MK_runtime)
+    target_include_directories(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests)
+    add_test(NAME MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests COMMAND MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests)
+
     add_executable(MK_runtime_package_candidate_resident_replace_tests
         tests/unit/runtime_package_candidate_resident_replace_tests.cpp
     )
