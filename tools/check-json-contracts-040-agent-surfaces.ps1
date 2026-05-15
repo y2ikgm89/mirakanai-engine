@@ -358,15 +358,26 @@ foreach ($check in @(
     }
 }
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })
-if ($rendererRhiGap.Count -ne 1 -or $rendererRhiGap[0].status -ne "implemented-foundation-only") {
-    Write-Error "engine manifest aiOperableProductionLoop renderer-rhi-resource-foundation gap must be implemented-foundation-only"
+if ($rendererRhiGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop renderer-rhi-resource-foundation gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-if (-not ([string]$rendererRhiGap[0].notes).Contains("foundation-only") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("RhiResourceLifetimeRegistry") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("GPU allocator") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("upload/staging") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("2D/3D playable vertical slices")) {
-    Write-Error "engine manifest aiOperableProductionLoop renderer-rhi-resource-foundation gap must keep foundation-only follow-up limits explicit"
+foreach ($check in @(
+    @{
+        Path = "docs/superpowers/plans/2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md"
+        Needles = @(
+            "Renderer RHI Resource Foundation 1.0 Scope Closeout",
+            "D3D12/Vulkan deferred native teardown",
+            "RhiDeviceMemoryDiagnostics",
+            "frame-graph-v1",
+            "upload-staging-v1",
+            "Metal IRhiDevice parity"
+        )
+    }
+)) {
+    $fileText = Get-Content -LiteralPath (Join-Path $root $check.Path) -Raw
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $fileText $needle "$($check.Path) renderer-rhi-resource-foundation closeout evidence"
+    }
 }
 $frameGraphGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "frame-graph-v1" })
 if ($frameGraphGap.Count -ne 1 -or $frameGraphGap[0].status -ne "implemented-foundation-only") {
@@ -437,13 +448,13 @@ if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
 }
 foreach ($needle in @(
-    "Runtime Resource v2 1.0 Scope Closeout v1",
-    "removing runtime-resource-v2 from unsupportedProductionGaps",
-    "registered asset watch-tick",
-    "renderer-rhi-resource-foundation"
+    "Renderer RHI Resource Foundation 1.0 Scope Closeout v1",
+    "removing renderer-rhi-resource-foundation from unsupportedProductionGaps",
+    "D3D12/Vulkan deferred native teardown",
+    "frame-graph-v1"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe runtime-resource closeout and next gap: $needle"
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe renderer-rhi closeout and next gap: $needle"
     }
 }
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })

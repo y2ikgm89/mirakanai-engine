@@ -424,7 +424,7 @@ Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "CMake File AP
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "tools/check-text-format.ps1" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "tools/format-text.ps1" "engine/agent/manifest.json"
-Assert-ContainsText $manifestRaw "Runtime Resource v2 1.0 Scope Closeout v1" "engine/agent/manifest.json"
+Assert-ContainsText $manifestRaw "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "engine/agent/manifest.json"
 foreach ($windowsDiagnosticsNeedle in @("windowsDiagnosticsToolchain", "Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit", "Tools.Graphics.DirectX~~~~0.0.1.0", "d3d12SDKLayers.dll", "pixtool --help", "srv*C:\\Symbols*https://msdl.microsoft.com/download/symbols")) {
     Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) $windowsDiagnosticsNeedle "engine/agent/manifest.json"
 }
@@ -1222,19 +1222,15 @@ if ($activeChildProductionPlans.Count -eq 0) {
 }
 $recommendedNextPlanText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
-    "Runtime Resource v2 1.0 Scope Closeout v1",
-    "removing runtime-resource-v2 from unsupportedProductionGaps",
-    "reviewed safe-point package streaming",
-    "resident mount/cache",
-    "reviewed eviction",
-    "package discovery/candidate load",
-    "hot-reload recook replacement",
-    "registered asset watch-tick",
-    "native watcher ownership",
-    "broad hot reload productization",
-    "renderer-rhi-resource-foundation"
+    "Renderer RHI Resource Foundation 1.0 Scope Closeout v1",
+    "removing renderer-rhi-resource-foundation from unsupportedProductionGaps",
+    "RhiResourceLifetimeRegistry",
+    "D3D12/Vulkan deferred native teardown",
+    "GPU debug markers/timestamp frequency",
+    "RhiDeviceMemoryDiagnostics",
+    "frame-graph-v1"
 )) {
-    Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime-resource closeout"
+    Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer-rhi closeout"
 }
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $masterPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
