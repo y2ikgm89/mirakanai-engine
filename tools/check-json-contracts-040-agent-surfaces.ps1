@@ -44,7 +44,11 @@ foreach ($check in @(
             "invalid_overlay",
             "RuntimePackageHotReloadReplacementIntentReviewDescV2",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2",
-            "plan_runtime_package_hot_reload_replacement_intent_review_v2"
+            "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "RuntimePackageHotReloadRecookReplacementStatusV2",
+            "RuntimePackageHotReloadRecookReplacementDescV2",
+            "RuntimePackageHotReloadRecookReplacementResultV2",
+            "commit_runtime_package_hot_reload_recook_replacement_v2"
         )
     },
     @{
@@ -57,9 +61,15 @@ foreach ($check in @(
             "RuntimePackageHotReloadCandidateReviewResultV2::succeeded",
             "RuntimePackageHotReloadRecookChangeReviewResultV2::succeeded",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2::succeeded",
+            "RuntimePackageHotReloadRecookReplacementResultV2::succeeded",
             "plan_runtime_package_hot_reload_candidate_review_v2",
             "plan_runtime_package_hot_reload_recook_change_review_v2",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "commit_runtime_package_hot_reload_recook_replacement_v2",
+            "map_hot_reload_recook_replacement_commit_diagnostic_phase",
+            "RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::candidate_load",
+            "RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::resident_budget",
+            "replacement-commit-failed",
             "invalid-recook-apply-result-asset",
             "invalid-recook-apply-result-revision",
             "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
@@ -108,6 +118,9 @@ foreach ($check in @(
             "Runtime Package Hot Reload Replacement Intent Review v1",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2",
+            "Runtime Package Hot Reload Recook Replacement Safe Point v1",
+            "commit_runtime_package_hot_reload_recook_replacement_v2",
+            "RuntimePackageHotReloadRecookReplacementResultV2",
             "invalid overlay modes",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
@@ -139,8 +152,19 @@ foreach ($check in @(
             "Runtime Package Hot Reload Replacement Intent Review v1 coverage",
             "MK_runtime_package_hot_reload_replacement_intent_review_tests",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "Runtime Package Hot Reload Recook Replacement Safe Point v1 coverage",
+            "MK_runtime_package_hot_reload_recook_replacement_tests",
+            "commit_runtime_package_hot_reload_recook_replacement_v2",
             "candidate/discovery root mismatches",
             "invalid overlay modes"
+        )
+    },
+    @{
+        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Needles = @(
+            "Latest narrow child",
+            "Runtime Package Hot Reload Recook Replacement Safe Point v1",
+            "reviewed recook-to-replacement safe-point composition slice"
         )
     },
     @{
@@ -174,6 +198,17 @@ foreach ($check in @(
             "static_cast<mirakana::AssetHotReloadApplyResultKind>(255)",
             "runtime package hot reload recook change review reports no recook rows without reading packages",
             "runtime package hot reload recook change review surfaces candidate review failures"
+        )
+    },
+    @{
+        Path = "tests/unit/runtime_package_hot_reload_recook_replacement_tests.cpp"
+        Needles = @(
+            "runtime package hot reload recook replacement commits reviewed selected package at safe point",
+            "runtime package hot reload recook replacement blocks failed recook rows before package reads",
+            "runtime package hot reload recook replacement requires selected reviewed candidate",
+            "runtime package hot reload recook replacement blocks invalid intent before discovery",
+            "runtime package hot reload recook replacement preserves state when commit stage fails",
+            "runtime package hot reload recook replacement preserves state when reviewed evictions are insufficient"
         )
     },
     @{

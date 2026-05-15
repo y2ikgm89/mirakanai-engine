@@ -1176,6 +1176,88 @@ struct RuntimePackageHotReloadReplacementIntentReviewResultV2 {
 plan_runtime_package_hot_reload_replacement_intent_review_v2(
     const RuntimePackageHotReloadReplacementIntentReviewDescV2& desc);
 
+enum class RuntimePackageHotReloadRecookReplacementStatusV2 : std::uint8_t {
+    committed = 0,
+    recook_change_review_failed,
+    candidate_not_found,
+    replacement_intent_review_failed,
+    replacement_commit_failed,
+};
+
+enum class RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2 : std::uint8_t {
+    recook_change_review = 0,
+    candidate_selection,
+    replacement_intent_review,
+    resident_replace,
+    discovery,
+    candidate_load,
+    candidate_catalog,
+    eviction_plan,
+    resident_budget,
+    catalog_refresh,
+    resident_commit,
+};
+
+struct RuntimePackageHotReloadRecookReplacementDescV2 {
+    std::vector<AssetHotReloadApplyResult> recook_apply_results;
+    std::vector<RuntimePackageIndexDiscoveryCandidateV2> candidates;
+    RuntimePackageIndexDiscoveryDescV2 discovery;
+    std::string selected_package_index_path;
+    RuntimeResidentPackageMountIdV2 mount_id;
+    std::vector<RuntimeResidentPackageMountIdV2> reviewed_existing_mount_ids;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    RuntimeResourceResidencyBudgetV2 budget{};
+    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+};
+
+struct RuntimePackageHotReloadRecookReplacementDiagnosticV2 {
+    RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2 phase{
+        RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::recook_change_review};
+    AssetId asset;
+    RuntimeResidentPackageMountIdV2 mount;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageHotReloadRecookReplacementResultV2 {
+    RuntimePackageHotReloadRecookReplacementStatusV2 status{
+        RuntimePackageHotReloadRecookReplacementStatusV2::recook_change_review_failed};
+    RuntimePackageHotReloadRecookChangeReviewResultV2 recook_change_review;
+    RuntimePackageHotReloadCandidateReviewRowV2 selected_candidate;
+    RuntimePackageHotReloadReplacementIntentReviewResultV2 replacement_intent_review;
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2 replacement_commit;
+    std::vector<RuntimePackageHotReloadRecookReplacementDiagnosticV2> diagnostics;
+    std::size_t selected_candidate_count{0};
+    std::size_t loaded_record_count{0};
+    std::uint64_t loaded_resident_bytes{0};
+    std::uint64_t projected_resident_bytes{0};
+    std::uint32_t previous_mount_generation{0};
+    std::uint32_t mount_generation{0};
+    std::size_t previous_mount_count{0};
+    std::size_t mounted_package_count{0};
+    std::size_t evicted_mount_count{0};
+    bool invoked_candidate_review{false};
+    bool invoked_replacement_intent_review{false};
+    bool invoked_file_watch{false};
+    bool invoked_recook{false};
+    bool invoked_package_load{false};
+    bool invoked_resident_commit{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Converts already-reviewed recook apply rows into one reviewed safe-point resident replacement commit.
+/// The helper composes the pure recook change review, the pure replacement-intent review, and the existing
+/// discovery-backed resident replacement commit. It does not watch files, run recook, infer roots, choose eviction
+/// policy, stream in the background, upload/stage renderer resources, enforce GPU budgets, or touch renderer/RHI/native
+/// handles.
+[[nodiscard]] RuntimePackageHotReloadRecookReplacementResultV2 commit_runtime_package_hot_reload_recook_replacement_v2(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    const RuntimePackageHotReloadRecookReplacementDescV2& desc);
+
 [[nodiscard]] std::optional<RuntimeResourceHandleV2> find_runtime_resource_v2(const RuntimeResourceCatalogV2& catalog,
                                                                               AssetId asset) noexcept;
 [[nodiscard]] bool is_runtime_resource_handle_live_v2(const RuntimeResourceCatalogV2& catalog,
