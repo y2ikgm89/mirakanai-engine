@@ -363,8 +363,8 @@ if (-not ([string]$geAssetsModule[0].purpose).Contains("Asset Identity v2") -or
     -not ([string]$geAssetsModule[0].purpose).Contains("renderer/RHI residency")) {
     Write-Error "engine manifest MK_assets purpose must describe Asset Identity v2 as foundation-only and keep follow-up limits explicit"
 }
-if ($geRuntimeModule[0].status -ne "implemented-runtime-resource-v2-foundation") {
-    Write-Error "engine manifest MK_runtime status must advertise the Runtime Resource v2 foundation slice honestly"
+if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-safe-point-controller") {
+    Write-Error "engine manifest MK_runtime status must advertise the closed Runtime Resource v2 safe-point/controller surface honestly"
 }
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") {
     Write-Error "engine manifest MK_runtime publicHeaders must include resource_runtime.hpp"
@@ -440,10 +440,11 @@ if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource v2") -
     -not ([string]$geRuntimeModule[0].purpose).Contains("candidate/discovery root coherence") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("defined overlay") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("file watching/recook execution") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("foundation-only") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("closed for the Engine 1.0 reviewed safe-point/controller surface") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("package streaming") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("native watcher ownership") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("renderer/RHI resource ownership")) {
-    Write-Error "engine manifest MK_runtime purpose must describe Runtime Resource v2 as foundation-only and keep follow-up limits explicit"
+    Write-Error "engine manifest MK_runtime purpose must describe Runtime Resource v2 as a closed safe-point/controller surface and keep follow-up limits explicit"
 }
 if (-not ([string]$geRuntimeModule[0].purpose).Contains("RuntimeInputRebindingPresentationModel") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("make_runtime_input_rebinding_presentation") -or

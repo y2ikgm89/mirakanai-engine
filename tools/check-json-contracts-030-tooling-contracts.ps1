@@ -853,7 +853,6 @@ foreach ($packageSurface in $productionLoop.packageSurfaces) {
 
 $requiredGapIds = @(
     "scene-component-prefab-schema-v2",
-    "runtime-resource-v2",
     "renderer-rhi-resource-foundation",
     "frame-graph-v1",
     "upload-staging-v1",
@@ -893,64 +892,30 @@ $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object {
 if ($assetIdentityGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop asset-identity-v2 gap must leave unsupportedProductionGaps after reference cleanup closeout"
 }
-foreach ($needle in @(
-    "Asset Identity v2 Reference Cleanup Milestone v1 completes",
-    "audit_runtime_scene_asset_identity",
-    "Runtime Package Hot Reload Recook Change Review v1 completes",
-    "plan_runtime_package_hot_reload_recook_change_review_v2",
-    "Runtime Package Hot Reload Recook Replacement Safe Point v1 completes",
-    "commit_runtime_package_hot_reload_recook_replacement_v2",
-    "Runtime Hot Reload Recook Package Replacement Execution v1",
-    "execute_asset_runtime_package_hot_reload_replacement_safe_point",
-    "runtime-resource-v2 next"
-)) {
-    if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe asset identity closeout and next gap: $needle"
-    }
-}
 $runtimeResourceGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "runtime-resource-v2" })
-if ($runtimeResourceGap.Count -ne 1 -or $runtimeResourceGap[0].status -ne "implemented-foundation-only") {
-    Write-Error "engine manifest aiOperableProductionLoop runtime-resource-v2 gap must be implemented-foundation-only"
+if ($runtimeResourceGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop runtime-resource-v2 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-$runtimeResourceGapEvidence = (([string]$runtimeResourceGap[0].notes), (@($runtimeResourceGap[0].implementedFoundationEvidence) -join " ")) -join " "
-if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("generation-checked handles") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageMountSetV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentCatalogCacheV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageMountIdV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_resident_package_replace_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Replacement Intent Review v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_replacement_intent_review_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadReplacementIntentReviewResultV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Change Review v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_recook_change_review_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookChangeReviewResultV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Replacement Safe Point v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_package_hot_reload_recook_replacement_v2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookReplacementResultV2") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Hot Reload Recook Package Replacement Execution v1") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("execute_asset_runtime_package_hot_reload_replacement_safe_point") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("selected package matched AssetRuntimeReplacementState") -or
-    -not $runtimeResourceGapEvidence.Contains("Runtime Hot Reload Registered Asset Watch Tick v1") -or
-    -not $runtimeResourceGapEvidence.Contains("execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point") -or
-    -not $runtimeResourceGapEvidence.Contains("AssetHotReloadRecookScheduler") -or
-    -not $runtimeResourceGapEvidence.Contains("keep ready scheduler rows retryable") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("candidate/discovery root coherence") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("defined overlay") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("slot-preserving") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("projected resident budget") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("raw loaded-package catalog") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("mount-set generations") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("package streaming") -or
-    -not ([string]$runtimeResourceGap[0].notes).Contains("renderer/RHI resource ownership")) {
-    Write-Error "engine manifest aiOperableProductionLoop runtime-resource-v2 gap must keep remaining unsupported claims explicit"
-}
-$runtimeResourceRequiredClaims = @($runtimeResourceGap[0].requiredBeforeReadyClaim)
-if ($runtimeResourceRequiredClaims -contains "production package mounts") {
-    Write-Error "engine manifest aiOperableProductionLoop runtime-resource-v2 production package mounts claim must be closed by resident package mount set"
-}
-foreach ($requiredClaim in @("resource residency", "hot reload", "renderer/RHI resource ownership", "package streaming")) {
-    if ($runtimeResourceRequiredClaims -notcontains $requiredClaim) {
-        Write-Error "engine manifest aiOperableProductionLoop runtime-resource-v2 remaining claim missing: $requiredClaim"
+$recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+foreach ($needle in @(
+    "Runtime Resource v2 1.0 Scope Closeout v1",
+    "removing runtime-resource-v2 from unsupportedProductionGaps",
+    "reviewed safe-point package streaming",
+    "registered asset watch-tick",
+    "native watcher ownership",
+    "renderer-rhi-resource-foundation"
+)) {
+    if (-not $recommendedText.Contains($needle)) {
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe runtime-resource closeout and next gap: $needle"
     }
+}
+$rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })
+if ($rendererRhiGap.Count -ne 1 -or $rendererRhiGap[0].status -ne "implemented-foundation-only") {
+    Write-Error "engine manifest aiOperableProductionLoop renderer-rhi-resource-foundation gap must be implemented-foundation-only after runtime-resource closeout"
+}
+if (-not ([string]$rendererRhiGap[0].notes).Contains("RhiResourceLifetimeRegistry") -or
+    -not ([string]$rendererRhiGap[0].notes).Contains("GPU allocator") -or
+    -not ([string]$rendererRhiGap[0].notes).Contains("upload/staging") -or
+    -not ([string]$rendererRhiGap[0].notes).Contains("2D/3D playable vertical slices")) {
+    Write-Error "engine manifest aiOperableProductionLoop renderer-rhi-resource-foundation gap must keep foundation follow-up limits explicit"
 }

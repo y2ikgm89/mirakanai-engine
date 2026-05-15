@@ -1706,7 +1706,7 @@ foreach ($assetResourceDoc in @(
 )) {
     Assert-ContainsText $assetResourceDoc.Text "Asset Identity v2" $assetResourceDoc.Label
     Assert-ContainsText $assetResourceDoc.Text "Runtime Resource v2" $assetResourceDoc.Label
-    Assert-ContainsText $assetResourceDoc.Text "foundation-only" $assetResourceDoc.Label
+    Assert-ContainsText $assetResourceDoc.Text "closed" $assetResourceDoc.Label
 }
 foreach ($rendererResourceDoc in @(
     @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },

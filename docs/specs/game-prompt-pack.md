@@ -40,12 +40,12 @@ Constraints: Do not claim editor productization, broad package cooking, dependen
 Done when: The design or code uses stable AuthoringId values and schema-driven component rows, and any unsupported production claims remain listed as follow-up work.
 ```
 
-## Asset Identity And Runtime Resource Foundation
+## Asset Identity And Runtime Resource Surface
 
 ```text
-Goal: Use Asset Identity v2 and Runtime Resource v2 only as foundation-only asset/runtime reference contracts.
-Context: Read mirakana/assets/asset_identity.hpp, mirakana/assets/source_asset_registry.hpp, mirakana/runtime/resource_runtime.hpp, and engine/agent/manifest.json.aiOperableProductionLoop.unsupportedProductionGaps. Asset Identity v2 provides stable AssetKeyV2 rows, deterministic validation, AssetId derivation, GameEngine.AssetIdentity.v2 text IO, and plan_asset_identity_placements_v2 for reviewed placement resolution from keys into AssetId/kind/source rows. Source Asset Registry v1 provides GameEngine.SourceAssetRegistry.v1 rows for first-party source asset identity and deterministic import metadata planning. Runtime Resource v2 provides RuntimeResourceCatalogV2, generation-checked RuntimeResourceHandleV2 values over cooked package records, duplicate-package-asset diagnostics, lookup, and stale-handle rejection after catalog replacement.
-Constraints: Do not claim renderer/RHI resource ownership, package streaming, resident caches, upload/staging, scene/render/UI/gameplay reference cleanup, production 2D atlas/batching/native GPU readiness, or 3D playable vertical-slice readiness from these foundations alone.
+Goal: Use Asset Identity v2 as the closed identity/reference boundary and Runtime Resource v2 as the closed Engine 1.0 reviewed safe-point/controller surface.
+Context: Read mirakana/assets/asset_identity.hpp, mirakana/assets/source_asset_registry.hpp, mirakana/runtime/resource_runtime.hpp, and engine/agent/manifest.json.aiOperableProductionLoop.unsupportedProductionGaps. Asset Identity v2 provides stable AssetKeyV2 rows, deterministic validation, AssetId derivation, GameEngine.AssetIdentity.v2 text IO, and plan_asset_identity_placements_v2 for reviewed placement resolution from keys into AssetId/kind/source rows. Source Asset Registry v1 provides GameEngine.SourceAssetRegistry.v1 rows for first-party source asset identity and deterministic import metadata planning. Runtime Resource v2 provides generation-checked handles, explicit resident mount/cache safe points, reviewed eviction planning/commit, selected package-streaming safe points, reviewed package discovery/candidate load, hot-reload recook replacement, and registered asset watch-tick orchestration.
+Constraints: Do not claim renderer/RHI resource ownership, broad/background package streaming, native watcher ownership, automatic target inference, arbitrary/LRU eviction, upload/staging, package scripts, native handles, production 2D atlas/batching/native GPU readiness, or 3D playable vertical-slice readiness from these surfaces alone.
 Done when: Asset references use stable keys, source asset registrations use register-source-asset or the source registry API, runtime references use generation-checked handles, and unsupported production claims remain listed as follow-up work.
 ```
 
