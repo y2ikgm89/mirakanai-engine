@@ -467,6 +467,73 @@ struct RuntimeResidentPackageReplaceCommitResultV2 {
     RuntimeResidentPackageMountIdV2 id, RuntimeAssetPackage replacement_package, RuntimePackageMountOverlay overlay,
     const RuntimeResourceResidencyBudgetV2& budget);
 
+enum class RuntimePackageCandidateResidentReplaceStatusV2 : std::uint8_t {
+    replaced = 0,
+    invalid_mount_id,
+    missing_mount_id,
+    candidate_load_failed,
+    resident_replace_failed,
+    budget_failed,
+    catalog_refresh_failed,
+};
+
+enum class RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2 : std::uint8_t {
+    resident_replace = 0,
+    candidate_load,
+    candidate_catalog,
+    resident_budget,
+    catalog_refresh,
+};
+
+struct RuntimePackageCandidateResidentReplaceDescV2 {
+    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    RuntimeResourceResidencyBudgetV2 budget{};
+};
+
+struct RuntimePackageCandidateResidentReplaceDiagnosticV2 {
+    RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2 phase{
+        RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2::candidate_load};
+    AssetId asset;
+    RuntimeResidentPackageMountIdV2 mount;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageCandidateResidentReplaceResultV2 {
+    RuntimePackageCandidateResidentReplaceStatusV2 status{
+        RuntimePackageCandidateResidentReplaceStatusV2::candidate_load_failed};
+    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+    RuntimeAssetPackageDesc package_desc;
+    RuntimePackageCandidateLoadResultV2 candidate_load;
+    RuntimeResidentPackageReplaceCommitResultV2 resident_replace;
+    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+    std::vector<RuntimePackageCandidateResidentReplaceDiagnosticV2> diagnostics;
+    std::size_t loaded_record_count{0};
+    std::uint64_t loaded_resident_bytes{0};
+    std::uint64_t projected_resident_bytes{0};
+    std::uint32_t previous_mount_generation{0};
+    std::uint32_t mount_generation{0};
+    std::size_t previous_mount_count{0};
+    std::size_t mounted_package_count{0};
+    bool invoked_candidate_load{false};
+    bool invoked_resident_replace{false};
+    bool invoked_catalog_refresh{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Loads one reviewed package-index candidate and replaces one existing explicit resident mount/cache view.
+/// Mount id preflight happens before filesystem reads, and live mount/cache state changes only after the delegated
+/// resident replacement path succeeds on projected state. This helper does not use package-streaming descriptors,
+/// background workers, hot reload, upload/staging, renderer/RHI ownership, or native handles.
+[[nodiscard]] RuntimePackageCandidateResidentReplaceResultV2 commit_runtime_package_candidate_resident_replace_v2(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    const RuntimePackageCandidateResidentReplaceDescV2& desc);
+
 [[nodiscard]] std::optional<RuntimeResourceHandleV2> find_runtime_resource_v2(const RuntimeResourceCatalogV2& catalog,
                                                                               AssetId asset) noexcept;
 [[nodiscard]] bool is_runtime_resource_handle_live_v2(const RuntimeResourceCatalogV2& catalog,
