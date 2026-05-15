@@ -48,12 +48,45 @@ struct RuntimePackageIndexDiscoveryResultV2 {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+enum class RuntimePackageCandidateLoadStatusV2 : std::uint8_t {
+    loaded = 0,
+    invalid_candidate,
+    package_load_failed,
+    read_failed,
+};
+
+struct RuntimePackageCandidateLoadDiagnosticV2 {
+    AssetId asset;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageCandidateLoadResultV2 {
+    RuntimePackageCandidateLoadStatusV2 status{RuntimePackageCandidateLoadStatusV2::invalid_candidate};
+    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+    RuntimeAssetPackageDesc package_desc;
+    RuntimeAssetPackageLoadResult loaded_package;
+    std::vector<RuntimePackageCandidateLoadDiagnosticV2> diagnostics;
+    std::size_t loaded_record_count{0};
+    std::uint64_t estimated_resident_bytes{0};
+    bool invoked_load{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 /// Discovers reviewed cooked package index candidates under a caller-owned VFS root.
 /// This helper does not read index contents, load packages, mount resident packages, refresh catalogs, stream in the
 /// background, or touch renderer/RHI/native handles. `content_root` is caller-provided and may be empty; discovery does
 /// not infer package payload roots from index locations.
 [[nodiscard]] RuntimePackageIndexDiscoveryResultV2
 discover_runtime_package_indexes_v2(const IFileSystem& filesystem, const RuntimePackageIndexDiscoveryDescV2& desc);
+
+/// Loads one reviewed package index discovery candidate into a typed package load result.
+/// This helper validates the selected candidate again, converts loader failures/exceptions into diagnostics, and does
+/// not stage, mount, refresh resident catalogs, stream in the background, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimePackageCandidateLoadResultV2
+load_runtime_package_candidate_v2(IFileSystem& filesystem, const RuntimePackageIndexDiscoveryCandidateV2& candidate);
 
 struct RuntimeResourceHandleV2 {
     std::uint32_t index{0};

@@ -11,6 +11,7 @@
 #include <exception>
 #include <limits>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -73,6 +74,21 @@ void add_discovery_diagnostic(RuntimePackageIndexDiscoveryResultV2& result, std:
         .code = std::move(code),
         .message = std::move(message),
     });
+}
+
+void add_candidate_load_diagnostic(RuntimePackageCandidateLoadResultV2& result, AssetId asset, std::string path,
+                                   std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimePackageCandidateLoadDiagnosticV2{
+        .asset = asset,
+        .path = std::move(path),
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_candidate_load_diagnostic(RuntimePackageCandidateLoadResultV2& result, std::string path, std::string code,
+                                   std::string message) {
+    add_candidate_load_diagnostic(result, AssetId{}, std::move(path), std::move(code), std::move(message));
 }
 
 [[nodiscard]] bool path_is_under_root(std::string_view path, std::string_view root) {
@@ -168,6 +184,10 @@ bool RuntimePackageIndexDiscoveryResultV2::succeeded() const noexcept {
            status == RuntimePackageIndexDiscoveryStatusV2::no_candidates;
 }
 
+bool RuntimePackageCandidateLoadResultV2::succeeded() const noexcept {
+    return status == RuntimePackageCandidateLoadStatusV2::loaded && loaded_package.succeeded();
+}
+
 RuntimePackageIndexDiscoveryResultV2
 discover_runtime_package_indexes_v2(const IFileSystem& filesystem, const RuntimePackageIndexDiscoveryDescV2& desc) {
     RuntimePackageIndexDiscoveryResultV2 result;
@@ -237,6 +257,64 @@ discover_runtime_package_indexes_v2(const IFileSystem& filesystem, const Runtime
     result.candidates.erase(duplicate_begin, result.candidates.end());
     result.status = result.candidates.empty() ? RuntimePackageIndexDiscoveryStatusV2::no_candidates
                                               : RuntimePackageIndexDiscoveryStatusV2::discovered;
+    return result;
+}
+
+RuntimePackageCandidateLoadResultV2
+load_runtime_package_candidate_v2(IFileSystem& filesystem, const RuntimePackageIndexDiscoveryCandidateV2& candidate) {
+    RuntimePackageCandidateLoadResultV2 result;
+    result.candidate = candidate;
+
+    if (!valid_relative_vfs_path(candidate.package_index_path) ||
+        !ends_with_package_index_extension(candidate.package_index_path)) {
+        result.status = RuntimePackageCandidateLoadStatusV2::invalid_candidate;
+        add_candidate_load_diagnostic(result, candidate.package_index_path, "invalid-package-index-path",
+                                      "runtime package load candidate must reference a relative .geindex file path");
+        return result;
+    }
+    if (!candidate.content_root.empty() && !valid_relative_vfs_path(candidate.content_root)) {
+        result.status = RuntimePackageCandidateLoadStatusV2::invalid_candidate;
+        add_candidate_load_diagnostic(result, candidate.content_root, "invalid-content-root",
+                                      "runtime package load candidate content root must be a relative VFS directory");
+        return result;
+    }
+    if (!valid_relative_vfs_path(candidate.label)) {
+        result.status = RuntimePackageCandidateLoadStatusV2::invalid_candidate;
+        add_candidate_load_diagnostic(result, candidate.label, "invalid-label",
+                                      "runtime package load candidate label must be a non-empty relative identifier");
+        return result;
+    }
+
+    result.package_desc = RuntimeAssetPackageDesc{
+        .index_path = candidate.package_index_path,
+        .content_root = candidate.content_root,
+    };
+
+    try {
+        result.invoked_load = true;
+        result.loaded_package = load_runtime_asset_package(filesystem, result.package_desc);
+    } catch (const std::invalid_argument& exception) {
+        result.status = RuntimePackageCandidateLoadStatusV2::package_load_failed;
+        add_candidate_load_diagnostic(result, candidate.package_index_path, "package-index-invalid", exception.what());
+        return result;
+    } catch (const std::exception& exception) {
+        result.status = RuntimePackageCandidateLoadStatusV2::read_failed;
+        add_candidate_load_diagnostic(result, candidate.package_index_path, "package-read-failed", exception.what());
+        return result;
+    }
+
+    if (!result.loaded_package.succeeded()) {
+        result.status = RuntimePackageCandidateLoadStatusV2::package_load_failed;
+        for (const auto& failure : result.loaded_package.failures) {
+            add_candidate_load_diagnostic(result, failure.asset, failure.path, "package-load-failed",
+                                          failure.diagnostic);
+        }
+        return result;
+    }
+
+    result.status = RuntimePackageCandidateLoadStatusV2::loaded;
+    result.loaded_record_count = result.loaded_package.package.records().size();
+    result.estimated_resident_bytes = estimate_runtime_asset_package_resident_bytes(result.loaded_package.package);
     return result;
 }
 
