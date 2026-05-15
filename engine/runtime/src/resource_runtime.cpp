@@ -607,6 +607,70 @@ void add_eviction_diagnostic(RuntimeResidentPackageEvictionPlanResultV2& result,
     });
 }
 
+void add_reviewed_eviction_commit_diagnostic(RuntimeResidentPackageReviewedEvictionCommitResultV2& result,
+                                             RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2 phase,
+                                             AssetId asset, RuntimeResidentPackageMountIdV2 mount, std::string code,
+                                             std::string message) {
+    result.diagnostics.push_back(RuntimeResidentPackageReviewedEvictionCommitDiagnosticV2{
+        .phase = phase,
+        .asset = asset,
+        .mount = mount,
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_reviewed_eviction_commit_plan_diagnostics(RuntimeResidentPackageReviewedEvictionCommitResultV2& result,
+                                                   const RuntimeResidentPackageEvictionPlanResultV2& eviction_plan) {
+    for (const auto& diagnostic : eviction_plan.diagnostics) {
+        add_reviewed_eviction_commit_diagnostic(
+            result, RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2::eviction_plan, {}, diagnostic.mount,
+            diagnostic.code, diagnostic.message);
+    }
+}
+
+void add_reviewed_eviction_commit_budget_diagnostics(
+    RuntimeResidentPackageReviewedEvictionCommitResultV2& result,
+    const RuntimeResourceResidencyBudgetExecutionResultV2& budget_execution) {
+    for (const auto& diagnostic : budget_execution.diagnostics) {
+        add_reviewed_eviction_commit_diagnostic(
+            result, RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2::resident_budget, {}, {},
+            diagnostic.code, diagnostic.message);
+    }
+}
+
+void add_reviewed_eviction_commit_catalog_diagnostics(RuntimeResidentPackageReviewedEvictionCommitResultV2& result,
+                                                      const RuntimeResourceCatalogBuildResultV2& catalog_build) {
+    for (const auto& diagnostic : catalog_build.diagnostics) {
+        add_reviewed_eviction_commit_diagnostic(
+            result, RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2::catalog_refresh, diagnostic.asset,
+            {}, "catalog-build-failed", diagnostic.diagnostic);
+    }
+}
+
+[[nodiscard]] RuntimeResidentPackageReviewedEvictionCommitStatusV2
+map_reviewed_eviction_commit_plan_status(RuntimeResidentPackageEvictionPlanStatusV2 status) noexcept {
+    switch (status) {
+    case RuntimeResidentPackageEvictionPlanStatusV2::invalid_candidate_mount_id:
+        return RuntimeResidentPackageReviewedEvictionCommitStatusV2::invalid_candidate_mount_id;
+    case RuntimeResidentPackageEvictionPlanStatusV2::duplicate_candidate_mount_id:
+        return RuntimeResidentPackageReviewedEvictionCommitStatusV2::duplicate_candidate_mount_id;
+    case RuntimeResidentPackageEvictionPlanStatusV2::missing_candidate_mount_id:
+        return RuntimeResidentPackageReviewedEvictionCommitStatusV2::missing_candidate_mount_id;
+    case RuntimeResidentPackageEvictionPlanStatusV2::protected_candidate_mount_id:
+        return RuntimeResidentPackageReviewedEvictionCommitStatusV2::protected_candidate_mount_id;
+    case RuntimeResidentPackageEvictionPlanStatusV2::budget_unreachable:
+        return RuntimeResidentPackageReviewedEvictionCommitStatusV2::budget_failed;
+    case RuntimeResidentPackageEvictionPlanStatusV2::catalog_build_failed:
+        return RuntimeResidentPackageReviewedEvictionCommitStatusV2::catalog_refresh_failed;
+    case RuntimeResidentPackageEvictionPlanStatusV2::no_eviction_required:
+        return RuntimeResidentPackageReviewedEvictionCommitStatusV2::no_eviction_required;
+    case RuntimeResidentPackageEvictionPlanStatusV2::planned:
+        return RuntimeResidentPackageReviewedEvictionCommitStatusV2::committed;
+    }
+    return RuntimeResidentPackageReviewedEvictionCommitStatusV2::budget_failed;
+}
+
 } // namespace
 
 bool RuntimePackageIndexDiscoveryResultV2::succeeded() const noexcept {
@@ -1912,6 +1976,87 @@ plan_runtime_resident_package_evictions_v2(const RuntimeResidentPackageMountSetV
     }
 
     result.status = RuntimeResidentPackageEvictionPlanStatusV2::budget_unreachable;
+    return result;
+}
+
+bool RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded() const noexcept {
+    return (status == RuntimeResidentPackageReviewedEvictionCommitStatusV2::committed ||
+            status == RuntimeResidentPackageReviewedEvictionCommitStatusV2::no_eviction_required) &&
+           committed;
+}
+
+RuntimeResidentPackageReviewedEvictionCommitResultV2
+commit_runtime_resident_package_reviewed_evictions_v2(RuntimeResidentPackageMountSetV2& mount_set,
+                                                      RuntimeResidentCatalogCacheV2& catalog_cache,
+                                                      const RuntimeResidentPackageReviewedEvictionCommitDescV2& desc) {
+    RuntimeResidentPackageReviewedEvictionCommitResultV2 result;
+    result.previous_mount_generation = mount_set.generation();
+    result.mount_generation = result.previous_mount_generation;
+    result.previous_mount_count = mount_set.mounts().size();
+    result.mounted_package_count = result.previous_mount_count;
+
+    result.invoked_eviction_plan = true;
+    result.eviction_plan = plan_runtime_resident_package_evictions_v2(
+        mount_set, RuntimeResidentPackageEvictionPlanDescV2{
+                       .target_budget = desc.target_budget,
+                       .overlay = desc.overlay,
+                       .candidate_unmount_order = desc.candidate_unmount_order,
+                       .protected_mount_ids = desc.protected_mount_ids,
+                   });
+    result.catalog_refresh = result.eviction_plan.projected_refresh;
+    result.projected_resident_bytes = result.catalog_refresh.budget_execution.estimated_resident_content_bytes;
+
+    if (!result.eviction_plan.succeeded()) {
+        result.status = map_reviewed_eviction_commit_plan_status(result.eviction_plan.status);
+        add_reviewed_eviction_commit_plan_diagnostics(result, result.eviction_plan);
+        if (result.eviction_plan.status == RuntimeResidentPackageEvictionPlanStatusV2::budget_unreachable) {
+            add_reviewed_eviction_commit_budget_diagnostics(result, result.catalog_refresh.budget_execution);
+        } else if (result.eviction_plan.status == RuntimeResidentPackageEvictionPlanStatusV2::catalog_build_failed) {
+            add_reviewed_eviction_commit_catalog_diagnostics(result, result.catalog_refresh.catalog_build);
+        }
+        return result;
+    }
+
+    RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set;
+    RuntimeResidentCatalogCacheV2 projected_catalog_cache = catalog_cache;
+    for (const auto& step : result.eviction_plan.steps) {
+        const auto unmount = projected_mount_set.unmount(step.mount_id);
+        if (!unmount.succeeded()) {
+            result.status = RuntimeResidentPackageReviewedEvictionCommitStatusV2::catalog_refresh_failed;
+            add_reviewed_eviction_commit_diagnostic(
+                result, RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2::eviction_plan, {}, step.mount_id,
+                unmount.diagnostic.code, unmount.diagnostic.message);
+            return result;
+        }
+    }
+
+    result.invoked_catalog_refresh = true;
+    result.catalog_refresh = projected_catalog_cache.refresh(projected_mount_set, desc.overlay, desc.target_budget);
+    result.projected_resident_bytes = result.catalog_refresh.budget_execution.estimated_resident_content_bytes;
+    result.evicted_mount_count = result.eviction_plan.steps.size();
+    result.mounted_package_count = projected_mount_set.mounts().size();
+    result.mount_generation = projected_mount_set.generation();
+
+    if (!result.catalog_refresh.succeeded()) {
+        if (result.catalog_refresh.status == RuntimeResidentCatalogCacheStatusV2::budget_failed) {
+            result.status = RuntimeResidentPackageReviewedEvictionCommitStatusV2::budget_failed;
+            add_reviewed_eviction_commit_budget_diagnostics(result, result.catalog_refresh.budget_execution);
+        } else {
+            result.status = RuntimeResidentPackageReviewedEvictionCommitStatusV2::catalog_refresh_failed;
+            add_reviewed_eviction_commit_catalog_diagnostics(result, result.catalog_refresh.catalog_build);
+        }
+        result.mount_generation = result.previous_mount_generation;
+        result.mounted_package_count = result.previous_mount_count;
+        result.evicted_mount_count = 0;
+        return result;
+    }
+
+    mount_set = std::move(projected_mount_set);
+    catalog_cache = std::move(projected_catalog_cache);
+    result.status = map_reviewed_eviction_commit_plan_status(result.eviction_plan.status);
+    result.mount_generation = mount_set.generation();
+    result.mounted_package_count = mount_set.mounts().size();
+    result.committed = true;
     return result;
 }
 

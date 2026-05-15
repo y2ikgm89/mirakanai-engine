@@ -1597,6 +1597,8 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_selected_runtime_package_streaming_resident_unmount_safe_point" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Resident Package Eviction Plan v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_resident_package_evictions_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Resident Package Reviewed Eviction Commit v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "commit_runtime_resident_package_reviewed_evictions_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime-resource-v2 next" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 foreach ($check in @(
     @{
@@ -1654,6 +1656,9 @@ if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageEvictionPlanStatusV2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("reviewed explicit candidate unmount order") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("budget_unreachable") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_resident_package_reviewed_evictions_v2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageReviewedEvictionCommitStatusV2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("standalone reviewed resident eviction execution") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("slot-preserving") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("projected resident budget") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("raw loaded-package catalog") -or
@@ -1693,7 +1698,11 @@ foreach ($check in @(
             "RuntimeResidentPackageEvictionPlanStatusV2",
             "RuntimeResidentPackageEvictionPlanDescV2",
             "RuntimeResidentPackageEvictionPlanResultV2",
-            "plan_runtime_resident_package_evictions_v2"
+            "plan_runtime_resident_package_evictions_v2",
+            "RuntimeResidentPackageReviewedEvictionCommitStatusV2",
+            "RuntimeResidentPackageReviewedEvictionCommitDescV2",
+            "RuntimeResidentPackageReviewedEvictionCommitResultV2",
+            "commit_runtime_resident_package_reviewed_evictions_v2"
         )
     },
     @{
@@ -1710,6 +1719,8 @@ foreach ($check in @(
             "invoked_candidate_catalog_build",
             "RuntimeResidentPackageUnmountCommitResultV2::succeeded",
             "RuntimeResidentPackageEvictionPlanResultV2::succeeded",
+            "RuntimeResidentPackageReviewedEvictionCommitResultV2::succeeded",
+            "map_reviewed_eviction_commit_plan_status",
             "contains_mount_id",
             "protected-candidate-mount-id",
             "budget_unreachable",
@@ -1810,6 +1821,10 @@ foreach ($check in @(
             "runtime resident package eviction plan rejects protected candidates before partial planning",
             "runtime resident package eviction plan rejects duplicate and missing candidates before partial planning",
             "runtime resident package eviction plan reports unreachable budget without mutating mounts",
+            "runtime resident package reviewed eviction commit applies reviewed candidates atomically",
+            "runtime resident package reviewed eviction commit succeeds as no op when current view fits",
+            "runtime resident package reviewed eviction commit rejects reviewed candidates before mutation",
+            "runtime resident package reviewed eviction commit preserves state when candidates are insufficient",
             "result.catalog_refresh.mounted_package_count == 1"
         )
     },
@@ -1836,6 +1851,8 @@ foreach ($check in @(
             "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
             "Resident package eviction plan",
             "plan_runtime_resident_package_evictions_v2",
+            "Resident package reviewed eviction commit",
+            "commit_runtime_resident_package_reviewed_evictions_v2",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
             "commit_runtime_resident_package_unmount_v2",
@@ -1856,6 +1873,8 @@ foreach ($check in @(
             "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
             "Runtime Resident Package Eviction Plan v1 coverage",
             "plan_runtime_resident_package_evictions_v2",
+            "Runtime Resident Package Reviewed Eviction Commit v1 coverage",
+            "commit_runtime_resident_package_reviewed_evictions_v2",
             "rejects zero/duplicate/missing mount ids"
         )
     }
