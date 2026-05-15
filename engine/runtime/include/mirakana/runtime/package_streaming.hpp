@@ -62,6 +62,7 @@ struct RuntimePackageStreamingExecutionResult {
     std::uint32_t resident_package_count{0};
     std::uint32_t resident_mount_generation{0};
     RuntimePackageSafePointReplacementResult replacement;
+    RuntimePackageCandidateLoadResultV2 candidate_load;
     RuntimeResidentPackageMountResultV2 resident_mount;
     RuntimeResidentPackageUnmountCommitResultV2 resident_unmount;
     RuntimeResidentPackageReplaceCommitResultV2 resident_replace;
@@ -87,6 +88,12 @@ execute_selected_runtime_package_streaming_resident_replace_safe_point(RuntimeRe
                                                                        RuntimePackageMountOverlay overlay,
                                                                        const RuntimePackageStreamingExecutionDesc& desc,
                                                                        RuntimeAssetPackageLoadResult loaded_package);
+
+[[nodiscard]] RuntimePackageStreamingExecutionResult
+execute_selected_runtime_package_streaming_candidate_resident_replace_safe_point(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    const RuntimePackageStreamingExecutionDesc& desc);
 
 [[nodiscard]] RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_resident_unmount_safe_point(

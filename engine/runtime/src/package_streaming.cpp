@@ -261,6 +261,23 @@ void add_candidate_catalog_build_diagnostics(RuntimePackageStreamingExecutionRes
     }
 }
 
+void add_candidate_load_diagnostics(RuntimePackageStreamingExecutionResult& result,
+                                    const RuntimePackageCandidateLoadResultV2& candidate_load) {
+    if (candidate_load.diagnostics.empty()) {
+        add_diagnostic(result, "package-load-failed", "runtime package candidate load failed");
+        return;
+    }
+
+    for (const auto& diagnostic : candidate_load.diagnostics) {
+        std::string message = diagnostic.message;
+        if (!diagnostic.path.empty()) {
+            message += " at ";
+            message += diagnostic.path;
+        }
+        add_diagnostic(result, diagnostic.code, std::move(message));
+    }
+}
+
 void set_resident_catalog_build_failure(RuntimePackageStreamingExecutionResult& result,
                                         RuntimeResourceCatalogBuildResultV2 catalog_build,
                                         std::size_t projected_package_count, std::uint32_t mount_generation,
@@ -293,6 +310,15 @@ bool validate_loaded_package_catalog_before_mount(RuntimePackageStreamingExecuti
     set_resident_catalog_build_failure(result, std::move(catalog_build), projected_package_count,
                                        mount_set.generation(), catalog_cache.catalog().generation());
     return false;
+}
+
+[[nodiscard]] RuntimePackageIndexDiscoveryCandidateV2
+make_package_streaming_candidate(const RuntimePackageStreamingExecutionDesc& desc) {
+    return RuntimePackageIndexDiscoveryCandidateV2{
+        .package_index_path = desc.package_index_path,
+        .content_root = desc.content_root,
+        .label = desc.target_id,
+    };
 }
 
 } // namespace
@@ -527,6 +553,96 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
     };
     result.resident_replace = commit_runtime_resident_package_replace_v2(
         mount_set, catalog_cache, mount_id, std::move(loaded_package.package), overlay, budget);
+    result.resident_catalog_refresh = result.resident_replace.catalog_refresh;
+    result.resident_mount_generation = result.resident_replace.mount_generation;
+    result.resident_package_count = static_cast<std::uint32_t>(result.resident_replace.mounted_package_count);
+    result.estimated_resident_bytes =
+        result.resident_replace.catalog_refresh.budget_execution.estimated_resident_content_bytes;
+
+    if (!result.resident_replace.succeeded()) {
+        switch (result.resident_replace.status) {
+        case RuntimeResidentPackageReplaceCommitStatusV2::invalid_mount_id:
+        case RuntimeResidentPackageReplaceCommitStatusV2::missing_mount_id:
+            result.status = RuntimePackageStreamingExecutionStatus::resident_replace_failed;
+            if (!result.resident_replace.diagnostic.code.empty()) {
+                add_diagnostic(result, result.resident_replace.diagnostic.code,
+                               result.resident_replace.diagnostic.message);
+            }
+            break;
+        case RuntimeResidentPackageReplaceCommitStatusV2::budget_failed:
+            result.status = RuntimePackageStreamingExecutionStatus::over_budget_intent;
+            add_budget_diagnostics(result, result.resident_replace.catalog_refresh.budget_execution);
+            break;
+        case RuntimeResidentPackageReplaceCommitStatusV2::catalog_build_failed:
+            result.status = RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed;
+            if (result.resident_replace.invoked_candidate_catalog_build &&
+                !result.resident_replace.candidate_catalog_build.succeeded()) {
+                add_candidate_catalog_build_diagnostics(result, result.resident_replace.candidate_catalog_build);
+            } else {
+                add_catalog_refresh_diagnostics(result, result.resident_replace.catalog_refresh);
+            }
+            break;
+        case RuntimeResidentPackageReplaceCommitStatusV2::replaced:
+            result.status = RuntimePackageStreamingExecutionStatus::committed;
+            break;
+        }
+        return result;
+    }
+
+    result.status = RuntimePackageStreamingExecutionStatus::committed;
+    return result;
+}
+
+RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_candidate_resident_replace_safe_point(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    const RuntimePackageStreamingExecutionDesc& desc) {
+    RuntimePackageStreamingExecutionResult result;
+    result.target_id = desc.target_id;
+    result.package_index_path = desc.package_index_path;
+    result.runtime_scene_validation_target_id = desc.runtime_scene_validation_target_id;
+    result.resident_budget_bytes = desc.resident_budget_bytes;
+    result.resident_mount_generation = mount_set.generation();
+    result.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
+
+    if (!validate_descriptor(desc, result)) {
+        result.status = RuntimePackageStreamingExecutionStatus::invalid_descriptor;
+        return result;
+    }
+
+    if (!desc.runtime_scene_validation_succeeded) {
+        result.status = RuntimePackageStreamingExecutionStatus::validation_preflight_required;
+        add_diagnostic(result, "runtime-scene-validation-required",
+                       "validate-runtime-scene-package must succeed before selected package streaming execution");
+        return result;
+    }
+
+    if (!validate_resident_replace_mount_id(mount_set, mount_id, result)) {
+        result.status = RuntimePackageStreamingExecutionStatus::resident_replace_failed;
+        return result;
+    }
+
+    result.candidate_load = load_runtime_package_candidate_v2(filesystem, make_package_streaming_candidate(desc));
+    if (!result.candidate_load.succeeded()) {
+        result.status = RuntimePackageStreamingExecutionStatus::package_load_failed;
+        add_candidate_load_diagnostics(result, result.candidate_load);
+        return result;
+    }
+
+    const auto projected_resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
+    if (!validate_residency_hints(desc, result.candidate_load.loaded_package.package, result,
+                                  projected_resident_package_count)) {
+        result.status = RuntimePackageStreamingExecutionStatus::residency_hint_failed;
+        return result;
+    }
+
+    result.estimated_resident_bytes = result.candidate_load.estimated_resident_bytes;
+    const RuntimeResourceResidencyBudgetV2 budget{
+        .max_resident_content_bytes = desc.resident_budget_bytes,
+        .max_resident_asset_records = {},
+    };
+    result.resident_replace = commit_runtime_resident_package_replace_v2(
+        mount_set, catalog_cache, mount_id, result.candidate_load.loaded_package.package, overlay, budget);
     result.resident_catalog_refresh = result.resident_replace.catalog_refresh;
     result.resident_mount_generation = result.resident_replace.mount_generation;
     result.resident_package_count = static_cast<std::uint32_t>(result.resident_replace.mounted_package_count);
