@@ -123,6 +123,10 @@ foreach ($check in @(
             "RuntimePackageHotReloadRecookReplacementResultV2",
             "Runtime Hot Reload Recook Package Replacement Execution v1",
             "execute_asset_runtime_package_hot_reload_replacement_safe_point",
+            "Runtime Hot Reload Registered Asset Watch Tick v1",
+            "execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point",
+            "AssetHotReloadRecookScheduler",
+            "ready scheduler rows retryable",
             "selected package matched",
             "invalid overlay modes",
             "Resident package replacement commit",
@@ -161,6 +165,12 @@ foreach ($check in @(
             "Runtime Hot Reload Recook Package Replacement Execution v1 coverage",
             "MK_tools_runtime_hot_reload_package_tests",
             "execute_asset_runtime_package_hot_reload_replacement_safe_point",
+            "Runtime Hot Reload Registered Asset Watch Tick v1 coverage",
+            "execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point",
+            "dependency invalidated recook requests",
+            "preserves ready scheduler rows for retry",
+            "recook failures plus scan exceptions before runtime package reads",
+            "scan exceptions before runtime package reads",
             "selected package commit isolation",
             "candidate/discovery root mismatches",
             "invalid overlay modes"
@@ -226,7 +236,12 @@ foreach ($check in @(
             "asset runtime package hot reload replacement passes external import options into recook",
             "asset runtime package hot reload replacement blocks recook failure before runtime package reads",
             "asset runtime package hot reload replacement reports recook descriptor exceptions",
-            "asset runtime package hot reload replacement preserves staged recook when runtime commit fails"
+            "asset runtime package hot reload replacement preserves staged recook when runtime commit fails",
+            "asset runtime package registered watch tick primes without recook or native watcher",
+            "asset runtime package registered watch tick debounces and commits reviewed runtime package replacement",
+            "asset runtime package registered watch tick forwards dependency invalidated recook requests",
+            "asset runtime package registered watch tick reports recook failures before runtime package reads",
+            "asset runtime package registered watch tick reports scan exceptions before runtime package reads"
         )
     },
     @{

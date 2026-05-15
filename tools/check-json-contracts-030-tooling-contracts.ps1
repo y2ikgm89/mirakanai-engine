@@ -912,6 +912,7 @@ $runtimeResourceGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($runtimeResourceGap.Count -ne 1 -or $runtimeResourceGap[0].status -ne "implemented-foundation-only") {
     Write-Error "engine manifest aiOperableProductionLoop runtime-resource-v2 gap must be implemented-foundation-only"
 }
+$runtimeResourceGapEvidence = (([string]$runtimeResourceGap[0].notes), (@($runtimeResourceGap[0].implementedFoundationEvidence) -join " ")) -join " "
 if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("generation-checked handles") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimeResidentPackageMountSetV2") -or
@@ -930,6 +931,10 @@ if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Hot Reload Recook Package Replacement Execution v1") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("execute_asset_runtime_package_hot_reload_replacement_safe_point") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("selected package matched AssetRuntimeReplacementState") -or
+    -not $runtimeResourceGapEvidence.Contains("Runtime Hot Reload Registered Asset Watch Tick v1") -or
+    -not $runtimeResourceGapEvidence.Contains("execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point") -or
+    -not $runtimeResourceGapEvidence.Contains("AssetHotReloadRecookScheduler") -or
+    -not $runtimeResourceGapEvidence.Contains("keep ready scheduler rows retryable") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("candidate/discovery root coherence") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("defined overlay") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("slot-preserving") -or
