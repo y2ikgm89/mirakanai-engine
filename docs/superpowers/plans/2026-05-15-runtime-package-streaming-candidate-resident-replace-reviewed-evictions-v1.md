@@ -1,7 +1,7 @@
 # Runtime Package Streaming Candidate Resident Replace Reviewed Evictions v1 (2026-05-15)
 
 **Plan ID:** `runtime-package-streaming-candidate-resident-replace-reviewed-evictions-v1`
-**Status:** Active. Current child slice under `production-completion-master-plan-v1` / `runtime-resource-v2`
+**Status:** Completed. Current child slice under `production-completion-master-plan-v1` / `runtime-resource-v2`
 **Goal:** Add a selected package-streaming descriptor bridge that loads the descriptor-selected `.geindex` candidate, validates selected residency hints, delegates to reviewed candidate resident replacement with caller-reviewed evictions, and commits only after all projected state passes.
 
 ## Context
@@ -25,11 +25,11 @@
 
 ## Tasks
 
-- [ ] Add RED tests for selected package-streaming candidate resident replacement with reviewed eviction, no-eviction replacement, invalid descriptor/preflight/mount-id rollback, candidate load rollback, residency hint rollback, invalid/duplicate/missing/protected eviction candidate rollback, and insufficient reviewed eviction rollback.
-- [ ] Add the public selected package-streaming reviewed-eviction candidate resident replacement overload/result evidence needed by the tests.
-- [ ] Implement descriptor validation, selected candidate load, residency hint preflight, delegated `commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2` execution, diagnostic/status mapping, evidence propagation, and rollback preservation.
-- [ ] Update runtime docs, roadmap/current capabilities, plan registry/master plan, and manifest fragments/composed manifest.
-- [ ] Run focused build/test/static checks, then full `validate.ps1` and `build.ps1`.
+- [x] Add RED tests for selected package-streaming candidate resident replacement with reviewed eviction, no-eviction replacement, invalid descriptor/preflight/mount-id rollback, candidate load rollback, residency hint rollback, invalid/duplicate/missing/protected eviction candidate rollback, and insufficient reviewed eviction rollback.
+- [x] Add the public selected package-streaming reviewed-eviction candidate resident replacement overload/result evidence needed by the tests.
+- [x] Implement descriptor validation, selected candidate load, residency hint preflight, delegated `commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2` execution, diagnostic/status mapping, evidence propagation, and rollback preservation.
+- [x] Update runtime docs, roadmap/current capabilities, plan registry/master plan, and manifest fragments/composed manifest.
+- [x] Run focused build/test/static checks, then full `validate.ps1` and `build.ps1`.
 
 ## Done When
 
@@ -42,13 +42,13 @@
 
 | Command | Result | Notes |
 | --- | --- | --- |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. (Join-Path (Get-Location) "tools/common.ps1"); $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_runtime_package_streaming_resident_mount_tests'` | Pending | RED first, then GREEN after implementation. |
-| `ctest --preset dev --output-on-failure -R MK_runtime_package_streaming_resident_mount_tests` | Pending | Focused selected package-streaming resident mount/replace suite. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Pending | Public runtime API surface may change. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pending | Formatting guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/package_streaming.cpp,tests/unit/runtime_package_streaming_resident_mount_tests.cpp` | Pending | Focused clang-tidy guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pending | Manifest JSON contract and composed manifest checks. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pending | Agent-surface parity and text-format checks. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pending | AI integration guard. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pending | Full repository validation. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pending | Standalone commit-preflight build. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. (Join-Path (Get-Location) "tools/common.ps1"); $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_runtime_package_streaming_resident_mount_tests'` | Pass | RED failed first with the missing API before implementation; GREEN passed after implementation and formatting. |
+| `ctest --preset dev --output-on-failure -R MK_runtime_package_streaming_resident_mount_tests` | Pass | Focused selected package-streaming resident mount/replace suite passed 1/1 test target. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Pass | `public-api-boundary-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pass | Initial clang-format drift was fixed with `tools/format.ps1`; rerun reported `format-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/package_streaming.cpp,tests/unit/runtime_package_streaming_resident_mount_tests.cpp` | Pass | Focused clang-tidy guard reported `tidy-check: ok (2 files)`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pass | Manifest compose and JSON contract checks reported ok after closing the previous child plan status. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pass | `agent-config-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pass | `ai-integration-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Full validation reported `validate: ok`; CTest passed 60/60. Apple/Metal lanes remain existing diagnostic-only or host-gated checks. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Standalone commit-preflight build completed successfully. |

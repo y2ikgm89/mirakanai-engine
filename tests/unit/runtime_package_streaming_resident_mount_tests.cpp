@@ -1298,6 +1298,375 @@ MK_TEST("runtime package streaming candidate resident replace preserves state on
     MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
 }
 
+MK_TEST("runtime package streaming candidate resident replace with reviewed evictions commits after eviction") {
+    CountingFileSystem filesystem;
+    const auto base = mirakana::AssetId::from_name("textures/base");
+    const auto other = mirakana::AssetId::from_name("textures/other");
+    const auto incoming = mirakana::AssetId::from_name("textures/incoming");
+    const std::string incoming_payload = "new";
+    write_package(filesystem, incoming, mirakana::AssetKind::texture, "textures/incoming.texture", incoming_payload);
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                       .label = "base",
+                       .package = make_package(make_record(base, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1},
+                                                           "resident base payload")),
+                   })
+                   .succeeded());
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 4},
+                       .label = "other",
+                       .package = make_package(make_record(other, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 2},
+                                                           "resident other payload")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+
+    auto desc = make_valid_desc(incoming_payload.size());
+    desc.required_preload_assets = {incoming};
+    desc.resident_resource_kinds = {mirakana::AssetKind::texture};
+    desc.max_resident_packages = 1;
+
+    const auto result = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, desc,
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 4}}, {});
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::committed);
+    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::loaded);
+    MK_REQUIRE(result.eviction_plan.status == mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::planned);
+    MK_REQUIRE(result.eviction_plan.steps.size() == 1);
+    MK_REQUIRE(result.invoked_eviction_plan);
+    MK_REQUIRE(result.evicted_mount_count == 1);
+    MK_REQUIRE(result.resident_replace.status ==
+               mirakana::runtime::RuntimeResidentPackageReplaceCommitStatusV2::replaced);
+    MK_REQUIRE(result.resident_catalog_refresh.status ==
+               mirakana::runtime::RuntimeResidentCatalogCacheStatusV2::rebuilt);
+    MK_REQUIRE(result.estimated_resident_bytes == incoming_payload.size());
+    MK_REQUIRE(result.resident_package_count == 1);
+    MK_REQUIRE(result.resident_mount_generation != previous_mount_generation);
+    MK_REQUIRE(result.committed);
+    MK_REQUIRE(mount_set.mounts().size() == 1);
+    MK_REQUIRE(mount_set.mounts()[0].id == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1});
+    MK_REQUIRE(mount_set.mounts()[0].label == "base");
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == incoming_payload);
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), incoming).has_value());
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), other).has_value());
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(filesystem.read_text_count() == 2);
+}
+
+MK_TEST("runtime package streaming candidate resident replace with reviewed evictions skips eviction when projected "
+        "view fits") {
+    CountingFileSystem filesystem;
+    const auto base = mirakana::AssetId::from_name("textures/base");
+    const auto incoming = mirakana::AssetId::from_name("textures/incoming");
+    write_package(filesystem, incoming, mirakana::AssetKind::texture, "textures/incoming.texture", "new");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                       .label = "base",
+                       .package = make_package(make_record(base, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    auto desc = make_valid_desc(64);
+    desc.max_resident_packages = 1;
+
+    const auto result = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, desc, {}, {});
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.eviction_plan.status ==
+               mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::no_eviction_required);
+    MK_REQUIRE(result.evicted_mount_count == 0);
+    MK_REQUIRE(result.committed);
+    MK_REQUIRE(mount_set.mounts().size() == 1);
+    MK_REQUIRE(mount_set.mounts()[0].id == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1});
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), incoming).has_value());
+}
+
+MK_TEST("runtime package streaming candidate resident replace with reviewed evictions rejects descriptors and ids "
+        "before reads") {
+    CountingFileSystem filesystem;
+    const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
+    write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture", "not read");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5},
+                .label = "base",
+                .package = make_package(make_record(texture, mirakana::AssetKind::texture,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base v1")),
+            })
+            .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    auto invalid_desc = make_valid_desc(4096);
+    invalid_desc.target_id.clear();
+    const auto invalid_descriptor = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, invalid_desc,
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5}}, {});
+
+    auto missing_preflight = make_valid_desc(4096);
+    missing_preflight.runtime_scene_validation_succeeded = false;
+    const auto validation_required = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, missing_preflight,
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5}}, {});
+
+    const auto invalid_id = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, make_valid_desc(4096),
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5}}, {});
+    const auto missing_id = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 99},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, make_valid_desc(4096),
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 5}}, {});
+
+    MK_REQUIRE(invalid_descriptor.status ==
+               mirakana::runtime::RuntimePackageStreamingExecutionStatus::invalid_descriptor);
+    MK_REQUIRE(validation_required.status ==
+               mirakana::runtime::RuntimePackageStreamingExecutionStatus::validation_preflight_required);
+    MK_REQUIRE(invalid_id.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_replace_failed);
+    MK_REQUIRE(missing_id.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_replace_failed);
+    MK_REQUIRE(!invalid_descriptor.candidate_load.invoked_load);
+    MK_REQUIRE(!validation_required.candidate_load.invoked_load);
+    MK_REQUIRE(!invalid_id.candidate_load.invoked_load);
+    MK_REQUIRE(!missing_id.candidate_load.invoked_load);
+    MK_REQUIRE(!invalid_id.invoked_eviction_plan);
+    MK_REQUIRE(!missing_id.invoked_eviction_plan);
+    MK_REQUIRE(filesystem.read_text_count() == 0);
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1);
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == "base v1");
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
+MK_TEST("runtime package streaming candidate resident replace with reviewed evictions preserves state on candidate "
+        "load failure") {
+    CountingFileSystem filesystem;
+    filesystem.write_text("runtime/game.geindex", "not a cooked package index");
+    const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3},
+                .label = "base",
+                .package = make_package(make_record(texture, mirakana::AssetKind::texture,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base v1")),
+            })
+            .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    const auto result = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, make_valid_desc(4096),
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3}}, {});
+
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::package_load_failed);
+    MK_REQUIRE(result.candidate_load.status ==
+               mirakana::runtime::RuntimePackageCandidateLoadStatusV2::package_load_failed);
+    MK_REQUIRE(result.candidate_load.invoked_load);
+    MK_REQUIRE(!result.invoked_eviction_plan);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(result.diagnostics[0].code == "package-index-invalid");
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1);
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == "base v1");
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
+MK_TEST("runtime package streaming candidate resident replace with reviewed evictions preserves state on residency "
+        "hint failure") {
+    CountingFileSystem filesystem;
+    const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture", "replacement");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 6},
+                .label = "base",
+                .package = make_package(make_record(material, mirakana::AssetKind::material,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1}, "base v1")),
+            })
+            .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    auto desc = make_valid_desc(4096);
+    desc.required_preload_assets = {material};
+    desc.max_resident_packages = 1;
+
+    const auto result = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 6},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, desc, {}, {});
+
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::residency_hint_failed);
+    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::loaded);
+    MK_REQUIRE(result.eviction_plan.status ==
+               mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::no_eviction_required);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(result.diagnostics[0].code == "preload-asset-missing");
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1);
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == "base v1");
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
+MK_TEST("runtime package streaming candidate resident replace with reviewed evictions rejects reviewed eviction "
+        "candidates") {
+    CountingFileSystem filesystem;
+    const auto base = mirakana::AssetId::from_name("textures/base");
+    const auto other = mirakana::AssetId::from_name("textures/other");
+    const auto incoming = mirakana::AssetId::from_name("textures/incoming");
+    write_package(filesystem, incoming, mirakana::AssetKind::texture, "textures/incoming.texture", "new");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                       .label = "base",
+                       .package = make_package(make_record(base, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1},
+                                                           "resident base payload")),
+                   })
+                   .succeeded());
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 4},
+                       .label = "other",
+                       .package = make_package(make_record(other, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 2},
+                                                           "resident other payload")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+    const auto desc = make_valid_desc(3);
+
+    const auto invalid = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, desc,
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{}}, {});
+    const auto duplicate = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, desc,
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 4},
+             mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 4}},
+            {});
+    const auto missing = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, desc,
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 99}}, {});
+    const auto protected_replacement = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, desc,
+            {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1}}, {});
+
+    MK_REQUIRE(invalid.status ==
+               mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed);
+    MK_REQUIRE(duplicate.status ==
+               mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed);
+    MK_REQUIRE(missing.status ==
+               mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed);
+    MK_REQUIRE(protected_replacement.status ==
+               mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed);
+    MK_REQUIRE(invalid.eviction_plan.status ==
+               mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::invalid_candidate_mount_id);
+    MK_REQUIRE(duplicate.eviction_plan.status ==
+               mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::duplicate_candidate_mount_id);
+    MK_REQUIRE(missing.eviction_plan.status ==
+               mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::missing_candidate_mount_id);
+    MK_REQUIRE(protected_replacement.eviction_plan.status ==
+               mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::protected_candidate_mount_id);
+    MK_REQUIRE(!invalid.committed);
+    MK_REQUIRE(!duplicate.committed);
+    MK_REQUIRE(!missing.committed);
+    MK_REQUIRE(!protected_replacement.committed);
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 2);
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
+MK_TEST("runtime package streaming candidate resident replace with reviewed evictions preserves state when candidates "
+        "are insufficient") {
+    CountingFileSystem filesystem;
+    const auto base = mirakana::AssetId::from_name("textures/base");
+    const auto other = mirakana::AssetId::from_name("textures/other");
+    const auto incoming = mirakana::AssetId::from_name("textures/incoming");
+    write_package(filesystem, incoming, mirakana::AssetKind::texture, "textures/incoming.texture", "new");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                       .label = "base",
+                       .package = make_package(make_record(base, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1},
+                                                           "resident base payload")),
+                   })
+                   .succeeded());
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 4},
+                       .label = "other",
+                       .package = make_package(make_record(other, mirakana::AssetKind::texture,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 2},
+                                                           "resident other payload")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    const auto result = mirakana::runtime::
+        execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
+            filesystem, mount_set, catalog_cache, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+            mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, make_valid_desc(4), {}, {});
+
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::over_budget_intent);
+    MK_REQUIRE(result.eviction_plan.status ==
+               mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::budget_unreachable);
+    MK_REQUIRE(result.eviction_plan.steps.empty());
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 2);
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == "resident base payload");
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), incoming).has_value());
+}
+
 MK_TEST("runtime package streaming resident unmount commit removes mounted package and refreshes resident catalog") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto material = mirakana::AssetId::from_name("materials/player");
