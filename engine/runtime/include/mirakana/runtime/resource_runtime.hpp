@@ -295,6 +295,71 @@ class RuntimeResidentCatalogCacheV2 {
     bool has_cache_{false};
 };
 
+enum class RuntimePackageCandidateResidentMountStatusV2 : std::uint8_t {
+    mounted = 0,
+    invalid_mount_id,
+    duplicate_mount_id,
+    candidate_load_failed,
+    budget_failed,
+    catalog_refresh_failed,
+};
+
+enum class RuntimePackageCandidateResidentMountDiagnosticPhaseV2 : std::uint8_t {
+    resident_mount = 0,
+    candidate_load,
+    resident_budget,
+    catalog_refresh,
+};
+
+struct RuntimePackageCandidateResidentMountDescV2 {
+    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    RuntimeResourceResidencyBudgetV2 budget{};
+};
+
+struct RuntimePackageCandidateResidentMountDiagnosticV2 {
+    RuntimePackageCandidateResidentMountDiagnosticPhaseV2 phase{
+        RuntimePackageCandidateResidentMountDiagnosticPhaseV2::candidate_load};
+    AssetId asset;
+    RuntimeResidentPackageMountIdV2 mount;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageCandidateResidentMountResultV2 {
+    RuntimePackageCandidateResidentMountStatusV2 status{
+        RuntimePackageCandidateResidentMountStatusV2::candidate_load_failed};
+    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+    RuntimeAssetPackageDesc package_desc;
+    RuntimePackageCandidateLoadResultV2 candidate_load;
+    RuntimeResidentPackageMountResultV2 resident_mount;
+    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+    std::vector<RuntimePackageCandidateResidentMountDiagnosticV2> diagnostics;
+    std::size_t loaded_record_count{0};
+    std::uint64_t loaded_resident_bytes{0};
+    std::uint64_t projected_resident_bytes{0};
+    std::uint32_t previous_mount_generation{0};
+    std::uint32_t mount_generation{0};
+    std::size_t previous_mount_count{0};
+    std::size_t mounted_package_count{0};
+    bool invoked_candidate_load{false};
+    bool invoked_catalog_refresh{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Loads one reviewed package-index candidate and commits it into an explicit resident mount/cache view.
+/// Mount id preflight happens before filesystem reads, and live mount/cache state changes only after projected catalog
+/// refresh succeeds. This helper does not use package-streaming descriptors, background workers, hot reload,
+/// upload/staging, renderer/RHI ownership, or native handles.
+[[nodiscard]] RuntimePackageCandidateResidentMountResultV2
+commit_runtime_package_candidate_resident_mount_v2(IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set,
+                                                   RuntimeResidentCatalogCacheV2& catalog_cache,
+                                                   const RuntimePackageCandidateResidentMountDescV2& desc);
+
 enum class RuntimeResidentPackageUnmountCommitStatusV2 : std::uint8_t {
     unmounted = 0,
     invalid_mount_id,

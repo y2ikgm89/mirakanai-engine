@@ -14,7 +14,7 @@
 
 ## Context
 
-The active master-plan gap is `runtime-resource-v2`. Resident mount sets, catalog cache refresh, safe resident mount/replace/unmount execution, and reviewed eviction planning are already implemented. The remaining follow-up claims after the later candidate-load slice include disk/VFS package mount execution beyond reviewed candidate load, package-streaming breadth, hot reload productization, renderer/RHI ownership, upload/staging integration, arbitrary eviction, and allocator/GPU budget enforcement.
+The active master-plan gap is `runtime-resource-v2`. Resident mount sets, catalog cache refresh, safe resident mount/replace/unmount execution, and reviewed eviction planning are already implemented. The remaining follow-up claims after the later candidate-load and candidate-resident-mount slices include broader disk/VFS package mount orchestration, package-streaming breadth, hot reload productization, renderer/RHI ownership, upload/staging integration, arbitrary eviction, and allocator/GPU budget enforcement.
 
 This slice chooses the smallest disk/VFS step: discover candidate package indexes from a caller-owned virtual filesystem root. It intentionally stops before package loading or mutation so later host/editor code can review and select candidates before calling existing `load_runtime_asset_package` and resident mount/replace APIs.
 
