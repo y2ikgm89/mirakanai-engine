@@ -1834,6 +1834,9 @@ foreach ($rendererQualityPackageGuidance in @(
     Assert-ContainsText $rendererQualityPackageText "--require-renderer-quality-gates" $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "renderer_quality_status" $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "renderer_quality_framegraph_execution_budget_ok" $rendererQualityPackageGuidance
+    Assert-ContainsText $rendererQualityPackageText "renderer_quality_expected_framegraph_barrier_steps" $rendererQualityPackageGuidance
+    Assert-ContainsText $rendererQualityPackageText "renderer_quality_framegraph_barrier_steps_ok" $rendererQualityPackageGuidance
+    Assert-ContainsText $rendererQualityPackageText "framegraph_barrier_steps_executed" $rendererQualityPackageGuidance
 }
 $rendererQualityCMakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
 Assert-ContainsText $rendererQualityCMakeText "--require-renderer-quality-gates" "games/CMakeLists.txt"

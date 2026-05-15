@@ -28,6 +28,7 @@ Use this skill for C++ games, game.agent.json, new-game scaffolding, desktop run
 - Read `references/full-guidance.md` only for detailed public API lists, package-lane counters, generated-game manifests, or mobile/desktop runtime recipes.
 - Keep `game_name` and `new-game -Name` values matching `^[a-z][a-z0-9_]*$` and keep source-tree paths lowercase snake_case.
 - Runtime package payloads are byte-hashed. When adding a text cooked/runtime extension or `runtimePackageFiles` entry, update the game/scaffold `runtime/.gitattributes` with `text eol=lf`, keep scaffold/static checks aligned, and run the narrowest package smoke before the slice gate.
+- Generated 3D renderer-quality package smokes keep exact frame graph evidence: base postprocess expects `renderer_quality_expected_framegraph_passes=2` and `renderer_quality_expected_framegraph_barrier_steps=1`; depth/shadow variants add `framegraph_barrier_steps_executed` counts in `references/full-guidance.md`.
 - Validate with the smallest relevant package/game lane first, then `tools/validate.ps1` at the slice gate.
 
 ## Detailed Reference

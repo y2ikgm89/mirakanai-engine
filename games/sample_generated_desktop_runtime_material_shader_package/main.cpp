@@ -674,8 +674,11 @@ int main(int argc, char** argv) {
               << " scene_gpu_mesh_resolved=" << scene_gpu_stats.mesh_bindings_resolved
               << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved << " postprocess_status="
               << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
-              << " framegraph_passes=" << report.framegraph_passes << " frames=" << result.frames_run
-              << " game_frames=" << game.frames() << " scene_meshes=" << game.scene_meshes_submitted()
+              << " framegraph_passes=" << report.framegraph_passes
+              << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
+              << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
+              << " frames=" << result.frames_run << " game_frames=" << game.frames()
+              << " scene_meshes=" << game.scene_meshes_submitted()
               << " scene_materials=" << game.scene_materials_resolved() << '\n';
     print_presentation_report("sample_generated_desktop_runtime_material_shader_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -704,6 +707,8 @@ int main(int argc, char** argv) {
             (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
              report.framegraph_passes != 2 ||
              report.renderer_stats.framegraph_passes_executed != static_cast<std::uint64_t>(options.max_frames) * 2U ||
+             report.renderer_stats.framegraph_barrier_steps_executed !=
+                 static_cast<std::uint64_t>(options.max_frames) ||
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
             return 3;
         }

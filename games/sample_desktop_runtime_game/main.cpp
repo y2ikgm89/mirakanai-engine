@@ -1105,6 +1105,8 @@ void print_presentation_report(std::string_view prefix, const mirakana::SdlDeskt
               << " ui_texture_overlay_texture_binds=" << report.native_ui_texture_overlay_texture_binds
               << " ui_texture_overlay_draws=" << report.native_ui_texture_overlay_draws
               << " framegraph_passes=" << report.framegraph_passes
+              << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
+              << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
               << " renderer_gpu_skinning_draws=" << report.renderer_stats.gpu_skinning_draws
               << " renderer_skinned_palette_descriptor_binds=" << report.renderer_stats.skinned_palette_descriptor_binds
               << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
@@ -1524,100 +1526,104 @@ int main(int argc, char** argv) {
     const auto renderer_quality =
         mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
 
-    std::cout << "sample_desktop_runtime_game status=" << status_name(result.status)
-              << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " presentation_fallback="
-              << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
-              << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
-              << " presentation_backend_reports=" << report.backend_reports_count
-              << " presentation_diagnostics=" << report.diagnostics_count << " frames=" << result.frames_run
-              << " game_frames=" << game.frames() << " scene_meshes=" << game.scene_meshes_submitted()
-              << " scene_materials=" << game.scene_materials_resolved()
-              << " scene_mesh_plan_meshes=" << game.scene_mesh_plan_meshes()
-              << " scene_mesh_plan_draws=" << game.scene_mesh_plan_draws()
-              << " scene_mesh_plan_unique_meshes=" << game.scene_mesh_plan_unique_meshes()
-              << " scene_mesh_plan_unique_materials=" << game.scene_mesh_plan_unique_materials()
-              << " scene_mesh_plan_diagnostics=" << game.scene_mesh_plan_diagnostics()
-              << " camera_primary=" << (game.primary_camera_seen() ? 1 : 0)
-              << " camera_controller_ticks=" << game.camera_controller_ticks()
-              << " camera_final_x=" << game.final_camera_x()
-              << " quaternion_animation=" << (game.quaternion_animation_passed(options.max_frames) ? 1 : 0)
-              << " quaternion_animation_ticks=" << game.quaternion_animation_ticks()
-              << " quaternion_animation_tracks=" << game.quaternion_animation_tracks_sampled()
-              << " quaternion_animation_failures=" << game.quaternion_animation_failures()
-              << " quaternion_animation_scene_applied=" << game.quaternion_animation_scene_applied()
-              << " quaternion_animation_final_z=" << game.final_quaternion_z()
-              << " quaternion_animation_final_w=" << game.final_quaternion_w()
-              << " quaternion_animation_scene_rotation_z=" << game.final_quaternion_scene_rotation_z()
-              << " hud_boxes=" << game.hud_boxes_submitted() << " hud_images=" << game.hud_images_submitted()
-              << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
-              << " scene_gpu_mesh_bindings=" << scene_gpu_stats.mesh_bindings
-              << " scene_gpu_material_bindings=" << scene_gpu_stats.material_bindings
-              << " scene_gpu_mesh_uploads=" << scene_gpu_stats.mesh_uploads
-              << " scene_gpu_texture_uploads=" << scene_gpu_stats.texture_uploads
-              << " scene_gpu_material_uploads=" << scene_gpu_stats.material_uploads
-              << " scene_gpu_material_pipeline_layouts=" << scene_gpu_stats.material_pipeline_layouts
-              << " scene_gpu_uploaded_texture_bytes=" << scene_gpu_stats.uploaded_texture_bytes
-              << " scene_gpu_uploaded_mesh_bytes=" << scene_gpu_stats.uploaded_mesh_bytes
-              << " scene_gpu_uploaded_material_factor_bytes=" << scene_gpu_stats.uploaded_material_factor_bytes
-              << " scene_gpu_morph_mesh_bindings=" << scene_gpu_stats.morph_mesh_bindings
-              << " scene_gpu_morph_mesh_uploads=" << scene_gpu_stats.morph_mesh_uploads
-              << " scene_gpu_uploaded_morph_bytes=" << scene_gpu_stats.uploaded_morph_bytes
-              << " scene_gpu_mesh_resolved=" << scene_gpu_stats.mesh_bindings_resolved
-              << " scene_gpu_skinned_mesh_bindings=" << scene_gpu_stats.skinned_mesh_bindings
-              << " scene_gpu_skinned_mesh_uploads=" << scene_gpu_stats.skinned_mesh_uploads
-              << " scene_gpu_skinned_mesh_resolved=" << scene_gpu_stats.skinned_mesh_bindings_resolved
-              << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved << " postprocess_status="
-              << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
-              << " postprocess_depth_input_requested=" << (report.postprocess_depth_input_requested ? 1 : 0)
-              << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
-              << " directional_shadow_status="
-              << mirakana::sdl_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
-              << " directional_shadow_requested=" << (report.directional_shadow_requested ? 1 : 0)
-              << " directional_shadow_ready=" << (report.directional_shadow_ready ? 1 : 0)
-              << " directional_shadow_filter_mode="
-              << mirakana::sdl_desktop_presentation_directional_shadow_filter_mode_name(
-                     report.directional_shadow_filter_mode)
-              << " directional_shadow_filter_taps=" << report.directional_shadow_filter_tap_count
-              << " directional_shadow_filter_radius_texels=" << report.directional_shadow_filter_radius_texels
-              << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
-              << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
-              << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
-              << " ui_overlay_sprites_submitted=" << report.native_ui_overlay_sprites_submitted
-              << " ui_overlay_draws=" << report.native_ui_overlay_draws
-              << " ui_atlas_metadata_requested=" << (options.require_native_ui_textured_sprite_atlas ? 1 : 0)
-              << " ui_atlas_metadata_status=" << ui_atlas_metadata_status_name(ui_atlas_metadata.status)
-              << " ui_atlas_metadata_pages=" << ui_atlas_metadata.pages
-              << " ui_atlas_metadata_bindings=" << ui_atlas_metadata.bindings
-              << " ui_texture_overlay_requested=" << (report.native_ui_texture_overlay_requested ? 1 : 0)
-              << " ui_texture_overlay_status="
-              << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(
-                     report.native_ui_texture_overlay_status)
-              << " ui_texture_overlay_atlas_ready=" << (report.native_ui_texture_overlay_atlas_ready ? 1 : 0)
-              << " ui_texture_overlay_sprites_submitted=" << report.native_ui_texture_overlay_sprites_submitted
-              << " ui_texture_overlay_texture_binds=" << report.native_ui_texture_overlay_texture_binds
-              << " ui_texture_overlay_draws=" << report.native_ui_texture_overlay_draws
-              << " framegraph_passes=" << report.framegraph_passes << " renderer_quality_status="
-              << mirakana::sdl_desktop_presentation_quality_gate_status_name(renderer_quality.status)
-              << " renderer_quality_ready=" << (renderer_quality.ready ? 1 : 0)
-              << " renderer_quality_diagnostics=" << renderer_quality.diagnostics_count
-              << " renderer_quality_expected_framegraph_passes=" << renderer_quality.expected_framegraph_passes
-              << " renderer_quality_framegraph_passes_ok=" << (renderer_quality.framegraph_passes_current ? 1 : 0)
-              << " renderer_quality_framegraph_execution_budget_ok="
-              << (renderer_quality.framegraph_execution_budget_current ? 1 : 0)
-              << " renderer_quality_scene_gpu_ready=" << (renderer_quality.scene_gpu_ready ? 1 : 0)
-              << " renderer_quality_postprocess_ready=" << (renderer_quality.postprocess_ready ? 1 : 0)
-              << " renderer_quality_postprocess_depth_input_ready="
-              << (renderer_quality.postprocess_depth_input_ready ? 1 : 0)
-              << " renderer_quality_directional_shadow_ready=" << (renderer_quality.directional_shadow_ready ? 1 : 0)
-              << " renderer_quality_directional_shadow_filter_ready="
-              << (renderer_quality.directional_shadow_filter_ready ? 1 : 0)
-              << " renderer_gpu_skinning_draws=" << report.renderer_stats.gpu_skinning_draws
-              << " renderer_skinned_palette_descriptor_binds=" << report.renderer_stats.skinned_palette_descriptor_binds
-              << '\n';
+    std::cout
+        << "sample_desktop_runtime_game status=" << status_name(result.status)
+        << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
+        << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+        << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
+        << " presentation_backend_reports=" << report.backend_reports_count
+        << " presentation_diagnostics=" << report.diagnostics_count << " frames=" << result.frames_run
+        << " game_frames=" << game.frames() << " scene_meshes=" << game.scene_meshes_submitted()
+        << " scene_materials=" << game.scene_materials_resolved()
+        << " scene_mesh_plan_meshes=" << game.scene_mesh_plan_meshes()
+        << " scene_mesh_plan_draws=" << game.scene_mesh_plan_draws()
+        << " scene_mesh_plan_unique_meshes=" << game.scene_mesh_plan_unique_meshes()
+        << " scene_mesh_plan_unique_materials=" << game.scene_mesh_plan_unique_materials()
+        << " scene_mesh_plan_diagnostics=" << game.scene_mesh_plan_diagnostics()
+        << " camera_primary=" << (game.primary_camera_seen() ? 1 : 0)
+        << " camera_controller_ticks=" << game.camera_controller_ticks() << " camera_final_x=" << game.final_camera_x()
+        << " quaternion_animation=" << (game.quaternion_animation_passed(options.max_frames) ? 1 : 0)
+        << " quaternion_animation_ticks=" << game.quaternion_animation_ticks()
+        << " quaternion_animation_tracks=" << game.quaternion_animation_tracks_sampled()
+        << " quaternion_animation_failures=" << game.quaternion_animation_failures()
+        << " quaternion_animation_scene_applied=" << game.quaternion_animation_scene_applied()
+        << " quaternion_animation_final_z=" << game.final_quaternion_z()
+        << " quaternion_animation_final_w=" << game.final_quaternion_w()
+        << " quaternion_animation_scene_rotation_z=" << game.final_quaternion_scene_rotation_z()
+        << " hud_boxes=" << game.hud_boxes_submitted() << " hud_images=" << game.hud_images_submitted()
+        << " scene_gpu_status="
+        << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+        << " scene_gpu_mesh_bindings=" << scene_gpu_stats.mesh_bindings
+        << " scene_gpu_material_bindings=" << scene_gpu_stats.material_bindings
+        << " scene_gpu_mesh_uploads=" << scene_gpu_stats.mesh_uploads
+        << " scene_gpu_texture_uploads=" << scene_gpu_stats.texture_uploads
+        << " scene_gpu_material_uploads=" << scene_gpu_stats.material_uploads
+        << " scene_gpu_material_pipeline_layouts=" << scene_gpu_stats.material_pipeline_layouts
+        << " scene_gpu_uploaded_texture_bytes=" << scene_gpu_stats.uploaded_texture_bytes
+        << " scene_gpu_uploaded_mesh_bytes=" << scene_gpu_stats.uploaded_mesh_bytes
+        << " scene_gpu_uploaded_material_factor_bytes=" << scene_gpu_stats.uploaded_material_factor_bytes
+        << " scene_gpu_morph_mesh_bindings=" << scene_gpu_stats.morph_mesh_bindings
+        << " scene_gpu_morph_mesh_uploads=" << scene_gpu_stats.morph_mesh_uploads
+        << " scene_gpu_uploaded_morph_bytes=" << scene_gpu_stats.uploaded_morph_bytes
+        << " scene_gpu_mesh_resolved=" << scene_gpu_stats.mesh_bindings_resolved
+        << " scene_gpu_skinned_mesh_bindings=" << scene_gpu_stats.skinned_mesh_bindings
+        << " scene_gpu_skinned_mesh_uploads=" << scene_gpu_stats.skinned_mesh_uploads
+        << " scene_gpu_skinned_mesh_resolved=" << scene_gpu_stats.skinned_mesh_bindings_resolved
+        << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved << " postprocess_status="
+        << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
+        << " postprocess_depth_input_requested=" << (report.postprocess_depth_input_requested ? 1 : 0)
+        << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
+        << " directional_shadow_status="
+        << mirakana::sdl_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
+        << " directional_shadow_requested=" << (report.directional_shadow_requested ? 1 : 0)
+        << " directional_shadow_ready=" << (report.directional_shadow_ready ? 1 : 0)
+        << " directional_shadow_filter_mode="
+        << mirakana::sdl_desktop_presentation_directional_shadow_filter_mode_name(report.directional_shadow_filter_mode)
+        << " directional_shadow_filter_taps=" << report.directional_shadow_filter_tap_count
+        << " directional_shadow_filter_radius_texels=" << report.directional_shadow_filter_radius_texels
+        << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
+        << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
+        << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
+        << " ui_overlay_sprites_submitted=" << report.native_ui_overlay_sprites_submitted
+        << " ui_overlay_draws=" << report.native_ui_overlay_draws
+        << " ui_atlas_metadata_requested=" << (options.require_native_ui_textured_sprite_atlas ? 1 : 0)
+        << " ui_atlas_metadata_status=" << ui_atlas_metadata_status_name(ui_atlas_metadata.status)
+        << " ui_atlas_metadata_pages=" << ui_atlas_metadata.pages
+        << " ui_atlas_metadata_bindings=" << ui_atlas_metadata.bindings
+        << " ui_texture_overlay_requested=" << (report.native_ui_texture_overlay_requested ? 1 : 0)
+        << " ui_texture_overlay_status="
+        << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(
+               report.native_ui_texture_overlay_status)
+        << " ui_texture_overlay_atlas_ready=" << (report.native_ui_texture_overlay_atlas_ready ? 1 : 0)
+        << " ui_texture_overlay_sprites_submitted=" << report.native_ui_texture_overlay_sprites_submitted
+        << " ui_texture_overlay_texture_binds=" << report.native_ui_texture_overlay_texture_binds
+        << " ui_texture_overlay_draws=" << report.native_ui_texture_overlay_draws
+        << " framegraph_passes=" << report.framegraph_passes
+        << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
+        << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
+        << " renderer_quality_status="
+        << mirakana::sdl_desktop_presentation_quality_gate_status_name(renderer_quality.status)
+        << " renderer_quality_ready=" << (renderer_quality.ready ? 1 : 0)
+        << " renderer_quality_diagnostics=" << renderer_quality.diagnostics_count
+        << " renderer_quality_expected_framegraph_passes=" << renderer_quality.expected_framegraph_passes
+        << " renderer_quality_expected_framegraph_barrier_steps=" << renderer_quality.expected_framegraph_barrier_steps
+        << " renderer_quality_framegraph_passes_ok=" << (renderer_quality.framegraph_passes_current ? 1 : 0)
+        << " renderer_quality_framegraph_barrier_steps_ok="
+        << (renderer_quality.framegraph_barrier_steps_current ? 1 : 0)
+        << " renderer_quality_framegraph_execution_budget_ok="
+        << (renderer_quality.framegraph_execution_budget_current ? 1 : 0)
+        << " renderer_quality_scene_gpu_ready=" << (renderer_quality.scene_gpu_ready ? 1 : 0)
+        << " renderer_quality_postprocess_ready=" << (renderer_quality.postprocess_ready ? 1 : 0)
+        << " renderer_quality_postprocess_depth_input_ready="
+        << (renderer_quality.postprocess_depth_input_ready ? 1 : 0)
+        << " renderer_quality_directional_shadow_ready=" << (renderer_quality.directional_shadow_ready ? 1 : 0)
+        << " renderer_quality_directional_shadow_filter_ready="
+        << (renderer_quality.directional_shadow_filter_ready ? 1 : 0)
+        << " renderer_gpu_skinning_draws=" << report.renderer_stats.gpu_skinning_draws
+        << " renderer_skinned_palette_descriptor_binds=" << report.renderer_stats.skinned_palette_descriptor_binds
+        << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_desktop_runtime_game presentation_diagnostic="
@@ -1679,12 +1685,16 @@ int main(int argc, char** argv) {
              scene_gpu_stats.skinned_mesh_bindings_resolved != static_cast<std::size_t>(options.max_frames))) {
             return 3;
         }
+        const std::uint32_t expected_framegraph_passes = options.require_directional_shadow ? 3U : 2U;
+        const std::uint32_t expected_framegraph_barrier_steps =
+            options.require_directional_shadow ? 5U : (options.require_postprocess_depth_input ? 3U : 1U);
         if (options.require_postprocess &&
             (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
-             report.framegraph_passes != (options.require_directional_shadow ? 3U : 2U) ||
+             report.framegraph_passes != expected_framegraph_passes ||
              report.renderer_stats.framegraph_passes_executed !=
-                 static_cast<std::uint64_t>(options.max_frames) *
-                     static_cast<std::uint64_t>(options.require_directional_shadow ? 3U : 2U) ||
+                 static_cast<std::uint64_t>(options.max_frames) * expected_framegraph_passes ||
+             report.renderer_stats.framegraph_barrier_steps_executed !=
+                 static_cast<std::uint64_t>(options.max_frames) * expected_framegraph_barrier_steps ||
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
             return 3;
         }
