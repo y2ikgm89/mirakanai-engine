@@ -1113,6 +1113,8 @@ try {
     Assert-ContainsText $desktop3dMain "--require-package-streaming-safe-point" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "execute_selected_runtime_package_streaming_safe_point" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "residency_hint_failed" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "resident_catalog_refresh_failed" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "resident_eviction_plan_failed" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "required_preload_assets = {packaged_scene_asset_id()}" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "resident_resource_kinds" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "max_resident_packages = 1" "Desktop 3D scaffold main.cpp"

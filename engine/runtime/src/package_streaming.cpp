@@ -278,6 +278,57 @@ void add_candidate_load_diagnostics(RuntimePackageStreamingExecutionResult& resu
     }
 }
 
+void add_reviewed_evictions_mount_diagnostics(
+    RuntimePackageStreamingExecutionResult& result,
+    const RuntimePackageCandidateResidentMountReviewedEvictionsResultV2& reviewed_mount) {
+    for (const auto& diagnostic : reviewed_mount.diagnostics) {
+        std::string message = diagnostic.message;
+        if (!diagnostic.path.empty()) {
+            message += " at ";
+            message += diagnostic.path;
+        }
+        add_diagnostic(result, diagnostic.code, std::move(message));
+    }
+}
+
+[[nodiscard]] RuntimePackageStreamingExecutionStatus
+map_reviewed_evictions_mount_status(RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2 status) noexcept {
+    switch (status) {
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::mounted:
+        return RuntimePackageStreamingExecutionStatus::committed;
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::invalid_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::duplicate_mount_id:
+        return RuntimePackageStreamingExecutionStatus::resident_mount_failed;
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::candidate_load_failed:
+        return RuntimePackageStreamingExecutionStatus::package_load_failed;
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::invalid_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::duplicate_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::missing_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::protected_eviction_candidate_mount_id:
+        return RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed;
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::budget_failed:
+        return RuntimePackageStreamingExecutionStatus::over_budget_intent;
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::catalog_refresh_failed:
+        return RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed;
+    }
+    return RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed;
+}
+
+void copy_reviewed_evictions_mount_result(
+    RuntimePackageStreamingExecutionResult& result,
+    const RuntimePackageCandidateResidentMountReviewedEvictionsResultV2& reviewed_mount) {
+    result.candidate_load = reviewed_mount.candidate_load;
+    result.resident_mount = reviewed_mount.resident_mount;
+    result.eviction_plan = reviewed_mount.eviction_plan;
+    result.resident_catalog_refresh = reviewed_mount.catalog_refresh;
+    result.estimated_resident_bytes = reviewed_mount.projected_resident_bytes;
+    result.resident_mount_generation = reviewed_mount.mount_generation;
+    result.resident_package_count = static_cast<std::uint32_t>(reviewed_mount.mounted_package_count);
+    result.evicted_mount_count = reviewed_mount.evicted_mount_count;
+    result.invoked_eviction_plan = reviewed_mount.invoked_eviction_plan;
+    add_reviewed_evictions_mount_diagnostics(result, reviewed_mount);
+}
+
 void set_resident_catalog_build_failure(RuntimePackageStreamingExecutionResult& result,
                                         RuntimeResourceCatalogBuildResultV2 catalog_build,
                                         std::size_t projected_package_count, std::uint32_t mount_generation,
@@ -324,7 +375,7 @@ make_package_streaming_candidate(const RuntimePackageStreamingExecutionDesc& des
 } // namespace
 
 bool RuntimePackageStreamingExecutionResult::succeeded() const noexcept {
-    return status == RuntimePackageStreamingExecutionStatus::committed;
+    return status == RuntimePackageStreamingExecutionStatus::committed && committed;
 }
 
 RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_safe_point(
@@ -393,6 +444,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
     }
 
     result.status = RuntimePackageStreamingExecutionStatus::committed;
+    result.committed = true;
     return result;
 }
 
@@ -493,6 +545,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
     result.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
     result.resident_mount_generation = mount_set.generation();
     result.status = RuntimePackageStreamingExecutionStatus::committed;
+    result.committed = true;
     return result;
 }
 
@@ -577,6 +630,80 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
     result.resident_mount_generation = mount_set.generation();
     result.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
     result.status = RuntimePackageStreamingExecutionStatus::committed;
+    result.committed = true;
+    return result;
+}
+
+RuntimePackageStreamingExecutionResult
+execute_selected_runtime_package_streaming_candidate_resident_mount_with_reviewed_evictions_safe_point(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    const RuntimePackageStreamingExecutionDesc& desc,
+    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order,
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids) {
+    RuntimePackageStreamingExecutionResult result;
+    result.target_id = desc.target_id;
+    result.package_index_path = desc.package_index_path;
+    result.runtime_scene_validation_target_id = desc.runtime_scene_validation_target_id;
+    result.resident_budget_bytes = desc.resident_budget_bytes;
+    result.resident_mount_generation = mount_set.generation();
+    result.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
+
+    if (!validate_descriptor(desc, result)) {
+        result.status = RuntimePackageStreamingExecutionStatus::invalid_descriptor;
+        return result;
+    }
+
+    if (!desc.runtime_scene_validation_succeeded) {
+        result.status = RuntimePackageStreamingExecutionStatus::validation_preflight_required;
+        add_diagnostic(result, "runtime-scene-validation-required",
+                       "validate-runtime-scene-package must succeed before selected package streaming execution");
+        return result;
+    }
+
+    const RuntimeResourceResidencyBudgetV2 budget{
+        .max_resident_content_bytes = desc.resident_budget_bytes,
+        .max_resident_asset_records = {},
+    };
+    RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set;
+    RuntimeResidentCatalogCacheV2 projected_catalog_cache = catalog_cache;
+    const auto reviewed_mount = commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2(
+        filesystem, projected_mount_set, projected_catalog_cache,
+        RuntimePackageCandidateResidentMountReviewedEvictionsDescV2{
+            .candidate = make_package_streaming_candidate(desc),
+            .mount_id = mount_id,
+            .overlay = overlay,
+            .budget = budget,
+            .eviction_candidate_unmount_order = std::move(eviction_candidate_unmount_order),
+            .protected_mount_ids = std::move(protected_mount_ids),
+        });
+    copy_reviewed_evictions_mount_result(result, reviewed_mount);
+
+    if (!reviewed_mount.succeeded()) {
+        result.status = map_reviewed_evictions_mount_status(reviewed_mount.status);
+        result.committed = false;
+        result.resident_mount_generation = mount_set.generation();
+        if (result.status == RuntimePackageStreamingExecutionStatus::resident_mount_failed ||
+            result.status == RuntimePackageStreamingExecutionStatus::package_load_failed) {
+            result.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
+        }
+        return result;
+    }
+
+    if (!validate_residency_hints(desc, reviewed_mount.candidate_load.loaded_package.package, result,
+                                  static_cast<std::uint32_t>(reviewed_mount.mounted_package_count))) {
+        result.status = RuntimePackageStreamingExecutionStatus::residency_hint_failed;
+        result.committed = false;
+        result.resident_mount_generation = mount_set.generation();
+        return result;
+    }
+
+    mount_set = std::move(projected_mount_set);
+    catalog_cache = std::move(projected_catalog_cache);
+    result.resident_mount_generation = mount_set.generation();
+    result.resident_package_count = static_cast<std::uint32_t>(mount_set.mounts().size());
+    result.status = RuntimePackageStreamingExecutionStatus::committed;
+    result.committed = true;
     return result;
 }
 
@@ -668,12 +795,14 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
             break;
         case RuntimeResidentPackageReplaceCommitStatusV2::replaced:
             result.status = RuntimePackageStreamingExecutionStatus::committed;
+            result.committed = true;
             break;
         }
         return result;
     }
 
     result.status = RuntimePackageStreamingExecutionStatus::committed;
+    result.committed = true;
     return result;
 }
 
@@ -758,12 +887,14 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
             break;
         case RuntimeResidentPackageReplaceCommitStatusV2::replaced:
             result.status = RuntimePackageStreamingExecutionStatus::committed;
+            result.committed = true;
             break;
         }
         return result;
     }
 
     result.status = RuntimePackageStreamingExecutionStatus::committed;
+    result.committed = true;
     return result;
 }
 
@@ -827,6 +958,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
             break;
         case RuntimeResidentPackageUnmountCommitStatusV2::unmounted:
             result.status = RuntimePackageStreamingExecutionStatus::committed;
+            result.committed = true;
             break;
         }
         result.resident_mount_generation = mount_set.generation();
@@ -870,12 +1002,14 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
             break;
         case RuntimeResidentPackageUnmountCommitStatusV2::unmounted:
             result.status = RuntimePackageStreamingExecutionStatus::committed;
+            result.committed = true;
             break;
         }
         return result;
     }
 
     result.status = RuntimePackageStreamingExecutionStatus::committed;
+    result.committed = true;
     return result;
 }
 

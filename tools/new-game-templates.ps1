@@ -1168,6 +1168,16 @@ constexpr std::string_view kRuntimeShadowVulkanFragmentShaderPath{"shaders/${Tar
         return "over_budget_intent";
     case mirakana::runtime::RuntimePackageStreamingExecutionStatus::safe_point_replacement_failed:
         return "safe_point_replacement_failed";
+    case mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_mount_failed:
+        return "resident_mount_failed";
+    case mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_unmount_failed:
+        return "resident_unmount_failed";
+    case mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_replace_failed:
+        return "resident_replace_failed";
+    case mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed:
+        return "resident_catalog_refresh_failed";
+    case mirakana::runtime::RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed:
+        return "resident_eviction_plan_failed";
     case mirakana::runtime::RuntimePackageStreamingExecutionStatus::committed:
         return "committed";
     }

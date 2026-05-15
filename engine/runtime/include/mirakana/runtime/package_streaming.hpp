@@ -6,6 +6,7 @@
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -29,6 +30,7 @@ enum class RuntimePackageStreamingExecutionStatus : std::uint8_t {
     resident_unmount_failed,
     resident_replace_failed,
     resident_catalog_refresh_failed,
+    resident_eviction_plan_failed,
 };
 
 struct RuntimePackageStreamingExecutionDiagnostic {
@@ -66,8 +68,12 @@ struct RuntimePackageStreamingExecutionResult {
     RuntimeResidentPackageMountResultV2 resident_mount;
     RuntimeResidentPackageUnmountCommitResultV2 resident_unmount;
     RuntimeResidentPackageReplaceCommitResultV2 resident_replace;
+    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
     RuntimeResidentCatalogCacheRefreshResultV2 resident_catalog_refresh;
     std::vector<RuntimePackageStreamingExecutionDiagnostic> diagnostics;
+    std::size_t evicted_mount_count{0};
+    bool invoked_eviction_plan{false};
+    bool committed{false};
 
     [[nodiscard]] bool succeeded() const noexcept;
 };
@@ -86,6 +92,17 @@ execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
     IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
     RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc);
+
+/// Builds the descriptor-selected package candidate, delegates projected resident mounting and caller-reviewed
+/// evictions to the reviewed candidate helper, validates selected streaming residency hints, and commits the live
+/// mount/cache state only after every projected step succeeds.
+[[nodiscard]] RuntimePackageStreamingExecutionResult
+execute_selected_runtime_package_streaming_candidate_resident_mount_with_reviewed_evictions_safe_point(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    const RuntimePackageStreamingExecutionDesc& desc,
+    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order,
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids);
 
 [[nodiscard]] RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_resident_replace_safe_point(RuntimeResidentPackageMountSetV2& mount_set,
