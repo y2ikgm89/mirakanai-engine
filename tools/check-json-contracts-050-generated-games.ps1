@@ -1003,6 +1003,8 @@ if (-not (Test-Path -LiteralPath $generated3dPackageManifestFullPath)) {
         (Get-Content -LiteralPath (Join-Path $root "tools/new-game-templates.ps1") -Raw)
     Assert-ContainsText $newGameScaffoldText "runtime/assets/3d/hud.uiatlas" "tools/new-game scaffolding"
     Assert-ContainsText $newGameScaffoldText "runtime/assets/3d/hud_text.uiatlas" "tools/new-game scaffolding"
+    Assert-ContainsText $newGameScaffoldText "resident_catalog_refresh_failed" "tools/new-game scaffolding"
+    Assert-ContainsText $newGameScaffoldText "resident_eviction_plan_failed" "tools/new-game scaffolding"
     foreach ($needle in @(
         "--require-shadow-morph-composition",
         "require_shadow_morph_composition",
@@ -1044,6 +1046,8 @@ if (-not (Test-Path -LiteralPath $generated3dPackageManifestFullPath)) {
         "visible_3d_status=",
         "visible_3d_presented_frames=",
         "visible_3d_d3d12_selected=",
+        "resident_catalog_refresh_failed",
+        "resident_eviction_plan_failed",
         "load_packaged_d3d12_native_ui_overlay_shaders",
         "load_packaged_vulkan_native_ui_overlay_shaders",
         "native_ui_overlay_vertex_shader",

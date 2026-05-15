@@ -1743,12 +1743,15 @@ foreach ($check in @(
             "resident_replace_failed",
             "resident_unmount_failed",
             "resident_catalog_refresh_failed",
+            "resident_eviction_plan_failed",
             "RuntimeResidentCatalogCacheV2& catalog_cache",
             "RuntimeResidentPackageMountIdV2 mount_id",
             "RuntimeResidentPackageReplaceCommitResultV2 resident_replace",
             "RuntimeResidentPackageUnmountCommitResultV2 resident_unmount",
+            "execute_selected_runtime_package_streaming_candidate_resident_mount_with_reviewed_evictions_safe_point",
             "execute_selected_runtime_package_streaming_resident_replace_safe_point",
             "execute_selected_runtime_package_streaming_resident_unmount_safe_point",
+            "RuntimeResidentPackageEvictionPlanResultV2 eviction_plan",
             "resident_catalog_refresh"
         )
     },
@@ -1763,9 +1766,12 @@ foreach ($check in @(
             "commit_runtime_resident_package_replace_v2",
             "commit_runtime_resident_package_unmount_v2",
             "add_candidate_catalog_build_diagnostics",
+            "map_reviewed_evictions_mount_status",
+            "commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2",
             "resident_replace_failed",
             "resident_unmount_failed",
             "resident_catalog_refresh_failed",
+            "resident_eviction_plan_failed",
             "mount_set.unmount(mount_id)"
         )
     },
@@ -1780,6 +1786,8 @@ foreach ($check in @(
             "runtime package streaming resident replace commit rejects invalid and missing ids before mutation",
             "runtime package streaming resident replace commit preserves state on candidate catalog failure",
             "runtime package streaming resident replace commit preserves state on projected budget failure",
+            "runtime package streaming candidate resident mount with reviewed evictions commits after eviction",
+            "runtime package streaming candidate resident mount with reviewed evictions rejects reviewed eviction ",
             "runtime package streaming resident unmount commit removes mounted package and refreshes resident catalog",
             "runtime package streaming resident unmount commit rejects invalid and missing ids before mutation",
             "runtime package streaming resident unmount commit preserves state on projected residency hint failure"
