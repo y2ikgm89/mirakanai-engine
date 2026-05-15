@@ -534,6 +534,88 @@ struct RuntimePackageCandidateResidentReplaceResultV2 {
     IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
     const RuntimePackageCandidateResidentReplaceDescV2& desc);
 
+enum class RuntimePackageDiscoveryResidentCommitModeV2 : std::uint8_t {
+    mount = 0,
+    replace,
+};
+
+enum class RuntimePackageDiscoveryResidentCommitStatusV2 : std::uint8_t {
+    committed = 0,
+    invalid_descriptor,
+    invalid_mount_id,
+    duplicate_mount_id,
+    missing_mount_id,
+    discovery_failed,
+    candidate_not_found,
+    candidate_load_failed,
+    budget_failed,
+    catalog_refresh_failed,
+    resident_commit_failed,
+};
+
+enum class RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2 : std::uint8_t {
+    descriptor = 0,
+    resident_mount,
+    resident_replace,
+    discovery,
+    candidate_selection,
+    candidate_load,
+    resident_budget,
+    catalog_refresh,
+    resident_commit,
+};
+
+struct RuntimePackageDiscoveryResidentCommitDescV2 {
+    RuntimePackageIndexDiscoveryDescV2 discovery;
+    std::string selected_package_index_path;
+    RuntimePackageDiscoveryResidentCommitModeV2 mode{RuntimePackageDiscoveryResidentCommitModeV2::mount};
+    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    RuntimeResourceResidencyBudgetV2 budget{};
+};
+
+struct RuntimePackageDiscoveryResidentCommitDiagnosticV2 {
+    RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2 phase{
+        RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::candidate_selection};
+    RuntimeResidentPackageMountIdV2 mount;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageDiscoveryResidentCommitResultV2 {
+    RuntimePackageDiscoveryResidentCommitStatusV2 status{
+        RuntimePackageDiscoveryResidentCommitStatusV2::invalid_descriptor};
+    RuntimePackageIndexDiscoveryResultV2 discovery;
+    RuntimePackageIndexDiscoveryCandidateV2 selected_candidate;
+    RuntimePackageCandidateResidentMountResultV2 resident_mount;
+    RuntimePackageCandidateResidentReplaceResultV2 resident_replace;
+    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+    std::vector<RuntimePackageDiscoveryResidentCommitDiagnosticV2> diagnostics;
+    std::size_t loaded_record_count{0};
+    std::uint64_t loaded_resident_bytes{0};
+    std::uint64_t projected_resident_bytes{0};
+    std::uint32_t previous_mount_generation{0};
+    std::uint32_t mount_generation{0};
+    std::size_t previous_mount_count{0};
+    std::size_t mounted_package_count{0};
+    bool invoked_discovery{false};
+    bool invoked_resident_commit{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Discovers reviewed package-index candidates from a caller-owned VFS root, selects one exact package index path,
+/// then delegates to the explicit candidate resident mount or replace commit helper. Resident operation preflight
+/// happens before discovery/package reads, and live mount/cache state changes only after the delegated copy-then-commit
+/// path succeeds. This helper does not stream in the background, infer content roots, apply eviction policy, hot
+/// reload, upload/stage renderer resources, enforce GPU budgets, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimePackageDiscoveryResidentCommitResultV2
+commit_runtime_package_discovery_resident_v2(IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set,
+                                             RuntimeResidentCatalogCacheV2& catalog_cache,
+                                             const RuntimePackageDiscoveryResidentCommitDescV2& desc);
+
 [[nodiscard]] std::optional<RuntimeResourceHandleV2> find_runtime_resource_v2(const RuntimeResourceCatalogV2& catalog,
                                                                               AssetId asset) noexcept;
 [[nodiscard]] bool is_runtime_resource_handle_live_v2(const RuntimeResourceCatalogV2& catalog,
