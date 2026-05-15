@@ -11,17 +11,17 @@ Document the **recommended dependency order** for Phase 1 foundation elevation s
 
 ## Recommended order (shallow → deep)
 
-1. **`asset-identity-v2`** — canonical keys and editor/tooling surfaces must agree before broad reference rewrite and cook planning.
-2. **`runtime-resource-v2`** — mount/streaming semantics and catalogs depend on stable asset identity for preload hints and failure diagnostics.
-3. **`renderer-rhi-resource-foundation`** — native lifetime/teardown must align with catalog replacement and safe-point boundaries.
-4. **`upload-staging-v1`** — GPU upload rings and staging pools integrate with RHI lifetime and runtime scene GPU binding reports.
-5. **`frame-graph-v1`** — production pass ownership and transient policy assume dependable upload completion and resource retirement ordering.
+1. **`asset-identity-v2`** — closed by the 2026-05-12 reference-cleanup milestone.
+2. **`runtime-resource-v2`** — closed by the 2026-05-16 Engine 1.0 runtime-resource scope closeout.
+3. **`renderer-rhi-resource-foundation`** — closed by the 2026-05-16 Windows-default renderer/RHI foundation scope closeout; Metal parity, allocator enforcement, frame graph, and upload/staging package integration remain separate rows or host gates.
+4. **`frame-graph-v1`** — next active foundation gap; production pass ownership and transient policy assume dependable upload completion and resource retirement ordering.
+5. **`upload-staging-v1`** — GPU upload rings and staging pools integrate with RHI lifetime and runtime scene GPU binding reports.
 6. **`scene-component-prefab-schema-v2`** — production scene edit + dependency cook pulls asset graph, runtime packages, and renderer-bound scene payloads together.
 
 ## Coherent slice patterns (examples)
 
-- **Upload + runtime bind:** `upload-staging-v1` primary, `runtime-resource-v2` + `renderer-rhi-resource-foundation` secondary notes in the same child plan when tests share one package fixture.
-- **Frame graph + RHI:** `frame-graph-v1` primary with explicit `IRhiCommandList` transition ownership; `renderer-rhi-resource-foundation` for registry retirement evidence.
+- **Frame graph + RHI:** `frame-graph-v1` primary with explicit `IRhiCommandList` transition ownership; reuse closed `renderer-rhi-resource-foundation` registry/teardown evidence instead of reopening that gap.
+- **Upload + runtime bind:** `upload-staging-v1` primary, with `runtime-resource-v2` and `renderer-rhi-resource-foundation` treated as closed boundary evidence when tests share one package fixture.
 
 ## Constraints
 
@@ -48,3 +48,4 @@ Document the **recommended dependency order** for Phase 1 foundation elevation s
 | `runtime-resource-v2` | [2026-05-16-runtime-hot-reload-recook-package-replacement-execution-v1.md](2026-05-16-runtime-hot-reload-recook-package-replacement-execution-v1.md) | Completed; reviewed hot-reload recook replacement safe-point execution |
 | `runtime-resource-v2` | [2026-05-16-runtime-hot-reload-registered-asset-watch-tick-v1.md](2026-05-16-runtime-hot-reload-registered-asset-watch-tick-v1.md) | Completed; registered asset watch-tick orchestration without native watcher ownership |
 | `runtime-resource-v2` | [2026-05-16-runtime-resource-v2-1-0-scope-closeout-v1.md](2026-05-16-runtime-resource-v2-1-0-scope-closeout-v1.md) | Completed; Engine 1.0 runtime-resource ready surface closed, with renderer/RHI, upload/staging, frame graph, broad streaming, native watcher ownership, native handles, and broad hot reload productization left to separate rows or non-goals |
+| `renderer-rhi-resource-foundation` | [2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md](2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md) | Completed; Engine 1.0 Windows-default renderer/RHI foundation surface closed, with frame graph, upload/staging package integration, Metal parity, allocator enforcement, package streaming, native handles, and broad renderer quality left to separate rows or non-goals |

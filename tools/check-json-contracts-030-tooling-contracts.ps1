@@ -853,7 +853,6 @@ foreach ($packageSurface in $productionLoop.packageSurfaces) {
 
 $requiredGapIds = @(
     "scene-component-prefab-schema-v2",
-    "renderer-rhi-resource-foundation",
     "frame-graph-v1",
     "upload-staging-v1",
     "2d-playable-vertical-slice",
@@ -898,24 +897,19 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
-    "Runtime Resource v2 1.0 Scope Closeout v1",
-    "removing runtime-resource-v2 from unsupportedProductionGaps",
-    "reviewed safe-point package streaming",
-    "registered asset watch-tick",
-    "native watcher ownership",
-    "renderer-rhi-resource-foundation"
+    "Renderer RHI Resource Foundation 1.0 Scope Closeout v1",
+    "removing renderer-rhi-resource-foundation from unsupportedProductionGaps",
+    "RhiResourceLifetimeRegistry",
+    "D3D12/Vulkan deferred native teardown",
+    "GPU debug markers/timestamp frequency",
+    "RhiDeviceMemoryDiagnostics",
+    "frame-graph-v1"
 )) {
     if (-not $recommendedText.Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe runtime-resource closeout and next gap: $needle"
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe renderer-rhi closeout and next gap: $needle"
     }
 }
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })
-if ($rendererRhiGap.Count -ne 1 -or $rendererRhiGap[0].status -ne "implemented-foundation-only") {
-    Write-Error "engine manifest aiOperableProductionLoop renderer-rhi-resource-foundation gap must be implemented-foundation-only after runtime-resource closeout"
-}
-if (-not ([string]$rendererRhiGap[0].notes).Contains("RhiResourceLifetimeRegistry") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("GPU allocator") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("upload/staging") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("2D/3D playable vertical slices")) {
-    Write-Error "engine manifest aiOperableProductionLoop renderer-rhi-resource-foundation gap must keep foundation follow-up limits explicit"
+if ($rendererRhiGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop renderer-rhi-resource-foundation gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }

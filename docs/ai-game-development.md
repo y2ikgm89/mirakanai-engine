@@ -141,9 +141,9 @@ Runtime Resource v2 also exposes `commit_runtime_resident_package_reviewed_evict
 
 ## Renderer/RHI Resource Foundation v1
 
-`mirakana/rhi/resource_lifetime.hpp` provides Renderer/RHI Resource Foundation v1 as a foundation-only backend-neutral lifetime contract. It exposes `RhiResourceLifetimeRegistry`, generation-checked first-party resource handles, explicit resource kinds, owner labels, debug names, live/deferred-release records, frame-indexed retirement, deterministic diagnostics, and marker-style event rows.
+`mirakana/rhi/resource_lifetime.hpp` provides Renderer/RHI Resource Foundation v1 as the closed Engine 1.0 Windows-default renderer/RHI foundation contract. It exposes `RhiResourceLifetimeRegistry`, generation-checked first-party resource handles, explicit resource kinds, owner labels, debug names, live/deferred-release records, frame-indexed retirement, deterministic diagnostics, marker-style event rows, NullRHI lifetime wiring, D3D12/Vulkan deferred native teardown for committed resources and pipeline-class objects, GPU debug markers/timestamp-frequency rows, read-only memory diagnostics, editor Resources diagnostics, and reviewed capture handoff evidence.
 
-This contract does not migrate native backend destruction, implement GPU allocator or residency budgets, expose backend handles, add package streaming, native upload execution, production render graph scheduling, production 2D atlas/batching/native GPU output, or future 3D playable vertical-slice readiness.
+This contract does not implement production render graph ownership, upload/staging package integration, GPU allocator enforcement or residency budgets, Metal `IRhiDevice` parity, expose backend handles, add package streaming, native upload execution, production 2D atlas/batching/native GPU output, broad renderer quality, or future 3D playable vertical-slice readiness.
 
 ## Frame Graph and Upload/Staging Foundation v1
 

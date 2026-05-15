@@ -84,8 +84,8 @@ $masterPlanRuntimeUiLedgerNote = [regex]::Match($masterPlanText, '(?m)^Runtime U
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "RuntimeInputRebindingPresentationModel" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "platform input glyph generation" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanText "Completed gap burn-down" "production master plan completed gap pointer"
-Assert-ContainsText $masterPlanText "Runtime Resource v2 1.0 Scope Closeout v1" "production master plan runtime-resource closeout pointer"
-Assert-ContainsText $masterPlanText "renderer-rhi-resource-foundation" "production master plan next foundation gap pointer"
+Assert-ContainsText $masterPlanText "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "production master plan renderer-rhi closeout pointer"
+Assert-ContainsText $masterPlanText "frame-graph-v1" "production master plan next foundation gap pointer"
 Assert-ContainsText $rhiPublicHeaderText "struct ComputePipelineDesc" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "create_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "bind_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
@@ -1556,7 +1556,6 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
 
 $requiredProductionGapIds = @(
     "scene-component-prefab-schema-v2",
-    "renderer-rhi-resource-foundation",
     "frame-graph-v1",
     "upload-staging-v1",
     "2d-playable-vertical-slice",
@@ -1597,18 +1596,16 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
-    "Runtime Resource v2 1.0 Scope Closeout v1",
-    "removing runtime-resource-v2 from unsupportedProductionGaps",
-    "reviewed safe-point package streaming",
-    "resident mount/cache",
-    "reviewed eviction",
-    "package discovery/candidate load",
-    "registered asset watch-tick",
-    "native watcher ownership",
-    "broad hot reload productization",
-    "renderer-rhi-resource-foundation"
+    "Renderer RHI Resource Foundation 1.0 Scope Closeout v1",
+    "removing renderer-rhi-resource-foundation from unsupportedProductionGaps",
+    "RhiResourceLifetimeRegistry",
+    "D3D12/Vulkan deferred native teardown",
+    "GPU debug markers/timestamp frequency",
+    "RhiDeviceMemoryDiagnostics",
+    "Metal IRhiDevice parity",
+    "frame-graph-v1"
 )) {
-    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime-resource closeout"
+    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer-rhi closeout"
 }
 foreach ($check in @(
     @{
@@ -1660,15 +1657,26 @@ foreach ($check in @(
 }
 
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })
-if ($rendererRhiGap.Count -ne 1 -or $rendererRhiGap[0].status -ne "implemented-foundation-only") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop renderer-rhi-resource-foundation gap must be implemented-foundation-only"
+if ($rendererRhiGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop renderer-rhi-resource-foundation gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-if (-not ([string]$rendererRhiGap[0].notes).Contains("foundation-only") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("RhiResourceLifetimeRegistry") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("GPU allocator") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("upload/staging") -or
-    -not ([string]$rendererRhiGap[0].notes).Contains("2D/3D playable vertical slices")) {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop renderer-rhi-resource-foundation gap must keep foundation-only follow-up limits explicit"
+foreach ($check in @(
+    @{
+        Path = "docs/superpowers/plans/2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md"
+        Needles = @(
+            "Renderer RHI Resource Foundation 1.0 Scope Closeout",
+            "D3D12/Vulkan deferred native teardown",
+            "RhiDeviceMemoryDiagnostics",
+            "frame-graph-v1",
+            "upload-staging-v1",
+            "Metal IRhiDevice parity"
+        )
+    }
+)) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $fileText $needle "$($check.Path) renderer-rhi-resource-foundation closeout evidence"
+    }
 }
 $frameGraphGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "frame-graph-v1" })
 if ($frameGraphGap.Count -ne 1 -or $frameGraphGap[0].status -ne "implemented-foundation-only") {
@@ -1714,10 +1722,10 @@ $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Objec
 if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
 }
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Resource v2 1.0 Scope Closeout v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "removing runtime-resource-v2 from unsupportedProductionGaps" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "registered asset watch-tick" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "renderer-rhi-resource-foundation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "removing renderer-rhi-resource-foundation from unsupportedProductionGaps" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "D3D12/Vulkan deferred native teardown" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must be partly-ready after Play-In-Editor Visible Viewport Wiring v1"

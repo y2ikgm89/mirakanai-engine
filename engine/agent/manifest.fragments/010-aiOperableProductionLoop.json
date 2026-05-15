@@ -9,8 +9,8 @@
       "title": "Next Production Gap Selection",
       "status": "ready",
       "path": "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md",
-      "completedContext": "Runtime Resource v2 1.0 Scope Closeout v1 completes docs/superpowers/plans/2026-05-16-runtime-resource-v2-1-0-scope-closeout-v1.md by removing runtime-resource-v2 from unsupportedProductionGaps after the reviewed safe-point package streaming, resident mount/cache, reviewed eviction, package discovery/candidate load, hot-reload candidate review, recook replacement, and registered asset watch-tick surfaces landed. The closeout keeps native watcher ownership, automatic target inference, background streaming, arbitrary/LRU eviction, renderer/RHI resource ownership, upload/staging integration, allocator/GPU enforcement, native handles, package scripts, and broad hot reload productization out of the runtime-resource ready claim; renderer/RHI, upload/staging, and frame-graph gaps remain separate. Continue the Phase 1 foundation order with renderer-rhi-resource-foundation.",
-      "reason": "runtime-resource-v2 is closed for the Engine 1.0 runtime-resource ready surface by the documented scope closeout: selected safe-point package streaming, explicit resident mount/cache operations, reviewed resident eviction planning/commit, reviewed package discovery/candidate loading, and host-reviewed hot-reload recook replacement/watch-tick orchestration are implemented. Keep broad/background package streaming, native watcher ownership, automatic target inference, arbitrary/LRU eviction, renderer/RHI ownership, upload/staging, allocator/GPU enforcement, package scripts, native handles, and broad hot reload productization outside this closeout. Select renderer-rhi-resource-foundation next per the Phase 1 foundation order."
+      "completedContext": "Renderer RHI Resource Foundation 1.0 Scope Closeout v1 completes docs/superpowers/plans/2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md by removing renderer-rhi-resource-foundation from unsupportedProductionGaps after the RhiResourceLifetimeRegistry, NullRhiDevice lifetime wiring, D3D12/Vulkan deferred native teardown, GPU debug markers/timestamp frequency, read-only RhiDeviceMemoryDiagnostics, editor Resources diagnostics, and reviewed capture handoff evidence landed. The closeout keeps frame-graph-v1, upload-staging-v1, Metal IRhiDevice parity/Apple-host evidence, GPU allocator enforcement, package upload/streaming integration, public native/RHI handles, and broad renderer quality in separate remaining rows or explicit non-goals. Continue the Phase 1 foundation order with frame-graph-v1.",
+      "reason": "renderer-rhi-resource-foundation is closed for the Engine 1.0 Windows-default renderer/RHI foundation surface by the documented scope closeout: backend-neutral lifetime rows, D3D12/Vulkan native deferred destruction, GPU marker/timestamp adapters, memory diagnostics, and editor Resources evidence are implemented without exposing native handles. Keep production render graph ownership, upload/staging package integration, Metal IRhiDevice parity, allocator/GPU enforcement, package streaming, and broad renderer quality outside this closeout. Select frame-graph-v1 next per the Phase 1 foundation order."
     },
     "recipeStatusEnum": [
       "ready",
@@ -2763,7 +2763,6 @@
         ],
         "unsupportedGapIds": [
           "scene-component-prefab-schema-v2",
-          "renderer-rhi-resource-foundation",
           "editor-productization",
           "2d-playable-vertical-slice",
           "3d-playable-vertical-slice"
@@ -2903,7 +2902,6 @@
         ],
         "unsupportedGapIds": [
           "scene-component-prefab-schema-v2",
-          "renderer-rhi-resource-foundation",
           "frame-graph-v1",
           "upload-staging-v1",
           "production-ui-importer-platform-adapters",
@@ -3049,7 +3047,6 @@
           "default"
         ],
         "unsupportedGapIds": [
-          "renderer-rhi-resource-foundation",
           "frame-graph-v1",
           "upload-staging-v1",
           "production-ui-importer-platform-adapters",
@@ -3574,7 +3571,6 @@
           "default"
         ],
         "unsupportedGapIds": [
-          "renderer-rhi-resource-foundation",
           "2d-playable-vertical-slice",
           "3d-playable-vertical-slice"
         ],
@@ -3681,7 +3677,6 @@
           "default"
         ],
         "unsupportedGapIds": [
-          "renderer-rhi-resource-foundation",
           "2d-playable-vertical-slice",
           "3d-playable-vertical-slice"
         ],
@@ -3785,7 +3780,6 @@
           "default"
         ],
         "unsupportedGapIds": [
-          "renderer-rhi-resource-foundation",
           "frame-graph-v1",
           "upload-staging-v1",
           "production-ui-importer-platform-adapters",
@@ -3917,7 +3911,6 @@
           "default"
         ],
         "unsupportedGapIds": [
-          "renderer-rhi-resource-foundation",
           "frame-graph-v1",
           "upload-staging-v1",
           "production-ui-importer-platform-adapters",
@@ -4029,7 +4022,6 @@
           "default"
         ],
         "unsupportedGapIds": [
-          "renderer-rhi-resource-foundation",
           "frame-graph-v1",
           "upload-staging-v1",
           "2d-playable-vertical-slice",
@@ -4626,19 +4618,6 @@
           "broad/dependent package cooking"
         ],
         "notes": "The MK_scene data spine remains contract-only for runtime consumption: stable authoring ids, schema-driven component rows, deterministic validation, GameEngine.Scene.v2 and GameEngine.Prefab.v2 text IO, stable prefab property override paths, and reviewed Scene/Prefab v2 authoring dry-run/apply commands are implemented. Source asset registration is ready through GameEngine.SourceAssetRegistry.v1, and the separate migrate-scene-v2-runtime-package command bridges supported Scene v2 rows into the existing Scene v1 package update helper. This does not complete editor productization, broad/dependent package cooking, nested prefab propagation/merge resolution UX, production 2D atlas/tilemap/native GPU output, or 3D playable vertical slices."
-      },
-      {
-        "id": "renderer-rhi-resource-foundation",
-        "oneDotZeroCloseoutTier": "foundation-follow-up",
-        "status": "implemented-foundation-only",
-        "requiredBeforeReadyClaim": [
-          "production renderer resource lifetime",
-          "GPU markers",
-          "allocator and residency diagnostics",
-          "backend destruction migration",
-          "upload/staging and frame graph integration"
-        ],
-        "notes": "Renderer/RHI Resource Foundation v1 is implemented in MK_rhi as a foundation-only RhiResourceLifetimeRegistry value registry with generation-checked resource handles, owner labels, debug names, deferred-release records, frame-indexed retirement, deterministic diagnostics, and marker-style lifetime event rows. NullRhiDevice Phase A wiring registers buffers and textures into the per-device registry on create and retires rows through null_mark_* / release_transient / submit-wait fence completion plus destructor flush; native D3D12/Vulkan/Metal object destruction migration remains separate. IRhiCommandList GPU debug scopes/markers (mirakana/rhi/gpu_debug.hpp label rules; D3D12 BeginEvent/EndEvent/SetMarker; null/Vulkan counter-only until further hooks) and IRhiDevice::gpu_timestamp_ticks_per_second (D3D12 graphics queue; zero on null/Vulkan) are implemented as a Phase 3 adapter slice. IRhiDevice::memory_diagnostics / RhiDeviceMemoryDiagnostics adds read-only DXGI QueryVideoMemoryInfo fields on D3D12 when available plus committed-byte estimates (D3D12 GetResourceAllocationInfo sums; null/Vulkan active descriptor sums). Frame Graph v1 execution scheduling (schedule_frame_graph_v1_execution, RendererStats::framegraph_barrier_steps_executed) is implemented on swapchain postprocess and directional shadow smoke renderers without automatic native barrier translation. Upload ring and staging pool execution v1 (RhiUploadRing, RhiStagingBufferPool, record_upload_gpu_batch) is implemented in MK_rhi with null-backend readback proof without package-scoped upload streaming integration. Editor Resource Panel Diagnostics v1 reads these diagnostic rows through the GUI adapter only, Editor Resource Capture Request v1 adds reviewed PIX/debug-layer host handoff rows, and Editor Resource Capture Execution Evidence v1 adds host-owned resources.capture_execution evidence rows without running capture tools. This does not make full native backend destruction, GPU allocator enforcement products, enforced residency budgets, package streaming, upload/staging package integration, Vulkan VK_EXT_debug_utils labels, Vulkan VK_EXT_memory_budget wiring, editor capture tooling execution, editor resource management execution panels, or 2D/3D playable vertical slices ready."
       },
       {
         "id": "frame-graph-v1",
