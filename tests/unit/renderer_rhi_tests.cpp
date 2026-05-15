@@ -3131,6 +3131,36 @@ MK_TEST("rhi directional shadow smoke frame renderer records native ui overlay a
     MK_REQUIRE(rhi_stats.present_calls == 1);
 }
 
+MK_TEST("rhi directional shadow smoke frame renderer reports frame graph executor transition failure") {
+    ThrowingTransitionRhiDevice device;
+    device.throw_on_submit = false;
+    device.throw_on_transition = 3;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = true,
+        .surface = mirakana::rhi::SurfaceHandle{1},
+    });
+    auto renderer = create_directional_shadow_smoke_test_renderer(device, swapchain);
+
+    renderer->begin_frame();
+
+    bool execution_failed = false;
+    try {
+        renderer->end_frame();
+    } catch (const std::runtime_error& ex) {
+        execution_failed =
+            std::string_view{ex.what()} == "rhi shadow smoke renderer frame graph rhi texture execution failed";
+    }
+
+    MK_REQUIRE(execution_failed);
+    MK_REQUIRE(!renderer->frame_active());
+    MK_REQUIRE(renderer->stats().frames_finished == 0);
+    MK_REQUIRE(device.stats().swapchain_frames_acquired == 1);
+    MK_REQUIRE(device.stats().swapchain_frames_released == 1);
+}
+
 MK_TEST("rhi directional shadow smoke frame renderer rejects inconsistent shadow filter metadata") {
     mirakana::rhi::NullRhiDevice device;
     const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
