@@ -4,6 +4,7 @@
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
 
 #include "mirakana/renderer/frame_graph.hpp"
+#include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 #include "mirakana/renderer/shadow_map.hpp"
 #include "rhi_native_ui_overlay.hpp"
@@ -12,7 +13,9 @@
 #include <cmath>
 #include <span>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace mirakana {
 namespace {
@@ -483,28 +486,12 @@ void RhiDirectionalShadowSmokeFrameRenderer::begin_frame() {
         commands = device_->begin_command_list(rhi::QueueKind::graphics);
         if (shadow_color_state_ != rhi::ResourceState::render_target) {
             commands->transition_texture(shadow_color_texture_, shadow_color_state_, rhi::ResourceState::render_target);
+            shadow_color_state_ = rhi::ResourceState::render_target;
         }
         if (shadow_depth_state_ != rhi::ResourceState::depth_write) {
             commands->transition_texture(shadow_depth_texture_, shadow_depth_state_, rhi::ResourceState::depth_write);
+            shadow_depth_state_ = rhi::ResourceState::depth_write;
         }
-        commands->begin_render_pass(rhi::RenderPassDesc{
-            .color =
-                rhi::RenderPassColorAttachment{
-                    .texture = shadow_color_texture_,
-                    .load_action = rhi::LoadAction::clear,
-                    .store_action = rhi::StoreAction::dont_care,
-                    .swapchain_frame = rhi::SwapchainFrameHandle{},
-                    .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
-                },
-            .depth =
-                rhi::RenderPassDepthAttachment{
-                    .texture = shadow_depth_texture_,
-                    .load_action = rhi::LoadAction::clear,
-                    .store_action = rhi::StoreAction::store,
-                    .clear_depth = rhi::ClearDepthValue{1.0F},
-                },
-        });
-        commands->bind_graphics_pipeline(shadow_graphics_pipeline_);
 
         commands_ = std::move(commands);
         frame_active_ = true;
@@ -558,89 +545,190 @@ void RhiDirectionalShadowSmokeFrameRenderer::draw_mesh(const MeshCommand& comman
 void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
     require_active_frame();
     try {
-        for (std::uint32_t cascade = 0; cascade < directional_shadow_cascade_count_; ++cascade) {
-            const auto tile_w = shadow_cascade_tile_width();
-            const auto x = static_cast<float>(cascade * tile_w);
-            commands_->set_viewport(rhi::ViewportDesc{
-                .x = x,
-                .y = 0.0F,
-                .width = static_cast<float>(tile_w),
-                .height = static_cast<float>(shadow_atlas_extent_.height),
-                .min_depth = 0.0F,
-                .max_depth = 1.0F,
-            });
-            commands_->set_scissor(rhi::ScissorRectDesc{
-                .x = cascade * tile_w,
-                .y = 0U,
-                .width = tile_w,
-                .height = shadow_atlas_extent_.height,
-            });
-            for (const auto& command : pending_meshes_) {
-                record_shadow_mesh_draw(command);
+        std::vector<FrameGraphTextureBinding> texture_bindings{
+            FrameGraphTextureBinding{
+                .resource = "shadow_depth",
+                .texture = shadow_depth_texture_,
+                .current_state = shadow_depth_state_,
+            },
+            FrameGraphTextureBinding{
+                .resource = "scene_color",
+                .texture = scene_color_texture_,
+                .current_state = scene_color_state_,
+            },
+            FrameGraphTextureBinding{
+                .resource = "scene_depth",
+                .texture = scene_depth_texture_,
+                .current_state = scene_depth_state_,
+            },
+        };
+        const auto set_texture_binding_state = [&texture_bindings](std::string_view resource,
+                                                                   rhi::ResourceState state) {
+            for (auto& binding : texture_bindings) {
+                if (binding.resource == resource) {
+                    binding.current_state = state;
+                    return;
+                }
+            }
+        };
+
+        RhiNativeUiOverlayPreparedDraw overlay_draw;
+        std::vector<FrameGraphPassExecutionBinding> pass_callbacks;
+        pass_callbacks.reserve(shadow_smoke_frame_graph_plan_.ordered_passes.size());
+        pass_callbacks.push_back(FrameGraphPassExecutionBinding{
+            .pass_name = "shadow.directional.depth",
+            .callback =
+                [&set_texture_binding_state, this](std::string_view) {
+                    commands_->begin_render_pass(rhi::RenderPassDesc{
+                        .color =
+                            rhi::RenderPassColorAttachment{
+                                .texture = shadow_color_texture_,
+                                .load_action = rhi::LoadAction::clear,
+                                .store_action = rhi::StoreAction::dont_care,
+                                .swapchain_frame = rhi::SwapchainFrameHandle{},
+                                .clear_color =
+                                    rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                            },
+                        .depth =
+                            rhi::RenderPassDepthAttachment{
+                                .texture = shadow_depth_texture_,
+                                .load_action = rhi::LoadAction::clear,
+                                .store_action = rhi::StoreAction::store,
+                                .clear_depth = rhi::ClearDepthValue{1.0F},
+                            },
+                    });
+                    commands_->bind_graphics_pipeline(shadow_graphics_pipeline_);
+                    for (std::uint32_t cascade = 0; cascade < directional_shadow_cascade_count_; ++cascade) {
+                        const auto tile_w = shadow_cascade_tile_width();
+                        const auto x = static_cast<float>(cascade * tile_w);
+                        commands_->set_viewport(rhi::ViewportDesc{
+                            .x = x,
+                            .y = 0.0F,
+                            .width = static_cast<float>(tile_w),
+                            .height = static_cast<float>(shadow_atlas_extent_.height),
+                            .min_depth = 0.0F,
+                            .max_depth = 1.0F,
+                        });
+                        commands_->set_scissor(rhi::ScissorRectDesc{
+                            .x = cascade * tile_w,
+                            .y = 0U,
+                            .width = tile_w,
+                            .height = shadow_atlas_extent_.height,
+                        });
+                        for (const auto& command : pending_meshes_) {
+                            record_shadow_mesh_draw(command);
+                        }
+                    }
+                    commands_->end_render_pass();
+                    shadow_depth_state_ = rhi::ResourceState::depth_write;
+                    set_texture_binding_state("shadow_depth", rhi::ResourceState::depth_write);
+                    return FrameGraphExecutionCallbackResult{};
+                },
+        });
+        pass_callbacks.push_back(FrameGraphPassExecutionBinding{
+            .pass_name = "scene.shadow_receiver",
+            .callback =
+                [&set_texture_binding_state, this](std::string_view) {
+                    if (scene_color_state_ != rhi::ResourceState::render_target) {
+                        commands_->transition_texture(scene_color_texture_, scene_color_state_,
+                                                      rhi::ResourceState::render_target);
+                        scene_color_state_ = rhi::ResourceState::render_target;
+                    }
+                    set_texture_binding_state("scene_color", rhi::ResourceState::render_target);
+                    if (scene_depth_state_ != rhi::ResourceState::depth_write) {
+                        commands_->transition_texture(scene_depth_texture_, scene_depth_state_,
+                                                      rhi::ResourceState::depth_write);
+                        scene_depth_state_ = rhi::ResourceState::depth_write;
+                    }
+                    set_texture_binding_state("scene_depth", rhi::ResourceState::depth_write);
+                    commands_->begin_render_pass(rhi::RenderPassDesc{
+                        .color =
+                            rhi::RenderPassColorAttachment{
+                                .texture = scene_color_texture_,
+                                .load_action = rhi::LoadAction::clear,
+                                .store_action = rhi::StoreAction::store,
+                                .swapchain_frame = rhi::SwapchainFrameHandle{},
+                                .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
+                                                                    .green = clear_color_.g,
+                                                                    .blue = clear_color_.b,
+                                                                    .alpha = clear_color_.a},
+                            },
+                        .depth =
+                            rhi::RenderPassDepthAttachment{
+                                .texture = scene_depth_texture_,
+                                .load_action = rhi::LoadAction::clear,
+                                .store_action = rhi::StoreAction::store,
+                                .clear_depth = rhi::ClearDepthValue{1.0F},
+                            },
+                    });
+                    commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
+                    commands_->bind_descriptor_set(scene_pipeline_layout_, shadow_receiver_descriptor_set_index_,
+                                                   shadow_receiver_descriptor_set_);
+                    for (const auto& command : pending_meshes_) {
+                        record_scene_mesh_draw(command);
+                    }
+                    commands_->end_render_pass();
+                    set_texture_binding_state("scene_color", rhi::ResourceState::render_target);
+                    set_texture_binding_state("scene_depth", rhi::ResourceState::depth_write);
+                    return FrameGraphExecutionCallbackResult{};
+                },
+        });
+        pass_callbacks.push_back(FrameGraphPassExecutionBinding{
+            .pass_name = "postprocess",
+            .callback =
+                [&overlay_draw, this](std::string_view) {
+                    overlay_draw = native_ui_overlay_ready()
+                                       ? native_ui_overlay_->prepare(pending_overlay_sprites_, *commands_)
+                                       : RhiNativeUiOverlayPreparedDraw{};
+                    commands_->begin_render_pass(rhi::RenderPassDesc{
+                        .color =
+                            rhi::RenderPassColorAttachment{
+                                .texture = rhi::TextureHandle{},
+                                .load_action = rhi::LoadAction::clear,
+                                .store_action = rhi::StoreAction::store,
+                                .swapchain_frame = swapchain_frame_,
+                                .clear_color =
+                                    rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                            },
+                    });
+                    commands_->bind_graphics_pipeline(postprocess_pipeline_);
+                    commands_->bind_descriptor_set(postprocess_pipeline_layout_, 0, postprocess_descriptor_set_);
+                    commands_->draw(3, 1);
+                    if (native_ui_overlay_ready()) {
+                        native_ui_overlay_->record_draw(overlay_draw, *commands_);
+                    }
+                    commands_->end_render_pass();
+                    return FrameGraphExecutionCallbackResult{};
+                },
+        });
+
+        const auto frame_graph_execution = execute_frame_graph_rhi_texture_schedule(FrameGraphRhiTextureExecutionDesc{
+            .commands = commands_.get(),
+            .schedule = shadow_smoke_frame_graph_execution_,
+            .texture_bindings = texture_bindings,
+            .pass_callbacks = pass_callbacks,
+        });
+        if (!frame_graph_execution.succeeded()) {
+            throw std::runtime_error("rhi shadow smoke renderer frame graph rhi texture execution failed");
+        }
+
+        for (const auto& binding : texture_bindings) {
+            if (binding.resource == "shadow_depth") {
+                shadow_depth_state_ = binding.current_state;
+            } else if (binding.resource == "scene_color") {
+                scene_color_state_ = binding.current_state;
+            } else if (binding.resource == "scene_depth") {
+                scene_depth_state_ = binding.current_state;
             }
         }
-        commands_->end_render_pass();
-        commands_->transition_texture(shadow_depth_texture_, rhi::ResourceState::depth_write,
-                                      rhi::ResourceState::shader_read);
-        commands_->transition_texture(scene_color_texture_, scene_color_state_, rhi::ResourceState::render_target);
         if (scene_depth_state_ != rhi::ResourceState::depth_write) {
             commands_->transition_texture(scene_depth_texture_, scene_depth_state_, rhi::ResourceState::depth_write);
+            scene_depth_state_ = rhi::ResourceState::depth_write;
         }
-        commands_->begin_render_pass(rhi::RenderPassDesc{
-            .color =
-                rhi::RenderPassColorAttachment{
-                    .texture = scene_color_texture_,
-                    .load_action = rhi::LoadAction::clear,
-                    .store_action = rhi::StoreAction::store,
-                    .swapchain_frame = rhi::SwapchainFrameHandle{},
-                    .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
-                                                        .green = clear_color_.g,
-                                                        .blue = clear_color_.b,
-                                                        .alpha = clear_color_.a},
-                },
-            .depth =
-                rhi::RenderPassDepthAttachment{
-                    .texture = scene_depth_texture_,
-                    .load_action = rhi::LoadAction::clear,
-                    .store_action = rhi::StoreAction::store,
-                    .clear_depth = rhi::ClearDepthValue{1.0F},
-                },
-        });
-        commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
-        commands_->bind_descriptor_set(scene_pipeline_layout_, shadow_receiver_descriptor_set_index_,
-                                       shadow_receiver_descriptor_set_);
-        for (const auto& command : pending_meshes_) {
-            record_scene_mesh_draw(command);
+        if (shadow_depth_state_ != rhi::ResourceState::depth_write) {
+            commands_->transition_texture(shadow_depth_texture_, shadow_depth_state_, rhi::ResourceState::depth_write);
+            shadow_depth_state_ = rhi::ResourceState::depth_write;
         }
-        commands_->end_render_pass();
-        commands_->transition_texture(scene_color_texture_, rhi::ResourceState::render_target,
-                                      rhi::ResourceState::shader_read);
-        commands_->transition_texture(scene_depth_texture_, rhi::ResourceState::depth_write,
-                                      rhi::ResourceState::shader_read);
-        const auto overlay_draw = native_ui_overlay_ready()
-                                      ? native_ui_overlay_->prepare(pending_overlay_sprites_, *commands_)
-                                      : RhiNativeUiOverlayPreparedDraw{};
-        commands_->begin_render_pass(rhi::RenderPassDesc{
-            .color =
-                rhi::RenderPassColorAttachment{
-                    .texture = rhi::TextureHandle{},
-                    .load_action = rhi::LoadAction::clear,
-                    .store_action = rhi::StoreAction::store,
-                    .swapchain_frame = swapchain_frame_,
-                    .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
-                },
-        });
-        commands_->bind_graphics_pipeline(postprocess_pipeline_);
-        commands_->bind_descriptor_set(postprocess_pipeline_layout_, 0, postprocess_descriptor_set_);
-        commands_->draw(3, 1);
-        if (native_ui_overlay_ready()) {
-            native_ui_overlay_->record_draw(overlay_draw, *commands_);
-        }
-        commands_->end_render_pass();
-        commands_->transition_texture(scene_depth_texture_, rhi::ResourceState::shader_read,
-                                      rhi::ResourceState::depth_write);
-        commands_->transition_texture(shadow_depth_texture_, rhi::ResourceState::shader_read,
-                                      rhi::ResourceState::depth_write);
         commands_->present(swapchain_frame_);
         swapchain_frame_presented_ = true;
         commands_->close();
@@ -653,20 +741,12 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
         commands_.reset();
         swapchain_frame_ = {};
         swapchain_frame_presented_ = false;
-        shadow_color_state_ = rhi::ResourceState::render_target;
-        scene_color_state_ = rhi::ResourceState::shader_read;
-        scene_depth_state_ = rhi::ResourceState::depth_write;
-        shadow_depth_state_ = rhi::ResourceState::depth_write;
         pending_meshes_.clear();
         pending_overlay_sprites_.clear();
         frame_active_ = false;
         ++stats_.frames_finished;
-        for (const auto& step : shadow_smoke_frame_graph_execution_) {
-            if (step.kind == FrameGraphExecutionStep::Kind::barrier) {
-                ++stats_.framegraph_barrier_steps_executed;
-            }
-        }
-        stats_.framegraph_passes_executed += frame_graph_pass_count();
+        stats_.framegraph_barrier_steps_executed += frame_graph_execution.barriers_recorded;
+        stats_.framegraph_passes_executed += frame_graph_execution.pass_callbacks_invoked;
         ++stats_.postprocess_passes_executed;
         if (overlay_draw.vertex_count != 0) {
             ++stats_.native_ui_overlay_draws;

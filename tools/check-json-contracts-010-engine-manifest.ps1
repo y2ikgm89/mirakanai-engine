@@ -304,8 +304,11 @@ if ($rhiPostprocessSource.Contains("void RhiPostprocessFrameRenderer::draw_sprit
     -not $rhiPostprocessSource.Contains("execute_frame_graph_rhi_texture_schedule") -or
     -not $rhiPostprocessSource.Contains("frame_graph_execution.barriers_recorded") -or
     -not $rhiPostprocessSource.Contains("frame_graph_execution.pass_callbacks_invoked") -or
+    -not $rhiDirectionalShadowSource.Contains("execute_frame_graph_rhi_texture_schedule") -or
+    -not $rhiDirectionalShadowSource.Contains("frame_graph_execution.barriers_recorded") -or
+    -not $rhiDirectionalShadowSource.Contains("frame_graph_execution.pass_callbacks_invoked") -or
     $rhiDirectionalShadowSource.Contains("pending_sprites_")) {
-    Write-Error "3D scene/postprocess renderers must keep HUD sprites out of the scene material pipeline and route postprocess scheduled transitions through the Frame Graph RHI executor"
+    Write-Error "3D scene/postprocess/shadow renderers must keep HUD sprites out of the scene material pipeline and route scheduled transitions through the Frame Graph RHI executor"
 }
 
 $moduleNames = @{}

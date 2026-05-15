@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Plan ID:** `frame-graph-rhi-texture-pass-access-execution-v1`
-**Status:** Active. Local validation complete; publication pending.
+**Status:** Completed. Merged by PR #54 (`d537ab0`) on 2026-05-16.
 **Goal:** Move `RhiPostprocessFrameRenderer` inter-pass texture barriers and pass callbacks through Frame Graph RHI schedule execution without exposing native handles.
 
 **Architecture:** Keep the existing backend-neutral `MK_renderer` Frame Graph RHI execution API. The executor prevalidates binding and pass callback identity, then validates and records texture barriers in schedule order so pass callbacks can update caller-owned `FrameGraphTextureBinding::current_state` after writer pass work. `RhiPostprocessFrameRenderer` keeps host-owned command lists, swapchain frames, render-pass bodies, and final reusable-state resets; this slice does not implement transient heap allocation, aliasing, multi-queue scheduling, package streaming, shadow renderer migration, or broad production render-graph ownership.
