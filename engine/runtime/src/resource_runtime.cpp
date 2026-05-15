@@ -6,16 +6,94 @@
 #include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 
+#include <algorithm>
 #include <cstdint>
+#include <exception>
 #include <limits>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
 namespace mirakana::runtime {
 namespace {
+
+constexpr std::string_view package_index_extension = ".geindex";
+
+[[nodiscard]] bool contains_control_character(std::string_view text) noexcept {
+    return std::ranges::any_of(text, [](unsigned char character) { return character < 0x20U; });
+}
+
+[[nodiscard]] std::string trim_trailing_slashes(std::string_view path) {
+    std::string normalized{path};
+    while (!normalized.empty() && (normalized.back() == '/' || normalized.back() == '\\')) {
+        normalized.pop_back();
+    }
+    return normalized;
+}
+
+[[nodiscard]] bool valid_relative_vfs_path(std::string_view path) noexcept {
+    if (path.empty() || contains_control_character(path)) {
+        return false;
+    }
+    if (path.front() == '/' || path.front() == '\\') {
+        return false;
+    }
+    if (path.find('\\') != std::string_view::npos) {
+        return false;
+    }
+    if (path.size() >= 2U && path[1] == ':') {
+        return false;
+    }
+
+    std::size_t segment_begin = 0;
+    while (segment_begin <= path.size()) {
+        const auto segment_end = path.find('/', segment_begin);
+        const auto segment = segment_end == std::string_view::npos
+                                 ? path.substr(segment_begin)
+                                 : path.substr(segment_begin, segment_end - segment_begin);
+        if (segment.empty() || segment == "." || segment == "..") {
+            return false;
+        }
+        if (segment_end == std::string_view::npos) {
+            break;
+        }
+        segment_begin = segment_end + 1U;
+    }
+
+    return true;
+}
+
+void add_discovery_diagnostic(RuntimePackageIndexDiscoveryResultV2& result, std::string path, std::string code,
+                              std::string message) {
+    result.diagnostics.push_back(RuntimePackageIndexDiscoveryDiagnosticV2{
+        .path = std::move(path),
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] bool path_is_under_root(std::string_view path, std::string_view root) {
+    if (path.size() <= root.size()) {
+        return false;
+    }
+    if (!path.starts_with(root)) {
+        return false;
+    }
+    const auto separator = path[root.size()];
+    return separator == '/';
+}
+
+[[nodiscard]] bool ends_with_package_index_extension(std::string_view path) noexcept {
+    return path.size() > package_index_extension.size() && path.ends_with(package_index_extension);
+}
+
+[[nodiscard]] std::string package_index_label(std::string_view path, std::string_view root) {
+    const auto relative = path.substr(root.size() + 1U);
+    return std::string{relative.substr(0, relative.size() - package_index_extension.size())};
+}
 
 [[nodiscard]] std::uint32_t next_generation(std::uint32_t generation) noexcept {
     if (generation == std::numeric_limits<std::uint32_t>::max()) {
@@ -84,6 +162,83 @@ void add_eviction_diagnostic(RuntimeResidentPackageEvictionPlanResultV2& result,
 }
 
 } // namespace
+
+bool RuntimePackageIndexDiscoveryResultV2::succeeded() const noexcept {
+    return status == RuntimePackageIndexDiscoveryStatusV2::discovered ||
+           status == RuntimePackageIndexDiscoveryStatusV2::no_candidates;
+}
+
+RuntimePackageIndexDiscoveryResultV2
+discover_runtime_package_indexes_v2(const IFileSystem& filesystem, const RuntimePackageIndexDiscoveryDescV2& desc) {
+    RuntimePackageIndexDiscoveryResultV2 result;
+    result.root = trim_trailing_slashes(desc.root);
+
+    if (!valid_relative_vfs_path(result.root)) {
+        result.status = RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor;
+        add_discovery_diagnostic(result, result.root, "invalid-root",
+                                 "runtime package discovery root must be a non-empty relative VFS directory");
+        return result;
+    }
+
+    const auto content_root = trim_trailing_slashes(desc.content_root);
+    if (!content_root.empty() && !valid_relative_vfs_path(content_root)) {
+        result.status = RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor;
+        add_discovery_diagnostic(result, content_root, "invalid-content-root",
+                                 "runtime package discovery content root must be a relative VFS directory");
+        return result;
+    }
+
+    try {
+        if (!filesystem.is_directory(result.root)) {
+            result.status = RuntimePackageIndexDiscoveryStatusV2::missing_root;
+            add_discovery_diagnostic(result, result.root, "missing-root",
+                                     "runtime package discovery root is not a directory");
+            return result;
+        }
+    } catch (const std::exception& exception) {
+        result.status = RuntimePackageIndexDiscoveryStatusV2::scan_failed;
+        add_discovery_diagnostic(result, result.root, "scan-failed", exception.what());
+        return result;
+    }
+
+    std::vector<std::string> files;
+    try {
+        files = filesystem.list_files(result.root);
+    } catch (const std::exception& exception) {
+        result.status = RuntimePackageIndexDiscoveryStatusV2::scan_failed;
+        add_discovery_diagnostic(result, result.root, "scan-failed", exception.what());
+        return result;
+    }
+
+    for (const auto& file : files) {
+        if (!path_is_under_root(file, result.root) || !ends_with_package_index_extension(file)) {
+            continue;
+        }
+        const auto label = package_index_label(file, result.root);
+        if (!valid_relative_vfs_path(file) || label.empty()) {
+            add_discovery_diagnostic(result, file, "invalid-package-index-path",
+                                     "runtime package index candidates must be relative .geindex file paths");
+            continue;
+        }
+        result.candidates.push_back(RuntimePackageIndexDiscoveryCandidateV2{
+            .package_index_path = file,
+            .content_root = content_root,
+            .label = label,
+        });
+    }
+
+    std::ranges::sort(result.candidates, [](const RuntimePackageIndexDiscoveryCandidateV2& lhs,
+                                            const RuntimePackageIndexDiscoveryCandidateV2& rhs) {
+        return lhs.package_index_path < rhs.package_index_path;
+    });
+    const auto duplicate_begin =
+        std::ranges::unique(result.candidates, {}, &RuntimePackageIndexDiscoveryCandidateV2::package_index_path)
+            .begin();
+    result.candidates.erase(duplicate_begin, result.candidates.end());
+    result.status = result.candidates.empty() ? RuntimePackageIndexDiscoveryStatusV2::no_candidates
+                                              : RuntimePackageIndexDiscoveryStatusV2::discovered;
+    return result;
+}
 
 const std::vector<RuntimeResourceRecordV2>& RuntimeResourceCatalogV2::records() const noexcept {
     return records_;

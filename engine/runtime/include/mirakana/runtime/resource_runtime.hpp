@@ -9,9 +9,51 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mirakana::runtime {
+
+enum class RuntimePackageIndexDiscoveryStatusV2 : std::uint8_t {
+    discovered = 0,
+    no_candidates,
+    invalid_descriptor,
+    missing_root,
+    scan_failed,
+};
+
+struct RuntimePackageIndexDiscoveryDescV2 {
+    std::string root;
+    std::string content_root;
+};
+
+struct RuntimePackageIndexDiscoveryCandidateV2 {
+    std::string package_index_path;
+    std::string content_root;
+    std::string label;
+};
+
+struct RuntimePackageIndexDiscoveryDiagnosticV2 {
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageIndexDiscoveryResultV2 {
+    RuntimePackageIndexDiscoveryStatusV2 status{RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor};
+    std::string root;
+    std::vector<RuntimePackageIndexDiscoveryCandidateV2> candidates;
+    std::vector<RuntimePackageIndexDiscoveryDiagnosticV2> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Discovers reviewed cooked package index candidates under a caller-owned VFS root.
+/// This helper does not read index contents, load packages, mount resident packages, refresh catalogs, stream in the
+/// background, or touch renderer/RHI/native handles. `content_root` is caller-provided and may be empty; discovery does
+/// not infer package payload roots from index locations.
+[[nodiscard]] RuntimePackageIndexDiscoveryResultV2
+discover_runtime_package_indexes_v2(const IFileSystem& filesystem, const RuntimePackageIndexDiscoveryDescV2& desc);
 
 struct RuntimeResourceHandleV2 {
     std::uint32_t index{0};
