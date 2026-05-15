@@ -637,6 +637,8 @@ Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadRecookChangeReviewResultV2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_replacement_intent_review_v2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadReplacementIntentReviewResultV2" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_package_hot_reload_recook_replacement_v2" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadRecookReplacementResultV2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "candidate/discovery root coherence" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "defined overlay" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "file watching/recook execution" "MK_runtime module purpose"

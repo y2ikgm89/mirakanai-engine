@@ -435,6 +435,8 @@ if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource v2") -
     -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadRecookChangeReviewResultV2") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("plan_runtime_package_hot_reload_replacement_intent_review_v2") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadReplacementIntentReviewResultV2") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_package_hot_reload_recook_replacement_v2") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadRecookReplacementResultV2") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("candidate/discovery root coherence") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("defined overlay") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("file watching/recook execution") -or

@@ -898,6 +898,8 @@ foreach ($needle in @(
     "audit_runtime_scene_asset_identity",
     "Runtime Package Hot Reload Recook Change Review v1 completes",
     "plan_runtime_package_hot_reload_recook_change_review_v2",
+    "Runtime Package Hot Reload Recook Replacement Safe Point v1 completes",
+    "commit_runtime_package_hot_reload_recook_replacement_v2",
     "runtime-resource-v2 next"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
@@ -920,6 +922,9 @@ if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Change Review v1") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_recook_change_review_v2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookChangeReviewResultV2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Replacement Safe Point v1") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_package_hot_reload_recook_replacement_v2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookReplacementResultV2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("candidate/discovery root coherence") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("defined overlay") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("slot-preserving") -or

@@ -579,6 +579,58 @@ void add_hot_reload_replacement_intent_review_diagnostic(
     });
 }
 
+void add_hot_reload_recook_replacement_diagnostic(RuntimePackageHotReloadRecookReplacementResultV2& result,
+                                                  RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2 phase,
+                                                  AssetId asset, RuntimeResidentPackageMountIdV2 mount,
+                                                  std::string path, std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimePackageHotReloadRecookReplacementDiagnosticV2{
+        .phase = phase,
+        .asset = asset,
+        .mount = mount,
+        .path = std::move(path),
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2
+map_hot_reload_recook_replacement_commit_diagnostic_phase(
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase) noexcept {
+    switch (phase) {
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::descriptor:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::replacement_intent_review;
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_replace:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::resident_replace;
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::discovery:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::discovery;
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_selection:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::candidate_selection;
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_load:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::candidate_load;
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_catalog:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::candidate_catalog;
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::eviction_plan:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::eviction_plan;
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_budget:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::resident_budget;
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::catalog_refresh:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::catalog_refresh;
+    case RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::resident_commit:
+        return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::resident_commit;
+    }
+    return RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::resident_commit;
+}
+
+void add_hot_reload_recook_replacement_commit_diagnostics(
+    RuntimePackageHotReloadRecookReplacementResultV2& result,
+    const RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2& commit_result) {
+    for (const auto& diagnostic : commit_result.diagnostics) {
+        add_hot_reload_recook_replacement_diagnostic(
+            result, map_hot_reload_recook_replacement_commit_diagnostic_phase(diagnostic.phase), diagnostic.asset,
+            diagnostic.mount, diagnostic.path, diagnostic.code, diagnostic.message);
+    }
+}
+
 [[nodiscard]] bool has_matched_hot_reload_change(const RuntimePackageHotReloadCandidateReviewRowV2& row,
                                                  std::string_view path,
                                                  RuntimePackageHotReloadCandidateReviewMatchKindV2 kind) noexcept {
@@ -1116,6 +1168,103 @@ RuntimePackageHotReloadReplacementIntentReviewResultV2 plan_runtime_package_hot_
         .protected_mount_ids = desc.protected_mount_ids,
     };
     result.status = RuntimePackageHotReloadReplacementIntentReviewStatusV2::review_ready;
+    return result;
+}
+
+bool RuntimePackageHotReloadRecookReplacementResultV2::succeeded() const noexcept {
+    return status == RuntimePackageHotReloadRecookReplacementStatusV2::committed && committed &&
+           replacement_commit.succeeded();
+}
+
+RuntimePackageHotReloadRecookReplacementResultV2 commit_runtime_package_hot_reload_recook_replacement_v2(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
+    const RuntimePackageHotReloadRecookReplacementDescV2& desc) {
+    RuntimePackageHotReloadRecookReplacementResultV2 result;
+    result.previous_mount_generation = mount_set.generation();
+    result.mount_generation = result.previous_mount_generation;
+    result.previous_mount_count = mount_set.mounts().size();
+    result.mounted_package_count = result.previous_mount_count;
+
+    result.recook_change_review =
+        plan_runtime_package_hot_reload_recook_change_review_v2(RuntimePackageHotReloadRecookChangeReviewDescV2{
+            .recook_apply_results = desc.recook_apply_results,
+            .candidates = desc.candidates,
+        });
+    result.invoked_candidate_review = result.recook_change_review.invoked_candidate_review;
+    if (!result.recook_change_review.succeeded()) {
+        result.status = RuntimePackageHotReloadRecookReplacementStatusV2::recook_change_review_failed;
+        for (const auto& diagnostic : result.recook_change_review.diagnostics) {
+            add_hot_reload_recook_replacement_diagnostic(
+                result, RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::recook_change_review,
+                diagnostic.asset, {}, diagnostic.path, diagnostic.code, diagnostic.message);
+        }
+        return result;
+    }
+
+    const auto selected =
+        std::ranges::find_if(result.recook_change_review.candidate_review.rows,
+                             [&desc](const RuntimePackageHotReloadCandidateReviewRowV2& row) {
+                                 return row.candidate.package_index_path == desc.selected_package_index_path;
+                             });
+    if (selected == result.recook_change_review.candidate_review.rows.end()) {
+        result.status = RuntimePackageHotReloadRecookReplacementStatusV2::candidate_not_found;
+        add_hot_reload_recook_replacement_diagnostic(
+            result, RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::candidate_selection, {}, desc.mount_id,
+            desc.selected_package_index_path, "candidate-not-found",
+            "selected runtime package index was not present in reviewed recook hot-reload candidates");
+        return result;
+    }
+    result.selected_candidate = *selected;
+    result.selected_candidate_count = 1U;
+
+    result.invoked_replacement_intent_review = true;
+    result.replacement_intent_review = plan_runtime_package_hot_reload_replacement_intent_review_v2(
+        RuntimePackageHotReloadReplacementIntentReviewDescV2{
+            .selected_candidate = result.selected_candidate,
+            .discovery = desc.discovery,
+            .mount_id = desc.mount_id,
+            .reviewed_existing_mount_ids = desc.reviewed_existing_mount_ids,
+            .overlay = desc.overlay,
+            .budget = desc.budget,
+            .eviction_candidate_unmount_order = desc.eviction_candidate_unmount_order,
+            .protected_mount_ids = desc.protected_mount_ids,
+        });
+    if (!result.replacement_intent_review.succeeded()) {
+        result.status = RuntimePackageHotReloadRecookReplacementStatusV2::replacement_intent_review_failed;
+        for (const auto& diagnostic : result.replacement_intent_review.diagnostics) {
+            add_hot_reload_recook_replacement_diagnostic(
+                result, RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::replacement_intent_review, {},
+                diagnostic.mount, diagnostic.path, diagnostic.code, diagnostic.message);
+        }
+        return result;
+    }
+
+    result.invoked_resident_commit = true;
+    result.replacement_commit = commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2(
+        filesystem, mount_set, catalog_cache, result.replacement_intent_review.replacement_desc);
+    result.loaded_record_count = result.replacement_commit.loaded_record_count;
+    result.loaded_resident_bytes = result.replacement_commit.loaded_resident_bytes;
+    result.projected_resident_bytes = result.replacement_commit.projected_resident_bytes;
+    result.previous_mount_generation = result.replacement_commit.previous_mount_generation;
+    result.mount_generation = result.replacement_commit.mount_generation;
+    result.previous_mount_count = result.replacement_commit.previous_mount_count;
+    result.mounted_package_count = result.replacement_commit.mounted_package_count;
+    result.evicted_mount_count = result.replacement_commit.evicted_mount_count;
+    result.invoked_package_load = result.replacement_commit.candidate_resident_replace.invoked_candidate_load;
+    if (!result.replacement_commit.succeeded()) {
+        result.status = RuntimePackageHotReloadRecookReplacementStatusV2::replacement_commit_failed;
+        add_hot_reload_recook_replacement_commit_diagnostics(result, result.replacement_commit);
+        if (result.diagnostics.empty()) {
+            add_hot_reload_recook_replacement_diagnostic(
+                result, RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::resident_replace, {}, desc.mount_id,
+                desc.selected_package_index_path, "replacement-commit-failed",
+                "reviewed recook hot-reload replacement failed before committing resident state");
+        }
+        return result;
+    }
+
+    result.status = RuntimePackageHotReloadRecookReplacementStatusV2::committed;
+    result.committed = true;
     return result;
 }
 

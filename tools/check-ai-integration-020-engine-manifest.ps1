@@ -83,6 +83,9 @@ Assert-ContainsText $roadmapRuntimePresentationFoundationRow.Value "symbolic gly
 $masterPlanRuntimeUiLedgerNote = [regex]::Match($masterPlanText, '(?m)^Runtime UI and input ledger note:.*$')
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "RuntimeInputRebindingPresentationModel" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "platform input glyph generation" "master plan runtime UI ledger note"
+Assert-ContainsText $masterPlanText "Latest narrow child" "production master plan latest narrow child pointer"
+Assert-ContainsText $masterPlanText "Runtime Package Hot Reload Recook Replacement Safe Point v1" "production master plan latest narrow child pointer"
+Assert-ContainsText $masterPlanText "reviewed recook-to-replacement safe-point composition slice" "production master plan next narrow child pointer"
 Assert-ContainsText $rhiPublicHeaderText "struct ComputePipelineDesc" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "create_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "bind_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
@@ -1607,8 +1610,10 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_package_hot_reload_recook_change_review_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Replacement Intent Review v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_runtime_package_hot_reload_replacement_intent_review_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Package Hot Reload Recook Replacement Safe Point v1 completes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "commit_runtime_package_hot_reload_recook_replacement_v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime-resource-v2 next" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Runtime Package Hot Reload Recook Change Review v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Runtime Package Hot Reload Recook Replacement Safe Point v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 foreach ($check in @(
     @{
         Path = "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
@@ -1679,6 +1684,9 @@ if (-not ([string]$runtimeResourceGap[0].notes).Contains("foundation-only") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Change Review v1") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("plan_runtime_package_hot_reload_recook_change_review_v2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookChangeReviewResultV2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("Runtime Package Hot Reload Recook Replacement Safe Point v1") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("commit_runtime_package_hot_reload_recook_replacement_v2") -or
+    -not ([string]$runtimeResourceGap[0].notes).Contains("RuntimePackageHotReloadRecookReplacementResultV2") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("candidate/discovery root coherence") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("defined overlay") -or
     -not ([string]$runtimeResourceGap[0].notes).Contains("file watching/recook execution") -or
@@ -1742,7 +1750,11 @@ foreach ($check in @(
             "invalid_overlay",
             "RuntimePackageHotReloadReplacementIntentReviewDescV2",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2",
-            "plan_runtime_package_hot_reload_replacement_intent_review_v2"
+            "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "RuntimePackageHotReloadRecookReplacementStatusV2",
+            "RuntimePackageHotReloadRecookReplacementDescV2",
+            "RuntimePackageHotReloadRecookReplacementResultV2",
+            "commit_runtime_package_hot_reload_recook_replacement_v2"
         )
     },
     @{
@@ -1764,9 +1776,15 @@ foreach ($check in @(
             "RuntimePackageHotReloadCandidateReviewResultV2::succeeded",
             "RuntimePackageHotReloadRecookChangeReviewResultV2::succeeded",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2::succeeded",
+            "RuntimePackageHotReloadRecookReplacementResultV2::succeeded",
             "plan_runtime_package_hot_reload_candidate_review_v2",
             "plan_runtime_package_hot_reload_recook_change_review_v2",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "commit_runtime_package_hot_reload_recook_replacement_v2",
+            "map_hot_reload_recook_replacement_commit_diagnostic_phase",
+            "RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::candidate_load",
+            "RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::resident_budget",
+            "replacement-commit-failed",
             "invalid-recook-apply-result-asset",
             "invalid-recook-apply-result-revision",
             "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2",
@@ -1941,6 +1959,17 @@ foreach ($check in @(
         )
     },
     @{
+        Path = "tests/unit/runtime_package_hot_reload_recook_replacement_tests.cpp"
+        Needles = @(
+            "runtime package hot reload recook replacement commits reviewed selected package at safe point",
+            "runtime package hot reload recook replacement blocks failed recook rows before package reads",
+            "runtime package hot reload recook replacement requires selected reviewed candidate",
+            "runtime package hot reload recook replacement blocks invalid intent before discovery",
+            "runtime package hot reload recook replacement preserves state when commit stage fails",
+            "runtime package hot reload recook replacement preserves state when reviewed evictions are insufficient"
+        )
+    },
+    @{
         Path = "docs/current-capabilities.md"
         Needles = @(
             "Resident package mount set",
@@ -1965,6 +1994,9 @@ foreach ($check in @(
             "Runtime Package Hot Reload Replacement Intent Review v1",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
             "RuntimePackageHotReloadReplacementIntentReviewResultV2",
+            "Runtime Package Hot Reload Recook Replacement Safe Point v1",
+            "commit_runtime_package_hot_reload_recook_replacement_v2",
+            "RuntimePackageHotReloadRecookReplacementResultV2",
             "invalid overlay modes",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
@@ -1999,6 +2031,9 @@ foreach ($check in @(
             "Runtime Package Hot Reload Replacement Intent Review v1 coverage",
             "MK_runtime_package_hot_reload_replacement_intent_review_tests",
             "plan_runtime_package_hot_reload_replacement_intent_review_v2",
+            "Runtime Package Hot Reload Recook Replacement Safe Point v1 coverage",
+            "MK_runtime_package_hot_reload_recook_replacement_tests",
+            "commit_runtime_package_hot_reload_recook_replacement_v2",
             "candidate/discovery root mismatches",
             "invalid overlay modes",
             "rejects zero/duplicate/missing mount ids"
