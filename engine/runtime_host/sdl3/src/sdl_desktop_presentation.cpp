@@ -3465,6 +3465,20 @@ quality_gate_expected_framegraph_passes(const SdlDesktopPresentationQualityGateD
     return 0;
 }
 
+[[nodiscard]] std::uint32_t
+quality_gate_expected_framegraph_barrier_steps(const SdlDesktopPresentationQualityGateDesc& desc) noexcept {
+    if (desc.require_directional_shadow) {
+        return 5;
+    }
+    if (desc.require_postprocess_depth_input) {
+        return 3;
+    }
+    if (desc.require_postprocess) {
+        return 1;
+    }
+    return 0;
+}
+
 } // namespace
 
 struct SdlDesktopPresentation::Impl {
@@ -4560,6 +4574,7 @@ evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationRepor
                                                const SdlDesktopPresentationQualityGateDesc& desc) noexcept {
     SdlDesktopPresentationQualityGateReport result;
     result.expected_framegraph_passes = quality_gate_expected_framegraph_passes(desc);
+    result.expected_framegraph_barrier_steps = quality_gate_expected_framegraph_barrier_steps(desc);
     if (!quality_gate_requested(desc)) {
         return result;
     }
@@ -4620,21 +4635,37 @@ evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationRepor
         if (!result.framegraph_passes_current) {
             add_diagnostic();
         }
+    }
 
+    if (result.expected_framegraph_barrier_steps > 0) {
         if (desc.expected_frames > 0) {
             const auto expected_framegraph_executions =
                 desc.expected_frames * static_cast<std::uint64_t>(result.expected_framegraph_passes);
+            const auto expected_framegraph_barriers =
+                desc.expected_frames * static_cast<std::uint64_t>(result.expected_framegraph_barrier_steps);
+            result.framegraph_barrier_steps_current =
+                report.renderer_stats.framegraph_barrier_steps_executed == expected_framegraph_barriers;
             result.framegraph_execution_budget_current =
                 report.renderer_stats.frames_finished == desc.expected_frames &&
                 report.renderer_stats.framegraph_passes_executed == expected_framegraph_executions &&
+                result.framegraph_barrier_steps_current &&
                 (!desc.require_postprocess ||
                  report.renderer_stats.postprocess_passes_executed == desc.expected_frames);
         } else {
-            result.framegraph_execution_budget_current = result.framegraph_passes_current;
+            result.framegraph_barrier_steps_current =
+                report.renderer_stats.framegraph_barrier_steps_executed >=
+                static_cast<std::uint64_t>(result.expected_framegraph_barrier_steps);
+            result.framegraph_execution_budget_current =
+                result.framegraph_passes_current && result.framegraph_barrier_steps_current;
+        }
+        if (!result.framegraph_barrier_steps_current) {
+            add_diagnostic();
         }
         if (!result.framegraph_execution_budget_current) {
             add_diagnostic();
         }
+    } else if (result.expected_framegraph_passes > 0) {
+        result.framegraph_execution_budget_current = result.framegraph_passes_current;
     }
 
     result.ready = result.diagnostics_count == 0;

@@ -890,7 +890,17 @@ try {
         }
     }
 
-    $desktop3dManifest = Get-Content -LiteralPath (Join-Path $desktop3dGameRoot "game.agent.json") -Raw | ConvertFrom-Json
+    $desktop3dManifestText = Get-Content -LiteralPath (Join-Path $desktop3dGameRoot "game.agent.json") -Raw
+    $desktop3dReadmeText = Get-Content -LiteralPath (Join-Path $desktop3dGameRoot "README.md") -Raw
+    $desktop3dManifest = $desktop3dManifestText | ConvertFrom-Json
+    foreach ($needle in @(
+            "framegraph_passes_executed=4",
+            "framegraph_barrier_steps_executed=6",
+            "renderer_quality_expected_framegraph_barrier_steps=3"
+        )) {
+        Assert-ContainsText $desktop3dManifestText $needle "Desktop runtime 3D package scaffold manifest"
+        Assert-ContainsText $desktop3dReadmeText $needle "Desktop runtime 3D package scaffold README"
+    }
     if ($desktop3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
         Write-Error "Desktop runtime 3D package scaffold manifest must select 3d-playable-desktop-package"
     }
@@ -1162,7 +1172,9 @@ try {
     Assert-ContainsText $desktop3dMain "renderer_quality_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_diagnostics=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_expected_framegraph_passes=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "renderer_quality_expected_framegraph_barrier_steps=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_passes_ok=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_barrier_steps_ok=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_execution_budget_ok=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_scene_gpu_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_postprocess_ready=" "Desktop 3D scaffold main.cpp"
@@ -1184,6 +1196,8 @@ try {
     Assert-ContainsText $desktop3dMain "directional_shadow_status=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "directional_shadow_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "directional_shadow_filter_mode=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "framegraph_passes_executed=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "framegraph_barrier_steps_executed=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_directional_shadow_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_directional_shadow_filter_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "--require-playable-3d-slice" "Desktop 3D scaffold main.cpp"
@@ -1457,6 +1471,8 @@ $committedDesktop3dUiAtlasText = Get-Content -LiteralPath $committedDesktop3dUiA
 $committedDesktop3dUiTextGlyphAtlasText = Get-Content -LiteralPath $committedDesktop3dUiTextGlyphAtlasPath -Raw
 $committedDesktop3dCollisionText = Get-Content -LiteralPath $committedDesktop3dCollisionPath -Raw
 $committedDesktop3dCmakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
+Assert-ContainsText $committedDesktop3dCmakeText "-DMK_SAMPLE_SKINNED_SCENE_SHADOW_RECEIVER_PS=1" "games/CMakeLists.txt committed sample desktop runtime game shader helper"
+Assert-DoesNotContainText $committedDesktop3dCmakeText "-DGE_SAMPLE_SKINNED_SCENE_SHADOW_RECEIVER_PS=1" "games/CMakeLists.txt committed sample desktop runtime game shader helper"
 $committedDesktop3dCmakeBlock = [regex]::Match(
     $committedDesktop3dCmakeText,
     "MK_add_desktop_runtime_game\(sample_generated_desktop_runtime_3d_package[\s\S]*?\n\s*\)"
@@ -1595,6 +1611,9 @@ foreach ($needle in @(
     "broad dependency cooking remains unsupported",
     "selected host-gated package streaming safe-point smoke",
     "selected generated 3D renderer quality smoke",
+    "framegraph_passes_executed=4",
+    "framegraph_barrier_steps_executed=6",
+    "renderer_quality_expected_framegraph_barrier_steps=3",
     "selected generated 3D postprocess depth-input smoke",
     "selected generated 3D playable package smoke",
     "selected generated 3D gameplay systems package smoke",
@@ -1675,7 +1694,9 @@ foreach ($needle in @(
     "renderer_quality_ready=",
     "renderer_quality_diagnostics=",
     "renderer_quality_expected_framegraph_passes=",
+    "renderer_quality_expected_framegraph_barrier_steps=",
     "renderer_quality_framegraph_passes_ok=",
+    "renderer_quality_framegraph_barrier_steps_ok=",
     "renderer_quality_framegraph_execution_budget_ok=",
     "renderer_quality_scene_gpu_ready=",
     "renderer_quality_postprocess_ready=",
@@ -1697,6 +1718,8 @@ foreach ($needle in @(
     "directional_shadow_status=",
     "directional_shadow_ready=",
     "directional_shadow_filter_mode=",
+    "framegraph_passes_executed=",
+    "framegraph_barrier_steps_executed=",
     "renderer_quality_directional_shadow_ready=",
     "renderer_quality_directional_shadow_filter_ready=",
     "--require-playable-3d-slice",
@@ -1823,6 +1846,9 @@ foreach ($needle in @(
 Assert-ContainsText $committedDesktop3dReadmeText "DesktopRuntime3DPackage" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-package-streaming-safe-point" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-renderer-quality-gates" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "framegraph_passes_executed=4" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "framegraph_barrier_steps_executed=6" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "renderer_quality_expected_framegraph_barrier_steps=3" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-postprocess-depth-input" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-directional-shadow-filtering" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-shadow-morph-composition" "committed generated 3D sample README"
@@ -1840,6 +1866,8 @@ Assert-ContainsText $engineManifestText "desktopRuntime3dRendererQualityPackageS
 Assert-ContainsText $engineManifestText "--require-renderer-quality-gates" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "renderer_quality_status" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "renderer_quality_expected_framegraph_passes=2" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "renderer_quality_expected_framegraph_barrier_steps=1" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "framegraph_barrier_steps_executed" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "desktopRuntime3dPostprocessDepthPackageSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-postprocess-depth-input" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "postprocess_depth_input_ready=1" "engine/agent/manifest.json"
@@ -1893,6 +1921,8 @@ Assert-ContainsText $currentCapabilitiesText "--require-visible-3d-production-pr
 Assert-ContainsText $currentCapabilitiesText "--require-native-ui-text-glyph-atlas" "docs/current-capabilities.md"
 Assert-ContainsText $gameSkillText "postprocess_depth_input_ready=1" "gameengine game-development skill"
 Assert-ContainsText $gameSkillText "renderer_quality_postprocess_depth_input_ready=1" "gameengine game-development skill"
+Assert-ContainsText $gameSkillText "renderer_quality_expected_framegraph_barrier_steps=3" "gameengine game-development skill"
+Assert-ContainsText $gameSkillText "framegraph_barrier_steps_executed" "gameengine game-development skill"
 Assert-ContainsText $gameSkillText "--require-shadow-morph-composition" "gameengine game-development skill"
 Assert-ContainsText $gameSkillText "--require-native-ui-overlay" "gameengine game-development skill"
 Assert-ContainsText $gameSkillText "--require-visible-3d-production-proof" "gameengine game-development skill"

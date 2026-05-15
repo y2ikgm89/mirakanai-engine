@@ -682,8 +682,23 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         Write-Error "Installed desktop runtime smoke status line did not prove ready postprocess_status for a ready scene GPU path."
     }
     $expectedFramegraphPasses = if ($requiresDirectionalShadow) { 3 } else { 2 }
+    $expectedFramegraphBarrierSteps = if ($requiresDirectionalShadow) {
+        5
+    } elseif ($requiresPostprocessDepthInput) {
+        3
+    } else {
+        1
+    }
+    $expectedFramegraphPassExecutions = $expectedSmokeFrames * $expectedFramegraphPasses
+    $expectedFramegraphBarrierExecutions = $expectedSmokeFrames * $expectedFramegraphBarrierSteps
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes=$expectedFramegraphPasses\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove the frame graph pass count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes_executed=$expectedFramegraphPassExecutions\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove frame graph pass execution count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_barrier_steps_executed=$expectedFramegraphBarrierExecutions\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove frame graph barrier-step execution count."
     }
     if ($requiresPostprocessDepthInput -and
         $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpostprocess_depth_input_ready=1\b") {
@@ -799,12 +814,21 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
 }
 if ($requiresRendererQualityGates) {
     $expectedRendererQualityFramegraphPasses = if ($requiresDirectionalShadow) { "3" } else { "2" }
+    $expectedRendererQualityFramegraphBarrierSteps = if ($requiresDirectionalShadow) {
+        "5"
+    } elseif ($requiresPostprocessDepthInput) {
+        "3"
+    } else {
+        "1"
+    }
     $expectedRendererQualityFields = @{
         "renderer_quality_status" = "ready"
         "renderer_quality_ready" = "1"
         "renderer_quality_diagnostics" = "0"
         "renderer_quality_expected_framegraph_passes" = $expectedRendererQualityFramegraphPasses
+        "renderer_quality_expected_framegraph_barrier_steps" = $expectedRendererQualityFramegraphBarrierSteps
         "renderer_quality_framegraph_passes_ok" = "1"
+        "renderer_quality_framegraph_barrier_steps_ok" = "1"
         "renderer_quality_framegraph_execution_budget_ok" = "1"
         "renderer_quality_scene_gpu_ready" = "1"
         "renderer_quality_postprocess_ready" = "1"

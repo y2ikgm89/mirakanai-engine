@@ -768,6 +768,7 @@ MK_TEST("sdl desktop presentation quality gate accepts ready package renderer co
     report.framegraph_passes = 3;
     report.renderer_stats.frames_finished = 2;
     report.renderer_stats.framegraph_passes_executed = 6;
+    report.renderer_stats.framegraph_barrier_steps_executed = 10;
     report.renderer_stats.postprocess_passes_executed = 2;
 
     mirakana::SdlDesktopPresentationQualityGateDesc desc;
@@ -784,12 +785,44 @@ MK_TEST("sdl desktop presentation quality gate accepts ready package renderer co
     MK_REQUIRE(quality.ready);
     MK_REQUIRE(quality.diagnostics_count == 0);
     MK_REQUIRE(quality.expected_framegraph_passes == 3);
+    MK_REQUIRE(quality.expected_framegraph_barrier_steps == 5);
     MK_REQUIRE(quality.scene_gpu_ready);
     MK_REQUIRE(quality.postprocess_ready);
     MK_REQUIRE(quality.postprocess_depth_input_ready);
     MK_REQUIRE(quality.directional_shadow_ready);
     MK_REQUIRE(quality.directional_shadow_filter_ready);
     MK_REQUIRE(quality.framegraph_passes_current);
+    MK_REQUIRE(quality.framegraph_barrier_steps_current);
+    MK_REQUIRE(quality.framegraph_execution_budget_current);
+}
+
+MK_TEST("sdl desktop presentation quality gate expects postprocess depth framegraph barrier steps") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.postprocess_status = mirakana::SdlDesktopPresentationPostprocessStatus::ready;
+    report.postprocess_depth_input_requested = true;
+    report.postprocess_depth_input_ready = true;
+    report.framegraph_passes = 2;
+    report.renderer_stats.frames_finished = 2;
+    report.renderer_stats.framegraph_passes_executed = 4;
+    report.renderer_stats.framegraph_barrier_steps_executed = 6;
+    report.renderer_stats.postprocess_passes_executed = 2;
+
+    mirakana::SdlDesktopPresentationQualityGateDesc desc;
+    desc.require_postprocess = true;
+    desc.require_postprocess_depth_input = true;
+    desc.expected_frames = 2;
+
+    const auto quality = mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, desc);
+
+    MK_REQUIRE(quality.status == mirakana::SdlDesktopPresentationQualityGateStatus::ready);
+    MK_REQUIRE(quality.ready);
+    MK_REQUIRE(quality.diagnostics_count == 0);
+    MK_REQUIRE(quality.expected_framegraph_passes == 2);
+    MK_REQUIRE(quality.expected_framegraph_barrier_steps == 3);
+    MK_REQUIRE(quality.postprocess_ready);
+    MK_REQUIRE(quality.postprocess_depth_input_ready);
+    MK_REQUIRE(quality.framegraph_passes_current);
+    MK_REQUIRE(quality.framegraph_barrier_steps_current);
     MK_REQUIRE(quality.framegraph_execution_budget_current);
 }
 
@@ -810,6 +843,7 @@ MK_TEST("sdl desktop presentation quality gate blocks stale package renderer cou
     report.framegraph_passes = 2;
     report.renderer_stats.frames_finished = 2;
     report.renderer_stats.framegraph_passes_executed = 4;
+    report.renderer_stats.framegraph_barrier_steps_executed = 6;
     report.renderer_stats.postprocess_passes_executed = 2;
 
     mirakana::SdlDesktopPresentationQualityGateDesc desc;
@@ -824,13 +858,15 @@ MK_TEST("sdl desktop presentation quality gate blocks stale package renderer cou
 
     MK_REQUIRE(quality.status == mirakana::SdlDesktopPresentationQualityGateStatus::blocked);
     MK_REQUIRE(!quality.ready);
-    MK_REQUIRE(quality.diagnostics_count >= 3);
+    MK_REQUIRE(quality.diagnostics_count >= 4);
+    MK_REQUIRE(quality.expected_framegraph_barrier_steps == 5);
     MK_REQUIRE(quality.scene_gpu_ready);
     MK_REQUIRE(quality.postprocess_ready);
     MK_REQUIRE(quality.postprocess_depth_input_ready);
     MK_REQUIRE(!quality.directional_shadow_ready);
     MK_REQUIRE(!quality.directional_shadow_filter_ready);
     MK_REQUIRE(!quality.framegraph_passes_current);
+    MK_REQUIRE(!quality.framegraph_barrier_steps_current);
     MK_REQUIRE(!quality.framegraph_execution_budget_current);
 }
 
