@@ -71,6 +71,70 @@ function Test-PathUnderDirectory {
     return $candidate.StartsWith("$rootDirectory$separator", $comparison)
 }
 
+function ConvertTo-ExtendedLengthPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    if (-not [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        return $fullPath
+    }
+
+    if ($fullPath.StartsWith("\\?\", [System.StringComparison]::Ordinal)) {
+        return $fullPath
+    }
+
+    if ($fullPath.StartsWith("\\", [System.StringComparison]::Ordinal)) {
+        return "\\?\UNC\$($fullPath.Substring(2))"
+    }
+
+    return "\\?\$fullPath"
+}
+
+function Test-GitOutputHasLongPathFailure {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Output
+    )
+
+    $joinedOutput = $Output -join "`n"
+    return $joinedOutput -match "Filename too long|File name too long|PathTooLong"
+}
+
+function Remove-DirectoryTreeWithLongPathSupport {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $targetPath = ConvertTo-ExtendedLengthPath -Path $Path
+    if (-not [System.IO.Directory]::Exists($targetPath)) {
+        return
+    }
+
+    $rootDirectory = [System.IO.DirectoryInfo]::new($targetPath)
+    Remove-FileSystemInfoWithoutFollowingReparsePoints -FileSystemInfo $rootDirectory
+}
+
+function Remove-FileSystemInfoWithoutFollowingReparsePoints {
+    param(
+        [Parameter(Mandatory = $true)][System.IO.FileSystemInfo]$FileSystemInfo
+    )
+
+    if (($FileSystemInfo.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        $FileSystemInfo.Delete()
+        return
+    }
+
+    $directoryInfo = $FileSystemInfo -as [System.IO.DirectoryInfo]
+    if ($null -ne $directoryInfo) {
+        foreach ($child in $directoryInfo.GetFileSystemInfos()) {
+            Remove-FileSystemInfoWithoutFollowingReparsePoints -FileSystemInfo $child
+        }
+    }
+
+    $FileSystemInfo.Delete()
+}
+
 function Resolve-RepoPath {
     param(
         [Parameter(Mandatory = $true)][string]$RepoPath,
@@ -255,7 +319,17 @@ if ($PSCmdlet.ShouldProcess($resolvedLocalCheckoutPath, "Fast-forward local chec
 }
 
 if ($PSCmdlet.ShouldProcess($resolvedWorktreePath, "Remove merged Git worktree")) {
-    $null = Invoke-GitCommand -RepoRoot $root -Arguments @("worktree", "remove", $resolvedWorktreePath)
+    $removeResult = Invoke-GitCommand -RepoRoot $root -Arguments @("worktree", "remove", $resolvedWorktreePath) -AllowFailure
+    if ($removeResult.ExitCode -ne 0) {
+        $isWindowsHost = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+        if (-not $isWindowsHost -or -not (Test-GitOutputHasLongPathFailure -Output $removeResult.Output)) {
+            Write-Error "git worktree remove $resolvedWorktreePath failed with exit code $($removeResult.ExitCode): $(@($removeResult.Output) -join "`n")"
+        }
+
+        Write-Information "remove-merged-worktree: long-path-delete-fallback=enabled" -InformationAction Continue
+        Remove-DirectoryTreeWithLongPathSupport -Path $resolvedWorktreePath
+        $null = Invoke-GitCommand -RepoRoot $root -Arguments @("worktree", "prune")
+    }
 }
 
 if ($DeleteLocalBranch.IsPresent) {
