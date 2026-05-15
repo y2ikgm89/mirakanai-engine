@@ -427,6 +427,9 @@ if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource v2") -
     -not ([string]$geRuntimeModule[0].purpose).Contains("generation-checked") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_resident_package_replace_v2") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_resident_package_unmount_v2") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("host-driven reviewed hot-reload replacement safe point") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("file watching/recook execution") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("foundation-only") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("package streaming") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("renderer/RHI resource ownership")) {
