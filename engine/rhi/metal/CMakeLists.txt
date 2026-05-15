@@ -27,4 +27,3 @@ if(APPLE)
 endif()
 
 MK_apply_common_target_options(MK_rhi_metal)
-

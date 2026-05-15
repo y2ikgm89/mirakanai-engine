@@ -165,6 +165,3 @@ Context: Select production recipe desktop-runtime-cooked-scene-package for a pac
 Constraints: Game code must consume cooked package records only. Do not parse source glTF/PNG/audio/material formats, do not reach into RuntimeAssetRecord::content outside typed runtime accessors, and do not expose renderer/RHI/backend handles.
 Done when: A headless executable, desktop runtime smoke, or test proves load_runtime_asset_package -> instantiate_runtime_scene_render_data -> submit_scene_render_packet, reports deterministic diagnostics on failure, and pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 passes. For generated desktop package scaffolds, tools/package-desktop-runtime.ps1 -GameTarget <target> must also pass when desktop-runtime-release is selected.
 ```
-
-
-

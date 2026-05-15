@@ -270,4 +270,3 @@ void AndroidAudioOutput::stop() noexcept {
 }
 
 } // namespace mirakana_android
-

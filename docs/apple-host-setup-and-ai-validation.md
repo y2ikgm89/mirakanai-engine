@@ -57,4 +57,3 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 - 実行コマンドとログを `docs/` 側の該当運用ノート or 進行中の plan 記録に追記
 - ブロッカーが残る場合は再実行条件を明示（例: Xcode バージョン固定、Simulator runtime追加、署名設定）
-

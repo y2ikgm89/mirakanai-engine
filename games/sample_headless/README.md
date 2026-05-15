@@ -12,4 +12,3 @@ Build and test through:
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
-

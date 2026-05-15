@@ -12,6 +12,7 @@ paths:
   - "tools/static-contract-ledger.ps1"
   - "tools/check-agents.ps1"
   - "tools/check-text-format.ps1"
+  - "tools/check-text-format-contract.ps1"
   - "tools/format-text.ps1"
   - "tools/text-format-core.ps1"
   - "tools/prepare-worktree.ps1"

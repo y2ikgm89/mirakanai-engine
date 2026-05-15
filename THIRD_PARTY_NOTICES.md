@@ -28,4 +28,3 @@ Before adding any external material, record:
 - SPDX license identifier or custom license reference
 - modification status
 - distribution target
-

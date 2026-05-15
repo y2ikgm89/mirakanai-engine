@@ -13,4 +13,3 @@ mirakana_apply_common_target_options(mirakana_math)
 if(NOT TARGET MK_math)
     add_library(MK_math ALIAS mirakana_math)
 endif()
-

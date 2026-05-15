@@ -42,4 +42,3 @@ The Vulkan package lane is toolchain-gated:
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/sample_generated_desktop_runtime_material_shader_package.config', '--require-scene-package', 'runtime/sample_generated_desktop_runtime_material_shader_package.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess')
 ```
-

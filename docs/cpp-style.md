@@ -120,7 +120,3 @@ Before changing public API shape, module layout, CMake target names, or game sca
 4. Run or inspect `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1`.
 5. Update AI-facing docs, skills, rules, manifests, or subagents if the change alters how agents should work.
 6. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` before reporting completion.
-
-
-
-

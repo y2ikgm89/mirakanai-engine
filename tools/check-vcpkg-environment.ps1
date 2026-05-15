@@ -122,4 +122,3 @@ if (`$pathValue.IndexOf('$escapedPathProbe', [System.StringComparison]::OrdinalI
 }
 
 Write-Host "vcpkg-environment-check: ok"
-

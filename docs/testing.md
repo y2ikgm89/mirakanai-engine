@@ -123,8 +123,12 @@ Format checks should use repository wrappers for repeatability:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format-text.ps1
 ```
+
+`tools/check-format.ps1` / `tools/format.ps1` cover C++ plus tracked text normalization. The text-only wrappers cover LF, UTF-8 without BOM, one final newline, and no trailing EOF blank lines while skipping hashed runtime package files under `games/*/runtime/`. `tools/validate.ps1` also runs `tools/check-text-format-contract.ps1`, which exercises the text checker/repair contract against a temporary fixture.
 
 Raw `clang-format --dry-run ...` commands require `clang-format` on `PATH`. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` reports both the resolved wrapper formatter and `direct-clang-format-status`; if direct status is unavailable, use the wrappers or invoke the resolved formatter path instead of treating the raw lookup failure as a formatting violation.
 

@@ -22,4 +22,3 @@ mirakana_apply_common_target_options(mirakana_scene)
 if(NOT TARGET MK_scene)
     add_library(MK_scene ALIAS mirakana_scene)
 endif()
-

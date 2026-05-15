@@ -71,4 +71,3 @@ Write-Host ""
 Write-Host "Example (PowerShell, session scope):"
 Write-Host ('  $env:MK_VULKAN_TEST_SHADOW_RECEIVER_VERTEX_SPV = "' + $vsOut + '"')
 Write-Host ('  $env:MK_VULKAN_TEST_SHADOW_RECEIVER_FRAGMENT_SPV = "' + $fsOut + '"')
-

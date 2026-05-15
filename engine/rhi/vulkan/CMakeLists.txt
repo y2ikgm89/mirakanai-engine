@@ -16,4 +16,3 @@ mirakana_apply_common_target_options(mirakana_rhi_vulkan)
 if(NOT TARGET MK_rhi_vulkan)
     add_library(MK_rhi_vulkan ALIAS mirakana_rhi_vulkan)
 endif()
-

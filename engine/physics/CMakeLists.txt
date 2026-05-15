@@ -16,4 +16,3 @@ mirakana_apply_common_target_options(mirakana_physics)
 if(NOT TARGET MK_physics)
     add_library(MK_physics ALIAS mirakana_physics)
 endif()
-

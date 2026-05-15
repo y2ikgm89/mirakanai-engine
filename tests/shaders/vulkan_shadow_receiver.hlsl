@@ -86,4 +86,3 @@ float4 main(ReceiverVertexOutput input) : SV_Target0 {
 #else
 #error Define one MK_VULKAN_SHADOW_RECEIVER_* shader variant before compiling this test shader.
 #endif
-

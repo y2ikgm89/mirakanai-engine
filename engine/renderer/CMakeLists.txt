@@ -24,4 +24,3 @@ mirakana_apply_common_target_options(mirakana_renderer)
 if(NOT TARGET MK_renderer)
     add_library(MK_renderer ALIAS mirakana_renderer)
 endif()
-

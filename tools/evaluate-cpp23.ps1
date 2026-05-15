@@ -48,4 +48,3 @@ if ($Gui) {
 }
 
 Write-Host "cpp23-verification: ok"
-

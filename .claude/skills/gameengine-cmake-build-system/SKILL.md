@@ -98,4 +98,3 @@ If CMake or a compiler is missing, report the missing tool instead of editing ar
 - Download dependencies during configure.
 - Reintroduce configure-time vcpkg restore/install to hide a sandbox bootstrap failure.
 - Remove `external/vcpkg` (or all of `external/`) while “cleaning” ignored paths; that breaks preset configure until the vcpkg clone is restored.
-

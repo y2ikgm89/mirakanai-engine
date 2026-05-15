@@ -22,4 +22,3 @@ Allow first-party texture, mesh, and audio source fixture documents to carry det
 - `execute_asset_import_plan` preserves first-party source byte payload fields into cooked artifacts.
 - Tests cover source document byte round trips and cooked artifact byte preservation.
 - Manifest, roadmap, gap analysis, and game-development skill guidance describe the implemented and remaining scope honestly.
-

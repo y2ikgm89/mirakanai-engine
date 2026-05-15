@@ -84,4 +84,3 @@ if ($matchingProjects.Count -eq 0) {
 }
 
 Write-Host "generated-msvc-cxx23-mode-check: ok"
-
