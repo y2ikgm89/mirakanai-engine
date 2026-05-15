@@ -29,5 +29,3 @@ Invoke-CheckedCommand $tools.CMake --install (Join-Path (Get-RepoRoot) "out/buil
     -BuildConfig Debug `
     -AdditionalRuntimePaths @((Join-Path $vcpkgInstalled "debug/bin")) `
     -AdditionalCMakeArgs @("-DCMAKE_PREFIX_PATH=$vcpkgInstalled")
-
-

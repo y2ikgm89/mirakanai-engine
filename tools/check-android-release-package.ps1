@@ -164,4 +164,3 @@ if ($keytool) {
 
 Write-Host "android-release-package-check: apk=$apk"
 Write-Host "android-release-package-check: ok"
-

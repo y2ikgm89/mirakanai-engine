@@ -22,4 +22,3 @@ mirakana_apply_common_target_options(mirakana_animation)
 if(NOT TARGET MK_animation)
     add_library(MK_animation ALIAS mirakana_animation)
 endif()
-

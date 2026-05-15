@@ -18,4 +18,3 @@ mirakana_apply_common_target_options(mirakana_core)
 if(NOT TARGET MK_core)
     add_library(MK_core ALIAS mirakana_core)
 endif()
-

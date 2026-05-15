@@ -36,4 +36,3 @@ extern "C" VkResult mirakana_android_create_vulkan_surface(VkInstance instance, 
     };
     return vkCreateAndroidSurfaceKHR(instance, &create_info, allocator, surface);
 }
-

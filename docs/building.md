@@ -103,6 +103,3 @@ The prefix is arbitrary. Build the targets that should be installed before runni
 ---
 
 *Maintain this file alongside `docs/superpowers/plans/2026-05-03-cmake-install-export-and-cxx-modules-audit-v1.md`.*
-
-
-

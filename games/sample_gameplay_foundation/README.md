@@ -15,4 +15,3 @@ This headless sample demonstrates gameplay-facing engine foundations that AI age
 The sample exits with status 0 only when the simulated actor lands on the static floor, moves forward deterministically, transitions from `idle` to `walk`, builds two authored collision rows, grounds a controller, reaches the navigation destination through an AI behavior-tree decision, renders two audio stream frames, and cleans up its entity on stop.
 
 This is source-tree headless composition evidence only. It does not claim generated package shipping, scene/physics AI integration, navmesh/crowd, physics joints/exact casts/CCD, audio codec streaming, async AI services, middleware, SDL3, Dear ImGui, or public native handles.
-

@@ -60,4 +60,3 @@ Invoke-CheckedCommand $tools.CMake `
     "-DCMAKE_INSTALL_PREFIX=$installDir"
 
 Invoke-CheckedCommand $tools.CMake --build $buildDir --config $Configuration --target "MirakanaiIOS"
-

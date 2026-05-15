@@ -33,4 +33,3 @@ float4 main(PostprocessVertexOutput input) : SV_Target0 {
 #else
 #error Define one MK_VULKAN_POSTPROCESS_DEPTH_* shader variant before compiling this test shader.
 #endif
-

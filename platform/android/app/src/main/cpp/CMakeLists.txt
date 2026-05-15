@@ -48,5 +48,3 @@ target_link_libraries(mirakanai_android
         vulkan
         game-activity::game-activity_static
 )
-
-

@@ -346,4 +346,3 @@ if ($RequireApple -and $appleBlockers.Count -gt 0) {
 }
 
 Write-Host "mobile-packaging-check: diagnostic-only"
-

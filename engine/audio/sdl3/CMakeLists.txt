@@ -22,4 +22,3 @@ mirakana_apply_common_target_options(mirakana_audio_sdl3)
 if(NOT TARGET MK_audio_sdl3)
     add_library(MK_audio_sdl3 ALIAS mirakana_audio_sdl3)
 endif()
-

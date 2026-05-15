@@ -73,5 +73,3 @@ $testPatterns = @(
 })
 $ctestPattern = $testPatterns -join "|"
 Invoke-CheckedCommand $tools.CTest --preset desktop-runtime --output-on-failure -R $ctestPattern
-
-

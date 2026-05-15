@@ -25,5 +25,3 @@ pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runt
 ```
 
 This sample intentionally does not claim production atlas packing, full tilemap editor UX, runtime image decoding, package streaming, 3D readiness, editor productization, Metal readiness, or broad renderer quality. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported.
-
-

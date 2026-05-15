@@ -53,4 +53,3 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1
 ```
 
 The installed executable is validated from `out\install\desktop-runtime-release\bin` with metadata-driven `--smoke --require-d3d12-shaders --require-vulkan-shaders`; installed validation requires the selected sample status line before accepting `presentation_selected` and `presentation_backend_reports`. On Windows the install tree includes `SDL3.dll`, `bin\shaders\runtime_shell.*.dxil`, `bin\shaders\runtime_shell.*.spv`, and `share\GameEngine\desktop-runtime-games.json`. Other registered desktop runtime game targets can be selected with `tools/package-desktop-runtime.ps1 -GameTarget <target>` when they declare source-tree and package smoke metadata.
-

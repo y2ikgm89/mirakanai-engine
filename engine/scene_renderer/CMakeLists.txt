@@ -21,4 +21,3 @@ mirakana_apply_common_target_options(mirakana_scene_renderer)
 if(NOT TARGET MK_scene_renderer)
     add_library(MK_scene_renderer ALIAS mirakana_scene_renderer)
 endif()
-

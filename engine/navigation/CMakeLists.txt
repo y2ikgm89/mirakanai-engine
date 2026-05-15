@@ -19,4 +19,3 @@ mirakana_apply_common_target_options(mirakana_navigation)
 if(NOT TARGET MK_navigation)
     add_library(MK_navigation ALIAS mirakana_navigation)
 endif()
-

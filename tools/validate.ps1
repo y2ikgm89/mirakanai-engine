@@ -36,6 +36,8 @@ foreach ($scriptFileName in @(
         "check-dependency-policy.ps1",
         "check-vcpkg-environment.ps1",
         "check-toolchain.ps1",
+        "check-text-format-contract.ps1",
+        "check-format.ps1",
         "check-cpp-standard-policy.ps1",
         "check-coverage-thresholds.ps1",
         "check-shader-toolchain.ps1",

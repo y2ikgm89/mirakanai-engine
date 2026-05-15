@@ -21,4 +21,3 @@ mirakana_apply_common_target_options(mirakana_rhi_d3d12)
 if(NOT TARGET MK_rhi_d3d12)
     add_library(MK_rhi_d3d12 ALIAS mirakana_rhi_d3d12)
 endif()
-

@@ -28,4 +28,3 @@ mirakana_apply_common_target_options(mirakana_platform_sdl3)
 if(NOT TARGET MK_platform_sdl3)
     add_library(MK_platform_sdl3 ALIAS mirakana_platform_sdl3)
 endif()
-

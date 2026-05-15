@@ -253,4 +253,3 @@ if ($missing.Count -gt 0) {
 } else {
     Write-Host "shader-toolchain-check: ok"
 }
-

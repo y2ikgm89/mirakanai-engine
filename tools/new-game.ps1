@@ -329,5 +329,3 @@ Add-Content -LiteralPath $gamesCmake -Value $registration
 Write-Host "created game: games/$Name"
 Write-Host "target: $targetName"
 Write-Host "template: $Template"
-
-

@@ -43,4 +43,3 @@ The default build must remain third-party-free. The existing first-party source 
 - cgltf vcpkg metadata: https://vcpkg.roundtrip.dev/ports/cgltf
 - miniaudio: https://miniaud.io/
 - miniaudio decoder docs: https://miniaud.io/docs/manual/index.html
-

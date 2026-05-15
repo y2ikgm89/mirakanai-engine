@@ -59,5 +59,3 @@ Qt in particular requires explicit licensing review before any adoption because 
 - Do not hand-roll mature low-level text shaping, IME, accessibility, or font systems without an accepted architecture decision proving that the official SDK or audited dependency path is worse.
 - Do not expose SDL3, Dear ImGui, Qt, NoesisGUI, Slint, RmlUi, OS window handles, or graphics API handles through public game UI APIs.
 - Do not add fonts, UI art, UI middleware, or text/font libraries without dependency and notice records.
-
-

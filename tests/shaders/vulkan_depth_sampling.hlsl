@@ -48,4 +48,3 @@ float4 main(SampleVertexOutput input) : SV_Target0 {
 #else
 #error Define one MK_VULKAN_DEPTH_* shader variant before compiling this test shader.
 #endif
-

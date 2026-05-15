@@ -27,4 +27,3 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/MirakanaiTargets.cmake")
 
 check_required_components(Mirakanai)
-

@@ -37,5 +37,3 @@ Tests must cover:
 ## Follow-Up Slices
 
 Later navigation work should add navmesh assets, agent radius constraints, dynamic obstacle updates, steering/avoidance, path smoothing, scene integration, editor visualization, and AI controller helpers.
-
-

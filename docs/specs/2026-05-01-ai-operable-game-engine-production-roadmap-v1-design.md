@@ -372,4 +372,3 @@ That slice should be narrow: docs, manifest/schema, agent-context output, checks
 Use the dedicated handoff prompt:
 
 - `docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md`
-
