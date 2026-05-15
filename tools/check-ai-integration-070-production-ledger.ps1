@@ -1296,6 +1296,8 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "post-merge remote-tracking cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "post-merge worktree cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "local checkout fast-forward" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "Windows long-path fallback" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "must not follow reparse points" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "GITHUB_TOKEN" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "credential-manager-core" $agentIntegrationSkill
@@ -1407,6 +1409,8 @@ Assert-ContainsText $aiAgentRuleText "isolation: worktree" ".claude/rules/ai-age
 Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText 'fast-forward it to `-BaseRef`' ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "Windows long-path fallback" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "must not follow reparse points" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".claude/settings.local.json" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integration.md"
