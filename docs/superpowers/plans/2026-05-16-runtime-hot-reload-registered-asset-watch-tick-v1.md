@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Plan ID:** `runtime-hot-reload-registered-asset-watch-tick-v1`
-**Status:** Active.
+**Status:** Completed. Landed in PR #50 and merged as `66017f7`.
 **Gap:** `runtime-resource-v2` foundation follow-up.
 
 **Goal:** Add a host-independent `MK_tools` tick helper that scans registered asset files, advances hot-reload tracker/scheduler state, and executes the existing reviewed recook-to-runtime-package replacement safe point only when debounced recook requests are ready.
@@ -46,7 +46,7 @@
 - [x] Run focused GREEN build/CTest for `MK_tools_runtime_hot_reload_package_tests`.
 - [x] Update docs, plan registry/master plan pointer, manifest fragments/composed output, skills, and static guards.
 - [x] Run focused static checks, full `validate.ps1`, and standalone `build.ps1`.
-- [ ] Commit, push, open PR, and merge/auto-merge after PR preflight.
+- [x] Commit, push, open PR, and merge/auto-merge after PR preflight.
 
 ## Validation Evidence
 
@@ -63,3 +63,4 @@
 | Agent integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS |
 | Full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS: 65/65 CTest tests passed; Metal/Apple diagnostics remain host-gated as expected. |
 | Standalone build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS |
+| PR preflight and merge | `gh pr view 50 --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url`; `gh pr merge 50 --auto --merge --delete-branch --match-head-commit 9296aa037b31442af2e9cec855d213973b884627` | PASS: PR #50 merged into `main` as `66017f7`; branch deletion requested and stale remote tracking was pruned. |
