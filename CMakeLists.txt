@@ -523,6 +523,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_tools_tests)
     add_test(NAME MK_tools_tests COMMAND MK_tools_tests)
 
+    add_executable(MK_tools_runtime_hot_reload_package_tests
+        tests/unit/tools_runtime_hot_reload_package_tests.cpp
+    )
+    target_link_libraries(MK_tools_runtime_hot_reload_package_tests PRIVATE MK_tools MK_runtime)
+    target_include_directories(MK_tools_runtime_hot_reload_package_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_tools_runtime_hot_reload_package_tests)
+    add_test(NAME MK_tools_runtime_hot_reload_package_tests COMMAND MK_tools_runtime_hot_reload_package_tests)
+
     if(WIN32)
         add_executable(MK_process_probe
             tests/fixtures/process_probe.cpp

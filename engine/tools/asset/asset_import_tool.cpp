@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -23,6 +24,43 @@ struct PreparedImport {
     AssetImportedArtifact artifact;
     std::string cooked_text;
 };
+
+[[nodiscard]] bool valid_hot_reload_tool_path(std::string_view path) noexcept {
+    return !path.empty() && path.find('\n') == std::string_view::npos && path.find('\r') == std::string_view::npos &&
+           path.find('\0') == std::string_view::npos;
+}
+
+[[nodiscard]] bool valid_hot_reload_tool_event_kind(AssetHotReloadEventKind kind) noexcept {
+    switch (kind) {
+    case AssetHotReloadEventKind::added:
+    case AssetHotReloadEventKind::modified:
+    case AssetHotReloadEventKind::removed:
+        return true;
+    case AssetHotReloadEventKind::unknown:
+        break;
+    }
+    return false;
+}
+
+[[nodiscard]] bool valid_hot_reload_tool_recook_reason(AssetHotReloadRecookReason reason) noexcept {
+    switch (reason) {
+    case AssetHotReloadRecookReason::source_added:
+    case AssetHotReloadRecookReason::source_modified:
+    case AssetHotReloadRecookReason::source_removed:
+    case AssetHotReloadRecookReason::dependency_invalidated:
+        return true;
+    case AssetHotReloadRecookReason::unknown:
+        break;
+    }
+    return false;
+}
+
+[[nodiscard]] bool valid_runtime_recook_request(const AssetHotReloadRecookRequest& request) noexcept {
+    return request.asset.value != 0 && request.source_asset.value != 0 &&
+           valid_hot_reload_tool_path(request.trigger_path) &&
+           valid_hot_reload_tool_event_kind(request.trigger_event_kind) &&
+           valid_hot_reload_tool_recook_reason(request.reason);
+}
 
 [[nodiscard]] std::string action_kind_name(AssetImportActionKind kind) {
     switch (kind) {
@@ -332,7 +370,10 @@ using RecookRequestByAsset = std::unordered_map<AssetId, const AssetHotReloadRec
     by_asset.reserve(requests.size());
     for (const auto& request : requests) {
         if (request.asset.value == 0) {
-            throw std::invalid_argument("asset runtime recook request has an invalid asset id");
+            throw std::invalid_argument("asset recook request has an invalid asset id");
+        }
+        if (!valid_runtime_recook_request(request)) {
+            throw std::invalid_argument("asset runtime recook request is invalid");
         }
         by_asset.emplace(request.asset, &request);
     }
@@ -398,10 +439,18 @@ AssetRuntimeRecookExecutionResult
 execute_asset_runtime_recook(IFileSystem& filesystem, const AssetImportPlan& import_plan,
                              AssetRuntimeReplacementState& replacements,
                              const std::vector<AssetHotReloadRecookRequest>& requests) {
+    return execute_asset_runtime_recook(filesystem, import_plan, replacements, requests, AssetImportExecutionOptions{});
+}
+
+AssetRuntimeRecookExecutionResult execute_asset_runtime_recook(IFileSystem& filesystem,
+                                                               const AssetImportPlan& import_plan,
+                                                               AssetRuntimeReplacementState& replacements,
+                                                               const std::vector<AssetHotReloadRecookRequest>& requests,
+                                                               const AssetImportExecutionOptions& options) {
     AssetRuntimeRecookExecutionResult result;
-    result.recook_plan = build_asset_recook_plan(import_plan, requests);
     const auto request_by_asset = map_recook_requests(requests);
-    result.import_result = execute_asset_import_plan(filesystem, result.recook_plan);
+    result.recook_plan = build_asset_recook_plan(import_plan, requests);
+    result.import_result = execute_asset_import_plan(filesystem, result.recook_plan, options);
 
     if (result.import_result.succeeded()) {
         for (const auto& imported : result.import_result.imported) {

@@ -27,6 +27,7 @@ target_link_libraries(MK_tools
         MK_animation
         MK_assets
         MK_platform
+        MK_runtime
         MK_physics
         MK_runtime_scene
         MK_scene

@@ -121,6 +121,9 @@ foreach ($check in @(
             "Runtime Package Hot Reload Recook Replacement Safe Point v1",
             "commit_runtime_package_hot_reload_recook_replacement_v2",
             "RuntimePackageHotReloadRecookReplacementResultV2",
+            "Runtime Hot Reload Recook Package Replacement Execution v1",
+            "execute_asset_runtime_package_hot_reload_replacement_safe_point",
+            "selected package matched",
             "invalid overlay modes",
             "Resident package replacement commit",
             "commit_runtime_resident_package_replace_v2",
@@ -155,6 +158,10 @@ foreach ($check in @(
             "Runtime Package Hot Reload Recook Replacement Safe Point v1 coverage",
             "MK_runtime_package_hot_reload_recook_replacement_tests",
             "commit_runtime_package_hot_reload_recook_replacement_v2",
+            "Runtime Hot Reload Recook Package Replacement Execution v1 coverage",
+            "MK_tools_runtime_hot_reload_package_tests",
+            "execute_asset_runtime_package_hot_reload_replacement_safe_point",
+            "selected package commit isolation",
             "candidate/discovery root mismatches",
             "invalid overlay modes"
         )
@@ -163,8 +170,8 @@ foreach ($check in @(
         Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Latest narrow child",
-            "Runtime Package Hot Reload Recook Replacement Safe Point v1",
-            "reviewed recook-to-replacement safe-point composition slice"
+            "Runtime Hot Reload Recook Package Replacement Execution v1",
+            "reviewed recook-to-runtime-package replacement execution slice"
         )
     },
     @{
@@ -209,6 +216,17 @@ foreach ($check in @(
             "runtime package hot reload recook replacement blocks invalid intent before discovery",
             "runtime package hot reload recook replacement preserves state when commit stage fails",
             "runtime package hot reload recook replacement preserves state when reviewed evictions are insufficient"
+        )
+    },
+    @{
+        Path = "tests/unit/tools_runtime_hot_reload_package_tests.cpp"
+        Needles = @(
+            "asset runtime package hot reload replacement commits recook and resident safe point",
+            "asset runtime package hot reload replacement commits only the selected package recook assets",
+            "asset runtime package hot reload replacement passes external import options into recook",
+            "asset runtime package hot reload replacement blocks recook failure before runtime package reads",
+            "asset runtime package hot reload replacement reports recook descriptor exceptions",
+            "asset runtime package hot reload replacement preserves staged recook when runtime commit fails"
         )
     },
     @{
