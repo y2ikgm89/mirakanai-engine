@@ -54,6 +54,54 @@ void add_runtime_replacement_diagnostics(AssetRuntimePackageHotReloadReplacement
     }
 }
 
+void add_watch_diagnostic(AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult& result,
+                          AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase phase, AssetId asset,
+                          runtime::RuntimeResidentPackageMountIdV2 mount, std::string path, std::string code,
+                          std::string message) {
+    result.diagnostics.push_back(AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnostic{
+        .phase = phase,
+        .asset = asset,
+        .mount = mount,
+        .path = std::move(path),
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_watch_runtime_replacement_diagnostics(AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult& result) {
+    for (const auto& diagnostic : result.replacement.diagnostics) {
+        const auto phase =
+            diagnostic.phase == AssetRuntimePackageHotReloadReplacementDiagnosticPhase::recook_execution
+                ? AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase::recook_execution
+                : AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase::runtime_replacement;
+        add_watch_diagnostic(result, phase, diagnostic.asset, diagnostic.mount, diagnostic.path, diagnostic.code,
+                             diagnostic.message);
+    }
+
+    if (result.diagnostics.empty() && !result.replacement.succeeded()) {
+        const auto recook_failed =
+            result.replacement.status == AssetRuntimePackageHotReloadReplacementStatus::recook_failed;
+        const auto phase =
+            recook_failed ? AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase::recook_execution
+                          : AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase::runtime_replacement;
+        add_watch_diagnostic(result, phase, {}, {}, {}, recook_failed ? "recook-failed" : "runtime-replacement-failed",
+                             recook_failed ? "registered asset watch tick recook failed"
+                                           : "registered asset watch tick runtime replacement failed");
+    }
+}
+
+[[nodiscard]] AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus
+watch_status_for_replacement_failure(AssetRuntimePackageHotReloadReplacementStatus status) noexcept {
+    switch (status) {
+    case AssetRuntimePackageHotReloadReplacementStatus::recook_failed:
+        return AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::recook_failed;
+    case AssetRuntimePackageHotReloadReplacementStatus::runtime_replacement_failed:
+    case AssetRuntimePackageHotReloadReplacementStatus::committed:
+        break;
+    }
+    return AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::runtime_replacement_failed;
+}
+
 [[nodiscard]] runtime::RuntimePackageHotReloadRecookReplacementDescV2
 make_runtime_replacement_desc(const AssetRuntimePackageHotReloadRuntimeReplacementDesc& desc,
                               std::vector<AssetHotReloadApplyResult> apply_results) {
@@ -107,6 +155,15 @@ selected_assets_for_runtime_candidate(const std::vector<AssetHotReloadApplyResul
 bool AssetRuntimePackageHotReloadReplacementResult::succeeded() const noexcept {
     return status == AssetRuntimePackageHotReloadReplacementStatus::committed && recook.succeeded() &&
            runtime_replacement.succeeded() && committed;
+}
+
+AssetRuntimePackageHotReloadRegisteredAssetWatchTickState::AssetRuntimePackageHotReloadRegisteredAssetWatchTickState(
+    AssetHotReloadRecookSchedulerDesc scheduler_desc)
+    : scheduler(scheduler_desc) {}
+
+bool AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult::succeeded() const noexcept {
+    return status == AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::committed && replacement.succeeded() &&
+           committed;
 }
 
 AssetRuntimePackageHotReloadReplacementResult execute_asset_runtime_package_hot_reload_replacement_safe_point(
@@ -170,6 +227,67 @@ AssetRuntimePackageHotReloadReplacementResult execute_asset_runtime_package_hot_
 
     result.committed_apply_results = replacements.commit_safe_point(selected_assets);
     result.status = AssetRuntimePackageHotReloadReplacementStatus::committed;
+    result.committed = true;
+    return result;
+}
+
+AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult
+execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point(
+    IFileSystem& filesystem, const AssetRegistry& assets, const AssetDependencyGraph& dependencies,
+    AssetRuntimePackageHotReloadRegisteredAssetWatchTickState& tick_state, AssetRuntimeReplacementState& replacements,
+    runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
+    const AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc& desc) {
+    AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult result;
+    result.invoked_scan = true;
+    result.invoked_native_file_watch = false;
+
+    try {
+        result.scan = scan_asset_files_for_hot_reload(filesystem, assets);
+        result.events = tick_state.tracker.update(result.scan.snapshots);
+    } catch (const std::exception& error) {
+        result.status = AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::scan_failed;
+        add_watch_diagnostic(result, AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase::scan, {}, {},
+                             {}, "scan-exception", error.what());
+        return result;
+    }
+
+    if (!tick_state.primed && desc.prime_without_recook) {
+        tick_state.primed = true;
+        result.status = AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::primed;
+        return result;
+    }
+    tick_state.primed = true;
+
+    if (!result.events.empty()) {
+        tick_state.scheduler.enqueue(result.events, dependencies, desc.now_tick);
+    }
+
+    auto scheduler_before_ready = tick_state.scheduler;
+    result.ready_recook_requests = tick_state.scheduler.ready(desc.now_tick);
+    if (result.ready_recook_requests.empty()) {
+        result.status = tick_state.scheduler.pending_count() == 0
+                            ? AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::no_ready_changes
+                            : AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::recook_pending;
+        return result;
+    }
+
+    result.invoked_runtime_replacement = true;
+    result.replacement = execute_asset_runtime_package_hot_reload_replacement_safe_point(
+        filesystem, replacements, mount_set, catalog_cache,
+        AssetRuntimePackageHotReloadReplacementDesc{
+            .import_plan = desc.import_plan,
+            .import_options = desc.import_options,
+            .recook_requests = result.ready_recook_requests,
+            .runtime_replacement = desc.runtime_replacement,
+        });
+    if (!result.replacement.succeeded()) {
+        tick_state.scheduler = std::move(scheduler_before_ready);
+        result.status = watch_status_for_replacement_failure(result.replacement.status);
+        add_watch_runtime_replacement_diagnostics(result);
+        return result;
+    }
+
+    result.status = AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::committed;
     result.committed = true;
     return result;
 }

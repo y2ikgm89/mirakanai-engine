@@ -3,7 +3,9 @@
 
 #pragma once
 
+#include "mirakana/assets/asset_dependency_graph.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
+#include "mirakana/tools/asset_file_scanner.hpp"
 #include "mirakana/tools/asset_import_tool.hpp"
 
 #include <cstdint>
@@ -66,6 +68,65 @@ struct AssetRuntimePackageHotReloadReplacementResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+enum class AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus : std::uint8_t {
+    scan_failed,
+    primed,
+    no_ready_changes,
+    recook_pending,
+    recook_failed,
+    runtime_replacement_failed,
+    committed,
+};
+
+enum class AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase : std::uint8_t {
+    scan,
+    recook_execution,
+    runtime_replacement,
+};
+
+struct AssetRuntimePackageHotReloadRegisteredAssetWatchTickState {
+    AssetHotReloadTracker tracker;
+    AssetHotReloadRecookScheduler scheduler;
+    bool primed{false};
+
+    explicit AssetRuntimePackageHotReloadRegisteredAssetWatchTickState(
+        AssetHotReloadRecookSchedulerDesc scheduler_desc = {});
+};
+
+struct AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc {
+    AssetImportPlan import_plan;
+    AssetImportExecutionOptions import_options;
+    AssetRuntimePackageHotReloadRuntimeReplacementDesc runtime_replacement;
+    std::uint64_t now_tick{0};
+    bool prime_without_recook{true};
+};
+
+struct AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnostic {
+    AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase phase{
+        AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase::scan};
+    AssetId asset;
+    runtime::RuntimeResidentPackageMountIdV2 mount;
+    std::string path;
+    std::string code;
+    std::string message;
+};
+
+struct AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult {
+    AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus status{
+        AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::scan_failed};
+    AssetFileScanResult scan;
+    std::vector<AssetHotReloadEvent> events;
+    std::vector<AssetHotReloadRecookRequest> ready_recook_requests;
+    AssetRuntimePackageHotReloadReplacementResult replacement;
+    std::vector<AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnostic> diagnostics;
+    bool invoked_scan{false};
+    bool invoked_native_file_watch{false};
+    bool invoked_runtime_replacement{false};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 /// Runs asset recook execution, feeds the helper-owned staged recook rows into the reviewed runtime package replacement
 /// safe point, and commits only the staged assets that matched the selected runtime package after the runtime resident
 /// package commit succeeds. This helper does not watch files, infer replacement targets, choose evictions, run package
@@ -75,5 +136,16 @@ execute_asset_runtime_package_hot_reload_replacement_safe_point(
     IFileSystem& filesystem, AssetRuntimeReplacementState& replacements,
     runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
     const AssetRuntimePackageHotReloadReplacementDesc& desc);
+
+/// Scans caller-registered asset files, advances the caller-owned tracker/scheduler, and executes the reviewed recook
+/// to runtime-package replacement safe point only when debounced recook requests are ready. This tick helper performs
+/// no native file watching, background work, target inference, package scripts, renderer/RHI ownership, upload/staging,
+/// or native-handle integration.
+[[nodiscard]] AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult
+execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point(
+    IFileSystem& filesystem, const AssetRegistry& assets, const AssetDependencyGraph& dependencies,
+    AssetRuntimePackageHotReloadRegisteredAssetWatchTickState& tick_state, AssetRuntimeReplacementState& replacements,
+    runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
+    const AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc& desc);
 
 } // namespace mirakana
