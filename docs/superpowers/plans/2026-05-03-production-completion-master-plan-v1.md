@@ -1,7 +1,7 @@
 # Production Completion Master Plan v1 (2026-05-03)
 
 **Plan ID:** `production-completion-master-plan-v1`  
-**Status:** Active roadmap / milestone pointer. This file is the project-wide production completion ledger; focused implementation work must still use dated child plans.  
+**Status:** Active roadmap / milestone pointer. This file is the project-wide production completion ledger; focused implementation work should use a dated capability/gap-cluster/milestone plan, or phases inside the active plan when the work stays within the current boundary.
 **Current pointer rule:** The composed `engine/agent/manifest.json` fields `aiOperableProductionLoop.currentActivePlan` and `recommendedNextPlan` are the machine-readable source of truth (maintain via `engine/agent/manifest.fragments/` + `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; do not hand-edit the composed file—see `AGENTS.md` and `engine/agent/manifest.fragments/README.md`). When no narrow child slice is active, `currentActivePlan` points back here.
 
 ## Goal
@@ -14,7 +14,7 @@ Clean breaking means the child plan removes or replaces the blocking MVP-era con
 
 Use this prompt when starting or resuming work under this master plan:
 
-> Drive `production-completion-master-plan-v1` from the composed `engine/agent/manifest.json` `aiOperableProductionLoop` data (maintain `engine/agent/manifest.fragments/*.json`, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`). Re-read the master plan, plan registry, composed manifest, and current child plan. Select one unsupported gap or active child slice. Implement clean breaking, official-best-practice production behavior through focused tests first; when touching CMake, vcpkg, SDL3, D3D12, Vulkan, Metal, Android, Apple, C++ tooling, or platform SDK behavior, cite current official documentation or Context7 evidence in the child plan. Update docs, skills, manifest, schemas, and static checks when behavior changes, use subagents only for bounded independent work that improves speed or confidence, keep the tree free of temporary files, dead code, dead files, and unnecessary folders, run focused validation during iteration, and close each coherent slice with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` plus `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` before a commit when committing. Do not switch gaps, weaken host gates, add compatibility shims, or claim readiness without validation evidence.
+> Drive `production-completion-master-plan-v1` from the composed `engine/agent/manifest.json` `aiOperableProductionLoop` data (maintain `engine/agent/manifest.fragments/*.json`, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`). Re-read the master plan, plan registry, composed manifest, and current active plan or phase. Select one unsupported gap or active phase/child slice. Implement clean breaking, official-best-practice production behavior through focused tests first; when touching CMake, vcpkg, SDL3, D3D12, Vulkan, Metal, Android, Apple, C++ tooling, or platform SDK behavior, cite current official documentation or Context7 evidence in the active plan validation evidence. Update docs, skills, manifest, schemas, and static checks when behavior changes, use subagents only for bounded independent work that improves speed or confidence, keep the tree free of temporary files, dead code, dead files, and unnecessary folders, and run focused validation during iteration. Close C++/runtime/build/toolchain/public-contract slices with one fresh `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`; run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` only when standalone build/install evidence is requested; use documented lightweight static checks for docs/agent-only slices. Do not switch gaps, weaken host gates, add compatibility shims, or claim readiness without validation evidence.
 
 ## 100% Completion Definition
 
@@ -64,7 +64,7 @@ Do **not** rely on bulk edits to this ledger or to completed dated child plans a
 - Keep `engine/core` independent from OS, GPU, asset-format, and editor code.
 - Keep graphics APIs behind renderer/RHI interfaces and platform specifics behind `engine/platform`.
 - Do not introduce third-party dependencies without updating dependency, legal, vcpkg, and notice records.
-- Production work under this master plan must create or update a dated child plan before implementation.
+- Production work under this master plan must create or update a dated capability/gap-cluster/milestone plan, or update the current active plan phase when no new boundary is needed, before implementation.
 - Child plans must record Goal, Context, Constraints, Done When, and validation evidence.
 - Foundation layout and build-system structure changes follow the same clean-break policy: update ADR/spec, CMake, validation needles, and skills together; do not keep deprecated directory layouts for documentation or tooling convenience.
 
@@ -72,7 +72,7 @@ Do **not** rely on bulk edits to this ledger or to completed dated child plans a
 
 Execute this master plan by burning down one composed `engine/agent/manifest.json` `aiOperableProductionLoop.unsupportedProductionGaps` row at a time. The selected gap stays in focus until it is implemented, host-gated with explicit evidence, or intentionally excluded from the 1.0 ready surface. Do not hop to another production gap merely because a small child slice completed.
 
-Executable production work still needs a dated capability/gap-cluster/milestone plan, but the plan scope should be capability-sized rather than function-sized. Use phases inside that plan for behavior/API/validation boundary decisions, such as a public contract plus tests, a package-visible proof, a benchmark/determinism gate, or a closeout synchronization pass. Avoid one-function child plans, broad multi-gap plans, and planning-only pointer churn.
+Executable production work still needs a dated capability/gap-cluster/milestone plan, but the plan scope should be capability-sized rather than function-sized. Plan width may be broader than PR/phase width: keep each phase and PR to one reviewable purpose with focused evidence. Use phases inside that plan for behavior/API/validation boundary decisions, such as a public contract plus tests, a package-visible proof, a benchmark/determinism gate, or a closeout synchronization pass. Avoid one-function child plans, broad multi-gap plans, and planning-only pointer churn.
 
 When a gap needs several tightly related phases, keep them under a gap-level burn-down sequence or a phase-gated milestone plan. Each phase still needs Goal, Context, Constraints, Done When, focused validation evidence, and honest ready-claim boundaries. A milestone or gap sequence must not broaden `ready` claims before the manifest gap row, docs, skills, schemas, and validation checks agree.
 
