@@ -195,6 +195,8 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
     desc.resources.push_back(
         FrameGraphResourceV1Desc{.name = "swapchain", .lifetime = FrameGraphResourceLifetime::imported});
     desc.resources.push_back(
+        FrameGraphResourceV1Desc{.name = "shadow_color", .lifetime = FrameGraphResourceLifetime::transient});
+    desc.resources.push_back(
         FrameGraphResourceV1Desc{.name = "shadow_depth", .lifetime = FrameGraphResourceLifetime::transient});
     desc.resources.push_back(
         FrameGraphResourceV1Desc{.name = "scene_color", .lifetime = FrameGraphResourceLifetime::transient});
@@ -204,7 +206,9 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
     desc.passes.push_back(FrameGraphPassV1Desc{
         .name = "shadow.directional.depth",
         .reads = {},
-        .writes = {FrameGraphResourceAccess{.resource = "shadow_depth",
+        .writes = {FrameGraphResourceAccess{.resource = "shadow_color",
+                                            .access = FrameGraphAccess::color_attachment_write},
+                   FrameGraphResourceAccess{.resource = "shadow_depth",
                                             .access = FrameGraphAccess::depth_attachment_write}},
     });
     desc.passes.push_back(FrameGraphPassV1Desc{
@@ -465,6 +469,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::resize(Extent2D extent) {
     recreate_shadow_textures();
     recreate_scene_textures();
     update_descriptors();
+    internal_textures_need_recreate_ = false;
     if (native_ui_overlay_ != nullptr) {
         native_ui_overlay_->resize(extent_);
     }
@@ -479,6 +484,13 @@ void RhiDirectionalShadowSmokeFrameRenderer::begin_frame() {
         throw std::logic_error("rhi shadow smoke renderer frame already active");
     }
 
+    if (internal_textures_need_recreate_) {
+        recreate_shadow_textures();
+        recreate_scene_textures();
+        update_descriptors();
+        internal_textures_need_recreate_ = false;
+    }
+
     pending_meshes_.clear();
     pending_overlay_sprites_.clear();
     swapchain_frame_ = {};
@@ -487,10 +499,6 @@ void RhiDirectionalShadowSmokeFrameRenderer::begin_frame() {
     try {
         swapchain_frame_ = device_->acquire_swapchain_frame(swapchain_);
         commands = device_->begin_command_list(rhi::QueueKind::graphics);
-        if (shadow_color_state_ != rhi::ResourceState::render_target) {
-            commands->transition_texture(shadow_color_texture_, shadow_color_state_, rhi::ResourceState::render_target);
-            shadow_color_state_ = rhi::ResourceState::render_target;
-        }
 
         commands_ = std::move(commands);
         frame_active_ = true;
@@ -543,8 +551,14 @@ void RhiDirectionalShadowSmokeFrameRenderer::draw_mesh(const MeshCommand& comman
 
 void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
     require_active_frame();
+    bool submitted_frame = false;
     try {
         std::vector<FrameGraphTextureBinding> texture_bindings{
+            FrameGraphTextureBinding{
+                .resource = "shadow_color",
+                .texture = shadow_color_texture_,
+                .current_state = shadow_color_state_,
+            },
             FrameGraphTextureBinding{
                 .resource = "shadow_depth",
                 .texture = shadow_depth_texture_,
@@ -572,6 +586,11 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             },
         };
         const std::vector<FrameGraphTexturePassTargetState> pass_target_states{
+            FrameGraphTexturePassTargetState{
+                .pass_name = "shadow.directional.depth",
+                .resource = "shadow_color",
+                .state = rhi::ResourceState::render_target,
+            },
             FrameGraphTexturePassTargetState{
                 .pass_name = "shadow.directional.depth",
                 .resource = "shadow_depth",
@@ -716,20 +735,31 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             throw std::runtime_error("rhi shadow smoke renderer frame graph rhi texture execution failed");
         }
 
+        auto next_shadow_color_state = shadow_color_state_;
+        auto next_shadow_depth_state = shadow_depth_state_;
+        auto next_scene_color_state = scene_color_state_;
+        auto next_scene_depth_state = scene_depth_state_;
         for (const auto& binding : texture_bindings) {
-            if (binding.resource == "shadow_depth") {
-                shadow_depth_state_ = binding.current_state;
+            if (binding.resource == "shadow_color") {
+                next_shadow_color_state = binding.current_state;
+            } else if (binding.resource == "shadow_depth") {
+                next_shadow_depth_state = binding.current_state;
             } else if (binding.resource == "scene_color") {
-                scene_color_state_ = binding.current_state;
+                next_scene_color_state = binding.current_state;
             } else if (binding.resource == "scene_depth") {
-                scene_depth_state_ = binding.current_state;
+                next_scene_depth_state = binding.current_state;
             }
         }
         commands_->present(swapchain_frame_);
-        swapchain_frame_presented_ = true;
         commands_->close();
 
         const auto fence = device_->submit(*commands_);
+        submitted_frame = true;
+        swapchain_frame_presented_ = true;
+        shadow_color_state_ = next_shadow_color_state;
+        shadow_depth_state_ = next_shadow_depth_state;
+        scene_color_state_ = next_scene_color_state;
+        scene_depth_state_ = next_scene_depth_state;
         if (wait_for_completion_) {
             device_->wait(fence);
         }
@@ -752,6 +782,9 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             ++stats_.native_ui_overlay_textured_draws;
         }
     } catch (...) {
+        if (!submitted_frame) {
+            internal_textures_need_recreate_ = true;
+        }
         release_acquired_swapchain_frame();
         commands_.reset();
         pending_meshes_.clear();

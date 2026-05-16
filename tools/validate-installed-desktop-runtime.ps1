@@ -211,7 +211,7 @@ function Get-ExpectedInstalledFramegraphBarrierExecutions {
         return [int64]0
     }
     if ($RequiresDirectionalShadow) {
-        return [int64](8 + (($ExpectedFrames - 1) * 6))
+        return [int64](9 + (($ExpectedFrames - 1) * 6))
     }
     if ($RequiresPostprocessDepthInput) {
         return [int64](1 + ($ExpectedFrames * 4))

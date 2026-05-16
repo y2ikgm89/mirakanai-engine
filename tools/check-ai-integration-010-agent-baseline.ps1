@@ -1238,6 +1238,9 @@ foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",
+    "Frame Graph Shadow Scratch Color Target-State Ownership v1",
+    "shadow_color",
+    "6 pass callbacks/15 barrier steps",
     "native aliasing barrier execution",
     "frame-graph-v1"
 )) {

@@ -1656,7 +1656,7 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transien
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTransientTextureAliasPlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_transient_texture_aliases" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiPostprocessFrameRenderer executor-owned scene-color/scene-depth target preparation plus scene pass callback recording and post-chain/final-state transition adoption" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiDirectionalShadowSmokeFrameRenderer scheduled shadow-depth/scene-color/scene-depth inter-pass plus writer-access-backed target-state and scene-depth/shadow-depth final-state transition adoption" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiDirectionalShadowSmokeFrameRenderer scheduled shadow-depth/scene-color/scene-depth inter-pass plus shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state and scene-depth/shadow-depth final-state transition adoption" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
@@ -1741,11 +1741,28 @@ Assert-ContainsText $rhiDirectionalShadowSource "build_frame_graph_texture_pass_
 Assert-ContainsText $rhiDirectionalShadowSource ".pass_target_accesses = shadow_smoke_frame_graph_target_accesses_" "RHI directional shadow frame graph pass target access execution"
 Assert-ContainsText $rhiDirectionalShadowSource "FrameGraphTexturePassTargetState" "RHI directional shadow frame graph pass target-state execution"
 Assert-ContainsText $rhiDirectionalShadowSource ".pass_target_states = pass_target_states" "RHI directional shadow frame graph pass target-state execution"
+Assert-ContainsText $rhiDirectionalShadowSource ".resource = `"shadow_color`"" "RHI directional shadow shadow_color pass target-state execution"
+Assert-ContainsText $rhiDirectionalShadowSource ".access = FrameGraphAccess::color_attachment_write" "RHI directional shadow shadow_color writer access"
+if ($rhiDirectionalShadowSource -notmatch '(?s)FrameGraphResourceAccess\{\s*\.resource\s*=\s*"shadow_color",\s*\.access\s*=\s*FrameGraphAccess::color_attachment_write\s*\}') {
+    Write-Error "RHI directional shadow shadow_color writer access must be a declared color_attachment_write row"
+}
+if ($rhiDirectionalShadowSource -notmatch '(?s)FrameGraphTexturePassTargetState\{\s*\.pass_name\s*=\s*"shadow\.directional\.depth",\s*\.resource\s*=\s*"shadow_color",\s*\.state\s*=\s*rhi::ResourceState::render_target,?\s*\}') {
+    Write-Error "RHI directional shadow shadow_color target-state row must prepare shadow.directional.depth as render_target"
+}
+Assert-DoesNotContainText $rhiDirectionalShadowSource "transition_texture(shadow_color_texture_" "RHI directional shadow shadow_color target-state ownership"
 Assert-ContainsText $rhiDirectionalShadowSource "FrameGraphTextureFinalState" "RHI directional shadow frame graph final-state execution"
 Assert-ContainsText $rhiDirectionalShadowSource ".final_states = final_states" "RHI directional shadow frame graph final-state execution"
 Assert-ContainsText $rhiDirectionalShadowSource "frame_graph_execution.barriers_recorded" "RHI directional shadow frame graph RHI execution"
 Assert-ContainsText $rhiDirectionalShadowSource "frame_graph_execution.pass_callbacks_invoked" "RHI directional shadow frame graph RHI execution"
 Assert-DoesNotContainText $rhiDirectionalShadowSource "pending_sprites_" "RHI directional shadow sprite submission"
+foreach ($renderingGuidancePath in @(
+    ".agents/skills/rendering-change/references/full-guidance.md",
+    ".claude/skills/gameengine-rendering/references/full-guidance.md"
+)) {
+    $renderingGuidanceText = Get-AgentSurfaceText $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "declared shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
+    Assert-DoesNotContainText $renderingGuidanceText "declared shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
+}
 foreach ($postprocessDepthGuidance in @(
     "docs/testing.md",
     "docs/rhi.md",
