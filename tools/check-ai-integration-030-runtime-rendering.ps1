@@ -1655,6 +1655,7 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transient Texture Alias Planning v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTransientTextureAliasPlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_transient_texture_aliases" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiFrameRenderer executor-owned primary_color pass timing" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiPostprocessFrameRenderer executor-owned scene-color/scene-depth target preparation plus scene pass callback recording and post-chain/final-state transition adoption" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiDirectionalShadowSmokeFrameRenderer scheduled shadow-depth/scene-color/scene-depth inter-pass plus shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state and scene-depth/shadow-depth final-state transition adoption" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiViewportSurface viewport_color render_target/copy_source/shader_read color-state transitions through execute_frame_graph_rhi_texture_schedule" "MK_renderer module purpose"
@@ -1714,6 +1715,7 @@ Assert-ContainsText $vulkanBackendSource "refresh_surface_probe_queue_family_sna
 Assert-ContainsText $vulkanBackendSource "same native instance handles" "Vulkan surface support implementation"
 $frameGraphRhiHeader = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/frame_graph_rhi.hpp"
 $frameGraphRhiSource = Get-AgentSurfaceText "engine/renderer/src/frame_graph_rhi.cpp"
+$rhiFrameRendererSource = Get-AgentSurfaceText "engine/renderer/src/rhi_frame_renderer.cpp"
 $rhiPostprocessSource = Get-AgentSurfaceText "engine/renderer/src/rhi_postprocess_frame_renderer.cpp"
 $rhiDirectionalShadowSource = Get-AgentSurfaceText "engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp"
 $rhiViewportSurfaceSource = Get-AgentSurfaceText "engine/renderer/src/rhi_viewport_surface.cpp"
@@ -1723,6 +1725,19 @@ Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTexturePassT
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state has no declared writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state disagrees with writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target access is declared more than once" "Frame graph RHI pass target access validation"
+Assert-ContainsText $rhiFrameRendererSource "execute_frame_graph_rhi_texture_schedule" "RHI frame renderer primary pass ownership"
+Assert-ContainsText $rhiFrameRendererSource "primary_color" "RHI frame renderer primary pass ownership"
+Assert-ContainsText $rhiFrameRendererSource "framegraph_passes_executed" "RHI frame renderer primary pass ownership"
+Assert-ContainsText $rhiFrameRendererSource "record_queued_mesh_command(draw.mesh, recorded_primary_stats)" "RHI frame renderer primary pass ownership"
+$beginFrameFunctionMatch = [regex]::Match(
+    $rhiFrameRendererSource,
+    '(?s)void RhiFrameRenderer::begin_frame\(\)(?<body>.*?)\r?\nvoid RhiFrameRenderer::draw_sprite'
+)
+if (-not $beginFrameFunctionMatch.Success) {
+    Write-Error "RhiFrameRenderer::begin_frame body could not be located for primary pass ownership checks"
+}
+$beginFrameFunctionBody = $beginFrameFunctionMatch.Groups["body"].Value
+Assert-DoesNotContainText $beginFrameFunctionBody "begin_render_pass" "RHI frame renderer primary pass ownership"
 Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`r`n    require_active_frame();`r`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
 Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`n    require_active_frame();`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
 Assert-ContainsText $rhiPostprocessSource "execute_frame_graph_rhi_texture_schedule" "RHI postprocess frame graph RHI execution"

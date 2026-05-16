@@ -1273,7 +1273,7 @@ MK_TEST("frame graph v1 callback execution converts thrown callbacks to diagnost
     MK_REQUIRE(result.diagnostics.size() == 1);
     MK_REQUIRE(result.diagnostics[0].code == mirakana::FrameGraphDiagnosticCode::invalid_pass);
     MK_REQUIRE(result.diagnostics[0].pass == "scene");
-    MK_REQUIRE(result.diagnostics[0].message == "frame graph pass callback threw an exception");
+    MK_REQUIRE(result.diagnostics[0].message == "frame graph pass callback threw an exception: renderer pass failed");
 }
 
 MK_TEST("frame graph v1 callback execution copies pass bindings before dispatch") {
@@ -4611,6 +4611,8 @@ MK_TEST("rhi frame renderer submits a texture frame through an rhi device") {
     MK_REQUIRE(renderer_stats.frames_finished == 1);
     MK_REQUIRE(renderer_stats.sprites_submitted == 1);
     MK_REQUIRE(renderer_stats.meshes_submitted == 1);
+    MK_REQUIRE(renderer_stats.framegraph_passes_executed == 1);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 0);
 
     const auto rhi_stats = device.stats();
     MK_REQUIRE(rhi_stats.command_lists_begun == 1);
@@ -4704,6 +4706,8 @@ MK_TEST("rhi frame renderer records native textured 2d sprites through an overla
     MK_REQUIRE(renderer_stats.native_ui_overlay_texture_binds == 1);
     MK_REQUIRE(renderer_stats.native_ui_overlay_draws == 1);
     MK_REQUIRE(renderer_stats.native_ui_overlay_textured_draws == 1);
+    MK_REQUIRE(renderer_stats.framegraph_passes_executed == 1);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 0);
 
     const auto rhi_stats = device.stats();
     MK_REQUIRE(rhi_stats.render_passes_begun == 1);
@@ -4942,10 +4946,16 @@ MK_TEST("rhi frame renderer replaces host owned depth texture after swapchain re
     renderer.resize(mirakana::Extent2D{.width = 128, .height = 72});
 
     bool rejected_stale_depth = false;
+    bool stale_depth_message_preserved = false;
     try {
         renderer.begin_frame();
-    } catch (const std::invalid_argument&) {
+        renderer.draw_mesh(mirakana::MeshCommand{});
+        renderer.end_frame();
+    } catch (const std::runtime_error& ex) {
         rejected_stale_depth = true;
+        stale_depth_message_preserved =
+            std::string_view{ex.what()}.find("rhi render pass depth attachment extent must match the color target") !=
+            std::string_view::npos;
     }
 
     renderer.replace_depth_texture(resized_depth);
@@ -4954,6 +4964,7 @@ MK_TEST("rhi frame renderer replaces host owned depth texture after swapchain re
     renderer.end_frame();
 
     MK_REQUIRE(rejected_stale_depth);
+    MK_REQUIRE(stale_depth_message_preserved);
     MK_REQUIRE(renderer.stats().frames_finished == 2);
     MK_REQUIRE(device.stats().swapchain_resizes == 1);
     MK_REQUIRE(device.stats().render_passes_begun == 2);
@@ -5057,6 +5068,7 @@ MK_TEST("rhi frame renderer clears active swapchain frame when end frame submit 
     MK_REQUIRE(submit_failed);
     MK_REQUIRE(!renderer.frame_active());
     MK_REQUIRE(renderer.stats().frames_finished == 0);
+    MK_REQUIRE(renderer.stats().framegraph_passes_executed == 0);
 
     device.throw_on_submit = false;
     renderer.begin_frame();
@@ -5064,6 +5076,7 @@ MK_TEST("rhi frame renderer clears active swapchain frame when end frame submit 
 
     MK_REQUIRE(!renderer.frame_active());
     MK_REQUIRE(renderer.stats().frames_finished == 1);
+    MK_REQUIRE(renderer.stats().framegraph_passes_executed == 1);
 }
 
 MK_TEST("rhi frame renderer accepts recreated graphics pipelines between frames") {
@@ -5452,7 +5465,7 @@ MK_TEST("rhi frame renderer rejects material descriptor sets from another rhi de
     MK_REQUIRE(render_device.stats().draw_calls == 0);
 }
 
-MK_TEST("rhi frame renderer releases acquired swapchain frames when begin fails") {
+MK_TEST("rhi frame renderer releases acquired swapchain frames when primary pass execution fails") {
     mirakana::rhi::NullRhiDevice device;
     const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
         .extent = mirakana::rhi::Extent2D{.width = 32, .height = 32},
@@ -5471,17 +5484,26 @@ MK_TEST("rhi frame renderer releases acquired swapchain frames when begin fails"
         .wait_for_completion = true,
     });
 
-    bool rejected_begin = false;
+    bool rejected_frame = false;
+    bool failure_message_preserved = false;
     try {
         renderer.begin_frame();
-    } catch (const std::invalid_argument&) {
-        rejected_begin = true;
+        renderer.draw_mesh(mirakana::MeshCommand{});
+        renderer.end_frame();
+    } catch (const std::runtime_error& ex) {
+        rejected_frame = true;
+        failure_message_preserved =
+            std::string_view{ex.what()}.find("rhi graphics pipeline handle must belong to this device") !=
+            std::string_view::npos;
     }
 
-    MK_REQUIRE(rejected_begin);
+    MK_REQUIRE(rejected_frame);
+    MK_REQUIRE(failure_message_preserved);
     MK_REQUIRE(!renderer.frame_active());
     MK_REQUIRE(device.stats().swapchain_frames_acquired == 1);
     MK_REQUIRE(device.stats().swapchain_frames_released == 1);
+    MK_REQUIRE(renderer.stats().frames_finished == 0);
+    MK_REQUIRE(renderer.stats().framegraph_passes_executed == 0);
 
     device.resize_swapchain(swapchain, mirakana::rhi::Extent2D{.width = 40, .height = 40});
     MK_REQUIRE(device.stats().swapchain_resizes == 1);
@@ -5489,6 +5511,99 @@ MK_TEST("rhi frame renderer releases acquired swapchain frames when begin fails"
     const auto frame = device.acquire_swapchain_frame(swapchain);
     MK_REQUIRE(frame.value != 0);
     device.release_swapchain_frame(frame);
+}
+
+MK_TEST("rhi frame renderer records gpu morph counters only after primary pass success") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto target = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    const auto primary_pipeline = create_renderer_test_pipeline(device, mirakana::rhi::Format::rgba8_unorm);
+    const auto material_layout = device.create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{});
+    const auto morph_layout = device.create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = 0,
+            .type = mirakana::rhi::DescriptorType::storage_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::vertex,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = 1,
+            .type = mirakana::rhi::DescriptorType::uniform_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::vertex,
+        },
+    }});
+    const auto material_set = device.allocate_descriptor_set(material_layout);
+    const auto morph_set = device.allocate_descriptor_set(morph_layout);
+    const auto morph_pipeline_layout = device.create_pipeline_layout(mirakana::rhi::PipelineLayoutDesc{
+        .descriptor_sets = {material_layout, morph_layout},
+        .push_constant_bytes = 0,
+    });
+    const auto vertex_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 36, .usage = mirakana::rhi::BufferUsage::vertex | mirakana::rhi::BufferUsage::copy_destination});
+    const auto index_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 12, .usage = mirakana::rhi::BufferUsage::index | mirakana::rhi::BufferUsage::copy_destination});
+    const auto morph_delta_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 36, .usage = mirakana::rhi::BufferUsage::storage | mirakana::rhi::BufferUsage::copy_destination});
+    const auto morph_weight_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 256,
+        .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_destination});
+
+    mirakana::RhiFrameRenderer renderer(mirakana::RhiFrameRendererDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 32, .height = 32},
+        .color_texture = target,
+        .swapchain = mirakana::rhi::SwapchainHandle{},
+        .graphics_pipeline = primary_pipeline,
+        .wait_for_completion = true,
+        .morph_graphics_pipeline = mirakana::rhi::GraphicsPipelineHandle{999},
+    });
+
+    bool rejected_frame = false;
+    try {
+        renderer.begin_frame();
+        renderer.draw_mesh(mirakana::MeshCommand{
+            .mesh_binding = mirakana::MeshGpuBinding{.vertex_buffer = vertex_buffer,
+                                                     .index_buffer = index_buffer,
+                                                     .vertex_count = 3,
+                                                     .index_count = 3,
+                                                     .vertex_offset = 0,
+                                                     .index_offset = 0,
+                                                     .vertex_stride = 12,
+                                                     .index_format = mirakana::rhi::IndexFormat::uint32,
+                                                     .owner_device = &device},
+            .material_binding = mirakana::MaterialGpuBinding{.pipeline_layout = morph_pipeline_layout,
+                                                             .descriptor_set = material_set,
+                                                             .descriptor_set_index = 0,
+                                                             .owner_device = &device},
+            .gpu_morphing = true,
+            .morph_mesh =
+                mirakana::MorphMeshGpuBinding{
+                    .position_delta_buffer = morph_delta_buffer,
+                    .morph_weight_buffer = morph_weight_buffer,
+                    .morph_descriptor_set = morph_set,
+                    .vertex_count = 3,
+                    .target_count = 1,
+                    .position_delta_bytes = 36,
+                    .morph_weight_uniform_allocation_bytes = 256,
+                    .owner_device = &device,
+                },
+        });
+        renderer.end_frame();
+    } catch (const std::runtime_error&) {
+        rejected_frame = true;
+    }
+
+    const auto renderer_stats = renderer.stats();
+    MK_REQUIRE(rejected_frame);
+    MK_REQUIRE(renderer_stats.meshes_submitted == 1);
+    MK_REQUIRE(renderer_stats.frames_finished == 0);
+    MK_REQUIRE(renderer_stats.gpu_morph_draws == 0);
+    MK_REQUIRE(renderer_stats.morph_descriptor_binds == 0);
+    MK_REQUIRE(renderer_stats.framegraph_passes_executed == 0);
 }
 
 MK_TEST("rhi frame renderer releases acquired swapchain frame on destruction") {

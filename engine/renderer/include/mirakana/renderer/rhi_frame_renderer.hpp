@@ -55,8 +55,17 @@ class RhiFrameRenderer final : public IRenderer {
     void end_frame() override;
 
   private:
+    enum class QueuedPrimaryDrawKind { sprite, mesh };
+
+    struct QueuedPrimaryDraw {
+        QueuedPrimaryDrawKind kind{QueuedPrimaryDrawKind::sprite};
+        MeshCommand mesh;
+    };
+
     void require_active_frame() const;
     void release_acquired_swapchain_frame() noexcept;
+    [[nodiscard]] rhi::RenderPassDesc primary_render_pass_desc() const;
+    void record_queued_mesh_command(const MeshCommand& command, RendererStats& recorded_stats);
 
     rhi::IRhiDevice* device_{nullptr};
     Extent2D extent_;
@@ -73,6 +82,7 @@ class RhiFrameRenderer final : public IRenderer {
     RendererStats stats_{};
     std::unique_ptr<rhi::IRhiCommandList> commands_;
     std::unique_ptr<RhiNativeUiOverlay> native_sprite_overlay_;
+    std::vector<QueuedPrimaryDraw> queued_primary_draws_;
     std::vector<SpriteCommand> pending_native_sprite_overlay_sprites_;
     bool frame_active_{false};
     bool skinned_pipeline_bound_{false};
