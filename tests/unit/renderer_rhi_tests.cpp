@@ -15,6 +15,7 @@
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 
+#include <algorithm>
 #include <array>
 #include <limits>
 #include <memory>
