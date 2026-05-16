@@ -1651,6 +1651,8 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTexturePas
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "pass_target_state_barriers_recorded" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTextureFinalState" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "final_state_barriers_recorded" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "aliasing_barriers_recorded" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "automatic aliasing-barrier insertion" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_rhi_texture_schedule" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transient Texture Alias Planning v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTransientTextureAliasPlan" "MK_renderer module purpose"
@@ -1884,7 +1886,8 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "same alias-group placed pairs" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "same-offset placed textures" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "after ``ExecuteCommandLists`` submits work rather than after fence completion" $renderingGuidancePath
-    Assert-ContainsText $renderingGuidanceText "insert aliasing barriers automatically into ``execute_frame_graph_rhi_texture_schedule``" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "automatic aliasing barrier before the first pass" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "aliasing_barriers_recorded" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "wildcard/null public aliasing barriers" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "data inheritance/content preservation" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText 'engine/renderer/src/rhi_viewport_surface.cpp` must not call `transition_texture(' $renderingGuidancePath
@@ -1908,7 +1911,8 @@ foreach ($renderingAuditorPath in @(
     Assert-ContainsText $renderingAuditorText "same-offset placed textures" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "ExecuteCommandLists" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "submits work rather than after fence completion" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "automatic executor insertion" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "automatic executor aliasing barriers" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "aliasing_barriers_recorded" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "wildcard/null public aliasing barriers" $renderingAuditorPath
     Assert-DoesNotContainText $renderingAuditorText "treating the current executor as alias-aware" $renderingAuditorPath
 }
