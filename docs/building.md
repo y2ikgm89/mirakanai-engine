@@ -24,6 +24,8 @@ On Windows, the repository CMake and CTest wrappers launch CMake and pass MSBuil
 
 Checked-in CMake configure/build presets still inherit `normalized-configure-environment` / `normalized-build-environment` so preset-defined environments remain explicit and verifiable. On Windows Visual Studio generator hosts, these presets inherit `PATH` and unset `Path`, which keeps raw `cmake --preset ...` configure/build behavior aligned with CMake Presets environment support; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only when raw `cmake` support itself is required.
 
+MSVC linkable targets use `/INCREMENTAL:NO` through `MK_apply_common_target_options`. This keeps `tools/build.ps1` and `tools/validate.ps1` independent of `.ilk` incremental-link state and avoids Debug relink failures where `link.exe` cannot open a newly created or scanned `.exe` / `.pdb`.
+
 ## Local worktree cleanup (disk space)
 
 You may delete **`out/`** (preset build trees) and other paths listed in `.gitignore` that are clearly regenerated outputs (for example Android Gradle/CXX dirs under `platform/android/`, `*.log`, `imgui.ini`). **`external/vcpkg` is not disposable cache**: it is the gitignored Microsoft **vcpkg tool checkout** referenced by `CMAKE_TOOLCHAIN_FILE` in `CMakePresets.json`. Removing it breaks configure until you run `git clone https://github.com/microsoft/vcpkg.git external/vcpkg`, bootstrap `vcpkg.exe`, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1`. Optional: remove **`vcpkg_installed/`** only when you intend to rerun `tools/bootstrap-deps.ps1` afterward.

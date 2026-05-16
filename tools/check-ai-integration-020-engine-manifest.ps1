@@ -1775,7 +1775,11 @@ Assert-ContainsText $recommendedText "make_runtime_package_streaming_frame_graph
 Assert-ContainsText $recommendedText "automatic aliasing-barrier insertion" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiFrameRenderer primary_color" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiViewportSurface viewport.clear" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "render pass envelope ownership" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "remaining raw-primary/viewport-clear render pass envelopes are complete" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {

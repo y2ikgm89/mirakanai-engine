@@ -1695,9 +1695,12 @@ foreach ($packageStreamingFrameGraphGuidance in @(
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "IRhiCommandList::texture_aliasing_barrier" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiStats::texture_aliasing_barriers" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiFrameRenderer executor-owned primary_color pass timing" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "primary_color pass timing and render pass envelope" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiPostprocessFrameRenderer executor-owned scene-color/scene-depth target preparation plus executor-owned scene/postprocess-chain render pass envelopes, pass-body callback recording, and post-chain/final-state transition adoption" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiDirectionalShadowSmokeFrameRenderer scheduled shadow-depth/scene-color/scene-depth inter-pass plus shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state, executor-owned shadow-depth/scene-receiver/postprocess render pass envelope, and scene-depth/shadow-depth final-state transition adoption" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiViewportSurface viewport_color render_target/copy_source/shader_read color-state transitions through execute_frame_graph_rhi_texture_schedule" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiViewportSurface viewport_color render_target/copy_source/shader_read color-state transitions through execute_frame_graph_rhi_texture_schedule plus executor-owned viewport.clear render pass envelope" "MK_renderer module purpose"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "remaining raw-primary/viewport-clear render pass envelopes are complete" "recommended next plan reason"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
@@ -1853,6 +1856,10 @@ Assert-ContainsText $rhiFrameRendererSource "execute_frame_graph_rhi_texture_sch
 Assert-ContainsText $rhiFrameRendererSource "primary_color" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "framegraph_passes_executed" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "record_queued_mesh_command(draw.mesh, recorded_primary_stats)" "RHI frame renderer primary pass ownership"
+Assert-ContainsText $rhiFrameRendererSource "FrameGraphRhiRenderPassDesc" "RHI frame renderer primary render pass envelope"
+Assert-ContainsText $rhiFrameRendererSource ".render_passes = render_passes" "RHI frame renderer primary render pass envelope"
+Assert-DoesNotContainText $rhiFrameRendererSource "commands_->begin_render_pass" "RHI frame renderer primary render pass envelope"
+Assert-DoesNotContainText $rhiFrameRendererSource "commands_->end_render_pass" "RHI frame renderer primary render pass envelope"
 $beginFrameFunctionMatch = [regex]::Match(
     $rhiFrameRendererSource,
     '(?s)void RhiFrameRenderer::begin_frame\(\)(?<body>.*?)\r?\nvoid RhiFrameRenderer::draw_sprite'
@@ -1905,10 +1912,14 @@ Assert-ContainsText $rhiDirectionalShadowSource "frame_graph_execution.barriers_
 Assert-ContainsText $rhiDirectionalShadowSource "frame_graph_execution.pass_callbacks_invoked" "RHI directional shadow frame graph RHI execution"
 Assert-DoesNotContainText $rhiDirectionalShadowSource "pending_sprites_" "RHI directional shadow sprite submission"
 Assert-ContainsText $rhiViewportSurfaceSource "execute_frame_graph_rhi_texture_schedule" "RHI viewport surface frame graph color state execution"
+Assert-ContainsText $rhiViewportSurfaceSource "FrameGraphRhiRenderPassDesc" "RHI viewport surface frame graph render pass envelope"
+Assert-ContainsText $rhiViewportSurfaceSource ".render_passes = std::span<const FrameGraphRhiRenderPassDesc>{render_passes}" "RHI viewport surface frame graph render pass envelope"
+Assert-DoesNotContainText $rhiViewportSurfaceSource "commands->begin_render_pass" "RHI viewport surface frame graph render pass envelope"
+Assert-DoesNotContainText $rhiViewportSurfaceSource "commands->end_render_pass" "RHI viewport surface frame graph render pass envelope"
 Assert-ContainsText $rhiViewportSurfaceSource "FrameGraphTextureFinalState" "RHI viewport surface frame graph color final state execution"
 Assert-ContainsText $rhiViewportSurfaceSource ".resource = `"viewport_color`"" "RHI viewport surface frame graph color final state execution"
 Assert-ContainsText $rhiViewportSurfaceSource ".final_states = std::span<const FrameGraphTextureFinalState>{final_states}" "RHI viewport surface frame graph color final state execution"
-Assert-ContainsText $rhiViewportSurfaceSource "color_state_ = execute_viewport_color_state_transition" "RHI viewport surface recorded color state adoption"
+Assert-ContainsText $rhiViewportSurfaceSource "color_state_ = texture_bindings.front().current_state" "RHI viewport surface recorded color state adoption"
 Assert-DoesNotContainText $rhiViewportSurfaceSource "transition_texture(" "RHI viewport surface high-level color transition ownership"
 foreach ($renderingGuidancePath in @(
     ".agents/skills/rendering-change/references/full-guidance.md",
@@ -1931,6 +1942,9 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "aliasing_barriers_recorded" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "wildcard/null public aliasing barriers" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "data inheritance/content preservation" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "FrameGraphRhiRenderPassDesc`` envelope around the ``primary_color`` callback" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "viewport.clear`` render pass envelopes" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "direct render pass begin/end APIs" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText 'engine/renderer/src/rhi_viewport_surface.cpp` must not call `transition_texture(' $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "declared shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "Treat those bindings as acquisition output only until a separate alias-aware executor state handoff/barrier slice exists" $renderingGuidancePath
@@ -1955,6 +1969,10 @@ foreach ($renderingAuditorPath in @(
     Assert-ContainsText $renderingAuditorText "automatic executor aliasing barriers" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "aliasing_barriers_recorded" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "wildcard/null public aliasing barriers" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "primary_color" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "render pass envelope" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "viewport.clear" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "direct render pass begin/end" $renderingAuditorPath
     Assert-DoesNotContainText $renderingAuditorText "treating the current executor as alias-aware" $renderingAuditorPath
 }
 foreach ($postprocessDepthGuidance in @(

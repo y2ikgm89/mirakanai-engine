@@ -399,13 +399,34 @@ void RhiFrameRenderer::end_frame() {
         if (schedule.empty()) {
             throw std::runtime_error("rhi frame renderer primary frame graph schedule failed");
         }
+        const std::vector<FrameGraphRhiRenderPassDesc> render_passes{
+            FrameGraphRhiRenderPassDesc{
+                .pass_name = "primary_color",
+                .color =
+                    FrameGraphRhiRenderPassColorAttachment{
+                        .resource = {},
+                        .texture = color_texture_,
+                        .swapchain_frame = swapchain_frame_,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
+                                                            .green = clear_color_.g,
+                                                            .blue = clear_color_.b,
+                                                            .alpha = clear_color_.a},
+                    },
+                .depth =
+                    FrameGraphRhiRenderPassDepthAttachment{
+                        .resource = {},
+                        .texture = depth_texture_,
+                    },
+            },
+        };
         RendererStats recorded_primary_stats{};
         const std::vector<FrameGraphPassExecutionBinding> pass_callbacks{
             FrameGraphPassExecutionBinding{
                 .pass_name = "primary_color",
                 .callback =
                     [&overlay_draw, &recorded_primary_stats, this](std::string_view) {
-                        commands_->begin_render_pass(primary_render_pass_desc());
                         commands_->bind_graphics_pipeline(graphics_pipeline_);
                         skinned_pipeline_bound_ = false;
                         morph_pipeline_bound_ = false;
@@ -427,7 +448,6 @@ void RhiFrameRenderer::end_frame() {
                         if (overlay_draw.vertex_count != 0) {
                             native_sprite_overlay_->record_draw(overlay_draw, *commands_);
                         }
-                        commands_->end_render_pass();
                         return FrameGraphExecutionCallbackResult{};
                     },
             },
@@ -439,6 +459,7 @@ void RhiFrameRenderer::end_frame() {
             .pass_callbacks = pass_callbacks,
             .pass_target_accesses = {},
             .pass_target_states = {},
+            .render_passes = render_passes,
             .final_states = {},
         });
         if (!frame_graph_execution.succeeded()) {
@@ -491,26 +512,6 @@ void RhiFrameRenderer::end_frame() {
         frame_active_ = false;
         throw;
     }
-}
-
-mirakana::rhi::RenderPassDesc RhiFrameRenderer::primary_render_pass_desc() const {
-    rhi::RenderPassDesc render_pass{
-        .color =
-            rhi::RenderPassColorAttachment{
-                .texture = color_texture_,
-                .load_action = rhi::LoadAction::clear,
-                .store_action = rhi::StoreAction::store,
-                .swapchain_frame = swapchain_frame_,
-                .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
-                                                    .green = clear_color_.g,
-                                                    .blue = clear_color_.b,
-                                                    .alpha = clear_color_.a},
-            },
-    };
-    if (depth_texture_.value != 0) {
-        render_pass.depth.texture = depth_texture_;
-    }
-    return render_pass;
 }
 
 void RhiFrameRenderer::record_queued_mesh_command(const MeshCommand& command, RendererStats& recorded_stats) {

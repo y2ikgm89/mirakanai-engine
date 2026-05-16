@@ -514,6 +514,8 @@ foreach ($needle in @(
     "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
+    "Frame Graph Remaining Render Pass Envelopes v1",
+    "remaining raw-primary/viewport-clear render pass envelopes are complete",
     "frame-graph-v1"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {

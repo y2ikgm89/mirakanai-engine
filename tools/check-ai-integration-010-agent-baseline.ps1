@@ -225,6 +225,25 @@ Assert-ContainsText $buildingContent "normalized-build-environment" "docs/buildi
 Assert-ContainsText $buildingContent 'MSBuild a single `Path`' "docs/building.md"
 Assert-ContainsText $buildingContent "tools/cmake.ps1 --preset dev" "docs/building.md"
 Assert-ContainsText $buildingContent "tools/ctest.ps1 --preset dev --output-on-failure" "docs/building.md"
+Assert-ContainsText $agentsContent "/INCREMENTAL:NO" "AGENTS.md"
+Assert-ContainsText $buildingContent "/INCREMENTAL:NO" "docs/building.md"
+$cmakeListsContent = Get-AgentSurfaceText "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'get_target_property(MK_TARGET_TYPE ${target_name} TYPE)' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "EXECUTABLE"' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "SHARED_LIBRARY"' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "MODULE_LIBRARY"' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'target_link_options(${target_name} PRIVATE /INCREMENTAL:NO)' "CMakeLists.txt"
+foreach ($cmakeSkillPath in @(
+    ".agents/skills/cmake-build-system/SKILL.md",
+    ".claude/skills/gameengine-cmake-build-system/SKILL.md",
+    ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
+)) {
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/INCREMENTAL:NO" $cmakeSkillPath
+}
+foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/build-fixer.md")) {
+    Assert-ContainsText (Get-AgentSurfaceText $buildFixerPath) "LinkIncremental=false" $buildFixerPath
+}
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "/INCREMENTAL:NO" "engine/agent/manifest.json"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-MaxFiles 1" "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/cmake.ps1") 'Invoke-CheckedCommand $tools.CMake @Arguments' "tools/cmake.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/ctest.ps1") 'Invoke-CheckedCommand $tools.CTest @Arguments' "tools/ctest.ps1"
