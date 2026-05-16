@@ -125,7 +125,7 @@ For this repository, `AGENTS.md` Git Workflow is the intended workspace policy. 
 
 `tools/check-agents.ps1` validates Cursor skill frontmatter and enforces thin-pointer names against Claude. New shared topics require updating `claudeToCodexSkillMap` in that script; see **Repository consistency checklist** in `docs/workflows.md`.
 
-Tracked `.clangd` sets `CompileFlags.CompilationDatabase` to `out/build/dev`; run `cmake --preset dev` first so clangd and editors resolve `mirakana/...` includes.
+Tracked `.clangd` sets `CompileFlags.CompilationDatabase` to `out/build/dev`; run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` first so clangd and editors resolve `mirakana/...` includes.
 
 ## Surface Parity
 

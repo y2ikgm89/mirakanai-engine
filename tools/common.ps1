@@ -222,6 +222,40 @@ function Find-CommandOnCombinedPath {
     return $null
 }
 
+function ConvertTo-ChildProcessPathValue {
+    $pathValue = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    } else {
+        $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    }
+
+    foreach ($pathKey in @("Path", "PATH")) {
+        $value = [Environment]::GetEnvironmentVariable($pathKey, "Process")
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        foreach ($entry in $value.Split([IO.Path]::PathSeparator)) {
+            if ([string]::IsNullOrWhiteSpace($entry)) {
+                continue
+            }
+
+            $trimmed = $entry.Trim()
+            if ($seen.Add($trimmed)) {
+                $pathValue.Add($trimmed) | Out-Null
+            }
+        }
+    }
+
+    if ($pathValue.Count -eq 0) {
+        return $null
+    }
+
+    return ($pathValue -join [IO.Path]::PathSeparator)
+}
+
 function Get-FirstExistingFile {
     param([Parameter(Mandatory = $true)]$Paths)
 
@@ -784,13 +818,7 @@ function Get-NormalizedProcessEnvironment {
     } else {
         "PATH"
     }
-    $pathValue = [Environment]::GetEnvironmentVariable($pathKey, "Process")
-    if ($null -eq $pathValue) {
-        $pathValue = [Environment]::GetEnvironmentVariable("Path", "Process")
-    }
-    if ($null -eq $pathValue) {
-        $pathValue = [Environment]::GetEnvironmentVariable("PATH", "Process")
-    }
+    $pathValue = ConvertTo-ChildProcessPathValue
     if ($null -ne $pathValue -and $seen.Add($pathKey)) {
         $entries.Add([pscustomobject]@{
             Key = $pathKey

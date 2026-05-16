@@ -127,19 +127,21 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1
 ```
 
-Direct CMake loop, when the active shell has CMake on `PATH` and, on Windows, one effective `PATH` / `Path` key. Use Visual Studio Developer PowerShell/Command Prompt or repository wrappers when an ordinary shell reports duplicate path casing. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` when a task specifically requires direct `cmake` commands instead of repository wrappers:
+Focused CMake/CTest loop through repository wrappers. This is the supported local path because it resolves the official tools and normalizes the child-process environment before CMake, MSBuild, or CTest starts:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake
-cmake --preset dev
-cmake --build --preset dev
-ctest --preset dev --output-on-failure
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure
 ```
 
-In a manual linked worktree, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` before the first configure. It verifies `.worktrees/`, `.claude/worktrees/`, `external/`, and `vcpkg_installed/` are ignored, then links an existing local `external/vcpkg` checkout so CMake presets keep using the required vcpkg toolchain path without configure-time package install or a duplicate vcpkg clone.
+Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only when a task specifically requires raw `cmake --preset ...` commands instead of repository wrappers. On Windows Visual Studio generator hosts, checked-in presets normalize the configure/build environment by inheriting `PATH` and unsetting `Path`; `RequireDirectCMake` verifies raw `cmake` discovery without treating uppercase-only `PATH` as a blocker.
 
-Checked-in CMake configure/build presets inherit `normalized-configure-environment` / `normalized-build-environment`, which expose a single child `PATH` from parent `PATH`/`Path` values and unset mixed-case preset `Path`. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` enforces that every visible configure/build preset inherits the matching hidden preset, reports parent process path casing, and reports linked-worktree `external/vcpkg` readiness; add `-RequireVcpkgToolchain` when a selected vcpkg-backed lane must fail fast on a missing tool checkout. Repository `tools/*.ps1` wrappers use the resolved CMake/CTest tools reported by `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` and normalize the child-process environment before launching build tools.
-`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1` builds the `dev` preset and then invokes `ctest --preset dev --output-on-failure --timeout 300` directly instead of routing tests through the generator-specific `RUN_TESTS` target, keeping the scripted lane on the same CTest preset path documented above.
+In a manual linked worktree, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` before the first configure. It verifies `.worktrees/`, `.claude/worktrees/`, `external/`, and `vcpkg_installed/` are ignored, then links an existing local `external/vcpkg` checkout and, when available, an existing local `vcpkg_installed/` package tree so CMake presets keep using the required vcpkg toolchain and installed packages without configure-time package install or duplicate vcpkg clones.
+
+Checked-in CMake configure/build presets inherit `normalized-configure-environment` / `normalized-build-environment`, which keep preset-defined environments explicit and verifiable. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` enforces that every visible configure/build preset inherits the matching hidden preset, reports parent process path casing, and reports linked-worktree `external/vcpkg` / `vcpkg_installed` readiness; add `-RequireVcpkgToolchain` when a selected vcpkg-backed lane must fail fast on a missing tool checkout. Repository `tools/*.ps1` wrappers use the resolved CMake/CTest tools reported by `check-toolchain.ps1` and normalize to one child `Path` on Windows (`PATH` elsewhere) before launching build tools, while the presets provide the raw `cmake --preset ...` environment normalization.
+`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1` builds the `dev` preset and then invokes the resolved CTest tool with `--preset dev --output-on-failure --timeout 300` instead of routing tests through the generator-specific `RUN_TESTS` target, keeping the scripted lane on the same CTest preset path documented above.
 
 Format checks should use repository wrappers for repeatability:
 
