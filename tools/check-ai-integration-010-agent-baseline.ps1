@@ -1275,6 +1275,9 @@ $physicsJoltPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-09-p
 $physicsCloseoutPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
 Assert-ContainsText $masterPlanText "Gap Burn-down Execution Strategy" "production completion master plan"
 Assert-ContainsText $masterPlanText "Execute this master plan by burning down one" "production completion master plan"
+foreach ($masterPlanCadenceNeedle in @("dated capability/gap-cluster/milestone plan", "Plan width may be broader than PR/phase width", "one reviewable purpose", 'one fresh `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`', 'tools/build.ps1` only when standalone build/install evidence is requested', "lightweight static checks for docs/agent-only slices")) {
+    Assert-ContainsText $masterPlanText $masterPlanCadenceNeedle "production completion master plan"
+}
 Assert-ContainsText $masterPlanText "physics-1-0-collision-system-closeout-v1" "production completion master plan"
 Assert-ContainsText $planRegistryText "Active gap burn-down" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "physics-jolt-adapter-gate-v1" "docs/superpowers/plans/README.md"
