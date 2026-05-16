@@ -83,6 +83,7 @@ Compiler, OS, and SDK-provided macros such as `_WIN32`, `__APPLE__`, and `__LINE
 - C++ module sources must be added through CMake `FILE_SET CXX_MODULES`, not ad hoc compiler flags.
 - `import std;` is allowed only when the active CMake generator/toolchain reports C++23 standard-library module support. Keep public installed SDK headers available until module export/install design is accepted.
 - C++23-only standard-library features are allowed after local validation. Encapsulate compiler-specific workarounds in implementation files or backend modules, not public API compatibility shims.
+- For heap-owned objects, prefer `std::make_unique<T>(...)` and return/convert the resulting `std::unique_ptr` to interface ownership as needed. Use direct `new` only in a narrow factory where access control prevents `make_unique` from calling a private constructor, and keep that allocation immediately wrapped in `std::unique_ptr`.
 - Public include directories must provide both build-tree and install-tree interfaces:
 
 ```cmake

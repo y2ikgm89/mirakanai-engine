@@ -1751,7 +1751,7 @@ ComputePipelineHandle NullRhiDevice::create_compute_pipeline(const ComputePipeli
 
 std::unique_ptr<IRhiCommandList> NullRhiDevice::begin_command_list(QueueKind queue) {
     ++stats_.command_lists_begun;
-    return std::unique_ptr<IRhiCommandList>(new NullRhiCommandList(*this, queue));
+    return std::make_unique<NullRhiCommandList>(*this, queue);
 }
 
 FenceValue NullRhiDevice::submit(IRhiCommandList& commands) {
