@@ -195,6 +195,29 @@ for ($index = 0; $index -lt ($SmokeArgs.Count - 1); ++$index) {
         $expectedSmokeFrames = $parsedMaxFrames
     }
 }
+function Get-ExpectedInstalledFramegraphBarrierExecutions {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ExpectedFrames,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$RequiresDirectionalShadow,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$RequiresPostprocessDepthInput
+    )
+
+    if ($ExpectedFrames -le 0) {
+        return [int64]0
+    }
+    if ($RequiresDirectionalShadow) {
+        return [int64](8 + (($ExpectedFrames - 1) * 6))
+    }
+    if ($RequiresPostprocessDepthInput) {
+        return [int64]($ExpectedFrames * 3)
+    }
+    return [int64]$ExpectedFrames
+}
 if ($requiresPlayable3dSlice) {
     $requiresRendererQualityGates = $true
     $requiresPackageStreamingSafePoint = $true
@@ -682,15 +705,11 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         Write-Error "Installed desktop runtime smoke status line did not prove ready postprocess_status for a ready scene GPU path."
     }
     $expectedFramegraphPasses = if ($requiresDirectionalShadow) { 3 } else { 2 }
-    $expectedFramegraphBarrierSteps = if ($requiresDirectionalShadow) {
-        5
-    } elseif ($requiresPostprocessDepthInput) {
-        3
-    } else {
-        1
-    }
     $expectedFramegraphPassExecutions = $expectedSmokeFrames * $expectedFramegraphPasses
-    $expectedFramegraphBarrierExecutions = $expectedSmokeFrames * $expectedFramegraphBarrierSteps
+    $expectedFramegraphBarrierExecutions = Get-ExpectedInstalledFramegraphBarrierExecutions `
+        -ExpectedFrames $expectedSmokeFrames `
+        -RequiresDirectionalShadow $requiresDirectionalShadow `
+        -RequiresPostprocessDepthInput $requiresPostprocessDepthInput
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes=$expectedFramegraphPasses\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove the frame graph pass count."
     }
@@ -814,13 +833,10 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
 }
 if ($requiresRendererQualityGates) {
     $expectedRendererQualityFramegraphPasses = if ($requiresDirectionalShadow) { "3" } else { "2" }
-    $expectedRendererQualityFramegraphBarrierSteps = if ($requiresDirectionalShadow) {
-        "5"
-    } elseif ($requiresPostprocessDepthInput) {
-        "3"
-    } else {
-        "1"
-    }
+    $expectedRendererQualityFramegraphBarrierSteps = [string](Get-ExpectedInstalledFramegraphBarrierExecutions `
+            -ExpectedFrames $expectedSmokeFrames `
+            -RequiresDirectionalShadow $requiresDirectionalShadow `
+            -RequiresPostprocessDepthInput $requiresPostprocessDepthInput)
     $expectedRendererQualityFields = @{
         "renderer_quality_status" = "ready"
         "renderer_quality_ready" = "1"

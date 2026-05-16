@@ -630,32 +630,16 @@ void RhiPostprocessFrameRenderer::end_frame() {
                 .state = rhi::ResourceState::depth_write,
             });
         }
+        std::vector<FrameGraphTexturePassTargetState> pass_target_states;
         const auto overlay_draw = native_ui_overlay_ready()
                                       ? native_ui_overlay_->prepare(pending_overlay_sprites_, *commands_)
                                       : RhiNativeUiOverlayPreparedDraw{};
-
-        const auto set_texture_binding_state = [&texture_bindings](std::string_view resource,
-                                                                   rhi::ResourceState state) {
-            for (auto& binding : texture_bindings) {
-                if (binding.resource == resource) {
-                    binding.current_state = state;
-                    return;
-                }
-            }
-        };
 
         std::vector<FrameGraphPassExecutionBinding> pass_callbacks;
         pass_callbacks.reserve(postprocess_frame_graph_plan_.ordered_passes.size());
         pass_callbacks.push_back(FrameGraphPassExecutionBinding{
             .pass_name = "scene_color",
-            .callback =
-                [&set_texture_binding_state, this](std::string_view) {
-                    set_texture_binding_state("scene_color", rhi::ResourceState::render_target);
-                    if (depth_input_enabled_) {
-                        set_texture_binding_state("scene_depth", rhi::ResourceState::depth_write);
-                    }
-                    return FrameGraphExecutionCallbackResult{};
-                },
+            .callback = [](std::string_view) { return FrameGraphExecutionCallbackResult{}; },
         });
         if (postprocess_stage_count_ == 1) {
             pass_callbacks.push_back(FrameGraphPassExecutionBinding{
@@ -690,14 +674,15 @@ void RhiPostprocessFrameRenderer::end_frame() {
                 .texture = post_chain_work_texture_,
                 .current_state = post_chain_work_state_,
             });
+            pass_target_states.push_back(FrameGraphTexturePassTargetState{
+                .pass_name = "postprocess_chain_0",
+                .resource = "post_work",
+                .state = rhi::ResourceState::render_target,
+            });
             pass_callbacks.push_back(FrameGraphPassExecutionBinding{
                 .pass_name = "postprocess_chain_0",
                 .callback =
-                    [&set_texture_binding_state, this](std::string_view) {
-                        commands_->transition_texture(post_chain_work_texture_, post_chain_work_state_,
-                                                      rhi::ResourceState::render_target);
-                        post_chain_work_state_ = rhi::ResourceState::render_target;
-                        set_texture_binding_state("post_work", rhi::ResourceState::render_target);
+                    [this](std::string_view) {
                         commands_->begin_render_pass(rhi::RenderPassDesc{
                             .color =
                                 rhi::RenderPassColorAttachment{
@@ -750,6 +735,7 @@ void RhiPostprocessFrameRenderer::end_frame() {
             .schedule = postprocess_frame_graph_execution_,
             .texture_bindings = texture_bindings,
             .pass_callbacks = pass_callbacks,
+            .pass_target_states = pass_target_states,
             .final_states = final_states,
         });
         if (!frame_graph_execution.succeeded()) {

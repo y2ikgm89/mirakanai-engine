@@ -3465,16 +3465,20 @@ quality_gate_expected_framegraph_passes(const SdlDesktopPresentationQualityGateD
     return 0;
 }
 
-[[nodiscard]] std::uint32_t
+[[nodiscard]] std::uint64_t
 quality_gate_expected_framegraph_barrier_steps(const SdlDesktopPresentationQualityGateDesc& desc) noexcept {
+    const auto expected_frames = static_cast<std::uint64_t>(desc.expected_frames);
     if (desc.require_directional_shadow) {
-        return 5;
+        if (expected_frames == 0) {
+            return 8;
+        }
+        return 8 + ((expected_frames - 1) * 6);
     }
     if (desc.require_postprocess_depth_input) {
-        return 3;
+        return expected_frames == 0 ? 3 : expected_frames * 3;
     }
     if (desc.require_postprocess) {
-        return 1;
+        return expected_frames == 0 ? 1 : expected_frames;
     }
     return 0;
 }
@@ -4641,10 +4645,8 @@ evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationRepor
         if (desc.expected_frames > 0) {
             const auto expected_framegraph_executions =
                 desc.expected_frames * static_cast<std::uint64_t>(result.expected_framegraph_passes);
-            const auto expected_framegraph_barriers =
-                desc.expected_frames * static_cast<std::uint64_t>(result.expected_framegraph_barrier_steps);
             result.framegraph_barrier_steps_current =
-                report.renderer_stats.framegraph_barrier_steps_executed == expected_framegraph_barriers;
+                report.renderer_stats.framegraph_barrier_steps_executed == result.expected_framegraph_barrier_steps;
             result.framegraph_execution_budget_current =
                 report.renderer_stats.frames_finished == desc.expected_frames &&
                 report.renderer_stats.framegraph_passes_executed == expected_framegraph_executions &&

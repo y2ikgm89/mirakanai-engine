@@ -36,6 +36,12 @@ struct PlannedTextureFinalState {
     const FrameGraphTextureFinalState* final_state{nullptr};
 };
 
+struct PlannedTexturePassTargetState {
+    std::size_t binding_index{0};
+    rhi::ResourceState after{rhi::ResourceState::undefined};
+    const FrameGraphTexturePassTargetState* pass_target_state{nullptr};
+};
+
 struct TransientTextureUse {
     std::string pass;
     std::size_t pass_index{0};
@@ -121,6 +127,81 @@ build_pass_callback_index(FrameGraphRhiTextureExecutionResult& result,
         }
     }
     return callbacks;
+}
+
+[[nodiscard]] std::map<std::string, std::size_t>
+build_scheduled_pass_index(std::span<const FrameGraphExecutionStep> schedule) {
+    std::map<std::string, std::size_t> scheduled_passes;
+    for (std::size_t index = 0; index < schedule.size(); ++index) {
+        const auto& step = schedule[index];
+        if (step.kind == FrameGraphExecutionStep::Kind::pass_invoke && !step.pass_name.empty()) {
+            scheduled_passes.emplace(step.pass_name, index);
+        }
+    }
+    return scheduled_passes;
+}
+
+[[nodiscard]] std::map<std::string, std::vector<PlannedTexturePassTargetState>>
+plan_pass_target_states(FrameGraphRhiTextureExecutionResult& result,
+                        const std::map<std::string, std::size_t>& binding_indices,
+                        const std::map<std::string, std::size_t>& scheduled_passes,
+                        std::span<const FrameGraphTexturePassTargetState> pass_target_states) {
+    std::map<std::pair<std::string, std::string>, std::size_t> pass_resource_indices;
+    std::map<std::string, std::vector<PlannedTexturePassTargetState>> planned_pass_target_states;
+
+    for (std::size_t index = 0; index < pass_target_states.size(); ++index) {
+        const auto& pass_target_state = pass_target_states[index];
+        if (pass_target_state.pass_name.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph texture pass target state pass name is empty");
+            continue;
+        }
+        if (pass_target_state.resource.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                              pass_target_state.pass_name, {},
+                                              "frame graph texture pass target state resource name is empty");
+            continue;
+        }
+
+        const auto [_, inserted] =
+            pass_resource_indices.emplace(std::pair{pass_target_state.pass_name, pass_target_state.resource}, index);
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                              pass_target_state.pass_name, pass_target_state.resource,
+                                              "frame graph texture pass target state is declared more than once");
+            continue;
+        }
+
+        if (!scheduled_passes.contains(pass_target_state.pass_name)) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass,
+                                              pass_target_state.pass_name, pass_target_state.resource,
+                                              "frame graph texture pass target state targets an unscheduled pass");
+            continue;
+        }
+
+        const auto binding = binding_indices.find(pass_target_state.resource);
+        if (binding == binding_indices.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                              pass_target_state.pass_name, pass_target_state.resource,
+                                              "frame graph texture pass target state has no texture binding");
+            continue;
+        }
+
+        if (pass_target_state.state == rhi::ResourceState::undefined) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                              pass_target_state.pass_name, pass_target_state.resource,
+                                              "frame graph texture pass target state cannot be undefined");
+            continue;
+        }
+
+        planned_pass_target_states[pass_target_state.pass_name].push_back(PlannedTexturePassTargetState{
+            .binding_index = binding->second,
+            .after = pass_target_state.state,
+            .pass_target_state = &pass_target_state,
+        });
+    }
+
+    return planned_pass_target_states;
 }
 
 [[nodiscard]] bool texture_descs_match(const rhi::TextureDesc& left, const rhi::TextureDesc& right) noexcept {
@@ -358,32 +439,6 @@ template <typename Result>
     return true;
 }
 
-template <typename Result>
-[[nodiscard]] bool validate_barrier_recordability(Result& result, const FrameGraphBarrier& barrier,
-                                                  const std::map<std::string, std::size_t>& binding_indices) {
-    const auto before = frame_graph_texture_state_for_access(barrier.from);
-    const auto after = frame_graph_texture_state_for_access(barrier.to);
-    if (!before.has_value() || !after.has_value()) {
-        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, barrier.to_pass,
-                                          barrier.resource,
-                                          "frame graph texture barrier access is not texture-recordable");
-        return false;
-    }
-    if (*before == *after) {
-        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, barrier.to_pass,
-                                          barrier.resource, "frame graph texture barrier maps to identical RHI states");
-        return false;
-    }
-
-    if (!binding_indices.contains(barrier.resource)) {
-        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, barrier.to_pass,
-                                          barrier.resource, "frame graph texture barrier has no texture binding");
-        return false;
-    }
-
-    return true;
-}
-
 [[nodiscard]] std::vector<rhi::ResourceState>
 copy_binding_states(std::span<const FrameGraphTextureBinding> texture_bindings) {
     std::vector<rhi::ResourceState> states;
@@ -416,6 +471,39 @@ template <typename Result>
     } catch (...) {
         append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, planned.barrier->to_pass,
                                           planned.barrier->resource, "frame graph texture barrier recording failed");
+        return false;
+    }
+}
+
+[[nodiscard]] bool record_planned_texture_pass_target_state(FrameGraphRhiTextureExecutionResult& result,
+                                                            rhi::IRhiCommandList& commands,
+                                                            std::span<FrameGraphTextureBinding> texture_bindings,
+                                                            const PlannedTexturePassTargetState& planned) {
+    if (planned.pass_target_state == nullptr) {
+        return true;
+    }
+
+    auto& texture_binding = texture_bindings[planned.binding_index];
+    if (texture_binding.current_state == planned.after) {
+        return true;
+    }
+
+    try {
+        commands.transition_texture(texture_binding.texture, texture_binding.current_state, planned.after);
+        texture_binding.current_state = planned.after;
+        ++result.barriers_recorded;
+        ++result.pass_target_state_barriers_recorded;
+        return true;
+    } catch (const std::exception& ex) {
+        (void)ex;
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                          planned.pass_target_state->pass_name, planned.pass_target_state->resource,
+                                          "frame graph texture pass target-state barrier recording failed");
+        return false;
+    } catch (...) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                          planned.pass_target_state->pass_name, planned.pass_target_state->resource,
+                                          "frame graph texture pass target-state barrier recording failed");
         return false;
     }
 }
@@ -729,11 +817,13 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
 
     const auto binding_indices = build_binding_index(result, desc.texture_bindings);
     const auto pass_callbacks = build_pass_callback_index(result, desc.pass_callbacks);
+    const auto scheduled_passes = build_scheduled_pass_index(desc.schedule);
+    const auto planned_pass_target_states =
+        plan_pass_target_states(result, binding_indices, scheduled_passes, desc.pass_target_states);
     const auto planned_final_states = plan_final_texture_states(result, binding_indices, desc.final_states);
     for (const auto& step : desc.schedule) {
         switch (step.kind) {
         case FrameGraphExecutionStep::Kind::barrier:
-            (void)validate_barrier_recordability(result, step.barrier, binding_indices);
             break;
         case FrameGraphExecutionStep::Kind::pass_invoke:
             if (step.pass_name.empty()) {
@@ -744,6 +834,33 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
                                                   "frame graph pass callback is missing");
             }
             break;
+        default:
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph execution step kind is invalid");
+            break;
+        }
+    }
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    auto simulated_states = copy_binding_states(desc.texture_bindings);
+    std::vector<PlannedTextureBarrier> validation_barriers;
+    validation_barriers.reserve(desc.schedule.size());
+    for (const auto& step : desc.schedule) {
+        switch (step.kind) {
+        case FrameGraphExecutionStep::Kind::barrier:
+            (void)plan_barrier(result, validation_barriers, step.barrier, binding_indices, simulated_states);
+            break;
+        case FrameGraphExecutionStep::Kind::pass_invoke: {
+            const auto target_states = planned_pass_target_states.find(step.pass_name);
+            if (target_states == planned_pass_target_states.end()) {
+                break;
+            }
+            for (const auto& planned_target_state : target_states->second) {
+                simulated_states[planned_target_state.binding_index] = planned_target_state.after;
+            }
+        } break;
         default:
             append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
                                               "frame graph execution step kind is invalid");
@@ -770,6 +887,16 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
             }
         } break;
         case FrameGraphExecutionStep::Kind::pass_invoke: {
+            const auto target_states = planned_pass_target_states.find(step.pass_name);
+            if (target_states != planned_pass_target_states.end()) {
+                for (const auto& planned_target_state : target_states->second) {
+                    if (!record_planned_texture_pass_target_state(result, *desc.commands, desc.texture_bindings,
+                                                                  planned_target_state)) {
+                        return result;
+                    }
+                }
+            }
+
             const auto callback = pass_callbacks.find(step.pass_name);
             FrameGraphExecutionCallbackResult callback_result;
             try {

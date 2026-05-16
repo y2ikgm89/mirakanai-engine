@@ -1148,7 +1148,7 @@ foreach ($packageStreamingSmokeGuidance in @(
     Assert-ContainsText $packageStreamingSmokeGuidanceText "--require-renderer-quality-gates" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "evaluate_sdl_desktop_presentation_quality_gate" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "renderer_quality_expected_framegraph_passes=2" $packageStreamingSmokeGuidance
-    Assert-ContainsText $packageStreamingSmokeGuidanceText "renderer_quality_expected_framegraph_barrier_steps=1" $packageStreamingSmokeGuidance
+    Assert-ContainsText $packageStreamingSmokeGuidanceText "renderer_quality_expected_framegraph_barrier_steps=2" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "depth-input postprocess" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "--require-playable-3d-slice" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "playable_3d_status=ready" $packageStreamingSmokeGuidance
