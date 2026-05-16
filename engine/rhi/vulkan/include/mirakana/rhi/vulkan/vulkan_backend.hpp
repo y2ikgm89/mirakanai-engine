@@ -471,6 +471,7 @@ struct VulkanRuntimeReadbackBufferReadDesc;
 struct VulkanRuntimeReadbackBufferReadResult;
 struct VulkanRuntimeTextureBarrierDesc;
 struct VulkanRuntimeTextureBarrierResult;
+struct VulkanRuntimeTextureAliasingBarrierResult;
 struct VulkanRuntimeBufferCopyDesc;
 struct VulkanRuntimeBufferCopyResult;
 struct VulkanRuntimeBufferTextureCopyDesc;
@@ -683,6 +684,9 @@ class VulkanRuntimeDevice {
     friend VulkanRuntimeTextureBarrierResult
     record_runtime_texture_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                    VulkanRuntimeTexture& texture, const VulkanRuntimeTextureBarrierDesc& desc);
+    friend VulkanRuntimeTextureAliasingBarrierResult
+    record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                            VulkanRuntimeTexture& before, VulkanRuntimeTexture& after);
     friend VulkanRuntimeBufferCopyResult record_runtime_buffer_copy(VulkanRuntimeDevice& device,
                                                                     VulkanRuntimeCommandPool& command_pool,
                                                                     VulkanRuntimeBuffer& source,
@@ -795,6 +799,9 @@ class VulkanRuntimeCommandPool {
     friend VulkanRuntimeTextureBarrierResult
     record_runtime_texture_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                    VulkanRuntimeTexture& texture, const VulkanRuntimeTextureBarrierDesc& desc);
+    friend VulkanRuntimeTextureAliasingBarrierResult
+    record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                            VulkanRuntimeTexture& before, VulkanRuntimeTexture& after);
     friend VulkanRuntimeBufferCopyResult record_runtime_buffer_copy(VulkanRuntimeDevice& device,
                                                                     VulkanRuntimeCommandPool& command_pool,
                                                                     VulkanRuntimeBuffer& source,
@@ -942,6 +949,9 @@ class VulkanRuntimeTexture {
     friend VulkanRuntimeTextureBarrierResult
     record_runtime_texture_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                    VulkanRuntimeTexture& texture, const VulkanRuntimeTextureBarrierDesc& desc);
+    friend VulkanRuntimeTextureAliasingBarrierResult
+    record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                            VulkanRuntimeTexture& before, VulkanRuntimeTexture& after);
     friend VulkanRuntimeBufferTextureCopyResult
     record_runtime_buffer_texture_copy(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                        VulkanRuntimeBuffer& source, VulkanRuntimeTexture& destination,
@@ -1631,6 +1641,12 @@ struct VulkanRuntimeTextureBarrierResult {
     std::string diagnostic;
 };
 
+struct VulkanRuntimeTextureAliasingBarrierResult {
+    bool recorded{false};
+    std::uint32_t barrier_count{0};
+    std::string diagnostic;
+};
+
 struct VulkanRuntimeBufferCopyDesc {
     BufferCopyRegion region;
 };
@@ -1882,6 +1898,9 @@ read_runtime_readback_buffer(VulkanRuntimeDevice& device, VulkanRuntimeReadbackB
 [[nodiscard]] VulkanRuntimeTextureBarrierResult
 record_runtime_texture_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                VulkanRuntimeTexture& texture, const VulkanRuntimeTextureBarrierDesc& desc);
+[[nodiscard]] VulkanRuntimeTextureAliasingBarrierResult
+record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                        VulkanRuntimeTexture& before, VulkanRuntimeTexture& after);
 [[nodiscard]] VulkanRuntimeBufferCopyResult record_runtime_buffer_copy(VulkanRuntimeDevice& device,
                                                                        VulkanRuntimeCommandPool& command_pool,
                                                                        VulkanRuntimeBuffer& source,

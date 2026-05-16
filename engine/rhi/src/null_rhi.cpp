@@ -508,6 +508,17 @@ class NullRhiCommandList final : public IRhiCommandList {
         ++device_.stats_.resource_transitions;
     }
 
+    void texture_aliasing_barrier(TextureHandle before, TextureHandle after) override {
+        require_recording();
+        require_no_render_pass();
+        if (before.value == 0 || after.value == 0 || before.value == after.value || !device_.owns_texture(before) ||
+            !device_.owns_texture(after)) {
+            throw std::invalid_argument("rhi texture aliasing barrier requires two distinct device texture handles");
+        }
+
+        ++device_.stats_.texture_aliasing_barriers;
+    }
+
     void copy_buffer(BufferHandle source, BufferHandle destination, const BufferCopyRegion& region) override {
         require_recording();
         require_no_render_pass();

@@ -6,6 +6,7 @@
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
+#include <cstdint>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -55,7 +56,7 @@ class RhiFrameRenderer final : public IRenderer {
     void end_frame() override;
 
   private:
-    enum class QueuedPrimaryDrawKind { sprite, mesh };
+    enum class QueuedPrimaryDrawKind : std::uint8_t { sprite, mesh };
 
     struct QueuedPrimaryDraw {
         QueuedPrimaryDrawKind kind{QueuedPrimaryDrawKind::sprite};

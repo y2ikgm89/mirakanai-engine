@@ -219,6 +219,7 @@ struct DeviceContextStats {
     std::uint64_t render_target_views_created{0};
     std::uint64_t swapchain_back_buffer_transitions{0};
     std::uint64_t texture_transitions{0};
+    std::uint64_t texture_aliasing_barriers{0};
     std::uint64_t swapchain_back_buffer_clears{0};
     std::uint64_t texture_render_target_clears{0};
     std::uint64_t descriptor_heaps_created{0};
@@ -440,6 +441,8 @@ class DeviceContext final {
                                                         ResourceState after);
     [[nodiscard]] bool transition_texture(NativeCommandListHandle commands, NativeResourceHandle texture,
                                           ResourceState before, ResourceState after);
+    [[nodiscard]] bool texture_aliasing_barrier(NativeCommandListHandle commands, NativeResourceHandle before,
+                                                NativeResourceHandle after);
     [[nodiscard]] bool clear_swapchain_back_buffer(NativeCommandListHandle commands, NativeSwapchainHandle swapchain,
                                                    float red, float green, float blue, float alpha);
     [[nodiscard]] bool clear_texture_render_target(NativeCommandListHandle commands, NativeResourceHandle texture,

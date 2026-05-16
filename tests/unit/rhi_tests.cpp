@@ -438,6 +438,74 @@ MK_TEST("null rhi records command lists and signals fences on submit") {
     MK_REQUIRE(device.stats().last_completed_fence_value == 1);
 }
 
+MK_TEST("null rhi records texture aliasing barriers without changing texture state") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto first = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination | mirakana::rhi::TextureUsage::render_target |
+                 mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto second = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination | mirakana::rhi::TextureUsage::render_target |
+                 mirakana::rhi::TextureUsage::shader_resource,
+    });
+
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->texture_aliasing_barrier(first, second);
+    commands->transition_texture(first, mirakana::rhi::ResourceState::copy_destination,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->transition_texture(second, mirakana::rhi::ResourceState::copy_destination,
+                                 mirakana::rhi::ResourceState::shader_read);
+    commands->close();
+
+    const auto fence = device.submit(*commands);
+    device.wait(fence);
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    MK_REQUIRE(stats.resource_transitions == 2);
+}
+
+MK_TEST("null rhi rejects invalid texture aliasing barrier handles") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    bool rejected_same = false;
+    try {
+        commands->texture_aliasing_barrier(texture, texture);
+    } catch (const std::invalid_argument&) {
+        rejected_same = true;
+    }
+
+    bool rejected_empty = false;
+    try {
+        commands->texture_aliasing_barrier(mirakana::rhi::TextureHandle{}, texture);
+    } catch (const std::invalid_argument&) {
+        rejected_empty = true;
+    }
+
+    bool rejected_unknown = false;
+    try {
+        commands->texture_aliasing_barrier(texture, mirakana::rhi::TextureHandle{999});
+    } catch (const std::invalid_argument&) {
+        rejected_unknown = true;
+    }
+    commands->close();
+
+    MK_REQUIRE(rejected_same);
+    MK_REQUIRE(rejected_empty);
+    MK_REQUIRE(rejected_unknown);
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 0);
+}
+
 MK_TEST("null rhi reports invalid fence wait attempts") {
     mirakana::rhi::NullRhiDevice device;
 

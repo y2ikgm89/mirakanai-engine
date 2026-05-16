@@ -1657,6 +1657,11 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTransientT
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_transient_texture_aliases" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transient Texture Lease Binding v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "acquire_frame_graph_transient_texture_lease_bindings" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Texture Aliasing Barrier Command v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTextureAliasingBarrier" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "record_frame_graph_texture_aliasing_barriers" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRhiModule[0].purpose) "IRhiCommandList::texture_aliasing_barrier" "MK_rhi module purpose"
+Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiStats::texture_aliasing_barriers" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiFrameRenderer executor-owned primary_color pass timing" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiPostprocessFrameRenderer executor-owned scene-color/scene-depth target preparation plus scene pass callback recording and post-chain/final-state transition adoption" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiDirectionalShadowSmokeFrameRenderer scheduled shadow-depth/scene-color/scene-depth inter-pass plus shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state and scene-depth/shadow-depth final-state transition adoption" "MK_renderer module purpose"
@@ -1727,6 +1732,15 @@ Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTexturePassT
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTransientTextureLeaseBindingResult" "Frame graph transient texture lease binding public API"
 Assert-ContainsText $frameGraphRhiHeader "acquire_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding public API"
 Assert-ContainsText $frameGraphRhiHeader "release_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding public API"
+Assert-ContainsText $frameGraphRhiHeader "FrameGraphTextureAliasingBarrier" "Frame graph texture aliasing barrier command public API"
+Assert-ContainsText $frameGraphRhiHeader "FrameGraphTextureAliasingBarrierRecordResult" "Frame graph texture aliasing barrier command public API"
+Assert-ContainsText $frameGraphRhiHeader "record_frame_graph_texture_aliasing_barriers" "Frame graph texture aliasing barrier command public API"
+Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barriers" "RHI texture aliasing barrier command public API"
+Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barrier(TextureHandle before, TextureHandle after)" "RHI texture aliasing barrier command public API"
+Assert-ContainsText $nullRhiSourceText "void texture_aliasing_barrier(TextureHandle before, TextureHandle after) override" "NullRHI texture aliasing barrier command"
+Assert-ContainsText $d3d12RhiSourceText "Current texture handles are committed resources" "D3D12 texture aliasing barrier command"
+Assert-ContainsText $d3d12RhiSourceText "without emitting an invalid native barrier" "D3D12 texture aliasing barrier command"
+Assert-ContainsText $vulkanRhiSourceText "record_runtime_texture_aliasing_barrier" "Vulkan texture aliasing barrier command"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group acquisition failed" "Frame graph transient texture lease binding failure cleanup"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group has no resources" "Frame graph transient texture lease binding malformed-plan validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group resource name is empty" "Frame graph transient texture lease binding malformed-plan validation"
@@ -1734,6 +1748,9 @@ Assert-ContainsText $frameGraphRhiSource "release_frame_graph_transient_texture_
 Assert-ContainsText $frameGraphRhiSource "propagate_shared_simulated_texture_state" "Frame graph shared TextureHandle state handoff"
 Assert-ContainsText $frameGraphRhiSource "propagate_shared_texture_binding_state" "Frame graph shared TextureHandle state handoff"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture bindings sharing a handle disagree on current state" "Frame graph shared TextureHandle state handoff"
+Assert-ContainsText $frameGraphRhiSource "record_frame_graph_texture_aliasing_barriers" "Frame graph texture aliasing barrier command"
+Assert-ContainsText $frameGraphRhiSource "texture_aliasing_barrier" "Frame graph texture aliasing barrier command"
+Assert-ContainsText $frameGraphRhiSource "frame graph texture aliasing barrier requires distinct texture handles" "Frame graph texture aliasing barrier command"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state has no declared writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state disagrees with writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target access is declared more than once" "Frame graph RHI pass target access validation"
@@ -1741,6 +1758,11 @@ $rendererRhiTests = Get-AgentSurfaceText "tests/unit/renderer_rhi_tests.cpp"
 Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording propagates shared texture handle state" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording rejects conflicting shared texture handle states" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution hands off shared texture handle state between aliases" "Frame graph shared TextureHandle state handoff tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording maps resource names to texture handles" "Frame graph texture aliasing barrier command tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording rejects missing resources and shared handles" "Frame graph texture aliasing barrier command tests"
+Assert-ContainsText $rhiTestsText "null rhi records texture aliasing barriers without changing texture state" "NullRHI texture aliasing barrier command tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device records texture aliasing barrier commands" "D3D12 texture aliasing barrier command tests"
+Assert-ContainsText $backendScaffoldTestsText "vulkan rhi device bridge records texture aliasing barrier" "Vulkan texture aliasing barrier command tests"
 Assert-ContainsText $rhiFrameRendererSource "execute_frame_graph_rhi_texture_schedule" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "primary_color" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "framegraph_passes_executed" "RHI frame renderer primary pass ownership"
@@ -1805,6 +1827,10 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "one backend-neutral ``IRhiDevice::acquire_transient_texture`` lease per alias group" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "shared-handle state-handoff aware" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "conflicting initial shared-handle states" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "FrameGraphTextureAliasingBarrier" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "record_frame_graph_texture_aliasing_barriers" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "insert aliasing barriers automatically into ``execute_frame_graph_rhi_texture_schedule``" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "wildcard/null public aliasing barriers" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText 'engine/renderer/src/rhi_viewport_surface.cpp` must not call `transition_texture(' $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "declared shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "Treat those bindings as acquisition output only until a separate alias-aware executor state handoff/barrier slice exists" $renderingGuidancePath
@@ -1818,7 +1844,10 @@ foreach ($renderingAuditorPath in @(
     Assert-ContainsText $renderingAuditorText "acquire_frame_graph_transient_texture_lease_bindings" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "shared-handle executor state handoff" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "conflicting initial shared-handle state rejection" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "native aliasing barrier claims" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "FrameGraphTextureAliasingBarrier" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "record_frame_graph_texture_aliasing_barriers" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "automatic executor insertion" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "wildcard/null public aliasing barriers" $renderingAuditorPath
     Assert-DoesNotContainText $renderingAuditorText "treating the current executor as alias-aware" $renderingAuditorPath
 }
 foreach ($postprocessDepthGuidance in @(

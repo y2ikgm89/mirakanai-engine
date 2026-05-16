@@ -78,6 +78,20 @@ struct FrameGraphTextureBarrierRecordResult {
     }
 };
 
+struct FrameGraphTextureAliasingBarrier {
+    std::string before_resource;
+    std::string after_resource;
+};
+
+struct FrameGraphTextureAliasingBarrierRecordResult {
+    std::size_t aliasing_barriers_recorded{0};
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 struct FrameGraphTextureFinalState {
     std::string resource;
     rhi::ResourceState state{rhi::ResourceState::undefined};
@@ -136,6 +150,11 @@ void release_frame_graph_transient_texture_lease_bindings(rhi::IRhiDevice& devic
 [[nodiscard]] FrameGraphTextureBarrierRecordResult
 record_frame_graph_texture_barriers(rhi::IRhiCommandList& commands, std::span<const FrameGraphExecutionStep> schedule,
                                     std::span<FrameGraphTextureBinding> texture_bindings);
+
+[[nodiscard]] FrameGraphTextureAliasingBarrierRecordResult
+record_frame_graph_texture_aliasing_barriers(rhi::IRhiCommandList& commands,
+                                             std::span<const FrameGraphTextureAliasingBarrier> aliasing_barriers,
+                                             std::span<const FrameGraphTextureBinding> texture_bindings);
 
 [[nodiscard]] FrameGraphRhiTextureExecutionResult
 execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc& desc);

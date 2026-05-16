@@ -2408,6 +2408,37 @@ bool DeviceContext::transition_texture(NativeCommandListHandle commands, NativeR
     return true;
 }
 
+bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, NativeResourceHandle before,
+                                             NativeResourceHandle after) {
+    if (!valid() || before.value == 0 || after.value == 0 || before.value == after.value) {
+        return false;
+    }
+
+    CommandListRecord* command_record = impl_->command_list(commands);
+    ID3D12Resource* before_resource = impl_->resource_record(before);
+    ID3D12Resource* after_resource = impl_->resource_record(after);
+    if (command_record == nullptr || before_resource == nullptr || after_resource == nullptr ||
+        command_record->closed) {
+        return false;
+    }
+    if (command_record->queue != QueueKind::graphics) {
+        return false;
+    }
+
+    const auto before_desc = before_resource->GetDesc();
+    const auto after_desc = after_resource->GetDesc();
+    if (before_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ||
+        after_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+        return false;
+    }
+
+    // D3D12 validates non-null aliasing barriers as placed/reserved-resource work.
+    // Current texture handles are committed resources, so this records the engine-level
+    // aliasing dependency intent without emitting an invalid native barrier.
+    ++impl_->stats.texture_aliasing_barriers;
+    return true;
+}
+
 bool DeviceContext::clear_swapchain_back_buffer(NativeCommandListHandle commands, NativeSwapchainHandle swapchain,
                                                 float red, float green, float blue, float alpha) {
     if (!valid()) {
@@ -4355,6 +4386,26 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         }
         set_texture_state(texture, after);
         ++stats_->resource_transitions;
+    }
+
+    void texture_aliasing_barrier(TextureHandle before, TextureHandle after) override {
+        require_open();
+        if (render_pass_active_) {
+            throw std::logic_error("d3d12 rhi texture aliasing barriers must be recorded outside a render pass");
+        }
+        if (before.value == 0 || after.value == 0 || before.value == after.value) {
+            throw std::invalid_argument("d3d12 rhi texture aliasing barrier requires distinct texture handles");
+        }
+
+        const auto before_native = native_texture(before);
+        const auto after_native = native_texture(after);
+        observe_texture(before);
+        observe_texture(after);
+        if (!context_->texture_aliasing_barrier(native_, before_native, after_native)) {
+            throw std::logic_error("d3d12 rhi texture aliasing barrier recording failed");
+        }
+
+        ++stats_->texture_aliasing_barriers;
     }
 
     void copy_buffer(BufferHandle source, BufferHandle destination, const BufferCopyRegion& region) override {
