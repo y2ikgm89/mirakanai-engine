@@ -1067,6 +1067,8 @@ Assert-ContainsText $engineManifestText "prepare-worktree.ps1" "engine/agent/man
 Assert-ContainsText $engineManifestText "normalized-configure-environment" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "normalized-build-environment" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "PATH/Path variants" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "tools/cmake.ps1" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "tools/ctest.ps1" "engine/agent/manifest.json"
 foreach ($needle in @(
     "3d-scene-mesh-package-telemetry",
     "plan_scene_mesh_draws",
@@ -1183,7 +1185,10 @@ foreach ($cmakeSkill in @(
     Assert-ContainsText $cmakeSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "normalized-configure-environment" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "normalized-build-environment" $cmakeSkill
-    Assert-ContainsText $cmakeSkillText 'child `PATH`' $cmakeSkill
+    Assert-ContainsText $cmakeSkillText 'presets inherit `PATH` and unset `Path`' $cmakeSkill
+    Assert-ContainsText $cmakeSkillText 'child `Path` on Windows' $cmakeSkill
+    Assert-ContainsText $cmakeSkillText "tools/cmake.ps1" $cmakeSkill
+    Assert-ContainsText $cmakeSkillText "tools/ctest.ps1" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "direct-clang-format-status" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "CMake File API" $cmakeSkill
@@ -1248,10 +1253,11 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "tools/check-toolchain.ps1" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "tools/check-toolchain.ps1 -RequireDirectCMake" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "normalized-configure-environment" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "normalized-build-environment" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "Presets must normalize raw" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "direct-clang-format-status" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "CMake File API" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "VCPKG_MANIFEST_INSTALL=OFF" $agentIntegrationSkill
@@ -1391,6 +1397,7 @@ foreach ($ruleFile in @(
     Assert-ContainsText $ruleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $ruleFile
     Assert-ContainsText $ruleText "normalized-configure-environment" $ruleFile
     Assert-ContainsText $ruleText "normalized-build-environment" $ruleFile
+    Assert-ContainsText $ruleText 'raw preset `PATH`/`Path` normalization' $ruleFile
     Assert-ContainsText $ruleText "direct-clang-format-status" $ruleFile
     Assert-ContainsText $ruleText "VCPKG_MANIFEST_INSTALL=OFF" $ruleFile
     Assert-ContainsText $ruleText "Debugging Tools for Windows" $ruleFile
@@ -1515,6 +1522,7 @@ foreach ($buildFixerAgent in @(
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $buildFixerAgent
     Assert-ContainsText $buildFixerText "normalized-configure-environment" $buildFixerAgent
     Assert-ContainsText $buildFixerText "normalized-build-environment" $buildFixerAgent
+    Assert-ContainsText $buildFixerText 'presets normalize raw `cmake --preset ...` PATH/Path behavior' $buildFixerAgent
     Assert-ContainsText $buildFixerText 'CL.exe` command-line switch error' $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" $buildFixerAgent
     Assert-ContainsText $buildFixerText "direct-clang-format-status" $buildFixerAgent

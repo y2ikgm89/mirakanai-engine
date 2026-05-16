@@ -55,7 +55,7 @@
 - Remove task-local scaffolding before reporting completion unless it is intentionally tracked and documented.
 - Do not delete files or directories that may contain user work unless the task explicitly requires it and the ownership is clear.
 - Root `.gitattributes` is the LF contract (`* text=auto eol=lf`); root `.editorconfig` aligns editors, and `tools/check-agents.ps1` enforces it.
-- When cleaning ignored paths, distinguish **build output** from **tool checkouts**. `out/`, Android build/.gradle trees, `*.log`, and `imgui.ini` are disposable; **`external/vcpkg` is a required Microsoft vcpkg clone** referenced by `CMakePresets.json`, so do not delete `external/vcpkg` or the whole `external/` tree as cache. Remove `vcpkg_installed/` only when you intend to rerun `tools/bootstrap-deps.ps1`.
+- Cleaning ignored paths: `out/`, Android build/.gradle trees, `*.log`, and `imgui.ini` are disposable; **`external/vcpkg` is a required Microsoft vcpkg clone**, not cache. Remove `vcpkg_installed/` only when rerunning `tools/bootstrap-deps.ps1`.
 
 ## Project Goal
 
@@ -103,7 +103,7 @@
 - Before production C++ behavior, add or update tests first when the environment can run them; target the smallest externally meaningful guarantee for the behavior/API/regression rather than adding tests by habit.
 - During implementation, use the smallest relevant focused loop first: targeted CMake build/test commands for the changed target, plus only the static checks that match the files touched. Avoid rerunning full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` after every code or docs edit.
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` once near the end of a coherent slice, after code, docs, manifest, and static-check updates are settled. Rerun it only if later edits can affect validated behavior or checked metadata.
-- Toolchain preflight: use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only for direct CMake PATH/env checks and `-RequireVcpkgToolchain` only for vcpkg-backed checkout checks. Presets inherit `normalized-configure-environment` / `normalized-build-environment`.
+- Toolchain preflight: use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`; reserve `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` for raw `cmake --preset ...` checks and `-RequireVcpkgToolchain` for vcpkg gates. Presets inherit `normalized-configure-environment` / `normalized-build-environment`; local loops use `tools/cmake.ps1` / `tools/ctest.ps1`.
 - Formatting: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` / `tools/format.ps1` cover C++ plus tracked text (LF, UTF-8 no BOM, one final newline, no EOF blanks); `tools/check-text-format.ps1` / `tools/format-text.ps1` are text-only. Raw `clang-format --dry-run ...` requires `direct-clang-format-status=ready`. Run other static lanes only when their files or slice gate require them.
 - Static-analysis PR failures are root-cause work, not log cleanup: keep `.clang-tidy` `HeaderFilterRegex` absolute-path and Windows/Linux separator aware; strict hosted lanes must preserve `--warnings-as-errors=*`; investigate actionable diagnostics before suppressing only frontend summaries like `NN warnings generated.`; use `tools/check-tidy.ps1 -Files` for focused TUs and `-Jobs 0` for full CI throttling.
 - For hosted PR/CI check failures, inspect the latest PR head SHA first (`gh pr view <pr> --json headRefOid,statusCheckRollup,url`), open the failing job log for that same SHA, reproduce the narrowest local lane, fix the root cause, then add or extend a repository static guard when the failure exposed a drift-prone contract. If all jobs fail before checkout with a GitHub account billing/spending-limit annotation, report it as a hosted account blocker. Do not diagnose against stale runs or solve by loosening branch protection, Codex rules, or Claude permissions.
@@ -113,15 +113,15 @@
 - If CMake, `clang-format`, or a compiler is missing, report that validation is blocked by missing local tools and include the exact failing command.
 - For C++ changes, the intended validation loop is:
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`
-  - `cmake --preset dev`
-  - `cmake --build --preset dev`
-  - `ctest --preset dev --output-on-failure`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure`
 
 ## Dependency Bootstrap and vcpkg
 
 - Keep optional C++ dependencies in `vcpkg.json` manifest features and keep the official registry pinned with `builtin-baseline`.
 - Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` as the only repository entrypoint that installs or updates optional vcpkg packages. Feature selection belongs there, not in CMake presets.
-- `tools/bootstrap-deps.ps1` requires `external/vcpkg`. CMake configure must not install, restore, or download vcpkg packages; vcpkg presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`. In linked worktrees, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1`.
+- `tools/bootstrap-deps.ps1` requires `external/vcpkg`. CMake configure must not install, restore, or download vcpkg packages; vcpkg presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`. In linked worktrees, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` before configure.
 - Keep project-wide CMake settings in `CMakePresets.json`, local overrides in ignored `CMakeUserPresets.json`, and `vcpkg_installed/` as the shared source-tree package root unless a new architecture decision accepts per-preset trees.
 - Treat `CreateFileW stdin failed with 5` during bootstrap as a host or sandbox dependency-bootstrap blocker; do not work around it by moving package installation back into CMake configure.
 
@@ -137,7 +137,7 @@
 - Before generating game code or changing engine APIs, read `engine/agent/manifest.json`, a targeted `engine/agent/manifest.fragments/` file, or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1`. Prefer `-ContextProfile Minimal` or `-ContextProfile Standard`; use Full only when the decision needs full manifest-shaped output.
 - Use `.agents/skills/` when a task matches them, keep overlapping `.claude/skills/` behaviorally equivalent, and keep `.cursor/skills/gameengine-*` folders as thin pointers matching `.claude/skills/` names except the intentional Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`.
 - After changing agent surfaces (`tools/*.ps1` dot-source pairs, skill folders, validation scripts, rules, settings, subagents, or manifest fragments), follow **Repository consistency checklist** in `docs/workflows.md` (toolchain -> `check-agents` -> `check-ai-integration` -> public API checks -> `validate.ps1` as appropriate).
-- Tracked `.clangd` points at `out/build/dev`; configure `cmake --preset dev` when clangd lacks a database. Use `editor/src/compile_flags.txt` and `editor/include/compile_flags.txt` only as fallback IDE flags. `MK_tools` implementation sources live under `engine/tools/{shader,gltf,asset,scene}/` with public headers in `engine/tools/include/mirakana/tools/`.
+- Tracked `.clangd` points at `out/build/dev`; run `tools/cmake.ps1 --preset dev` when clangd lacks a database. Use `editor/src/compile_flags.txt` and `editor/include/compile_flags.txt` only as fallback IDE flags. `MK_tools` sources live under `engine/tools/{shader,gltf,asset,scene}/`; public headers stay in `engine/tools/include/mirakana/tools/`.
 - For parallel write work, prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree`; keep `.worktrees/` and `.claude/worktrees/` ignored; manual worktrees use setup, merged worktrees use guarded cleanup.
 - Use project subagents in `.codex/agents/` and `.claude/agents/` only when the user explicitly asks for subagent delegation or parallel agent work; keep reviewer/explorer/architect/auditor roles read-only and write tools limited to builder/fixer roles.
 - Every task should define: Goal, Context, Constraints, Done when.

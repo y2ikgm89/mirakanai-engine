@@ -128,6 +128,10 @@ function Write-ProcessPathCasingStatus {
         [switch]$RequireDirectCMake
     )
 
+    $result = [pscustomobject]@{
+        DirectCMakeEnvironmentReady = $true
+    }
+
     $pathKeys = @(
         [System.Environment]::GetEnvironmentVariables().Keys |
             Where-Object { [string]$_ -ieq "PATH" } |
@@ -138,17 +142,26 @@ function Write-ProcessPathCasingStatus {
     if ($uniquePathKeys.Count -gt 1) {
         Write-Host "toolchain-check: process-path-casing=duplicate"
         Write-Host "toolchain-check: process-path-keys=$($uniquePathKeys -join ',')"
-        if ($RequireDirectCMake) {
-            Write-Error "Direct 'cmake --preset ...' requires a process environment with one PATH/Path key. Use repository wrappers or start a shell with normalized PATH casing."
-        }
+        Write-Host "toolchain-check: direct-cmake-visual-studio-path-casing=covered-by-preset"
+        Write-Host "toolchain-check: direct-cmake-visual-studio-path-note=CMakePresets.json unsets Path and inherits PATH for visible configure/build presets; repository wrappers additionally normalize child process environments before launching CMake or CTest."
     } elseif ($uniquePathKeys.Count -eq 1) {
         Write-Host "toolchain-check: process-path-casing=$($uniquePathKeys[0])"
+        if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows) -and
+            $uniquePathKeys[0] -cne "Path") {
+            Write-Host "toolchain-check: direct-cmake-visual-studio-path-casing=covered-by-preset"
+            Write-Host "toolchain-check: direct-cmake-visual-studio-path-note=CMakePresets.json normalizes visible configure/build preset environments by inheriting PATH and unsetting Path; repository wrappers additionally normalize child process environments before launching CMake or CTest."
+        } else {
+            Write-Host "toolchain-check: direct-cmake-visual-studio-path-casing=ready"
+        }
     } else {
         Write-Host "toolchain-check: process-path-casing=missing"
         if ($RequireDirectCMake) {
             Write-Error "Direct 'cmake --preset ...' requires PATH/Path in the process environment."
         }
+        $result.DirectCMakeEnvironmentReady = $false
     }
+
+    return $result
 }
 
 function Get-PresetInheritance {
@@ -182,8 +195,8 @@ function Assert-HiddenNormalizedEnvironmentPreset {
         Write-Error "$PresetName $PresetKind preset must be hidden"
     }
     $environment = Get-JsonPropertyValue -Object $Preset -Property "environment"
-    if ((Get-JsonPropertyValue -Object $environment -Property "PATH") -ne '$penv{PATH}${pathListSep}$penv{Path}') {
-        Write-Error "$PresetName must rebuild PATH from parent PATH/Path with `${pathListSep}"
+    if ((Get-JsonPropertyValue -Object $environment -Property "PATH") -ne '$penv{PATH}') {
+        Write-Error "$PresetName must inherit parent PATH without duplicating PATH/Path expansions"
     }
     if (-not (Test-JsonProperty -Object $environment -Property "Path") -or $null -ne (Get-JsonPropertyValue -Object $environment -Property "Path")) {
         Write-Error "$PresetName must set mixed-case Path to null so CMake removes duplicate parent Path on Windows"
@@ -239,7 +252,7 @@ Assert-NormalizedCMakePresetEnvironment
 Write-Host "toolchain-check: normalized-configure-environment=ready"
 Write-Host "toolchain-check: normalized-build-environment=ready"
 Write-WorktreeReadiness -RequireVcpkgToolchain:$RequireVcpkgToolchain
-Write-ProcessPathCasingStatus -RequireDirectCMake:$RequireDirectCMake
+$pathCasingStatus = Write-ProcessPathCasingStatus -RequireDirectCMake:$RequireDirectCMake
 
 $cmakeVersion = Get-ToolVersion -ToolName "cmake" -Path $tools.CMake
 $ctestVersion = Get-ToolVersion -ToolName "ctest" -Path $tools.CTest
@@ -270,9 +283,13 @@ if ($tools.ClangFormat) {
 }
 
 $directCmake = Get-Command cmake -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($directCmake) {
-    Write-Host "toolchain-check: direct-cmake=$($directCmake.Source)"
-    Write-Host "toolchain-check: direct-cmake-status=ready"
+    if ($directCmake) {
+        Write-Host "toolchain-check: direct-cmake=$($directCmake.Source)"
+        if ($pathCasingStatus.DirectCMakeEnvironmentReady) {
+            Write-Host "toolchain-check: direct-cmake-status=ready"
+        } else {
+            Write-Host "toolchain-check: direct-cmake-status=host-path-missing"
+        }
 } else {
     Write-Host "toolchain-check: direct-cmake=missing"
     Write-Host "toolchain-check: direct-cmake-status=unavailable"

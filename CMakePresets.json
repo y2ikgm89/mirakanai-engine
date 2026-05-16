@@ -10,7 +10,7 @@
       "name": "normalized-configure-environment",
       "hidden": true,
       "environment": {
-        "PATH": "$penv{PATH}${pathListSep}$penv{Path}",
+        "PATH": "$penv{PATH}",
         "Path": null
       }
     },
@@ -308,7 +308,7 @@
       "name": "normalized-build-environment",
       "hidden": true,
       "environment": {
-        "PATH": "$penv{PATH}${pathListSep}$penv{Path}",
+        "PATH": "$penv{PATH}",
         "Path": null
       }
     },
