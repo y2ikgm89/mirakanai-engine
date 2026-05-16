@@ -1744,10 +1744,13 @@ Assert-ContainsText $nullRhiSourceText "void texture_aliasing_barrier(TextureHan
 $d3d12RhiHeaderText = Get-AgentSurfaceText "engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_backend.hpp"
 Assert-ContainsText $d3d12RhiHeaderText "null_resource_aliasing_barriers" "D3D12 texture aliasing barrier command evidence"
 Assert-ContainsText $d3d12RhiHeaderText "placed_texture_heaps_created" "D3D12 placed transient texture lease evidence"
+Assert-ContainsText $d3d12RhiHeaderText "placed_texture_alias_groups_created" "D3D12 placed alias group evidence"
 Assert-ContainsText $d3d12RhiHeaderText "placed_textures_created" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiHeaderText "placed_resources_alive" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiHeaderText "placed_resource_activation_barriers" "D3D12 placed transient texture lease evidence"
+Assert-ContainsText $d3d12RhiHeaderText "placed_resource_aliasing_barriers" "D3D12 placed alias group evidence"
 Assert-ContainsText $d3d12RhiHeaderText "create_placed_texture" "D3D12 placed transient texture lease evidence"
+Assert-ContainsText $d3d12RhiHeaderText "create_placed_texture_alias_group" "D3D12 placed alias group evidence"
 Assert-ContainsText $d3d12RhiHeaderText "activate_placed_texture" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiSourceText "backend-private" "D3D12 texture aliasing barrier command"
 Assert-ContainsText $d3d12RhiSourceText "null-resource aliasing barrier" "D3D12 texture aliasing barrier command"
@@ -1757,6 +1760,11 @@ Assert-ContainsText $d3d12RhiSourceText "CreatePlacedResource" "D3D12 placed tra
 Assert-ContainsText $d3d12RhiSourceText "GetResourceAllocationInfo" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiSourceText "D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiSourceText "pResourceAfter = texture_resource" "D3D12 placed transient texture activation evidence"
+Assert-ContainsText $d3d12RhiSourceText "resource_alias_group_ids" "D3D12 placed alias group evidence"
+Assert-ContainsText $d3d12RhiSourceText "resources_share_placed_alias_group" "D3D12 placed alias group evidence"
+Assert-ContainsText $d3d12RhiSourceText "pResourceBefore = before_resource" "D3D12 placed alias group non-null barrier evidence"
+Assert-ContainsText $d3d12RhiSourceText "pResourceAfter = after_resource" "D3D12 placed alias group non-null barrier evidence"
+Assert-ContainsText $d3d12RhiSourceText "placed_resource_state_updates" "D3D12 placed alias group submit-time state evidence"
 Assert-ContainsText $vulkanRhiSourceText "record_runtime_texture_aliasing_barrier" "Vulkan texture aliasing barrier command"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group acquisition failed" "Frame graph transient texture lease binding failure cleanup"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group has no resources" "Frame graph transient texture lease binding malformed-plan validation"
@@ -1781,7 +1789,11 @@ Assert-ContainsText $rhiTestsText "null rhi records texture aliasing barriers wi
 Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device records texture aliasing barrier commands" "D3D12 texture aliasing barrier command tests"
 Assert-ContainsText $d3d12RhiTestsText "null_resource_aliasing_barriers" "D3D12 texture aliasing barrier command evidence tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 device context creates placed transient texture resources" "D3D12 placed transient texture lease tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 device context keeps unrelated placed texture aliasing barriers conservative" "D3D12 placed alias group tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 device context records non null placed resource aliasing barriers" "D3D12 placed alias group tests"
 Assert-ContainsText $d3d12RhiTestsText "placed_resource_activation_barriers" "D3D12 placed transient texture activation tests"
+Assert-ContainsText $d3d12RhiTestsText "placed_texture_alias_groups_created" "D3D12 placed alias group tests"
+Assert-ContainsText $d3d12RhiTestsText "placed_resource_aliasing_barriers" "D3D12 placed alias group tests"
 Assert-ContainsText $d3d12RhiTestsText "transient_texture_heap_allocations" "D3D12 placed transient texture lease tests"
 Assert-ContainsText $d3d12RhiTestsText "transient_texture_placed_allocations" "D3D12 placed transient texture lease tests"
 Assert-ContainsText $d3d12RhiTestsText "transient_texture_placed_resources_alive" "D3D12 placed transient texture release tests"
@@ -1852,8 +1864,12 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "conflicting initial shared-handle states" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "FrameGraphTextureAliasingBarrier" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "record_frame_graph_texture_aliasing_barriers" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "same alias-group placed pairs" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "same-offset placed textures" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "after ``ExecuteCommandLists`` submits work rather than after fence completion" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "insert aliasing barriers automatically into ``execute_frame_graph_rhi_texture_schedule``" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "wildcard/null public aliasing barriers" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "data inheritance/content preservation" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText 'engine/renderer/src/rhi_viewport_surface.cpp` must not call `transition_texture(' $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "declared shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "Treat those bindings as acquisition output only until a separate alias-aware executor state handoff/barrier slice exists" $renderingGuidancePath
@@ -1869,6 +1885,10 @@ foreach ($renderingAuditorPath in @(
     Assert-ContainsText $renderingAuditorText "conflicting initial shared-handle state rejection" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "FrameGraphTextureAliasingBarrier" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "record_frame_graph_texture_aliasing_barriers" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "same alias-group placed pairs" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "same-offset placed textures" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "ExecuteCommandLists" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "submits work rather than after fence completion" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "automatic executor insertion" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "wildcard/null public aliasing barriers" $renderingAuditorPath
     Assert-DoesNotContainText $renderingAuditorText "treating the current executor as alias-aware" $renderingAuditorPath
