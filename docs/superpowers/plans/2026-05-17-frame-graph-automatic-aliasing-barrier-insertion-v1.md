@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 - **Plan ID:** `frame-graph-automatic-aliasing-barrier-insertion-v1`
-- **Status:** Implementation complete; final validation and publication pending.
+- **Status:** Completed.
 - **Goal:** Insert backend-neutral texture aliasing barriers automatically inside `execute_frame_graph_rhi_texture_schedule` when a transient texture alias group switches from one planned resource lifetime to the next.
 - **Architecture:** Reuse the existing `FrameGraphTransientTextureAliasPlan` lifetime rows as the executor-owned aliasing schedule input. The executor prevalidates lifetime rows against `FrameGraphTextureBinding` resources and the linear frame-graph schedule, records one `IRhiCommandList::texture_aliasing_barrier` before the first pass that uses each later resource in an alias group, then records existing pass target-state transitions and pass callbacks.
 - **Tech Stack:** C++23, `MK_renderer`, backend-neutral `MK_rhi`, NullRHI/D3D12/Vulkan existing aliasing-barrier implementations, PowerShell 7 validation entrypoints.
@@ -50,8 +50,8 @@
 - [x] Add a failing validation test for malformed automatic aliasing lifetime rows that must stop before callbacks or command recording.
 - [x] Implement validation for malformed lifetime rows and rerun the focused renderer test.
 - [x] Update docs, manifest fragments, composed manifest, skills/subagents, and static guards for the new ready surface and remaining unsupported claims.
-- [ ] Run focused validation: renderer tests, static checks touching renderer/agent surfaces, `tools/validate.ps1`, and `tools/build.ps1` if the slice is publication-ready.
-- [ ] Commit, push, create PR, and inspect PR checks.
+- [x] Run focused validation: renderer tests, static checks touching renderer/agent surfaces, `tools/validate.ps1`, and `tools/build.ps1` if the slice is publication-ready.
+- [x] Commit, push, create PR, and inspect PR checks.
 
 ## Done When
 
@@ -87,3 +87,5 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed | Agent integration static guards passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full slice gate passed after the review fixes; CTest reported 65/65 tests passed. Host-gated Apple/Metal diagnostics remained diagnostic-only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit preflight build passed after the review fixes; MSBuild emitted existing shared-intermediate `MSB8028` warnings. |
+| `gh pr create --base main --head codex/frame-graph-automatic-aliasing-barriers` | Passed | Created PR #83 for the automatic aliasing-barrier insertion slice. |
+| `gh pr merge 83 --repo y2ikgm89/mirakanai-engine --auto --merge --delete-branch --match-head-commit 45c8e9f8fb37181516bb6770241c4d4165926199` | Passed | PR #83 merged into `main`; the first local invocation was blocked by an unrelated checked-out `main` worktree, so the repository-scoped retry avoided local checkout state. |
