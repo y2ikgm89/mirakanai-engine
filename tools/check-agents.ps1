@@ -93,6 +93,14 @@ foreach ($script in Get-ChildItem -LiteralPath $toolsScriptRoot -Filter "*.ps1" 
     if ($nextIdx -ge $lines.Length -or $lines[$nextIdx] -ne "#requires -PSEdition Core") {
         Write-Error ("tools/{0} must declare #requires -PSEdition Core on the line immediately after #requires -Version 7.0 " -f $script.Name)
     }
+
+    $parseTokens = $null
+    $parseErrors = $null
+    $null = [System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$parseTokens, [ref]$parseErrors)
+    if (@($parseErrors).Count -gt 0) {
+        $firstParseError = @($parseErrors)[0]
+        Write-Error ("tools/{0} has PowerShell parse error at line {1}: {2}" -f $script.Name, $firstParseError.Extent.StartLineNumber, $firstParseError.Message)
+    }
 }
 
 function Get-SkillFrontmatterBlock {
