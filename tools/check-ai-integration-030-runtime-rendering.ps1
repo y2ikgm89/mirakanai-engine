@@ -1655,6 +1655,8 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transient Texture Alias Planning v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTransientTextureAliasPlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_transient_texture_aliases" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transient Texture Lease Binding v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "acquire_frame_graph_transient_texture_lease_bindings" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiFrameRenderer executor-owned primary_color pass timing" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiPostprocessFrameRenderer executor-owned scene-color/scene-depth target preparation plus scene pass callback recording and post-chain/final-state transition adoption" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiDirectionalShadowSmokeFrameRenderer scheduled shadow-depth/scene-color/scene-depth inter-pass plus shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state and scene-depth/shadow-depth final-state transition adoption" "MK_renderer module purpose"
@@ -1722,6 +1724,13 @@ $rhiViewportSurfaceSource = Get-AgentSurfaceText "engine/renderer/src/rhi_viewpo
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTexturePassTargetAccess" "Frame graph RHI pass target access public API"
 Assert-ContainsText $frameGraphRhiHeader "build_frame_graph_texture_pass_target_accesses" "Frame graph RHI pass target access public API"
 Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses" "Frame graph RHI pass target access public API"
+Assert-ContainsText $frameGraphRhiHeader "FrameGraphTransientTextureLeaseBindingResult" "Frame graph transient texture lease binding public API"
+Assert-ContainsText $frameGraphRhiHeader "acquire_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding public API"
+Assert-ContainsText $frameGraphRhiHeader "release_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding public API"
+Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group acquisition failed" "Frame graph transient texture lease binding failure cleanup"
+Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group has no resources" "Frame graph transient texture lease binding malformed-plan validation"
+Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group resource name is empty" "Frame graph transient texture lease binding malformed-plan validation"
+Assert-ContainsText $frameGraphRhiSource "release_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding failure cleanup"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state has no declared writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state disagrees with writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target access is declared more than once" "Frame graph RHI pass target access validation"
@@ -1785,8 +1794,20 @@ foreach ($renderingGuidancePath in @(
     $renderingGuidanceText = Get-AgentSurfaceText $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "declared shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "viewport color-state executor slices" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "FrameGraphTransientTextureLeaseBindingResult" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "one backend-neutral ``IRhiDevice::acquire_transient_texture`` lease per alias group" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "alias-aware executor state handoff" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText 'engine/renderer/src/rhi_viewport_surface.cpp` must not call `transition_texture(' $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "declared shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
+}
+foreach ($renderingAuditorPath in @(
+    ".codex/agents/rendering-auditor.toml",
+    ".claude/agents/rendering-auditor.md"
+)) {
+    $renderingAuditorText = Get-AgentSurfaceText $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "FrameGraphTransientTextureLeaseBindingResult" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "acquire_frame_graph_transient_texture_lease_bindings" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "treating the current executor as alias-aware" $renderingAuditorPath
 }
 foreach ($postprocessDepthGuidance in @(
     "docs/testing.md",

@@ -21,6 +21,7 @@
 #include <memory>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -292,6 +293,21 @@ class ThrowingTransitionRhiDevice final : public ThrowingSubmitRhiDevice {
     }
 
     std::uint32_t throw_on_transition{0};
+};
+
+class ThrowingTransientTextureAcquireRhiDevice final : public ThrowingSubmitRhiDevice {
+  public:
+    [[nodiscard]] mirakana::rhi::TransientTexture
+    acquire_transient_texture(const mirakana::rhi::TextureDesc& desc) override {
+        ++acquire_calls;
+        if (fail_on_acquire != 0 && acquire_calls == fail_on_acquire) {
+            throw std::runtime_error("transient texture allocation failed");
+        }
+        return inner.acquire_transient_texture(desc);
+    }
+
+    std::uint32_t acquire_calls{0};
+    std::uint32_t fail_on_acquire{0};
 };
 
 [[nodiscard]] std::array<std::uint8_t, mirakana::shadow_receiver_constants_byte_size()>
@@ -1111,6 +1127,164 @@ MK_TEST("frame graph rhi transient texture alias planner rejects byte estimate o
         return diag.code == mirakana::FrameGraphDiagnosticCode::invalid_resource && diag.resource == "huge-color" &&
                diag.message == "transient texture byte estimate overflowed";
     }));
+}
+
+MK_TEST("frame graph rhi transient texture lease binding accepts empty alias plans without acquiring") {
+    const mirakana::FrameGraphTransientTextureAliasPlan plan;
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto result = mirakana::acquire_frame_graph_transient_texture_lease_bindings(device, plan);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.leases.empty());
+    MK_REQUIRE(result.texture_bindings.empty());
+    MK_REQUIRE(result.diagnostics.empty());
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.transient_resources_acquired == 0);
+    MK_REQUIRE(stats.transient_resources_active == 0);
+}
+
+MK_TEST("frame graph rhi transient texture lease binding acquires one lease per alias group") {
+    const auto color_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    };
+
+    mirakana::FrameGraphTransientTextureAliasPlan plan;
+    plan.alias_groups.push_back(mirakana::FrameGraphTransientTextureAliasGroup{
+        .index = 0,
+        .desc = color_desc,
+        .estimated_bytes = 64ULL * 64ULL * 4ULL,
+        .resources = {"early", "late"},
+    });
+    plan.alias_groups.push_back(mirakana::FrameGraphTransientTextureAliasGroup{
+        .index = 1,
+        .desc = color_desc,
+        .estimated_bytes = 64ULL * 64ULL * 4ULL,
+        .resources = {"overlap"},
+    });
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto result = mirakana::acquire_frame_graph_transient_texture_lease_bindings(device, plan);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.leases.size() == 2);
+    MK_REQUIRE(result.texture_bindings.size() == 3);
+    MK_REQUIRE(result.leases[0].alias_group == 0);
+    MK_REQUIRE(result.leases[1].alias_group == 1);
+    MK_REQUIRE(result.texture_bindings[0].resource == "early");
+    MK_REQUIRE(result.texture_bindings[1].resource == "late");
+    MK_REQUIRE(result.texture_bindings[2].resource == "overlap");
+    MK_REQUIRE(result.texture_bindings[0].texture.value == result.texture_bindings[1].texture.value);
+    MK_REQUIRE(result.texture_bindings[0].texture.value != result.texture_bindings[2].texture.value);
+    MK_REQUIRE(result.texture_bindings[0].current_state == mirakana::rhi::ResourceState::undefined);
+    MK_REQUIRE(result.texture_bindings[1].current_state == mirakana::rhi::ResourceState::undefined);
+    MK_REQUIRE(result.texture_bindings[2].current_state == mirakana::rhi::ResourceState::undefined);
+
+    auto stats = device.stats();
+    MK_REQUIRE(stats.transient_resources_acquired == 2);
+    MK_REQUIRE(stats.transient_resources_active == 2);
+
+    mirakana::release_frame_graph_transient_texture_lease_bindings(device, result.leases);
+
+    stats = device.stats();
+    MK_REQUIRE(stats.transient_resources_released == 2);
+    MK_REQUIRE(stats.transient_resources_active == 0);
+}
+
+MK_TEST("frame graph rhi transient texture lease binding preserves plan diagnostics without acquiring") {
+    mirakana::FrameGraphTransientTextureAliasPlan plan;
+    plan.diagnostics.push_back(mirakana::FrameGraphDiagnostic{
+        .code = mirakana::FrameGraphDiagnosticCode::invalid_resource,
+        .pass = {},
+        .resource = "scene-color",
+        .message = "used transient texture resource has no descriptor",
+    });
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto result = mirakana::acquire_frame_graph_transient_texture_lease_bindings(device, plan);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].resource == "scene-color");
+    MK_REQUIRE(result.leases.empty());
+    MK_REQUIRE(result.texture_bindings.empty());
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.transient_resources_acquired == 0);
+    MK_REQUIRE(stats.transient_resources_active == 0);
+}
+
+MK_TEST("frame graph rhi transient texture lease binding rejects empty alias groups before acquiring") {
+    const auto color_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    };
+
+    mirakana::FrameGraphTransientTextureAliasPlan plan;
+    plan.alias_groups.push_back(mirakana::FrameGraphTransientTextureAliasGroup{
+        .index = 7,
+        .desc = color_desc,
+        .estimated_bytes = 16ULL * 16ULL * 4ULL,
+        .resources = {},
+    });
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto result = mirakana::acquire_frame_graph_transient_texture_lease_bindings(device, plan);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.leases.empty());
+    MK_REQUIRE(result.texture_bindings.empty());
+    MK_REQUIRE(std::ranges::any_of(result.diagnostics, [](const mirakana::FrameGraphDiagnostic& diag) {
+        return diag.code == mirakana::FrameGraphDiagnosticCode::invalid_resource && diag.resource == "alias-group-7" &&
+               diag.message == "frame graph transient texture alias group has no resources";
+    }));
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.transient_resources_acquired == 0);
+    MK_REQUIRE(stats.transient_resources_active == 0);
+}
+
+MK_TEST("frame graph rhi transient texture lease binding releases acquired leases after later failure") {
+    const auto color_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    };
+
+    mirakana::FrameGraphTransientTextureAliasPlan plan;
+    plan.alias_groups.push_back(mirakana::FrameGraphTransientTextureAliasGroup{
+        .index = 0,
+        .desc = color_desc,
+        .estimated_bytes = 32ULL * 32ULL * 4ULL,
+        .resources = {"first"},
+    });
+    plan.alias_groups.push_back(mirakana::FrameGraphTransientTextureAliasGroup{
+        .index = 1,
+        .desc = color_desc,
+        .estimated_bytes = 32ULL * 32ULL * 4ULL,
+        .resources = {"second"},
+    });
+
+    ThrowingTransientTextureAcquireRhiDevice device;
+    device.fail_on_acquire = 2;
+    const auto result = mirakana::acquire_frame_graph_transient_texture_lease_bindings(device, plan);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.leases.empty());
+    MK_REQUIRE(result.texture_bindings.empty());
+    MK_REQUIRE(std::ranges::any_of(result.diagnostics, [](const mirakana::FrameGraphDiagnostic& diag) {
+        return diag.code == mirakana::FrameGraphDiagnosticCode::invalid_resource && diag.resource == "alias-group-1" &&
+               diag.message.find("transient texture allocation failed") != std::string::npos;
+    }));
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.transient_resources_acquired == 1);
+    MK_REQUIRE(stats.transient_resources_released == 1);
+    MK_REQUIRE(stats.transient_resources_active == 0);
 }
 
 MK_TEST("frame graph v1 execution schedule interleaves sorted barriers before each pass") {

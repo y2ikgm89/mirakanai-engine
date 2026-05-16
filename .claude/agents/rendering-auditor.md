@@ -5,13 +5,13 @@ tools: Read, Grep, Glob, LS
 sandbox_mode: read-only
 ---
 
-Subagents do not change Git or PR state or register auto-merge. Report review evidence and blockers; the parent handles commits, pushes, PR preflight, and auto-merge under `AGENTS.md`.
+Subagents do not change Git/PR state or register auto-merge; report evidence/blockers to parent.
 
 When a rendering review exposes stale or missing agent guidance, manifest claims, rules, or validation guards, include the affected agent surfaces in the findings.
 
 For Frame Graph/Postprocess v0 reviews, verify scene-color textures, optional renderer-owned scene-depth textures, descriptor sets, samplers, postprocess pipelines, and pass sequencing stay inside mirakana_renderer/mirakana_runtime_host_sdl3_presentation, and that public reports expose only postprocess_status, postprocess_depth_input_requested, postprocess_depth_input_ready, framegraph_passes, diagnostics, and IRenderer::stats() rather than IRhiDevice, swapchain frames, native image views, descriptor handles, frame-graph internals, or GPU timestamps. `RhiPostprocessFrameRenderer` is expected to queue mesh commands during `draw_mesh()`, let `execute_frame_graph_rhi_texture_schedule` prepare scene-color/optional scene-depth target states from `FrameGraphTexturePassTargetAccess` rows and `FrameGraphV1Desc` writes, invoke the `scene_color` callback to record the scene render pass, then route post-chain transitions/callbacks and reusable scene-depth final-state restoration while keeping swapchain acquire/present, postprocess pass bodies, native UI overlay preparation, and native resource ownership renderer-owned.
 
-For Frame Graph transient texture alias planning reviews, require `FrameGraphTransientTextureDesc`, `FrameGraphTransientTextureAliasPlan`, and `plan_frame_graph_transient_texture_aliases` to stay in `frame_graph_rhi`, validate used transient `TextureDesc` rows, compute first/last pass lifetimes, group only exact-desc non-overlap aliases, and report byte estimates without allocating native resources, emitting native aliasing barriers, exposing native handles, or claiming production graph ownership.
+For Frame Graph transient texture alias/lease reviews, require `FrameGraphTransientTextureDesc`, `FrameGraphTransientTextureAliasPlan`, `plan_frame_graph_transient_texture_aliases`, `FrameGraphTransientTextureLeaseBindingResult`, `acquire_frame_graph_transient_texture_lease_bindings`, and `release_frame_graph_transient_texture_lease_bindings` to stay in `frame_graph_rhi`. Plans validate `TextureDesc`/lifetimes and exact-desc groups; binding acquires one `IRhiDevice` transient texture lease per alias group, emits shared-handle `FrameGraphTextureBinding` rows, rejects malformed groups, and releases partial failures. Reject native allocation/barriers/handles, treating the current executor as alias-aware, or production graph claims.
 
 `RhiFrameRenderer`: executor-owned `primary_color`.
 

@@ -830,6 +830,78 @@ plan_frame_graph_transient_texture_aliases(const FrameGraphV1Desc& desc,
     return result;
 }
 
+void release_frame_graph_transient_texture_lease_bindings(rhi::IRhiDevice& device,
+                                                          std::span<const FrameGraphTransientTextureLease> leases) {
+    for (const auto& lease : leases) {
+        device.release_transient(lease.transient.lease);
+    }
+}
+
+FrameGraphTransientTextureLeaseBindingResult
+acquire_frame_graph_transient_texture_lease_bindings(rhi::IRhiDevice& device,
+                                                     const FrameGraphTransientTextureAliasPlan& plan) {
+    FrameGraphTransientTextureLeaseBindingResult result;
+    if (!plan.succeeded()) {
+        result.diagnostics = plan.diagnostics;
+        return result;
+    }
+
+    for (const auto& group : plan.alias_groups) {
+        const auto group_resource = "alias-group-" + std::to_string(group.index);
+        if (group.resources.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, group_resource,
+                                              "frame graph transient texture alias group has no resources");
+            continue;
+        }
+        for (const auto& resource : group.resources) {
+            if (resource.empty()) {
+                append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
+                                                  group_resource,
+                                                  "frame graph transient texture alias group resource name is empty");
+            }
+        }
+    }
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    for (const auto& group : plan.alias_groups) {
+        try {
+            const auto transient = device.acquire_transient_texture(group.desc);
+            result.leases.push_back(FrameGraphTransientTextureLease{
+                .alias_group = group.index,
+                .transient = transient,
+            });
+
+            for (const auto& resource : group.resources) {
+                result.texture_bindings.push_back(FrameGraphTextureBinding{
+                    .resource = resource,
+                    .texture = transient.texture,
+                    .current_state = rhi::ResourceState::undefined,
+                });
+            }
+        } catch (const std::exception& exception) {
+            release_frame_graph_transient_texture_lease_bindings(device, result.leases);
+            result.leases.clear();
+            result.texture_bindings.clear();
+            append_frame_graph_rhi_diagnostic(
+                result, FrameGraphDiagnosticCode::invalid_resource, {}, "alias-group-" + std::to_string(group.index),
+                "frame graph transient texture alias group acquisition failed: " + std::string(exception.what()));
+            return result;
+        } catch (...) {
+            release_frame_graph_transient_texture_lease_bindings(device, result.leases);
+            result.leases.clear();
+            result.texture_bindings.clear();
+            append_frame_graph_rhi_diagnostic(
+                result, FrameGraphDiagnosticCode::invalid_resource, {}, "alias-group-" + std::to_string(group.index),
+                "frame graph transient texture alias group acquisition failed: unknown exception");
+            return result;
+        }
+    }
+
+    return result;
+}
+
 FrameGraphTextureBarrierRecordResult
 record_frame_graph_texture_barriers(rhi::IRhiCommandList& commands, std::span<const FrameGraphExecutionStep> schedule,
                                     std::span<FrameGraphTextureBinding> texture_bindings) {
