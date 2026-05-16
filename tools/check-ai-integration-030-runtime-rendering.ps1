@@ -1731,9 +1731,16 @@ Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias gr
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group has no resources" "Frame graph transient texture lease binding malformed-plan validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group resource name is empty" "Frame graph transient texture lease binding malformed-plan validation"
 Assert-ContainsText $frameGraphRhiSource "release_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding failure cleanup"
+Assert-ContainsText $frameGraphRhiSource "propagate_shared_simulated_texture_state" "Frame graph shared TextureHandle state handoff"
+Assert-ContainsText $frameGraphRhiSource "propagate_shared_texture_binding_state" "Frame graph shared TextureHandle state handoff"
+Assert-ContainsText $frameGraphRhiSource "frame graph texture bindings sharing a handle disagree on current state" "Frame graph shared TextureHandle state handoff"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state has no declared writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state disagrees with writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target access is declared more than once" "Frame graph RHI pass target access validation"
+$rendererRhiTests = Get-AgentSurfaceText "tests/unit/renderer_rhi_tests.cpp"
+Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording propagates shared texture handle state" "Frame graph shared TextureHandle state handoff tests"
+Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording rejects conflicting shared texture handle states" "Frame graph shared TextureHandle state handoff tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution hands off shared texture handle state between aliases" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rhiFrameRendererSource "execute_frame_graph_rhi_texture_schedule" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "primary_color" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "framegraph_passes_executed" "RHI frame renderer primary pass ownership"
@@ -1796,9 +1803,11 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "viewport color-state executor slices" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "FrameGraphTransientTextureLeaseBindingResult" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "one backend-neutral ``IRhiDevice::acquire_transient_texture`` lease per alias group" $renderingGuidancePath
-    Assert-ContainsText $renderingGuidanceText "alias-aware executor state handoff" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "shared-handle state-handoff aware" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "conflicting initial shared-handle states" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText 'engine/renderer/src/rhi_viewport_surface.cpp` must not call `transition_texture(' $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "declared shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
+    Assert-DoesNotContainText $renderingGuidanceText "Treat those bindings as acquisition output only until a separate alias-aware executor state handoff/barrier slice exists" $renderingGuidancePath
 }
 foreach ($renderingAuditorPath in @(
     ".codex/agents/rendering-auditor.toml",
@@ -1807,7 +1816,10 @@ foreach ($renderingAuditorPath in @(
     $renderingAuditorText = Get-AgentSurfaceText $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "FrameGraphTransientTextureLeaseBindingResult" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "acquire_frame_graph_transient_texture_lease_bindings" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "treating the current executor as alias-aware" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "shared-handle executor state handoff" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "conflicting initial shared-handle state rejection" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "native aliasing barrier claims" $renderingAuditorPath
+    Assert-DoesNotContainText $renderingAuditorText "treating the current executor as alias-aware" $renderingAuditorPath
 }
 foreach ($postprocessDepthGuidance in @(
     "docs/testing.md",

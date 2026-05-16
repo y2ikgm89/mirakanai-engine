@@ -397,7 +397,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureLeaseBindingResult") -or
     -not ([string]$frameGraphGap[0].notes).Contains("acquire_frame_graph_transient_texture_lease_bindings") -or
     -not ([string]$frameGraphGap[0].notes).Contains("one backend-neutral IRhiDevice transient texture lease per alias group") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("alias-aware executor execution") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Shared Texture State Handoff v1") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("sharing one backend-neutral TextureHandle") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("conflicting initial shared-handle states") -or
     -not ([string]$frameGraphGap[0].notes).Contains("native aliasing barrier execution") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
@@ -474,7 +476,8 @@ foreach ($needle in @(
     "Frame Graph Transient Texture Lease Binding v1",
     "FrameGraphTransientTextureLeaseBindingResult",
     "acquire_frame_graph_transient_texture_lease_bindings",
-    "alias-aware executor execution",
+    "Frame Graph Shared Texture State Handoff v1",
+    "conflicting initial shared-handle states",
     "Frame Graph RHI Pass Target Access Validation v1",
     "FrameGraphTexturePassTargetAccess",
     "build_frame_graph_texture_pass_target_accesses",
