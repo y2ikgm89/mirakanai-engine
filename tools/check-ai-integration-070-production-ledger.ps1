@@ -1289,7 +1289,8 @@ foreach ($agentIntegrationSkill in @(
     }
     Assert-ContainsText $agentIntegrationSkillText "final completion report must not stop after local validation" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Direct default-branch pushes are forbidden" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "selected hosted checks to complete" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText '`PR Gate` to report `SUCCESS`' $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "mergeStateStatus" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText '--match-head-commit <headRefOid>' $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Hosted PR failure hardening" $agentIntegrationSkill

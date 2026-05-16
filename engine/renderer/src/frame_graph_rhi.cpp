@@ -246,7 +246,7 @@ plan_automatic_texture_aliasing_barriers(
             if (before_binding == binding_indices.end() || after_binding == binding_indices.end()) {
                 continue;
             }
-            const auto pass_name = scheduled_pass_order[after.first_pass_index];
+            const auto& pass_name = scheduled_pass_order[after.first_pass_index];
             if (texture_bindings[before_binding->second].texture.value ==
                 texture_bindings[after_binding->second].texture.value) {
                 append_frame_graph_rhi_diagnostic(
