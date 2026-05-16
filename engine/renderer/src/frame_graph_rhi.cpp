@@ -866,7 +866,7 @@ plan_frame_graph_transient_texture_aliases(const FrameGraphV1Desc& desc,
 void release_frame_graph_transient_texture_lease_bindings(rhi::IRhiDevice& device,
                                                           std::span<const FrameGraphTransientTextureLease> leases) {
     for (const auto& lease : leases) {
-        device.release_transient(lease.transient.lease);
+        device.release_transient(lease.transient_alias_group.lease);
     }
 }
 
@@ -900,16 +900,55 @@ acquire_frame_graph_transient_texture_lease_bindings(rhi::IRhiDevice& device,
 
     for (const auto& group : plan.alias_groups) {
         try {
-            const auto transient = device.acquire_transient_texture(group.desc);
+            auto transient = device.acquire_transient_texture_alias_group(group.desc, group.resources.size());
+            if (transient.lease.value == 0 || transient.textures.size() != group.resources.size()) {
+                if (transient.lease.value != 0) {
+                    device.release_transient(transient.lease);
+                }
+                release_frame_graph_transient_texture_lease_bindings(device, result.leases);
+                result.leases.clear();
+                result.texture_bindings.clear();
+                append_frame_graph_rhi_diagnostic(
+                    result, FrameGraphDiagnosticCode::invalid_resource, {},
+                    "alias-group-" + std::to_string(group.index),
+                    "frame graph transient texture alias group returned an invalid texture count");
+                return result;
+            }
+            for (std::size_t texture_index = 0; texture_index < transient.textures.size(); ++texture_index) {
+                const auto texture = transient.textures[texture_index];
+                if (texture.value == 0) {
+                    device.release_transient(transient.lease);
+                    release_frame_graph_transient_texture_lease_bindings(device, result.leases);
+                    result.leases.clear();
+                    result.texture_bindings.clear();
+                    append_frame_graph_rhi_diagnostic(
+                        result, FrameGraphDiagnosticCode::invalid_resource, {}, group.resources[texture_index],
+                        "frame graph transient texture alias group returned an invalid texture handle");
+                    return result;
+                }
+                const auto duplicate = std::ranges::any_of(
+                    std::span<const rhi::TextureHandle>{transient.textures.data(), texture_index},
+                    [texture](rhi::TextureHandle existing) noexcept { return existing.value == texture.value; });
+                if (duplicate) {
+                    device.release_transient(transient.lease);
+                    release_frame_graph_transient_texture_lease_bindings(device, result.leases);
+                    result.leases.clear();
+                    result.texture_bindings.clear();
+                    append_frame_graph_rhi_diagnostic(
+                        result, FrameGraphDiagnosticCode::invalid_resource, {}, group.resources[texture_index],
+                        "frame graph transient texture alias group returned duplicate texture handles");
+                    return result;
+                }
+            }
             result.leases.push_back(FrameGraphTransientTextureLease{
                 .alias_group = group.index,
-                .transient = transient,
+                .transient_alias_group = transient,
             });
 
-            for (const auto& resource : group.resources) {
+            for (std::size_t resource_index = 0; resource_index < group.resources.size(); ++resource_index) {
                 result.texture_bindings.push_back(FrameGraphTextureBinding{
-                    .resource = resource,
-                    .texture = transient.texture,
+                    .resource = group.resources[resource_index],
+                    .texture = transient.textures[resource_index],
                     .current_state = rhi::ResourceState::undefined,
                 });
             }

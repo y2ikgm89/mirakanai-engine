@@ -89,6 +89,11 @@ class ThrowingSubmitRhiDevice : public mirakana::rhi::IRhiDevice {
         return inner.acquire_transient_texture(desc);
     }
 
+    [[nodiscard]] mirakana::rhi::TransientTextureAliasGroup
+    acquire_transient_texture_alias_group(const mirakana::rhi::TextureDesc& desc, std::size_t texture_count) override {
+        return inner.acquire_transient_texture_alias_group(desc, texture_count);
+    }
+
     void release_transient(mirakana::rhi::TransientResourceHandle lease) override {
         inner.release_transient(lease);
     }
@@ -310,8 +315,29 @@ class ThrowingTransientTextureAcquireRhiDevice final : public ThrowingSubmitRhiD
         return inner.acquire_transient_texture(desc);
     }
 
+    [[nodiscard]] mirakana::rhi::TransientTextureAliasGroup
+    acquire_transient_texture_alias_group(const mirakana::rhi::TextureDesc& desc, std::size_t texture_count) override {
+        ++acquire_calls;
+        if (fail_on_acquire != 0 && acquire_calls == fail_on_acquire) {
+            throw std::runtime_error("transient texture alias group allocation failed");
+        }
+        return inner.acquire_transient_texture_alias_group(desc, texture_count);
+    }
+
     std::uint32_t acquire_calls{0};
     std::uint32_t fail_on_acquire{0};
+};
+
+class DuplicateTransientTextureAliasGroupRhiDevice final : public ThrowingSubmitRhiDevice {
+  public:
+    [[nodiscard]] mirakana::rhi::TransientTextureAliasGroup
+    acquire_transient_texture_alias_group(const mirakana::rhi::TextureDesc& desc, std::size_t texture_count) override {
+        auto aliases = inner.acquire_transient_texture_alias_group(desc, texture_count);
+        if (aliases.textures.size() > 1) {
+            aliases.textures[1] = aliases.textures[0];
+        }
+        return aliases;
+    }
 };
 
 [[nodiscard]] std::array<std::uint8_t, mirakana::shadow_receiver_constants_byte_size()>
@@ -1149,7 +1175,7 @@ MK_TEST("frame graph rhi transient texture lease binding accepts empty alias pla
     MK_REQUIRE(stats.transient_resources_active == 0);
 }
 
-MK_TEST("frame graph rhi transient texture lease binding acquires one lease per alias group") {
+MK_TEST("frame graph rhi transient texture lease binding acquires distinct handles per alias group resource") {
     const auto color_desc = mirakana::rhi::TextureDesc{
         .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
         .format = mirakana::rhi::Format::rgba8_unorm,
@@ -1181,15 +1207,29 @@ MK_TEST("frame graph rhi transient texture lease binding acquires one lease per 
     MK_REQUIRE(result.texture_bindings[0].resource == "early");
     MK_REQUIRE(result.texture_bindings[1].resource == "late");
     MK_REQUIRE(result.texture_bindings[2].resource == "overlap");
-    MK_REQUIRE(result.texture_bindings[0].texture.value == result.texture_bindings[1].texture.value);
+    MK_REQUIRE(result.texture_bindings[0].texture.value != result.texture_bindings[1].texture.value);
     MK_REQUIRE(result.texture_bindings[0].texture.value != result.texture_bindings[2].texture.value);
     MK_REQUIRE(result.texture_bindings[0].current_state == mirakana::rhi::ResourceState::undefined);
     MK_REQUIRE(result.texture_bindings[1].current_state == mirakana::rhi::ResourceState::undefined);
     MK_REQUIRE(result.texture_bindings[2].current_state == mirakana::rhi::ResourceState::undefined);
 
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    const auto aliasing_result = mirakana::record_frame_graph_texture_aliasing_barriers(
+        *commands,
+        std::vector<mirakana::FrameGraphTextureAliasingBarrier>{
+            mirakana::FrameGraphTextureAliasingBarrier{.before_resource = "early", .after_resource = "late"},
+        },
+        result.texture_bindings);
+    commands->close();
+
+    MK_REQUIRE(aliasing_result.succeeded());
+    MK_REQUIRE(aliasing_result.aliasing_barriers_recorded == 1);
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 1);
+
     auto stats = device.stats();
     MK_REQUIRE(stats.transient_resources_acquired == 2);
     MK_REQUIRE(stats.transient_resources_active == 2);
+    MK_REQUIRE(stats.textures_created == 3);
 
     mirakana::release_frame_graph_transient_texture_lease_bindings(device, result.leases);
 
@@ -1282,7 +1322,39 @@ MK_TEST("frame graph rhi transient texture lease binding releases acquired lease
     MK_REQUIRE(result.texture_bindings.empty());
     MK_REQUIRE(std::ranges::any_of(result.diagnostics, [](const mirakana::FrameGraphDiagnostic& diag) {
         return diag.code == mirakana::FrameGraphDiagnosticCode::invalid_resource && diag.resource == "alias-group-1" &&
-               diag.message.find("transient texture allocation failed") != std::string::npos;
+               diag.message.find("transient texture alias group allocation failed") != std::string::npos;
+    }));
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.transient_resources_acquired == 1);
+    MK_REQUIRE(stats.transient_resources_released == 1);
+    MK_REQUIRE(stats.transient_resources_active == 0);
+}
+
+MK_TEST("frame graph rhi transient texture lease binding rejects duplicate backend alias handles") {
+    const auto color_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    };
+
+    mirakana::FrameGraphTransientTextureAliasPlan plan;
+    plan.alias_groups.push_back(mirakana::FrameGraphTransientTextureAliasGroup{
+        .index = 3,
+        .desc = color_desc,
+        .estimated_bytes = 32ULL * 32ULL * 4ULL,
+        .resources = {"first", "second"},
+    });
+
+    DuplicateTransientTextureAliasGroupRhiDevice device;
+    const auto result = mirakana::acquire_frame_graph_transient_texture_lease_bindings(device, plan);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.leases.empty());
+    MK_REQUIRE(result.texture_bindings.empty());
+    MK_REQUIRE(std::ranges::any_of(result.diagnostics, [](const mirakana::FrameGraphDiagnostic& diag) {
+        return diag.code == mirakana::FrameGraphDiagnosticCode::invalid_resource && diag.resource == "second" &&
+               diag.message == "frame graph transient texture alias group returned duplicate texture handles";
     }));
 
     const auto stats = device.stats();

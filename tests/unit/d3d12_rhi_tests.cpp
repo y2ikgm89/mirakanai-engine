@@ -7540,6 +7540,46 @@ MK_TEST("d3d12 rhi device acquires releases and invalidates transient resources"
     MK_REQUIRE(device->stats().transient_texture_placed_resources_alive == 0);
 }
 
+MK_TEST("d3d12 rhi device transient texture alias group returns distinct placed handles") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
+        .prefer_warp = false,
+        .enable_debug_layer = false,
+    });
+
+    MK_REQUIRE(device != nullptr);
+
+    const auto aliases = device->acquire_transient_texture_alias_group(
+        mirakana::rhi::TextureDesc{
+            .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+            .format = mirakana::rhi::Format::rgba8_unorm,
+            .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+        },
+        2);
+
+    MK_REQUIRE(aliases.lease.value != 0);
+    MK_REQUIRE(aliases.textures.size() == 2);
+    MK_REQUIRE(aliases.textures[0].value != 0);
+    MK_REQUIRE(aliases.textures[1].value != 0);
+    MK_REQUIRE(aliases.textures[0].value != aliases.textures[1].value);
+
+    auto commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->texture_aliasing_barrier(aliases.textures[0], aliases.textures[1]);
+    commands->close();
+
+    const auto fence = device->submit(*commands);
+    device->release_transient(aliases.lease);
+    device->wait(fence);
+
+    const auto stats = device->stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    MK_REQUIRE(stats.transient_resources_acquired == 1);
+    MK_REQUIRE(stats.transient_resources_released == 1);
+    MK_REQUIRE(stats.transient_resources_active == 0);
+    MK_REQUIRE(stats.transient_texture_heap_allocations == 1);
+    MK_REQUIRE(stats.transient_texture_placed_allocations == 2);
+    MK_REQUIRE(stats.transient_texture_placed_resources_alive == 0);
+}
+
 MK_TEST("d3d12 rhi device records texture aliasing barrier commands") {
     auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
         .prefer_warp = false,

@@ -1655,7 +1655,9 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transient Texture Alias Planning v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTransientTextureAliasPlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_transient_texture_aliases" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transient Texture Lease Binding v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Backend-Neutral Distinct Alias-Group Lease Binding v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "IRhiDevice::acquire_transient_texture_alias_group" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "distinct resource-name FrameGraphTextureBinding rows" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "acquire_frame_graph_transient_texture_lease_bindings" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Texture Aliasing Barrier Command v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTextureAliasingBarrier" "MK_renderer module purpose"
@@ -1732,15 +1734,20 @@ Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTexturePassT
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTransientTextureLeaseBindingResult" "Frame graph transient texture lease binding public API"
 Assert-ContainsText $frameGraphRhiHeader "acquire_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding public API"
 Assert-ContainsText $frameGraphRhiHeader "release_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding public API"
+Assert-ContainsText $frameGraphRhiHeader "rhi::TransientTextureAliasGroup transient_alias_group" "Frame graph transient texture lease binding public API"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTextureAliasingBarrier" "Frame graph texture aliasing barrier command public API"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTextureAliasingBarrierRecordResult" "Frame graph texture aliasing barrier command public API"
 Assert-ContainsText $frameGraphRhiHeader "record_frame_graph_texture_aliasing_barriers" "Frame graph texture aliasing barrier command public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barriers" "RHI texture aliasing barrier command public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barrier(TextureHandle before, TextureHandle after)" "RHI texture aliasing barrier command public API"
+Assert-ContainsText $rhiPublicHeaderText "TransientTextureAliasGroup" "RHI transient texture alias-group public API"
+Assert-ContainsText $rhiPublicHeaderText "std::vector<TextureHandle> textures" "RHI transient texture alias-group public API"
+Assert-ContainsText $rhiPublicHeaderText "acquire_transient_texture_alias_group(const TextureDesc& desc" "RHI transient texture alias-group public API"
 Assert-ContainsText $rhiPublicHeaderText "transient_texture_heap_allocations" "RHI D3D12 placed transient texture lease evidence"
 Assert-ContainsText $rhiPublicHeaderText "transient_texture_placed_allocations" "RHI D3D12 placed transient texture lease evidence"
 Assert-ContainsText $rhiPublicHeaderText "transient_texture_placed_resources_alive" "RHI D3D12 placed transient texture lease evidence"
 Assert-ContainsText $nullRhiSourceText "void texture_aliasing_barrier(TextureHandle before, TextureHandle after) override" "NullRHI texture aliasing barrier command"
+Assert-ContainsText $nullRhiSourceText "NullRhiDevice::acquire_transient_texture_alias_group" "NullRHI transient texture alias-group lease"
 $d3d12RhiHeaderText = Get-AgentSurfaceText "engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_backend.hpp"
 Assert-ContainsText $d3d12RhiHeaderText "null_resource_aliasing_barriers" "D3D12 texture aliasing barrier command evidence"
 Assert-ContainsText $d3d12RhiHeaderText "placed_texture_heaps_created" "D3D12 placed transient texture lease evidence"
@@ -1762,13 +1769,18 @@ Assert-ContainsText $d3d12RhiSourceText "D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTUR
 Assert-ContainsText $d3d12RhiSourceText "pResourceAfter = texture_resource" "D3D12 placed transient texture activation evidence"
 Assert-ContainsText $d3d12RhiSourceText "resource_alias_group_ids" "D3D12 placed alias group evidence"
 Assert-ContainsText $d3d12RhiSourceText "resources_share_placed_alias_group" "D3D12 placed alias group evidence"
+Assert-ContainsText $d3d12RhiSourceText "create_placed_texture_alias_group(desc, texture_count)" "D3D12 transient texture alias-group lease"
 Assert-ContainsText $d3d12RhiSourceText "pResourceBefore = before_resource" "D3D12 placed alias group non-null barrier evidence"
 Assert-ContainsText $d3d12RhiSourceText "pResourceAfter = after_resource" "D3D12 placed alias group non-null barrier evidence"
 Assert-ContainsText $d3d12RhiSourceText "placed_resource_state_updates" "D3D12 placed alias group submit-time state evidence"
 Assert-ContainsText $vulkanRhiSourceText "record_runtime_texture_aliasing_barrier" "Vulkan texture aliasing barrier command"
+Assert-ContainsText $vulkanRhiSourceText "acquire_transient_texture_alias_group" "Vulkan transient texture alias-group fallback"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group acquisition failed" "Frame graph transient texture lease binding failure cleanup"
+Assert-ContainsText $frameGraphRhiSource "device.acquire_transient_texture_alias_group(group.desc, group.resources.size())" "Frame graph transient texture distinct alias-group lease binding"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group has no resources" "Frame graph transient texture lease binding malformed-plan validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group resource name is empty" "Frame graph transient texture lease binding malformed-plan validation"
+Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group returned an invalid texture count" "Frame graph transient texture lease binding backend validation"
+Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group returned duplicate texture handles" "Frame graph transient texture lease binding backend validation"
 Assert-ContainsText $frameGraphRhiSource "release_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding failure cleanup"
 Assert-ContainsText $frameGraphRhiSource "propagate_shared_simulated_texture_state" "Frame graph shared TextureHandle state handoff"
 Assert-ContainsText $frameGraphRhiSource "propagate_shared_texture_binding_state" "Frame graph shared TextureHandle state handoff"
@@ -1785,8 +1797,12 @@ Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording 
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution hands off shared texture handle state between aliases" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording maps resource names to texture handles" "Frame graph texture aliasing barrier command tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording rejects missing resources and shared handles" "Frame graph texture aliasing barrier command tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi transient texture lease binding acquires distinct handles per alias group resource" "Frame graph transient texture distinct alias-group lease tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi transient texture lease binding rejects duplicate backend alias handles" "Frame graph transient texture distinct alias-group lease tests"
 Assert-ContainsText $rhiTestsText "null rhi records texture aliasing barriers without changing texture state" "NullRHI texture aliasing barrier command tests"
+Assert-ContainsText $rhiTestsText "null rhi transient texture alias group returns distinct handles under one lease" "NullRHI transient texture alias-group lease tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device records texture aliasing barrier commands" "D3D12 texture aliasing barrier command tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device transient texture alias group returns distinct placed handles" "D3D12 transient texture alias-group lease tests"
 Assert-ContainsText $d3d12RhiTestsText "null_resource_aliasing_barriers" "D3D12 texture aliasing barrier command evidence tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 device context creates placed transient texture resources" "D3D12 placed transient texture lease tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 device context keeps unrelated placed texture aliasing barriers conservative" "D3D12 placed alias group tests"
@@ -1859,7 +1875,8 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "declared shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "viewport color-state executor slices" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "FrameGraphTransientTextureLeaseBindingResult" $renderingGuidancePath
-    Assert-ContainsText $renderingGuidanceText "one backend-neutral ``IRhiDevice::acquire_transient_texture`` lease per alias group" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "one backend-neutral ``IRhiDevice::acquire_transient_texture_alias_group`` lease per alias group" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "distinct texture handles in group resource order" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "shared-handle state-handoff aware" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "conflicting initial shared-handle states" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "FrameGraphTextureAliasingBarrier" $renderingGuidancePath
@@ -1881,6 +1898,8 @@ foreach ($renderingAuditorPath in @(
     $renderingAuditorText = Get-AgentSurfaceText $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "FrameGraphTransientTextureLeaseBindingResult" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "acquire_frame_graph_transient_texture_lease_bindings" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "IRhiDevice::acquire_transient_texture_alias_group" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "distinct-handle binding rows" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "shared-handle executor state handoff" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "conflicting initial shared-handle state rejection" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "FrameGraphTextureAliasingBarrier" $renderingAuditorPath

@@ -6027,7 +6027,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::buffer,
             .buffer = buffer,
-            .texture = TextureHandle{},
+            .textures = {},
             .active = true,
         });
         ++stats_.transient_resources_acquired;
@@ -6066,12 +6066,76 @@ class D3d12RhiDevice final : public IRhiDevice {
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::texture,
             .buffer = BufferHandle{},
-            .texture = texture,
+            .textures = {texture},
             .active = true,
         });
         ++stats_.transient_resources_acquired;
         ++stats_.transient_resources_active;
         return TransientTexture{.lease = lease, .texture = texture};
+    }
+
+    [[nodiscard]] TransientTextureAliasGroup acquire_transient_texture_alias_group(const TextureDesc& desc,
+                                                                                   std::size_t texture_count) override {
+        if (texture_count == 0) {
+            throw std::invalid_argument("d3d12 rhi transient texture alias group requires at least one texture");
+        }
+        if (texture_count == 1) {
+            const auto transient = acquire_transient_texture(desc);
+            return TransientTextureAliasGroup{.lease = transient.lease, .textures = {transient.texture}};
+        }
+
+        const auto natives = context_->create_placed_texture_alias_group(desc, texture_count);
+        if (natives.size() != texture_count) {
+            for (const auto native : natives) {
+                context_->destroy_committed_resource(native);
+            }
+            throw std::invalid_argument(
+                "d3d12 rhi transient texture alias group description is invalid or unsupported");
+        }
+
+        std::vector<RhiResourceHandle> lifetime_handles;
+        lifetime_handles.reserve(natives.size());
+        for (std::size_t i = 0; i < natives.size(); ++i) {
+            const auto lifetime_registration = resource_lifetime_.register_resource(RhiResourceRegistrationDesc{
+                .kind = RhiResourceKind::texture,
+                .owner = "d3d12",
+                .debug_name = d3d12_rhi_resource_debug_name(
+                    "texture", static_cast<std::uint32_t>(texture_handles_.size() + i + 1U)),
+            });
+            if (!lifetime_registration.succeeded()) {
+                for (const auto native : natives) {
+                    context_->destroy_committed_resource(native);
+                }
+                throw std::logic_error("d3d12 rhi transient texture alias group lifetime registration failed");
+            }
+            lifetime_handles.push_back(lifetime_registration.handle);
+        }
+
+        std::vector<TextureHandle> textures;
+        textures.reserve(natives.size());
+        for (std::size_t i = 0; i < natives.size(); ++i) {
+            texture_handles_.push_back(natives[i]);
+            texture_descs_.push_back(desc);
+            texture_active_.push_back(true);
+            texture_states_.push_back(initial_texture_state(desc.usage));
+            texture_lifetime_.push_back(lifetime_handles[i]);
+            ++stats_.textures_created;
+            ++stats_.transient_texture_placed_allocations;
+            ++stats_.transient_texture_placed_resources_alive;
+            textures.push_back(TextureHandle{static_cast<std::uint32_t>(texture_handles_.size())});
+        }
+
+        ++stats_.transient_texture_heap_allocations;
+        const auto lease = TransientResourceHandle{next_transient_resource_++};
+        transient_leases_.push_back(TransientLeaseRecord{
+            .kind = TransientResourceKind::texture,
+            .buffer = BufferHandle{},
+            .textures = textures,
+            .active = true,
+        });
+        ++stats_.transient_resources_acquired;
+        ++stats_.transient_resources_active;
+        return TransientTextureAliasGroup{.lease = lease, .textures = std::move(textures)};
     }
 
     void release_transient(TransientResourceHandle lease) override {
@@ -6093,13 +6157,14 @@ class D3d12RhiDevice final : public IRhiDevice {
                 buffer_active_.at(index) = false;
             }
         } else {
-            const auto texture = record.texture;
-            const auto index = texture.value - 1U;
-            if (texture_active_.at(index)) {
-                const auto release_fence = context_->last_submitted_fence().value;
-                (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
-                texture_active_.at(index) = false;
-                texture_states_.at(index) = ResourceState::undefined;
+            for (const auto texture : record.textures) {
+                const auto index = texture.value - 1U;
+                if (texture_active_.at(index)) {
+                    const auto release_fence = context_->last_submitted_fence().value;
+                    (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
+                    texture_active_.at(index) = false;
+                    texture_states_.at(index) = ResourceState::undefined;
+                }
             }
         }
         retire_deferred_committed_resources(context_->completed_fence().value);
@@ -6553,7 +6618,7 @@ class D3d12RhiDevice final : public IRhiDevice {
     struct TransientLeaseRecord {
         TransientResourceKind kind{TransientResourceKind::buffer};
         BufferHandle buffer;
-        TextureHandle texture;
+        std::vector<TextureHandle> textures;
         bool active{false};
     };
 

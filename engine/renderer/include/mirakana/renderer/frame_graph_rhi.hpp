@@ -56,7 +56,7 @@ struct FrameGraphTransientTextureAliasPlan {
 
 struct FrameGraphTransientTextureLease {
     std::size_t alias_group{0};
-    rhi::TransientTexture transient;
+    rhi::TransientTextureAliasGroup transient_alias_group;
 };
 
 struct FrameGraphTransientTextureLeaseBindingResult {

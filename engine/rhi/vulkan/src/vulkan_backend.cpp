@@ -3660,7 +3660,7 @@ class VulkanRhiDevice final : public IRhiDevice {
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::buffer,
             .buffer = buffer,
-            .texture = TextureHandle{},
+            .textures = {},
             .active = true,
         });
         ++stats_.transient_resources_acquired;
@@ -3674,12 +3674,36 @@ class VulkanRhiDevice final : public IRhiDevice {
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::texture,
             .buffer = BufferHandle{},
-            .texture = texture,
+            .textures = {texture},
             .active = true,
         });
         ++stats_.transient_resources_acquired;
         ++stats_.transient_resources_active;
         return TransientTexture{.lease = lease, .texture = texture};
+    }
+
+    [[nodiscard]] TransientTextureAliasGroup acquire_transient_texture_alias_group(const TextureDesc& desc,
+                                                                                   std::size_t texture_count) override {
+        if (texture_count == 0) {
+            throw std::invalid_argument("vulkan rhi transient texture alias group requires at least one texture");
+        }
+
+        std::vector<TextureHandle> textures;
+        textures.reserve(texture_count);
+        for (std::size_t i = 0; i < texture_count; ++i) {
+            textures.push_back(create_texture(desc));
+        }
+
+        const auto lease = TransientResourceHandle{next_transient_resource_++};
+        transient_leases_.push_back(TransientLeaseRecord{
+            .kind = TransientResourceKind::texture,
+            .buffer = BufferHandle{},
+            .textures = textures,
+            .active = true,
+        });
+        ++stats_.transient_resources_acquired;
+        ++stats_.transient_resources_active;
+        return TransientTextureAliasGroup{.lease = lease, .textures = std::move(textures)};
     }
 
     void release_transient(TransientResourceHandle lease) override {
@@ -3701,12 +3725,14 @@ class VulkanRhiDevice final : public IRhiDevice {
                 buffer_active_.at(index) = false;
             }
         } else {
-            const auto index = record.texture.value - 1U;
-            if (texture_active_.at(index)) {
-                const auto release_fence = stats_.last_submitted_fence_value;
-                (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
-                texture_active_.at(index) = false;
-                texture_states_.at(index) = ResourceState::undefined;
+            for (const auto texture : record.textures) {
+                const auto index = texture.value - 1U;
+                if (texture_active_.at(index)) {
+                    const auto release_fence = stats_.last_submitted_fence_value;
+                    (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
+                    texture_active_.at(index) = false;
+                    texture_states_.at(index) = ResourceState::undefined;
+                }
             }
         }
         retire_deferred_native_resources(stats_.last_completed_fence_value);
@@ -4060,7 +4086,7 @@ class VulkanRhiDevice final : public IRhiDevice {
     struct TransientLeaseRecord {
         TransientResourceKind kind{TransientResourceKind::buffer};
         BufferHandle buffer;
-        TextureHandle texture;
+        std::vector<TextureHandle> textures;
         bool active{false};
     };
 
