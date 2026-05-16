@@ -1529,6 +1529,8 @@ foreach ($buildFixerAgent in @(
     Assert-ContainsText $buildFixerText "lcov --ignore-errors unused" $buildFixerAgent
     Assert-ContainsText $buildFixerText "runtime/.gitattributes" $buildFixerAgent
     Assert-ContainsText $buildFixerText "tools/static-contract-ledger.ps1" $buildFixerAgent
+    Assert-ContainsText $buildFixerText 'tools/check-agents.ps1` parses tracked `tools/*.ps1' $buildFixerAgent
+    Assert-ContainsText $buildFixerText "single-quoted PowerShell strings" $buildFixerAgent
     Assert-ContainsText $buildFixerText "GitHub account billing/spending-limit" $buildFixerAgent
     Assert-ContainsText $buildFixerText "cdb -version" $buildFixerAgent
     Assert-ContainsText $buildFixerText "pixtool --help" $buildFixerAgent
