@@ -1256,7 +1256,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "CMake File API" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "VCPKG_MANIFEST_INSTALL=OFF" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "phase-gated milestone plan" $agentIntegrationSkill
-    foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down or milestone", "behavior/API/validation boundary", "fine-grained execution steps", "validation-only follow-up", "historical implementation evidence")) {
+    foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "phase behavior/API/validation boundary", "fine-grained execution steps", "validation-only follow-up", "historical implementation evidence")) {
         Assert-ContainsText $agentIntegrationSkillText $planVolumeNeedle $agentIntegrationSkill
     }
     foreach ($productionPromptNeedle in @("currentActivePlan", "recommendedNextPlan", "unsupportedProductionGaps", "clean breaking greenfield designs", "official documentation", "focused validation")) {
@@ -1278,6 +1278,9 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "merge/delete-branch" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "auto-merge registration" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "official GitHub Flow" $agentIntegrationSkill
+    foreach ($agentIntegrationCadenceNeedle in @("purpose/checkpoint-based cadence", "validated phase commits", "one PR per focused capability/gap-cluster/milestone", "early draft PRs")) {
+        Assert-ContainsText $agentIntegrationSkillText $agentIntegrationCadenceNeedle $agentIntegrationSkill
+    }
     Assert-ContainsText $agentIntegrationSkillText "final completion report must not stop after local validation" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Direct default-branch pushes are forbidden" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText 'pending-only `UNSTABLE` / `BLOCKED`' $agentIntegrationSkill
@@ -1396,7 +1399,7 @@ foreach ($ruleFile in @(
 
 $aiAgentRuleText = Get-AgentSurfaceText ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "phase-gated milestone plan" ".claude/rules/ai-agent-integration.md"
-foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down or milestone", "behavior/API/validation boundary", "checkboxes as execution steps", "validation-only follow-up", "completed plan evidence")) {
+foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "phase behavior/API/validation boundary", "checkboxes as execution steps", "validation-only follow-up", "completed plan evidence")) {
     Assert-ContainsText $aiAgentRuleText $planVolumeNeedle ".claude/rules/ai-agent-integration.md"
 }
 Assert-ContainsText $aiAgentRuleText ".codex/rules" ".claude/rules/ai-agent-integration.md"

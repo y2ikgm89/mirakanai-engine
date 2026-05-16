@@ -405,6 +405,11 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("null_resource_aliasing_barriers") -or
     -not ([string]$frameGraphGap[0].notes).Contains("D3D12_RESOURCE_BARRIER_TYPE_ALIASING") -or
     -not ([string]$frameGraphGap[0].notes).Contains("record_frame_graph_texture_aliasing_barriers") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("one CreatePlacedResource texture per lease") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("first command-list use") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("placed_resource_activation_barriers") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("transient_texture_placed_resources_alive") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("overlapping placed-resource alias execution") -or
     -not ([string]$frameGraphGap[0].notes).Contains("automatic aliasing-barrier insertion") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or

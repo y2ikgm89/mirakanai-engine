@@ -411,6 +411,13 @@ struct D3d12LinearTextureFootprint {
     return D3D12_HEAP_FLAG_NONE;
 }
 
+[[nodiscard]] D3D12_HEAP_FLAGS placed_texture_heap_flags(TextureUsage usage) noexcept {
+    if (has_flag(usage, TextureUsage::render_target) || has_flag(usage, TextureUsage::depth_stencil)) {
+        return D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES;
+    }
+    return D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+}
+
 [[nodiscard]] bool valid_swapchain_desc(const NativeSwapchainDesc& desc) noexcept {
     const auto format = to_dxgi_format(desc.swapchain.format);
     return desc.window.value != nullptr && desc.swapchain.extent.width > 0 && desc.swapchain.extent.height > 0 &&
@@ -1077,6 +1084,7 @@ struct CommandListRecord {
     NativeDescriptorHeapBinding descriptor_heaps;
     NativeGraphicsPipelineHandle graphics_pipeline;
     NativeComputePipelineHandle compute_pipeline;
+    std::vector<NativeResourceHandle> placed_activation_resources;
     bool render_target_set{false};
     bool closed{false};
     bool submitted{false};
@@ -1194,6 +1202,8 @@ struct DeviceContext::Impl {
     Microsoft::WRL::ComPtr<ID3D12Fence> fence;
     std::array<Microsoft::WRL::ComPtr<ID3D12Fence>, 3> queue_fences;
     std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> resources;
+    std::vector<Microsoft::WRL::ComPtr<ID3D12Heap>> resource_heaps;
+    std::vector<bool> resource_placed_active;
     std::vector<ResourceRenderTargetViewRecord> resource_rtvs;
     std::vector<ResourceDepthStencilViewRecord> resource_dsvs;
     std::vector<SwapchainRecord> swapchains;
@@ -1325,6 +1335,27 @@ struct DeviceContext::Impl {
             return nullptr;
         }
         return resources[handle.value - 1U].Get();
+    }
+
+    [[nodiscard]] bool resource_is_placed(NativeResourceHandle handle) const noexcept {
+        if (handle.value == 0 || handle.value > resource_heaps.size()) {
+            return false;
+        }
+        return resource_heaps[handle.value - 1U] != nullptr;
+    }
+
+    [[nodiscard]] bool resource_is_placed_active(NativeResourceHandle handle) const noexcept {
+        if (handle.value == 0 || handle.value > resource_placed_active.size()) {
+            return false;
+        }
+        return resource_placed_active[handle.value - 1U];
+    }
+
+    void set_resource_placed_active(NativeResourceHandle handle, bool active) noexcept {
+        if (handle.value == 0 || handle.value > resource_placed_active.size()) {
+            return;
+        }
+        resource_placed_active[handle.value - 1U] = active;
     }
 
     [[nodiscard]] ResourceRenderTargetViewRecord* resource_rtv_record(NativeResourceHandle handle) noexcept {
@@ -1699,6 +1730,8 @@ NativeResourceHandle DeviceContext::create_committed_buffer(const BufferDesc& de
                               static_cast<unsigned>(impl_->resources.size() + 1U));
 
     impl_->resources.push_back(resource);
+    impl_->resource_heaps.emplace_back();
+    impl_->resource_placed_active.push_back(true);
     impl_->resource_rtvs.push_back(ResourceRenderTargetViewRecord{});
     impl_->resource_dsvs.push_back(ResourceDepthStencilViewRecord{});
     ++impl_->stats.committed_buffers_created;
@@ -1748,11 +1781,124 @@ NativeResourceHandle DeviceContext::create_committed_texture(const TextureDesc& 
     }
 
     impl_->resources.push_back(resource);
+    impl_->resource_heaps.emplace_back();
+    impl_->resource_placed_active.push_back(true);
     impl_->resource_rtvs.push_back(std::move(rtv));
     impl_->resource_dsvs.push_back(std::move(dsv));
     ++impl_->stats.committed_textures_created;
     ++impl_->stats.committed_resources_alive;
     return NativeResourceHandle{static_cast<std::uint32_t>(impl_->resources.size())};
+}
+
+NativeResourceHandle DeviceContext::create_placed_texture(const TextureDesc& desc) {
+    if (!valid() || !valid_texture_desc(desc) || has_flag(desc.usage, TextureUsage::shared) ||
+        has_flag(desc.usage, TextureUsage::present)) {
+        return NativeResourceHandle{};
+    }
+
+    auto resource_desc = texture_resource_desc(Extent2D{.width = desc.extent.width, .height = desc.extent.height},
+                                               desc.format, desc.usage);
+    resource_desc.DepthOrArraySize = static_cast<UINT16>(desc.extent.depth);
+    resource_desc.Flags = committed_texture_flags(desc.usage);
+
+    const D3D12_RESOURCE_ALLOCATION_INFO allocation = impl_->device->GetResourceAllocationInfo(0, 1, &resource_desc);
+    if (allocation.SizeInBytes == 0 || allocation.SizeInBytes == (std::numeric_limits<std::uint64_t>::max)()) {
+        return NativeResourceHandle{};
+    }
+
+    D3D12_HEAP_DESC heap_desc{};
+    heap_desc.SizeInBytes = allocation.SizeInBytes;
+    heap_desc.Properties = heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    heap_desc.Alignment = allocation.Alignment;
+    heap_desc.Flags = placed_texture_heap_flags(desc.usage);
+
+    Microsoft::WRL::ComPtr<ID3D12Heap> heap;
+    if (FAILED(impl_->device->CreateHeap(&heap_desc, IID_PPV_ARGS(&heap)))) {
+        return NativeResourceHandle{};
+    }
+
+    D3D12_CLEAR_VALUE clear_value{};
+    const D3D12_CLEAR_VALUE* optimized_clear_value = nullptr;
+    if (has_flag(desc.usage, TextureUsage::depth_stencil)) {
+        clear_value.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        clear_value.DepthStencil.Depth = 1.0F;
+        clear_value.DepthStencil.Stencil = 0;
+        optimized_clear_value = &clear_value;
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+    if (FAILED(impl_->device->CreatePlacedResource(heap.Get(), 0, &resource_desc,
+                                                   committed_texture_initial_state(desc.usage), optimized_clear_value,
+                                                   IID_PPV_ARGS(&resource)))) {
+        return NativeResourceHandle{};
+    }
+
+    d3d12_set_object_name_fmt(heap.Get(), L"GameEngine.RHI.D3D12.TransientTextureHeap%u",
+                              static_cast<unsigned>(impl_->resources.size() + 1U));
+    d3d12_set_object_name_fmt(resource.Get(), L"GameEngine.RHI.D3D12.PlacedTexture%u",
+                              static_cast<unsigned>(impl_->resources.size() + 1U));
+
+    ResourceRenderTargetViewRecord rtv;
+    if (has_flag(desc.usage, TextureUsage::render_target) &&
+        !impl_->create_resource_render_target_view(resource.Get(), rtv)) {
+        return NativeResourceHandle{};
+    }
+
+    ResourceDepthStencilViewRecord dsv;
+    if (has_flag(desc.usage, TextureUsage::depth_stencil) &&
+        !impl_->create_resource_depth_stencil_view(resource.Get(), dsv)) {
+        return NativeResourceHandle{};
+    }
+
+    impl_->resources.push_back(resource);
+    impl_->resource_heaps.push_back(std::move(heap));
+    impl_->resource_placed_active.push_back(false);
+    impl_->resource_rtvs.push_back(std::move(rtv));
+    impl_->resource_dsvs.push_back(std::move(dsv));
+    ++impl_->stats.placed_texture_heaps_created;
+    ++impl_->stats.placed_textures_created;
+    ++impl_->stats.placed_resources_alive;
+    return NativeResourceHandle{static_cast<std::uint32_t>(impl_->resources.size())};
+}
+
+bool DeviceContext::activate_placed_texture(NativeCommandListHandle commands, NativeResourceHandle texture) {
+    if (!valid()) {
+        return false;
+    }
+
+    CommandListRecord* command_record = impl_->command_list(commands);
+    ID3D12Resource* texture_resource = impl_->resource_record(texture);
+    if (command_record == nullptr || texture_resource == nullptr || command_record->closed) {
+        return false;
+    }
+    if (!impl_->resource_is_placed(texture)) {
+        return true;
+    }
+
+    const auto desc = texture_resource->GetDesc();
+    if (desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+        return false;
+    }
+    if (impl_->resource_is_placed_active(texture)) {
+        return true;
+    }
+    const auto already_pending =
+        std::ranges::any_of(command_record->placed_activation_resources,
+                            [texture](NativeResourceHandle pending) { return pending.value == texture.value; });
+    if (already_pending) {
+        return true;
+    }
+
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Aliasing.pResourceBefore = nullptr;
+    barrier.Aliasing.pResourceAfter = texture_resource;
+
+    command_record->list->ResourceBarrier(1, &barrier);
+    command_record->placed_activation_resources.push_back(texture);
+    ++impl_->stats.placed_resource_activation_barriers;
+    return true;
 }
 
 NativeSwapchainHandle DeviceContext::create_swapchain_for_window(const NativeSwapchainDesc& desc) {
@@ -2394,6 +2540,9 @@ bool DeviceContext::transition_texture(NativeCommandListHandle commands, NativeR
     if (desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;
     }
+    if (!activate_placed_texture(commands, texture)) {
+        return false;
+    }
 
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -2497,6 +2646,9 @@ bool DeviceContext::clear_texture_render_target(NativeCommandListHandle commands
     if (desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;
     }
+    if (!activate_placed_texture(commands, texture)) {
+        return false;
+    }
 
     const std::array<float, 4> color{red, green, blue, alpha};
     command_record->list->ClearRenderTargetView(rtv_record->heap->GetCPUDescriptorHandleForHeapStart(), color.data(), 0,
@@ -2524,6 +2676,9 @@ bool DeviceContext::clear_texture_depth_stencil(NativeCommandListHandle commands
     const auto desc = texture_resource->GetDesc();
     if (desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
         (desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) == 0) {
+        return false;
+    }
+    if (!activate_placed_texture(commands, texture)) {
         return false;
     }
 
@@ -2729,6 +2884,9 @@ bool DeviceContext::set_swapchain_render_target(NativeCommandListHandle commands
             depth_desc.Height != swapchain_record->desc.extent.height) {
             return false;
         }
+        if (!activate_placed_texture(commands, depth)) {
+            return false;
+        }
         dsv = dsv_record->heap->GetCPUDescriptorHandleForHeapStart();
         dsv_ptr = &dsv;
     }
@@ -2788,8 +2946,14 @@ bool DeviceContext::set_texture_render_target(NativeCommandListHandle commands, 
             depth_desc.Height != desc.Height) {
             return false;
         }
+        if (!activate_placed_texture(commands, depth)) {
+            return false;
+        }
         dsv = dsv_record->heap->GetCPUDescriptorHandleForHeapStart();
         dsv_ptr = &dsv;
+    }
+    if (!activate_placed_texture(commands, texture)) {
+        return false;
     }
 
     D3D12_VIEWPORT viewport{};
@@ -3098,6 +3262,9 @@ bool DeviceContext::copy_buffer_to_texture(NativeCommandListHandle commands, Nat
         destination_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
         return false;
     }
+    if (!activate_placed_texture(commands, destination)) {
+        return false;
+    }
 
     const auto footprint = d3d12_linear_texture_footprint(from_dxgi_format(destination_desc.Format), region);
     if (footprint.required_bytes > source_desc.Width) {
@@ -3138,6 +3305,9 @@ bool DeviceContext::copy_texture_to_buffer(NativeCommandListHandle commands, Nat
     const auto destination_desc = destination_resource->GetDesc();
     if (source_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
         destination_desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+        return false;
+    }
+    if (!activate_placed_texture(commands, source)) {
         return false;
     }
 
@@ -3317,6 +3487,7 @@ NativeCommandListHandle DeviceContext::create_command_list(QueueKind queue) {
         .descriptor_heaps = NativeDescriptorHeapBinding{},
         .graphics_pipeline = NativeGraphicsPipelineHandle{},
         .compute_pipeline = NativeComputePipelineHandle{},
+        .placed_activation_resources = {},
         .render_target_set = false,
         .closed = false,
         .submitted = false,
@@ -3433,6 +3604,7 @@ bool DeviceContext::reset_command_list(NativeCommandListHandle handle) {
     record->descriptor_heaps = NativeDescriptorHeapBinding{};
     record->graphics_pipeline = NativeGraphicsPipelineHandle{};
     record->compute_pipeline = NativeComputePipelineHandle{};
+    record->placed_activation_resources.clear();
     record->render_target_set = false;
     record->gpu_debug_scope_depth = 0;
     reset_submitted_command_timing_state(*record);
@@ -3502,6 +3674,10 @@ FenceValue DeviceContext::execute_command_list(NativeCommandListHandle handle) {
     record->submitted = true;
     record->submitted_fence = FenceValue{.value = next_fence, .queue = record->queue};
     impl_->last_submitted_fence = record->submitted_fence;
+    for (const auto resource : record->placed_activation_resources) {
+        impl_->set_resource_placed_active(resource, true);
+    }
+    record->placed_activation_resources.clear();
     if (can_read_submitted_timing &&
         record->submitted_timing_calibration_before.status == QueueClockCalibrationStatus::ready) {
         record->submitted_timing_status = SubmittedCommandCalibratedTimingStatus::not_ready;
@@ -3627,8 +3803,12 @@ RhiDeviceMemoryDiagnostics DeviceContext::memory_diagnostics() const {
     }
 
     std::uint64_t committed = 0;
-    for (const auto& resource : impl_->resources) {
+    for (std::size_t index = 0; index < impl_->resources.size(); ++index) {
+        const auto& resource = impl_->resources[index];
         if (resource == nullptr) {
+            continue;
+        }
+        if (index < impl_->resource_heaps.size() && impl_->resource_heaps[index] != nullptr) {
             continue;
         }
         const D3D12_RESOURCE_DESC desc = resource->GetDesc();
@@ -3669,12 +3849,19 @@ void DeviceContext::destroy_committed_resource(NativeResourceHandle handle) noex
         return;
     }
 
+    const bool placed = index < impl_->resource_heaps.size() && impl_->resource_heaps.at(index) != nullptr;
     impl_->resource_rtvs.at(index).heap.Reset();
     impl_->resource_rtvs.at(index).descriptor_size = 0;
     impl_->resource_dsvs.at(index).heap.Reset();
     impl_->resource_dsvs.at(index).descriptor_size = 0;
     resource.Reset();
-    if (impl_->stats.committed_resources_alive > 0) {
+    if (placed) {
+        impl_->resource_heaps.at(index).Reset();
+        impl_->set_resource_placed_active(handle, false);
+    }
+    if (placed && impl_->stats.placed_resources_alive > 0) {
+        --impl_->stats.placed_resources_alive;
+    } else if (!placed && impl_->stats.committed_resources_alive > 0) {
         --impl_->stats.committed_resources_alive;
     }
 }
@@ -4381,6 +4568,9 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (before == ResourceState::undefined && after != ResourceState::undefined &&
             texture_state(texture) == after) {
             observe_texture(texture);
+            if (!context_->activate_placed_texture(native_, native_texture(texture))) {
+                throw std::logic_error("d3d12 rhi placed texture activation failed");
+            }
             return;
         }
         if (!valid_resource_transition(before, after)) {
@@ -4390,6 +4580,9 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             throw std::invalid_argument("d3d12 rhi texture transition before state must match tracked state");
         }
         observe_texture(texture);
+        if (!context_->activate_placed_texture(native_, native_texture(texture))) {
+            throw std::logic_error("d3d12 rhi placed texture activation failed");
+        }
         if (!context_->transition_texture(native_, native_texture(texture), before, after)) {
             throw std::logic_error("d3d12 rhi texture transition recording failed");
         }
@@ -4630,6 +4823,12 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             ++stats_->resource_transitions;
         } else {
             observe_texture(desc.color.texture);
+            if (!context_->activate_placed_texture(native_, pass_color_texture)) {
+                throw std::logic_error("d3d12 rhi texture render pass placed color activation failed");
+            }
+            if (desc.depth.texture.value != 0 && !context_->activate_placed_texture(native_, pass_depth_texture)) {
+                throw std::logic_error("d3d12 rhi texture render pass placed depth activation failed");
+            }
             if (!context_->set_texture_render_target(native_, pass_color_texture, pass_depth_texture)) {
                 throw std::logic_error("d3d12 rhi texture render pass begin failed");
             }
@@ -5685,7 +5884,32 @@ class D3d12RhiDevice final : public IRhiDevice {
     }
 
     [[nodiscard]] TransientTexture acquire_transient_texture(const TextureDesc& desc) override {
-        const auto texture = create_texture(desc);
+        const auto native = context_->create_placed_texture(desc);
+        if (native.value == 0) {
+            throw std::invalid_argument("d3d12 rhi transient texture description is invalid or unsupported");
+        }
+
+        const auto lifetime_registration = resource_lifetime_.register_resource(RhiResourceRegistrationDesc{
+            .kind = RhiResourceKind::texture,
+            .owner = "d3d12",
+            .debug_name =
+                d3d12_rhi_resource_debug_name("texture", static_cast<std::uint32_t>(texture_handles_.size() + 1U)),
+        });
+        if (!lifetime_registration.succeeded()) {
+            context_->destroy_committed_resource(native);
+            throw std::logic_error("d3d12 rhi transient texture lifetime registration failed");
+        }
+
+        texture_handles_.push_back(native);
+        texture_descs_.push_back(desc);
+        texture_active_.push_back(true);
+        texture_states_.push_back(initial_texture_state(desc.usage));
+        texture_lifetime_.push_back(lifetime_registration.handle);
+        ++stats_.textures_created;
+        ++stats_.transient_texture_heap_allocations;
+        ++stats_.transient_texture_placed_allocations;
+        ++stats_.transient_texture_placed_resources_alive;
+        const auto texture = TextureHandle{static_cast<std::uint32_t>(texture_handles_.size())};
         const auto lease = TransientResourceHandle{next_transient_resource_++};
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::texture,
@@ -6523,8 +6747,10 @@ void D3d12RhiDevice::retire_deferred_committed_resources(std::uint64_t completed
                 if (buffer_lifetime_[i] != item.handle) {
                     continue;
                 }
-                if (i < buffer_handles_.size() && i < buffer_active_.size() && buffer_active_[i]) {
+                if (i < buffer_handles_.size()) {
                     context_->destroy_committed_resource(buffer_handles_[i]);
+                }
+                if (i < buffer_active_.size()) {
                     buffer_active_[i] = false;
                 }
                 break;
@@ -6535,12 +6761,20 @@ void D3d12RhiDevice::retire_deferred_committed_resources(std::uint64_t completed
                 if (texture_lifetime_[i] != item.handle) {
                     continue;
                 }
-                if (i < texture_handles_.size() && i < texture_active_.size() && texture_active_[i]) {
+                if (i < texture_handles_.size()) {
+                    const auto placed_alive_before = context_->stats().placed_resources_alive;
                     context_->destroy_committed_resource(texture_handles_[i]);
-                    texture_active_[i] = false;
-                    if (i < texture_states_.size()) {
-                        texture_states_[i] = ResourceState::undefined;
+                    const auto placed_alive_after = context_->stats().placed_resources_alive;
+                    if (placed_alive_after < placed_alive_before &&
+                        stats_.transient_texture_placed_resources_alive > 0) {
+                        --stats_.transient_texture_placed_resources_alive;
                     }
+                }
+                if (i < texture_active_.size()) {
+                    texture_active_[i] = false;
+                }
+                if (i < texture_states_.size()) {
+                    texture_states_[i] = ResourceState::undefined;
                 }
                 break;
             }

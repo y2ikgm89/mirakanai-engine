@@ -15,7 +15,7 @@ paths:
 4. Read the relevant public headers under `engine/*/include`.
 5. Keep game code outside engine modules unless changing the engine itself.
 6. Add or update tests before production behavior when the toolchain can run; lock the smallest externally meaningful behavior/API/regression guarantee, and prefer updating existing tests when they already cover the contract.
-7. Update docs/specs/plans for non-trivial API or architecture changes. Create a new dated focused plan only for work with its own behavior/API/validation boundary; keep validation-only, docs/manifest/static-check, and small mechanical follow-up inside the active plan checklist.
+7. Update docs/specs/plans for non-trivial API or architecture changes. Prefer one dated capability/gap-cluster/milestone plan; keep phase behavior/API/validation boundary decisions, validation-only, docs/manifest/static-check, and small mechanical follow-up inside the active plan checklist.
 8. Keep `MK_CXX_STANDARD=23` as the required standard; do not add C++20 compatibility shims.
 9. Prefer C++23-native features, project modules, and `import std;` when the active CMake toolchain support is validated.
 10. Prefer RAII/value ownership and `std::make_unique` for heap-owned objects; use direct `new` only when a private/factory constructor makes `make_unique` impossible, and wrap it immediately.
