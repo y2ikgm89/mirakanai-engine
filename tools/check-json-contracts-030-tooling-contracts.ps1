@@ -903,6 +903,9 @@ foreach ($needle in @(
     "Frame Graph Shadow Scratch Color Target-State Ownership v1",
     "shadow_color",
     "6 pass callbacks/15 barrier steps",
+    "Frame Graph Viewport Surface Color State Executor v1",
+    "RhiViewportSurface",
+    "viewport_color",
     "native aliasing barrier execution",
     "frame-graph-v1"
 )) {

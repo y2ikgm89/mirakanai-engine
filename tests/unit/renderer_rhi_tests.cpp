@@ -173,6 +173,10 @@ class ThrowingTransitionCommandList final : public mirakana::rhi::IRhiCommandLis
         return inner_->closed();
     }
 
+    [[nodiscard]] mirakana::rhi::IRhiCommandList& inner() noexcept {
+        return *inner_;
+    }
+
     void transition_texture(mirakana::rhi::TextureHandle texture, mirakana::rhi::ResourceState before,
                             mirakana::rhi::ResourceState after) override {
         ++transition_count_;
@@ -277,6 +281,14 @@ class ThrowingTransitionRhiDevice final : public ThrowingSubmitRhiDevice {
     [[nodiscard]] std::unique_ptr<mirakana::rhi::IRhiCommandList>
     begin_command_list(mirakana::rhi::QueueKind queue) override {
         return std::make_unique<ThrowingTransitionCommandList>(inner.begin_command_list(queue), throw_on_transition);
+    }
+
+    [[nodiscard]] mirakana::rhi::FenceValue submit(mirakana::rhi::IRhiCommandList& commands) override {
+        if (auto* throwing_commands = dynamic_cast<ThrowingTransitionCommandList*>(&commands);
+            throwing_commands != nullptr) {
+            return ThrowingSubmitRhiDevice::submit(throwing_commands->inner());
+        }
+        return ThrowingSubmitRhiDevice::submit(commands);
     }
 
     std::uint32_t throw_on_transition{0};
@@ -5644,6 +5656,83 @@ MK_TEST("rhi viewport surface owns a renderable sampled texture target") {
     MK_REQUIRE(device.stats().render_passes_begun == 1);
     MK_REQUIRE(device.stats().command_lists_submitted == 1);
     MK_REQUIRE(device.stats().fences_signaled == 1);
+}
+
+MK_TEST("rhi viewport surface reports frame graph color transition failure") {
+    ThrowingTransitionRhiDevice device;
+    device.throw_on_submit = false;
+    device.throw_on_transition = 1;
+    mirakana::RhiViewportSurface surface(mirakana::RhiViewportSurfaceDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 32, .height = 18},
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .wait_for_completion = true,
+    });
+
+    bool execution_failed = false;
+    try {
+        surface.render_clear_frame();
+    } catch (const std::runtime_error& ex) {
+        execution_failed =
+            std::string_view{ex.what()} == "rhi viewport surface frame graph color state execution failed";
+    }
+
+    MK_REQUIRE(execution_failed);
+    MK_REQUIRE(surface.frames_rendered() == 0);
+}
+
+MK_TEST("rhi viewport surface recovers after final frame graph color transition failure") {
+    ThrowingTransitionRhiDevice device;
+    device.throw_on_submit = false;
+    device.throw_on_transition = 2;
+    mirakana::RhiViewportSurface surface(mirakana::RhiViewportSurfaceDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 32, .height = 18},
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .wait_for_completion = true,
+    });
+
+    bool execution_failed = false;
+    try {
+        surface.render_clear_frame();
+    } catch (const std::runtime_error& ex) {
+        execution_failed =
+            std::string_view{ex.what()} == "rhi viewport surface frame graph color state execution failed";
+    }
+
+    MK_REQUIRE(execution_failed);
+    MK_REQUIRE(surface.frames_rendered() == 0);
+
+    surface.render_clear_frame();
+
+    MK_REQUIRE(surface.frames_rendered() == 1);
+}
+
+MK_TEST("rhi viewport surface preserves recorded color state after submit failure") {
+    ThrowingSubmitRhiDevice device;
+    device.throw_on_submit = true;
+    mirakana::RhiViewportSurface surface(mirakana::RhiViewportSurfaceDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 32, .height = 18},
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .wait_for_completion = true,
+    });
+
+    bool submit_failed = false;
+    try {
+        (void)surface.prepare_display_frame();
+    } catch (const std::runtime_error& ex) {
+        submit_failed = std::string_view{ex.what()} == "submit failed";
+    }
+
+    MK_REQUIRE(submit_failed);
+    MK_REQUIRE(surface.frames_rendered() == 0);
+
+    device.throw_on_submit = false;
+    const auto display = surface.prepare_display_frame();
+
+    MK_REQUIRE(display.texture.value == surface.color_texture().value);
+    MK_REQUIRE(display.frame_index == 0);
 }
 
 MK_TEST("rhi viewport surface reads back rendered color target") {

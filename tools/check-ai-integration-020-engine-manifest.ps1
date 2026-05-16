@@ -1602,6 +1602,9 @@ foreach ($needle in @(
     "Frame Graph Shadow Scratch Color Target-State Ownership v1",
     "shadow_color",
     "6 pass callbacks/15 barrier steps",
+    "Frame Graph Viewport Surface Color State Executor v1",
+    "RhiViewportSurface",
+    "viewport_color",
     "native heap allocation",
     "native aliasing barrier execution",
     "frame-graph-v1"
@@ -1695,6 +1698,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("RhiViewportSurface") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("viewport_color") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("viewport color-state executor") -or
     -not ([string]$frameGraphGap[0].notes).Contains("executor-recorded barriers") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final-state policy") -or
     -not ([string]$frameGraphGap[0].notes).Contains("production render graph") -or
@@ -1736,6 +1742,9 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphTransientTextureAliasPlan" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Shadow Scratch Color Target-State Ownership v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "6 pass callbacks/15 barrier steps" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Viewport Surface Color State Executor v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiViewportSurface" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "viewport_color" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "native aliasing barrier execution" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })

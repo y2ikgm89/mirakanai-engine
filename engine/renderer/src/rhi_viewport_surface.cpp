@@ -3,9 +3,12 @@
 
 #include "mirakana/renderer/rhi_viewport_surface.hpp"
 
+#include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 
+#include <array>
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <utility>
 
@@ -47,6 +50,35 @@ void validate_extent(Extent2D extent) {
         throw std::invalid_argument("viewport readback size overflowed");
     }
     return static_cast<std::uint64_t>(row_pitch) * height;
+}
+
+[[nodiscard]] rhi::ResourceState execute_viewport_color_state_transition(rhi::IRhiCommandList& commands,
+                                                                         rhi::TextureHandle color_texture,
+                                                                         rhi::ResourceState current_state,
+                                                                         rhi::ResourceState target_state) {
+    std::array<FrameGraphTextureBinding, 1> texture_bindings{FrameGraphTextureBinding{
+        .resource = "viewport_color",
+        .texture = color_texture,
+        .current_state = current_state,
+    }};
+    const std::array<FrameGraphTextureFinalState, 1> final_states{FrameGraphTextureFinalState{
+        .resource = "viewport_color",
+        .state = target_state,
+    }};
+
+    const auto result = execute_frame_graph_rhi_texture_schedule(FrameGraphRhiTextureExecutionDesc{
+        .commands = &commands,
+        .schedule = {},
+        .texture_bindings = std::span<FrameGraphTextureBinding>{texture_bindings},
+        .pass_callbacks = {},
+        .pass_target_accesses = {},
+        .pass_target_states = {},
+        .final_states = std::span<const FrameGraphTextureFinalState>{final_states},
+    });
+    if (!result.succeeded()) {
+        throw std::runtime_error("rhi viewport surface frame graph color state execution failed");
+    }
+    return texture_bindings.front().current_state;
 }
 
 } // namespace
@@ -99,8 +131,8 @@ void RhiViewportSurface::resize(Extent2D extent) {
 void RhiViewportSurface::render_clear_frame() {
     auto commands = device_->begin_command_list(rhi::QueueKind::graphics);
     if (color_state_ != rhi::ResourceState::render_target) {
-        commands->transition_texture(color_texture_, color_state_, rhi::ResourceState::render_target);
-        color_state_ = rhi::ResourceState::render_target;
+        color_state_ = execute_viewport_color_state_transition(*commands, color_texture_, color_state_,
+                                                               rhi::ResourceState::render_target);
     }
     commands->begin_render_pass(rhi::RenderPassDesc{
         .color =
@@ -112,8 +144,8 @@ void RhiViewportSurface::render_clear_frame() {
             },
     });
     commands->end_render_pass();
-    commands->transition_texture(color_texture_, rhi::ResourceState::render_target, rhi::ResourceState::copy_source);
-    color_state_ = rhi::ResourceState::copy_source;
+    color_state_ = execute_viewport_color_state_transition(*commands, color_texture_, color_state_,
+                                                           rhi::ResourceState::copy_source);
     commands->close();
 
     const auto fence = device_->submit(*commands);
@@ -227,14 +259,15 @@ void RhiViewportSurface::transition_color_state(rhi::ResourceState state) {
     }
 
     auto commands = device_->begin_command_list(rhi::QueueKind::graphics);
-    commands->transition_texture(color_texture_, color_state_, state);
+    const auto recorded_color_state =
+        execute_viewport_color_state_transition(*commands, color_texture_, color_state_, state);
+    color_state_ = recorded_color_state;
     commands->close();
 
     const auto fence = device_->submit(*commands);
     if (wait_for_completion_) {
         device_->wait(fence);
     }
-    color_state_ = state;
 }
 
 } // namespace mirakana
