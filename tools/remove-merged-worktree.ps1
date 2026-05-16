@@ -135,6 +135,28 @@ function Remove-FileSystemInfoWithoutFollowingReparsePoints {
     $FileSystemInfo.Delete()
 }
 
+function Remove-WorktreeLocalReparsePointBeforeGitRemoval {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Parameter(Mandatory = $true)][string]$WorktreePath,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+
+    $candidate = Join-Path $WorktreePath $RelativePath
+    $item = Get-Item -LiteralPath $candidate -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) {
+        return
+    }
+    if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -eq 0) {
+        Write-Error "Refusing to remove worktree because protected ignored dependency path is not a reparse point: $candidate"
+    }
+
+    if ($PSCmdlet.ShouldProcess($candidate, "Unlink worktree-local reparse point before git worktree remove")) {
+        $item.Delete()
+        Write-Information "remove-merged-worktree: unlinked-worktree-reparse-point=$RelativePath" -InformationAction Continue
+    }
+}
+
 function Resolve-RepoPath {
     param(
         [Parameter(Mandatory = $true)][string]$RepoPath,
@@ -316,6 +338,10 @@ Write-Information "remove-merged-worktree: local-branch=$localBranch" -Informati
 
 if ($PSCmdlet.ShouldProcess($resolvedLocalCheckoutPath, "Fast-forward local checkout to $BaseRef")) {
     $null = Invoke-GitCommand -RepoRoot $resolvedLocalCheckoutPath -Arguments @("merge", "--ff-only", $BaseRef)
+}
+
+foreach ($protectedWorktreeLocalLink in @("external/vcpkg", "vcpkg_installed")) {
+    Remove-WorktreeLocalReparsePointBeforeGitRemoval -WorktreePath $resolvedWorktreePath -RelativePath $protectedWorktreeLocalLink
 }
 
 if ($PSCmdlet.ShouldProcess($resolvedWorktreePath, "Remove merged Git worktree")) {
