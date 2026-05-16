@@ -707,7 +707,7 @@ int main(int argc, char** argv) {
              report.framegraph_passes != 2 ||
              report.renderer_stats.framegraph_passes_executed != static_cast<std::uint64_t>(options.max_frames) * 2U ||
              report.renderer_stats.framegraph_barrier_steps_executed !=
-                 static_cast<std::uint64_t>(options.max_frames) ||
+                 static_cast<std::uint64_t>(options.max_frames) * 2U ||
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
             return 3;
         }

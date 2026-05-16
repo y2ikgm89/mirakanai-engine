@@ -65,7 +65,7 @@ constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
     "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.vs.spv"};
 constexpr std::string_view kRuntimePostprocessVulkanFragmentShaderPath{
     "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.ps.spv"};
-constexpr std::uint32_t kRuntimeScenePositionNormalUvStrideBytes{32};
+constexpr std::uint32_t kRuntimeSceneTangentSpaceStrideBytes{48};
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
@@ -79,7 +79,7 @@ constexpr std::uint32_t kRuntimeScenePositionNormalUvStrideBytes{32};
 [[nodiscard]] std::vector<mirakana::rhi::VertexBufferLayoutDesc> runtime_scene_vertex_buffers() {
     return {mirakana::rhi::VertexBufferLayoutDesc{
         .binding = 0,
-        .stride = kRuntimeScenePositionNormalUvStrideBytes,
+        .stride = kRuntimeSceneTangentSpaceStrideBytes,
         .input_rate = mirakana::rhi::VertexInputRate::vertex,
     }};
 }
@@ -106,6 +106,13 @@ constexpr std::uint32_t kRuntimeScenePositionNormalUvStrideBytes{32};
             .offset = 24,
             .format = mirakana::rhi::VertexFormat::float32x2,
             .semantic = mirakana::rhi::VertexSemantic::texcoord,
+        },
+        mirakana::rhi::VertexAttributeDesc{
+            .location = 3,
+            .binding = 0,
+            .offset = 32,
+            .format = mirakana::rhi::VertexFormat::float32x4,
+            .semantic = mirakana::rhi::VertexSemantic::tangent,
         },
     };
 }
@@ -708,7 +715,7 @@ int main(int argc, char** argv) {
              report.framegraph_passes != 2 ||
              report.renderer_stats.framegraph_passes_executed != static_cast<std::uint64_t>(options.max_frames) * 2U ||
              report.renderer_stats.framegraph_barrier_steps_executed !=
-                 static_cast<std::uint64_t>(options.max_frames) ||
+                 static_cast<std::uint64_t>(options.max_frames) * 2U ||
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
             return 3;
         }

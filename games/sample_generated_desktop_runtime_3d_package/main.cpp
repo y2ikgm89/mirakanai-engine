@@ -2470,7 +2470,7 @@ evaluate_scene_collision_package(const DesktopRuntimeOptions& options,
     if (directional_shadow_requested) {
         return frame_count == 0 ? 0 : 8 + ((frame_count - 1) * 6);
     }
-    return frame_count * (postprocess_depth_input_requested ? 3U : 1U);
+    return postprocess_depth_input_requested ? (frame_count == 0 ? 0 : 1 + (frame_count * 4)) : frame_count * 2;
 }
 
 [[nodiscard]] bool postprocess_ready(const mirakana::SdlDesktopPresentationReport& report,

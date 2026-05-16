@@ -459,38 +459,12 @@ void RhiPostprocessFrameRenderer::begin_frame() {
 
     swapchain_frame_ = {};
     swapchain_frame_presented_ = false;
+    pending_meshes_.clear();
     pending_overlay_sprites_.clear();
     std::unique_ptr<rhi::IRhiCommandList> commands;
     try {
         swapchain_frame_ = device_->acquire_swapchain_frame(swapchain_);
         commands = device_->begin_command_list(rhi::QueueKind::graphics);
-        commands->transition_texture(scene_color_texture_, scene_color_state_, rhi::ResourceState::render_target);
-        if (depth_input_enabled_ && scene_depth_state_ != rhi::ResourceState::depth_write) {
-            commands->transition_texture(scene_depth_texture_, scene_depth_state_, rhi::ResourceState::depth_write);
-        }
-        rhi::RenderPassDesc scene_pass{
-            .color =
-                rhi::RenderPassColorAttachment{
-                    .texture = scene_color_texture_,
-                    .load_action = rhi::LoadAction::clear,
-                    .store_action = rhi::StoreAction::store,
-                    .swapchain_frame = rhi::SwapchainFrameHandle{},
-                    .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
-                                                        .green = clear_color_.g,
-                                                        .blue = clear_color_.b,
-                                                        .alpha = clear_color_.a},
-                },
-        };
-        if (depth_input_enabled_) {
-            scene_pass.depth = rhi::RenderPassDepthAttachment{
-                .texture = scene_depth_texture_,
-                .load_action = rhi::LoadAction::clear,
-                .store_action = rhi::StoreAction::store,
-                .clear_depth = rhi::ClearDepthValue{1.0F},
-            };
-        }
-        commands->begin_render_pass(scene_pass);
-        commands->bind_graphics_pipeline(scene_graphics_pipeline_);
 
         commands_ = std::move(commands);
         frame_active_ = true;
@@ -500,6 +474,7 @@ void RhiPostprocessFrameRenderer::begin_frame() {
     } catch (...) {
         release_acquired_swapchain_frame();
         commands_.reset();
+        pending_meshes_.clear();
         frame_active_ = false;
         throw;
     }
@@ -519,6 +494,12 @@ void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand& command) {
 
 void RhiPostprocessFrameRenderer::draw_mesh(const MeshCommand& command) {
     require_active_frame();
+    validate_scene_mesh_command(command);
+    pending_meshes_.push_back(command);
+    ++stats_.meshes_submitted;
+}
+
+void RhiPostprocessFrameRenderer::validate_scene_mesh_command(const MeshCommand& command) const {
     if (command.gpu_skinning && command.gpu_morphing) {
         throw std::invalid_argument(
             "rhi postprocess renderer mesh command cannot enable gpu skinning and morphing together");
@@ -530,6 +511,30 @@ void RhiPostprocessFrameRenderer::draw_mesh(const MeshCommand& command) {
         }
         validate_material_gpu_binding(command.material_binding, *device_);
         validate_skinned_mesh_gpu_binding(command.skinned_mesh, *device_);
+        return;
+    }
+
+    if (command.gpu_morphing) {
+        if (scene_morph_graphics_pipeline_.value == 0) {
+            throw std::invalid_argument("rhi postprocess renderer morph mesh command requires a morph scene pipeline");
+        }
+        validate_material_gpu_binding(command.material_binding, *device_);
+        validate_mesh_gpu_binding(command.mesh_binding, *device_);
+        validate_morph_mesh_gpu_binding(command.morph_mesh, *device_, command.mesh_binding.vertex_count);
+        return;
+    }
+
+    if (has_material_gpu_binding(command.material_binding)) {
+        validate_material_gpu_binding(command.material_binding, *device_);
+    }
+
+    if (has_mesh_gpu_binding(command.mesh_binding)) {
+        validate_mesh_gpu_binding(command.mesh_binding, *device_);
+    }
+}
+
+void RhiPostprocessFrameRenderer::record_scene_mesh_command(const MeshCommand& command) {
+    if (command.gpu_skinning) {
         commands_->bind_graphics_pipeline(scene_skinned_graphics_pipeline_);
         skinned_scene_pipeline_bound_ = true;
         morph_scene_pipeline_bound_ = false;
@@ -545,20 +550,12 @@ void RhiPostprocessFrameRenderer::draw_mesh(const MeshCommand& command) {
             .format = command.skinned_mesh.mesh.index_format,
         });
         commands_->draw_indexed(command.skinned_mesh.mesh.index_count, 1);
-        ++stats_.meshes_submitted;
         ++stats_.gpu_skinning_draws;
         ++stats_.skinned_palette_descriptor_binds;
         return;
     }
 
     if (command.gpu_morphing) {
-        if (scene_morph_graphics_pipeline_.value == 0) {
-            throw std::invalid_argument("rhi postprocess renderer morph mesh command requires a morph scene pipeline");
-        }
-        validate_material_gpu_binding(command.material_binding, *device_);
-        validate_mesh_gpu_binding(command.mesh_binding, *device_);
-        validate_morph_mesh_gpu_binding(command.morph_mesh, *device_, command.mesh_binding.vertex_count);
-
         commands_->bind_graphics_pipeline(scene_morph_graphics_pipeline_);
         skinned_scene_pipeline_bound_ = false;
         morph_scene_pipeline_bound_ = true;
@@ -574,7 +571,6 @@ void RhiPostprocessFrameRenderer::draw_mesh(const MeshCommand& command) {
             .format = command.mesh_binding.index_format,
         });
         commands_->draw_indexed(command.mesh_binding.index_count, 1);
-        ++stats_.meshes_submitted;
         ++stats_.gpu_morph_draws;
         ++stats_.morph_descriptor_binds;
         return;
@@ -586,14 +582,12 @@ void RhiPostprocessFrameRenderer::draw_mesh(const MeshCommand& command) {
         morph_scene_pipeline_bound_ = false;
     }
     if (has_material_gpu_binding(command.material_binding)) {
-        validate_material_gpu_binding(command.material_binding, *device_);
         commands_->bind_descriptor_set(command.material_binding.pipeline_layout,
                                        command.material_binding.descriptor_set_index,
                                        command.material_binding.descriptor_set);
     }
 
     if (has_mesh_gpu_binding(command.mesh_binding)) {
-        validate_mesh_gpu_binding(command.mesh_binding, *device_);
         bind_mesh_vertex_buffers(*commands_, command.mesh_binding);
         commands_->bind_index_buffer(rhi::IndexBufferBinding{
             .buffer = command.mesh_binding.index_buffer,
@@ -604,26 +598,55 @@ void RhiPostprocessFrameRenderer::draw_mesh(const MeshCommand& command) {
     } else {
         commands_->draw(3, 1);
     }
-    ++stats_.meshes_submitted;
+}
+
+void RhiPostprocessFrameRenderer::record_scene_pass() {
+    rhi::RenderPassDesc scene_pass{
+        .color =
+            rhi::RenderPassColorAttachment{
+                .texture = scene_color_texture_,
+                .load_action = rhi::LoadAction::clear,
+                .store_action = rhi::StoreAction::store,
+                .swapchain_frame = rhi::SwapchainFrameHandle{},
+                .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
+                                                    .green = clear_color_.g,
+                                                    .blue = clear_color_.b,
+                                                    .alpha = clear_color_.a},
+            },
+    };
+    if (depth_input_enabled_) {
+        scene_pass.depth = rhi::RenderPassDepthAttachment{
+            .texture = scene_depth_texture_,
+            .load_action = rhi::LoadAction::clear,
+            .store_action = rhi::StoreAction::store,
+            .clear_depth = rhi::ClearDepthValue{1.0F},
+        };
+    }
+    commands_->begin_render_pass(scene_pass);
+    commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
+    skinned_scene_pipeline_bound_ = false;
+    morph_scene_pipeline_bound_ = false;
+    for (const auto& mesh : pending_meshes_) {
+        record_scene_mesh_command(mesh);
+    }
+    commands_->end_render_pass();
 }
 
 void RhiPostprocessFrameRenderer::end_frame() {
     require_active_frame();
     try {
-        commands_->end_render_pass();
-
         std::vector<FrameGraphTextureBinding> texture_bindings{
             FrameGraphTextureBinding{
                 .resource = "scene_color",
                 .texture = scene_color_texture_,
-                .current_state = rhi::ResourceState::render_target,
+                .current_state = scene_color_state_,
             },
         };
         if (depth_input_enabled_) {
             texture_bindings.push_back(FrameGraphTextureBinding{
                 .resource = "scene_depth",
                 .texture = scene_depth_texture_,
-                .current_state = rhi::ResourceState::depth_write,
+                .current_state = scene_depth_state_,
             });
         }
         std::vector<FrameGraphTextureFinalState> final_states;
@@ -634,6 +657,18 @@ void RhiPostprocessFrameRenderer::end_frame() {
             });
         }
         std::vector<FrameGraphTexturePassTargetState> pass_target_states;
+        pass_target_states.push_back(FrameGraphTexturePassTargetState{
+            .pass_name = "scene_color",
+            .resource = "scene_color",
+            .state = rhi::ResourceState::render_target,
+        });
+        if (depth_input_enabled_) {
+            pass_target_states.push_back(FrameGraphTexturePassTargetState{
+                .pass_name = "scene_color",
+                .resource = "scene_depth",
+                .state = rhi::ResourceState::depth_write,
+            });
+        }
         const auto overlay_draw = native_ui_overlay_ready()
                                       ? native_ui_overlay_->prepare(pending_overlay_sprites_, *commands_)
                                       : RhiNativeUiOverlayPreparedDraw{};
@@ -642,7 +677,11 @@ void RhiPostprocessFrameRenderer::end_frame() {
         pass_callbacks.reserve(postprocess_frame_graph_plan_.ordered_passes.size());
         pass_callbacks.push_back(FrameGraphPassExecutionBinding{
             .pass_name = "scene_color",
-            .callback = [](std::string_view) { return FrameGraphExecutionCallbackResult{}; },
+            .callback =
+                [this](std::string_view) {
+                    record_scene_pass();
+                    return FrameGraphExecutionCallbackResult{};
+                },
         });
         if (postprocess_stage_count_ == 1) {
             pass_callbacks.push_back(FrameGraphPassExecutionBinding{
@@ -767,6 +806,7 @@ void RhiPostprocessFrameRenderer::end_frame() {
         commands_.reset();
         swapchain_frame_ = {};
         swapchain_frame_presented_ = false;
+        pending_meshes_.clear();
         pending_overlay_sprites_.clear();
         frame_active_ = false;
         ++stats_.frames_finished;
@@ -783,6 +823,7 @@ void RhiPostprocessFrameRenderer::end_frame() {
     } catch (...) {
         release_acquired_swapchain_frame();
         commands_.reset();
+        pending_meshes_.clear();
         pending_overlay_sprites_.clear();
         frame_active_ = false;
         throw;
