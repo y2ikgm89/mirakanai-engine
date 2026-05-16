@@ -6,7 +6,7 @@
 
 **Architecture:** Add an explicit `IRhiCommandList` texture aliasing barrier command that records a dependency between two distinct backend-neutral texture handles without changing their tracked resource states. `MK_renderer` adds a small Frame Graph recording helper over resource-name bindings so alias barrier intent can be validated and recorded deterministically. D3D12 validates committed texture handles and records the engine-level aliasing intent/stat without emitting a native placed-resource aliasing barrier in this slice; Vulkan records a conservative synchronization2 memory dependency; Null RHI validates/counts the command. Native placed resources, shared heap allocation, memory-object alias planning, wildcard/null aliasing barriers, automatic executor insertion, package streaming, and production graph ownership remain separate slices.
 
-**Tech Stack:** C++23, `MK_rhi`, D3D12 committed-resource validation plus engine-level aliasing intent counters, Vulkan synchronization2 memory barriers, `MK_renderer`, PowerShell 7 validation tools.
+**Tech Stack:** C++23, `MK_rhi`, D3D12 committed-resource validation plus follow-up backend-private null-resource aliasing barrier evidence, Vulkan synchronization2 memory barriers, `MK_renderer`, PowerShell 7 validation tools.
 
 ---
 
@@ -17,7 +17,7 @@
 ## Official Practice Check
 
 - Microsoft Direct3D 12 documentation defines aliasing barriers as resource barriers for transitions between usages of two different resources that share the same heap mapping.
-- Current D3D12 `DeviceContext` textures are committed resources, so this slice deliberately avoids native non-null or wildcard/null aliasing barrier emission until placed/reserved resource provenance exists.
+- Current D3D12 `DeviceContext` textures are committed resources, so this slice deliberately avoided native non-null aliasing barrier emission until placed/reserved resource provenance exists. Follow-up [Frame Graph D3D12 Texture Aliasing Barrier Evidence v1](2026-05-16-frame-graph-d3d12-texture-aliasing-barrier-evidence-v1.md) records backend-private null-resource aliasing barrier evidence after public handle validation while keeping public wildcard/null calls unsupported.
 - Vulkan synchronization guidance requires explicit memory dependencies for hazards that are not covered by layout-specific image transitions. This slice uses a conservative memory barrier for backend-neutral aliasing dependency evidence and does not claim native Vulkan memory alias allocation.
 
 ## Context
@@ -78,7 +78,7 @@ Expected: the new tests fail to compile before implementation because the public
 - [x] Add `texture_aliasing_barrier(TextureHandle before, TextureHandle after)` to `IRhiCommandList`.
 - [x] Add `texture_aliasing_barriers` to `RhiStats` and D3D12 `DeviceContextStats`.
 - [x] Implement Null validation/counting without mutating texture states.
-- [x] Implement D3D12 committed texture validation and engine-level aliasing intent/stat recording without native placed-resource alias barrier emission.
+- [x] Implement D3D12 committed texture validation and engine-level aliasing intent/stat recording without native placed-resource alias barrier emission; follow-up evidence records backend-private null-resource D3D12 aliasing barriers.
 - [x] Implement Vulkan conservative synchronization2 memory barrier recording.
 - [x] Update all test command-list wrappers to forward or deliberately throw through the new method.
 - [x] Run focused RHI tests.

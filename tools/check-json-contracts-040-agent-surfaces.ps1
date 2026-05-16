@@ -402,6 +402,8 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("conflicting initial shared-handle states") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Texture Aliasing Barrier Command v1") -or
     -not ([string]$frameGraphGap[0].notes).Contains("texture_aliasing_barrier") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("null_resource_aliasing_barriers") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("D3D12_RESOURCE_BARRIER_TYPE_ALIASING") -or
     -not ([string]$frameGraphGap[0].notes).Contains("record_frame_graph_texture_aliasing_barriers") -or
     -not ([string]$frameGraphGap[0].notes).Contains("automatic aliasing-barrier insertion") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
@@ -492,6 +494,8 @@ foreach ($needle in @(
     "RhiViewportSurface",
     "viewport_color",
     "Frame Graph Texture Aliasing Barrier Command v1",
+    "Frame Graph D3D12 Texture Aliasing Barrier Evidence v1",
+    "null_resource_aliasing_barriers",
     "record_frame_graph_texture_aliasing_barriers",
     "automatic aliasing-barrier insertion",
     "frame-graph-v1"

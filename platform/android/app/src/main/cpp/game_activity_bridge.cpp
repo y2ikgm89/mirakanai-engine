@@ -16,7 +16,7 @@ namespace {
 
 struct AndroidAppState {
     mirakana::VirtualLifecycle lifecycle;
-    std::unique_ptr<MK_android::AndroidAudioOutput> audio;
+    std::unique_ptr<mirakana_android::AndroidAudioOutput> audio;
 };
 
 AndroidAppState* app_state(android_app* app) noexcept {
@@ -40,7 +40,7 @@ void start_audio(android_app* app) noexcept {
 
     try {
         if (!state->audio) {
-            state->audio = std::make_unique<MK_android::AndroidAudioOutput>(MK_android::AndroidAudioOutputDesc{
+            state->audio = std::make_unique<mirakana_android::AndroidAudioOutput>(mirakana_android::AndroidAudioOutputDesc{
                 mirakana::AudioDeviceFormat{48000, 2, mirakana::AudioSampleFormat::float32},
                 48000,
                 false,

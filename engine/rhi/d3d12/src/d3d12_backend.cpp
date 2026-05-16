@@ -2432,10 +2432,19 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
         return false;
     }
 
-    // D3D12 validates non-null aliasing barriers as placed/reserved-resource work.
-    // Current texture handles are committed resources, so this records the engine-level
-    // aliasing dependency intent without emitting an invalid native barrier.
+    // Public RHI calls require concrete texture handles, but committed resources cannot be used
+    // as non-null D3D12 aliasing-barrier resources. Record a conservative backend-private
+    // null-resource aliasing barrier so the command has native synchronization evidence without
+    // exposing public wildcard/null handles or claiming placed-resource alias execution.
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Aliasing.pResourceBefore = nullptr;
+    barrier.Aliasing.pResourceAfter = nullptr;
+
+    command_record->list->ResourceBarrier(1, &barrier);
     ++impl_->stats.texture_aliasing_barriers;
+    ++impl_->stats.null_resource_aliasing_barriers;
     return true;
 }
 

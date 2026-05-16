@@ -1167,6 +1167,7 @@ MK_TEST("d3d12 device context records committed texture aliasing barrier intent"
     MK_REQUIRE(context->texture_aliasing_barrier(commands, first, second));
     MK_REQUIRE(context->close_command_list(commands));
     MK_REQUIRE(context->stats().texture_aliasing_barriers == 1);
+    MK_REQUIRE(context->stats().null_resource_aliasing_barriers == 1);
     MK_REQUIRE(context->stats().texture_transitions == 0);
 }
 

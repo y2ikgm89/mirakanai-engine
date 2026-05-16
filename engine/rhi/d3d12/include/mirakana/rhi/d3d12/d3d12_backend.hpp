@@ -220,6 +220,7 @@ struct DeviceContextStats {
     std::uint64_t swapchain_back_buffer_transitions{0};
     std::uint64_t texture_transitions{0};
     std::uint64_t texture_aliasing_barriers{0};
+    std::uint64_t null_resource_aliasing_barriers{0};
     std::uint64_t swapchain_back_buffer_clears{0};
     std::uint64_t texture_render_target_clears{0};
     std::uint64_t descriptor_heaps_created{0};
