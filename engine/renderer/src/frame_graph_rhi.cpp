@@ -42,6 +42,14 @@ struct PlannedTexturePassTargetState {
     const FrameGraphTexturePassTargetState* pass_target_state{nullptr};
 };
 
+struct PlannedTextureAliasingBarrier {
+    std::size_t before_binding_index{0};
+    std::size_t after_binding_index{0};
+    std::string pass_name;
+    std::string before_resource;
+    std::string after_resource;
+};
+
 using TexturePassTargetAccessIndex = std::map<std::pair<std::string, std::string>, FrameGraphAccess>;
 
 struct TransientTextureUse {
@@ -149,6 +157,109 @@ build_scheduled_pass_index(std::span<const FrameGraphExecutionStep> schedule) {
         }
     }
     return scheduled_passes;
+}
+
+[[nodiscard]] std::vector<std::string> build_scheduled_pass_order(std::span<const FrameGraphExecutionStep> schedule) {
+    std::vector<std::string> scheduled_passes;
+    for (const auto& step : schedule) {
+        if (step.kind == FrameGraphExecutionStep::Kind::pass_invoke && !step.pass_name.empty()) {
+            scheduled_passes.push_back(step.pass_name);
+        }
+    }
+    return scheduled_passes;
+}
+
+[[nodiscard]] std::map<std::string, std::vector<PlannedTextureAliasingBarrier>>
+plan_automatic_texture_aliasing_barriers(
+    FrameGraphRhiTextureExecutionResult& result, const std::map<std::string, std::size_t>& binding_indices,
+    std::span<const std::string> scheduled_pass_order, std::span<const FrameGraphTextureBinding> texture_bindings,
+    std::span<const FrameGraphTransientTextureLifetime> transient_texture_lifetimes) {
+    std::map<std::size_t, std::vector<const FrameGraphTransientTextureLifetime*>> lifetimes_by_alias_group;
+    std::map<std::string, const FrameGraphTransientTextureLifetime*> lifetimes_by_resource;
+    for (const auto& lifetime : transient_texture_lifetimes) {
+        if (lifetime.resource.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, {},
+                                              "frame graph transient texture lifetime resource name is empty");
+            continue;
+        }
+        if (lifetime.first_pass_index > lifetime.last_pass_index) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, lifetime.resource,
+                                              "frame graph transient texture lifetime pass range is invalid");
+            continue;
+        }
+        if (lifetime.first_pass_index >= scheduled_pass_order.size()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, lifetime.resource,
+                                              "frame graph transient texture lifetime first pass is unscheduled");
+            continue;
+        }
+        if (lifetime.last_pass_index >= scheduled_pass_order.size()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, lifetime.resource,
+                                              "frame graph transient texture lifetime last pass is unscheduled");
+            continue;
+        }
+        if (!binding_indices.contains(lifetime.resource)) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, lifetime.resource,
+                                              "frame graph transient texture lifetime has no texture binding");
+            continue;
+        }
+        const auto [_, inserted] = lifetimes_by_resource.emplace(lifetime.resource, &lifetime);
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, lifetime.resource,
+                                              "frame graph transient texture lifetime is declared more than once");
+            continue;
+        }
+        lifetimes_by_alias_group[lifetime.alias_group].push_back(&lifetime);
+    }
+
+    std::map<std::string, std::vector<PlannedTextureAliasingBarrier>> planned_barriers_by_pass;
+    for (auto& [alias_group, lifetimes] : lifetimes_by_alias_group) {
+        (void)alias_group;
+        if (lifetimes.size() < 2) {
+            continue;
+        }
+
+        std::ranges::sort(lifetimes, [](const FrameGraphTransientTextureLifetime* left,
+                                        const FrameGraphTransientTextureLifetime* right) {
+            if (left->first_pass_index != right->first_pass_index) {
+                return left->first_pass_index < right->first_pass_index;
+            }
+            return left->resource < right->resource;
+        });
+
+        for (std::size_t index = 1; index < lifetimes.size(); ++index) {
+            const auto& before = *lifetimes[index - 1];
+            const auto& after = *lifetimes[index];
+            if (after.first_pass_index <= before.last_pass_index) {
+                append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
+                                                  after.resource,
+                                                  "frame graph transient texture lifetimes in one alias group overlap");
+                continue;
+            }
+
+            const auto before_binding = binding_indices.find(before.resource);
+            const auto after_binding = binding_indices.find(after.resource);
+            if (before_binding == binding_indices.end() || after_binding == binding_indices.end()) {
+                continue;
+            }
+            const auto pass_name = scheduled_pass_order[after.first_pass_index];
+            if (texture_bindings[before_binding->second].texture.value ==
+                texture_bindings[after_binding->second].texture.value) {
+                append_frame_graph_rhi_diagnostic(
+                    result, FrameGraphDiagnosticCode::invalid_resource, pass_name, after.resource,
+                    "frame graph automatic texture aliasing barrier requires distinct texture handles");
+                continue;
+            }
+            planned_barriers_by_pass[pass_name].push_back(PlannedTextureAliasingBarrier{
+                .before_binding_index = before_binding->second,
+                .after_binding_index = after_binding->second,
+                .pass_name = pass_name,
+                .before_resource = before.resource,
+                .after_resource = after.resource,
+            });
+        }
+    }
+
+    return planned_barriers_by_pass;
 }
 
 [[nodiscard]] std::map<std::string, std::vector<PlannedTexturePassTargetState>>
@@ -558,6 +669,36 @@ template <typename Result>
     } catch (...) {
         append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, planned.barrier->to_pass,
                                           planned.barrier->resource, "frame graph texture barrier recording failed");
+        return false;
+    }
+}
+
+[[nodiscard]] bool record_planned_texture_aliasing_barrier(FrameGraphRhiTextureExecutionResult& result,
+                                                           rhi::IRhiCommandList& commands,
+                                                           std::span<FrameGraphTextureBinding> texture_bindings,
+                                                           const PlannedTextureAliasingBarrier& planned) {
+    const auto before = texture_bindings[planned.before_binding_index].texture;
+    const auto after = texture_bindings[planned.after_binding_index].texture;
+    if (before.value == after.value) {
+        append_frame_graph_rhi_diagnostic(
+            result, FrameGraphDiagnosticCode::invalid_resource, planned.pass_name, planned.after_resource,
+            "frame graph automatic texture aliasing barrier requires distinct texture handles");
+        return false;
+    }
+
+    try {
+        commands.texture_aliasing_barrier(before, after);
+        ++result.aliasing_barriers_recorded;
+        return true;
+    } catch (const std::exception& ex) {
+        append_frame_graph_rhi_diagnostic(
+            result, FrameGraphDiagnosticCode::invalid_resource, planned.pass_name, planned.after_resource,
+            std::string{"frame graph automatic texture aliasing barrier recording failed: "} + ex.what());
+        return false;
+    } catch (...) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, planned.pass_name,
+                                          planned.after_resource,
+                                          "frame graph automatic texture aliasing barrier recording failed");
         return false;
     }
 }
@@ -1116,7 +1257,13 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
     const auto binding_indices = build_binding_index(result, desc.texture_bindings);
     const auto pass_callbacks = build_pass_callback_index(result, desc.pass_callbacks);
     const auto scheduled_passes = build_scheduled_pass_index(desc.schedule);
+    const auto scheduled_pass_order = build_scheduled_pass_order(desc.schedule);
     const auto pass_target_accesses = build_pass_target_access_index(result, desc.pass_target_accesses);
+    const auto planned_aliasing_barriers =
+        result.succeeded()
+            ? plan_automatic_texture_aliasing_barriers(result, binding_indices, scheduled_pass_order,
+                                                       desc.texture_bindings, desc.transient_texture_lifetimes)
+            : std::map<std::string, std::vector<PlannedTextureAliasingBarrier>>{};
     const auto planned_pass_target_states = result.succeeded()
                                                 ? plan_pass_target_states(result, binding_indices, scheduled_passes,
                                                                           pass_target_accesses, desc.pass_target_states)
@@ -1192,6 +1339,16 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
             }
         } break;
         case FrameGraphExecutionStep::Kind::pass_invoke: {
+            const auto aliasing_barriers = planned_aliasing_barriers.find(step.pass_name);
+            if (aliasing_barriers != planned_aliasing_barriers.end()) {
+                for (const auto& planned_aliasing_barrier : aliasing_barriers->second) {
+                    if (!record_planned_texture_aliasing_barrier(result, *desc.commands, desc.texture_bindings,
+                                                                 planned_aliasing_barrier)) {
+                        return result;
+                    }
+                }
+            }
+
             const auto target_states = planned_pass_target_states.find(step.pass_name);
             if (target_states != planned_pass_target_states.end()) {
                 for (const auto& planned_target_state : target_states->second) {
