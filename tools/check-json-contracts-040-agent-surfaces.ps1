@@ -508,6 +508,8 @@ foreach ($needle in @(
     "null_resource_aliasing_barriers",
     "record_frame_graph_texture_aliasing_barriers",
     "automatic aliasing-barrier insertion",
+    "Package Streaming Frame Graph Texture Binding Handoff v1",
+    "make_runtime_package_streaming_frame_graph_texture_bindings",
     "frame-graph-v1"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {

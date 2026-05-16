@@ -909,6 +909,8 @@ foreach ($needle in @(
     "Frame Graph Texture Aliasing Barrier Command v1",
     "record_frame_graph_texture_aliasing_barriers",
     "automatic executor insertion",
+    "Package Streaming Frame Graph Texture Binding Handoff v1",
+    "make_runtime_package_streaming_frame_graph_texture_bindings",
     "frame-graph-v1"
 )) {
     if (-not $recommendedText.Contains($needle)) {
