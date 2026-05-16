@@ -50,6 +50,11 @@ struct PlannedTextureAliasingBarrier {
     std::string after_resource;
 };
 
+struct PlannedRenderPassEnvelope {
+    rhi::RenderPassDesc desc;
+    std::string pass_name;
+};
+
 using TexturePassTargetAccessIndex = std::map<std::pair<std::string, std::string>, FrameGraphAccess>;
 
 struct TransientTextureUse {
@@ -375,6 +380,95 @@ build_pass_target_access_index(FrameGraphRhiTextureExecutionResult& result,
         }
     }
     return pass_target_access_index;
+}
+
+[[nodiscard]] rhi::TextureHandle resolve_render_pass_texture_attachment(
+    FrameGraphRhiTextureExecutionResult& result, const std::map<std::string, std::size_t>& binding_indices,
+    std::span<const FrameGraphTextureBinding> texture_bindings, std::string_view pass_name,
+    std::string_view attachment_name, const std::string& resource, rhi::TextureHandle texture) {
+    if (!resource.empty() && texture.value != 0) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, std::string(pass_name),
+                                          resource,
+                                          "frame graph render pass " + std::string(attachment_name) +
+                                              " attachment cannot specify both resource and texture");
+        return {};
+    }
+    if (resource.empty()) {
+        return texture;
+    }
+
+    const auto binding = binding_indices.find(resource);
+    if (binding == binding_indices.end()) {
+        append_frame_graph_rhi_diagnostic(
+            result, FrameGraphDiagnosticCode::invalid_resource, std::string(pass_name), resource,
+            "frame graph render pass " + std::string(attachment_name) + " attachment references an unknown resource");
+        return {};
+    }
+    return texture_bindings[binding->second].texture;
+}
+
+[[nodiscard]] std::map<std::string, PlannedRenderPassEnvelope>
+plan_render_pass_envelopes(FrameGraphRhiTextureExecutionResult& result,
+                           const std::map<std::string, std::size_t>& binding_indices,
+                           const std::map<std::string, std::size_t>& scheduled_passes,
+                           std::span<const FrameGraphTextureBinding> texture_bindings,
+                           std::span<const FrameGraphRhiRenderPassDesc> render_passes) {
+    std::map<std::string, PlannedRenderPassEnvelope> planned_render_passes;
+    for (const auto& render_pass : render_passes) {
+        if (render_pass.pass_name.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph render pass name is empty");
+            continue;
+        }
+        if (!scheduled_passes.contains(render_pass.pass_name)) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, render_pass.pass_name, {},
+                                              "frame graph render pass targets an unscheduled pass");
+            continue;
+        }
+
+        const bool color_uses_resource = !render_pass.color.resource.empty();
+        const bool color_uses_texture = render_pass.color.texture.value != 0;
+        const bool color_uses_swapchain = render_pass.color.swapchain_frame.value != 0;
+        const auto color_source_count = static_cast<std::uint32_t>(color_uses_resource) +
+                                        static_cast<std::uint32_t>(color_uses_texture) +
+                                        static_cast<std::uint32_t>(color_uses_swapchain);
+        if (color_source_count != 1U) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, render_pass.pass_name,
+                                              render_pass.color.resource,
+                                              "frame graph render pass requires exactly one color attachment source");
+            continue;
+        }
+
+        rhi::RenderPassDesc desc;
+        desc.color.load_action = render_pass.color.load_action;
+        desc.color.store_action = render_pass.color.store_action;
+        desc.color.clear_color = render_pass.color.clear_color;
+        desc.color.swapchain_frame = render_pass.color.swapchain_frame;
+        if (!color_uses_swapchain) {
+            desc.color.texture =
+                resolve_render_pass_texture_attachment(result, binding_indices, texture_bindings, render_pass.pass_name,
+                                                       "color", render_pass.color.resource, render_pass.color.texture);
+        }
+
+        desc.depth.load_action = render_pass.depth.load_action;
+        desc.depth.store_action = render_pass.depth.store_action;
+        desc.depth.clear_depth = render_pass.depth.clear_depth;
+        desc.depth.texture =
+            resolve_render_pass_texture_attachment(result, binding_indices, texture_bindings, render_pass.pass_name,
+                                                   "depth", render_pass.depth.resource, render_pass.depth.texture);
+
+        if (!result.succeeded()) {
+            continue;
+        }
+
+        const auto [_, inserted] = planned_render_passes.emplace(
+            render_pass.pass_name, PlannedRenderPassEnvelope{.desc = desc, .pass_name = render_pass.pass_name});
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, render_pass.pass_name, {},
+                                              "frame graph render pass is declared more than once");
+        }
+    }
+    return planned_render_passes;
 }
 
 [[nodiscard]] bool texture_descs_match(const rhi::TextureDesc& left, const rhi::TextureDesc& right) noexcept {
@@ -765,6 +859,39 @@ template <typename Result>
         append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
                                           planned.final_state->resource,
                                           "frame graph texture final-state barrier recording failed");
+        return false;
+    }
+}
+
+[[nodiscard]] bool begin_planned_render_pass(FrameGraphRhiTextureExecutionResult& result,
+                                             rhi::IRhiCommandList& commands, const PlannedRenderPassEnvelope& planned) {
+    try {
+        commands.begin_render_pass(planned.desc);
+        return true;
+    } catch (const std::exception& ex) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, planned.pass_name, {},
+                                          std::string{"frame graph render pass begin failed: "} + ex.what());
+        return false;
+    } catch (...) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, planned.pass_name, {},
+                                          "frame graph render pass begin failed");
+        return false;
+    }
+}
+
+[[nodiscard]] bool end_planned_render_pass(FrameGraphRhiTextureExecutionResult& result, rhi::IRhiCommandList& commands,
+                                           const PlannedRenderPassEnvelope& planned) {
+    try {
+        commands.end_render_pass();
+        ++result.render_passes_recorded;
+        return true;
+    } catch (const std::exception& ex) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, planned.pass_name, {},
+                                          std::string{"frame graph render pass end failed: "} + ex.what());
+        return false;
+    } catch (...) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, planned.pass_name, {},
+                                          "frame graph render pass end failed");
         return false;
     }
 }
@@ -1268,6 +1395,10 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
                                                 ? plan_pass_target_states(result, binding_indices, scheduled_passes,
                                                                           pass_target_accesses, desc.pass_target_states)
                                                 : std::map<std::string, std::vector<PlannedTexturePassTargetState>>{};
+    const auto planned_render_passes = result.succeeded()
+                                           ? plan_render_pass_envelopes(result, binding_indices, scheduled_passes,
+                                                                        desc.texture_bindings, desc.render_passes)
+                                           : std::map<std::string, PlannedRenderPassEnvelope>{};
     const auto planned_final_states = plan_final_texture_states(result, binding_indices, desc.final_states);
     for (const auto& step : desc.schedule) {
         switch (step.kind) {
@@ -1359,18 +1490,28 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
                 }
             }
 
+            const auto render_pass = planned_render_passes.find(step.pass_name);
+            const bool has_render_pass = render_pass != planned_render_passes.end();
+            if (has_render_pass && !begin_planned_render_pass(result, *desc.commands, render_pass->second)) {
+                return result;
+            }
+
             const auto callback = pass_callbacks.find(step.pass_name);
             FrameGraphExecutionCallbackResult callback_result;
+            std::optional<std::string> callback_failure_message;
             try {
                 callback_result = callback->second(callback->first);
             } catch (const std::exception& ex) {
-                append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
-                                                  std::string{"frame graph pass callback threw an exception: "} +
-                                                      ex.what());
-                return result;
+                callback_failure_message = std::string{"frame graph pass callback threw an exception: "} + ex.what();
             } catch (...) {
+                callback_failure_message = "frame graph pass callback threw an exception";
+            }
+            if (has_render_pass && !end_planned_render_pass(result, *desc.commands, render_pass->second)) {
+                return result;
+            }
+            if (callback_failure_message.has_value()) {
                 append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
-                                                  "frame graph pass callback threw an exception");
+                                                  std::move(*callback_failure_message));
                 return result;
             }
             if (!callback_result.succeeded()) {

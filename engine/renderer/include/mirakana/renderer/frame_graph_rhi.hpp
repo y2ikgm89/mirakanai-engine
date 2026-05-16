@@ -109,6 +109,29 @@ struct FrameGraphTexturePassTargetAccess {
     FrameGraphAccess access{FrameGraphAccess::unknown};
 };
 
+struct FrameGraphRhiRenderPassColorAttachment {
+    std::string resource;
+    rhi::TextureHandle texture;
+    rhi::SwapchainFrameHandle swapchain_frame;
+    rhi::LoadAction load_action{rhi::LoadAction::clear};
+    rhi::StoreAction store_action{rhi::StoreAction::store};
+    rhi::ClearColorValue clear_color;
+};
+
+struct FrameGraphRhiRenderPassDepthAttachment {
+    std::string resource;
+    rhi::TextureHandle texture;
+    rhi::LoadAction load_action{rhi::LoadAction::clear};
+    rhi::StoreAction store_action{rhi::StoreAction::store};
+    rhi::ClearDepthValue clear_depth;
+};
+
+struct FrameGraphRhiRenderPassDesc {
+    std::string pass_name;
+    FrameGraphRhiRenderPassColorAttachment color;
+    FrameGraphRhiRenderPassDepthAttachment depth;
+};
+
 struct FrameGraphRhiTextureExecutionDesc {
     rhi::IRhiCommandList* commands{nullptr};
     std::span<const FrameGraphExecutionStep> schedule;
@@ -116,6 +139,7 @@ struct FrameGraphRhiTextureExecutionDesc {
     std::span<const FrameGraphPassExecutionBinding> pass_callbacks;
     std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses;
     std::span<const FrameGraphTexturePassTargetState> pass_target_states;
+    std::span<const FrameGraphRhiRenderPassDesc> render_passes;
     std::span<const FrameGraphTextureFinalState> final_states;
     std::span<const FrameGraphTransientTextureLifetime> transient_texture_lifetimes;
 };
@@ -124,6 +148,7 @@ struct FrameGraphRhiTextureExecutionResult {
     std::size_t barriers_recorded{0};
     std::size_t aliasing_barriers_recorded{0};
     std::size_t pass_target_state_barriers_recorded{0};
+    std::size_t render_passes_recorded{0};
     std::size_t final_state_barriers_recorded{0};
     std::size_t pass_callbacks_invoked{0};
     std::vector<FrameGraphDiagnostic> diagnostics;

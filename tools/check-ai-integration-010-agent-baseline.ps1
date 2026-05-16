@@ -1270,7 +1270,8 @@ foreach ($needle in @(
     "viewport_color",
     "Frame Graph Texture Aliasing Barrier Command v1",
     "record_frame_graph_texture_aliasing_barriers",
-    "automatic executor insertion",
+    "Frame Graph Render Pass Envelope v1",
+    "render_passes_recorded",
     "frame-graph-v1"
 )) {
     Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"

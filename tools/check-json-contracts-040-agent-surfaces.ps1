@@ -415,6 +415,8 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("zero/duplicate/wrong-count backend-return validation") -or
     -not ([string]$frameGraphGap[0].notes).Contains("data inheritance/content preservation") -or
     -not ([string]$frameGraphGap[0].notes).Contains("automatic aliasing-barrier insertion") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiRenderPassDesc") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("render_passes_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
@@ -507,7 +509,8 @@ foreach ($needle in @(
     "Frame Graph D3D12 Texture Aliasing Barrier Evidence v1",
     "null_resource_aliasing_barriers",
     "record_frame_graph_texture_aliasing_barriers",
-    "automatic aliasing-barrier insertion",
+    "Frame Graph Render Pass Envelope v1",
+    "render_passes_recorded",
     "frame-graph-v1"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
