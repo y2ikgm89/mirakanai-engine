@@ -34,6 +34,7 @@ When new production work starts, create a new dated focused plan or, when the wo
 
 - Keep the live execution stack to at most three layers: the active roadmap, one active gap burn-down or milestone, and one active child/phase plan selected by `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
 - Create a new dated focused plan only when the work has its own behavior/API/validation boundary and should be independently executed, validated, or committed.
+- Distinguish plan files from execution steps: checkboxes can be small actions, but each plan file should close a coherent behavior/API/validation slice.
 - Do not create new plan files for validation-only follow-up, docs/manifest/static-check synchronization, small mechanical cleanup, or substeps that fit the current active plan checklist.
 - Prefer a gap-level burn-down or phase-gated milestone when one `unsupportedProductionGaps` row needs several linked phases. Track phase progress in that plan and create child plans only when a phase is too large to execute safely in one context.
 - Completed plan files are historical implementation evidence, not dead files. Do not delete or rewrite them merely to reduce file count; reduce navigation noise through this registry and dedicated evidence indexes.
