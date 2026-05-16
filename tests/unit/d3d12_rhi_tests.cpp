@@ -3848,13 +3848,21 @@ MK_TEST("d3d12 rhi frame renderer releases failed swapchain begin once") {
     bool rejected_incompatible_pipeline = false;
     try {
         renderer.begin_frame();
+        renderer.draw_mesh(mirakana::MeshCommand{});
+        renderer.end_frame();
+    } catch (const std::runtime_error& ex) {
+        rejected_incompatible_pipeline =
+            std::string_view{ex.what()}.find("d3d12 rhi graphics pipeline format must match the active render pass") !=
+            std::string_view::npos;
     } catch (const std::invalid_argument&) {
         rejected_incompatible_pipeline = true;
     }
 
     MK_REQUIRE(rejected_incompatible_pipeline);
     MK_REQUIRE(!renderer.frame_active());
-    MK_REQUIRE(renderer.stats().frames_started == 0);
+    MK_REQUIRE(renderer.stats().frames_started == 1);
+    MK_REQUIRE(renderer.stats().frames_finished == 0);
+    MK_REQUIRE(renderer.stats().framegraph_passes_executed == 0);
     MK_REQUIRE(device->stats().swapchain_frames_acquired == 1);
     MK_REQUIRE(device->stats().swapchain_frames_released == 1);
     MK_REQUIRE(device->stats().graphics_pipelines_bound == 0);

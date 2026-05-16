@@ -449,9 +449,9 @@ FrameGraphExecutionResult execute_frame_graph_v1_schedule(std::span<const FrameG
             FrameGraphExecutionCallbackResult callback_result;
             try {
                 callback_result = callback->second(callback->first);
-            } catch (const std::exception&) {
+            } catch (const std::exception& ex) {
                 append_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
-                                  "frame graph pass callback threw an exception");
+                                  std::string{"frame graph pass callback threw an exception: "} + ex.what());
                 return result;
             } catch (...) {
                 append_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},

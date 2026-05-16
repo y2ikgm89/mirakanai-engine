@@ -976,9 +976,10 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
             FrameGraphExecutionCallbackResult callback_result;
             try {
                 callback_result = callback->second(callback->first);
-            } catch (const std::exception&) {
+            } catch (const std::exception& ex) {
                 append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
-                                                  "frame graph pass callback threw an exception");
+                                                  std::string{"frame graph pass callback threw an exception: "} +
+                                                      ex.what());
                 return result;
             } catch (...) {
                 append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},

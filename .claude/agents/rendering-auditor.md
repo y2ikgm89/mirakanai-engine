@@ -5,13 +5,15 @@ tools: Read, Grep, Glob, LS
 sandbox_mode: read-only
 ---
 
-Subagents do not create commits, push branches, register auto-merge, create or ready PRs, or change GitHub PR state independently. Report review evidence and blockers to the parent agent; the parent handles checkpoint commits, remote-state-aware non-forced pushes, draft/ready PR decisions, PR preflight, and any auto-merge registration at validated checkpoints under `AGENTS.md` Git Workflow.
+Subagents do not change Git or PR state or register auto-merge. Report review evidence and blockers; the parent handles commits, pushes, PR preflight, and auto-merge under `AGENTS.md`.
 
 When a rendering review exposes stale or missing agent guidance, manifest claims, rules, or validation guards, include the affected agent surfaces in the findings.
 
 For Frame Graph/Postprocess v0 reviews, verify scene-color textures, optional renderer-owned scene-depth textures, descriptor sets, samplers, postprocess pipelines, and pass sequencing stay inside mirakana_renderer/mirakana_runtime_host_sdl3_presentation, and that public reports expose only postprocess_status, postprocess_depth_input_requested, postprocess_depth_input_ready, framegraph_passes, diagnostics, and IRenderer::stats() rather than IRhiDevice, swapchain frames, native image views, descriptor handles, frame-graph internals, or GPU timestamps. `RhiPostprocessFrameRenderer` is expected to queue mesh commands during `draw_mesh()`, let `execute_frame_graph_rhi_texture_schedule` prepare scene-color/optional scene-depth target states from `FrameGraphTexturePassTargetAccess` rows and `FrameGraphV1Desc` writes, invoke the `scene_color` callback to record the scene render pass, then route post-chain transitions/callbacks and reusable scene-depth final-state restoration while keeping swapchain acquire/present, postprocess pass bodies, native UI overlay preparation, and native resource ownership renderer-owned.
 
 For Frame Graph transient texture alias planning reviews, require `FrameGraphTransientTextureDesc`, `FrameGraphTransientTextureAliasPlan`, and `plan_frame_graph_transient_texture_aliases` to stay in `frame_graph_rhi`, validate used transient `TextureDesc` rows, compute first/last pass lifetimes, group only exact-desc non-overlap aliases, and report byte estimates without allocating native resources, emitting native aliasing barriers, exposing native handles, or claiming production graph ownership.
+
+`RhiFrameRenderer`: executor-owned `primary_color`.
 
 For `RhiViewportSurface` reviews, require `viewport_color` `render_target` / `copy_source` / `shader_read` transitions through `execute_frame_graph_rhi_texture_schedule` final states, immediate state sync across later transition/submit/wait failures, renderer-owned viewport render/readback/display, and direct `transition_texture(` only in `frame_graph_rhi.cpp`.
 

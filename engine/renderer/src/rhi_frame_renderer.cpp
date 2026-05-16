@@ -5,7 +5,10 @@
 
 #include "rhi_native_ui_overlay.hpp"
 
+#include "mirakana/renderer/frame_graph_rhi.hpp"
+
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace mirakana {
@@ -98,6 +101,26 @@ void bind_mesh_vertex_buffers(rhi::IRhiCommandList& commands, const MeshGpuBindi
     } catch (...) {
         return false;
     }
+}
+
+[[nodiscard]] std::vector<FrameGraphExecutionStep> make_primary_color_frame_graph_schedule() {
+    FrameGraphV1Desc desc;
+    desc.resources.push_back(FrameGraphResourceV1Desc{
+        .name = "primary_color",
+        .lifetime = FrameGraphResourceLifetime::imported,
+    });
+    desc.passes.push_back(FrameGraphPassV1Desc{
+        .name = "primary_color",
+        .reads = {},
+        .writes = {FrameGraphResourceAccess{.resource = "primary_color",
+                                            .access = FrameGraphAccess::color_attachment_write}},
+    });
+
+    const auto plan = compile_frame_graph_v1(desc);
+    if (!plan.succeeded()) {
+        return {};
+    }
+    return schedule_frame_graph_v1_execution(plan);
 }
 
 void bind_skinned_mesh_vertex_buffers(rhi::IRhiCommandList& commands, const SkinnedMeshGpuBinding& binding) {
@@ -295,26 +318,9 @@ void RhiFrameRenderer::begin_frame() {
         }
 
         commands = device_->begin_command_list(rhi::QueueKind::graphics);
-        rhi::RenderPassDesc render_pass{
-            .color =
-                rhi::RenderPassColorAttachment{
-                    .texture = color_texture_,
-                    .load_action = rhi::LoadAction::clear,
-                    .store_action = rhi::StoreAction::store,
-                    .swapchain_frame = swapchain_frame_,
-                    .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
-                                                        .green = clear_color_.g,
-                                                        .blue = clear_color_.b,
-                                                        .alpha = clear_color_.a},
-                },
-        };
-        if (depth_texture_.value != 0) {
-            render_pass.depth.texture = depth_texture_;
-        }
-        commands->begin_render_pass(render_pass);
-        commands->bind_graphics_pipeline(graphics_pipeline_);
 
         commands_ = std::move(commands);
+        queued_primary_draws_.clear();
         frame_active_ = true;
         skinned_pipeline_bound_ = false;
         morph_pipeline_bound_ = false;
@@ -336,7 +342,7 @@ void RhiFrameRenderer::draw_sprite(const SpriteCommand& command) {
             ++stats_.native_ui_overlay_textured_sprites_submitted;
         }
     } else {
-        commands_->draw(3, 1);
+        queued_primary_draws_.push_back(QueuedPrimaryDraw{.kind = QueuedPrimaryDrawKind::sprite});
     }
     ++stats_.sprites_submitted;
 }
@@ -353,6 +359,162 @@ void RhiFrameRenderer::draw_mesh(const MeshCommand& command) {
         validate_material_gpu_binding(command.material_binding, *device_);
         validate_skinned_mesh_gpu_binding(command.skinned_mesh, *device_);
 
+        queued_primary_draws_.push_back(QueuedPrimaryDraw{.kind = QueuedPrimaryDrawKind::mesh, .mesh = command});
+        ++stats_.meshes_submitted;
+        return;
+    }
+
+    if (command.gpu_morphing) {
+        if (morph_graphics_pipeline_.value == 0) {
+            throw std::invalid_argument("rhi frame renderer morph mesh command requires a morph graphics pipeline");
+        }
+        validate_material_gpu_binding(command.material_binding, *device_);
+        validate_mesh_gpu_binding(command.mesh_binding, *device_);
+        validate_morph_mesh_gpu_binding(command.morph_mesh, *device_, command.mesh_binding.vertex_count);
+
+        queued_primary_draws_.push_back(QueuedPrimaryDraw{.kind = QueuedPrimaryDrawKind::mesh, .mesh = command});
+        ++stats_.meshes_submitted;
+        return;
+    }
+
+    if (has_material_gpu_binding(command.material_binding)) {
+        validate_material_gpu_binding(command.material_binding, *device_);
+    }
+
+    if (has_mesh_gpu_binding(command.mesh_binding)) {
+        validate_mesh_gpu_binding(command.mesh_binding, *device_);
+    }
+    queued_primary_draws_.push_back(QueuedPrimaryDraw{.kind = QueuedPrimaryDrawKind::mesh, .mesh = command});
+    ++stats_.meshes_submitted;
+}
+
+void RhiFrameRenderer::end_frame() {
+    require_active_frame();
+    try {
+        const auto overlay_draw =
+            native_sprite_overlay_ != nullptr && native_sprite_overlay_->ready()
+                ? native_sprite_overlay_->prepare(pending_native_sprite_overlay_sprites_, *commands_)
+                : RhiNativeUiOverlayPreparedDraw{};
+        const auto schedule = make_primary_color_frame_graph_schedule();
+        if (schedule.empty()) {
+            throw std::runtime_error("rhi frame renderer primary frame graph schedule failed");
+        }
+        RendererStats recorded_primary_stats{};
+        const std::vector<FrameGraphPassExecutionBinding> pass_callbacks{
+            FrameGraphPassExecutionBinding{
+                .pass_name = "primary_color",
+                .callback =
+                    [&overlay_draw, &recorded_primary_stats, this](std::string_view) {
+                        commands_->begin_render_pass(primary_render_pass_desc());
+                        commands_->bind_graphics_pipeline(graphics_pipeline_);
+                        skinned_pipeline_bound_ = false;
+                        morph_pipeline_bound_ = false;
+                        for (const auto& draw : queued_primary_draws_) {
+                            switch (draw.kind) {
+                            case QueuedPrimaryDrawKind::sprite:
+                                if (skinned_pipeline_bound_ || morph_pipeline_bound_) {
+                                    commands_->bind_graphics_pipeline(graphics_pipeline_);
+                                    skinned_pipeline_bound_ = false;
+                                    morph_pipeline_bound_ = false;
+                                }
+                                commands_->draw(3, 1);
+                                break;
+                            case QueuedPrimaryDrawKind::mesh:
+                                record_queued_mesh_command(draw.mesh, recorded_primary_stats);
+                                break;
+                            }
+                        }
+                        if (overlay_draw.vertex_count != 0) {
+                            native_sprite_overlay_->record_draw(overlay_draw, *commands_);
+                        }
+                        commands_->end_render_pass();
+                        return FrameGraphExecutionCallbackResult{};
+                    },
+            },
+        };
+        const auto frame_graph_execution = execute_frame_graph_rhi_texture_schedule(FrameGraphRhiTextureExecutionDesc{
+            .commands = commands_.get(),
+            .schedule = schedule,
+            .texture_bindings = {},
+            .pass_callbacks = pass_callbacks,
+            .pass_target_accesses = {},
+            .pass_target_states = {},
+            .final_states = {},
+        });
+        if (!frame_graph_execution.succeeded()) {
+            std::string message{"rhi frame renderer frame graph rhi texture execution failed"};
+            if (!frame_graph_execution.diagnostics.empty() &&
+                !frame_graph_execution.diagnostics.front().message.empty()) {
+                message += ": ";
+                message += frame_graph_execution.diagnostics.front().message;
+            }
+            throw std::runtime_error(message);
+        }
+        if (swapchain_.value != 0) {
+            commands_->present(swapchain_frame_);
+            swapchain_frame_presented_ = true;
+        }
+        commands_->close();
+
+        const auto fence = device_->submit(*commands_);
+        if (wait_for_completion_) {
+            device_->wait(fence);
+        }
+
+        commands_.reset();
+        swapchain_frame_ = {};
+        swapchain_frame_presented_ = false;
+        queued_primary_draws_.clear();
+        pending_native_sprite_overlay_sprites_.clear();
+        frame_active_ = false;
+        ++stats_.frames_finished;
+        stats_.gpu_skinning_draws += recorded_primary_stats.gpu_skinning_draws;
+        stats_.skinned_palette_descriptor_binds += recorded_primary_stats.skinned_palette_descriptor_binds;
+        stats_.gpu_morph_draws += recorded_primary_stats.gpu_morph_draws;
+        stats_.morph_descriptor_binds += recorded_primary_stats.morph_descriptor_binds;
+        stats_.framegraph_passes_executed += frame_graph_execution.pass_callbacks_invoked;
+        stats_.framegraph_barrier_steps_executed += frame_graph_execution.barriers_recorded;
+        stats_.native_ui_overlay_draws += overlay_draw.batch_count;
+        stats_.native_ui_overlay_texture_binds += overlay_draw.texture_bind_count;
+        stats_.native_ui_overlay_textured_draws += overlay_draw.textured_batch_count;
+        stats_.native_sprite_batches_executed += overlay_draw.batch_count;
+        stats_.native_sprite_batch_sprites_executed += overlay_draw.sprite_count;
+        stats_.native_sprite_batch_textured_sprites_executed += overlay_draw.textured_sprite_count;
+        stats_.native_sprite_batch_texture_binds += overlay_draw.texture_bind_count;
+    } catch (...) {
+        release_acquired_swapchain_frame();
+        commands_.reset();
+        swapchain_frame_ = {};
+        swapchain_frame_presented_ = false;
+        queued_primary_draws_.clear();
+        pending_native_sprite_overlay_sprites_.clear();
+        frame_active_ = false;
+        throw;
+    }
+}
+
+mirakana::rhi::RenderPassDesc RhiFrameRenderer::primary_render_pass_desc() const {
+    rhi::RenderPassDesc render_pass{
+        .color =
+            rhi::RenderPassColorAttachment{
+                .texture = color_texture_,
+                .load_action = rhi::LoadAction::clear,
+                .store_action = rhi::StoreAction::store,
+                .swapchain_frame = swapchain_frame_,
+                .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
+                                                    .green = clear_color_.g,
+                                                    .blue = clear_color_.b,
+                                                    .alpha = clear_color_.a},
+            },
+    };
+    if (depth_texture_.value != 0) {
+        render_pass.depth.texture = depth_texture_;
+    }
+    return render_pass;
+}
+
+void RhiFrameRenderer::record_queued_mesh_command(const MeshCommand& command, RendererStats& recorded_stats) {
+    if (command.gpu_skinning) {
         commands_->bind_graphics_pipeline(skinned_graphics_pipeline_);
         skinned_pipeline_bound_ = true;
         morph_pipeline_bound_ = false;
@@ -368,20 +530,12 @@ void RhiFrameRenderer::draw_mesh(const MeshCommand& command) {
             .format = command.skinned_mesh.mesh.index_format,
         });
         commands_->draw_indexed(command.skinned_mesh.mesh.index_count, 1);
-        ++stats_.meshes_submitted;
-        ++stats_.gpu_skinning_draws;
-        ++stats_.skinned_palette_descriptor_binds;
+        ++recorded_stats.gpu_skinning_draws;
+        ++recorded_stats.skinned_palette_descriptor_binds;
         return;
     }
 
     if (command.gpu_morphing) {
-        if (morph_graphics_pipeline_.value == 0) {
-            throw std::invalid_argument("rhi frame renderer morph mesh command requires a morph graphics pipeline");
-        }
-        validate_material_gpu_binding(command.material_binding, *device_);
-        validate_mesh_gpu_binding(command.mesh_binding, *device_);
-        validate_morph_mesh_gpu_binding(command.morph_mesh, *device_, command.mesh_binding.vertex_count);
-
         commands_->bind_graphics_pipeline(morph_graphics_pipeline_);
         skinned_pipeline_bound_ = false;
         morph_pipeline_bound_ = true;
@@ -397,9 +551,8 @@ void RhiFrameRenderer::draw_mesh(const MeshCommand& command) {
             .format = command.mesh_binding.index_format,
         });
         commands_->draw_indexed(command.mesh_binding.index_count, 1);
-        ++stats_.meshes_submitted;
-        ++stats_.gpu_morph_draws;
-        ++stats_.morph_descriptor_binds;
+        ++recorded_stats.gpu_morph_draws;
+        ++recorded_stats.morph_descriptor_binds;
         return;
     }
 
@@ -410,14 +563,12 @@ void RhiFrameRenderer::draw_mesh(const MeshCommand& command) {
     }
 
     if (has_material_gpu_binding(command.material_binding)) {
-        validate_material_gpu_binding(command.material_binding, *device_);
         commands_->bind_descriptor_set(command.material_binding.pipeline_layout,
                                        command.material_binding.descriptor_set_index,
                                        command.material_binding.descriptor_set);
     }
 
     if (has_mesh_gpu_binding(command.mesh_binding)) {
-        validate_mesh_gpu_binding(command.mesh_binding, *device_);
         bind_mesh_vertex_buffers(*commands_, command.mesh_binding);
         commands_->bind_index_buffer(rhi::IndexBufferBinding{
             .buffer = command.mesh_binding.index_buffer,
@@ -427,53 +578,6 @@ void RhiFrameRenderer::draw_mesh(const MeshCommand& command) {
         commands_->draw_indexed(command.mesh_binding.index_count, 1);
     } else {
         commands_->draw(3, 1);
-    }
-    ++stats_.meshes_submitted;
-}
-
-void RhiFrameRenderer::end_frame() {
-    require_active_frame();
-    try {
-        const auto overlay_draw =
-            native_sprite_overlay_ != nullptr && native_sprite_overlay_->ready()
-                ? native_sprite_overlay_->prepare(pending_native_sprite_overlay_sprites_, *commands_)
-                : RhiNativeUiOverlayPreparedDraw{};
-        if (overlay_draw.vertex_count != 0) {
-            native_sprite_overlay_->record_draw(overlay_draw, *commands_);
-        }
-        commands_->end_render_pass();
-        if (swapchain_.value != 0) {
-            commands_->present(swapchain_frame_);
-            swapchain_frame_presented_ = true;
-        }
-        commands_->close();
-
-        const auto fence = device_->submit(*commands_);
-        if (wait_for_completion_) {
-            device_->wait(fence);
-        }
-
-        commands_.reset();
-        swapchain_frame_ = {};
-        swapchain_frame_presented_ = false;
-        pending_native_sprite_overlay_sprites_.clear();
-        frame_active_ = false;
-        ++stats_.frames_finished;
-        stats_.native_ui_overlay_draws += overlay_draw.batch_count;
-        stats_.native_ui_overlay_texture_binds += overlay_draw.texture_bind_count;
-        stats_.native_ui_overlay_textured_draws += overlay_draw.textured_batch_count;
-        stats_.native_sprite_batches_executed += overlay_draw.batch_count;
-        stats_.native_sprite_batch_sprites_executed += overlay_draw.sprite_count;
-        stats_.native_sprite_batch_textured_sprites_executed += overlay_draw.textured_sprite_count;
-        stats_.native_sprite_batch_texture_binds += overlay_draw.texture_bind_count;
-    } catch (...) {
-        release_acquired_swapchain_frame();
-        commands_.reset();
-        swapchain_frame_ = {};
-        swapchain_frame_presented_ = false;
-        pending_native_sprite_overlay_sprites_.clear();
-        frame_active_ = false;
-        throw;
     }
 }
 
