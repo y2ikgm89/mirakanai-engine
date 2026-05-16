@@ -15,7 +15,7 @@ For Frame Graph transient texture alias/lease/barrier reviews, keep `FrameGraphT
 
 For package streaming texture handoff reviews, keep `make_runtime_package_streaming_frame_graph_texture_bindings` in `mirakana_runtime_rhi` as a narrow bridge from a committed `RuntimePackageStreamingExecutionResult`, live `RuntimeResourceCatalogV2` texture rows, and successful caller-owned `RuntimeTextureUploadResult` rows into imported `FrameGraphTextureBinding` values. Require rejection of non-committed results, stale/non-texture catalog rows, duplicate frame-graph resource names, failed uploads, and null texture handles; reject `IRhiDevice` exposure to gameplay, native handles, renderer-owned residency, upload staging rings, background streaming, allocator/GPU budget enforcement, multi-queue scheduling, or broad package streaming readiness claims.
 
-`RhiFrameRenderer`: executor-owned `primary_color` callback and `FrameGraphRhiRenderPassDesc` render pass envelope; the callback records pass-body work only.
+`RhiFrameRenderer`: `primary_color` callback, `primary_color`/`primary_depth` target-state rows, envelope; swapchain uses `swapchain_frame`; callbacks record bodies.
 
 For `RhiViewportSurface`, require `viewport_color` state transitions plus the `viewport.clear` render pass envelope through `execute_frame_graph_rhi_texture_schedule`; renderer-owned render/readback/display; direct `transition_texture(` and direct render pass begin/end only in `frame_graph_rhi.cpp`.
 

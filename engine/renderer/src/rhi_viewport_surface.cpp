@@ -199,14 +199,13 @@ void RhiViewportSurface::render_frame(const RhiViewportRenderDesc& desc,
         throw std::invalid_argument("rhi viewport frame requires a submit callback");
     }
 
-    transition_color_state(rhi::ResourceState::render_target);
-
     RhiFrameRenderer renderer(RhiFrameRendererDesc{
         .device = device_,
         .extent = extent_,
         .color_texture = color_texture_,
         .graphics_pipeline = desc.graphics_pipeline,
         .wait_for_completion = wait_for_completion_,
+        .color_texture_state = color_state_,
     });
     renderer.set_clear_color(desc.clear_color);
     renderer.begin_frame();

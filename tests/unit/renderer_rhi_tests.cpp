@@ -5529,7 +5529,7 @@ MK_TEST("rhi frame renderer submits a texture frame through an rhi device") {
     const auto target = device.create_texture(mirakana::rhi::TextureDesc{
         .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
         .format = mirakana::rhi::Format::rgba8_unorm,
-        .usage = mirakana::rhi::TextureUsage::render_target,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
     });
     const auto vertex_shader = device.create_shader(mirakana::rhi::ShaderDesc{
         .stage = mirakana::rhi::ShaderStage::vertex,
@@ -5569,6 +5569,7 @@ MK_TEST("rhi frame renderer submits a texture frame through an rhi device") {
         .swapchain = mirakana::rhi::SwapchainHandle{},
         .graphics_pipeline = pipeline,
         .wait_for_completion = true,
+        .color_texture_state = mirakana::rhi::ResourceState::copy_source,
     });
 
     MK_REQUIRE(renderer.backend_name() == "null");
@@ -5585,7 +5586,7 @@ MK_TEST("rhi frame renderer submits a texture frame through an rhi device") {
     MK_REQUIRE(renderer_stats.sprites_submitted == 1);
     MK_REQUIRE(renderer_stats.meshes_submitted == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 1);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 0);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 1);
 
     const auto rhi_stats = device.stats();
     MK_REQUIRE(rhi_stats.command_lists_begun == 1);
@@ -5595,6 +5596,77 @@ MK_TEST("rhi frame renderer submits a texture frame through an rhi device") {
     MK_REQUIRE(rhi_stats.vertices_submitted == 6);
     MK_REQUIRE(rhi_stats.command_lists_submitted == 1);
     MK_REQUIRE(rhi_stats.fences_signaled == 1);
+}
+
+MK_TEST("rhi frame renderer carries primary target state across texture frames") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto target = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto pipeline = create_renderer_test_pipeline(device, mirakana::rhi::Format::rgba8_unorm);
+
+    mirakana::RhiFrameRenderer renderer(mirakana::RhiFrameRendererDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 32, .height = 32},
+        .color_texture = target,
+        .graphics_pipeline = pipeline,
+        .wait_for_completion = true,
+        .color_texture_state = mirakana::rhi::ResourceState::copy_source,
+    });
+
+    renderer.begin_frame();
+    renderer.end_frame();
+    renderer.begin_frame();
+    renderer.end_frame();
+
+    const auto renderer_stats = renderer.stats();
+    MK_REQUIRE(renderer_stats.frames_finished == 2);
+    MK_REQUIRE(renderer_stats.framegraph_passes_executed == 2);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 1);
+    MK_REQUIRE(device.stats().resource_transitions == 1);
+}
+
+MK_TEST("rhi frame renderer reports primary target state failures before pass body") {
+    ThrowingTransitionRhiDevice device;
+    device.throw_on_submit = false;
+    device.throw_on_transition = 1;
+    const auto target = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto pipeline = create_renderer_test_pipeline(device, mirakana::rhi::Format::rgba8_unorm);
+    mirakana::RhiFrameRenderer renderer(mirakana::RhiFrameRendererDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 32, .height = 32},
+        .color_texture = target,
+        .graphics_pipeline = pipeline,
+        .wait_for_completion = true,
+        .color_texture_state = mirakana::rhi::ResourceState::copy_source,
+    });
+
+    bool execution_failed = false;
+    bool message_preserved = false;
+    try {
+        renderer.begin_frame();
+        renderer.draw_sprite(mirakana::SpriteCommand{});
+        renderer.end_frame();
+    } catch (const std::runtime_error& ex) {
+        execution_failed = true;
+        message_preserved =
+            std::string_view{ex.what()}.find("frame graph texture pass target-state barrier recording failed") !=
+            std::string_view::npos;
+    }
+
+    MK_REQUIRE(execution_failed);
+    MK_REQUIRE(message_preserved);
+    MK_REQUIRE(!renderer.frame_active());
+    MK_REQUIRE(renderer.stats().frames_finished == 0);
+    MK_REQUIRE(renderer.stats().framegraph_passes_executed == 0);
+    MK_REQUIRE(device.stats().render_passes_begun == 0);
+    MK_REQUIRE(device.stats().draw_calls == 0);
 }
 
 MK_TEST("rhi frame renderer records native textured 2d sprites through an overlay pass") {
@@ -5798,12 +5870,12 @@ MK_TEST("rhi frame renderer forwards an optional depth attachment") {
     const auto target = device.create_texture(mirakana::rhi::TextureDesc{
         .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
         .format = mirakana::rhi::Format::rgba8_unorm,
-        .usage = mirakana::rhi::TextureUsage::render_target,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
     });
     const auto depth = device.create_texture(mirakana::rhi::TextureDesc{
         .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
         .format = mirakana::rhi::Format::depth24_stencil8,
-        .usage = mirakana::rhi::TextureUsage::depth_stencil,
+        .usage = mirakana::rhi::TextureUsage::depth_stencil | mirakana::rhi::TextureUsage::shader_resource,
     });
     const auto vertex_shader = device.create_shader(mirakana::rhi::ShaderDesc{
         .stage = mirakana::rhi::ShaderStage::vertex,
@@ -5828,6 +5900,11 @@ MK_TEST("rhi frame renderer forwards an optional depth attachment") {
     pipeline_desc.depth_state = mirakana::rhi::DepthStencilStateDesc{
         .depth_test_enabled = true, .depth_write_enabled = true, .depth_compare = mirakana::rhi::CompareOp::less_equal};
     const auto pipeline = device.create_graphics_pipeline(pipeline_desc);
+    auto setup_commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    setup_commands->transition_texture(depth, mirakana::rhi::ResourceState::depth_write,
+                                       mirakana::rhi::ResourceState::shader_read);
+    setup_commands->close();
+    device.wait(device.submit(*setup_commands));
 
     mirakana::RhiFrameRenderer renderer(mirakana::RhiFrameRendererDesc{
         .device = &device,
@@ -5837,6 +5914,8 @@ MK_TEST("rhi frame renderer forwards an optional depth attachment") {
         .graphics_pipeline = pipeline,
         .wait_for_completion = true,
         .depth_texture = depth,
+        .color_texture_state = mirakana::rhi::ResourceState::copy_source,
+        .depth_texture_state = mirakana::rhi::ResourceState::shader_read,
     });
 
     renderer.begin_frame();
@@ -5844,15 +5923,16 @@ MK_TEST("rhi frame renderer forwards an optional depth attachment") {
 
     bool rejected_depth_replace_during_frame = false;
     try {
-        renderer.replace_depth_texture(mirakana::rhi::TextureHandle{});
+        renderer.replace_depth_texture(mirakana::rhi::TextureHandle{}, mirakana::rhi::ResourceState::depth_write);
     } catch (const std::logic_error&) {
         rejected_depth_replace_during_frame = true;
     }
 
     renderer.end_frame();
 
-    renderer.replace_depth_texture(mirakana::rhi::TextureHandle{});
+    renderer.replace_depth_texture(mirakana::rhi::TextureHandle{}, mirakana::rhi::ResourceState::depth_write);
     MK_REQUIRE(renderer.stats().frames_finished == 1);
+    MK_REQUIRE(renderer.stats().framegraph_barrier_steps_executed == 2);
     MK_REQUIRE(rejected_depth_replace_during_frame);
     MK_REQUIRE(device.stats().render_passes_begun == 1);
     MK_REQUIRE(device.stats().graphics_pipelines_bound == 1);
@@ -5931,7 +6011,7 @@ MK_TEST("rhi frame renderer replaces host owned depth texture after swapchain re
             std::string_view::npos;
     }
 
-    renderer.replace_depth_texture(resized_depth);
+    renderer.replace_depth_texture(resized_depth, mirakana::rhi::ResourceState::depth_write);
     renderer.begin_frame();
     renderer.draw_mesh(mirakana::MeshCommand{});
     renderer.end_frame();

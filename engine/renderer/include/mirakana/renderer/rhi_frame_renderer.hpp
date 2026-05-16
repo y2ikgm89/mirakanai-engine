@@ -33,6 +33,8 @@ struct RhiFrameRendererDesc {
     rhi::GraphicsPipelineHandle skinned_graphics_pipeline;
     /// Optional morph mesh pipeline (root signature includes morph descriptor set after material set 0).
     rhi::GraphicsPipelineHandle morph_graphics_pipeline;
+    rhi::ResourceState color_texture_state{rhi::ResourceState::render_target};
+    rhi::ResourceState depth_texture_state{rhi::ResourceState::depth_write};
 };
 
 class RhiFrameRenderer final : public IRenderer {
@@ -49,7 +51,7 @@ class RhiFrameRenderer final : public IRenderer {
     void resize(Extent2D extent) override;
     void set_clear_color(Color color) noexcept override;
     void replace_graphics_pipeline(rhi::GraphicsPipelineHandle pipeline);
-    void replace_depth_texture(rhi::TextureHandle texture);
+    void replace_depth_texture(rhi::TextureHandle texture, rhi::ResourceState state);
     void begin_frame() override;
     void draw_sprite(const SpriteCommand& command) override;
     void draw_mesh(const MeshCommand& command) override;
@@ -77,6 +79,8 @@ class RhiFrameRenderer final : public IRenderer {
     rhi::GraphicsPipelineHandle skinned_graphics_pipeline_;
     rhi::GraphicsPipelineHandle morph_graphics_pipeline_;
     rhi::TextureHandle depth_texture_;
+    rhi::ResourceState color_texture_state_{rhi::ResourceState::render_target};
+    rhi::ResourceState depth_texture_state_{rhi::ResourceState::depth_write};
     bool wait_for_completion_{true};
     Color clear_color_{.r = 0.0F, .g = 0.0F, .b = 0.0F, .a = 1.0F};
     RendererStats stats_{};

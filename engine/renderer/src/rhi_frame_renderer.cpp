@@ -103,24 +103,45 @@ void bind_mesh_vertex_buffers(rhi::IRhiCommandList& commands, const MeshGpuBindi
     }
 }
 
-[[nodiscard]] std::vector<FrameGraphExecutionStep> make_primary_color_frame_graph_schedule() {
+struct PrimaryColorFrameGraphExecutionPlan {
+    std::vector<FrameGraphExecutionStep> schedule;
+    std::vector<FrameGraphTexturePassTargetAccess> pass_target_accesses;
+};
+
+[[nodiscard]] PrimaryColorFrameGraphExecutionPlan
+make_primary_color_frame_graph_execution_plan(bool has_depth_attachment) {
     FrameGraphV1Desc desc;
     desc.resources.push_back(FrameGraphResourceV1Desc{
         .name = "primary_color",
         .lifetime = FrameGraphResourceLifetime::imported,
     });
+    if (has_depth_attachment) {
+        desc.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "primary_depth",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
+    }
     desc.passes.push_back(FrameGraphPassV1Desc{
         .name = "primary_color",
         .reads = {},
         .writes = {FrameGraphResourceAccess{.resource = "primary_color",
                                             .access = FrameGraphAccess::color_attachment_write}},
     });
+    if (has_depth_attachment) {
+        desc.passes.back().writes.push_back(FrameGraphResourceAccess{
+            .resource = "primary_depth",
+            .access = FrameGraphAccess::depth_attachment_write,
+        });
+    }
 
     const auto plan = compile_frame_graph_v1(desc);
     if (!plan.succeeded()) {
         return {};
     }
-    return schedule_frame_graph_v1_execution(plan);
+    return PrimaryColorFrameGraphExecutionPlan{
+        .schedule = schedule_frame_graph_v1_execution(plan),
+        .pass_target_accesses = build_frame_graph_texture_pass_target_accesses(desc),
+    };
 }
 
 void bind_skinned_mesh_vertex_buffers(rhi::IRhiCommandList& commands, const SkinnedMeshGpuBinding& binding) {
@@ -206,6 +227,7 @@ RhiFrameRenderer::RhiFrameRenderer(const RhiFrameRendererDesc& desc)
     : device_(desc.device), extent_(desc.extent), color_texture_(desc.color_texture), swapchain_(desc.swapchain),
       graphics_pipeline_(desc.graphics_pipeline), skinned_graphics_pipeline_(desc.skinned_graphics_pipeline),
       morph_graphics_pipeline_(desc.morph_graphics_pipeline), depth_texture_(desc.depth_texture),
+      color_texture_state_(desc.color_texture_state), depth_texture_state_(desc.depth_texture_state),
       wait_for_completion_(desc.wait_for_completion) {
     if (device_ == nullptr) {
         throw std::invalid_argument("rhi frame renderer requires an rhi device");
@@ -218,6 +240,12 @@ RhiFrameRenderer::RhiFrameRenderer(const RhiFrameRendererDesc& desc)
     }
     if (graphics_pipeline_.value == 0) {
         throw std::invalid_argument("rhi frame renderer requires a graphics pipeline");
+    }
+    if (color_texture_.value != 0 && color_texture_state_ == rhi::ResourceState::undefined) {
+        throw std::invalid_argument("rhi frame renderer color texture state must be known");
+    }
+    if (depth_texture_.value != 0 && depth_texture_state_ == rhi::ResourceState::undefined) {
+        throw std::invalid_argument("rhi frame renderer depth texture state must be known");
     }
     if (desc.enable_native_sprite_overlay && (desc.native_sprite_overlay_vertex_shader.value == 0 ||
                                               desc.native_sprite_overlay_fragment_shader.value == 0)) {
@@ -296,11 +324,15 @@ void RhiFrameRenderer::replace_graphics_pipeline(rhi::GraphicsPipelineHandle pip
     graphics_pipeline_ = pipeline;
 }
 
-void RhiFrameRenderer::replace_depth_texture(rhi::TextureHandle texture) {
+void RhiFrameRenderer::replace_depth_texture(rhi::TextureHandle texture, rhi::ResourceState state) {
     if (frame_active_) {
         throw std::logic_error("rhi frame renderer cannot replace depth texture during an active frame");
     }
+    if (texture.value != 0 && state == rhi::ResourceState::undefined) {
+        throw std::invalid_argument("rhi frame renderer replacement depth texture state must be known");
+    }
     depth_texture_ = texture;
+    depth_texture_state_ = texture.value != 0 ? state : rhi::ResourceState::depth_write;
 }
 
 void RhiFrameRenderer::begin_frame() {
@@ -395,30 +427,58 @@ void RhiFrameRenderer::end_frame() {
             native_sprite_overlay_ != nullptr && native_sprite_overlay_->ready()
                 ? native_sprite_overlay_->prepare(pending_native_sprite_overlay_sprites_, *commands_)
                 : RhiNativeUiOverlayPreparedDraw{};
-        const auto schedule = make_primary_color_frame_graph_schedule();
-        if (schedule.empty()) {
+        const auto frame_graph_plan = make_primary_color_frame_graph_execution_plan(depth_texture_.value != 0);
+        if (frame_graph_plan.schedule.empty()) {
             throw std::runtime_error("rhi frame renderer primary frame graph schedule failed");
+        }
+        std::vector<FrameGraphTextureBinding> texture_bindings;
+        std::vector<FrameGraphTexturePassTargetState> pass_target_states;
+        FrameGraphRhiRenderPassColorAttachment color_attachment{
+            .resource = {},
+            .texture = {},
+            .swapchain_frame = swapchain_frame_,
+            .load_action = rhi::LoadAction::clear,
+            .store_action = rhi::StoreAction::store,
+            .clear_color =
+                rhi::ClearColorValue{
+                    .red = clear_color_.r, .green = clear_color_.g, .blue = clear_color_.b, .alpha = clear_color_.a},
+        };
+        if (color_texture_.value != 0) {
+            texture_bindings.push_back(FrameGraphTextureBinding{
+                .resource = "primary_color",
+                .texture = color_texture_,
+                .current_state = color_texture_state_,
+            });
+            pass_target_states.push_back(FrameGraphTexturePassTargetState{
+                .pass_name = "primary_color",
+                .resource = "primary_color",
+                .state = rhi::ResourceState::render_target,
+            });
+            color_attachment.resource = "primary_color";
+            color_attachment.swapchain_frame = {};
+        }
+        FrameGraphRhiRenderPassDepthAttachment depth_attachment{
+            .resource = {},
+            .texture = {},
+        };
+        if (depth_texture_.value != 0) {
+            texture_bindings.push_back(FrameGraphTextureBinding{
+                .resource = "primary_depth",
+                .texture = depth_texture_,
+                .current_state = depth_texture_state_,
+            });
+            pass_target_states.push_back(FrameGraphTexturePassTargetState{
+                .pass_name = "primary_color",
+                .resource = "primary_depth",
+                .state = rhi::ResourceState::depth_write,
+            });
+            depth_attachment.resource = "primary_depth";
         }
         const std::vector<FrameGraphRhiRenderPassDesc> render_passes{
             FrameGraphRhiRenderPassDesc{
                 .pass_name = "primary_color",
-                .color =
-                    FrameGraphRhiRenderPassColorAttachment{
-                        .resource = {},
-                        .texture = color_texture_,
-                        .swapchain_frame = swapchain_frame_,
-                        .load_action = rhi::LoadAction::clear,
-                        .store_action = rhi::StoreAction::store,
-                        .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
-                                                            .green = clear_color_.g,
-                                                            .blue = clear_color_.b,
-                                                            .alpha = clear_color_.a},
-                    },
-                .depth =
-                    FrameGraphRhiRenderPassDepthAttachment{
-                        .resource = {},
-                        .texture = depth_texture_,
-                    },
+                .color = color_attachment,
+                .depth = depth_attachment,
             },
         };
         RendererStats recorded_primary_stats{};
@@ -454,11 +514,11 @@ void RhiFrameRenderer::end_frame() {
         };
         const auto frame_graph_execution = execute_frame_graph_rhi_texture_schedule(FrameGraphRhiTextureExecutionDesc{
             .commands = commands_.get(),
-            .schedule = schedule,
-            .texture_bindings = {},
+            .schedule = frame_graph_plan.schedule,
+            .texture_bindings = texture_bindings,
             .pass_callbacks = pass_callbacks,
-            .pass_target_accesses = {},
-            .pass_target_states = {},
+            .pass_target_accesses = frame_graph_plan.pass_target_accesses,
+            .pass_target_states = pass_target_states,
             .render_passes = render_passes,
             .final_states = {},
         });
@@ -471,6 +531,15 @@ void RhiFrameRenderer::end_frame() {
             }
             throw std::runtime_error(message);
         }
+        auto next_color_texture_state = color_texture_state_;
+        auto next_depth_texture_state = depth_texture_state_;
+        for (const auto& binding : texture_bindings) {
+            if (binding.resource == "primary_color") {
+                next_color_texture_state = binding.current_state;
+            } else if (binding.resource == "primary_depth") {
+                next_depth_texture_state = binding.current_state;
+            }
+        }
         if (swapchain_.value != 0) {
             commands_->present(swapchain_frame_);
             swapchain_frame_presented_ = true;
@@ -478,6 +547,8 @@ void RhiFrameRenderer::end_frame() {
         commands_->close();
 
         const auto fence = device_->submit(*commands_);
+        color_texture_state_ = next_color_texture_state;
+        depth_texture_state_ = next_depth_texture_state;
         if (wait_for_completion_) {
             device_->wait(fence);
         }
