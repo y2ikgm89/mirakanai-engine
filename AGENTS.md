@@ -148,7 +148,7 @@
 - Keep each `unsupportedProductionGaps` row honest, including `oneDotZeroCloseoutTier`, in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` plus composed output; do not hand-edit `engine/agent/manifest.json`.
 - Re-read the master plan, registry, and manifest after user edits or resumes. Finish one selected gap as implemented, host-gated, blocked with evidence, or excluded before switching.
 - Prefer official documentation, Context7, project skills, and clean breaking greenfield designs over compatibility shims, broad ready claims, or shortcuts.
-- Use focused validation and bounded subagents only when they improve speed or confidence, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the slice gate.
+- Use focused validation and bounded subagents when they improve speed or confidence; reserve `tools/validate.ps1` for slice gates that touch C++/runtime/build/packaging/public contracts.
 - Before reporting completion, reconcile code, tests, docs, plans, manifest, static checks, completed gap, remaining gaps, next active plan, and host-gated blockers against evidence.
 - Narrative checklist for production completion: [docs/agent-operational-reference.md](docs/agent-operational-reference.md#production-completion-execution-expanded).
 
@@ -156,7 +156,7 @@
 
 - Keep shared ignores in `.gitignore`, repository-local ignores in `.git/info/exclude`, and user-wide editor/backup ignores in readable user `core.excludesFile`. If sandboxed Git reports unreadable global ignore such as `$HOME/.config/git/ignore`, prefer a repo-local `core.excludesFile` in `.git/config` instead of weakening repo permissions.
 - If Git author identity is missing, set `user.name` and `user.email` with `git config --local` unless the user explicitly requests global identity.
-- Implementation plans should include validated commit checkpoints. Prefer small commits after coherent, passing slices; never commit known-broken work, scratch output, secrets, credential files, or unrelated user changes. For a slice-closing commit, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` first, or for documentation-only/non-runtime slices record justified narrower checks in the PR body and completion report.
+- Use validated commit checkpoints. Prefer small coherent commits; never commit broken work, scratch output, secrets, credentials, or unrelated changes. For runtime/C++/build/toolchain/public-contract commits, one fresh `tools/validate.ps1` is the full gate; run `tools/build.ps1` separately only when standalone build evidence is explicitly needed. For documentation-only/non-runtime slices, record justified narrower checks in PR/completion evidence.
 - Follow GitHub Flow: topic branch, coherent validated commits, non-forced checkpoint push, PR, review/checks, merge, and branch deletion. Cadence is checkpoint-based, not commit-count-based; multiple local commits may push as one validated slice. Before pushing, inspect status, staged diff, `git diff --cached --check`, and remote state.
 - A slice is **not publication-complete after local validation alone**. Unless local-only/no-PR, finish task-owned branch, stage, commit, non-forced push, and `gh pr create`/GitHub Desktop update with validation evidence or exact blocker before final report. For large slices, open draft PR after the first coherent validated push; mark ready only after final validation/preflight. If starting on default/protected branch, create topic branch; if `codex/<topic>` conflicts, use `codex-<topic>`. Leave unrelated changes unstaged.
 - Treat Codex command policy as session-scoped: after editing `.codex/rules/*.rules`, wait for policy reload or a new session when newly allowed commands still require a prompt and approvals are unavailable; do not retry by weakening rules.
@@ -194,5 +194,5 @@
 - Relevant docs/specs/plans are updated.
 - Agent-surface drift has been checked, and affected guidance/contracts are updated when durable behavior or workflow changed.
 - Relevant tests are added or updated when behavior/API/regression risk changed, and they cover the smallest durable external guarantee.
-- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` has been run, or a concrete environment blocker is recorded.
+- Validation has run: focused checks for docs/agent-only/non-runtime slices, full `tools/validate.ps1` for C++/runtime/build/packaging/public-contract slices, or a concrete blocker is recorded.
 - Legal and third-party records are updated for any external material.
