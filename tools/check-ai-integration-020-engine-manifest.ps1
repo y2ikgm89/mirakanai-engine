@@ -1611,6 +1611,8 @@ foreach ($needle in @(
     "automatic aliasing-barrier insertion",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
+    "Frame Graph Render Pass Envelope v1",
+    "render_passes_recorded",
     "frame-graph-v1"
 )) {
     Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
@@ -1714,6 +1716,8 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("zero/duplicate/wrong-count backend-return validation") -or
     -not ([string]$frameGraphGap[0].notes).Contains("data inheritance/content preservation") -or
     -not ([string]$frameGraphGap[0].notes).Contains("automatic aliasing-barrier insertion") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiRenderPassDesc") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("render_passes_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
@@ -1769,6 +1773,9 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText $recommendedText "Package Streaming Frame Graph Texture Binding Handoff v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
 Assert-ContainsText $recommendedText "make_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
 Assert-ContainsText $recommendedText "automatic aliasing-barrier insertion" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "render pass envelope ownership" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {

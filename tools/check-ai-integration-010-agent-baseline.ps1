@@ -1273,6 +1273,8 @@ foreach ($needle in @(
     "automatic executor insertion",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
+    "Frame Graph Render Pass Envelope v1",
+    "render_passes_recorded",
     "frame-graph-v1"
 )) {
     Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
