@@ -768,7 +768,7 @@ MK_TEST("sdl desktop presentation quality gate accepts ready package renderer co
     report.framegraph_passes = 3;
     report.renderer_stats.frames_finished = 2;
     report.renderer_stats.framegraph_passes_executed = 6;
-    report.renderer_stats.framegraph_barrier_steps_executed = 14;
+    report.renderer_stats.framegraph_barrier_steps_executed = 15;
     report.renderer_stats.postprocess_passes_executed = 2;
 
     mirakana::SdlDesktopPresentationQualityGateDesc desc;
@@ -785,7 +785,7 @@ MK_TEST("sdl desktop presentation quality gate accepts ready package renderer co
     MK_REQUIRE(quality.ready);
     MK_REQUIRE(quality.diagnostics_count == 0);
     MK_REQUIRE(quality.expected_framegraph_passes == 3);
-    MK_REQUIRE(quality.expected_framegraph_barrier_steps == 14);
+    MK_REQUIRE(quality.expected_framegraph_barrier_steps == 15);
     MK_REQUIRE(quality.scene_gpu_ready);
     MK_REQUIRE(quality.postprocess_ready);
     MK_REQUIRE(quality.postprocess_depth_input_ready);
@@ -909,6 +909,44 @@ MK_TEST("sdl desktop presentation quality gate expects minimum postprocess depth
     MK_REQUIRE(quality.framegraph_execution_budget_current);
 }
 
+MK_TEST("sdl desktop presentation quality gate expects minimum directional shadow target prep steps") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.postprocess_status = mirakana::SdlDesktopPresentationPostprocessStatus::ready;
+    report.postprocess_depth_input_requested = true;
+    report.postprocess_depth_input_ready = true;
+    report.directional_shadow_status = mirakana::SdlDesktopPresentationDirectionalShadowStatus::ready;
+    report.directional_shadow_requested = true;
+    report.directional_shadow_ready = true;
+    report.directional_shadow_filter_mode = mirakana::SdlDesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3;
+    report.directional_shadow_filter_tap_count = 9;
+    report.directional_shadow_filter_radius_texels = 1.0F;
+    report.framegraph_passes = 3;
+    report.renderer_stats.frames_finished = 1;
+    report.renderer_stats.framegraph_passes_executed = 3;
+    report.renderer_stats.framegraph_barrier_steps_executed = 8;
+    report.renderer_stats.postprocess_passes_executed = 1;
+
+    mirakana::SdlDesktopPresentationQualityGateDesc desc;
+    desc.require_postprocess = true;
+    desc.require_postprocess_depth_input = true;
+    desc.require_directional_shadow = true;
+    desc.require_directional_shadow_filtering = true;
+
+    auto quality = mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, desc);
+    MK_REQUIRE(quality.status == mirakana::SdlDesktopPresentationQualityGateStatus::blocked);
+    MK_REQUIRE(!quality.ready);
+    MK_REQUIRE(quality.expected_framegraph_passes == 3);
+    MK_REQUIRE(quality.expected_framegraph_barrier_steps == 9);
+    MK_REQUIRE(!quality.framegraph_barrier_steps_current);
+
+    report.renderer_stats.framegraph_barrier_steps_executed = 9;
+    quality = mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, desc);
+    MK_REQUIRE(quality.status == mirakana::SdlDesktopPresentationQualityGateStatus::ready);
+    MK_REQUIRE(quality.ready);
+    MK_REQUIRE(quality.framegraph_barrier_steps_current);
+    MK_REQUIRE(quality.framegraph_execution_budget_current);
+}
+
 MK_TEST("sdl desktop presentation quality gate blocks stale package renderer counters") {
     mirakana::SdlDesktopPresentationReport report;
     report.scene_gpu_status = mirakana::SdlDesktopPresentationSceneGpuBindingStatus::ready;
@@ -942,7 +980,7 @@ MK_TEST("sdl desktop presentation quality gate blocks stale package renderer cou
     MK_REQUIRE(quality.status == mirakana::SdlDesktopPresentationQualityGateStatus::blocked);
     MK_REQUIRE(!quality.ready);
     MK_REQUIRE(quality.diagnostics_count >= 4);
-    MK_REQUIRE(quality.expected_framegraph_barrier_steps == 14);
+    MK_REQUIRE(quality.expected_framegraph_barrier_steps == 15);
     MK_REQUIRE(quality.scene_gpu_ready);
     MK_REQUIRE(quality.postprocess_ready);
     MK_REQUIRE(quality.postprocess_depth_input_ready);

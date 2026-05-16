@@ -3470,9 +3470,9 @@ quality_gate_expected_framegraph_barrier_steps(const SdlDesktopPresentationQuali
     const auto expected_frames = static_cast<std::uint64_t>(desc.expected_frames);
     if (desc.require_directional_shadow) {
         if (expected_frames == 0) {
-            return 8;
+            return 9;
         }
-        return 8 + ((expected_frames - 1) * 6);
+        return 9 + ((expected_frames - 1) * 6);
     }
     if (desc.require_postprocess_depth_input) {
         return expected_frames == 0 ? 5 : 1 + (expected_frames * 4);

@@ -470,6 +470,7 @@ foreach ($needle in @(
     "RhiPostprocessFrameRenderer scene pass command recording",
     "frame-graph-shadow-scratch-color-target-state-ownership-v1",
     "shadow_color",
+    "6 pass callbacks/15 barrier steps",
     "native aliasing barrier execution",
     "frame-graph-v1"
 )) {

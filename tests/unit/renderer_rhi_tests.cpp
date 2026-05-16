@@ -3843,7 +3843,7 @@ MK_TEST("rhi directional shadow smoke frame renderer records a shadow receiver s
     MK_REQUIRE(renderer_stats.frames_finished == 1);
     MK_REQUIRE(renderer_stats.meshes_submitted == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 3);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 8);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 9);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 1);
 
     const auto rhi_stats = device.stats();
@@ -4109,7 +4109,7 @@ MK_TEST("rhi directional shadow smoke frame renderer records native ui overlay a
     MK_REQUIRE(renderer_stats.native_ui_overlay_sprites_submitted == 1);
     MK_REQUIRE(renderer_stats.native_ui_overlay_draws == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 3);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 8);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 9);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 1);
 
     const auto rhi_stats = device.stats();
@@ -4121,10 +4121,10 @@ MK_TEST("rhi directional shadow smoke frame renderer records native ui overlay a
     MK_REQUIRE(rhi_stats.present_calls == 1);
 }
 
-MK_TEST("rhi directional shadow smoke frame renderer reports frame graph executor transition failure") {
+MK_TEST("rhi directional shadow smoke frame renderer reports shadow color target prep failure from executor") {
     ThrowingTransitionRhiDevice device;
     device.throw_on_submit = false;
-    device.throw_on_transition = 3;
+    device.throw_on_transition = 1;
     const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
         .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
         .format = mirakana::rhi::Format::bgra8_unorm,
@@ -4134,7 +4134,14 @@ MK_TEST("rhi directional shadow smoke frame renderer reports frame graph executo
     });
     auto renderer = create_directional_shadow_smoke_test_renderer(device, swapchain);
 
-    renderer->begin_frame();
+    bool begin_succeeded = false;
+    try {
+        renderer->begin_frame();
+        begin_succeeded = true;
+    } catch (...) {
+        begin_succeeded = false;
+    }
+    MK_REQUIRE(begin_succeeded);
 
     bool execution_failed = false;
     try {
@@ -4149,6 +4156,41 @@ MK_TEST("rhi directional shadow smoke frame renderer reports frame graph executo
     MK_REQUIRE(renderer->stats().frames_finished == 0);
     MK_REQUIRE(device.stats().swapchain_frames_acquired == 1);
     MK_REQUIRE(device.stats().swapchain_frames_released == 1);
+}
+
+MK_TEST("rhi directional shadow smoke frame renderer preserves target states when submit fails") {
+    ThrowingSubmitRhiDevice device;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = true,
+        .surface = mirakana::rhi::SurfaceHandle{1},
+    });
+    auto renderer = create_directional_shadow_smoke_test_renderer(device, swapchain);
+
+    renderer->begin_frame();
+
+    bool submit_failed = false;
+    try {
+        renderer->end_frame();
+    } catch (const std::runtime_error& ex) {
+        submit_failed = std::string_view{ex.what()} == "submit failed";
+    }
+
+    MK_REQUIRE(submit_failed);
+    MK_REQUIRE(!renderer->frame_active());
+    MK_REQUIRE(renderer->stats().frames_finished == 0);
+    MK_REQUIRE(device.stats().swapchain_frames_acquired == 1);
+
+    device.throw_on_submit = false;
+    renderer->begin_frame();
+    renderer->end_frame();
+
+    const auto stats = renderer->stats();
+    MK_REQUIRE(stats.frames_finished == 1);
+    MK_REQUIRE(stats.framegraph_passes_executed == 3);
+    MK_REQUIRE(stats.framegraph_barrier_steps_executed == 9);
 }
 
 MK_TEST("rhi directional shadow smoke frame renderer reports frame graph final-state transition failure") {

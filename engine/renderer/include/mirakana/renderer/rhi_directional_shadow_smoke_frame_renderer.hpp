@@ -147,6 +147,7 @@ class RhiDirectionalShadowSmokeFrameRenderer final : public IRenderer {
     std::vector<MeshCommand> pending_meshes_;
     std::vector<SpriteCommand> pending_overlay_sprites_;
     bool frame_active_{false};
+    bool internal_textures_need_recreate_{false};
     FrameGraphV1BuildResult shadow_smoke_frame_graph_plan_{};
     std::vector<FrameGraphExecutionStep> shadow_smoke_frame_graph_execution_;
     std::vector<FrameGraphTexturePassTargetAccess> shadow_smoke_frame_graph_target_accesses_;

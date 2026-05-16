@@ -1688,7 +1688,7 @@ int main(int argc, char** argv) {
         const std::uint32_t expected_framegraph_passes = options.require_directional_shadow ? 3U : 2U;
         const auto expected_frames = static_cast<std::uint64_t>(options.max_frames);
         const std::uint64_t expected_framegraph_barrier_steps =
-            options.require_directional_shadow        ? (expected_frames == 0 ? 0 : 8 + ((expected_frames - 1) * 6))
+            options.require_directional_shadow        ? (expected_frames == 0 ? 0 : 9 + ((expected_frames - 1) * 6))
             : options.require_postprocess_depth_input ? (expected_frames == 0 ? 0 : 1 + (expected_frames * 4))
                                                       : expected_frames * 2;
         if (options.require_postprocess &&

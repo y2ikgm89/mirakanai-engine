@@ -2468,7 +2468,7 @@ evaluate_scene_collision_package(const DesktopRuntimeOptions& options,
                                                               std::uint32_t expected_frames) noexcept {
     const auto frame_count = static_cast<std::uint64_t>(expected_frames);
     if (directional_shadow_requested) {
-        return frame_count == 0 ? 0 : 8 + ((frame_count - 1) * 6);
+        return frame_count == 0 ? 0 : 9 + ((frame_count - 1) * 6);
     }
     return postprocess_depth_input_requested ? (frame_count == 0 ? 0 : 1 + (frame_count * 4)) : frame_count * 2;
 }

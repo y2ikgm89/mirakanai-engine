@@ -1599,6 +1599,9 @@ foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",
+    "Frame Graph Shadow Scratch Color Target-State Ownership v1",
+    "shadow_color",
+    "6 pass callbacks/15 barrier steps",
     "native heap allocation",
     "native aliasing barrier execution",
     "frame-graph-v1"
@@ -1731,6 +1734,8 @@ if ($physicsCollisionGap.Count -ne 0) {
 }
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Transient Texture Alias Planning v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphTransientTextureAliasPlan" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Shadow Scratch Color Target-State Ownership v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "6 pass callbacks/15 barrier steps" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "native aliasing barrier execution" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })

@@ -910,7 +910,9 @@ try {
     foreach ($needle in @(
             "framegraph_passes_executed=4",
             "framegraph_barrier_steps_executed=9",
-            "renderer_quality_expected_framegraph_barrier_steps=9"
+            "renderer_quality_expected_framegraph_barrier_steps=9",
+            "framegraph_passes_executed=6",
+            "framegraph_barrier_steps_executed=15"
         )) {
         Assert-ContainsText $desktop3dManifestText $needle "Desktop runtime 3D package scaffold manifest"
         Assert-ContainsText $desktop3dReadmeText $needle "Desktop runtime 3D package scaffold README"
@@ -1863,6 +1865,8 @@ Assert-ContainsText $committedDesktop3dReadmeText "--require-renderer-quality-ga
 Assert-ContainsText $committedDesktop3dReadmeText "framegraph_passes_executed=4" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "framegraph_barrier_steps_executed=9" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "renderer_quality_expected_framegraph_barrier_steps=9" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "framegraph_passes_executed=6" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "framegraph_barrier_steps_executed=15" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-postprocess-depth-input" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-directional-shadow-filtering" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-shadow-morph-composition" "committed generated 3D sample README"
@@ -1892,6 +1896,7 @@ Assert-ContainsText $engineManifestText "playable_3d_status" "engine/agent/manif
 Assert-ContainsText $engineManifestText "desktopRuntime3dDirectionalShadowPackageSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-directional-shadow-filtering" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "directional_shadow_status=ready" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "framegraph_barrier_steps_executed=15" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "desktopRuntime3dShadowMorphCompositionPackageSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-shadow-morph-composition" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "renderer_morph_descriptor_binds" "engine/agent/manifest.json"
