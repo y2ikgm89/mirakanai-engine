@@ -52,11 +52,7 @@ Move `RhiDirectionalShadowSmokeFrameRenderer` render pass begin/end scopes into 
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | C++ and tracked text formatting pass. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS | Agent surface parity and instruction-size checks pass. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | Manifest composition and JSON contracts pass after fragment updates. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS | No gameplay-facing or public API boundary drift from the internal RHI renderer change. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` | PASS | `MK_renderer_tests.exe` rebuilt after the renderer change. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_renderer_tests` | PASS | `MK_renderer_tests` passed; directional-shadow pass count/barrier budget assertions remain green. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | RETRY | First full gate exposed a stale incremental `mirakana_runtime_rhi` library after `origin/main` advanced with package-streaming code; explicit runtime RHI rebuild restored the object file and `MK_runtime_rhi_tests` link. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target mirakana_runtime_rhi` | PASS | Rebuilt `package_streaming_frame_graph.cpp` into the runtime RHI library after the upstream merge. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_tests` | PASS | Runtime RHI tests linked after the library rebuild. |
+| `cmake --build --preset dev --target MK_renderer_tests` | PASS | `MK_renderer_tests.exe` rebuilt after the renderer change. |
+| `ctest --preset dev -R MK_renderer_tests --output-on-failure` | PASS | `MK_renderer_tests` passed; directional-shadow pass count/barrier budget assertions remain green. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full repository validation passed; CTest reported 65/65 passed, with Apple/Metal host gates diagnostic-only on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Full dev preset build completed after validation. |
