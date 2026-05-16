@@ -117,7 +117,7 @@ Sources:
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`.
-- [ ] Commit, push, create PR, inspect PR state/checks, and register auto-merge only after required preflight is clean.
+- [x] Commit, push, create PR, inspect PR state/checks, and register auto-merge only after required preflight is clean.
 
 ## Validation Evidence
 
@@ -130,3 +130,4 @@ Sources:
 - Static/agent: `tools/format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed after updating the rendering skill/subagent surfaces and strengthening the shadow-color writer-access/target-state static guard.
 - Slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed 65/65 tests; Metal and Apple evidence remained host-gated diagnostic-only on this Windows host.
 - Build gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed after `validate.ps1`.
+- Publication: committed and pushed `codex/frame-graph-shadow-scratch-color-target-state-ownership`, then opened PR [#64](https://github.com/y2ikgm89/mirakanai-engine/pull/64).
