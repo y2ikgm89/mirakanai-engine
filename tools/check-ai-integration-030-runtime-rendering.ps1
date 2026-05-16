@@ -1621,6 +1621,10 @@ $geRendererModule = @($manifest.modules | Where-Object { $_.name -eq "MK_rendere
 if ($geRendererModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_renderer module"
 }
+$geRuntimeRhiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime_rhi" })
+if ($geRuntimeRhiModule.Count -ne 1) {
+    Write-Error "engine/agent/manifest.json must expose exactly one MK_runtime_rhi module"
+}
 $geSceneRendererModule = @($manifest.modules | Where-Object { $_.name -eq "MK_scene_renderer" })
 if ($geSceneRendererModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_scene_renderer module"
@@ -1667,6 +1671,27 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "acquire_frame_graph_
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Texture Aliasing Barrier Command v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTextureAliasingBarrier" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "record_frame_graph_texture_aliasing_barriers" "MK_renderer module purpose"
+if (@($geRuntimeRhiModule[0].publicHeaders) -notcontains "engine/runtime_rhi/include/mirakana/runtime_rhi/package_streaming_frame_graph.hpp") {
+    Write-Error "engine/agent/manifest.json MK_runtime_rhi publicHeaders must include package_streaming_frame_graph.hpp"
+}
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "make_runtime_package_streaming_frame_graph_texture_bindings" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingFrameGraphTextureBindingSource" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "broad/background package streaming" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "make_runtime_package_streaming_frame_graph_texture_bindings" "desktop runtime 3d package streaming guidance"
+foreach ($packageStreamingFrameGraphGuidance in @(
+        "docs/rhi.md",
+        "docs/current-capabilities.md",
+        "docs/ai-game-development.md",
+        "docs/architecture.md",
+        ".agents/skills/rendering-change/references/full-guidance.md",
+        ".claude/skills/gameengine-rendering/references/full-guidance.md",
+        ".codex/agents/rendering-auditor.toml",
+        ".claude/agents/rendering-auditor.md"
+    )) {
+    $packageStreamingFrameGraphText = Get-AgentSurfaceText $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "make_runtime_package_streaming_frame_graph_texture_bindings" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "broad" $packageStreamingFrameGraphGuidance
+}
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "IRhiCommandList::texture_aliasing_barrier" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiStats::texture_aliasing_barriers" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiFrameRenderer executor-owned primary_color pass timing" "MK_renderer module purpose"

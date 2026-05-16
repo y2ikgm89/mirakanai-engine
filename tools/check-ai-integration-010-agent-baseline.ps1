@@ -1270,6 +1270,9 @@ foreach ($needle in @(
     "viewport_color",
     "Frame Graph Texture Aliasing Barrier Command v1",
     "record_frame_graph_texture_aliasing_barriers",
+    "automatic executor insertion",
+    "Package Streaming Frame Graph Texture Binding Handoff v1",
+    "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
     "frame-graph-v1"

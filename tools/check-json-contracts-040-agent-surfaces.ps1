@@ -509,6 +509,9 @@ foreach ($needle in @(
     "Frame Graph D3D12 Texture Aliasing Barrier Evidence v1",
     "null_resource_aliasing_barriers",
     "record_frame_graph_texture_aliasing_barriers",
+    "automatic aliasing-barrier insertion",
+    "Package Streaming Frame Graph Texture Binding Handoff v1",
+    "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
     "frame-graph-v1"
