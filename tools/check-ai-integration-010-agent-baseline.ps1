@@ -69,7 +69,7 @@ Assert-ContainsText $agentsContent "VCPKG_MANIFEST_INSTALL=OFF" "AGENTS.md"
 Assert-ContainsText $agentsContent 'VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed' "AGENTS.md"
 Assert-ContainsText $agentsContent "CMake configure must not install, restore, or download vcpkg packages" "AGENTS.md"
 Assert-ContainsText $agentsContent "phase-gated milestone plan" "AGENTS.md"
-foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down or milestone", "behavior/API/validation boundary", "not a 2-5 minute task list", "validation-only follow-up", "historical implementation evidence")) {
+foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "not PR/task-count units", "phase behavior/API/validation", "validation-only follow-up", "historical implementation evidence")) {
     Assert-ContainsText $agentsContent $planVolumeNeedle "AGENTS.md"
 }
 foreach ($productionPromptNeedle in @("Production Completion Execution", "currentActivePlan", "recommendedNextPlan", "unsupportedProductionGaps", "clean breaking greenfield designs", "completed gap, remaining gaps, next active plan")) {
@@ -94,6 +94,9 @@ Assert-ContainsText $agentsContent "pending required checks or reviews" "AGENTS.
 Assert-ContainsText $agentsContent "--match-head-commit <headRefOid>" "AGENTS.md"
 Assert-ContainsText $agentsContent "not publication-complete after local validation alone" "AGENTS.md"
 Assert-ContainsText $agentsContent "checkpoint-based, not commit-count-based" "AGENTS.md"
+foreach ($gitCadenceNeedle in @("purpose/checkpoint-based", "commit validated phases", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "split unrelated work")) {
+    Assert-ContainsText $agentsContent $gitCadenceNeedle "AGENTS.md"
+}
 Assert-ContainsText $agentsContent "remote state" "AGENTS.md"
 Assert-ContainsText $agentsContent "open draft PR" "AGENTS.md"
 Assert-ContainsText $agentsContent "before final report" "AGENTS.md"
@@ -116,16 +119,16 @@ Assert-ContainsText $agentsContent "runtime/.gitattributes" "AGENTS.md"
 Assert-ContainsText $agentsContent "tools/new-game-templates.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "tools/static-contract-ledger.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "GitHub account billing/spending-limit" "AGENTS.md"
-Assert-ContainsText $agentsContent 'one fresh `tools/validate.ps1` is the full gate' "AGENTS.md"
-Assert-ContainsText $agentsContent 'run `tools/build.ps1` separately only when standalone build evidence is explicitly needed' "AGENTS.md"
-Assert-ContainsText $agentsContent "documentation-only/non-runtime slices" "AGENTS.md"
+Assert-ContainsText $agentsContent 'Runtime/C++/build/toolchain/public-contract commits need one fresh `tools/validate.ps1`' "AGENTS.md"
+Assert-ContainsText $agentsContent 'run `tools/build.ps1` only when standalone build evidence is requested' "AGENTS.md"
+Assert-ContainsText $agentsContent "Docs/non-runtime slices may record narrower justified checks" "AGENTS.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit")) {
     Assert-ContainsText $agentsContent $windowsDiagnosticsNeedle "AGENTS.md"
 }
 
 $workflowsContent = Get-Content -LiteralPath $workflowsPath -Raw
 Assert-ContainsText $workflowsContent "phase-gated milestone plan" "docs/workflows.md"
-foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down or milestone", "behavior/API/validation boundary", "validation-only follow-up", "current active plan checklist")) {
+foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "Plan-file width and PR/phase width are different", "phase behavior/API/validation boundary", "validation-only follow-up", "current active plan checklist")) {
     Assert-ContainsText $workflowsContent $planVolumeNeedle "docs/workflows.md"
 }
 foreach ($productionPromptNeedle in @("Production Completion Prompt", "currentActivePlan", "recommendedNextPlan", "unsupportedProductionGaps", "clean breaking greenfield designs", "completed gap, remaining gaps, next active plan")) {
@@ -174,6 +177,9 @@ Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GitHub flow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "official GitHub Flow" "docs/workflows.md"
+foreach ($workflowCadenceNeedle in @("purpose/checkpoint-based", "commit complete validated phases", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "Do not open a PR for every commit")) {
+    Assert-ContainsText $workflowsContent $workflowCadenceNeedle "docs/workflows.md"
+}
 Assert-ContainsText $workflowsContent "direct default-branch pushes must stay forbidden" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GITHUB_TOKEN" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "credential-manager-core" "docs/workflows.md"
@@ -250,7 +256,7 @@ foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows 
 }
 $planRegistryContent = Get-Content -LiteralPath $planRegistryPath -Raw
 Assert-ContainsText $planRegistryContent "Active milestone" "docs/superpowers/plans/README.md"
-foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "behavior/API/validation boundary", "Distinguish plan files from execution steps", "validation-only follow-up", "historical implementation evidence", "dedicated evidence indexes")) {
+foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "capability/gap-cluster/milestone", "Plan width is wider than PR width", "phase behavior/API/validation boundary", "Distinguish plan files from execution steps", "validation-only follow-up", "historical implementation evidence", "dedicated evidence indexes")) {
     Assert-ContainsText $planRegistryContent $planVolumeNeedle "docs/superpowers/plans/README.md"
 }
 
@@ -261,6 +267,9 @@ Assert-ContainsText $aiIntegrationContent "gh pr view" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr merge --auto --merge --delete-branch" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "official GitHub Flow" "docs/ai-integration.md"
+foreach ($aiIntegrationCadenceNeedle in @("purpose/checkpoint-based", "one PR per focused capability/gap-cluster/milestone", "never open PRs per commit or checklist item")) {
+    Assert-ContainsText $aiIntegrationContent $aiIntegrationCadenceNeedle "docs/ai-integration.md"
+}
 Assert-ContainsText $aiIntegrationContent "Direct default-branch pushes are blocked" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "mergeStateStatus" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'pending-only `UNSTABLE` / `BLOCKED`' "docs/ai-integration.md"
@@ -295,6 +304,9 @@ $cursorBaselineSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-curso
 Assert-ContainsText $cursorBaselineSkillText "Cursor global instructions" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "workspace override" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "official GitHub Flow" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+foreach ($cursorBaselineCadenceNeedle in @("purpose/checkpoint-based", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
+    Assert-ContainsText $cursorBaselineSkillText $cursorBaselineCadenceNeedle ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+}
 Assert-ContainsText $cursorBaselineSkillText 'pending-only `UNSTABLE` / `BLOCKED`' ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
@@ -306,6 +318,9 @@ $cursorAgentIntegrationSkillText = Get-AgentSurfaceText ".cursor/skills/gameengi
 Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+foreach ($cursorAgentCadenceNeedle in @("purpose/checkpoint-based", "push validated topic-branch checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
+    Assert-ContainsText $cursorAgentIntegrationSkillText $cursorAgentCadenceNeedle ".cursor/skills/gameengine-agent-integration/SKILL.md"
+}
 Assert-ContainsText $cursorAgentIntegrationSkillText "final completion report must not stop after local validation" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Direct default-branch pushes are forbidden" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "tools/remove-merged-worktree.ps1" ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -336,7 +351,7 @@ Assert-ContainsText $aiIntegrationContent "specific, concise, verifiable" "docs/
 Assert-ContainsText $aiIntegrationContent "Personal preferences, credentials" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "agent-surface drift check" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Keep drift checks targeted" "docs/ai-integration.md"
-foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap burn-down or milestone", "behavior/API/validation boundary", "validation-only follow-up", "historical implementation evidence")) {
+foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "Plan-file width can be broader than PR/phase width", "phase behavior/API/validation boundary", "validation-only follow-up", "historical implementation evidence")) {
     Assert-ContainsText $aiIntegrationContent $planVolumeNeedle "docs/ai-integration.md"
 }
 Assert-DoesNotContainText $aiIntegrationContent "code.claude.com/docs" "docs/ai-integration.md"

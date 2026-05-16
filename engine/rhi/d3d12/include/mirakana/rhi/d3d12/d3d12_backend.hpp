@@ -210,6 +210,10 @@ struct DeviceContextStats {
     std::uint64_t committed_buffers_created{0};
     std::uint64_t committed_textures_created{0};
     std::uint64_t committed_resources_alive{0};
+    std::uint64_t placed_texture_heaps_created{0};
+    std::uint64_t placed_textures_created{0};
+    std::uint64_t placed_resources_alive{0};
+    std::uint64_t placed_resource_activation_barriers{0};
     std::uint64_t swapchains_created{0};
     std::uint64_t swapchains_alive{0};
     std::uint64_t swapchain_back_buffers_created{0};
@@ -422,6 +426,8 @@ class DeviceContext final {
 
     [[nodiscard]] NativeResourceHandle create_committed_buffer(const BufferDesc& desc);
     [[nodiscard]] NativeResourceHandle create_committed_texture(const TextureDesc& desc);
+    [[nodiscard]] NativeResourceHandle create_placed_texture(const TextureDesc& desc);
+    [[nodiscard]] bool activate_placed_texture(NativeCommandListHandle commands, NativeResourceHandle texture);
     [[nodiscard]] NativeSwapchainHandle create_swapchain_for_window(const NativeSwapchainDesc& desc);
     [[nodiscard]] bool present_swapchain(NativeSwapchainHandle handle);
     [[nodiscard]] bool resize_swapchain(NativeSwapchainHandle handle, Extent2D extent);

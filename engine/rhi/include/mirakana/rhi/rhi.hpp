@@ -446,6 +446,9 @@ struct RhiStats {
     std::uint64_t transient_resources_acquired{0};
     std::uint64_t transient_resources_released{0};
     std::uint64_t transient_resources_active{0};
+    std::uint64_t transient_texture_heap_allocations{0};
+    std::uint64_t transient_texture_placed_allocations{0};
+    std::uint64_t transient_texture_placed_resources_alive{0};
     std::uint64_t draw_calls{0};
     std::uint64_t indexed_draw_calls{0};
     std::uint64_t compute_dispatches{0};

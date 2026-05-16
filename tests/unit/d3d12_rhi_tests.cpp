@@ -1171,6 +1171,53 @@ MK_TEST("d3d12 device context records committed texture aliasing barrier intent"
     MK_REQUIRE(context->stats().texture_transitions == 0);
 }
 
+MK_TEST("d3d12 device context creates placed transient texture resources") {
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
+        .prefer_warp = false,
+        .enable_debug_layer = false,
+    });
+
+    MK_REQUIRE(context != nullptr);
+
+    const auto placed = context->create_placed_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+
+    const auto stats = context->stats();
+    MK_REQUIRE(placed.value != 0);
+    MK_REQUIRE(stats.placed_texture_heaps_created == 1);
+    MK_REQUIRE(stats.placed_textures_created == 1);
+    MK_REQUIRE(stats.placed_resources_alive == 1);
+    MK_REQUIRE(stats.placed_resource_activation_barriers == 0);
+    MK_REQUIRE(stats.committed_textures_created == 0);
+
+    const auto commands = context->create_command_list(mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(context->activate_placed_texture(commands, placed));
+    MK_REQUIRE(context->activate_placed_texture(commands, placed));
+    MK_REQUIRE(context->close_command_list(commands));
+    MK_REQUIRE(context->stats().placed_resource_activation_barriers == 1);
+
+    MK_REQUIRE(context->reset_command_list(commands));
+    MK_REQUIRE(context->activate_placed_texture(commands, placed));
+    MK_REQUIRE(context->activate_placed_texture(commands, placed));
+    MK_REQUIRE(context->close_command_list(commands));
+    MK_REQUIRE(context->stats().placed_resource_activation_barriers == 2);
+
+    const auto fence = context->execute_command_list(commands);
+    MK_REQUIRE(fence.value != 0);
+    MK_REQUIRE(context->wait_for_fence(fence, 0xFFFFFFFFU));
+
+    const auto after_submit = context->create_command_list(mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(context->activate_placed_texture(after_submit, placed));
+    MK_REQUIRE(context->close_command_list(after_submit));
+    MK_REQUIRE(context->stats().placed_resource_activation_barriers == 2);
+
+    context->destroy_committed_resource(placed);
+    MK_REQUIRE(context->stats().placed_resources_alive == 0);
+}
+
 MK_TEST("d3d12 device context executes closed command lists and signals fences") {
     auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
         .prefer_warp = false,
@@ -7308,7 +7355,7 @@ MK_TEST("d3d12 rhi device acquires releases and invalidates transient resources"
         .usage = mirakana::rhi::BufferUsage::copy_source,
     });
     const auto transient_texture = device->acquire_transient_texture(mirakana::rhi::TextureDesc{
-        .extent = mirakana::rhi::Extent3D{.width = 4, .height = 4, .depth = 1},
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
         .format = mirakana::rhi::Format::rgba8_unorm,
         .usage = mirakana::rhi::TextureUsage::copy_destination,
     });
@@ -7316,6 +7363,7 @@ MK_TEST("d3d12 rhi device acquires releases and invalidates transient resources"
         .size_bytes = 128,
         .usage = mirakana::rhi::BufferUsage::copy_destination,
     });
+    MK_REQUIRE(device->stats().transient_texture_placed_resources_alive == 1);
 
     device->release_transient(transient_buffer.lease);
 
@@ -7337,7 +7385,24 @@ MK_TEST("d3d12 rhi device acquires releases and invalidates transient resources"
         rejected_double_release = true;
     }
 
+    const auto upload = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 4096,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
+    });
+    const mirakana::rhi::BufferTextureCopyRegion footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 8,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+    };
+    auto texture_commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    texture_commands->copy_buffer_to_texture(upload, transient_texture.texture, footprint);
+    texture_commands->close();
+    const auto texture_fence = device->submit(*texture_commands);
+
     device->release_transient(transient_texture.lease);
+    device->wait(texture_fence);
 
     MK_REQUIRE(transient_buffer.lease.value == 1);
     MK_REQUIRE(transient_buffer.buffer.value != 0);
@@ -7348,6 +7413,9 @@ MK_TEST("d3d12 rhi device acquires releases and invalidates transient resources"
     MK_REQUIRE(device->stats().transient_resources_acquired == 2);
     MK_REQUIRE(device->stats().transient_resources_released == 2);
     MK_REQUIRE(device->stats().transient_resources_active == 0);
+    MK_REQUIRE(device->stats().transient_texture_heap_allocations == 1);
+    MK_REQUIRE(device->stats().transient_texture_placed_allocations == 1);
+    MK_REQUIRE(device->stats().transient_texture_placed_resources_alive == 0);
 }
 
 MK_TEST("d3d12 rhi device records texture aliasing barrier commands") {
