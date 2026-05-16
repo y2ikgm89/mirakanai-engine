@@ -1686,15 +1686,16 @@ int main(int argc, char** argv) {
             return 3;
         }
         const std::uint32_t expected_framegraph_passes = options.require_directional_shadow ? 3U : 2U;
-        const std::uint32_t expected_framegraph_barrier_steps =
-            options.require_directional_shadow ? 5U : (options.require_postprocess_depth_input ? 3U : 1U);
+        const auto expected_frames = static_cast<std::uint64_t>(options.max_frames);
+        const std::uint64_t expected_framegraph_barrier_steps =
+            options.require_directional_shadow ? (expected_frames == 0 ? 0 : 8 + ((expected_frames - 1) * 6))
+                                               : expected_frames * (options.require_postprocess_depth_input ? 3U : 1U);
         if (options.require_postprocess &&
             (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
              report.framegraph_passes != expected_framegraph_passes ||
              report.renderer_stats.framegraph_passes_executed !=
                  static_cast<std::uint64_t>(options.max_frames) * expected_framegraph_passes ||
-             report.renderer_stats.framegraph_barrier_steps_executed !=
-                 static_cast<std::uint64_t>(options.max_frames) * expected_framegraph_barrier_steps ||
+             report.renderer_stats.framegraph_barrier_steps_executed != expected_framegraph_barrier_steps ||
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
             return 3;
         }

@@ -2463,17 +2463,26 @@ evaluate_scene_collision_package(const DesktopRuntimeOptions& options,
            stats.material_bindings_resolved == static_cast<std::size_t>(expected_frames);
 }
 
+[[nodiscard]] std::uint64_t expected_framegraph_barrier_steps(bool directional_shadow_requested,
+                                                              bool postprocess_depth_input_requested,
+                                                              std::uint32_t expected_frames) noexcept {
+    const auto frame_count = static_cast<std::uint64_t>(expected_frames);
+    if (directional_shadow_requested) {
+        return frame_count == 0 ? 0 : 8 + ((frame_count - 1) * 6);
+    }
+    return frame_count * (postprocess_depth_input_requested ? 3U : 1U);
+}
+
 [[nodiscard]] bool postprocess_ready(const mirakana::SdlDesktopPresentationReport& report,
                                      std::uint32_t expected_frames) noexcept {
     const auto expected_framegraph_passes = report.directional_shadow_requested ? 3U : 2U;
-    const auto expected_framegraph_barrier_steps =
-        report.directional_shadow_requested ? 5U : (report.postprocess_depth_input_requested ? 3U : 1U);
+    const auto expected_framegraph_barrier_step_count = expected_framegraph_barrier_steps(
+        report.directional_shadow_requested, report.postprocess_depth_input_requested, expected_frames);
     return report.postprocess_status == mirakana::SdlDesktopPresentationPostprocessStatus::ready &&
            report.framegraph_passes == expected_framegraph_passes &&
            report.renderer_stats.framegraph_passes_executed ==
                static_cast<std::uint64_t>(expected_frames) * expected_framegraph_passes &&
-           report.renderer_stats.framegraph_barrier_steps_executed ==
-               static_cast<std::uint64_t>(expected_frames) * expected_framegraph_barrier_steps &&
+           report.renderer_stats.framegraph_barrier_steps_executed == expected_framegraph_barrier_step_count &&
            report.renderer_stats.postprocess_passes_executed == static_cast<std::uint64_t>(expected_frames);
 }
 
@@ -4242,15 +4251,14 @@ int main(int argc, char** argv) {
             return 3;
         }
         const std::uint32_t expected_framegraph_passes = options.require_directional_shadow ? 3U : 2U;
-        const std::uint32_t expected_framegraph_barrier_steps =
-            options.require_directional_shadow ? 5U : (options.require_postprocess_depth_input ? 3U : 1U);
+        const auto expected_framegraph_barrier_step_count = expected_framegraph_barrier_steps(
+            options.require_directional_shadow, options.require_postprocess_depth_input, options.max_frames);
         if (options.require_postprocess &&
             (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
              report.framegraph_passes != expected_framegraph_passes ||
              report.renderer_stats.framegraph_passes_executed !=
                  static_cast<std::uint64_t>(options.max_frames) * expected_framegraph_passes ||
-             report.renderer_stats.framegraph_barrier_steps_executed !=
-                 static_cast<std::uint64_t>(options.max_frames) * expected_framegraph_barrier_steps ||
+             report.renderer_stats.framegraph_barrier_steps_executed != expected_framegraph_barrier_step_count ||
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
             return 3;
         }

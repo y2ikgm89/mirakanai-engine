@@ -488,10 +488,6 @@ void RhiDirectionalShadowSmokeFrameRenderer::begin_frame() {
             commands->transition_texture(shadow_color_texture_, shadow_color_state_, rhi::ResourceState::render_target);
             shadow_color_state_ = rhi::ResourceState::render_target;
         }
-        if (shadow_depth_state_ != rhi::ResourceState::depth_write) {
-            commands->transition_texture(shadow_depth_texture_, shadow_depth_state_, rhi::ResourceState::depth_write);
-            shadow_depth_state_ = rhi::ResourceState::depth_write;
-        }
 
         commands_ = std::move(commands);
         frame_active_ = true;
@@ -572,14 +568,22 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
                 .state = rhi::ResourceState::depth_write,
             },
         };
-        const auto set_texture_binding_state = [&texture_bindings](std::string_view resource,
-                                                                   rhi::ResourceState state) {
-            for (auto& binding : texture_bindings) {
-                if (binding.resource == resource) {
-                    binding.current_state = state;
-                    return;
-                }
-            }
+        const std::vector<FrameGraphTexturePassTargetState> pass_target_states{
+            FrameGraphTexturePassTargetState{
+                .pass_name = "shadow.directional.depth",
+                .resource = "shadow_depth",
+                .state = rhi::ResourceState::depth_write,
+            },
+            FrameGraphTexturePassTargetState{
+                .pass_name = "scene.shadow_receiver",
+                .resource = "scene_color",
+                .state = rhi::ResourceState::render_target,
+            },
+            FrameGraphTexturePassTargetState{
+                .pass_name = "scene.shadow_receiver",
+                .resource = "scene_depth",
+                .state = rhi::ResourceState::depth_write,
+            },
         };
 
         RhiNativeUiOverlayPreparedDraw overlay_draw;
@@ -588,7 +592,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
         pass_callbacks.push_back(FrameGraphPassExecutionBinding{
             .pass_name = "shadow.directional.depth",
             .callback =
-                [&set_texture_binding_state, this](std::string_view) {
+                [this](std::string_view) {
                     commands_->begin_render_pass(rhi::RenderPassDesc{
                         .color =
                             rhi::RenderPassColorAttachment{
@@ -630,27 +634,13 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
                         }
                     }
                     commands_->end_render_pass();
-                    shadow_depth_state_ = rhi::ResourceState::depth_write;
-                    set_texture_binding_state("shadow_depth", rhi::ResourceState::depth_write);
                     return FrameGraphExecutionCallbackResult{};
                 },
         });
         pass_callbacks.push_back(FrameGraphPassExecutionBinding{
             .pass_name = "scene.shadow_receiver",
             .callback =
-                [&set_texture_binding_state, this](std::string_view) {
-                    if (scene_color_state_ != rhi::ResourceState::render_target) {
-                        commands_->transition_texture(scene_color_texture_, scene_color_state_,
-                                                      rhi::ResourceState::render_target);
-                        scene_color_state_ = rhi::ResourceState::render_target;
-                    }
-                    set_texture_binding_state("scene_color", rhi::ResourceState::render_target);
-                    if (scene_depth_state_ != rhi::ResourceState::depth_write) {
-                        commands_->transition_texture(scene_depth_texture_, scene_depth_state_,
-                                                      rhi::ResourceState::depth_write);
-                        scene_depth_state_ = rhi::ResourceState::depth_write;
-                    }
-                    set_texture_binding_state("scene_depth", rhi::ResourceState::depth_write);
+                [this](std::string_view) {
                     commands_->begin_render_pass(rhi::RenderPassDesc{
                         .color =
                             rhi::RenderPassColorAttachment{
@@ -678,8 +668,6 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
                         record_scene_mesh_draw(command);
                     }
                     commands_->end_render_pass();
-                    set_texture_binding_state("scene_color", rhi::ResourceState::render_target);
-                    set_texture_binding_state("scene_depth", rhi::ResourceState::depth_write);
                     return FrameGraphExecutionCallbackResult{};
                 },
         });
@@ -717,6 +705,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             .schedule = shadow_smoke_frame_graph_execution_,
             .texture_bindings = texture_bindings,
             .pass_callbacks = pass_callbacks,
+            .pass_target_states = pass_target_states,
             .final_states = final_states,
         });
         if (!frame_graph_execution.succeeded()) {

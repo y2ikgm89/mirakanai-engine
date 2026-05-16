@@ -235,7 +235,7 @@ struct SdlDesktopPresentationQualityGateReport {
     bool directional_shadow_ready{false};
     bool directional_shadow_filter_ready{false};
     std::uint32_t expected_framegraph_passes{0};
-    std::uint32_t expected_framegraph_barrier_steps{0};
+    std::uint64_t expected_framegraph_barrier_steps{0};
     bool framegraph_passes_current{false};
     bool framegraph_barrier_steps_current{false};
     bool framegraph_execution_budget_current{false};
