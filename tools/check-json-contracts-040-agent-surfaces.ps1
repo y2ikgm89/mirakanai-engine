@@ -398,6 +398,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("RhiViewportSurface") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("viewport_color") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("viewport color-state executor") -or
     -not ([string]$frameGraphGap[0].notes).Contains("executor-recorded barriers") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final-state policy") -or
     -not ([string]$frameGraphGap[0].notes).Contains("writer-access-backed pass-target-state policy") -or
@@ -471,6 +474,9 @@ foreach ($needle in @(
     "frame-graph-shadow-scratch-color-target-state-ownership-v1",
     "shadow_color",
     "6 pass callbacks/15 barrier steps",
+    "Frame Graph Viewport Surface Color State Executor v1",
+    "RhiViewportSurface",
+    "viewport_color",
     "native aliasing barrier execution",
     "frame-graph-v1"
 )) {

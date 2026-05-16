@@ -1657,6 +1657,7 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTransientT
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_transient_texture_aliases" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiPostprocessFrameRenderer executor-owned scene-color/scene-depth target preparation plus scene pass callback recording and post-chain/final-state transition adoption" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiDirectionalShadowSmokeFrameRenderer scheduled shadow-depth/scene-color/scene-depth inter-pass plus shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state and scene-depth/shadow-depth final-state transition adoption" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiViewportSurface viewport_color render_target/copy_source/shader_read color-state transitions through execute_frame_graph_rhi_texture_schedule" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
@@ -1715,6 +1716,7 @@ $frameGraphRhiHeader = Get-AgentSurfaceText "engine/renderer/include/mirakana/re
 $frameGraphRhiSource = Get-AgentSurfaceText "engine/renderer/src/frame_graph_rhi.cpp"
 $rhiPostprocessSource = Get-AgentSurfaceText "engine/renderer/src/rhi_postprocess_frame_renderer.cpp"
 $rhiDirectionalShadowSource = Get-AgentSurfaceText "engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp"
+$rhiViewportSurfaceSource = Get-AgentSurfaceText "engine/renderer/src/rhi_viewport_surface.cpp"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTexturePassTargetAccess" "Frame graph RHI pass target access public API"
 Assert-ContainsText $frameGraphRhiHeader "build_frame_graph_texture_pass_target_accesses" "Frame graph RHI pass target access public API"
 Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses" "Frame graph RHI pass target access public API"
@@ -1755,12 +1757,20 @@ Assert-ContainsText $rhiDirectionalShadowSource ".final_states = final_states" "
 Assert-ContainsText $rhiDirectionalShadowSource "frame_graph_execution.barriers_recorded" "RHI directional shadow frame graph RHI execution"
 Assert-ContainsText $rhiDirectionalShadowSource "frame_graph_execution.pass_callbacks_invoked" "RHI directional shadow frame graph RHI execution"
 Assert-DoesNotContainText $rhiDirectionalShadowSource "pending_sprites_" "RHI directional shadow sprite submission"
+Assert-ContainsText $rhiViewportSurfaceSource "execute_frame_graph_rhi_texture_schedule" "RHI viewport surface frame graph color state execution"
+Assert-ContainsText $rhiViewportSurfaceSource "FrameGraphTextureFinalState" "RHI viewport surface frame graph color final state execution"
+Assert-ContainsText $rhiViewportSurfaceSource ".resource = `"viewport_color`"" "RHI viewport surface frame graph color final state execution"
+Assert-ContainsText $rhiViewportSurfaceSource ".final_states = std::span<const FrameGraphTextureFinalState>{final_states}" "RHI viewport surface frame graph color final state execution"
+Assert-ContainsText $rhiViewportSurfaceSource "color_state_ = execute_viewport_color_state_transition" "RHI viewport surface recorded color state adoption"
+Assert-DoesNotContainText $rhiViewportSurfaceSource "transition_texture(" "RHI viewport surface high-level color transition ownership"
 foreach ($renderingGuidancePath in @(
     ".agents/skills/rendering-change/references/full-guidance.md",
     ".claude/skills/gameengine-rendering/references/full-guidance.md"
 )) {
     $renderingGuidanceText = Get-AgentSurfaceText $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "declared shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "viewport color-state executor slices" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText 'engine/renderer/src/rhi_viewport_surface.cpp` must not call `transition_texture(' $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "declared shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
 }
 foreach ($postprocessDepthGuidance in @(
