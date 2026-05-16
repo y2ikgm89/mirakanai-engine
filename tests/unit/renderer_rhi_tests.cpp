@@ -3193,7 +3193,7 @@ MK_TEST("rhi postprocess frame renderer records scene color and postprocess pass
     MK_REQUIRE(renderer_stats.frames_finished == 1);
     MK_REQUIRE(renderer_stats.meshes_submitted == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 2);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 1);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 2);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 1);
 
     const auto rhi_stats = device.stats();
@@ -3379,7 +3379,7 @@ MK_TEST("rhi postprocess frame renderer two-stage chain uses three frame graph p
     MK_REQUIRE(renderer_stats.frames_finished == 1);
     MK_REQUIRE(renderer_stats.meshes_submitted == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 3);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 3);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 4);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 2);
 
     const auto rhi_stats = device.stats();
@@ -3439,14 +3439,17 @@ MK_TEST("rhi postprocess frame renderer can bind scene depth as a postprocess in
     renderer.begin_frame();
     renderer.draw_mesh(mirakana::MeshCommand{});
     renderer.end_frame();
+    renderer.begin_frame();
+    renderer.draw_mesh(mirakana::MeshCommand{});
+    renderer.end_frame();
 
     const auto renderer_stats = renderer.stats();
-    MK_REQUIRE(renderer_stats.frames_started == 2);
-    MK_REQUIRE(renderer_stats.frames_finished == 2);
-    MK_REQUIRE(renderer_stats.meshes_submitted == 2);
-    MK_REQUIRE(renderer_stats.framegraph_passes_executed == 4);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 6);
-    MK_REQUIRE(renderer_stats.postprocess_passes_executed == 2);
+    MK_REQUIRE(renderer_stats.frames_started == 3);
+    MK_REQUIRE(renderer_stats.frames_finished == 3);
+    MK_REQUIRE(renderer_stats.meshes_submitted == 3);
+    MK_REQUIRE(renderer_stats.framegraph_passes_executed == 6);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 13);
+    MK_REQUIRE(renderer_stats.postprocess_passes_executed == 3);
 
     const auto rhi_stats = device.stats();
     MK_REQUIRE(rhi_stats.textures_created == 2);
@@ -3454,12 +3457,12 @@ MK_TEST("rhi postprocess frame renderer can bind scene depth as a postprocess in
     MK_REQUIRE(rhi_stats.descriptor_set_layouts_created == 1);
     MK_REQUIRE(rhi_stats.descriptor_sets_allocated == 1);
     MK_REQUIRE(rhi_stats.descriptor_writes == 4);
-    MK_REQUIRE(rhi_stats.render_passes_begun == 4);
-    MK_REQUIRE(rhi_stats.graphics_pipelines_bound == 4);
-    MK_REQUIRE(rhi_stats.descriptor_sets_bound == 2);
-    MK_REQUIRE(rhi_stats.resource_transitions == 9);
-    MK_REQUIRE(rhi_stats.draw_calls == 4);
-    MK_REQUIRE(rhi_stats.present_calls == 2);
+    MK_REQUIRE(rhi_stats.render_passes_begun == 6);
+    MK_REQUIRE(rhi_stats.graphics_pipelines_bound == 6);
+    MK_REQUIRE(rhi_stats.descriptor_sets_bound == 3);
+    MK_REQUIRE(rhi_stats.resource_transitions == 13);
+    MK_REQUIRE(rhi_stats.draw_calls == 6);
+    MK_REQUIRE(rhi_stats.present_calls == 3);
 }
 
 MK_TEST("rhi postprocess frame renderer records native ui overlay after postprocess") {
@@ -3525,7 +3528,7 @@ MK_TEST("rhi postprocess frame renderer records native ui overlay after postproc
     MK_REQUIRE(renderer_stats.native_ui_overlay_sprites_submitted == 1);
     MK_REQUIRE(renderer_stats.native_ui_overlay_draws == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 2);
-    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 1);
+    MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 2);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 1);
 
     const auto rhi_stats = device.stats();
@@ -4328,7 +4331,7 @@ MK_TEST("rhi postprocess frame renderer rejects unsupported depth input formats"
     MK_REQUIRE(rejected);
 }
 
-MK_TEST("rhi postprocess frame renderer releases acquired swapchain frame when begin fails") {
+MK_TEST("rhi postprocess frame renderer releases pre-present swapchain frame when scene callback fails") {
     mirakana::rhi::NullRhiDevice device;
     const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
         .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
@@ -4359,15 +4362,19 @@ MK_TEST("rhi postprocess frame renderer releases acquired swapchain frame when b
         .wait_for_completion = true,
     });
 
-    bool rejected_begin = false;
+    renderer.begin_frame();
+
+    bool execution_failed = false;
     try {
-        renderer.begin_frame();
-    } catch (const std::invalid_argument&) {
-        rejected_begin = true;
+        renderer.end_frame();
+    } catch (const std::runtime_error& ex) {
+        execution_failed =
+            std::string_view{ex.what()} == "rhi postprocess renderer frame graph rhi texture execution failed";
     }
 
-    MK_REQUIRE(rejected_begin);
+    MK_REQUIRE(execution_failed);
     MK_REQUIRE(!renderer.frame_active());
+    MK_REQUIRE(renderer.stats().frames_finished == 0);
     MK_REQUIRE(device.stats().swapchain_frames_acquired == 1);
     MK_REQUIRE(device.stats().swapchain_frames_released == 1);
 
@@ -4377,10 +4384,10 @@ MK_TEST("rhi postprocess frame renderer releases acquired swapchain frame when b
     device.release_swapchain_frame(frame);
 }
 
-MK_TEST("rhi postprocess frame renderer releases unrecorded swapchain frame when end fails") {
+MK_TEST("rhi postprocess frame renderer releases pre-present swapchain frame when scene target prep fails") {
     ThrowingTransitionRhiDevice device;
     device.throw_on_submit = false;
-    device.throw_on_transition = 2;
+    device.throw_on_transition = 1;
     const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
         .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
         .format = mirakana::rhi::Format::bgra8_unorm,
@@ -4413,14 +4420,14 @@ MK_TEST("rhi postprocess frame renderer releases unrecorded swapchain frame when
 
     renderer.begin_frame();
 
-    bool transition_failed = false;
+    bool execution_failed = false;
     try {
         renderer.end_frame();
     } catch (const std::runtime_error&) {
-        transition_failed = true;
+        execution_failed = true;
     }
 
-    MK_REQUIRE(transition_failed);
+    MK_REQUIRE(execution_failed);
     MK_REQUIRE(!renderer.frame_active());
     MK_REQUIRE(renderer.stats().frames_finished == 0);
     MK_REQUIRE(device.stats().swapchain_frames_acquired == 1);

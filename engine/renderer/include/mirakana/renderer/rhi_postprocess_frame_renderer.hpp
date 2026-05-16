@@ -87,6 +87,9 @@ class RhiPostprocessFrameRenderer final : public IRenderer {
     void recreate_scene_depth_texture();
     void recreate_post_chain_work_texture();
     void update_postprocess_descriptors();
+    void validate_scene_mesh_command(const MeshCommand& command) const;
+    void record_scene_mesh_command(const MeshCommand& command);
+    void record_scene_pass();
 
     rhi::IRhiDevice* device_{nullptr};
     Extent2D extent_;
@@ -127,6 +130,7 @@ class RhiPostprocessFrameRenderer final : public IRenderer {
     RendererStats stats_{};
     std::unique_ptr<rhi::IRhiCommandList> commands_;
     std::unique_ptr<RhiNativeUiOverlay> native_ui_overlay_;
+    std::vector<MeshCommand> pending_meshes_;
     std::vector<SpriteCommand> pending_overlay_sprites_;
     bool frame_active_{false};
     bool skinned_scene_pipeline_bound_{false};

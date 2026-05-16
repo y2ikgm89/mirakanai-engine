@@ -260,6 +260,20 @@ try {
     Remove-ScaffoldCheckRoot $materialShaderScaffoldRoot
 }
 
+$committedMaterialShaderMain =
+    Get-AgentSurfaceText "games/sample_generated_desktop_runtime_material_shader_package/main.cpp"
+foreach ($needle in @(
+    "kRuntimeSceneTangentSpaceStrideBytes{48}",
+    "VertexSemantic::tangent",
+    "framegraph_barrier_steps_executed !=",
+    "static_cast<std::uint64_t>(options.max_frames) * 2U"
+)) {
+    Assert-ContainsText $committedMaterialShaderMain $needle "committed material/shader desktop runtime sample"
+}
+if ($committedMaterialShaderMain.Contains("kRuntimeScenePositionNormalUvStrideBytes")) {
+    Write-Error "committed material/shader desktop runtime sample must use tangent-space vertex layout"
+}
+
 $desktop2dScaffoldRoot = New-ScaffoldCheckRoot
 try {
     & (Join-Path $PSScriptRoot "new-game.ps1") -Name "desktop_2d_package_game" -RepositoryRoot $desktop2dScaffoldRoot -Template DesktopRuntime2DPackage | Out-Null
@@ -895,8 +909,8 @@ try {
     $desktop3dManifest = $desktop3dManifestText | ConvertFrom-Json
     foreach ($needle in @(
             "framegraph_passes_executed=4",
-            "framegraph_barrier_steps_executed=6",
-            "renderer_quality_expected_framegraph_barrier_steps=6"
+            "framegraph_barrier_steps_executed=9",
+            "renderer_quality_expected_framegraph_barrier_steps=9"
         )) {
         Assert-ContainsText $desktop3dManifestText $needle "Desktop runtime 3D package scaffold manifest"
         Assert-ContainsText $desktop3dReadmeText $needle "Desktop runtime 3D package scaffold README"
@@ -1612,8 +1626,8 @@ foreach ($needle in @(
     "selected host-gated package streaming safe-point smoke",
     "selected generated 3D renderer quality smoke",
     "framegraph_passes_executed=4",
-    "framegraph_barrier_steps_executed=6",
-    "renderer_quality_expected_framegraph_barrier_steps=6",
+    "framegraph_barrier_steps_executed=9",
+    "renderer_quality_expected_framegraph_barrier_steps=9",
     "selected generated 3D postprocess depth-input smoke",
     "selected generated 3D playable package smoke",
     "selected generated 3D gameplay systems package smoke",
@@ -1847,8 +1861,8 @@ Assert-ContainsText $committedDesktop3dReadmeText "DesktopRuntime3DPackage" "com
 Assert-ContainsText $committedDesktop3dReadmeText "--require-package-streaming-safe-point" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-renderer-quality-gates" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "framegraph_passes_executed=4" "committed generated 3D sample README"
-Assert-ContainsText $committedDesktop3dReadmeText "framegraph_barrier_steps_executed=6" "committed generated 3D sample README"
-Assert-ContainsText $committedDesktop3dReadmeText "renderer_quality_expected_framegraph_barrier_steps=6" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "framegraph_barrier_steps_executed=9" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "renderer_quality_expected_framegraph_barrier_steps=9" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-postprocess-depth-input" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-directional-shadow-filtering" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-shadow-morph-composition" "committed generated 3D sample README"
@@ -1866,7 +1880,7 @@ Assert-ContainsText $engineManifestText "desktopRuntime3dRendererQualityPackageS
 Assert-ContainsText $engineManifestText "--require-renderer-quality-gates" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "renderer_quality_status" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "renderer_quality_expected_framegraph_passes=2" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "renderer_quality_expected_framegraph_barrier_steps=2" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "renderer_quality_expected_framegraph_barrier_steps=4" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "framegraph_barrier_steps_executed" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "desktopRuntime3dPostprocessDepthPackageSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-postprocess-depth-input" "engine/agent/manifest.json"
@@ -1921,7 +1935,7 @@ Assert-ContainsText $currentCapabilitiesText "--require-visible-3d-production-pr
 Assert-ContainsText $currentCapabilitiesText "--require-native-ui-text-glyph-atlas" "docs/current-capabilities.md"
 Assert-ContainsText $gameSkillText "postprocess_depth_input_ready=1" "gameengine game-development skill"
 Assert-ContainsText $gameSkillText "renderer_quality_postprocess_depth_input_ready=1" "gameengine game-development skill"
-Assert-ContainsText $gameSkillText "renderer_quality_expected_framegraph_barrier_steps=6" "gameengine game-development skill"
+Assert-ContainsText $gameSkillText "renderer_quality_expected_framegraph_barrier_steps=9" "gameengine game-development skill"
 Assert-ContainsText $gameSkillText "framegraph_barrier_steps_executed" "gameengine game-development skill"
 Assert-ContainsText $gameSkillText "--require-shadow-morph-composition" "gameengine game-development skill"
 Assert-ContainsText $gameSkillText "--require-native-ui-overlay" "gameengine game-development skill"

@@ -3475,10 +3475,10 @@ quality_gate_expected_framegraph_barrier_steps(const SdlDesktopPresentationQuali
         return 8 + ((expected_frames - 1) * 6);
     }
     if (desc.require_postprocess_depth_input) {
-        return expected_frames == 0 ? 3 : expected_frames * 3;
+        return expected_frames == 0 ? 5 : 1 + (expected_frames * 4);
     }
     if (desc.require_postprocess) {
-        return expected_frames == 0 ? 1 : expected_frames;
+        return expected_frames == 0 ? 2 : expected_frames * 2;
     }
     return 0;
 }

@@ -468,6 +468,8 @@ foreach ($needle in @(
     "FrameGraphTexturePassTargetAccess",
     "build_frame_graph_texture_pass_target_accesses",
     "RhiPostprocessFrameRenderer scene pass command recording",
+    "frame-graph-shadow-scratch-color-target-state-ownership-v1",
+    "shadow_color",
     "native aliasing barrier execution",
     "frame-graph-v1"
 )) {

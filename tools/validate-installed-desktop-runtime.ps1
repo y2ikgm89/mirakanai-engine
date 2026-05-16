@@ -214,9 +214,9 @@ function Get-ExpectedInstalledFramegraphBarrierExecutions {
         return [int64](8 + (($ExpectedFrames - 1) * 6))
     }
     if ($RequiresPostprocessDepthInput) {
-        return [int64]($ExpectedFrames * 3)
+        return [int64](1 + ($ExpectedFrames * 4))
     }
-    return [int64]$ExpectedFrames
+    return [int64]($ExpectedFrames * 2)
 }
 if ($requiresPlayable3dSlice) {
     $requiresRendererQualityGates = $true
