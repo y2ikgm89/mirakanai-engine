@@ -12,7 +12,7 @@
 
 ## Status
 
-**Status:** Validation complete; publication pending.
+**Status:** Completed.
 
 ## Official Practice Check
 
@@ -138,7 +138,7 @@ Expected: focused renderer tests pass.
 - [x] Run focused CMake/CTest targets for RHI and renderer tests.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`.
-- [ ] Commit, push, create PR, inspect PR state/checks, and register auto-merge only after required preflight is clean.
+- [x] Commit, push, create PR, inspect PR state/checks, and register auto-merge only after required preflight is clean.
 
 ## Validation Evidence
 
@@ -154,3 +154,5 @@ Expected: focused renderer tests pass.
 - Static evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after runtime-rendering, manifest, and agent-surface needles were updated.
 - Full validation evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` exited 0.
 - Full build evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` exited 0. Existing MSB8028 shared-intermediate-directory warnings were emitted by MSBuild.
+- Publication evidence: committed `9ab6fee441125c7d737298cf64b2bbe684d4a19a`, pushed `codex-frame-graph-texture-aliasing-barrier-command`, and opened PR `https://github.com/y2ikgm89/mirakanai-engine/pull/69` against `main`.
+- PR preflight evidence: `gh pr view 69 --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,url` reported `OPEN`, `isDraft=false`, `baseRefName=main`, `mergeable=MERGEABLE`, and `mergeStateStatus=UNSTABLE` with CodeQL, iOS smoke, and validation-tier checks still in progress. Auto-merge was not registered while checks were still running.
