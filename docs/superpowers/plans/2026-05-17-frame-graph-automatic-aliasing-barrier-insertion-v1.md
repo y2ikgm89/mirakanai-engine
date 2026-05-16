@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 - **Plan ID:** `frame-graph-automatic-aliasing-barrier-insertion-v1`
-- **Status:** Implementation and validation complete; publication pending.
+- **Status:** Completed.
 - **Goal:** Insert backend-neutral texture aliasing barriers automatically inside `execute_frame_graph_rhi_texture_schedule` when a transient texture alias group switches from one planned resource lifetime to the next.
 - **Architecture:** Reuse the existing `FrameGraphTransientTextureAliasPlan` lifetime rows as the executor-owned aliasing schedule input. The executor prevalidates lifetime rows against `FrameGraphTextureBinding` resources and the linear frame-graph schedule, records one `IRhiCommandList::texture_aliasing_barrier` before the first pass that uses each later resource in an alias group, then records existing pass target-state transitions and pass callbacks.
 - **Tech Stack:** C++23, `MK_renderer`, backend-neutral `MK_rhi`, NullRHI/D3D12/Vulkan existing aliasing-barrier implementations, PowerShell 7 validation entrypoints.
@@ -51,7 +51,7 @@
 - [x] Implement validation for malformed lifetime rows and rerun the focused renderer test.
 - [x] Update docs, manifest fragments, composed manifest, skills/subagents, and static guards for the new ready surface and remaining unsupported claims.
 - [x] Run focused validation: renderer tests, static checks touching renderer/agent surfaces, `tools/validate.ps1`, and `tools/build.ps1` if the slice is publication-ready.
-- [ ] Commit, push, create PR, and inspect PR checks.
+- [x] Commit, push, create PR, and inspect PR checks.
 
 ## Done When
 
@@ -77,9 +77,6 @@
 | `cmake --build --preset dev --target MK_renderer_tests -- /m:1; if ($LASTEXITCODE -eq 0) { ctest --preset dev --output-on-failure -R MK_renderer_tests }` | Passed | Added same-handle automatic alias prevalidation test; `MK_renderer_tests` passed. |
 | `cmake --preset dev`; `cmake --build --preset dev --target MK_renderer_tests`; `ctest --preset dev --output-on-failure -R MK_renderer_tests` | Passed | Focused renderer validation before rebasing onto latest `origin/main`; current branch still showed duplicated parent `PATH`, so final validation must use the updated CMake normalization from main. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1` | Passed | Composed manifest and repository formatting were refreshed after docs/source-link updates. |
-| `git rebase origin/main` | Passed | Branch was rebased onto latest `origin/main`, including #81 CMake `PATH` normalization and #82 distinct alias-group lease evidence. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` | Passed | Reported `normalized-configure-environment=ready`, `normalized-build-environment=ready`, and direct CMake ready. |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_renderer_tests` | Passed | Focused renderer validation passed after rebase; preset output showed the normalized single `PATH` form rather than the previous duplicated parent `PATH`. |
 | `cmake --build --preset dev --target MK_rhi_tests MK_renderer_tests MK_d3d12_rhi_tests MK_runtime_host_tests MK_backend_scaffold_tests` | Passed | Focused public-header/backend-adjacent build passed; MSBuild emitted existing shared-intermediate `MSB8028` warnings. |
 | `ctest --preset dev --output-on-failure -R "MK_rhi_tests|MK_renderer_tests|MK_d3d12_rhi_tests|MK_runtime_host_tests|MK_backend_scaffold_tests"` | Passed | 5/5 focused tests passed. |
 | `cmake --build --preset dev --target MK_rhi_tests MK_renderer_tests MK_d3d12_rhi_tests MK_runtime_host_tests MK_backend_scaffold_tests -- /m:1; if ($LASTEXITCODE -eq 0) { ctest --preset dev --output-on-failure -R "MK_rhi_tests|MK_renderer_tests|MK_d3d12_rhi_tests|MK_runtime_host_tests|MK_backend_scaffold_tests" }` | Passed | Focused public-header/backend-adjacent build/test passed after the same-handle prevalidation fix; 5/5 focused tests passed. |
@@ -90,3 +87,5 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed | Agent integration static guards passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full slice gate passed after the review fixes; CTest reported 65/65 tests passed. Host-gated Apple/Metal diagnostics remained diagnostic-only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit preflight build passed after the review fixes; MSBuild emitted existing shared-intermediate `MSB8028` warnings. |
+| `gh pr create --base main --head codex/frame-graph-automatic-aliasing-barriers` | Passed | Created PR #83 for the automatic aliasing-barrier insertion slice. |
+| `gh pr merge 83 --repo y2ikgm89/mirakanai-engine --auto --merge --delete-branch --match-head-commit 45c8e9f8fb37181516bb6770241c4d4165926199` | Passed | PR #83 merged into `main`; the first local invocation was blocked by an unrelated checked-out `main` worktree, so the repository-scoped retry avoided local checkout state. |
