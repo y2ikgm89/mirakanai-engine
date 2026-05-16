@@ -86,6 +86,7 @@ template <typename Result>
 [[nodiscard]] std::map<std::string, std::size_t>
 build_binding_index(Result& result, std::span<const FrameGraphTextureBinding> texture_bindings) {
     std::map<std::string, std::size_t> binding_indices;
+    std::map<std::uint64_t, std::pair<rhi::ResourceState, std::string>> shared_texture_states;
     for (std::size_t index = 0; index < texture_bindings.size(); ++index) {
         const auto& binding = texture_bindings[index];
         if (binding.resource.empty()) {
@@ -97,6 +98,13 @@ build_binding_index(Result& result, std::span<const FrameGraphTextureBinding> te
             append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, binding.resource,
                                               "frame graph texture binding handle is empty");
             continue;
+        }
+        const auto [shared_state, shared_state_inserted] =
+            shared_texture_states.emplace(binding.texture.value, std::pair{binding.current_state, binding.resource});
+        if (!shared_state_inserted && shared_state->second.first != binding.current_state) {
+            append_frame_graph_rhi_diagnostic(
+                result, FrameGraphDiagnosticCode::invalid_resource, {}, binding.resource,
+                "frame graph texture bindings sharing a handle disagree on current state");
         }
         const auto [_, inserted] = binding_indices.emplace(binding.resource, index);
         if (!inserted) {
@@ -447,10 +455,15 @@ plan_final_texture_states(FrameGraphRhiTextureExecutionResult& result,
     return planned_final_states;
 }
 
+void propagate_shared_simulated_texture_state(std::span<const FrameGraphTextureBinding> texture_bindings,
+                                              std::span<rhi::ResourceState> states, std::size_t binding_index,
+                                              rhi::ResourceState state);
+
 template <typename Result>
 [[nodiscard]] bool plan_barrier(Result& result, std::vector<PlannedTextureBarrier>& plan,
                                 const FrameGraphBarrier& barrier,
                                 const std::map<std::string, std::size_t>& binding_indices,
+                                std::span<const FrameGraphTextureBinding> texture_bindings,
                                 std::span<rhi::ResourceState> simulated_states) {
     const auto before = frame_graph_texture_state_for_access(barrier.from);
     const auto after = frame_graph_texture_state_for_access(barrier.to);
@@ -489,7 +502,7 @@ template <typename Result>
         .after = *after,
         .barrier = &barrier,
     });
-    simulated_state = *after;
+    propagate_shared_simulated_texture_state(texture_bindings, simulated_states, binding->second, *after);
     return true;
 }
 
@@ -503,6 +516,26 @@ copy_binding_states(std::span<const FrameGraphTextureBinding> texture_bindings) 
     return states;
 }
 
+void propagate_shared_simulated_texture_state(std::span<const FrameGraphTextureBinding> texture_bindings,
+                                              std::span<rhi::ResourceState> states, std::size_t binding_index,
+                                              rhi::ResourceState state) {
+    const auto texture = texture_bindings[binding_index].texture;
+    for (std::size_t index = 0; index < texture_bindings.size(); ++index) {
+        if (texture_bindings[index].texture.value == texture.value) {
+            states[index] = state;
+        }
+    }
+}
+
+void propagate_shared_texture_binding_state(std::span<FrameGraphTextureBinding> texture_bindings,
+                                            rhi::TextureHandle texture, rhi::ResourceState state) {
+    for (auto& binding : texture_bindings) {
+        if (binding.texture.value == texture.value) {
+            binding.current_state = state;
+        }
+    }
+}
+
 template <typename Result>
 [[nodiscard]] bool record_planned_texture_barrier(Result& result, rhi::IRhiCommandList& commands,
                                                   std::span<FrameGraphTextureBinding> texture_bindings,
@@ -514,7 +547,7 @@ template <typename Result>
     auto& texture_binding = texture_bindings[planned.binding_index];
     try {
         commands.transition_texture(texture_binding.texture, planned.before, planned.after);
-        texture_binding.current_state = planned.after;
+        propagate_shared_texture_binding_state(texture_bindings, texture_binding.texture, planned.after);
         ++result.barriers_recorded;
         return true;
     } catch (const std::exception& ex) {
@@ -544,7 +577,7 @@ template <typename Result>
 
     try {
         commands.transition_texture(texture_binding.texture, texture_binding.current_state, planned.after);
-        texture_binding.current_state = planned.after;
+        propagate_shared_texture_binding_state(texture_bindings, texture_binding.texture, planned.after);
         ++result.barriers_recorded;
         ++result.pass_target_state_barriers_recorded;
         return true;
@@ -577,7 +610,7 @@ template <typename Result>
 
     try {
         commands.transition_texture(texture_binding.texture, texture_binding.current_state, planned.after);
-        texture_binding.current_state = planned.after;
+        propagate_shared_texture_binding_state(texture_bindings, texture_binding.texture, planned.after);
         ++result.barriers_recorded;
         ++result.final_state_barriers_recorded;
         return true;
@@ -925,7 +958,7 @@ record_frame_graph_texture_barriers(rhi::IRhiCommandList& commands, std::span<co
         if (step.kind != FrameGraphExecutionStep::Kind::barrier) {
             continue;
         }
-        (void)plan_barrier(result, planned_barriers, step.barrier, binding_indices, simulated_states);
+        (void)plan_barrier(result, planned_barriers, step.barrier, binding_indices, texture_bindings, simulated_states);
     }
     if (!result.succeeded()) {
         return result;
@@ -997,7 +1030,8 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
     for (const auto& step : desc.schedule) {
         switch (step.kind) {
         case FrameGraphExecutionStep::Kind::barrier:
-            (void)plan_barrier(result, validation_barriers, step.barrier, binding_indices, simulated_states);
+            (void)plan_barrier(result, validation_barriers, step.barrier, binding_indices, desc.texture_bindings,
+                               simulated_states);
             break;
         case FrameGraphExecutionStep::Kind::pass_invoke: {
             const auto target_states = planned_pass_target_states.find(step.pass_name);
@@ -1005,7 +1039,9 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
                 break;
             }
             for (const auto& planned_target_state : target_states->second) {
-                simulated_states[planned_target_state.binding_index] = planned_target_state.after;
+                propagate_shared_simulated_texture_state(desc.texture_bindings, simulated_states,
+                                                         planned_target_state.binding_index,
+                                                         planned_target_state.after);
             }
         } break;
         default:
@@ -1024,7 +1060,8 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
             auto current_states = copy_binding_states(desc.texture_bindings);
             std::vector<PlannedTextureBarrier> planned_barriers;
             planned_barriers.reserve(1);
-            if (!plan_barrier(result, planned_barriers, step.barrier, binding_indices, current_states)) {
+            if (!plan_barrier(result, planned_barriers, step.barrier, binding_indices, desc.texture_bindings,
+                              current_states)) {
                 return result;
             }
             for (const auto& planned_barrier : planned_barriers) {

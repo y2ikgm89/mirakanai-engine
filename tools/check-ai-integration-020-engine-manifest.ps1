@@ -1694,6 +1694,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTextureFinalState") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureAliasPlan") -or
     -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_transient_texture_aliases") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Shared Texture State Handoff v1") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("sharing one backend-neutral TextureHandle") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("conflicting initial shared-handle states") -or
     -not ([string]$frameGraphGap[0].notes).Contains("native aliasing barrier execution") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
