@@ -7,6 +7,7 @@
 #include "mirakana/rhi/resource_lifetime.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <span>
@@ -407,6 +408,11 @@ struct TransientTexture {
     TextureHandle texture;
 };
 
+struct TransientTextureAliasGroup {
+    TransientResourceHandle lease;
+    std::vector<TextureHandle> textures;
+};
+
 enum class TransientResourceKind : std::uint8_t { buffer = 0, texture };
 
 struct RhiStats {
@@ -619,6 +625,8 @@ class IRhiDevice {
     virtual void release_swapchain_frame(SwapchainFrameHandle frame) = 0;
     [[nodiscard]] virtual TransientBuffer acquire_transient_buffer(const BufferDesc& desc) = 0;
     [[nodiscard]] virtual TransientTexture acquire_transient_texture(const TextureDesc& desc) = 0;
+    [[nodiscard]] virtual TransientTextureAliasGroup
+    acquire_transient_texture_alias_group(const TextureDesc& desc, std::size_t texture_count) = 0;
     virtual void release_transient(TransientResourceHandle lease) = 0;
     [[nodiscard]] virtual ShaderHandle create_shader(const ShaderDesc& desc) = 0;
     [[nodiscard]] virtual DescriptorSetLayoutHandle
@@ -660,6 +668,8 @@ class NullRhiDevice final : public IRhiDevice {
     void release_swapchain_frame(SwapchainFrameHandle frame) override;
     [[nodiscard]] TransientBuffer acquire_transient_buffer(const BufferDesc& desc) override;
     [[nodiscard]] TransientTexture acquire_transient_texture(const TextureDesc& desc) override;
+    [[nodiscard]] TransientTextureAliasGroup acquire_transient_texture_alias_group(const TextureDesc& desc,
+                                                                                   std::size_t texture_count) override;
     void release_transient(TransientResourceHandle lease) override;
     [[nodiscard]] ShaderHandle create_shader(const ShaderDesc& desc) override;
     [[nodiscard]] DescriptorSetLayoutHandle create_descriptor_set_layout(const DescriptorSetLayoutDesc& desc) override;
@@ -697,7 +707,7 @@ class NullRhiDevice final : public IRhiDevice {
     struct TransientLeaseRecord {
         TransientResourceKind kind{TransientResourceKind::buffer};
         BufferHandle buffer;
-        TextureHandle texture;
+        std::vector<TextureHandle> textures;
         bool active{false};
     };
 

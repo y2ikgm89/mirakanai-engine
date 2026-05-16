@@ -1486,7 +1486,7 @@ TransientBuffer NullRhiDevice::acquire_transient_buffer(const BufferDesc& desc) 
     transient_leases_.push_back(TransientLeaseRecord{
         .kind = TransientResourceKind::buffer,
         .buffer = buffer,
-        .texture = TextureHandle{},
+        .textures = {},
         .active = true,
     });
     ++stats_.transient_resources_acquired;
@@ -1500,12 +1500,35 @@ TransientTexture NullRhiDevice::acquire_transient_texture(const TextureDesc& des
     transient_leases_.push_back(TransientLeaseRecord{
         .kind = TransientResourceKind::texture,
         .buffer = BufferHandle{},
-        .texture = texture,
+        .textures = {texture},
         .active = true,
     });
     ++stats_.transient_resources_acquired;
     ++stats_.transient_resources_active;
     return TransientTexture{.lease = lease, .texture = texture};
+}
+
+TransientTextureAliasGroup NullRhiDevice::acquire_transient_texture_alias_group(const TextureDesc& desc,
+                                                                                std::size_t texture_count) {
+    if (texture_count == 0) {
+        throw std::invalid_argument("rhi transient texture alias group requires at least one texture");
+    }
+    std::vector<TextureHandle> textures;
+    textures.reserve(texture_count);
+    for (std::size_t i = 0; i < texture_count; ++i) {
+        textures.push_back(create_texture(desc));
+    }
+
+    const auto lease = TransientResourceHandle{next_transient_resource_++};
+    transient_leases_.push_back(TransientLeaseRecord{
+        .kind = TransientResourceKind::texture,
+        .buffer = BufferHandle{},
+        .textures = textures,
+        .active = true,
+    });
+    ++stats_.transient_resources_acquired;
+    ++stats_.transient_resources_active;
+    return TransientTextureAliasGroup{.lease = lease, .textures = std::move(textures)};
 }
 
 void NullRhiDevice::release_transient(TransientResourceHandle lease) {
@@ -1526,11 +1549,12 @@ void NullRhiDevice::release_transient(TransientResourceHandle lease) {
             buffer_active_[index] = false;
         }
     } else {
-        const auto texture = record.texture;
-        const auto index = texture.value - 1U;
-        if (texture_active_.at(index)) {
-            (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), completed_.value);
-            texture_active_[index] = false;
+        for (const auto texture : record.textures) {
+            const auto index = texture.value - 1U;
+            if (texture_active_.at(index)) {
+                (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), completed_.value);
+                texture_active_[index] = false;
+            }
         }
     }
     retire_resource_lifetime_to_completed_fence();

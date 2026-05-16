@@ -396,7 +396,8 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_transient_texture_aliases") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureLeaseBindingResult") -or
     -not ([string]$frameGraphGap[0].notes).Contains("acquire_frame_graph_transient_texture_lease_bindings") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("one backend-neutral IRhiDevice transient texture lease per alias group") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::acquire_transient_texture_alias_group") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("distinct resource-name FrameGraphTextureBinding rows") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Shared Texture State Handoff v1") -or
     -not ([string]$frameGraphGap[0].notes).Contains("sharing one backend-neutral TextureHandle") -or
     -not ([string]$frameGraphGap[0].notes).Contains("conflicting initial shared-handle states") -or
@@ -409,9 +410,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("first command-list use") -or
     -not ([string]$frameGraphGap[0].notes).Contains("placed_resource_activation_barriers") -or
     -not ([string]$frameGraphGap[0].notes).Contains("transient_texture_placed_resources_alive") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("backend-private alias groups") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("backend-private alias-group texture leases") -or
     -not ([string]$frameGraphGap[0].notes).Contains("placed_resource_aliasing_barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("backend-neutral distinct alias-group leases") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("zero/duplicate/wrong-count backend-return validation") -or
     -not ([string]$frameGraphGap[0].notes).Contains("data inheritance/content preservation") -or
     -not ([string]$frameGraphGap[0].notes).Contains("automatic aliasing-barrier insertion") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
@@ -486,8 +487,9 @@ foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",
-    "Frame Graph Transient Texture Lease Binding v1",
+    "Frame Graph Backend-Neutral Distinct Alias-Group Lease Binding v1",
     "FrameGraphTransientTextureLeaseBindingResult",
+    "IRhiDevice::acquire_transient_texture_alias_group",
     "acquire_frame_graph_transient_texture_lease_bindings",
     "Frame Graph Shared Texture State Handoff v1",
     "conflicting initial shared-handle states",
