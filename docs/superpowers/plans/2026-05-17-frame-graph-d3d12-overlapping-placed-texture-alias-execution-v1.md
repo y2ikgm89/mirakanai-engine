@@ -109,7 +109,7 @@ The previous D3D12 placed transient texture lease slice creates one private heap
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`.
-- [ ] Commit, push, create PR, inspect PR state/checks, and register auto-merge only after required preflight is clean.
+- [x] Commit, push, create PR, inspect PR state/checks, and register auto-merge only after required preflight is clean.
 
 ## Validation Evidence
 
@@ -120,3 +120,4 @@ The previous D3D12 placed transient texture lease slice creates one private heap
 - STATIC: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed.
 - FULL VALIDATION: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including 65/65 CTest tests. Metal/Apple checks remain host-gated diagnostics on this Windows host as expected.
 - BUILD: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed after full validation.
+- PUBLICATION: Commit `ea5101f` was pushed to `codex/frame-graph-d3d12-overlapping-placed-texture-alias-execution`, and PR `#80` was created at `https://github.com/y2ikgm89/mirakanai-engine/pull/80`.
