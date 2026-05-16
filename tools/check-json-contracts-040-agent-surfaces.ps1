@@ -388,6 +388,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("barrier intent") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_v1_schedule") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_texture_schedule") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTexturePassTargetAccess") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("build_frame_graph_texture_pass_target_accesses") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("writer-access-validated pass target-state preparation") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTextureFinalState") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureAliasPlan") -or
     -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_transient_texture_aliases") -or
@@ -397,6 +400,7 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
     -not ([string]$frameGraphGap[0].notes).Contains("executor-recorded barriers") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final-state policy") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("writer-access-backed pass-target-state policy") -or
     -not ([string]$frameGraphGap[0].notes).Contains("production render graph") -or
     -not ([string]$frameGraphGap[0].notes).Contains("2D/3D playable vertical slices")) {
     Write-Error "engine manifest aiOperableProductionLoop frame-graph-v1 gap must keep foundation-only follow-up limits explicit"
@@ -460,6 +464,10 @@ foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",
+    "Frame Graph RHI Pass Target Access Validation v1",
+    "FrameGraphTexturePassTargetAccess",
+    "build_frame_graph_texture_pass_target_accesses",
+    "RhiPostprocessFrameRenderer scene pass command recording",
     "native aliasing barrier execution",
     "frame-graph-v1"
 )) {

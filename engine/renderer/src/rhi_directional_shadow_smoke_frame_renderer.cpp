@@ -306,11 +306,14 @@ RhiDirectionalShadowSmokeFrameRenderer::RhiDirectionalShadowSmokeFrameRenderer(
         recompute_shadow_atlas_extent();
     }
 
-    shadow_smoke_frame_graph_plan_ = compile_frame_graph_v1(make_shadow_smoke_frame_graph_v1_desc());
+    const auto shadow_smoke_frame_graph_desc = make_shadow_smoke_frame_graph_v1_desc();
+    shadow_smoke_frame_graph_plan_ = compile_frame_graph_v1(shadow_smoke_frame_graph_desc);
     if (!shadow_smoke_frame_graph_plan_.succeeded() || shadow_smoke_frame_graph_plan_.pass_count != 3) {
         throw std::logic_error("rhi shadow smoke renderer frame graph v1 is invalid");
     }
     shadow_smoke_frame_graph_execution_ = schedule_frame_graph_v1_execution(shadow_smoke_frame_graph_plan_);
+    shadow_smoke_frame_graph_target_accesses_ =
+        build_frame_graph_texture_pass_target_accesses(shadow_smoke_frame_graph_desc);
     frame_graph_pass_count_ = static_cast<std::uint32_t>(shadow_smoke_frame_graph_plan_.ordered_passes.size());
 
     recreate_shadow_textures();
@@ -705,6 +708,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             .schedule = shadow_smoke_frame_graph_execution_,
             .texture_bindings = texture_bindings,
             .pass_callbacks = pass_callbacks,
+            .pass_target_accesses = shadow_smoke_frame_graph_target_accesses_,
             .pass_target_states = pass_target_states,
             .final_states = final_states,
         });

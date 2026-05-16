@@ -42,6 +42,8 @@ struct PlannedTexturePassTargetState {
     const FrameGraphTexturePassTargetState* pass_target_state{nullptr};
 };
 
+using TexturePassTargetAccessIndex = std::map<std::pair<std::string, std::string>, FrameGraphAccess>;
+
 struct TransientTextureUse {
     std::string pass;
     std::size_t pass_index{0};
@@ -145,6 +147,7 @@ build_scheduled_pass_index(std::span<const FrameGraphExecutionStep> schedule) {
 plan_pass_target_states(FrameGraphRhiTextureExecutionResult& result,
                         const std::map<std::string, std::size_t>& binding_indices,
                         const std::map<std::string, std::size_t>& scheduled_passes,
+                        const TexturePassTargetAccessIndex& pass_target_accesses,
                         std::span<const FrameGraphTexturePassTargetState> pass_target_states) {
     std::map<std::pair<std::string, std::string>, std::size_t> pass_resource_indices;
     std::map<std::string, std::vector<PlannedTexturePassTargetState>> planned_pass_target_states;
@@ -194,6 +197,23 @@ plan_pass_target_states(FrameGraphRhiTextureExecutionResult& result,
             continue;
         }
 
+        const auto access =
+            pass_target_accesses.find(std::pair{pass_target_state.pass_name, pass_target_state.resource});
+        if (access == pass_target_accesses.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                              pass_target_state.pass_name, pass_target_state.resource,
+                                              "frame graph texture pass target state has no declared writer access");
+            continue;
+        }
+
+        const auto expected_state = frame_graph_texture_state_for_access(access->second);
+        if (!expected_state.has_value() || *expected_state != pass_target_state.state) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                              pass_target_state.pass_name, pass_target_state.resource,
+                                              "frame graph texture pass target state disagrees with writer access");
+            continue;
+        }
+
         planned_pass_target_states[pass_target_state.pass_name].push_back(PlannedTexturePassTargetState{
             .binding_index = binding->second,
             .after = pass_target_state.state,
@@ -202,6 +222,40 @@ plan_pass_target_states(FrameGraphRhiTextureExecutionResult& result,
     }
 
     return planned_pass_target_states;
+}
+
+[[nodiscard]] TexturePassTargetAccessIndex
+build_pass_target_access_index(FrameGraphRhiTextureExecutionResult& result,
+                               std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses) {
+    TexturePassTargetAccessIndex pass_target_access_index;
+    for (const auto& pass_target_access : pass_target_accesses) {
+        if (pass_target_access.pass_name.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph texture pass target access pass name is empty");
+            continue;
+        }
+        if (pass_target_access.resource.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                              pass_target_access.pass_name, {},
+                                              "frame graph texture pass target access resource name is empty");
+            continue;
+        }
+        if (!frame_graph_texture_state_for_access(pass_target_access.access).has_value()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                              pass_target_access.pass_name, pass_target_access.resource,
+                                              "frame graph texture pass target access cannot be unknown");
+            continue;
+        }
+
+        const auto [_, inserted] = pass_target_access_index.emplace(
+            std::pair{pass_target_access.pass_name, pass_target_access.resource}, pass_target_access.access);
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource,
+                                              pass_target_access.pass_name, pass_target_access.resource,
+                                              "frame graph texture pass target access is declared more than once");
+        }
+    }
+    return pass_target_access_index;
 }
 
 [[nodiscard]] bool texture_descs_match(const rhi::TextureDesc& left, const rhi::TextureDesc& right) noexcept {
@@ -563,6 +617,24 @@ std::optional<rhi::ResourceState> frame_graph_texture_state_for_access(FrameGrap
     return std::nullopt;
 }
 
+std::vector<FrameGraphTexturePassTargetAccess>
+build_frame_graph_texture_pass_target_accesses(const FrameGraphV1Desc& desc) {
+    std::vector<FrameGraphTexturePassTargetAccess> pass_target_accesses;
+    for (const auto& pass : desc.passes) {
+        for (const auto& write : pass.writes) {
+            if (!frame_graph_texture_state_for_access(write.access).has_value()) {
+                continue;
+            }
+            pass_target_accesses.push_back(FrameGraphTexturePassTargetAccess{
+                .pass_name = pass.name,
+                .resource = write.resource,
+                .access = write.access,
+            });
+        }
+    }
+    return pass_target_accesses;
+}
+
 FrameGraphTransientTextureAliasPlan
 plan_frame_graph_transient_texture_aliases(const FrameGraphV1Desc& desc,
                                            std::span<const FrameGraphTransientTextureDesc> texture_descs) {
@@ -818,8 +890,11 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
     const auto binding_indices = build_binding_index(result, desc.texture_bindings);
     const auto pass_callbacks = build_pass_callback_index(result, desc.pass_callbacks);
     const auto scheduled_passes = build_scheduled_pass_index(desc.schedule);
-    const auto planned_pass_target_states =
-        plan_pass_target_states(result, binding_indices, scheduled_passes, desc.pass_target_states);
+    const auto pass_target_accesses = build_pass_target_access_index(result, desc.pass_target_accesses);
+    const auto planned_pass_target_states = result.succeeded()
+                                                ? plan_pass_target_states(result, binding_indices, scheduled_passes,
+                                                                          pass_target_accesses, desc.pass_target_states)
+                                                : std::map<std::string, std::vector<PlannedTexturePassTargetState>>{};
     const auto planned_final_states = plan_final_texture_states(result, binding_indices, desc.final_states);
     for (const auto& step : desc.schedule) {
         switch (step.kind) {

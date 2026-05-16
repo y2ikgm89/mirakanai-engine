@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/renderer/frame_graph.hpp"
+#include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/renderer/shadow_map.hpp"
 #include "mirakana/rhi/rhi.hpp"
@@ -148,6 +149,7 @@ class RhiDirectionalShadowSmokeFrameRenderer final : public IRenderer {
     bool frame_active_{false};
     FrameGraphV1BuildResult shadow_smoke_frame_graph_plan_{};
     std::vector<FrameGraphExecutionStep> shadow_smoke_frame_graph_execution_;
+    std::vector<FrameGraphTexturePassTargetAccess> shadow_smoke_frame_graph_target_accesses_;
     std::uint32_t frame_graph_pass_count_{0};
 };
 
