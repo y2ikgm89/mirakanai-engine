@@ -389,6 +389,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_v1_schedule") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_texture_schedule") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTextureFinalState") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureAliasPlan") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_transient_texture_aliases") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("native aliasing barrier execution") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
@@ -454,13 +457,14 @@ if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
 }
 foreach ($needle in @(
-    "Renderer RHI Resource Foundation 1.0 Scope Closeout v1",
-    "removing renderer-rhi-resource-foundation from unsupportedProductionGaps",
-    "D3D12/Vulkan deferred native teardown",
+    "Frame Graph Transient Texture Alias Planning v1",
+    "FrameGraphTransientTextureAliasPlan",
+    "plan_frame_graph_transient_texture_aliases",
+    "native aliasing barrier execution",
     "frame-graph-v1"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe renderer-rhi closeout and next gap: $needle"
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph transient alias planning and next gap: $needle"
     }
 }
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })

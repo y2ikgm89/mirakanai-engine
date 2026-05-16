@@ -1235,15 +1235,13 @@ if ($activeChildProductionPlans.Count -eq 0) {
 }
 $recommendedNextPlanText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
-    "Renderer RHI Resource Foundation 1.0 Scope Closeout v1",
-    "removing renderer-rhi-resource-foundation from unsupportedProductionGaps",
-    "RhiResourceLifetimeRegistry",
-    "D3D12/Vulkan deferred native teardown",
-    "GPU debug markers/timestamp frequency",
-    "RhiDeviceMemoryDiagnostics",
+    "Frame Graph Transient Texture Alias Planning v1",
+    "FrameGraphTransientTextureAliasPlan",
+    "plan_frame_graph_transient_texture_aliases",
+    "native aliasing barrier execution",
     "frame-graph-v1"
 )) {
-    Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer-rhi closeout"
+    Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
 }
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $masterPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"

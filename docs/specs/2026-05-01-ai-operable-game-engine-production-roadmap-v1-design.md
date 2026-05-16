@@ -157,7 +157,7 @@ Initial commands should cover:
 Renderer production work should follow this order:
 
 1. Resource lifetime foundation: persistent destroy, deferred deletion, owner registry, residency counters, debug names, and marker adapter hooks.
-2. Frame Graph v1: pass execution callbacks, resource declarations, barrier planning, transient allocation, aliasing policy, and queue scheduling model.
+2. Frame Graph v1: pass execution callbacks, resource declarations, barrier planning, conservative transient texture alias planning, native transient heap allocation/alias execution, and queue scheduling model.
 3. Upload/Staging v1: upload ring, staging pool, batched copies, fence retirement, partial updates, texture mips/formats/compression metadata, and async-ready design.
 4. Material/Shader Authoring v1: cook-time binding metadata, shader artifact validation, pipeline layout policy, sampler/texture slots, pipeline cache, and hot reload.
 5. Backend promotion: D3D12 production hardening, Vulkan multi-draw/multi-pass/multi-present constraints removed, Metal validated on Apple hosts before any ready claim.
