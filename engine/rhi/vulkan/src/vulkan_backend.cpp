@@ -264,6 +264,7 @@ inline constexpr std::uint64_t vulkan_pipeline_stage2_fragment_shader_bit = 0x00
 inline constexpr std::uint64_t vulkan_pipeline_stage2_compute_shader_bit = 0x0000000000000800ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_color_attachment_output_bit = 0x0000000000000400ULL;
 inline constexpr std::uint64_t vulkan_pipeline_stage2_transfer_bit = 0x0000000000001000ULL;
+inline constexpr std::uint64_t vulkan_pipeline_stage2_all_commands_bit = 0x0000000000010000ULL;
 inline constexpr std::uint64_t vulkan_access2_none = 0;
 inline constexpr std::uint64_t vulkan_access2_shader_read_bit = 0x0000000000000020ULL;
 inline constexpr std::uint64_t vulkan_access2_shader_write_bit = 0x0000000000000040ULL;
@@ -272,6 +273,8 @@ inline constexpr std::uint64_t vulkan_access2_depth_stencil_attachment_read_bit 
 inline constexpr std::uint64_t vulkan_access2_depth_stencil_attachment_write_bit = 0x0000000000000400ULL;
 inline constexpr std::uint64_t vulkan_access2_transfer_read_bit = 0x0000000000000800ULL;
 inline constexpr std::uint64_t vulkan_access2_transfer_write_bit = 0x0000000000001000ULL;
+inline constexpr std::uint64_t vulkan_access2_memory_read_bit = 0x0000000000008000ULL;
+inline constexpr std::uint64_t vulkan_access2_memory_write_bit = 0x0000000000010000ULL;
 inline constexpr std::uint32_t spirv_magic_word = 0x07230203U;
 inline constexpr std::uint32_t spirv_header_word_count = 5;
 inline constexpr std::size_t vulkan_max_memory_types = 32;
@@ -4412,6 +4415,26 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         set_texture_state(texture, after);
         recorded_work_ = true;
         ++device_->stats_.resource_transitions;
+    }
+
+    void texture_aliasing_barrier(TextureHandle before, TextureHandle after) override {
+        require_open();
+        require_no_render_pass();
+        if (before.value == 0 || after.value == 0 || before.value == after.value || !device_->owns_texture(before) ||
+            !device_->owns_texture(after)) {
+            throw std::invalid_argument("vulkan rhi texture aliasing barrier requires distinct texture handles");
+        }
+
+        const auto result = record_runtime_texture_aliasing_barrier(
+            device_->device_, pool_, device_->textures_.at(before.value - 1U), device_->textures_.at(after.value - 1U));
+        if (!result.recorded) {
+            throw std::logic_error("vulkan rhi texture aliasing barrier failed: " + result.diagnostic);
+        }
+
+        observe_texture(before);
+        observe_texture(after);
+        recorded_work_ = true;
+        ++device_->stats_.texture_aliasing_barriers;
     }
 
     void copy_buffer(BufferHandle source, BufferHandle destination, const BufferCopyRegion& region) override {
@@ -11740,6 +11763,67 @@ VulkanRuntimeTextureBarrierResult record_runtime_texture_barrier(VulkanRuntimeDe
     result.recorded = true;
     result.barrier_count = 1;
     result.diagnostic = "Vulkan texture barrier recorded";
+    return result;
+}
+
+VulkanRuntimeTextureAliasingBarrierResult
+record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                        VulkanRuntimeTexture& before, VulkanRuntimeTexture& after) {
+    VulkanRuntimeTextureAliasingBarrierResult result;
+    if (device.impl_ == nullptr || device.impl_->device == nullptr) {
+        result.diagnostic = "Vulkan runtime device is not available";
+        return result;
+    }
+    if (!command_pool.owns_primary_command_buffer()) {
+        result.diagnostic = "Vulkan runtime command pool is required";
+        return result;
+    }
+    if (!before.owns_image() || !before.owns_memory() || !after.owns_image() || !after.owns_memory()) {
+        result.diagnostic = "Vulkan runtime texture aliasing barrier textures are required";
+        return result;
+    }
+    if (command_pool.impl_->device_owner != device.impl_ || before.impl_->device_owner != device.impl_ ||
+        after.impl_->device_owner != device.impl_) {
+        result.diagnostic = "Vulkan texture aliasing barrier objects must share one runtime device";
+        return result;
+    }
+    if (before.impl_->image == after.impl_->image) {
+        result.diagnostic = "Vulkan texture aliasing barrier requires distinct textures";
+        return result;
+    }
+    if (!command_pool.recording()) {
+        result.diagnostic = "Vulkan command buffer must be recording";
+        return result;
+    }
+    if (device.impl_->cmd_pipeline_barrier2 == nullptr) {
+        result.diagnostic = "Vulkan synchronization2 barrier command is unavailable";
+        return result;
+    }
+
+    const NativeVulkanMemoryBarrier2 memory_barrier{
+        .s_type = vulkan_structure_type_memory_barrier2,
+        .next = nullptr,
+        .src_stage_mask = vulkan_pipeline_stage2_all_commands_bit,
+        .src_access_mask = vulkan_access2_memory_read_bit | vulkan_access2_memory_write_bit,
+        .dst_stage_mask = vulkan_pipeline_stage2_all_commands_bit,
+        .dst_access_mask = vulkan_access2_memory_read_bit | vulkan_access2_memory_write_bit,
+    };
+    const NativeVulkanDependencyInfo dependency_info{
+        .s_type = vulkan_structure_type_dependency_info,
+        .next = nullptr,
+        .dependency_flags = 0,
+        .memory_barrier_count = 1,
+        .memory_barriers = &memory_barrier,
+        .buffer_memory_barrier_count = 0,
+        .buffer_memory_barriers = nullptr,
+        .image_memory_barrier_count = 0,
+        .image_memory_barriers = nullptr,
+    };
+
+    device.impl_->cmd_pipeline_barrier2(command_pool.impl_->primary_command_buffer, &dependency_info);
+    result.recorded = true;
+    result.barrier_count = 1;
+    result.diagnostic = "Vulkan texture aliasing barrier recorded";
     return result;
 }
 

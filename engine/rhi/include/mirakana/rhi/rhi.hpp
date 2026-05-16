@@ -427,6 +427,7 @@ struct RhiStats {
     std::uint64_t command_lists_begun{0};
     std::uint64_t command_lists_submitted{0};
     std::uint64_t resource_transitions{0};
+    std::uint64_t texture_aliasing_barriers{0};
     std::uint64_t render_passes_begun{0};
     std::uint64_t graphics_pipelines_bound{0};
     std::uint64_t compute_pipelines_bound{0};
@@ -553,6 +554,7 @@ class IRhiCommandList {
     [[nodiscard]] virtual bool closed() const noexcept = 0;
 
     virtual void transition_texture(TextureHandle texture, ResourceState before, ResourceState after) = 0;
+    virtual void texture_aliasing_barrier(TextureHandle before, TextureHandle after) = 0;
     virtual void copy_buffer(BufferHandle source, BufferHandle destination, const BufferCopyRegion& region) = 0;
     virtual void copy_buffer_to_texture(BufferHandle source, TextureHandle destination,
                                         const BufferTextureCopyRegion& region) = 0;

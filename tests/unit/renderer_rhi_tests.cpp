@@ -187,6 +187,10 @@ class ThrowingTransitionCommandList final : public mirakana::rhi::IRhiCommandLis
         inner_->transition_texture(texture, before, after);
     }
 
+    void texture_aliasing_barrier(mirakana::rhi::TextureHandle before, mirakana::rhi::TextureHandle after) override {
+        inner_->texture_aliasing_barrier(before, after);
+    }
+
     void copy_buffer(mirakana::rhi::BufferHandle source, mirakana::rhi::BufferHandle destination,
                      const mirakana::rhi::BufferCopyRegion& region) override {
         inner_->copy_buffer(source, destination, region);
@@ -1797,6 +1801,134 @@ MK_TEST("frame graph v1 texture barrier recording rejects conflicting shared tex
     MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::render_target);
     MK_REQUIRE(bindings[1].current_state == mirakana::rhi::ResourceState::shader_read);
     MK_REQUIRE(device.stats().resource_transitions == 0);
+}
+
+MK_TEST("frame graph rhi texture aliasing barrier recording maps resource names to texture handles") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto first = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto second = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{
+        mirakana::FrameGraphTextureBinding{
+            .resource = "early",
+            .texture = first,
+            .current_state = mirakana::rhi::ResourceState::undefined,
+        },
+        mirakana::FrameGraphTextureBinding{
+            .resource = "late",
+            .texture = second,
+            .current_state = mirakana::rhi::ResourceState::undefined,
+        },
+    };
+    const std::vector<mirakana::FrameGraphTextureAliasingBarrier> barriers{
+        mirakana::FrameGraphTextureAliasingBarrier{
+            .before_resource = "early",
+            .after_resource = "late",
+        },
+    };
+
+    const auto result = mirakana::record_frame_graph_texture_aliasing_barriers(*commands, barriers, bindings);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.aliasing_barriers_recorded == 1);
+    MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::undefined);
+    MK_REQUIRE(bindings[1].current_state == mirakana::rhi::ResourceState::undefined);
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 1);
+    MK_REQUIRE(device.stats().resource_transitions == 0);
+}
+
+MK_TEST("frame graph rhi texture aliasing barrier recording rejects missing resources and shared handles") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{
+        mirakana::FrameGraphTextureBinding{
+            .resource = "early",
+            .texture = texture,
+            .current_state = mirakana::rhi::ResourceState::undefined,
+        },
+        mirakana::FrameGraphTextureBinding{
+            .resource = "late",
+            .texture = texture,
+            .current_state = mirakana::rhi::ResourceState::undefined,
+        },
+    };
+    const std::vector<mirakana::FrameGraphTextureAliasingBarrier> barriers{
+        mirakana::FrameGraphTextureAliasingBarrier{
+            .before_resource = "early",
+            .after_resource = "late",
+        },
+        mirakana::FrameGraphTextureAliasingBarrier{
+            .before_resource = "missing",
+            .after_resource = "late",
+        },
+    };
+
+    const auto result = mirakana::record_frame_graph_texture_aliasing_barriers(*commands, barriers, bindings);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.aliasing_barriers_recorded == 0);
+    MK_REQUIRE(result.diagnostics.size() == 2);
+    MK_REQUIRE(result.diagnostics[0].resource == "late");
+    MK_REQUIRE(result.diagnostics[0].message ==
+               "frame graph texture aliasing barrier requires distinct texture handles");
+    MK_REQUIRE(result.diagnostics[1].resource == "missing");
+    MK_REQUIRE(result.diagnostics[1].message == "frame graph texture aliasing barrier references an unknown resource");
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 0);
+}
+
+MK_TEST("frame graph rhi texture aliasing barrier recording rejects closed command lists") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto first = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    const auto second = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->close();
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{
+        mirakana::FrameGraphTextureBinding{
+            .resource = "early",
+            .texture = first,
+            .current_state = mirakana::rhi::ResourceState::undefined,
+        },
+        mirakana::FrameGraphTextureBinding{
+            .resource = "late",
+            .texture = second,
+            .current_state = mirakana::rhi::ResourceState::undefined,
+        },
+    };
+    const std::vector<mirakana::FrameGraphTextureAliasingBarrier> barriers{
+        mirakana::FrameGraphTextureAliasingBarrier{
+            .before_resource = "early",
+            .after_resource = "late",
+        },
+    };
+
+    const auto result = mirakana::record_frame_graph_texture_aliasing_barriers(*commands, barriers, bindings);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.aliasing_barriers_recorded == 0);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].message ==
+               "frame graph texture aliasing barriers cannot record to a closed command list");
 }
 
 MK_TEST("frame graph v1 texture barrier recording returns stable diagnostics for rhi failures") {

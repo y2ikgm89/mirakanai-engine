@@ -1244,7 +1244,9 @@ foreach ($needle in @(
     "Frame Graph Viewport Surface Color State Executor v1",
     "RhiViewportSurface",
     "viewport_color",
-    "native aliasing barrier execution",
+    "Frame Graph Texture Aliasing Barrier Command v1",
+    "record_frame_graph_texture_aliasing_barriers",
+    "automatic executor insertion",
     "frame-graph-v1"
 )) {
     Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
