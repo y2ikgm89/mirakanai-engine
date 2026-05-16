@@ -45,6 +45,8 @@ Vulkan now exposes a `create_rhi_device` bridge for a valid `VulkanRuntimeDevice
 
 Frame Graph package executor evidence is package-visible but backend-neutral: selected desktop package smokes now expose `framegraph_passes_executed` and `framegraph_barrier_steps_executed`, with exact two-frame budgets of `4/9` for depth-aware postprocess and `6/15` for directional-shadow paths. `evaluate_sdl_desktop_presentation_quality_gate` mirrors that as `renderer_quality_expected_framegraph_barrier_steps` and `renderer_quality_framegraph_barrier_steps_ok` without exposing D3D12/Vulkan barrier structs, layouts, queues, or native handles.
 
+Frame Graph Transient Texture Lease Binding v1 binds the conservative alias plan to the existing backend-neutral transient lease surface: `acquire_frame_graph_transient_texture_lease_bindings` acquires one `IRhiDevice::acquire_transient_texture` lease per alias group, emits `FrameGraphTextureBinding` rows for every group resource with shared texture handles and `ResourceState::undefined`, accepts empty plans without allocation, rejects malformed alias groups before acquisition, and releases already acquired leases on later acquisition failure. This is not alias-aware executor state execution, native transient heap allocation, D3D12 placed-resource aliasing, Vulkan/Metal memory alias execution, native aliasing barriers, multi-queue graph scheduling, package streaming, or production render graph ownership.
+
 ## Backend Model
 
 The RHI vocabulary follows modern explicit graphics APIs:
@@ -75,7 +77,7 @@ This maps directly onto Direct3D 12 command queues/lists/fences plus root signat
 
 - `BackendKind`: `null`, `d3d12`, `vulkan`, `metal`
 - `RhiResourceLifetimeRegistry`, `RhiResourceRegistrationResult`, `RhiResourceHandle`, `RhiResourceKind`, `RhiResourceLifetimeRecord`, `RhiResourceLifetimeDiagnostic`, and `RhiResourceLifetimeEvent` from Renderer/RHI Resource Foundation v1
-- `FrameGraphV1Desc`, `FrameGraphResourceAccess`, `FrameGraphBarrier`, `compile_frame_graph_v1`, `FrameGraphTransientTextureDesc`, `FrameGraphTransientTextureAliasPlan`, `plan_frame_graph_transient_texture_aliases`, `FrameGraphRhiTextureExecutionDesc`, `FrameGraphRhiTextureExecutionResult`, `execute_frame_graph_rhi_texture_schedule`, `RhiUploadStagingPlan`, `RhiUploadAllocationHandle`, `RhiUploadCopyRecord`, `RhiUploadDiagnostic`, and `RhiUploadDiagnosticCode::stale_generation` from Frame Graph and Upload/Staging Foundation v1
+- `FrameGraphV1Desc`, `FrameGraphResourceAccess`, `FrameGraphBarrier`, `compile_frame_graph_v1`, `FrameGraphTransientTextureDesc`, `FrameGraphTransientTextureAliasPlan`, `FrameGraphTransientTextureLeaseBindingResult`, `plan_frame_graph_transient_texture_aliases`, `acquire_frame_graph_transient_texture_lease_bindings`, `release_frame_graph_transient_texture_lease_bindings`, `FrameGraphRhiTextureExecutionDesc`, `FrameGraphRhiTextureExecutionResult`, `execute_frame_graph_rhi_texture_schedule`, `RhiUploadStagingPlan`, `RhiUploadAllocationHandle`, `RhiUploadCopyRecord`, `RhiUploadDiagnostic`, and `RhiUploadDiagnosticCode::stale_generation` from Frame Graph and Upload/Staging Foundation v1
 - `BackendCapabilityProfile`, `BackendProbePlan`, `BackendProbeResult`, `RhiHostPlatform`, `ShaderArtifactFormat`, and backend capability/probe helpers from `mirakana/rhi/backend_capabilities.hpp`
 - `QueueKind`: `graphics`, `compute`, `copy`
 - `BufferDesc`, `TextureDesc`, `SurfaceHandle`, and `SwapchainDesc`

@@ -54,6 +54,21 @@ struct FrameGraphTransientTextureAliasPlan {
     }
 };
 
+struct FrameGraphTransientTextureLease {
+    std::size_t alias_group{0};
+    rhi::TransientTexture transient;
+};
+
+struct FrameGraphTransientTextureLeaseBindingResult {
+    std::vector<FrameGraphTransientTextureLease> leases;
+    std::vector<FrameGraphTextureBinding> texture_bindings;
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 struct FrameGraphTextureBarrierRecordResult {
     std::size_t barriers_recorded{0};
     std::vector<FrameGraphDiagnostic> diagnostics;
@@ -110,6 +125,13 @@ build_frame_graph_texture_pass_target_accesses(const FrameGraphV1Desc& desc);
 [[nodiscard]] FrameGraphTransientTextureAliasPlan
 plan_frame_graph_transient_texture_aliases(const FrameGraphV1Desc& desc,
                                            std::span<const FrameGraphTransientTextureDesc> texture_descs);
+
+[[nodiscard]] FrameGraphTransientTextureLeaseBindingResult
+acquire_frame_graph_transient_texture_lease_bindings(rhi::IRhiDevice& device,
+                                                     const FrameGraphTransientTextureAliasPlan& plan);
+
+void release_frame_graph_transient_texture_lease_bindings(rhi::IRhiDevice& device,
+                                                          std::span<const FrameGraphTransientTextureLease> leases);
 
 [[nodiscard]] FrameGraphTextureBarrierRecordResult
 record_frame_graph_texture_barriers(rhi::IRhiCommandList& commands, std::span<const FrameGraphExecutionStep> schedule,
