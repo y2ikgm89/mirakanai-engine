@@ -25,6 +25,8 @@ Full workflow lives in shared skills. Read these canonical files (ASCII paths):
 
 Validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`, `tools/cmake.ps1`, `tools/ctest.ps1`, and related wrappers in `AGENTS.md`.
 
+MSVC linkable targets use `/INCREMENTAL:NO` through `MK_apply_common_target_options`; see the canonical skills and `docs/building.md`.
+
 **MK_tools CMake:** add sources under `engine/tools/{shader,gltf,asset,scene}/` (`OBJECT` targets with cluster-minimal links; `MK_tools` umbrella keeps full `PUBLIC` deps); see canonical skill and `docs/specs/2026-05-11-directory-layout-target-v1.md`.
 
 **Coverage filters:** hosted `lcov` 2.x treats unmatched remove filters as errors. Keep optional `lcovRemovePatterns` guarded by `lcov --ignore-errors unused` and update `tools/check-coverage-thresholds.ps1` with coverage filter changes.

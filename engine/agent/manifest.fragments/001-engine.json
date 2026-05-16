@@ -15,6 +15,7 @@
       "requiredStandard": "C\u002B\u002B23",
       "msvcMode": "/std:c\u002B\u002B23preview",
       "msvcModeCacheVariable": "MK_MSVC_CXX23_STANDARD_OPTION",
+      "msvcIncrementalLinking": "Disabled for linkable targets through MK_apply_common_target_options (/INCREMENTAL:NO) so validation builds do not depend on .ilk state.",
       "msvcLatestMode": "forbidden-by-default",
       "cmakeMinimum": "3.30",
       "modules": "Use CMake FILE_SET CXX_MODULES for project modules.",

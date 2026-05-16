@@ -130,22 +130,57 @@ void RhiViewportSurface::resize(Extent2D extent) {
 
 void RhiViewportSurface::render_clear_frame() {
     auto commands = device_->begin_command_list(rhi::QueueKind::graphics);
-    if (color_state_ != rhi::ResourceState::render_target) {
-        color_state_ = execute_viewport_color_state_transition(*commands, color_texture_, color_state_,
-                                                               rhi::ResourceState::render_target);
-    }
-    commands->begin_render_pass(rhi::RenderPassDesc{
+    std::array<FrameGraphTextureBinding, 1> texture_bindings{FrameGraphTextureBinding{
+        .resource = "viewport_color",
+        .texture = color_texture_,
+        .current_state = color_state_,
+    }};
+    const std::array<FrameGraphExecutionStep, 1> schedule{
+        FrameGraphExecutionStep::make_pass_invoke("viewport.clear"),
+    };
+    const std::array<FrameGraphPassExecutionBinding, 1> pass_callbacks{FrameGraphPassExecutionBinding{
+        .pass_name = "viewport.clear",
+        .callback = [](std::string_view) { return FrameGraphExecutionCallbackResult{}; },
+    }};
+    const std::array<FrameGraphTexturePassTargetAccess, 1> pass_target_accesses{FrameGraphTexturePassTargetAccess{
+        .pass_name = "viewport.clear",
+        .resource = "viewport_color",
+        .access = FrameGraphAccess::color_attachment_write,
+    }};
+    const std::array<FrameGraphTexturePassTargetState, 1> pass_target_states{FrameGraphTexturePassTargetState{
+        .pass_name = "viewport.clear",
+        .resource = "viewport_color",
+        .state = rhi::ResourceState::render_target,
+    }};
+    const std::array<FrameGraphRhiRenderPassDesc, 1> render_passes{FrameGraphRhiRenderPassDesc{
+        .pass_name = "viewport.clear",
         .color =
-            rhi::RenderPassColorAttachment{
-                .texture = color_texture_,
+            FrameGraphRhiRenderPassColorAttachment{
+                .resource = "viewport_color",
+                .texture = {},
+                .swapchain_frame = {},
                 .load_action = rhi::LoadAction::clear,
                 .store_action = rhi::StoreAction::store,
-                .swapchain_frame = rhi::SwapchainFrameHandle{},
             },
+    }};
+    const std::array<FrameGraphTextureFinalState, 1> final_states{FrameGraphTextureFinalState{
+        .resource = "viewport_color",
+        .state = rhi::ResourceState::copy_source,
+    }};
+    const auto result = execute_frame_graph_rhi_texture_schedule(FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = std::span<const FrameGraphExecutionStep>{schedule},
+        .texture_bindings = std::span<FrameGraphTextureBinding>{texture_bindings},
+        .pass_callbacks = std::span<const FrameGraphPassExecutionBinding>{pass_callbacks},
+        .pass_target_accesses = std::span<const FrameGraphTexturePassTargetAccess>{pass_target_accesses},
+        .pass_target_states = std::span<const FrameGraphTexturePassTargetState>{pass_target_states},
+        .render_passes = std::span<const FrameGraphRhiRenderPassDesc>{render_passes},
+        .final_states = std::span<const FrameGraphTextureFinalState>{final_states},
     });
-    commands->end_render_pass();
-    color_state_ = execute_viewport_color_state_transition(*commands, color_texture_, color_state_,
-                                                           rhi::ResourceState::copy_source);
+    color_state_ = texture_bindings.front().current_state;
+    if (!result.succeeded()) {
+        throw std::runtime_error("rhi viewport surface frame graph color state execution failed");
+    }
     commands->close();
 
     const auto fence = device_->submit(*commands);
