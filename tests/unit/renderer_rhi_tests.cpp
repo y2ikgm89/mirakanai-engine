@@ -833,6 +833,273 @@ MK_TEST("frame graph v1 rejects unknown resource access kinds") {
     MK_REQUIRE(result.diagnostics[0].code == mirakana::FrameGraphDiagnosticCode::invalid_resource);
 }
 
+MK_TEST("frame graph rhi transient texture alias planner reuses exact non overlapping descriptors") {
+    const auto color_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    };
+
+    mirakana::FrameGraphV1Desc desc;
+    for (const std::string_view name : {"early", "late", "overlap-a", "overlap-b"}) {
+        desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+            .name = std::string(name), .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    }
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "write_early",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "early",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}}});
+    desc.passes.push_back(
+        mirakana::FrameGraphPassV1Desc{.name = "read_early",
+                                       .reads = {mirakana::FrameGraphResourceAccess{
+                                           .resource = "early", .access = mirakana::FrameGraphAccess::shader_read}},
+                                       .writes = {}});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "write_late",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "late",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}}});
+    desc.passes.push_back(
+        mirakana::FrameGraphPassV1Desc{.name = "read_late",
+                                       .reads = {mirakana::FrameGraphResourceAccess{
+                                           .resource = "late", .access = mirakana::FrameGraphAccess::shader_read}},
+                                       .writes = {}});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "write_overlap_a",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "overlap-a",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}}});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "write_overlap_b",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "overlap-b",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}}});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "read_overlap",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "overlap-a",
+                                                     .access = mirakana::FrameGraphAccess::shader_read},
+                  mirakana::FrameGraphResourceAccess{.resource = "overlap-b",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {}});
+
+    const auto plan = mirakana::plan_frame_graph_transient_texture_aliases(
+        desc, std::vector<mirakana::FrameGraphTransientTextureDesc>{
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "early", .desc = color_desc},
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "late", .desc = color_desc},
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "overlap-a", .desc = color_desc},
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "overlap-b", .desc = color_desc},
+              });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.lifetimes.size() == 4);
+    MK_REQUIRE(plan.alias_groups.size() == 2);
+    MK_REQUIRE(plan.lifetimes[0].resource == "early");
+    MK_REQUIRE(plan.lifetimes[1].resource == "late");
+    MK_REQUIRE(plan.lifetimes[2].resource == "overlap-a");
+    MK_REQUIRE(plan.lifetimes[3].resource == "overlap-b");
+    MK_REQUIRE(plan.lifetimes[0].alias_group == plan.lifetimes[1].alias_group);
+    MK_REQUIRE(plan.lifetimes[1].alias_group == plan.lifetimes[2].alias_group);
+    MK_REQUIRE(plan.lifetimes[2].alias_group != plan.lifetimes[3].alias_group);
+    MK_REQUIRE(plan.lifetimes[0].first_pass_index == 0);
+    MK_REQUIRE(plan.lifetimes[0].last_pass_index == 1);
+    MK_REQUIRE(plan.lifetimes[3].first_pass_index == 5);
+    MK_REQUIRE(plan.lifetimes[3].last_pass_index == 6);
+    MK_REQUIRE(plan.estimated_unaliased_bytes == 64ULL * 64ULL * 4ULL * 4ULL);
+    MK_REQUIRE(plan.estimated_aliased_bytes == 64ULL * 64ULL * 4ULL * 2ULL);
+}
+
+MK_TEST("frame graph rhi transient texture alias planner keeps incompatible descriptors separate") {
+    const auto color_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    };
+    const auto larger_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 128, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    };
+
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "small", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "large", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "write_small",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "small",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}}});
+    desc.passes.push_back(
+        mirakana::FrameGraphPassV1Desc{.name = "read_small",
+                                       .reads = {mirakana::FrameGraphResourceAccess{
+                                           .resource = "small", .access = mirakana::FrameGraphAccess::shader_read}},
+                                       .writes = {}});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "write_large",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "large",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}}});
+    desc.passes.push_back(
+        mirakana::FrameGraphPassV1Desc{.name = "read_large",
+                                       .reads = {mirakana::FrameGraphResourceAccess{
+                                           .resource = "large", .access = mirakana::FrameGraphAccess::shader_read}},
+                                       .writes = {}});
+
+    const auto plan = mirakana::plan_frame_graph_transient_texture_aliases(
+        desc, std::vector<mirakana::FrameGraphTransientTextureDesc>{
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "small", .desc = color_desc},
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "large", .desc = larger_desc},
+              });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.lifetimes.size() == 2);
+    MK_REQUIRE(plan.alias_groups.size() == 2);
+    MK_REQUIRE(plan.lifetimes[0].alias_group != plan.lifetimes[1].alias_group);
+    MK_REQUIRE(plan.estimated_unaliased_bytes == 64ULL * 64ULL * 4ULL + 128ULL * 64ULL * 4ULL);
+    MK_REQUIRE(plan.estimated_aliased_bytes == plan.estimated_unaliased_bytes);
+}
+
+MK_TEST("frame graph rhi transient texture alias planner rejects unsafe descriptors") {
+    const auto color_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::shader_resource,
+    };
+
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "backbuffer", .lifetime = mirakana::FrameGraphResourceLifetime::imported});
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "post-work", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "scene",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}}});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "postprocess",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "post-work",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}}});
+
+    const auto plan = mirakana::plan_frame_graph_transient_texture_aliases(
+        desc, std::vector<mirakana::FrameGraphTransientTextureDesc>{
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "scene-color", .desc = color_desc},
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "backbuffer", .desc = color_desc},
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "ghost", .desc = color_desc},
+              });
+
+    MK_REQUIRE(!plan.succeeded());
+    const auto has_diagnostic = [&plan](std::string_view resource, std::string_view message) {
+        return std::ranges::any_of(plan.diagnostics, [resource, message](const mirakana::FrameGraphDiagnostic& diag) {
+            return diag.code == mirakana::FrameGraphDiagnosticCode::invalid_resource && diag.resource == resource &&
+                   diag.message == message;
+        });
+    };
+    MK_REQUIRE(has_diagnostic("scene-color", "transient texture usage is missing render_target"));
+    MK_REQUIRE(has_diagnostic("post-work", "used transient texture resource has no descriptor"));
+    MK_REQUIRE(has_diagnostic("backbuffer", "transient texture descriptor targets an imported resource"));
+    MK_REQUIRE(has_diagnostic("ghost", "transient texture descriptor targets an undeclared resource"));
+}
+
+MK_TEST("frame graph rhi transient texture alias planner rejects backend incompatible depth descriptors") {
+    const auto sampled_depth_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 1},
+        .format = mirakana::rhi::Format::depth24_stencil8,
+        .usage = mirakana::rhi::TextureUsage::copy_destination | mirakana::rhi::TextureUsage::shader_resource,
+    };
+    const auto volume_depth_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 2},
+        .format = mirakana::rhi::Format::depth24_stencil8,
+        .usage = mirakana::rhi::TextureUsage::depth_stencil,
+    };
+    const auto copy_depth_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 1},
+        .format = mirakana::rhi::Format::depth24_stencil8,
+        .usage = mirakana::rhi::TextureUsage::depth_stencil | mirakana::rhi::TextureUsage::copy_source,
+    };
+
+    mirakana::FrameGraphV1Desc desc;
+    for (const std::string_view name : {"sampled-depth", "volume-depth", "copy-depth"}) {
+        desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+            .name = std::string(name), .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    }
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "upload_sampled_depth",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "sampled-depth",
+                                                      .access = mirakana::FrameGraphAccess::copy_destination}}});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "read_sampled_depth",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "sampled-depth",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {}});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "write_volume_depth",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "volume-depth",
+                                                      .access = mirakana::FrameGraphAccess::depth_attachment_write}}});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "write_copy_depth",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "copy-depth",
+                                                      .access = mirakana::FrameGraphAccess::depth_attachment_write}}});
+
+    const auto plan = mirakana::plan_frame_graph_transient_texture_aliases(
+        desc, std::vector<mirakana::FrameGraphTransientTextureDesc>{
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "sampled-depth", .desc = sampled_depth_desc},
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "volume-depth", .desc = volume_depth_desc},
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "copy-depth", .desc = copy_depth_desc},
+              });
+
+    MK_REQUIRE(!plan.succeeded());
+    const auto has_diagnostic = [&plan](std::string_view resource, std::string_view message) {
+        return std::ranges::any_of(plan.diagnostics, [resource, message](const mirakana::FrameGraphDiagnostic& diag) {
+            return diag.code == mirakana::FrameGraphDiagnosticCode::invalid_resource && diag.resource == resource &&
+                   diag.message == message;
+        });
+    };
+    MK_REQUIRE(
+        has_diagnostic("sampled-depth", "transient depth texture usage supports only depth_stencil or sampled depth"));
+    MK_REQUIRE(has_diagnostic("volume-depth", "transient depth texture extent must be 2D"));
+    MK_REQUIRE(
+        has_diagnostic("copy-depth", "transient depth texture usage supports only depth_stencil or sampled depth"));
+}
+
+MK_TEST("frame graph rhi transient texture alias planner rejects byte estimate overflow") {
+    const auto huge = std::numeric_limits<std::uint32_t>::max();
+    const auto huge_color_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = huge, .height = huge, .depth = huge},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    };
+
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "huge-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "write_huge_color",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "huge-color",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}}});
+
+    const auto plan = mirakana::plan_frame_graph_transient_texture_aliases(
+        desc, std::vector<mirakana::FrameGraphTransientTextureDesc>{
+                  mirakana::FrameGraphTransientTextureDesc{.resource = "huge-color", .desc = huge_color_desc},
+              });
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(std::ranges::any_of(plan.diagnostics, [](const mirakana::FrameGraphDiagnostic& diag) {
+        return diag.code == mirakana::FrameGraphDiagnosticCode::invalid_resource && diag.resource == "huge-color" &&
+               diag.message == "transient texture byte estimate overflowed";
+    }));
+}
+
 MK_TEST("frame graph v1 execution schedule interleaves sorted barriers before each pass") {
     mirakana::FrameGraphV1Desc desc;
     desc.resources.push_back(

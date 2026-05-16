@@ -576,6 +576,11 @@ foreach ($needle in @("FrameGraphRhiTextureExecutionDesc", "FrameGraphRhiTexture
         Write-Error "Frame Graph RHI texture schedule execution header missing contract text: $needle"
     }
 }
+foreach ($needle in @("FrameGraphTransientTextureDesc", "FrameGraphTransientTextureAliasPlan", "plan_frame_graph_transient_texture_aliases")) {
+    if (-not $frameGraphRhiHeaderText.Contains($needle)) {
+        Write-Error "Frame Graph transient texture alias planning header missing contract text: $needle"
+    }
+}
 foreach ($needle in @(
     "frame graph rhi texture schedule execution requires a command list",
     "frame graph rhi texture schedule execution cannot use a closed command list",
@@ -588,12 +593,35 @@ foreach ($needle in @(
     }
 }
 foreach ($needle in @(
+    "transient texture descriptor targets an imported resource",
+    "transient texture descriptor targets an undeclared resource",
+    "used transient texture resource has no descriptor",
+    "transient texture usage is missing render_target",
+    "transient depth texture usage supports only depth_stencil or sampled depth",
+    "transient texture byte estimate overflowed"
+)) {
+    if (-not $frameGraphRhiSourceText.Contains($needle)) {
+        Write-Error "Frame Graph transient texture alias planning source missing diagnostic text: $needle"
+    }
+}
+foreach ($needle in @(
     "frame graph rhi texture schedule execution interleaves barriers and pass callbacks",
     "frame graph rhi texture schedule execution validates barriers before pass callbacks",
     "frame graph rhi texture schedule execution validates pass callbacks before barriers"
 )) {
     if (-not $rendererTestsText.Contains($needle)) {
         Write-Error "MK_renderer_tests missing Frame Graph RHI texture schedule execution coverage: $needle"
+    }
+}
+foreach ($needle in @(
+    "frame graph rhi transient texture alias planner reuses exact non overlapping descriptors",
+    "frame graph rhi transient texture alias planner keeps incompatible descriptors separate",
+    "frame graph rhi transient texture alias planner rejects unsafe descriptors",
+    "frame graph rhi transient texture alias planner rejects backend incompatible depth descriptors",
+    "frame graph rhi transient texture alias planner rejects byte estimate overflow"
+)) {
+    if (-not $rendererTestsText.Contains($needle)) {
+        Write-Error "MK_renderer_tests missing Frame Graph transient texture alias planning coverage: $needle"
     }
 }
 foreach ($needle in @("**Status:** Completed.", "FrameGraphRhiTextureExecutionDesc", "FrameGraphRhiTextureExecutionResult", "execute_frame_graph_rhi_texture_schedule")) {

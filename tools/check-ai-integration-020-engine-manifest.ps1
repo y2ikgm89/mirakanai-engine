@@ -1596,16 +1596,14 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
-    "Renderer RHI Resource Foundation 1.0 Scope Closeout v1",
-    "removing renderer-rhi-resource-foundation from unsupportedProductionGaps",
-    "RhiResourceLifetimeRegistry",
-    "D3D12/Vulkan deferred native teardown",
-    "GPU debug markers/timestamp frequency",
-    "RhiDeviceMemoryDiagnostics",
-    "Metal IRhiDevice parity",
+    "Frame Graph Transient Texture Alias Planning v1",
+    "FrameGraphTransientTextureAliasPlan",
+    "plan_frame_graph_transient_texture_aliases",
+    "native heap allocation",
+    "native aliasing barrier execution",
     "frame-graph-v1"
 )) {
-    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer-rhi closeout"
+    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
 }
 foreach ($check in @(
     @{
@@ -1688,6 +1686,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_v1_schedule") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_texture_schedule") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTextureFinalState") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureAliasPlan") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_transient_texture_aliases") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("native aliasing barrier execution") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
@@ -1728,9 +1729,9 @@ $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Objec
 if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
 }
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "removing renderer-rhi-resource-foundation from unsupportedProductionGaps" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "D3D12/Vulkan deferred native teardown" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Transient Texture Alias Planning v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphTransientTextureAliasPlan" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "native aliasing barrier execution" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {

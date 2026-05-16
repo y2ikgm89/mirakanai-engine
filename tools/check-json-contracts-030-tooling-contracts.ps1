@@ -897,16 +897,14 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
-    "Renderer RHI Resource Foundation 1.0 Scope Closeout v1",
-    "removing renderer-rhi-resource-foundation from unsupportedProductionGaps",
-    "RhiResourceLifetimeRegistry",
-    "D3D12/Vulkan deferred native teardown",
-    "GPU debug markers/timestamp frequency",
-    "RhiDeviceMemoryDiagnostics",
+    "Frame Graph Transient Texture Alias Planning v1",
+    "FrameGraphTransientTextureAliasPlan",
+    "plan_frame_graph_transient_texture_aliases",
+    "native aliasing barrier execution",
     "frame-graph-v1"
 )) {
     if (-not $recommendedText.Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe renderer-rhi closeout and next gap: $needle"
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph transient alias planning and next gap: $needle"
     }
 }
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })

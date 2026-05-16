@@ -6,9 +6,12 @@
 #include "mirakana/renderer/frame_graph.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <functional>
+#include <limits>
 #include <map>
 #include <optional>
 #include <span>
@@ -31,6 +34,30 @@ struct PlannedTextureFinalState {
     std::size_t binding_index{0};
     rhi::ResourceState after{rhi::ResourceState::undefined};
     const FrameGraphTextureFinalState* final_state{nullptr};
+};
+
+struct TransientTextureUse {
+    std::string pass;
+    std::size_t pass_index{0};
+    FrameGraphAccess access{FrameGraphAccess::unknown};
+};
+
+struct TransientTextureResourceUse {
+    std::string resource;
+    std::vector<TransientTextureUse> uses;
+};
+
+struct TransientTextureAliasCandidate {
+    std::string resource;
+    rhi::TextureDesc desc;
+    std::size_t first_pass_index{0};
+    std::size_t last_pass_index{0};
+    std::uint64_t estimated_bytes{0};
+};
+
+struct TransientTextureAliasGroupAccumulator {
+    FrameGraphTransientTextureAliasGroup group;
+    std::size_t last_pass_index{0};
 };
 
 template <typename Result>
@@ -94,6 +121,150 @@ build_pass_callback_index(FrameGraphRhiTextureExecutionResult& result,
         }
     }
     return callbacks;
+}
+
+[[nodiscard]] bool texture_descs_match(const rhi::TextureDesc& left, const rhi::TextureDesc& right) noexcept {
+    return left.extent.width == right.extent.width && left.extent.height == right.extent.height &&
+           left.extent.depth == right.extent.depth && left.format == right.format && left.usage == right.usage;
+}
+
+[[nodiscard]] std::uint32_t texture_format_bytes_per_pixel(rhi::Format format) noexcept {
+    switch (format) {
+    case rhi::Format::rgba8_unorm:
+    case rhi::Format::bgra8_unorm:
+    case rhi::Format::depth24_stencil8:
+        return 4U;
+    case rhi::Format::unknown:
+        break;
+    }
+    return 0U;
+}
+
+[[nodiscard]] std::optional<std::uint64_t> checked_mul_u64(std::uint64_t left, std::uint64_t right) noexcept {
+    if (left != 0U && right > std::numeric_limits<std::uint64_t>::max() / left) {
+        return std::nullopt;
+    }
+    return left * right;
+}
+
+[[nodiscard]] std::optional<std::uint64_t> checked_add_u64(std::uint64_t left, std::uint64_t right) noexcept {
+    if (right > std::numeric_limits<std::uint64_t>::max() - left) {
+        return std::nullopt;
+    }
+    return left + right;
+}
+
+[[nodiscard]] std::optional<std::uint64_t> estimate_texture_size_bytes(const rhi::TextureDesc& desc) noexcept {
+    const auto bytes_per_pixel = texture_format_bytes_per_pixel(desc.format);
+    const auto row_bytes = checked_mul_u64(desc.extent.width, bytes_per_pixel);
+    if (!row_bytes.has_value()) {
+        return std::nullopt;
+    }
+    const auto slice_bytes = checked_mul_u64(*row_bytes, desc.extent.height);
+    if (!slice_bytes.has_value()) {
+        return std::nullopt;
+    }
+    return checked_mul_u64(*slice_bytes, desc.extent.depth);
+}
+
+template <typename Result>
+void validate_transient_texture_desc_shape(Result& result, const std::string& resource, const rhi::TextureDesc& desc) {
+    if (desc.extent.width == 0U || desc.extent.height == 0U || desc.extent.depth == 0U) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture extent must be non-zero");
+    }
+    if (desc.format == rhi::Format::unknown) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture format cannot be unknown");
+    }
+    if (desc.usage == rhi::TextureUsage::none) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture usage cannot be none");
+    }
+    if (rhi::has_flag(desc.usage, rhi::TextureUsage::present)) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture usage cannot include present");
+    }
+    constexpr auto sampled_depth_usage = rhi::TextureUsage::depth_stencil | rhi::TextureUsage::shader_resource;
+    if (desc.format == rhi::Format::depth24_stencil8) {
+        if (desc.extent.depth != 1U) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                              "transient depth texture extent must be 2D");
+        }
+        if (desc.usage != rhi::TextureUsage::depth_stencil && desc.usage != sampled_depth_usage) {
+            append_frame_graph_rhi_diagnostic(
+                result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                "transient depth texture usage supports only depth_stencil or sampled depth");
+        }
+        return;
+    }
+    if (rhi::has_flag(desc.usage, rhi::TextureUsage::depth_stencil)) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture depth_stencil usage requires depth24_stencil8 format");
+    }
+}
+
+template <typename Result>
+void validate_transient_texture_usage(Result& result, const std::string& resource,
+                                      const std::vector<TransientTextureUse>& uses, const rhi::TextureDesc& desc) {
+    bool needs_render_target = false;
+    bool needs_depth_stencil = false;
+    bool needs_shader_resource = false;
+    bool needs_copy_source = false;
+    bool needs_copy_destination = false;
+    for (const auto& use : uses) {
+        switch (use.access) {
+        case FrameGraphAccess::color_attachment_write:
+            needs_render_target = true;
+            break;
+        case FrameGraphAccess::depth_attachment_write:
+            needs_depth_stencil = true;
+            break;
+        case FrameGraphAccess::shader_read:
+            needs_shader_resource = true;
+            break;
+        case FrameGraphAccess::copy_source:
+            needs_copy_source = true;
+            break;
+        case FrameGraphAccess::copy_destination:
+            needs_copy_destination = true;
+            break;
+        case FrameGraphAccess::present:
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, use.pass, resource,
+                                              "transient texture access cannot be present");
+            break;
+        case FrameGraphAccess::unknown:
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, use.pass, resource,
+                                              "transient texture access cannot be unknown");
+            break;
+        }
+    }
+
+    if (needs_render_target && !rhi::has_flag(desc.usage, rhi::TextureUsage::render_target)) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture usage is missing render_target");
+    }
+    if (needs_depth_stencil && !rhi::has_flag(desc.usage, rhi::TextureUsage::depth_stencil)) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture usage is missing depth_stencil");
+    }
+    if (needs_shader_resource && !rhi::has_flag(desc.usage, rhi::TextureUsage::shader_resource)) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture usage is missing shader_resource");
+    }
+    if (needs_copy_source && !rhi::has_flag(desc.usage, rhi::TextureUsage::copy_source)) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture usage is missing copy_source");
+    }
+    if (needs_copy_destination && !rhi::has_flag(desc.usage, rhi::TextureUsage::copy_destination)) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                          "transient texture usage is missing copy_destination");
+    }
+}
+
+[[nodiscard]] bool alias_group_available_for(const TransientTextureAliasGroupAccumulator& group,
+                                             const TransientTextureAliasCandidate& candidate) noexcept {
+    return texture_descs_match(candidate.desc, group.group.desc) && group.last_pass_index < candidate.first_pass_index;
 }
 
 [[nodiscard]] std::vector<PlannedTextureFinalState>
@@ -302,6 +473,201 @@ std::optional<rhi::ResourceState> frame_graph_texture_state_for_access(FrameGrap
         break;
     }
     return std::nullopt;
+}
+
+FrameGraphTransientTextureAliasPlan
+plan_frame_graph_transient_texture_aliases(const FrameGraphV1Desc& desc,
+                                           std::span<const FrameGraphTransientTextureDesc> texture_descs) {
+    FrameGraphTransientTextureAliasPlan result;
+    const auto built = compile_frame_graph_v1(desc);
+    if (!built.succeeded()) {
+        result.diagnostics = built.diagnostics;
+        return result;
+    }
+
+    std::map<std::string, FrameGraphResourceLifetime> declared_resources;
+    for (const auto& resource : desc.resources) {
+        declared_resources.emplace(resource.name, resource.lifetime);
+    }
+
+    std::map<std::string, std::size_t> ordered_pass_indices;
+    for (std::size_t index = 0; index < built.ordered_passes.size(); ++index) {
+        ordered_pass_indices.emplace(built.ordered_passes[index], index);
+    }
+
+    std::map<std::string, TransientTextureResourceUse> used_transient_resources;
+    for (const auto& pass : desc.passes) {
+        const auto ordered_pass = ordered_pass_indices.find(pass.name);
+        if (ordered_pass == ordered_pass_indices.end()) {
+            continue;
+        }
+
+        const auto collect_use = [&](const FrameGraphResourceAccess& access) {
+            const auto declared = declared_resources.find(access.resource);
+            if (declared == declared_resources.end() || declared->second != FrameGraphResourceLifetime::transient) {
+                return;
+            }
+            auto& resource_use = used_transient_resources[access.resource];
+            if (resource_use.resource.empty()) {
+                resource_use.resource = access.resource;
+            }
+            resource_use.uses.push_back(TransientTextureUse{
+                .pass = pass.name,
+                .pass_index = ordered_pass->second,
+                .access = access.access,
+            });
+        };
+
+        for (const auto& read : pass.reads) {
+            collect_use(read);
+        }
+        for (const auto& write : pass.writes) {
+            collect_use(write);
+        }
+    }
+
+    std::map<std::string, rhi::TextureDesc> texture_desc_index;
+    for (const auto& texture : texture_descs) {
+        if (texture.resource.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, {},
+                                              "transient texture descriptor resource name is empty");
+            continue;
+        }
+
+        const auto declared = declared_resources.find(texture.resource);
+        if (declared == declared_resources.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, texture.resource,
+                                              "transient texture descriptor targets an undeclared resource");
+            continue;
+        }
+        if (declared->second == FrameGraphResourceLifetime::imported) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, texture.resource,
+                                              "transient texture descriptor targets an imported resource");
+            continue;
+        }
+        if (!used_transient_resources.contains(texture.resource)) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, texture.resource,
+                                              "transient texture descriptor targets an unused resource");
+            continue;
+        }
+
+        const auto [_, inserted] = texture_desc_index.emplace(texture.resource, texture.desc);
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, texture.resource,
+                                              "transient texture descriptor is declared more than once");
+            continue;
+        }
+        validate_transient_texture_desc_shape(result, texture.resource, texture.desc);
+    }
+
+    std::vector<TransientTextureAliasCandidate> candidates;
+    candidates.reserve(used_transient_resources.size());
+    for (const auto& [resource, use] : used_transient_resources) {
+        const auto texture = texture_desc_index.find(resource);
+        if (texture == texture_desc_index.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                              "used transient texture resource has no descriptor");
+            continue;
+        }
+
+        validate_transient_texture_usage(result, resource, use.uses, texture->second);
+
+        std::size_t first_pass_index = std::numeric_limits<std::size_t>::max();
+        std::size_t last_pass_index = 0;
+        for (const auto& texture_use : use.uses) {
+            first_pass_index = std::min(first_pass_index, texture_use.pass_index);
+            last_pass_index = std::max(last_pass_index, texture_use.pass_index);
+        }
+        const auto estimated_bytes = estimate_texture_size_bytes(texture->second);
+        if (!estimated_bytes.has_value()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                              "transient texture byte estimate overflowed");
+            continue;
+        }
+
+        candidates.push_back(TransientTextureAliasCandidate{
+            .resource = resource,
+            .desc = texture->second,
+            .first_pass_index = first_pass_index,
+            .last_pass_index = last_pass_index,
+            .estimated_bytes = *estimated_bytes,
+        });
+    }
+
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    std::ranges::sort(candidates,
+                      [](const TransientTextureAliasCandidate& left, const TransientTextureAliasCandidate& right) {
+                          if (left.first_pass_index != right.first_pass_index) {
+                              return left.first_pass_index < right.first_pass_index;
+                          }
+                          return left.resource < right.resource;
+                      });
+
+    std::vector<TransientTextureAliasGroupAccumulator> group_accumulators;
+    for (const auto& candidate : candidates) {
+        FrameGraphTransientTextureLifetime lifetime{
+            .resource = candidate.resource,
+            .desc = candidate.desc,
+            .first_pass_index = candidate.first_pass_index,
+            .last_pass_index = candidate.last_pass_index,
+            .alias_group = 0,
+            .estimated_bytes = candidate.estimated_bytes,
+        };
+        const auto estimated_unaliased_bytes =
+            checked_add_u64(result.estimated_unaliased_bytes, candidate.estimated_bytes);
+        if (!estimated_unaliased_bytes.has_value()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
+                                              candidate.resource, "transient texture byte estimate overflowed");
+            return result;
+        }
+        result.estimated_unaliased_bytes = *estimated_unaliased_bytes;
+
+        bool assigned = false;
+        for (auto& group_accumulator : group_accumulators) {
+            if (!alias_group_available_for(group_accumulator, candidate)) {
+                continue;
+            }
+            lifetime.alias_group = group_accumulator.group.index;
+            group_accumulator.group.resources.push_back(candidate.resource);
+            group_accumulator.last_pass_index = candidate.last_pass_index;
+            assigned = true;
+            break;
+        }
+
+        if (!assigned) {
+            lifetime.alias_group = group_accumulators.size();
+            group_accumulators.push_back(TransientTextureAliasGroupAccumulator{
+                .group =
+                    FrameGraphTransientTextureAliasGroup{
+                        .index = lifetime.alias_group,
+                        .desc = candidate.desc,
+                        .estimated_bytes = candidate.estimated_bytes,
+                        .resources = {candidate.resource},
+                    },
+                .last_pass_index = candidate.last_pass_index,
+            });
+        }
+
+        result.lifetimes.push_back(lifetime);
+    }
+
+    result.alias_groups.reserve(group_accumulators.size());
+    for (const auto& group_accumulator : group_accumulators) {
+        result.alias_groups.push_back(group_accumulator.group);
+        const auto estimated_aliased_bytes =
+            checked_add_u64(result.estimated_aliased_bytes, group_accumulator.group.estimated_bytes);
+        if (!estimated_aliased_bytes.has_value()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, {},
+                                              "transient texture byte estimate overflowed");
+            return result;
+        }
+        result.estimated_aliased_bytes = *estimated_aliased_bytes;
+    }
+
+    return result;
 }
 
 FrameGraphTextureBarrierRecordResult
