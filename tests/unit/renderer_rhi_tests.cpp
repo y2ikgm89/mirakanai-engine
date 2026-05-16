@@ -1660,6 +1660,7 @@ MK_TEST("frame graph rhi texture schedule execution interleaves barriers and pas
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
         .pass_target_states = {},
         .final_states = {},
     });
@@ -1737,6 +1738,7 @@ MK_TEST("frame graph rhi texture schedule execution rejects undeclared writer-up
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
         .pass_target_states = {},
         .final_states = {},
     });
@@ -1796,6 +1798,7 @@ MK_TEST("frame graph rhi texture schedule execution records pass target states b
             .state = mirakana::rhi::ResourceState::render_target,
         },
     };
+    const auto pass_target_accesses = mirakana::build_frame_graph_texture_pass_target_accesses(desc);
     std::vector<mirakana::rhi::ResourceState> observed_states;
     const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
         mirakana::FrameGraphPassExecutionBinding{
@@ -1821,6 +1824,7 @@ MK_TEST("frame graph rhi texture schedule execution records pass target states b
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = pass_target_accesses,
         .pass_target_states = pass_target_states,
         .final_states = {},
     });
@@ -1834,6 +1838,223 @@ MK_TEST("frame graph rhi texture schedule execution records pass target states b
     MK_REQUIRE(observed_states[1] == mirakana::rhi::ResourceState::shader_read);
     MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::shader_read);
     MK_REQUIRE(device.stats().resource_transitions == 2);
+}
+
+MK_TEST("frame graph rhi texture target access helper derives concrete writer rows") {
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "scene-depth", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "scene",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write},
+                   mirakana::FrameGraphResourceAccess{.resource = "scene-depth",
+                                                      .access = mirakana::FrameGraphAccess::depth_attachment_write}},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "postprocess",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {},
+    });
+
+    const auto target_accesses = mirakana::build_frame_graph_texture_pass_target_accesses(desc);
+
+    MK_REQUIRE(target_accesses.size() == 2);
+    MK_REQUIRE(target_accesses[0].pass_name == "scene");
+    MK_REQUIRE(target_accesses[0].resource == "scene-color");
+    MK_REQUIRE(target_accesses[0].access == mirakana::FrameGraphAccess::color_attachment_write);
+    MK_REQUIRE(target_accesses[1].pass_name == "scene");
+    MK_REQUIRE(target_accesses[1].resource == "scene-depth");
+    MK_REQUIRE(target_accesses[1].access == mirakana::FrameGraphAccess::depth_attachment_write);
+}
+
+MK_TEST("frame graph rhi texture schedule execution rejects pass target state without writer access") {
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("postprocess"),
+    };
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{mirakana::FrameGraphTextureBinding{
+        .resource = "scene-color",
+        .texture = texture,
+        .current_state = mirakana::rhi::ResourceState::shader_read,
+    }};
+    const std::vector<mirakana::FrameGraphTexturePassTargetAccess> pass_target_accesses;
+    const std::vector<mirakana::FrameGraphTexturePassTargetState> pass_target_states{
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "postprocess",
+            .resource = "scene-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+    };
+    std::size_t callbacks_invoked = 0;
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "postprocess",
+            .callback =
+                [&callbacks_invoked](std::string_view) {
+                    ++callbacks_invoked;
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = bindings,
+        .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = pass_target_accesses,
+        .pass_target_states = pass_target_states,
+        .final_states = {},
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.barriers_recorded == 0);
+    MK_REQUIRE(result.pass_target_state_barriers_recorded == 0);
+    MK_REQUIRE(result.pass_callbacks_invoked == 0);
+    MK_REQUIRE(callbacks_invoked == 0);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].pass == "postprocess");
+    MK_REQUIRE(result.diagnostics[0].resource == "scene-color");
+    MK_REQUIRE(result.diagnostics[0].message == "frame graph texture pass target state has no declared writer access");
+}
+
+MK_TEST("frame graph rhi texture schedule execution rejects pass target state access mismatch") {
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("scene"),
+    };
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{mirakana::FrameGraphTextureBinding{
+        .resource = "scene-color",
+        .texture = texture,
+        .current_state = mirakana::rhi::ResourceState::undefined,
+    }};
+    const std::vector<mirakana::FrameGraphTexturePassTargetAccess> pass_target_accesses{
+        mirakana::FrameGraphTexturePassTargetAccess{
+            .pass_name = "scene",
+            .resource = "scene-color",
+            .access = mirakana::FrameGraphAccess::color_attachment_write,
+        },
+    };
+    const std::vector<mirakana::FrameGraphTexturePassTargetState> pass_target_states{
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "scene",
+            .resource = "scene-color",
+            .state = mirakana::rhi::ResourceState::shader_read,
+        },
+    };
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "scene",
+            .callback = [](std::string_view) { return mirakana::FrameGraphExecutionCallbackResult{}; },
+        },
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = bindings,
+        .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = pass_target_accesses,
+        .pass_target_states = pass_target_states,
+        .final_states = {},
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.barriers_recorded == 0);
+    MK_REQUIRE(result.pass_target_state_barriers_recorded == 0);
+    MK_REQUIRE(result.pass_callbacks_invoked == 0);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].pass == "scene");
+    MK_REQUIRE(result.diagnostics[0].resource == "scene-color");
+    MK_REQUIRE(result.diagnostics[0].message == "frame graph texture pass target state disagrees with writer access");
+}
+
+MK_TEST("frame graph rhi texture schedule execution rejects duplicate pass target accesses before callbacks") {
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("scene"),
+    };
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{mirakana::FrameGraphTextureBinding{
+        .resource = "scene-color",
+        .texture = texture,
+        .current_state = mirakana::rhi::ResourceState::undefined,
+    }};
+    const std::vector<mirakana::FrameGraphTexturePassTargetAccess> pass_target_accesses{
+        mirakana::FrameGraphTexturePassTargetAccess{
+            .pass_name = "scene",
+            .resource = "scene-color",
+            .access = mirakana::FrameGraphAccess::color_attachment_write,
+        },
+        mirakana::FrameGraphTexturePassTargetAccess{
+            .pass_name = "scene",
+            .resource = "scene-color",
+            .access = mirakana::FrameGraphAccess::color_attachment_write,
+        },
+    };
+    const std::vector<mirakana::FrameGraphTexturePassTargetState> pass_target_states{
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "scene",
+            .resource = "scene-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+    };
+    std::size_t callbacks_invoked = 0;
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "scene",
+            .callback =
+                [&callbacks_invoked](std::string_view) {
+                    ++callbacks_invoked;
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = bindings,
+        .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = pass_target_accesses,
+        .pass_target_states = pass_target_states,
+        .final_states = {},
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.barriers_recorded == 0);
+    MK_REQUIRE(result.pass_target_state_barriers_recorded == 0);
+    MK_REQUIRE(result.pass_callbacks_invoked == 0);
+    MK_REQUIRE(callbacks_invoked == 0);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].pass == "scene");
+    MK_REQUIRE(result.diagnostics[0].resource == "scene-color");
+    MK_REQUIRE(result.diagnostics[0].message == "frame graph texture pass target access is declared more than once");
 }
 
 MK_TEST("frame graph rhi texture schedule execution validates duplicate pass target states before callbacks") {
@@ -1865,6 +2086,13 @@ MK_TEST("frame graph rhi texture schedule execution validates duplicate pass tar
             .state = mirakana::rhi::ResourceState::render_target,
         },
     };
+    const std::vector<mirakana::FrameGraphTexturePassTargetAccess> pass_target_accesses{
+        mirakana::FrameGraphTexturePassTargetAccess{
+            .pass_name = "scene",
+            .resource = "scene-color",
+            .access = mirakana::FrameGraphAccess::color_attachment_write,
+        },
+    };
     std::size_t callbacks_invoked = 0;
     const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
         mirakana::FrameGraphPassExecutionBinding{
@@ -1882,6 +2110,7 @@ MK_TEST("frame graph rhi texture schedule execution validates duplicate pass tar
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = pass_target_accesses,
         .pass_target_states = pass_target_states,
         .final_states = {},
     });
@@ -1938,6 +2167,7 @@ MK_TEST("frame graph rhi texture schedule execution rejects unscheduled pass tar
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
         .pass_target_states = pass_target_states,
         .final_states = {},
     });
@@ -1994,6 +2224,7 @@ MK_TEST("frame graph rhi texture schedule execution rejects undefined pass targe
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
         .pass_target_states = pass_target_states,
         .final_states = {},
     });
@@ -2076,6 +2307,7 @@ MK_TEST("frame graph rhi texture schedule execution records final texture states
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
         .pass_target_states = {},
         .final_states = final_states,
     });
@@ -2135,6 +2367,7 @@ MK_TEST("frame graph rhi texture schedule execution validates final states befor
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
         .pass_target_states = {},
         .final_states = final_states,
     });
@@ -2209,6 +2442,7 @@ MK_TEST("frame graph rhi texture schedule execution reports final-state transiti
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
         .pass_target_states = {},
         .final_states = final_states,
     });
@@ -2264,6 +2498,7 @@ MK_TEST("frame graph rhi texture schedule execution validates barriers before pa
         .schedule = schedule,
         .texture_bindings = no_bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
         .pass_target_states = {},
         .final_states = {},
     });
@@ -2321,6 +2556,7 @@ MK_TEST("frame graph rhi texture schedule execution validates pass callbacks bef
         .schedule = schedule,
         .texture_bindings = bindings,
         .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
         .pass_target_states = {},
         .final_states = {},
     });

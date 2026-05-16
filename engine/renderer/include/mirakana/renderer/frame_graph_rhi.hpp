@@ -74,11 +74,18 @@ struct FrameGraphTexturePassTargetState {
     rhi::ResourceState state{rhi::ResourceState::undefined};
 };
 
+struct FrameGraphTexturePassTargetAccess {
+    std::string pass_name;
+    std::string resource;
+    FrameGraphAccess access{FrameGraphAccess::unknown};
+};
+
 struct FrameGraphRhiTextureExecutionDesc {
     rhi::IRhiCommandList* commands{nullptr};
     std::span<const FrameGraphExecutionStep> schedule;
     std::span<FrameGraphTextureBinding> texture_bindings;
     std::span<const FrameGraphPassExecutionBinding> pass_callbacks;
+    std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses;
     std::span<const FrameGraphTexturePassTargetState> pass_target_states;
     std::span<const FrameGraphTextureFinalState> final_states;
 };
@@ -96,6 +103,9 @@ struct FrameGraphRhiTextureExecutionResult {
 };
 
 [[nodiscard]] std::optional<rhi::ResourceState> frame_graph_texture_state_for_access(FrameGraphAccess access) noexcept;
+
+[[nodiscard]] std::vector<FrameGraphTexturePassTargetAccess>
+build_frame_graph_texture_pass_target_accesses(const FrameGraphV1Desc& desc);
 
 [[nodiscard]] FrameGraphTransientTextureAliasPlan
 plan_frame_graph_transient_texture_aliases(const FrameGraphV1Desc& desc,

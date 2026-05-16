@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/renderer/frame_graph.hpp"
+#include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
@@ -132,6 +133,7 @@ class RhiPostprocessFrameRenderer final : public IRenderer {
     bool morph_scene_pipeline_bound_{false};
     FrameGraphV1BuildResult postprocess_frame_graph_plan_{};
     std::vector<FrameGraphExecutionStep> postprocess_frame_graph_execution_;
+    std::vector<FrameGraphTexturePassTargetAccess> postprocess_frame_graph_target_accesses_;
     std::uint32_t frame_graph_pass_count_{0};
 };
 

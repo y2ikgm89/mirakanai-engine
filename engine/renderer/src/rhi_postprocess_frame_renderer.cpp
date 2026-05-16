@@ -272,13 +272,16 @@ RhiPostprocessFrameRenderer::RhiPostprocessFrameRenderer(const RhiPostprocessFra
         throw std::invalid_argument("rhi postprocess renderer textured native ui overlay requires native ui overlay");
     }
 
-    postprocess_frame_graph_plan_ =
-        compile_frame_graph_v1(make_postprocess_frame_graph_v1_desc(depth_input_enabled_, postprocess_stage_count_));
+    const auto postprocess_frame_graph_desc =
+        make_postprocess_frame_graph_v1_desc(depth_input_enabled_, postprocess_stage_count_);
+    postprocess_frame_graph_plan_ = compile_frame_graph_v1(postprocess_frame_graph_desc);
     const auto expected_pass_count = 1U + postprocess_stage_count_;
     if (!postprocess_frame_graph_plan_.succeeded() || postprocess_frame_graph_plan_.pass_count != expected_pass_count) {
         throw std::logic_error("rhi postprocess renderer frame graph v1 is invalid");
     }
     postprocess_frame_graph_execution_ = schedule_frame_graph_v1_execution(postprocess_frame_graph_plan_);
+    postprocess_frame_graph_target_accesses_ =
+        build_frame_graph_texture_pass_target_accesses(postprocess_frame_graph_desc);
     frame_graph_pass_count_ = static_cast<std::uint32_t>(postprocess_frame_graph_plan_.ordered_passes.size());
 
     recreate_scene_color_texture();
@@ -735,6 +738,7 @@ void RhiPostprocessFrameRenderer::end_frame() {
             .schedule = postprocess_frame_graph_execution_,
             .texture_bindings = texture_bindings,
             .pass_callbacks = pass_callbacks,
+            .pass_target_accesses = postprocess_frame_graph_target_accesses_,
             .pass_target_states = pass_target_states,
             .final_states = final_states,
         });
