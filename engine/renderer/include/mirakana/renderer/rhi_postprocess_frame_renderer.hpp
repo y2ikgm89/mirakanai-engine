@@ -89,7 +89,7 @@ class RhiPostprocessFrameRenderer final : public IRenderer {
     void update_postprocess_descriptors();
     void validate_scene_mesh_command(const MeshCommand& command) const;
     void record_scene_mesh_command(const MeshCommand& command);
-    void record_scene_pass();
+    void record_scene_pass_body();
 
     rhi::IRhiDevice* device_{nullptr};
     Extent2D extent_;

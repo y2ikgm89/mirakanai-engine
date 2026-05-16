@@ -600,36 +600,13 @@ void RhiPostprocessFrameRenderer::record_scene_mesh_command(const MeshCommand& c
     }
 }
 
-void RhiPostprocessFrameRenderer::record_scene_pass() {
-    rhi::RenderPassDesc scene_pass{
-        .color =
-            rhi::RenderPassColorAttachment{
-                .texture = scene_color_texture_,
-                .load_action = rhi::LoadAction::clear,
-                .store_action = rhi::StoreAction::store,
-                .swapchain_frame = rhi::SwapchainFrameHandle{},
-                .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
-                                                    .green = clear_color_.g,
-                                                    .blue = clear_color_.b,
-                                                    .alpha = clear_color_.a},
-            },
-    };
-    if (depth_input_enabled_) {
-        scene_pass.depth = rhi::RenderPassDepthAttachment{
-            .texture = scene_depth_texture_,
-            .load_action = rhi::LoadAction::clear,
-            .store_action = rhi::StoreAction::store,
-            .clear_depth = rhi::ClearDepthValue{1.0F},
-        };
-    }
-    commands_->begin_render_pass(scene_pass);
+void RhiPostprocessFrameRenderer::record_scene_pass_body() {
     commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
     skinned_scene_pipeline_bound_ = false;
     morph_scene_pipeline_bound_ = false;
     for (const auto& mesh : pending_meshes_) {
         record_scene_mesh_command(mesh);
     }
-    commands_->end_render_pass();
 }
 
 void RhiPostprocessFrameRenderer::end_frame() {
@@ -669,6 +646,28 @@ void RhiPostprocessFrameRenderer::end_frame() {
                 .state = rhi::ResourceState::depth_write,
             });
         }
+        std::vector<FrameGraphRhiRenderPassDesc> render_passes;
+        render_passes.push_back(FrameGraphRhiRenderPassDesc{
+            .pass_name = "scene_color",
+            .color =
+                FrameGraphRhiRenderPassColorAttachment{
+                    .resource = "scene_color",
+                    .load_action = rhi::LoadAction::clear,
+                    .store_action = rhi::StoreAction::store,
+                    .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
+                                                        .green = clear_color_.g,
+                                                        .blue = clear_color_.b,
+                                                        .alpha = clear_color_.a},
+                },
+        });
+        if (depth_input_enabled_) {
+            render_passes.back().depth = FrameGraphRhiRenderPassDepthAttachment{
+                .resource = "scene_depth",
+                .load_action = rhi::LoadAction::clear,
+                .store_action = rhi::StoreAction::store,
+                .clear_depth = rhi::ClearDepthValue{1.0F},
+            };
+        }
         const auto overlay_draw = native_ui_overlay_ready()
                                       ? native_ui_overlay_->prepare(pending_overlay_sprites_, *commands_)
                                       : RhiNativeUiOverlayPreparedDraw{};
@@ -679,26 +678,25 @@ void RhiPostprocessFrameRenderer::end_frame() {
             .pass_name = "scene_color",
             .callback =
                 [this](std::string_view) {
-                    record_scene_pass();
+                    record_scene_pass_body();
                     return FrameGraphExecutionCallbackResult{};
                 },
         });
         if (postprocess_stage_count_ == 1) {
+            render_passes.push_back(FrameGraphRhiRenderPassDesc{
+                .pass_name = "postprocess",
+                .color =
+                    FrameGraphRhiRenderPassColorAttachment{
+                        .swapchain_frame = swapchain_frame_,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                    },
+            });
             pass_callbacks.push_back(FrameGraphPassExecutionBinding{
                 .pass_name = "postprocess",
                 .callback =
                     [&overlay_draw, this](std::string_view) {
-                        commands_->begin_render_pass(rhi::RenderPassDesc{
-                            .color =
-                                rhi::RenderPassColorAttachment{
-                                    .texture = rhi::TextureHandle{},
-                                    .load_action = rhi::LoadAction::clear,
-                                    .store_action = rhi::StoreAction::store,
-                                    .swapchain_frame = swapchain_frame_,
-                                    .clear_color =
-                                        rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
-                                },
-                        });
                         commands_->bind_graphics_pipeline(postprocess_first_pipeline_);
                         commands_->bind_descriptor_set(postprocess_first_pipeline_layout_, 0,
                                                        postprocess_first_descriptor_set_);
@@ -706,7 +704,6 @@ void RhiPostprocessFrameRenderer::end_frame() {
                         if (native_ui_overlay_ready()) {
                             native_ui_overlay_->record_draw(overlay_draw, *commands_);
                         }
-                        commands_->end_render_pass();
                         return FrameGraphExecutionCallbackResult{};
                     },
             });
@@ -721,44 +718,41 @@ void RhiPostprocessFrameRenderer::end_frame() {
                 .resource = "post_work",
                 .state = rhi::ResourceState::render_target,
             });
+            render_passes.push_back(FrameGraphRhiRenderPassDesc{
+                .pass_name = "postprocess_chain_0",
+                .color =
+                    FrameGraphRhiRenderPassColorAttachment{
+                        .resource = "post_work",
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                    },
+            });
             pass_callbacks.push_back(FrameGraphPassExecutionBinding{
                 .pass_name = "postprocess_chain_0",
                 .callback =
                     [this](std::string_view) {
-                        commands_->begin_render_pass(rhi::RenderPassDesc{
-                            .color =
-                                rhi::RenderPassColorAttachment{
-                                    .texture = post_chain_work_texture_,
-                                    .load_action = rhi::LoadAction::clear,
-                                    .store_action = rhi::StoreAction::store,
-                                    .swapchain_frame = rhi::SwapchainFrameHandle{},
-                                    .clear_color =
-                                        rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
-                                },
-                        });
                         commands_->bind_graphics_pipeline(postprocess_first_pipeline_);
                         commands_->bind_descriptor_set(postprocess_first_pipeline_layout_, 0,
                                                        postprocess_first_descriptor_set_);
                         commands_->draw(3, 1);
-                        commands_->end_render_pass();
                         return FrameGraphExecutionCallbackResult{};
+                    },
+            });
+            render_passes.push_back(FrameGraphRhiRenderPassDesc{
+                .pass_name = "postprocess_chain_1",
+                .color =
+                    FrameGraphRhiRenderPassColorAttachment{
+                        .swapchain_frame = swapchain_frame_,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
                     },
             });
             pass_callbacks.push_back(FrameGraphPassExecutionBinding{
                 .pass_name = "postprocess_chain_1",
                 .callback =
                     [&overlay_draw, this](std::string_view) {
-                        commands_->begin_render_pass(rhi::RenderPassDesc{
-                            .color =
-                                rhi::RenderPassColorAttachment{
-                                    .texture = rhi::TextureHandle{},
-                                    .load_action = rhi::LoadAction::clear,
-                                    .store_action = rhi::StoreAction::store,
-                                    .swapchain_frame = swapchain_frame_,
-                                    .clear_color =
-                                        rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
-                                },
-                        });
                         commands_->bind_graphics_pipeline(postprocess_chain_pipeline_);
                         commands_->bind_descriptor_set(postprocess_chain_pipeline_layout_, 0,
                                                        postprocess_chain_descriptor_set_);
@@ -766,7 +760,6 @@ void RhiPostprocessFrameRenderer::end_frame() {
                         if (native_ui_overlay_ready()) {
                             native_ui_overlay_->record_draw(overlay_draw, *commands_);
                         }
-                        commands_->end_render_pass();
                         return FrameGraphExecutionCallbackResult{};
                     },
             });
@@ -779,6 +772,7 @@ void RhiPostprocessFrameRenderer::end_frame() {
             .pass_callbacks = pass_callbacks,
             .pass_target_accesses = postprocess_frame_graph_target_accesses_,
             .pass_target_states = pass_target_states,
+            .render_passes = render_passes,
             .final_states = final_states,
         });
         if (!frame_graph_execution.succeeded()) {

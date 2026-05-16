@@ -2318,6 +2318,143 @@ MK_TEST("frame graph rhi texture schedule execution records pass target states b
     MK_REQUIRE(device.stats().resource_transitions == 2);
 }
 
+MK_TEST("frame graph rhi texture schedule execution wraps render pass envelopes around callbacks") {
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "scene",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}},
+    });
+
+    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    MK_REQUIRE(plan.succeeded());
+    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    const auto pipeline = create_renderer_test_pipeline(device, mirakana::rhi::Format::rgba8_unorm);
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{mirakana::FrameGraphTextureBinding{
+        .resource = "scene-color",
+        .texture = texture,
+        .current_state = mirakana::rhi::ResourceState::undefined,
+    }};
+    const auto pass_target_accesses = mirakana::build_frame_graph_texture_pass_target_accesses(desc);
+    const std::vector<mirakana::FrameGraphTexturePassTargetState> pass_target_states{
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "scene",
+            .resource = "scene-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+    };
+    const std::vector<mirakana::FrameGraphRhiRenderPassDesc> render_passes{
+        mirakana::FrameGraphRhiRenderPassDesc{
+            .pass_name = "scene",
+            .color =
+                mirakana::FrameGraphRhiRenderPassColorAttachment{
+                    .resource = "scene-color",
+                    .load_action = mirakana::rhi::LoadAction::clear,
+                    .store_action = mirakana::rhi::StoreAction::store,
+                    .clear_color =
+                        mirakana::rhi::ClearColorValue{.red = 0.25F, .green = 0.5F, .blue = 0.75F, .alpha = 1.0F},
+                },
+        },
+    };
+    std::uint32_t callbacks_invoked = 0;
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "scene",
+            .callback =
+                [&callbacks_invoked, &commands, pipeline](std::string_view) {
+                    ++callbacks_invoked;
+                    commands->bind_graphics_pipeline(pipeline);
+                    commands->draw(3, 1);
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = bindings,
+        .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = pass_target_accesses,
+        .pass_target_states = pass_target_states,
+        .render_passes = render_passes,
+        .final_states = {},
+    });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.render_passes_recorded == 1);
+    MK_REQUIRE(result.pass_target_state_barriers_recorded == 1);
+    MK_REQUIRE(result.pass_callbacks_invoked == 1);
+    MK_REQUIRE(callbacks_invoked == 1);
+    MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::render_target);
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.render_passes_begun == 1);
+    MK_REQUIRE(stats.graphics_pipelines_bound == 1);
+    MK_REQUIRE(stats.draw_calls == 1);
+    MK_REQUIRE(stats.resource_transitions == 1);
+}
+
+MK_TEST("frame graph rhi texture schedule execution rejects invalid render pass envelopes before callbacks") {
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("scene"),
+    };
+
+    mirakana::rhi::NullRhiDevice device;
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+
+    std::uint32_t callbacks_invoked = 0;
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "scene",
+            .callback =
+                [&callbacks_invoked](std::string_view) {
+                    ++callbacks_invoked;
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+    const std::vector<mirakana::FrameGraphRhiRenderPassDesc> render_passes{
+        mirakana::FrameGraphRhiRenderPassDesc{
+            .pass_name = "scene",
+            .color = mirakana::FrameGraphRhiRenderPassColorAttachment{.resource = "missing-color"},
+        },
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = {},
+        .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
+        .pass_target_states = {},
+        .render_passes = render_passes,
+        .final_states = {},
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.render_passes_recorded == 0);
+    MK_REQUIRE(result.pass_callbacks_invoked == 0);
+    MK_REQUIRE(callbacks_invoked == 0);
+    MK_REQUIRE(device.stats().render_passes_begun == 0);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].pass == "scene");
+    MK_REQUIRE(result.diagnostics[0].resource == "missing-color");
+    MK_REQUIRE(result.diagnostics[0].message ==
+               "frame graph render pass color attachment references an unknown resource");
+}
+
 MK_TEST("frame graph rhi texture schedule execution hands off shared texture handle state between aliases") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_pass_invoke("early.write"),
