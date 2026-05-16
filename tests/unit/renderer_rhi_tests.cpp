@@ -2432,6 +2432,262 @@ MK_TEST("frame graph rhi texture schedule execution hands off shared texture han
     MK_REQUIRE(device.stats().resource_transitions == 5);
 }
 
+MK_TEST("frame graph rhi texture schedule execution inserts aliasing barriers between alias group lifetimes") {
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "early-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "late-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "early.write",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "early-color",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "early.read",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "early-color",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "late.write",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "late-color",
+                                                      .access = mirakana::FrameGraphAccess::color_attachment_write}},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "late.read",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "late-color",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {},
+    });
+
+    const auto built = mirakana::compile_frame_graph_v1(desc);
+    MK_REQUIRE(built.succeeded());
+    const auto schedule = mirakana::schedule_frame_graph_v1_execution(built);
+    const auto texture_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    };
+    const std::vector<mirakana::FrameGraphTransientTextureDesc> transient_textures{
+        mirakana::FrameGraphTransientTextureDesc{.resource = "early-color", .desc = texture_desc},
+        mirakana::FrameGraphTransientTextureDesc{.resource = "late-color", .desc = texture_desc},
+    };
+    const auto alias_plan = mirakana::plan_frame_graph_transient_texture_aliases(desc, transient_textures);
+    MK_REQUIRE(alias_plan.succeeded());
+    MK_REQUIRE(alias_plan.alias_groups.size() == 1);
+    MK_REQUIRE(alias_plan.alias_groups[0].resources.size() == 2);
+
+    mirakana::rhi::NullRhiDevice device;
+    auto leases = mirakana::acquire_frame_graph_transient_texture_lease_bindings(device, alias_plan);
+    MK_REQUIRE(leases.succeeded());
+    MK_REQUIRE(leases.texture_bindings.size() == 2);
+    MK_REQUIRE(leases.texture_bindings[0].texture.value != leases.texture_bindings[1].texture.value);
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+
+    const auto pass_target_accesses = mirakana::build_frame_graph_texture_pass_target_accesses(desc);
+    const std::vector<mirakana::FrameGraphTexturePassTargetState> pass_target_states{
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "early.write",
+            .resource = "early-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "late.write",
+            .resource = "late-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+    };
+    std::vector<std::pair<mirakana::rhi::ResourceState, mirakana::rhi::ResourceState>> observed_states;
+    const auto record_states = [&leases, &observed_states](std::string_view) {
+        observed_states.emplace_back(leases.texture_bindings[0].current_state,
+                                     leases.texture_bindings[1].current_state);
+        return mirakana::FrameGraphExecutionCallbackResult{};
+    };
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{.pass_name = "early.write", .callback = record_states},
+        mirakana::FrameGraphPassExecutionBinding{.pass_name = "early.read", .callback = record_states},
+        mirakana::FrameGraphPassExecutionBinding{.pass_name = "late.write", .callback = record_states},
+        mirakana::FrameGraphPassExecutionBinding{.pass_name = "late.read", .callback = record_states},
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = leases.texture_bindings,
+        .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = pass_target_accesses,
+        .pass_target_states = pass_target_states,
+        .final_states = {},
+        .transient_texture_lifetimes = alias_plan.lifetimes,
+    });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.aliasing_barriers_recorded == 1);
+    MK_REQUIRE(result.pass_target_state_barriers_recorded == 2);
+    MK_REQUIRE(result.barriers_recorded == 4);
+    MK_REQUIRE(result.pass_callbacks_invoked == 4);
+    MK_REQUIRE(observed_states.size() == 4);
+    MK_REQUIRE(observed_states[0].first == mirakana::rhi::ResourceState::render_target);
+    MK_REQUIRE(observed_states[0].second == mirakana::rhi::ResourceState::undefined);
+    MK_REQUIRE(observed_states[1].first == mirakana::rhi::ResourceState::shader_read);
+    MK_REQUIRE(observed_states[1].second == mirakana::rhi::ResourceState::undefined);
+    MK_REQUIRE(observed_states[2].first == mirakana::rhi::ResourceState::shader_read);
+    MK_REQUIRE(observed_states[2].second == mirakana::rhi::ResourceState::render_target);
+    MK_REQUIRE(observed_states[3].first == mirakana::rhi::ResourceState::shader_read);
+    MK_REQUIRE(observed_states[3].second == mirakana::rhi::ResourceState::shader_read);
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 1);
+    MK_REQUIRE(device.stats().resource_transitions == 4);
+
+    mirakana::release_frame_graph_transient_texture_lease_bindings(device, leases.leases);
+}
+
+MK_TEST("frame graph rhi texture schedule execution rejects malformed aliasing lifetimes before callbacks") {
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("draw"),
+    };
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{mirakana::FrameGraphTextureBinding{
+        .resource = "color",
+        .texture = texture,
+        .current_state = mirakana::rhi::ResourceState::undefined,
+    }};
+    const std::vector<mirakana::FrameGraphTransientTextureLifetime> lifetimes{
+        mirakana::FrameGraphTransientTextureLifetime{
+            .resource = "color",
+            .desc =
+                mirakana::rhi::TextureDesc{
+                    .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+                    .format = mirakana::rhi::Format::rgba8_unorm,
+                    .usage = mirakana::rhi::TextureUsage::render_target,
+                },
+            .first_pass_index = 0,
+            .last_pass_index = 99,
+            .alias_group = 0,
+            .estimated_bytes = 256,
+        },
+    };
+    std::size_t callbacks_invoked = 0;
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "draw",
+            .callback =
+                [&callbacks_invoked](std::string_view) {
+                    ++callbacks_invoked;
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = bindings,
+        .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
+        .pass_target_states = {},
+        .final_states = {},
+        .transient_texture_lifetimes = lifetimes,
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.aliasing_barriers_recorded == 0);
+    MK_REQUIRE(result.pass_callbacks_invoked == 0);
+    MK_REQUIRE(callbacks_invoked == 0);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].resource == "color");
+    MK_REQUIRE(result.diagnostics[0].message == "frame graph transient texture lifetime last pass is unscheduled");
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 0);
+    MK_REQUIRE(device.stats().resource_transitions == 0);
+}
+
+MK_TEST("frame graph rhi texture schedule execution rejects same handle automatic aliases before callbacks") {
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("early"),
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("late"),
+    };
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    };
+    const auto texture = device.create_texture(texture_desc);
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{
+        mirakana::FrameGraphTextureBinding{
+            .resource = "early-color",
+            .texture = texture,
+            .current_state = mirakana::rhi::ResourceState::undefined,
+        },
+        mirakana::FrameGraphTextureBinding{
+            .resource = "late-color",
+            .texture = texture,
+            .current_state = mirakana::rhi::ResourceState::undefined,
+        },
+    };
+    const std::vector<mirakana::FrameGraphTransientTextureLifetime> lifetimes{
+        mirakana::FrameGraphTransientTextureLifetime{
+            .resource = "early-color",
+            .desc = texture_desc,
+            .first_pass_index = 0,
+            .last_pass_index = 0,
+            .alias_group = 0,
+            .estimated_bytes = 256,
+        },
+        mirakana::FrameGraphTransientTextureLifetime{
+            .resource = "late-color",
+            .desc = texture_desc,
+            .first_pass_index = 1,
+            .last_pass_index = 1,
+            .alias_group = 0,
+            .estimated_bytes = 256,
+        },
+    };
+    std::size_t callbacks_invoked = 0;
+    const auto count_callback = [&callbacks_invoked](std::string_view) {
+        ++callbacks_invoked;
+        return mirakana::FrameGraphExecutionCallbackResult{};
+    };
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> pass_callbacks{
+        mirakana::FrameGraphPassExecutionBinding{.pass_name = "early", .callback = count_callback},
+        mirakana::FrameGraphPassExecutionBinding{.pass_name = "late", .callback = count_callback},
+    };
+
+    const auto result = mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+        .commands = commands.get(),
+        .schedule = schedule,
+        .texture_bindings = bindings,
+        .pass_callbacks = pass_callbacks,
+        .pass_target_accesses = {},
+        .pass_target_states = {},
+        .final_states = {},
+        .transient_texture_lifetimes = lifetimes,
+    });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.aliasing_barriers_recorded == 0);
+    MK_REQUIRE(result.pass_callbacks_invoked == 0);
+    MK_REQUIRE(callbacks_invoked == 0);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].pass == "late");
+    MK_REQUIRE(result.diagnostics[0].resource == "late-color");
+    MK_REQUIRE(result.diagnostics[0].message ==
+               "frame graph automatic texture aliasing barrier requires distinct texture handles");
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 0);
+    MK_REQUIRE(device.stats().resource_transitions == 0);
+}
+
 MK_TEST("frame graph rhi texture target access helper derives concrete writer rows") {
     mirakana::FrameGraphV1Desc desc;
     desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
