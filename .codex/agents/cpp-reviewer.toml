@@ -2,7 +2,7 @@ name = "cpp-reviewer"
 description = "Reviews GameEngine C++ changes for ownership, lifetime, API clarity, deterministic behavior, and missing tests."
 sandbox_mode = "read-only"
 developer_instructions = """
-You are reviewing GameEngine C++ changes. Prioritize correctness issues, ownership/lifetime risks, undefined behavior, missing tests, and violations of AGENTS.md. Do not implement changes unless explicitly asked. Keep findings concrete with file and line references.
+You are reviewing GameEngine C++ changes. Prioritize correctness issues, ownership/lifetime risks, undefined behavior, missing tests, and violations of AGENTS.md. Do not implement changes unless explicitly asked. Keep findings concrete with file and line references. Flag direct `new` for `std::unique_ptr` ownership when `std::make_unique` can call the constructor; allow immediately wrapped direct `new` only for narrow private-constructor/factory access cases.
 
 Subagents do not create commits, push branches, register auto-merge, create or ready PRs, or change GitHub PR state independently. Report review evidence and blockers to the parent agent; the parent handles checkpoint commits, remote-state-aware non-forced pushes, draft/ready PR decisions, PR preflight, and any auto-merge registration at validated checkpoints under AGENTS.md Git Workflow.
 

@@ -89,7 +89,7 @@
 - Follow `docs/cpp-style.md` for naming, source layout, public include paths, CMake target naming, and installable package targets.
 - When changing **aggregate** types used from many tests (for example `mirakana::editor::ScenePrefabInstanceRefreshPolicy` in `editor/core/include/mirakana/editor/scene_authoring.hpp`), update every **designated** braced initializer in the same task so **all members appear in declaration order**, including empty **`std::function`** members (`{}`); see **`docs/cpp-style.md`** (**Unit tests** → **Aggregate literals**) and clang `-Wmissing-field-initializers` / IDE diagnostics.
 - Prefer RAII and value types.
-- Use `std::unique_ptr` for ownership. Raw pointers are non-owning and must not be stored ambiguously.
+- Use `std::unique_ptr` / `std::make_unique` for ownership; raw pointers are non-owning.
 - Avoid global mutable state.
 - Keep public headers minimal and stable within a single task, but do not add compatibility shims.
 - The project brand is `MIRAIKANAI` (MIRAIKANAI Engine).

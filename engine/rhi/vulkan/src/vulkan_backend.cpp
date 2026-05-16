@@ -5660,7 +5660,7 @@ std::unique_ptr<IRhiCommandList> VulkanRhiDevice::begin_command_list(QueueKind q
     }
 
     ++stats_.command_lists_begun;
-    return std::unique_ptr<IRhiCommandList>(new VulkanRhiCommandList(*this, std::move(result.pool), queue));
+    return std::make_unique<VulkanRhiCommandList>(*this, std::move(result.pool), queue);
 }
 
 FenceValue VulkanRhiDevice::submit(IRhiCommandList& commands) {

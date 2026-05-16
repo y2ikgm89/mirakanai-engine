@@ -6038,7 +6038,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         }
 
         ++stats_.command_lists_begun;
-        return std::unique_ptr<IRhiCommandList>(new D3d12RhiCommandList(
+        return std::make_unique<D3d12RhiCommandList>(
             *context_, native, queue, swapchain_handles_, swapchain_descs_, swapchain_states_, swapchain_presentable_,
             swapchain_frame_reserved_, swapchain_frame_swapchains_, swapchain_frame_active_, swapchain_frame_presented_,
             buffer_handles_, buffer_descs_, buffer_active_, texture_handles_, texture_descs_, texture_active_,
@@ -6048,7 +6048,7 @@ class D3d12RhiDevice final : public IRhiDevice {
             graphics_pipeline_handles_, graphics_pipeline_root_signatures_, graphics_pipeline_layouts_,
             graphics_pipeline_active_, compute_pipeline_handles_, compute_pipeline_root_signatures_,
             compute_pipeline_layouts_, compute_pipeline_active_, pipeline_layout_active_, descriptor_set_active_,
-            stats_));
+            stats_);
     }
 
     [[nodiscard]] FenceValue submit(IRhiCommandList& commands) override {
@@ -6701,7 +6701,7 @@ std::unique_ptr<IRhiDevice> create_rhi_device(const DeviceBootstrapDesc& desc) {
         return nullptr;
     }
 
-    return std::unique_ptr<IRhiDevice>(new D3d12RhiDevice(std::move(context)));
+    return std::make_unique<D3d12RhiDevice>(std::move(context));
 }
 
 QueueCalibratedTiming measure_rhi_device_calibrated_queue_timing(IRhiDevice& device, QueueKind queue) {
