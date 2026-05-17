@@ -4,12 +4,14 @@
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 
 #include "mirakana/assets/asset_source_format.hpp"
+#include "mirakana/renderer/frame_graph_rhi.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstring>
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <utility>
 
@@ -20,6 +22,17 @@ namespace {
     RuntimeTextureUploadResult result;
     result.diagnostic = std::move(diagnostic);
     return result;
+}
+
+[[nodiscard]] std::string
+runtime_texture_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnostic> diagnostics) {
+    if (diagnostics.empty()) {
+        return "runtime texture upload frame graph execution failed";
+    }
+    if (diagnostics.front().message.empty()) {
+        return "runtime texture upload frame graph execution failed";
+    }
+    return "runtime texture upload frame graph execution failed: " + diagnostics.front().message;
 }
 
 [[nodiscard]] RuntimeMeshUploadResult mesh_upload_failure(std::string diagnostic) {
@@ -304,10 +317,63 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
         const auto upload_buffer = device.create_buffer(rhi::BufferDesc{
             .size_bytes = static_cast<std::uint64_t>(staging.bytes.size()), .usage = rhi::BufferUsage::copy_source});
         device.write_buffer(upload_buffer, 0, staging.bytes);
+
+        FrameGraphV1Desc upload_graph;
+        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "runtime.uploaded_texture",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
+        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+            .name = "runtime.texture_upload.copy",
+            .writes = {FrameGraphResourceAccess{
+                .resource = "runtime.uploaded_texture",
+                .access = FrameGraphAccess::copy_destination,
+            }},
+        });
+        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+        if (!upload_plan.succeeded()) {
+            return texture_upload_failure(runtime_texture_upload_frame_graph_diagnostic(upload_plan.diagnostics));
+        }
+        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+        const auto pass_target_accesses = build_frame_graph_texture_pass_target_accesses(upload_graph);
+        std::vector<FrameGraphTextureBinding> texture_bindings{FrameGraphTextureBinding{
+            .resource = "runtime.uploaded_texture",
+            .texture = texture,
+            .current_state = rhi::ResourceState::undefined,
+        }};
+        const std::vector<FrameGraphTexturePassTargetState> pass_target_states{FrameGraphTexturePassTargetState{
+            .pass_name = "runtime.texture_upload.copy",
+            .resource = "runtime.uploaded_texture",
+            .state = rhi::ResourceState::copy_destination,
+        }};
+        const std::vector<FrameGraphTextureFinalState> final_states{FrameGraphTextureFinalState{
+            .resource = "runtime.uploaded_texture",
+            .state = rhi::ResourceState::shader_read,
+        }};
         auto commands = device.begin_command_list(options.queue);
-        commands->transition_texture(texture, rhi::ResourceState::undefined, rhi::ResourceState::copy_destination);
-        commands->copy_buffer_to_texture(upload_buffer, texture, staging.region);
-        commands->transition_texture(texture, rhi::ResourceState::copy_destination, rhi::ResourceState::shader_read);
+        const std::vector<FrameGraphPassExecutionBinding> pass_callbacks{FrameGraphPassExecutionBinding{
+            .pass_name = "runtime.texture_upload.copy",
+            .callback =
+                [&](std::string_view) {
+                    commands->copy_buffer_to_texture(upload_buffer, texture, staging.region);
+                    return FrameGraphExecutionCallbackResult{};
+                },
+        }};
+        const auto frame_graph_execution = execute_frame_graph_rhi_texture_schedule(FrameGraphRhiTextureExecutionDesc{
+            .commands = commands.get(),
+            .schedule = upload_schedule,
+            .texture_bindings = texture_bindings,
+            .pass_callbacks = pass_callbacks,
+            .pass_target_accesses = pass_target_accesses,
+            .pass_target_states = pass_target_states,
+            .render_passes = {},
+            .final_states = final_states,
+            .transient_texture_lifetimes = {},
+        });
+        if (!frame_graph_execution.succeeded()) {
+            return texture_upload_failure(
+                runtime_texture_upload_frame_graph_diagnostic(frame_graph_execution.diagnostics));
+        }
         commands->close();
         const auto fence = device.submit(*commands);
         if (options.wait_for_completion) {
@@ -322,6 +388,11 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
             .uploaded_bytes = static_cast<std::uint64_t>(staging.bytes.size()),
             .owner_device = &device,
             .copy_recorded = true,
+            .frame_graph_barriers_recorded = frame_graph_execution.barriers_recorded,
+            .frame_graph_pass_target_state_barriers_recorded =
+                frame_graph_execution.pass_target_state_barriers_recorded,
+            .frame_graph_final_state_barriers_recorded = frame_graph_execution.final_state_barriers_recorded,
+            .frame_graph_pass_callbacks_invoked = frame_graph_execution.pass_callbacks_invoked,
             .diagnostic = {},
             .submitted_fence = fence,
         };

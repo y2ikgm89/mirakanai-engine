@@ -8,6 +8,7 @@
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -56,6 +57,10 @@ struct RuntimeTextureUploadResult {
     std::uint64_t uploaded_bytes{0};
     const rhi::IRhiDevice* owner_device{nullptr};
     bool copy_recorded{false};
+    std::size_t frame_graph_barriers_recorded{0};
+    std::size_t frame_graph_pass_target_state_barriers_recorded{0};
+    std::size_t frame_graph_final_state_barriers_recorded{0};
+    std::size_t frame_graph_pass_callbacks_invoked{0};
     std::string diagnostic;
     rhi::FenceValue submitted_fence{};
 

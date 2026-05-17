@@ -125,6 +125,10 @@ MK_TEST("runtime rhi upload creates texture resource and records byte upload whe
     MK_REQUIRE(result.uploaded_bytes == 512);
     MK_REQUIRE(result.submitted_fence.value != 0);
     MK_REQUIRE(result.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(result.frame_graph_barriers_recorded == 2);
+    MK_REQUIRE(result.frame_graph_pass_target_state_barriers_recorded == 1);
+    MK_REQUIRE(result.frame_graph_final_state_barriers_recorded == 1);
+    MK_REQUIRE(result.frame_graph_pass_callbacks_invoked == 1);
     MK_REQUIRE(result.texture_desc.extent.width == 4);
     MK_REQUIRE(result.texture_desc.extent.height == 2);
     MK_REQUIRE(result.texture_desc.format == mirakana::rhi::Format::rgba8_unorm);
@@ -136,6 +140,7 @@ MK_TEST("runtime rhi upload creates texture resource and records byte upload whe
     MK_REQUIRE(stats.buffer_writes == 1);
     MK_REQUIRE(stats.bytes_written == 512);
     MK_REQUIRE(stats.buffer_texture_copies == 1);
+    MK_REQUIRE(stats.resource_transitions == 2);
     MK_REQUIRE(stats.command_lists_submitted == 1);
 }
 
@@ -161,6 +166,10 @@ MK_TEST("runtime rhi upload creates texture resource without copy for metadata o
     MK_REQUIRE(!result.copy_recorded);
     MK_REQUIRE(result.uploaded_bytes == 0);
     MK_REQUIRE(result.submitted_fence.value == 0);
+    MK_REQUIRE(result.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(result.frame_graph_pass_target_state_barriers_recorded == 0);
+    MK_REQUIRE(result.frame_graph_final_state_barriers_recorded == 0);
+    MK_REQUIRE(result.frame_graph_pass_callbacks_invoked == 0);
 
     const auto stats = device.stats();
     MK_REQUIRE(stats.textures_created == 1);
