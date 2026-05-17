@@ -154,6 +154,10 @@ struct RuntimeSkinnedMeshUploadResult {
     std::uint64_t uploaded_index_bytes{0};
     std::uint64_t uploaded_joint_palette_bytes{0};
     bool copy_recorded{false};
+    std::size_t frame_graph_command_lists_submitted{0};
+    std::size_t frame_graph_queue_waits_recorded{0};
+    std::size_t frame_graph_barriers_recorded{0};
+    std::size_t frame_graph_pass_callbacks_invoked{0};
     std::string diagnostic;
     rhi::FenceValue submitted_fence{};
 

@@ -874,6 +874,10 @@ MK_TEST("runtime rhi skinned mesh upload binds joint palette descriptor set") {
     MK_REQUIRE(upload.succeeded());
     MK_REQUIRE(upload.submitted_fence.value != 0);
     MK_REQUIRE(upload.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(upload.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(upload.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_pass_callbacks_invoked == 1);
     auto binding = mirakana::runtime_rhi::make_runtime_skinned_mesh_gpu_binding(upload);
     mirakana::rhi::DescriptorSetLayoutHandle shared_layout{};
     const auto diagnostic =
