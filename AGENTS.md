@@ -139,8 +139,8 @@
 - Use `.agents/skills/` when a task matches them, keep overlapping `.claude/skills/` behaviorally equivalent, and keep `.cursor/skills/gameengine-*` folders as thin pointers matching `.claude/skills/` names except the intentional Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`.
 - After changing agent surfaces (`tools/*.ps1` dot-source pairs, skill folders, validation scripts, rules, settings, subagents, or manifest fragments), follow **Repository consistency checklist** in `docs/workflows.md` (toolchain -> `check-agents` -> `check-ai-integration` -> public API checks -> `validate.ps1` as appropriate).
 - Tracked `.clangd` points at `out/build/dev`; run `tools/cmake.ps1 --preset dev` when clangd lacks a database. Use `editor/src/compile_flags.txt` and `editor/include/compile_flags.txt` only as fallback IDE flags. `MK_tools` sources live under `engine/tools/{shader,gltf,asset,scene}/`; public headers stay in `engine/tools/include/mirakana/tools/`.
-- For parallel write work, prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree`; keep `.worktrees/` and `.claude/worktrees/` ignored; manual worktrees use setup, merged worktrees use guarded cleanup.
-- Use project subagents in `.codex/agents/` and `.claude/agents/` only when the user explicitly asks for subagent delegation or parallel agent work; keep reviewer/explorer/architect/auditor roles read-only and write tools limited to builder/fixer roles.
+- For parallel write work, prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree`; keep `.worktrees/` and `.claude/worktrees/` ignored; prepare manual worktrees; use guarded cleanup after merge.
+- After user-authorized subagent/parallel work, use `.codex/agents/` and `.claude/agents/` for material independent sidecar work by default. Keep blockers local, reviewer/explorer/architect/auditor read-only, and write tools only on builder/fixer roles.
 - Every task should define: Goal, Context, Constraints, Done when.
 
 ## Production Completion Execution
@@ -149,7 +149,7 @@
 - Keep each `unsupportedProductionGaps` row honest, including `oneDotZeroCloseoutTier`, in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` plus composed output; do not hand-edit `engine/agent/manifest.json`.
 - Re-read the master plan, registry, and manifest after user edits or resumes. Finish one selected gap as implemented, host-gated, blocked with evidence, or excluded before switching.
 - Prefer official documentation, Context7, project skills, and clean breaking greenfield designs over compatibility shims, broad ready claims, or shortcuts.
-- Use focused validation and bounded subagents when they improve speed or confidence; reserve `tools/validate.ps1` for slice gates that touch C++/runtime/build/packaging/public contracts.
+- Use focused validation and bounded subagents for material independent work; reserve `tools/validate.ps1` for slice gates that touch C++/runtime/build/packaging/public contracts.
 - Before reporting completion, reconcile code, tests, docs, plans, manifest, static checks, completed gap, remaining gaps, next active plan, and host-gated blockers against evidence.
 - Narrative checklist for production completion: [docs/agent-operational-reference.md](docs/agent-operational-reference.md#production-completion-execution-expanded).
 

@@ -58,7 +58,7 @@ When executing [Production Completion Master Plan v1](superpowers/plans/2026-05-
 - Burn down one selected production gap at a time until it is implemented, host-gated, blocked with evidence, or explicitly excluded from the 1.0 ready surface.
 - Prefer official documentation, Context7, project skills, and clean breaking greenfield designs over compatibility shims, broad ready claims, or undocumented shortcuts.
 - Use focused build/test/static checks during implementation, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the coherent slice-closing gate.
-- Use subagents only for bounded independent investigation, review, build-failure triage, or disjoint implementation that improves speed or confidence; keep immediate blocking work local.
+- When subagent or parallel work is user-authorized, delegate each material independent investigation, review, build-failure triage, or disjoint implementation that can run in parallel and improves speed or confidence; keep immediate blocking work local.
 - Before completion, reconcile code, tests, docs, plans, manifest, static checks, completed gap, remaining gaps, next active plan, and host-gated blockers against actual validation evidence.
 
 ## Static Analysis And API Boundaries
@@ -297,7 +297,7 @@ These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclud
 
 ## Subagent Use
 
-Use subagents only when the user explicitly asks for subagent delegation or parallel agent work. Use them for independent work:
+Use subagents only when the user explicitly asks for subagent delegation or parallel agent work. After that authorization, use them by default for every material independent sidecar task that can run in parallel without blocking the parent agent's next local step. Do not spawn agents for trivial checks whose coordination cost exceeds the likely signal, and keep urgent blocking work local.
 
 - `explorer`: read-only codebase exploration
 - `cpp-reviewer`: C++ lifetime, ownership, and API review

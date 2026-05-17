@@ -76,7 +76,7 @@ paths:
 - Keep `tools/common.ps1` contract synchronized: `Get-RepoRoot` returns a string path; tooling must not use `$root.Path`.
 - Keep Windows host diagnostics guidance synchronized: Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit are host-local diagnostics, not default build dependencies, and their absence is a blocker only for native debugging, D3D12 debug-layer, GPU capture, or ETW/performance tasks. For PIX, prefer the **operator capture + agent analysis** recipe in `docs/ai-integration.md` § **Recommended workflow (operator PIX, AI analysis)** instead of implying unattended GPU capture inside `MK_editor` or CI.
 - Keep reviewer, explorer, architect, and auditor subagents read-only by default in both `.codex/agents/` and `.claude/agents/`; give write-capable tools only to builder/fixer roles that are expected to change files.
-- Codex subagents should be spawned only when the user explicitly asks for subagent delegation or parallel agent work.
+- Codex subagents should be spawned only when the user explicitly asks for subagent delegation or parallel agent work; after that, use them by default for material independent sidecar tasks that can run in parallel, while keeping immediate blockers local.
 - Do not broaden Codex rules or Claude permissions to improve speed; keep command trust narrow and get speed from focused validation and smaller slices.
 - Keep reusable procedures in skills and specialized review/build/debug behavior in subagents.
 - Keep mobile guidance split by host gate: Android GameActivity has host-validated Debug/Release/signing/emulator smoke lanes on configured hosts; Apple/iOS remains macOS/Xcode gated.
