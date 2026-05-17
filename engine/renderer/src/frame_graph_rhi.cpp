@@ -1647,6 +1647,34 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
         queue_waits_by_pass[wait.pass_name].push_back(wait);
     }
 
+    std::map<std::string, std::vector<PlannedTextureBarrier>> texture_barriers_by_pass;
+    if (!desc.texture_bindings.empty()) {
+        const auto binding_indices = build_binding_index(result, desc.texture_bindings);
+        if (!result.succeeded()) {
+            return result;
+        }
+
+        auto simulated_states = copy_binding_states(desc.texture_bindings);
+        for (const auto& step : desc.schedule) {
+            if (step.kind != FrameGraphExecutionStep::Kind::barrier) {
+                continue;
+            }
+
+            std::vector<PlannedTextureBarrier> planned_barriers;
+            planned_barriers.reserve(1);
+            (void)plan_barrier(result, planned_barriers, step.barrier, binding_indices, desc.texture_bindings,
+                               simulated_states);
+            for (const auto& planned_barrier : planned_barriers) {
+                if (planned_barrier.barrier != nullptr) {
+                    texture_barriers_by_pass[planned_barrier.barrier->to_pass].push_back(planned_barrier);
+                }
+            }
+        }
+        if (!result.succeeded()) {
+            return result;
+        }
+    }
+
     for (const auto& step : desc.schedule) {
         if (step.kind == FrameGraphExecutionStep::Kind::barrier) {
             continue;
@@ -1698,6 +1726,15 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
             append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
                                               "frame graph rhi pass command list is already closed");
             return result;
+        }
+
+        const auto texture_barriers = texture_barriers_by_pass.find(step.pass_name);
+        if (texture_barriers != texture_barriers_by_pass.end()) {
+            for (const auto& planned_barrier : texture_barriers->second) {
+                if (!record_planned_texture_barrier(result, *commands, desc.texture_bindings, planned_barrier)) {
+                    return result;
+                }
+            }
         }
 
         FrameGraphExecutionCallbackResult callback_result;

@@ -140,11 +140,13 @@ struct FrameGraphRhiMultiQueueExecutionDesc {
     rhi::IRhiDevice* device{nullptr};
     std::span<const FrameGraphExecutionStep> schedule;
     std::span<const FrameGraphRhiPassCommandBinding> pass_commands;
+    std::span<FrameGraphTextureBinding> texture_bindings;
 };
 
 struct FrameGraphRhiMultiQueueExecutionResult {
     std::size_t command_lists_submitted{0};
     std::size_t queue_waits_recorded{0};
+    std::size_t barriers_recorded{0};
     std::size_t pass_callbacks_invoked{0};
     std::vector<FrameGraphRhiSubmittedPassFence> submitted_pass_fences;
     std::vector<FrameGraphDiagnostic> diagnostics;

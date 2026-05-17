@@ -1707,15 +1707,20 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_rhi
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "IRhiDevice::wait_for_queue" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph RHI Multi-Queue Executor v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_rhi_multi_queue_schedule" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionDesc::texture_bindings" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "consumer-pass texture barriers recorded before callbacks" "MK_renderer module purpose"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Primary Pass Target-State Evidence v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Queue Dependency Plan v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "record_frame_graph_rhi_queue_waits" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Executor v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_frame_graph_rhi_multi_queue_schedule" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Texture Barrier Execution v1" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "primary pass texture-binding/target-state evidence is complete" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "backend-neutral RHI queue dependency wait planning/recording is complete" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "multi-queue pass command submission envelope" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "multi-queue pass command submission and opt-in texture barrier recording envelope" "recommended next plan reason"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
@@ -1790,6 +1795,8 @@ Assert-ContainsText $frameGraphRhiHeader "record_frame_graph_texture_aliasing_ba
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiPassCommandBinding" "Frame graph RHI multi-queue executor public API"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiMultiQueueExecutionDesc" "Frame graph RHI multi-queue executor public API"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiMultiQueueExecutionResult" "Frame graph RHI multi-queue executor public API"
+Assert-ContainsText $frameGraphRhiHeader "std::span<FrameGraphTextureBinding> texture_bindings" "Frame graph RHI multi-queue texture barrier public API"
+Assert-ContainsText $frameGraphRhiHeader "std::size_t barriers_recorded" "Frame graph RHI multi-queue texture barrier public API"
 Assert-ContainsText $frameGraphRhiHeader "execute_frame_graph_rhi_multi_queue_schedule" "Frame graph RHI multi-queue executor public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barriers" "RHI texture aliasing barrier command public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barrier(TextureHandle before, TextureHandle after)" "RHI texture aliasing barrier command public API"
@@ -1850,6 +1857,8 @@ Assert-ContainsText $frameGraphRhiSource "begin_planned_render_pass" "Frame grap
 Assert-ContainsText $frameGraphRhiSource "attachment references an unknown resource" "Frame graph render pass envelope validation"
 Assert-ContainsText $frameGraphRhiSource "execute_frame_graph_rhi_multi_queue_schedule" "Frame graph RHI multi-queue executor"
 Assert-ContainsText $frameGraphRhiSource "record_frame_graph_rhi_queue_waits(*desc.device, waits->second, result.submitted_pass_fences)" "Frame graph RHI multi-queue executor"
+Assert-ContainsText $frameGraphRhiSource "texture_barriers_by_pass" "Frame graph RHI multi-queue texture barrier executor"
+Assert-ContainsText $frameGraphRhiSource "record_planned_texture_barrier(result, *commands, desc.texture_bindings" "Frame graph RHI multi-queue texture barrier executor"
 Assert-ContainsText $frameGraphRhiSource "frame graph rhi pass command callback failed" "Frame graph RHI multi-queue executor diagnostics"
 Assert-ContainsText $rhiFrameRendererSource "PrimaryColorFrameGraphExecutionPlan" "RhiFrameRenderer primary target-state evidence"
 Assert-ContainsText $rhiFrameRendererSource "build_frame_graph_texture_pass_target_accesses" "RhiFrameRenderer primary target-state evidence"
@@ -1869,6 +1878,8 @@ Assert-ContainsText $rendererRhiTests "frame graph rhi transient texture lease b
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution wraps render pass envelopes around callbacks" "Frame graph render pass envelope tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution rejects invalid render pass envelopes before callbacks" "Frame graph render pass envelope tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor submits declared pass queues and waits for producer fences" "Frame graph RHI multi-queue executor tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor records texture barriers before consumer callbacks" "Frame graph RHI multi-queue texture barrier tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor validates texture barriers before command recording" "Frame graph RHI multi-queue texture barrier tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor preserves submitted producer evidence on callback failure" "Frame graph RHI multi-queue executor tests"
 Assert-ContainsText $rendererRhiTests "framegraph_render_passes_recorded == 1" "Frame graph render pass stats evidence tests"
 Assert-ContainsText $rendererRhiTests "framegraph_render_passes_recorded == 2" "Frame graph render pass stats evidence tests"
@@ -1989,6 +2000,9 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "plan_frame_graph_rhi_queue_waits" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "IRhiDevice::wait_for_queue" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "execute_frame_graph_rhi_multi_queue_schedule" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "FrameGraphRhiMultiQueueExecutionDesc::texture_bindings" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "after producer waits and before the callback" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "wildcard/null barrier support" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "data inheritance/content preservation" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "FrameGraphRhiRenderPassDesc`` envelope around the ``primary_color`` callback" $renderingGuidancePath
@@ -2017,6 +2031,9 @@ foreach ($renderingAuditorPath in @(
     Assert-ContainsText $renderingAuditorText "submits work rather than after fence completion" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "automatic executor aliasing barriers" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "aliasing_barriers_recorded" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "FrameGraphRhiMultiQueueExecutionDesc::texture_bindings" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "producer queue waits to be recorded before consumer texture transitions" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "wildcard/null barrier support" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "primary_color" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "render pass envelope" $renderingAuditorPath

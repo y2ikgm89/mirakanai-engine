@@ -918,7 +918,9 @@ foreach ($needle in @(
     "IRhiDevice::wait_for_queue",
     "Frame Graph RHI Multi-Queue Executor v1",
     "execute_frame_graph_rhi_multi_queue_schedule",
-    "multi-queue pass command submission envelope",
+    "Frame Graph RHI Multi-Queue Texture Barrier Execution v1",
+    "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded",
+    "multi-queue pass command submission and opt-in texture barrier recording envelope",
     "frame-graph-v1"
 )) {
     if (-not $recommendedText.Contains($needle)) {
