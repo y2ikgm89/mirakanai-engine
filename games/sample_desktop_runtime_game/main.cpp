@@ -1106,6 +1106,7 @@ void print_presentation_report(std::string_view prefix, const mirakana::SdlDeskt
               << " ui_texture_overlay_draws=" << report.native_ui_texture_overlay_draws
               << " framegraph_passes=" << report.framegraph_passes
               << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
+              << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
               << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
               << " renderer_gpu_skinning_draws=" << report.renderer_stats.gpu_skinning_draws
               << " renderer_skinned_palette_descriptor_binds=" << report.renderer_stats.skinned_palette_descriptor_binds
@@ -1602,14 +1603,18 @@ int main(int argc, char** argv) {
         << " ui_texture_overlay_draws=" << report.native_ui_texture_overlay_draws
         << " framegraph_passes=" << report.framegraph_passes
         << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
+        << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
         << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
         << " renderer_quality_status="
         << mirakana::sdl_desktop_presentation_quality_gate_status_name(renderer_quality.status)
         << " renderer_quality_ready=" << (renderer_quality.ready ? 1 : 0)
         << " renderer_quality_diagnostics=" << renderer_quality.diagnostics_count
         << " renderer_quality_expected_framegraph_passes=" << renderer_quality.expected_framegraph_passes
+        << " renderer_quality_expected_framegraph_render_passes=" << renderer_quality.expected_framegraph_render_passes
         << " renderer_quality_expected_framegraph_barrier_steps=" << renderer_quality.expected_framegraph_barrier_steps
         << " renderer_quality_framegraph_passes_ok=" << (renderer_quality.framegraph_passes_current ? 1 : 0)
+        << " renderer_quality_framegraph_render_passes_ok="
+        << (renderer_quality.framegraph_render_passes_current ? 1 : 0)
         << " renderer_quality_framegraph_barrier_steps_ok="
         << (renderer_quality.framegraph_barrier_steps_current ? 1 : 0)
         << " renderer_quality_framegraph_execution_budget_ok="
@@ -1687,6 +1692,7 @@ int main(int argc, char** argv) {
         }
         const std::uint32_t expected_framegraph_passes = options.require_directional_shadow ? 3U : 2U;
         const auto expected_frames = static_cast<std::uint64_t>(options.max_frames);
+        const auto expected_framegraph_render_passes = expected_frames * expected_framegraph_passes;
         const std::uint64_t expected_framegraph_barrier_steps =
             options.require_directional_shadow        ? (expected_frames == 0 ? 0 : 9 + ((expected_frames - 1) * 6))
             : options.require_postprocess_depth_input ? (expected_frames == 0 ? 0 : 1 + (expected_frames * 4))
@@ -1696,6 +1702,7 @@ int main(int argc, char** argv) {
              report.framegraph_passes != expected_framegraph_passes ||
              report.renderer_stats.framegraph_passes_executed !=
                  static_cast<std::uint64_t>(options.max_frames) * expected_framegraph_passes ||
+             report.renderer_stats.framegraph_render_passes_recorded != expected_framegraph_render_passes ||
              report.renderer_stats.framegraph_barrier_steps_executed != expected_framegraph_barrier_steps ||
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
             return 3;

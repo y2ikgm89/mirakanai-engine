@@ -1188,8 +1188,10 @@ try {
     Assert-ContainsText $desktop3dMain "renderer_quality_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_diagnostics=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_expected_framegraph_passes=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "renderer_quality_expected_framegraph_render_passes=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_expected_framegraph_barrier_steps=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_passes_ok=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_render_passes_ok=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_barrier_steps_ok=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_execution_budget_ok=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_scene_gpu_ready=" "Desktop 3D scaffold main.cpp"
@@ -1213,6 +1215,7 @@ try {
     Assert-ContainsText $desktop3dMain "directional_shadow_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "directional_shadow_filter_mode=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "framegraph_passes_executed=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "framegraph_render_passes_recorded=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "framegraph_barrier_steps_executed=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_directional_shadow_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_directional_shadow_filter_ready=" "Desktop 3D scaffold main.cpp"
@@ -1710,8 +1713,10 @@ foreach ($needle in @(
     "renderer_quality_ready=",
     "renderer_quality_diagnostics=",
     "renderer_quality_expected_framegraph_passes=",
+    "renderer_quality_expected_framegraph_render_passes=",
     "renderer_quality_expected_framegraph_barrier_steps=",
     "renderer_quality_framegraph_passes_ok=",
+    "renderer_quality_framegraph_render_passes_ok=",
     "renderer_quality_framegraph_barrier_steps_ok=",
     "renderer_quality_framegraph_execution_budget_ok=",
     "renderer_quality_scene_gpu_ready=",
@@ -1735,6 +1740,7 @@ foreach ($needle in @(
     "directional_shadow_ready=",
     "directional_shadow_filter_mode=",
     "framegraph_passes_executed=",
+    "framegraph_render_passes_recorded=",
     "framegraph_barrier_steps_executed=",
     "renderer_quality_directional_shadow_ready=",
     "renderer_quality_directional_shadow_filter_ready=",
