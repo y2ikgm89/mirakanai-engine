@@ -433,6 +433,10 @@ MK_TEST("runtime rhi upload creates mesh buffers and records vertex index byte u
     MK_REQUIRE(result.vertex_upload_buffer.value != 0);
     MK_REQUIRE(result.index_upload_buffer.value != 0);
     MK_REQUIRE(result.copy_recorded);
+    MK_REQUIRE(result.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(result.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(result.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(result.frame_graph_pass_callbacks_invoked == 1);
     MK_REQUIRE(result.vertex_count == 3);
     MK_REQUIRE(result.index_count == 3);
     MK_REQUIRE(result.vertex_stride == 12);
