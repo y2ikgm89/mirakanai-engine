@@ -157,6 +157,8 @@ Registered Source Asset Cook Targets v1: `game.agent.json.registeredSourceAssetC
 
 Frame Graph package executor evidence is now package-visible for the completed postprocess/depth and directional-shadow smoke paths. Package stdout and installed validation can require `framegraph_passes_executed`, `framegraph_barrier_steps_executed`, `renderer_quality_expected_framegraph_barrier_steps`, and `renderer_quality_framegraph_barrier_steps_ok`, with exact two-frame budgets of `4/9` for postprocess-depth and `6/15` for directional-shadow.
 
+Frame Graph render-pass envelope evidence is also available through `RendererStats::framegraph_render_passes_recorded` on completed raw primary, postprocess, and directional-shadow renderer frames. This is backend-neutral stats evidence only; package stdout, quality gates, native render pass objects, and production render graph ownership remain unchanged.
+
 ## Current Active Work
 
 `docs/superpowers/plans/2026-05-02-2d-packaged-playable-generation-loop-v1.md` completed the generated packaged 2D scaffold contract through `DesktopRuntime2DPackage`, cooked sprite/material/audio/orthographic scene payloads, manifest package files, manifest runtime scene validation targets, and focused static checks.
