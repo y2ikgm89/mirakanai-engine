@@ -770,6 +770,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
         ++stats_.frames_finished;
         stats_.framegraph_barrier_steps_executed += frame_graph_execution.barriers_recorded;
         stats_.framegraph_passes_executed += frame_graph_execution.pass_callbacks_invoked;
+        stats_.framegraph_render_passes_recorded += frame_graph_execution.render_passes_recorded;
         ++stats_.postprocess_passes_executed;
         if (overlay_draw.vertex_count != 0) {
             ++stats_.native_ui_overlay_draws;

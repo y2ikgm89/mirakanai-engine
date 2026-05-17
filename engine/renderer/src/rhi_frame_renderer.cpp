@@ -565,6 +565,7 @@ void RhiFrameRenderer::end_frame() {
         stats_.gpu_morph_draws += recorded_primary_stats.gpu_morph_draws;
         stats_.morph_descriptor_binds += recorded_primary_stats.morph_descriptor_binds;
         stats_.framegraph_passes_executed += frame_graph_execution.pass_callbacks_invoked;
+        stats_.framegraph_render_passes_recorded += frame_graph_execution.render_passes_recorded;
         stats_.framegraph_barrier_steps_executed += frame_graph_execution.barriers_recorded;
         stats_.native_ui_overlay_draws += overlay_draw.batch_count;
         stats_.native_ui_overlay_texture_binds += overlay_draw.texture_bind_count;

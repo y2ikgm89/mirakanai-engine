@@ -4608,6 +4608,7 @@ MK_TEST("rhi postprocess frame renderer records scene color and postprocess pass
     MK_REQUIRE(renderer_stats.frames_finished == 1);
     MK_REQUIRE(renderer_stats.meshes_submitted == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 2);
+    MK_REQUIRE(renderer_stats.framegraph_render_passes_recorded == 2);
     MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 2);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 1);
 
@@ -5258,6 +5259,7 @@ MK_TEST("rhi directional shadow smoke frame renderer records a shadow receiver s
     MK_REQUIRE(renderer_stats.frames_finished == 1);
     MK_REQUIRE(renderer_stats.meshes_submitted == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 3);
+    MK_REQUIRE(renderer_stats.framegraph_render_passes_recorded == 3);
     MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 9);
     MK_REQUIRE(renderer_stats.postprocess_passes_executed == 1);
 
@@ -6016,6 +6018,7 @@ MK_TEST("rhi frame renderer submits a texture frame through an rhi device") {
     MK_REQUIRE(renderer_stats.sprites_submitted == 1);
     MK_REQUIRE(renderer_stats.meshes_submitted == 1);
     MK_REQUIRE(renderer_stats.framegraph_passes_executed == 1);
+    MK_REQUIRE(renderer_stats.framegraph_render_passes_recorded == 1);
     MK_REQUIRE(renderer_stats.framegraph_barrier_steps_executed == 1);
 
     const auto rhi_stats = device.stats();

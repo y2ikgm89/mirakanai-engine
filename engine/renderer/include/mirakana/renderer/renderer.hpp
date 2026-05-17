@@ -39,6 +39,8 @@ struct RendererStats {
     /// Incremented when a morph draw binds `MorphMeshGpuBinding::morph_descriptor_set` (set index 1).
     std::uint64_t morph_descriptor_binds{0};
     std::uint64_t framegraph_passes_executed{0};
+    /// Count of executor-owned RHI render pass envelopes recorded for completed frames.
+    std::uint64_t framegraph_render_passes_recorded{0};
     /// Count of `FrameGraphExecutionStep::Kind::barrier` steps recorded for completed frames (Frame Graph v1
     /// execution).
     std::uint64_t framegraph_barrier_steps_executed{0};
