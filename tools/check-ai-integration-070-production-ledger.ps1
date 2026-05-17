@@ -1069,6 +1069,7 @@ Assert-ContainsText $engineManifestText "prepare-worktree.ps1" "engine/agent/man
 Assert-ContainsText $engineManifestText "normalized-configure-environment" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "normalized-build-environment" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "PATH/Path variants" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "CMakeCache.txt" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "tools/cmake.ps1" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "tools/ctest.ps1" "engine/agent/manifest.json"
 foreach ($needle in @(
@@ -1189,6 +1190,8 @@ foreach ($cmakeSkill in @(
     Assert-ContainsText $cmakeSkillText "normalized-build-environment" $cmakeSkill
     Assert-ContainsText $cmakeSkillText 'presets inherit `PATH` and unset `Path`' $cmakeSkill
     Assert-ContainsText $cmakeSkillText 'child `Path` on Windows' $cmakeSkill
+    Assert-ContainsText $cmakeSkillText 'Do not repair generated `out/build/<preset>` trees' $cmakeSkill
+    Assert-ContainsText $cmakeSkillText "CMakeCache.txt" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "tools/cmake.ps1" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "tools/ctest.ps1" $cmakeSkill
     Assert-ContainsText $cmakeSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" $cmakeSkill
@@ -1353,6 +1356,7 @@ Assert-ContainsText $codexRuleText "gh pr merge" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge --merge --delete-branch" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge --auto --merge --delete-branch" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "--match-head-commit" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText 'pattern = ["gh", "pr", "merge", "--auto", "--merge", "--delete-branch", "--match-head-commit"]' ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Remove-Item" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-WebRequest" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-RestMethod" ".codex/rules/gameengine.rules"
@@ -1370,17 +1374,20 @@ if (-not $claudeSettings.PSObject.Properties.Name.Contains("permissions")) {
 if (-not $claudeSettings.PSObject.Properties.Name.Contains("worktree") -or $claudeSettings.worktree.baseRef -ne "head") {
     Write-Error ".claude/settings.json must set worktree.baseRef to head for project subagent worktree isolation"
 }
-foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)")) {
+foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)")) {
     if (@($claudeSettings.permissions.allow) -notcontains $allowRule) {
         Write-Error ".claude/settings.json permissions.allow missing $allowRule"
     }
+}
+if (@($claudeSettings.permissions.allow) -contains "Bash(gh pr merge --auto --merge --delete-branch:*)") {
+    Write-Error ".claude/settings.json permissions.allow must require --match-head-commit for gh pr merge --auto"
 }
 foreach ($askRule in @("Bash(git push --force:*)", "Bash(git push --force-with-lease:*)", "Bash(git restore:*)", "Bash(git checkout:*)", "Bash(git worktree remove:*)", "Bash(git worktree prune:*)", "Bash(git worktree repair:*)", "Bash(gh pr edit:*)", "Bash(gh pr merge --merge:*)", "Bash(gh pr merge --squash:*)", "Bash(gh pr merge --rebase:*)", "Bash(gh pr merge --admin:*)", "Bash(gh pr ready:*)", "Bash(gh pr close:*)", "Bash(gh pr reopen:*)", "Bash(Remove-Item:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1:*)", "Bash(curl:*)", "Bash(Invoke-WebRequest:*)", "Bash(Invoke-RestMethod:*)", "Bash(Add-WindowsCapability:*)", "Bash(dism:*)", "Bash(msiexec:*)")) {
     if (@($claudeSettings.permissions.ask) -notcontains $askRule) {
         Write-Error ".claude/settings.json permissions.ask missing $askRule"
     }
 }
-foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)")) {
+foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)")) {
     if (@($claudeSettings.permissions.ask) -contains $automaticGitRule) {
         Write-Error ".claude/settings.json permissions.ask should not prompt routine automatic checkpoint command $automaticGitRule"
     }
@@ -1442,6 +1449,8 @@ Assert-ContainsText $aiAgentRuleText "OpenAI developer documentation MCP" ".clau
 Assert-ContainsText $aiAgentRuleText "official Anthropic docs" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "mergeStateStatus" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText '--match-head-commit <headRefOid>' ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText 'stale `headRefOid` invalidates the merge decision' ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "Commits pushed after a PR merged need a new PR" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "final completion report must not stop after local validation" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Rules/permissions stay narrow command gates" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "hosted PR check failure" ".claude/rules/ai-agent-integration.md"
@@ -1530,6 +1539,8 @@ foreach ($buildFixerAgent in @(
     Assert-ContainsText $buildFixerText "normalized-build-environment" $buildFixerAgent
     Assert-ContainsText $buildFixerText 'presets normalize raw `cmake --preset ...` PATH/Path behavior' $buildFixerAgent
     Assert-ContainsText $buildFixerText 'CL.exe` command-line switch error' $buildFixerAgent
+    Assert-ContainsText $buildFixerText 'Do not repair generated `out/build/<preset>` trees' $buildFixerAgent
+    Assert-ContainsText $buildFixerText "CMakeCache.txt" $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" $buildFixerAgent
     Assert-ContainsText $buildFixerText "direct-clang-format-status" $buildFixerAgent
     Assert-ContainsText $buildFixerText "CMake File API" $buildFixerAgent

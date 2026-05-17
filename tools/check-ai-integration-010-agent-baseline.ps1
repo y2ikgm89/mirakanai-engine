@@ -55,8 +55,8 @@ Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -Fil
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch]" "AGENTS.md"
 Assert-ContainsText $agentsContent "fast-forwards it" "AGENTS.md"
-Assert-ContainsText $agentsContent "current/local/main standard roots" "AGENTS.md"
-Assert-ContainsText $agentsContent "unlinks worktree-local vcpkg links before Git removal" "AGENTS.md"
+Assert-ContainsText $agentsContent "accepts standard roots" "AGENTS.md"
+Assert-ContainsText $agentsContent "unlinks worktree-local vcpkg links" "AGENTS.md"
 Assert-ContainsText $agentsContent "Windows fallback guarded/non-following" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" "AGENTS.md"
@@ -103,6 +103,8 @@ Assert-ContainsText $agentsContent "mergeStateStatus" "AGENTS.md"
 Assert-ContainsText $agentsContent "selected hosted checks to complete" "AGENTS.md"
 Assert-ContainsText $agentsContent "Full Repository Static Analysis" "AGENTS.md"
 Assert-ContainsText $agentsContent "--match-head-commit <headRefOid>" "AGENTS.md"
+Assert-ContainsText $agentsContent "clean local worktree" "AGENTS.md"
+Assert-ContainsText $agentsContent "commits pushed after a PR merged need a new PR" "AGENTS.md"
 Assert-ContainsText $agentsContent "not publication-complete after local validation alone" "AGENTS.md"
 Assert-ContainsText $agentsContent "checkpoint-based, not commit-count-based" "AGENTS.md"
 foreach ($gitCadenceNeedle in @("purpose/checkpoint-based", "commit validated phases", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "split unrelated work")) {
@@ -163,6 +165,9 @@ Assert-ContainsText $workflowsContent "gh pr view <pr> --json" "docs/workflows.m
 Assert-ContainsText $workflowsContent "gh pr create" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh pr merge --auto --merge --delete-branch" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "--match-head-commit <headRefOid>" "docs/workflows.md"
+Assert-ContainsText $workflowsContent 'stale `headRefOid` invalidates the merge decision' "docs/workflows.md"
+Assert-ContainsText $workflowsContent "git log --oneline origin/main..<headRefOid>" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "commit was pushed to the same head branch after the PR had already merged" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "mergeStateStatus" "docs/workflows.md"
 Assert-ContainsText $workflowsContent 'selected hosted check in `IN_PROGRESS`, `QUEUED`, or missing state' "docs/workflows.md"
 Assert-ContainsText $workflowsContent '`PR Gate` must report `SUCCESS`' "docs/workflows.md"
@@ -251,15 +256,20 @@ foreach ($cmakeSkillPath in @(
     ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/INCREMENTAL:NO" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) 'Do not repair generated `out/build/<preset>` trees' $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "CMakeCache.txt" $cmakeSkillPath
 }
 foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/build-fixer.md")) {
     Assert-ContainsText (Get-AgentSurfaceText $buildFixerPath) "LinkIncremental=false" $buildFixerPath
+    Assert-ContainsText (Get-AgentSurfaceText $buildFixerPath) 'Do not repair generated `out/build/<preset>` trees' $buildFixerPath
+    Assert-ContainsText (Get-AgentSurfaceText $buildFixerPath) "CMakeCache.txt" $buildFixerPath
 }
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "/INCREMENTAL:NO" "engine/agent/manifest.json"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-MaxFiles 1" "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/cmake.ps1") 'Invoke-CheckedCommand $tools.CMake @Arguments' "tools/cmake.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/ctest.ps1") 'Invoke-CheckedCommand $tools.CTest @Arguments' "tools/ctest.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]' "tools/check-agents.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--delete-branch",\s*"--match-head-commit"\]' "tools/check-agents.ps1"
 $tidyWrapperContent = Get-AgentSurfaceText "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent '[string[]]$Files' "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent '[int]$Jobs' "tools/check-tidy.ps1"
@@ -314,6 +324,8 @@ Assert-ContainsText $aiIntegrationContent "mergeStateStatus" "docs/ai-integratio
 Assert-ContainsText $aiIntegrationContent "selected hosted checks to complete" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent '`PR Gate` to report `SUCCESS`' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "--match-head-commit <headRefOid>" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent 'stale `headRefOid` invalidates the merge decision' "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "commits pushed after a PR merged need a new PR" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent 'latest `headRefOid` and `statusCheckRollup`' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent '.codex/rules` and `.claude/settings.json` remain command/permission gates' "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "lightweight static validation for docs/agent/rules/subagent-only PRs" "docs/ai-integration.md"
@@ -352,6 +364,7 @@ Assert-ContainsText $cursorBaselineSkillText "selected hosted checks to complete
 Assert-ContainsText $cursorBaselineSkillText '`PR Gate` to report `SUCCESS`' ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText 'stale `headRefOid` invalidates the merge decision' ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "tools/remove-merged-worktree.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "Windows long-path fallback inside the guarded script" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "tools/check-text-format.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
@@ -359,6 +372,7 @@ Assert-ContainsText $cursorBaselineSkillText "docs/agent/rules/subagent-only PRs
 $cursorAgentIntegrationSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText 'stale `headRefOid` invalidates the merge decision' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 foreach ($cursorAgentCadenceNeedle in @("purpose/checkpoint-based", "push validated topic-branch checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
     Assert-ContainsText $cursorAgentIntegrationSkillText $cursorAgentCadenceNeedle ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -493,6 +507,7 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("directToolchainCh
     Write-Error "engine/agent/manifest.json commands.directToolchainCheck must be pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake"
 }
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "VCPKG_MANIFEST_INSTALL=OFF" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "CMakeCache.txt" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "officialAiToolDocs" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "OpenAI developer documentation MCP" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "direct-clang-format-status" "engine/agent/manifest.json"

@@ -209,15 +209,24 @@ Push and PR publishing depend on host-local GitHub authentication such as Git Cr
 gh pr view <pr> --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url
 ```
 
-Continue only when the PR is open, not draft, targets the expected base branch, uses a task-owned head branch, has fresh local validation evidence, is not conflicting, has no requested changes, and has no `FAILURE`, `CANCELLED`, `TIMED_OUT`, or `ACTION_REQUIRED` status/check conclusion. Treat `DIRTY` and `UNKNOWN` `mergeStateStatus` values as blockers. For runtime/C++/build/toolchain/public-contract PRs, the latest head must have no selected hosted check in `IN_PROGRESS`, `QUEUED`, or missing state, and `PR Gate` must report `SUCCESS`; do not register auto-merge while `Full Repository Static Analysis` or another selected build/static lane is still pending. For docs-only PRs, a pending review requirement may still block auto-merge registration, but ambiguous or incomplete hosted checks are blockers.
+Continue only when the local worktree is clean, the PR is open, not draft, targets the expected base branch, uses a task-owned head branch, has fresh local validation evidence, is not conflicting, has no requested changes, and has no `FAILURE`, `CANCELLED`, `TIMED_OUT`, or `ACTION_REQUIRED` status/check conclusion. Treat `DIRTY` and `UNKNOWN` `mergeStateStatus` values as blockers. Re-run this preflight after every commit or push; a stale `headRefOid` invalidates the merge decision. For runtime/C++/build/toolchain/public-contract PRs, the latest head must have no selected hosted check in `IN_PROGRESS`, `QUEUED`, or missing state, and `PR Gate` must report `SUCCESS`; do not register auto-merge while `Full Repository Static Analysis` or another selected build/static lane is still pending. For docs-only PRs, a pending review requirement may still block auto-merge registration, but ambiguous or incomplete hosted checks are blockers.
 
-For unattended Codex sessions, prefer GitHub auto-merge registration so GitHub performs the final `main` merge only after requirements are met. Include `--match-head-commit <headRefOid>` when the PR state query returns a head SHA, so a later push cannot be merged by the earlier decision:
+For unattended Codex sessions, prefer GitHub auto-merge registration so GitHub performs the final `main` merge only after requirements are met. The command must include `--match-head-commit <headRefOid>` from the immediately preceding PR state query so a later push cannot be merged by the earlier decision:
 
 ```powershell
 gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>
 ```
 
 Run the merge command from the task branch whose PR was preflighted. Use `--delete-branch` only for a task-owned head branch that is no longer needed. GitHub auto-merge must be enabled for the repository and PR; if `gh` reports auto-merge is unavailable, if branch protection or required checks are absent in a way that would merge pending/failing work immediately, or if the PR state is ambiguous, stop and report the blocker. Immediate merge commands such as `gh pr merge --merge --delete-branch`, `--squash`, `--rebase`, or `--admin` are not part of the unattended agent path and remain prompt-gated unless the user explicitly requests them in an approval-capable session with fresh passing evidence.
+
+After merge, verify what actually reached `main` instead of relying on the old PR object. Run `git fetch origin --prune`, confirm the checkout is on the expected base, and compare the preflighted head against `origin/main`:
+
+```powershell
+git status --short --branch
+git log --oneline origin/main..<headRefOid>
+```
+
+The second command should be empty. If it is not empty, or if a commit was pushed to the same head branch after the PR had already merged, do not assume the merged PR absorbed it; open or update a separate task-owned PR for the remaining commits.
 
 9. After GitHub deletes a merged head branch, run guarded post-merge worktree cleanup for task-owned linked worktrees that are no longer needed. The cleanup command fetches and prunes the remote, fast-forwards the local checkout on the base branch, then removes the merged worktree:
 
