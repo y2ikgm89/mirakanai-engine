@@ -59,3 +59,12 @@ Move byte-backed `upload_runtime_morph_mesh_cpu` POSITION, optional NORMAL, opti
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS | Agent instruction budgets and skill parity remain valid. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files 'engine/runtime_rhi/src/runtime_upload.cpp,tests/unit/runtime_rhi_tests.cpp'` | PASS | Focused tidy for the changed runtime RHI implementation and test passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Fresh full slice gate passed in the linked worktree; diagnostic-only host gates remain Metal/Apple host evidence on this Windows host. |
+| `cpp-reviewer` subagent read-only review | PASS | No blocking C++ ownership/API/lifetime issues; low test-evidence gaps were addressed with morph buffer readback and selected-queue/no-wait regression assertions. |
+| `rendering-auditor` subagent read-only audit | PASS | No blocking Frame Graph/RHI issues; low current-capabilities boundary wording was addressed by explicitly leaving buffer barriers unsupported. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1` | PASS | Post-review formatting left tracked text and C++ clean. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_tests` | PASS | Post-review runtime RHI test build passed after morph upload readback and compute-queue/no-wait assertions. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Post-review formatting guard passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_tests` | PASS | Post-review morph upload regressions passed, including optional normal/tangent counters, destination readback, selected compute queue, and no forced wait. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files 'tests/unit/runtime_rhi_tests.cpp'` | PASS | Focused tidy for the post-review test changes passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | Agent-facing docs/current capability wording remains consistent with the narrow morph upload command-evidence scope. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Fresh post-review full slice gate passed in the linked worktree; diagnostic-only host gates remain Metal/Apple host evidence on this Windows host. |
