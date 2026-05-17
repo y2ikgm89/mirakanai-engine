@@ -2163,6 +2163,23 @@ foreach ($rendererQualityPackageGuidance in @(
     Assert-ContainsText $rendererQualityPackageText "framegraph_render_passes_recorded" $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "framegraph_barrier_steps_executed" $rendererQualityPackageGuidance
 }
+foreach ($renderPassPackageGuidance in @(
+    ".agents/skills/rendering-change/references/full-guidance.md",
+    ".claude/skills/gameengine-rendering/references/full-guidance.md",
+    ".agents/skills/gameengine-game-development/SKILL.md",
+    ".claude/skills/gameengine-game-development/SKILL.md",
+    ".agents/skills/gameengine-game-development/references/full-guidance.md",
+    ".claude/skills/gameengine-game-development/references/full-guidance.md",
+    ".codex/agents/rendering-auditor.toml",
+    ".claude/agents/rendering-auditor.md",
+    "docs/workflows.md",
+    "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+)) {
+    $renderPassPackageText = Get-AgentSurfaceText $renderPassPackageGuidance
+    Assert-ContainsText $renderPassPackageText "framegraph_render_passes_recorded" $renderPassPackageGuidance
+    Assert-ContainsText $renderPassPackageText "renderer_quality_expected_framegraph_render_passes" $renderPassPackageGuidance
+    Assert-ContainsText $renderPassPackageText "renderer_quality_framegraph_render_passes" $renderPassPackageGuidance
+}
 $rendererQualityCMakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
 Assert-ContainsText $rendererQualityCMakeText "--require-renderer-quality-gates" "games/CMakeLists.txt"
 foreach ($directionalShadowStatusGuidance in @(

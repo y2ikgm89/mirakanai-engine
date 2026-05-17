@@ -909,14 +909,19 @@ try {
     $desktop3dManifest = $desktop3dManifestText | ConvertFrom-Json
     foreach ($needle in @(
             "framegraph_passes_executed=4",
+            "framegraph_render_passes_recorded=4",
             "framegraph_barrier_steps_executed=9",
+            "renderer_quality_expected_framegraph_render_passes=4",
             "renderer_quality_expected_framegraph_barrier_steps=9",
             "framegraph_passes_executed=6",
+            "framegraph_render_passes_recorded=6",
             "framegraph_barrier_steps_executed=15"
         )) {
         Assert-ContainsText $desktop3dManifestText $needle "Desktop runtime 3D package scaffold manifest"
         Assert-ContainsText $desktop3dReadmeText $needle "Desktop runtime 3D package scaffold README"
     }
+    Assert-ContainsText $desktop3dManifestText "selected D3D12 generated 3D graphics morph + directional shadow receiver smoke through --require-shadow-morph-composition with renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6" "Desktop runtime 3D package scaffold manifest"
+    Assert-ContainsText $desktop3dReadmeText 'selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke with `--require-shadow-morph-composition`, `renderer_gpu_morph_draws`, `renderer_morph_descriptor_binds`, `directional_shadow_ready=1`, `framegraph_passes=3`, `framegraph_passes_executed=6`, `framegraph_render_passes_recorded=6`' "Desktop runtime 3D package scaffold README"
     if ($desktop3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
         Write-Error "Desktop runtime 3D package scaffold manifest must select 3d-playable-desktop-package"
     }
@@ -1639,6 +1644,7 @@ foreach ($needle in @(
     "selected D3D12 visible generated 3D production-style package proof",
     "selected generated 3D directional shadow package smoke",
     "selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke",
+    "selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke through --require-shadow-morph-composition with renderer_gpu_morph_draws",
     "selected D3D12 generated 3D native UI overlay HUD box package smoke",
     "selected D3D12 generated 3D cooked UI atlas image sprite package smoke",
     "selected D3D12 generated 3D cooked UI atlas text glyph package smoke",
@@ -1876,6 +1882,7 @@ Assert-ContainsText $committedDesktop3dReadmeText "framegraph_barrier_steps_exec
 Assert-ContainsText $committedDesktop3dReadmeText "--require-postprocess-depth-input" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-directional-shadow-filtering" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-shadow-morph-composition" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText 'selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke with `--require-shadow-morph-composition`, `renderer_gpu_morph_draws`, `renderer_morph_descriptor_binds`, `directional_shadow_ready=1`, `framegraph_passes=3`, `framegraph_passes_executed=6`, `framegraph_render_passes_recorded=6`' "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-playable-3d-slice" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-gameplay-systems" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-native-ui-overlay" "committed generated 3D sample README"
@@ -1906,6 +1913,7 @@ Assert-ContainsText $engineManifestText "framegraph_barrier_steps_executed=15" "
 Assert-ContainsText $engineManifestText "desktopRuntime3dShadowMorphCompositionPackageSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-shadow-morph-composition" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "renderer_morph_descriptor_binds" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "framegraph_render_passes_recorded=6" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "desktopRuntime3dNativeUiOverlayPackageSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-native-ui-overlay" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "ui_overlay_ready=1" "engine/agent/manifest.json"
