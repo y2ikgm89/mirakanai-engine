@@ -540,7 +540,8 @@ Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "CMake File AP
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "tools/check-text-format.ps1" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "tools/format-text.ps1" "engine/agent/manifest.json"
-Assert-ContainsText $manifestRaw "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $productionCompletionMasterPlanPath -Raw) "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "production completion master plan"
+Assert-ContainsText (Get-Content -LiteralPath $planRegistryPath -Raw) 'renderer-rhi-resource-foundation` 1.0 scope closeout' "docs/superpowers/plans/README.md"
 foreach ($windowsDiagnosticsNeedle in @("windowsDiagnosticsToolchain", "Debugging Tools for Windows", "Windows Graphics Tools", "PIX on Windows", "Windows Performance Toolkit", "Tools.Graphics.DirectX~~~~0.0.1.0", "d3d12SDKLayers.dll", "pixtool --help", "srv*C:\\Symbols*https://msdl.microsoft.com/download/symbols")) {
     Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) $windowsDiagnosticsNeedle "engine/agent/manifest.json"
 }
@@ -1338,25 +1339,18 @@ if ($activeChildProductionPlans.Count -eq 0) {
 }
 $recommendedNextPlanText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
-    "Frame Graph Transient Texture Alias Planning v1",
-    "FrameGraphTransientTextureAliasPlan",
-    "plan_frame_graph_transient_texture_aliases",
-    "Frame Graph Shadow Scratch Color Target-State Ownership v1",
-    "shadow_color",
-    "6 pass callbacks/15 barrier steps",
-    "Frame Graph Viewport Surface Color State Executor v1",
-    "RhiViewportSurface",
-    "viewport_color",
-    "Frame Graph Texture Aliasing Barrier Command v1",
-    "record_frame_graph_texture_aliasing_barriers",
-    "automatic executor insertion",
-    "Package Streaming Frame Graph Texture Binding Handoff v1",
-    "make_runtime_package_streaming_frame_graph_texture_bindings",
-    "Frame Graph Render Pass Envelope v1",
-    "render_passes_recorded",
+    "Frame Graph v1 remains the selected foundation gap",
+    "Completed evidence is indexed in docs/superpowers/plans/README.md",
+    "do not reload slice-by-slice prose unless a phase needs it",
+    "production graph ownership beyond selected renderer/runtime-upload paths",
+    "package/resource upload integration boundaries",
+    "production multi-queue adoption",
+    "avoid repeated one-function child plans",
+    "production graph ownership boundary selection and RED tests",
+    "one reviewable PR checkpoint",
     "frame-graph-v1"
 )) {
-    Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
+    Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph production ownership milestone"
 }
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $masterPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
@@ -1366,7 +1360,7 @@ $physicsJoltPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-09-p
 $physicsCloseoutPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
 Assert-ContainsText $masterPlanText "Gap Burn-down Execution Strategy" "production completion master plan"
 Assert-ContainsText $masterPlanText "Execute this master plan by burning down one" "production completion master plan"
-foreach ($masterPlanCadenceNeedle in @("dated capability/gap-cluster/milestone plan", "Plan width may be broader than PR/phase width", "one reviewable purpose", 'one fresh `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`', 'tools/build.ps1` only when standalone build/install evidence is requested', "lightweight static checks for docs/agent-only slices")) {
+foreach ($masterPlanCadenceNeedle in @("Execution Efficiency Model", "Plan width:", "Phase/PR width:", "one reviewable purpose", 'full `tools/validate.ps1` once', "lightweight static checks for docs/agent-only slices", "checkpoint pushes")) {
     Assert-ContainsText $masterPlanText $masterPlanCadenceNeedle "production completion master plan"
 }
 Assert-ContainsText $masterPlanText "physics-1-0-collision-system-closeout-v1" "production completion master plan"

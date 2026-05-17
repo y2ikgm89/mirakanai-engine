@@ -897,34 +897,19 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
-    "Frame Graph Transient Texture Alias Planning v1",
-    "FrameGraphTransientTextureAliasPlan",
-    "plan_frame_graph_transient_texture_aliases",
-    "Frame Graph Shadow Scratch Color Target-State Ownership v1",
-    "shadow_color",
-    "6 pass callbacks/15 barrier steps",
-    "Frame Graph Viewport Surface Color State Executor v1",
-    "RhiViewportSurface",
-    "viewport_color",
-    "Frame Graph Texture Aliasing Barrier Command v1",
-    "record_frame_graph_texture_aliasing_barriers",
-    "automatic executor insertion",
-    "Package Streaming Frame Graph Texture Binding Handoff v1",
-    "make_runtime_package_streaming_frame_graph_texture_bindings",
-    "Frame Graph Render Pass Envelope v1",
-    "render_passes_recorded",
-    "Frame Graph RHI Queue Dependency Plan v1",
-    "plan_frame_graph_rhi_queue_waits",
-    "IRhiDevice::wait_for_queue",
-    "Frame Graph RHI Multi-Queue Executor v1",
-    "execute_frame_graph_rhi_multi_queue_schedule",
-    "Frame Graph RHI Multi-Queue Texture Barrier Execution v1",
-    "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded",
-    "multi-queue pass command submission and opt-in texture barrier recording envelope",
+    "Frame Graph v1 remains the selected foundation gap",
+    "Completed evidence is indexed in docs/superpowers/plans/README.md",
+    "do not reload slice-by-slice prose unless a phase needs it",
+    "production graph ownership beyond selected renderer/runtime-upload paths",
+    "package/resource upload integration boundaries",
+    "production multi-queue adoption",
+    "avoid repeated one-function child plans",
+    "production graph ownership boundary selection and RED tests",
+    "one reviewable PR checkpoint",
     "frame-graph-v1"
 )) {
     if (-not $recommendedText.Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph transient alias planning and next gap: $needle"
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe the active frame-graph-v1 production ownership milestone: $needle"
     }
 }
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })
