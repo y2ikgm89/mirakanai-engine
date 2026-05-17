@@ -1251,8 +1251,8 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "targeted drift checks" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Context7" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "tools/prepare-worktree.ps1" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "tools/remove-merged-worktree.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/check-toolchain.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/check-toolchain.ps1 -RequireDirectCMake" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "normalized-configure-environment" $agentIntegrationSkill
@@ -1306,6 +1306,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "post-merge remote-tracking cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "post-merge worktree cleanup" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "local checkout fast-forward" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "Git main worktree porcelain records" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "worktree-local vcpkg reparse points" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "guarded/non-following" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "policy reload" $agentIntegrationSkill
@@ -1342,6 +1343,7 @@ Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules
 Assert-ContainsText $codexRuleText "git worktree remove" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git worktree prune" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "tools/remove-merged-worktree.ps1" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "Git worktree porcelain records" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText 'decision = "allow"' ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr view" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr create" ".codex/rules/gameengine.rules"
