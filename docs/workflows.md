@@ -189,6 +189,16 @@ The PR body must record the selected tier, exact commands/checks, and why omitte
 
 Keep required job names unique across workflows. If branch protection or merge queue is enabled, the required check surface must stay stable while the underlying heavy lanes can evolve behind the aggregate gate.
 
+### GitHub Repository Policy Audit
+
+Before unattended merge or auto-merge decisions, verify the repository-side contract with GitHub CLI and REST-backed reads:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-github-repository-policy.ps1
+```
+
+The check expects `main` as the default branch; repository `allow_auto_merge` enabled; `delete_branch_on_merge` enabled; merge commits enabled with squash and rebase merging disabled for this project policy; and either active branch rulesets or branch protection requiring pull requests, strict required status checks containing `PR Gate`, force-push blocking, and deletion blocking. The script is read-only. If it fails, report the exact GitHub repository settings blocker and do not compensate with immediate merge commands, admin bypasses, weakened branch protection, or broader Codex/Claude permissions. Changing shared GitHub repository settings through the web UI, `gh api -X PATCH`, branch protection endpoints, or ruleset endpoints requires explicit owner/admin approval.
+
 6. Do not push directly to the default branch or protected branches; that is outside the official GitHub Flow publishing path. Do not use `--force`; use `--force-with-lease` only when the user explicitly requests history rewriting and the branch is known to be task-owned.
 
 7. Prefer a GitHub pull request for shared or release-facing work:
@@ -257,7 +267,7 @@ git credential-manager --version
 
 On Git for Windows, the current Git Credential Manager helper is `manager`. Remove stale user-level helper entries such as `manager-core` only after confirming `manager` is still configured by system or user Git config. Do not commit repository-level `credential.helper` overrides, token requirements, or checked-in credential state to hide host configuration drift.
 
-These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, `core.excludesFile`, and [`git worktree remove` / `git worktree prune`](https://git-scm.com/docs/git-worktree), and GitHub documentation for pull requests, [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches), [auto-merge](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request), and [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge). For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html).
+These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, `core.excludesFile`, and [`git worktree remove` / `git worktree prune`](https://git-scm.com/docs/git-worktree), and GitHub documentation for pull requests, [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches), [rulesets](https://docs.github.com/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets), [REST rules](https://docs.github.com/rest/repos/rules), [REST branch protection](https://docs.github.com/en/rest/branches/branch-protection), [auto-merge](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request), [`gh api`](https://cli.github.com/manual/gh_api), and [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge). For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html).
 
 ## Windows Diagnostics Toolchain
 

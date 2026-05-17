@@ -175,6 +175,22 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/check-github-repository-policy.ps1"],
+    decision = "allow",
+    justification = "Read-only GitHub repository policy audit is allowed before unattended PR merge decisions because it only inspects repository settings, branch rulesets, and branch protection through GitHub CLI REST calls.",
+    match = [
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-github-repository-policy.ps1",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-github-repository-policy.ps1 -Repository y2ikgm89/mirakanai-engine -Branch main",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-github-repository-policy.ps1 -RequiredStatusCheck PR Gate",
+    ],
+    not_match = [
+        "gh api -X PATCH repos/y2ikgm89/mirakanai-engine",
+        "gh api -X PUT repos/y2ikgm89/mirakanai-engine/branches/main/protection",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1",
+    ],
+)
+
+prefix_rule(
     pattern = ["gh", "pr", "merge", "--auto", "--merge", "--delete-branch", "--match-head-commit"],
     decision = "allow",
     justification = "Register GitHub auto-merge only after docs/workflows.md PR preflight confirms a task-owned PR, clean local worktree, fresh validation, current headRefOid, PR Gate success for runtime/C++ slices, and no failed or pending selected hosted checks.",
@@ -222,6 +238,23 @@ prefix_rule(
         "gh auth status",
         "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
         "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
+    ],
+)
+
+prefix_rule(
+    pattern = ["gh", "api", "-X", ["PATCH", "PUT", "POST", "DELETE"]],
+    decision = "prompt",
+    justification = "Mutating GitHub REST API calls can change shared repository settings, branch protection, rulesets, PR state, or repository content and require explicit owner/admin review.",
+    match = [
+        "gh api -X PATCH repos/y2ikgm89/mirakanai-engine",
+        "gh api -X PUT repos/y2ikgm89/mirakanai-engine/branches/main/protection",
+        "gh api -X POST repos/y2ikgm89/mirakanai-engine/rulesets",
+        "gh api -X DELETE repos/y2ikgm89/mirakanai-engine/rulesets/1",
+    ],
+    not_match = [
+        "gh api repos/y2ikgm89/mirakanai-engine",
+        "gh api repos/y2ikgm89/mirakanai-engine/rules/branches/main",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-github-repository-policy.ps1",
     ],
 )
 

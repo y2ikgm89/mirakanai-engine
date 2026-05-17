@@ -8,6 +8,7 @@
       "Bash(gh pr view:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-github-repository-policy.ps1:*)",
       "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)"
     ],
     "ask": [
@@ -28,6 +29,10 @@
       "Bash(gh pr ready:*)",
       "Bash(gh pr close:*)",
       "Bash(gh pr reopen:*)",
+      "Bash(gh api -X PATCH:*)",
+      "Bash(gh api -X PUT:*)",
+      "Bash(gh api -X POST:*)",
+      "Bash(gh api -X DELETE:*)",
       "Bash(rm:*)",
       "Bash(Remove-Item:*)",
       "Bash(curl:*)",

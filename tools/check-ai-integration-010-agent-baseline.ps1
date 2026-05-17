@@ -19,6 +19,7 @@ $legalPath = Resolve-RequiredAgentPath "docs/legal-and-licensing.md"
 $planRegistryPath = Resolve-RequiredAgentPath "docs/superpowers/plans/README.md"
 $productionCompletionMasterPlanPath = Resolve-RequiredAgentPath "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 $removeMergedWorktreeToolPath = Resolve-RequiredAgentPath "tools/remove-merged-worktree.ps1"
+$githubRepositoryPolicyToolPath = Resolve-RequiredAgentPath "tools/check-github-repository-policy.ps1"
 foreach ($textFormatToolPath in @("tools/check-text-format.ps1", "tools/check-text-format-contract.ps1", "tools/format-text.ps1", "tools/text-format-core.ps1")) {
     Resolve-RequiredAgentPath $textFormatToolPath | Out-Null
 }
@@ -94,6 +95,10 @@ Assert-ContainsText $removeMergedWorktreeToolContent '$standardWorktreeBasePaths
 Assert-ContainsText $removeMergedWorktreeToolContent '"worktree", "list", "--porcelain"' "tools/remove-merged-worktree.ps1"
 Assert-ContainsText $removeMergedWorktreeToolContent "external/vcpkg" "tools/remove-merged-worktree.ps1"
 Assert-ContainsText $removeMergedWorktreeToolContent "vcpkg_installed" "tools/remove-merged-worktree.ps1"
+$githubRepositoryPolicyToolContent = Get-Content -LiteralPath $githubRepositoryPolicyToolPath -Raw
+foreach ($githubRepositoryPolicyNeedle in @("gh @Arguments", 'repos/$Repository/rules/branches/$Branch', 'repos/$Repository/branches/$Branch/protection', "allow_auto_merge", "delete_branch_on_merge", "allow_squash_merge", "allow_rebase_merge", "pull_request", "required_status_checks", "non_fast_forward", "deletion", "github-repository-policy-check: FAIL")) {
+    Assert-ContainsText $githubRepositoryPolicyToolContent $githubRepositoryPolicyNeedle "tools/check-github-repository-policy.ps1"
+}
 Assert-ContainsText $agentsContent "Direct default-branch pushes are outside the official GitHub Flow path" "AGENTS.md"
 Assert-ContainsText $agentsContent "credential-manager-core" "AGENTS.md"
 Assert-ContainsText $agentsContent "gh pr view <pr> --json" "AGENTS.md"
@@ -103,6 +108,8 @@ Assert-ContainsText $agentsContent "mergeStateStatus" "AGENTS.md"
 Assert-ContainsText $agentsContent "selected hosted checks to complete" "AGENTS.md"
 Assert-ContainsText $agentsContent "Full Repository Static Analysis" "AGENTS.md"
 Assert-ContainsText $agentsContent "--match-head-commit <headRefOid>" "AGENTS.md"
+Assert-ContainsText $agentsContent "tools/check-github-repository-policy.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "changing shared repository settings needs explicit owner/admin approval" "AGENTS.md"
 Assert-ContainsText $agentsContent "clean local worktree" "AGENTS.md"
 Assert-ContainsText $agentsContent "commits pushed after a PR merged need a new PR" "AGENTS.md"
 Assert-ContainsText $agentsContent "not publication-complete after local validation alone" "AGENTS.md"
@@ -196,6 +203,12 @@ Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GitHub flow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "official GitHub Flow" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "GitHub Repository Policy Audit" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "tools/check-github-repository-policy.ps1" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "allow_auto_merge" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "delete_branch_on_merge" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "REST rules" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "REST branch protection" "docs/workflows.md"
 foreach ($workflowCadenceNeedle in @("purpose/checkpoint-based", "commit complete validated phases", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "Do not open a PR for every commit")) {
     Assert-ContainsText $workflowsContent $workflowCadenceNeedle "docs/workflows.md"
 }
@@ -292,6 +305,7 @@ $agentOperationalReferenceContent = Get-AgentSurfaceText "docs/agent-operational
 Assert-ContainsText $agentOperationalReferenceContent "HeaderFilterRegex" "docs/agent-operational-reference.md"
 Assert-ContainsText $agentOperationalReferenceContent "NN warnings generated." "docs/agent-operational-reference.md"
 Assert-ContainsText $agentOperationalReferenceContent "tools/new-game-templates.ps1" "docs/agent-operational-reference.md"
+Assert-ContainsText $agentOperationalReferenceContent "tools/check-github-repository-policy.ps1" "docs/agent-operational-reference.md"
 foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "PIX on Windows", "Windows Performance Toolkit", "Tools.Graphics.DirectX~~~~0.0.1.0", "d3d12SDKLayers.dll", "cdb -version", "pixtool --help", "wpr -help", "xperf -help")) {
     Assert-ContainsText $testingContent $windowsDiagnosticsNeedle "docs/testing.md"
 }
@@ -320,6 +334,8 @@ foreach ($aiIntegrationCadenceNeedle in @("purpose/checkpoint-based", "one PR pe
     Assert-ContainsText $aiIntegrationContent $aiIntegrationCadenceNeedle "docs/ai-integration.md"
 }
 Assert-ContainsText $aiIntegrationContent "Direct default-branch pushes are blocked" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "tools/check-github-repository-policy.ps1" "docs/ai-integration.md"
+Assert-ContainsText $aiIntegrationContent "shared remote setting changes require explicit owner/admin approval" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "mergeStateStatus" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "selected hosted checks to complete" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent '`PR Gate` to report `SUCCESS`' "docs/ai-integration.md"
@@ -365,6 +381,8 @@ Assert-ContainsText $cursorBaselineSkillText '`PR Gate` to report `SUCCESS`' ".c
 Assert-ContainsText $cursorBaselineSkillText "mergeStateStatus" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText 'stale `headRefOid` invalidates the merge decision' ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "tools/check-github-repository-policy.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "GitHub settings blockers" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "tools/remove-merged-worktree.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "Windows long-path fallback inside the guarded script" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "tools/check-text-format.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
@@ -374,6 +392,8 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText 'stale `headRefOid` invalidates the merge decision' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "tools/check-github-repository-policy.ps1" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "remote repository settings mutation" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 foreach ($cursorAgentCadenceNeedle in @("purpose/checkpoint-based", "push validated topic-branch checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
     Assert-ContainsText $cursorAgentIntegrationSkillText $cursorAgentCadenceNeedle ".cursor/skills/gameengine-agent-integration/SKILL.md"
 }
@@ -479,6 +499,11 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("removeMergedWorkt
     Write-Error "engine/agent/manifest.json commands missing required command: removeMergedWorktree"
 } elseif ($manifest.commands.removeMergedWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch]") {
     Write-Error "engine/agent/manifest.json commands.removeMergedWorktree must expose the guarded post-merge worktree cleanup command"
+}
+if (-not $manifest.commands.PSObject.Properties.Name.Contains("githubRepositoryPolicyCheck")) {
+    Write-Error "engine/agent/manifest.json commands missing required command: githubRepositoryPolicyCheck"
+} elseif ($manifest.commands.githubRepositoryPolicyCheck -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-github-repository-policy.ps1 [-Repository <owner/name>] [-Branch main] [-RequiredStatusCheck <check-name>]") {
+    Write-Error "engine/agent/manifest.json commands.githubRepositoryPolicyCheck must expose the read-only GitHub repository policy audit command"
 }
 $composeAgentManifestCmd = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 [-Write|-Verify|-SplitFromCanonical]"
 if (-not $manifest.commands.PSObject.Properties.Name.Contains("composeAgentManifest")) {
