@@ -683,6 +683,7 @@ int main(int argc, char** argv) {
               << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
               << " framegraph_passes=" << report.framegraph_passes
               << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
+              << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
               << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
               << " frames=" << result.frames_run << " game_frames=" << game.frames()
               << " scene_meshes=" << game.scene_meshes_submitted()
@@ -714,6 +715,8 @@ int main(int argc, char** argv) {
             (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
              report.framegraph_passes != 2 ||
              report.renderer_stats.framegraph_passes_executed != static_cast<std::uint64_t>(options.max_frames) * 2U ||
+             report.renderer_stats.framegraph_render_passes_recorded !=
+                 static_cast<std::uint64_t>(options.max_frames) * 2U ||
              report.renderer_stats.framegraph_barrier_steps_executed !=
                  static_cast<std::uint64_t>(options.max_frames) * 2U ||
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {

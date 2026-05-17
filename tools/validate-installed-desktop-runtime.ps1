@@ -716,6 +716,9 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes_executed=$expectedFramegraphPassExecutions\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove frame graph pass execution count."
     }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_render_passes_recorded=$expectedFramegraphPassExecutions\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove frame graph render-pass envelope count."
+    }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_barrier_steps_executed=$expectedFramegraphBarrierExecutions\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove frame graph barrier-step execution count."
     }
@@ -842,8 +845,10 @@ if ($requiresRendererQualityGates) {
         "renderer_quality_ready" = "1"
         "renderer_quality_diagnostics" = "0"
         "renderer_quality_expected_framegraph_passes" = $expectedRendererQualityFramegraphPasses
+        "renderer_quality_expected_framegraph_render_passes" = [string]$expectedFramegraphPassExecutions
         "renderer_quality_expected_framegraph_barrier_steps" = $expectedRendererQualityFramegraphBarrierSteps
         "renderer_quality_framegraph_passes_ok" = "1"
+        "renderer_quality_framegraph_render_passes_ok" = "1"
         "renderer_quality_framegraph_barrier_steps_ok" = "1"
         "renderer_quality_framegraph_execution_budget_ok" = "1"
         "renderer_quality_scene_gpu_ready" = "1"

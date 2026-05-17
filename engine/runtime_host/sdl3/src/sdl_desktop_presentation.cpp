@@ -3466,6 +3466,18 @@ quality_gate_expected_framegraph_passes(const SdlDesktopPresentationQualityGateD
 }
 
 [[nodiscard]] std::uint64_t
+quality_gate_expected_framegraph_render_passes(const SdlDesktopPresentationQualityGateDesc& desc) noexcept {
+    const auto expected_passes = quality_gate_expected_framegraph_passes(desc);
+    if (expected_passes == 0) {
+        return 0;
+    }
+    if (desc.expected_frames == 0) {
+        return expected_passes;
+    }
+    return static_cast<std::uint64_t>(expected_passes) * desc.expected_frames;
+}
+
+[[nodiscard]] std::uint64_t
 quality_gate_expected_framegraph_barrier_steps(const SdlDesktopPresentationQualityGateDesc& desc) noexcept {
     const auto expected_frames = static_cast<std::uint64_t>(desc.expected_frames);
     if (desc.require_directional_shadow) {
@@ -4578,6 +4590,7 @@ evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationRepor
                                                const SdlDesktopPresentationQualityGateDesc& desc) noexcept {
     SdlDesktopPresentationQualityGateReport result;
     result.expected_framegraph_passes = quality_gate_expected_framegraph_passes(desc);
+    result.expected_framegraph_render_passes = quality_gate_expected_framegraph_render_passes(desc);
     result.expected_framegraph_barrier_steps = quality_gate_expected_framegraph_barrier_steps(desc);
     if (!quality_gate_requested(desc)) {
         return result;
@@ -4641,6 +4654,19 @@ evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationRepor
         }
     }
 
+    if (result.expected_framegraph_render_passes > 0) {
+        if (desc.expected_frames > 0) {
+            result.framegraph_render_passes_current =
+                report.renderer_stats.framegraph_render_passes_recorded == result.expected_framegraph_render_passes;
+        } else {
+            result.framegraph_render_passes_current =
+                report.renderer_stats.framegraph_render_passes_recorded >= result.expected_framegraph_render_passes;
+        }
+        if (!result.framegraph_render_passes_current) {
+            add_diagnostic();
+        }
+    }
+
     if (result.expected_framegraph_barrier_steps > 0) {
         if (desc.expected_frames > 0) {
             const auto expected_framegraph_executions =
@@ -4650,6 +4676,7 @@ evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationRepor
             result.framegraph_execution_budget_current =
                 report.renderer_stats.frames_finished == desc.expected_frames &&
                 report.renderer_stats.framegraph_passes_executed == expected_framegraph_executions &&
+                report.renderer_stats.framegraph_render_passes_recorded == result.expected_framegraph_render_passes &&
                 result.framegraph_barrier_steps_current &&
                 (!desc.require_postprocess ||
                  report.renderer_stats.postprocess_passes_executed == desc.expected_frames);
@@ -4657,8 +4684,9 @@ evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationRepor
             result.framegraph_barrier_steps_current =
                 report.renderer_stats.framegraph_barrier_steps_executed >=
                 static_cast<std::uint64_t>(result.expected_framegraph_barrier_steps);
-            result.framegraph_execution_budget_current =
-                result.framegraph_passes_current && result.framegraph_barrier_steps_current;
+            result.framegraph_execution_budget_current = result.framegraph_passes_current &&
+                                                         result.framegraph_render_passes_current &&
+                                                         result.framegraph_barrier_steps_current;
         }
         if (!result.framegraph_barrier_steps_current) {
             add_diagnostic();
@@ -4667,7 +4695,8 @@ evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationRepor
             add_diagnostic();
         }
     } else if (result.expected_framegraph_passes > 0) {
-        result.framegraph_execution_budget_current = result.framegraph_passes_current;
+        result.framegraph_execution_budget_current =
+            result.framegraph_passes_current && result.framegraph_render_passes_current;
     }
 
     result.ready = result.diagnostics_count == 0;
