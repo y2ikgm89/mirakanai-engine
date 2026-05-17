@@ -251,11 +251,18 @@ if ($comparableWorktreePath -eq $comparableLocalCheckoutPath) {
     Write-Error "Refusing to update and remove the same worktree path: $resolvedWorktreePath"
 }
 
+$worktreeRecords = @(Get-GitWorktreeRecords -RepoRoot $root)
+$mainWorktreeRecord = $worktreeRecords | Select-Object -First 1
+$standardWorktreeBasePaths = @($root, $resolvedLocalCheckoutPath)
+if ($null -ne $mainWorktreeRecord -and -not $mainWorktreeRecord.Bare) {
+    $standardWorktreeBasePaths += $mainWorktreeRecord.Path
+}
+
 $standardWorktreeRoots = @(
-    (Join-Path $root ".worktrees"),
-    (Join-Path (Join-Path $root ".claude") "worktrees"),
-    (Join-Path $resolvedLocalCheckoutPath ".worktrees"),
-    (Join-Path (Join-Path $resolvedLocalCheckoutPath ".claude") "worktrees")
+    foreach ($standardWorktreeBasePath in $standardWorktreeBasePaths) {
+        Join-Path $standardWorktreeBasePath ".worktrees"
+        Join-Path (Join-Path $standardWorktreeBasePath ".claude") "worktrees"
+    }
 )
 
 $isUnderStandardRoot = $false
@@ -270,7 +277,7 @@ if (-not $isUnderStandardRoot) {
     Write-Error "Refusing post-merge cleanup outside standard ignored worktree roots (.worktrees/ or .claude/worktrees/): $resolvedWorktreePath"
 }
 
-$matchingRecords = @(Get-GitWorktreeRecords -RepoRoot $root | Where-Object {
+$matchingRecords = @($worktreeRecords | Where-Object {
         (ConvertTo-ComparablePath -Path $_.Path) -eq $comparableWorktreePath
     })
 

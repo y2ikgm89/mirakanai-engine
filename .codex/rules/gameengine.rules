@@ -60,7 +60,7 @@ prefix_rule(
 prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/remove-merged-worktree.ps1"],
     decision = "allow",
-    justification = "Guarded post-merge cleanup is allowed because the repository script fetches/prunes, fast-forwards a clean base checkout, verifies standard ignored worktree root, clean status, and branch ancestry, and unlinks worktree-local dependency reparse points before invoking Git worktree removal.",
+    justification = "Guarded post-merge cleanup is allowed because the repository script fetches/prunes, fast-forwards a clean base checkout, verifies standard roots from Git worktree porcelain records, clean status, and branch ancestry, and unlinks worktree-local dependency reparse points before invoking Git worktree removal.",
     match = [
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .worktrees/codex/example -BaseRef origin/main -BaseBranch main -Remote origin -DeleteLocalBranch",
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .claude/worktrees/example -BaseRef origin/main -BaseBranch main -LocalCheckoutPath .",
