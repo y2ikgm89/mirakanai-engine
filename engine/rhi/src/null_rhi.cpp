@@ -511,9 +511,13 @@ class NullRhiCommandList final : public IRhiCommandList {
     void texture_aliasing_barrier(TextureHandle before, TextureHandle after) override {
         require_recording();
         require_no_render_pass();
-        if (before.value == 0 || after.value == 0 || before.value == after.value || !device_.owns_texture(before) ||
-            !device_.owns_texture(after)) {
-            throw std::invalid_argument("rhi texture aliasing barrier requires two distinct device texture handles");
+        if ((before.value != 0 && !device_.owns_texture(before)) ||
+            (after.value != 0 && !device_.owns_texture(after))) {
+            throw std::invalid_argument("rhi texture aliasing barrier handles must belong to this device");
+        }
+        if (before.value != 0 && before.value == after.value) {
+            throw std::invalid_argument(
+                "rhi texture aliasing barrier requires distinct texture handles or wildcard endpoints");
         }
 
         ++device_.stats_.texture_aliasing_barriers;

@@ -685,6 +685,8 @@ class VulkanRuntimeDevice {
     record_runtime_texture_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                    VulkanRuntimeTexture& texture, const VulkanRuntimeTextureBarrierDesc& desc);
     friend VulkanRuntimeTextureAliasingBarrierResult
+    record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool);
+    friend VulkanRuntimeTextureAliasingBarrierResult
     record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                             VulkanRuntimeTexture& before, VulkanRuntimeTexture& after);
     friend VulkanRuntimeBufferCopyResult record_runtime_buffer_copy(VulkanRuntimeDevice& device,
@@ -799,6 +801,8 @@ class VulkanRuntimeCommandPool {
     friend VulkanRuntimeTextureBarrierResult
     record_runtime_texture_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                    VulkanRuntimeTexture& texture, const VulkanRuntimeTextureBarrierDesc& desc);
+    friend VulkanRuntimeTextureAliasingBarrierResult
+    record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool);
     friend VulkanRuntimeTextureAliasingBarrierResult
     record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                             VulkanRuntimeTexture& before, VulkanRuntimeTexture& after);
@@ -949,6 +953,8 @@ class VulkanRuntimeTexture {
     friend VulkanRuntimeTextureBarrierResult
     record_runtime_texture_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                    VulkanRuntimeTexture& texture, const VulkanRuntimeTextureBarrierDesc& desc);
+    friend VulkanRuntimeTextureAliasingBarrierResult
+    record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool);
     friend VulkanRuntimeTextureAliasingBarrierResult
     record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                             VulkanRuntimeTexture& before, VulkanRuntimeTexture& after);
@@ -1898,6 +1904,8 @@ read_runtime_readback_buffer(VulkanRuntimeDevice& device, VulkanRuntimeReadbackB
 [[nodiscard]] VulkanRuntimeTextureBarrierResult
 record_runtime_texture_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                VulkanRuntimeTexture& texture, const VulkanRuntimeTextureBarrierDesc& desc);
+[[nodiscard]] VulkanRuntimeTextureAliasingBarrierResult
+record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool);
 [[nodiscard]] VulkanRuntimeTextureAliasingBarrierResult
 record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                         VulkanRuntimeTexture& before, VulkanRuntimeTexture& after);

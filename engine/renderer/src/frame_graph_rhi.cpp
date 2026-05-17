@@ -1339,39 +1339,34 @@ record_frame_graph_texture_aliasing_barriers(rhi::IRhiCommandList& commands,
 
     std::vector<std::pair<rhi::TextureHandle, rhi::TextureHandle>> planned_barriers;
     planned_barriers.reserve(aliasing_barriers.size());
+    const auto resolve_aliasing_endpoint = [&](const std::string& resource, rhi::TextureHandle& handle) -> bool {
+        handle = {};
+        if (resource.empty()) {
+            return true;
+        }
+        const auto binding = binding_indices.find(resource);
+        if (binding == binding_indices.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, resource,
+                                              "frame graph texture aliasing barrier references an unknown resource");
+            return false;
+        }
+        handle = texture_bindings[binding->second].texture;
+        return true;
+    };
     for (const auto& barrier : aliasing_barriers) {
-        if (barrier.before_resource.empty()) {
-            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, {},
-                                              "frame graph texture aliasing barrier before resource name is empty");
-            continue;
-        }
-        if (barrier.after_resource.empty()) {
-            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, {},
-                                              "frame graph texture aliasing barrier after resource name is empty");
+        rhi::TextureHandle before_handle{};
+        rhi::TextureHandle after_handle{};
+        const bool before_resolved = resolve_aliasing_endpoint(barrier.before_resource, before_handle);
+        const bool after_resolved = resolve_aliasing_endpoint(barrier.after_resource, after_handle);
+        if (!before_resolved || !after_resolved) {
             continue;
         }
 
-        const auto before = binding_indices.find(barrier.before_resource);
-        const auto after = binding_indices.find(barrier.after_resource);
-        if (before == binding_indices.end()) {
-            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
-                                              barrier.before_resource,
-                                              "frame graph texture aliasing barrier references an unknown resource");
-            continue;
-        }
-        if (after == binding_indices.end()) {
+        if (before_handle.value != 0 && before_handle.value == after_handle.value) {
             append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
                                               barrier.after_resource,
-                                              "frame graph texture aliasing barrier references an unknown resource");
-            continue;
-        }
-
-        const auto before_handle = texture_bindings[before->second].texture;
-        const auto after_handle = texture_bindings[after->second].texture;
-        if (before_handle.value == after_handle.value) {
-            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
-                                              barrier.after_resource,
-                                              "frame graph texture aliasing barrier requires distinct texture handles");
+                                              "frame graph texture aliasing barrier requires distinct texture handles "
+                                              "or wildcard endpoints");
             continue;
         }
         planned_barriers.emplace_back(before_handle, after_handle);
@@ -1386,13 +1381,17 @@ record_frame_graph_texture_aliasing_barriers(rhi::IRhiCommandList& commands,
         try {
             commands.texture_aliasing_barrier(planned.first, planned.second);
         } catch (const std::exception& error) {
+            const auto& diagnostic_resource =
+                !barrier.after_resource.empty() ? barrier.after_resource : barrier.before_resource;
             append_frame_graph_rhi_diagnostic(
-                result, FrameGraphDiagnosticCode::invalid_resource, {}, barrier.after_resource,
+                result, FrameGraphDiagnosticCode::invalid_resource, {}, diagnostic_resource,
                 std::string{"frame graph texture aliasing barrier recording failed: "} + error.what());
             return result;
         } catch (...) {
+            const auto& diagnostic_resource =
+                !barrier.after_resource.empty() ? barrier.after_resource : barrier.before_resource;
             append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
-                                              barrier.after_resource,
+                                              diagnostic_resource,
                                               "frame graph texture aliasing barrier recording failed");
             return result;
         }

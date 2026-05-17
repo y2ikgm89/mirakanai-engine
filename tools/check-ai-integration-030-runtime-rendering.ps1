@@ -1839,6 +1839,7 @@ Assert-ContainsText $frameGraphRhiSource "frame graph texture bindings sharing a
 Assert-ContainsText $frameGraphRhiSource "record_frame_graph_texture_aliasing_barriers" "Frame graph texture aliasing barrier command"
 Assert-ContainsText $frameGraphRhiSource "texture_aliasing_barrier" "Frame graph texture aliasing barrier command"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture aliasing barrier requires distinct texture handles" "Frame graph texture aliasing barrier command"
+Assert-ContainsText $frameGraphRhiSource "or wildcard endpoints" "Frame graph public null aliasing barrier command"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state has no declared writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state disagrees with writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target access is declared more than once" "Frame graph RHI pass target access validation"
@@ -1857,6 +1858,7 @@ Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording 
 Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording rejects conflicting shared texture handle states" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution hands off shared texture handle state between aliases" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording maps resource names to texture handles" "Frame graph texture aliasing barrier command tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording maps empty resource names to wildcards" "Frame graph public null aliasing barrier tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording rejects missing resources and shared handles" "Frame graph texture aliasing barrier command tests"
 Assert-ContainsText $rendererRhiTests "rhi frame renderer carries primary target state across texture frames" "RhiFrameRenderer primary target-state evidence tests"
 Assert-ContainsText $rendererRhiTests "rhi frame renderer reports primary target state failures before pass body" "RhiFrameRenderer primary target-state evidence tests"
@@ -1867,8 +1869,11 @@ Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule executio
 Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor submits declared pass queues and waits for producer fences" "Frame graph RHI multi-queue executor tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor preserves submitted producer evidence on callback failure" "Frame graph RHI multi-queue executor tests"
 Assert-ContainsText $rhiTestsText "null rhi records texture aliasing barriers without changing texture state" "NullRHI texture aliasing barrier command tests"
+Assert-ContainsText $rhiTestsText "null rhi records wildcard texture aliasing barriers" "NullRHI public null aliasing barrier tests"
 Assert-ContainsText $rhiTestsText "null rhi transient texture alias group returns distinct handles under one lease" "NullRHI transient texture alias-group lease tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device records texture aliasing barrier commands" "D3D12 texture aliasing barrier command tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device records public wildcard texture aliasing barrier commands" "D3D12 public null aliasing barrier tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 device context applies public null placed texture aliasing state updates" "D3D12 public null placed aliasing state tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device transient texture alias group returns distinct placed handles" "D3D12 transient texture alias-group lease tests"
 Assert-ContainsText $d3d12RhiTestsText "null_resource_aliasing_barriers" "D3D12 texture aliasing barrier command evidence tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 device context creates placed transient texture resources" "D3D12 placed transient texture lease tests"
@@ -1898,7 +1903,9 @@ if (-not $beginFrameFunctionMatch.Success) {
 }
 $beginFrameFunctionBody = $beginFrameFunctionMatch.Groups["body"].Value
 Assert-DoesNotContainText $beginFrameFunctionBody "begin_render_pass" "RHI frame renderer primary pass ownership"
-Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`r`n    require_active_frame();`r`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
+Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {
+    require_active_frame();
+    commands_->draw(3, 1);" "RHI postprocess sprite submission"
 Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`n    require_active_frame();`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
 Assert-ContainsText $rhiPostprocessSource "execute_frame_graph_rhi_texture_schedule" "RHI postprocess frame graph RHI execution"
 Assert-ContainsText $rhiPostprocessSource "build_frame_graph_texture_pass_target_accesses" "RHI postprocess frame graph pass target access execution"
@@ -1973,7 +1980,7 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "plan_frame_graph_rhi_queue_waits" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "IRhiDevice::wait_for_queue" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "execute_frame_graph_rhi_multi_queue_schedule" $renderingGuidancePath
-    Assert-ContainsText $renderingGuidanceText "wildcard/null public aliasing barriers" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "wildcard/null barrier support" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "data inheritance/content preservation" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "FrameGraphRhiRenderPassDesc`` envelope around the ``primary_color`` callback" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "viewport.clear`` render pass envelopes" $renderingGuidancePath
@@ -2001,7 +2008,7 @@ foreach ($renderingAuditorPath in @(
     Assert-ContainsText $renderingAuditorText "submits work rather than after fence completion" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "automatic executor aliasing barriers" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "aliasing_barriers_recorded" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "wildcard/null public aliasing barriers" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "wildcard/null barrier support" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "primary_color" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "render pass envelope" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "viewport.clear" $renderingAuditorPath
