@@ -2825,6 +2825,150 @@ MK_TEST("frame graph rhi texture schedule execution rejects same handle automati
     MK_REQUIRE(device.stats().resource_transitions == 0);
 }
 
+MK_TEST("frame graph rhi queue wait planning derives cross queue waits from scheduled barriers") {
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "streamed-texture", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "copy.upload",
+        .reads = {},
+        .writes = {mirakana::FrameGraphResourceAccess{.resource = "streamed-texture",
+                                                      .access = mirakana::FrameGraphAccess::copy_destination}},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "graphics.draw",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "streamed-texture",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {},
+    });
+
+    const auto built = mirakana::compile_frame_graph_v1(desc);
+    MK_REQUIRE(built.succeeded());
+    const auto schedule = mirakana::schedule_frame_graph_v1_execution(built);
+
+    const std::vector<mirakana::FrameGraphRhiPassQueueBinding> pass_queues{
+        mirakana::FrameGraphRhiPassQueueBinding{
+            .pass_name = "copy.upload",
+            .queue = mirakana::rhi::QueueKind::copy,
+        },
+        mirakana::FrameGraphRhiPassQueueBinding{
+            .pass_name = "graphics.draw",
+            .queue = mirakana::rhi::QueueKind::graphics,
+        },
+    };
+
+    const auto plan = mirakana::plan_frame_graph_rhi_queue_waits(schedule, pass_queues);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.queue_waits.size() == 1);
+    MK_REQUIRE(plan.queue_waits[0].pass_name == "graphics.draw");
+    MK_REQUIRE(plan.queue_waits[0].queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(plan.queue_waits[0].waits_for_pass_name == "copy.upload");
+    MK_REQUIRE(plan.queue_waits[0].waits_for_queue == mirakana::rhi::QueueKind::copy);
+
+    const auto all_graphics_plan = mirakana::plan_frame_graph_rhi_queue_waits(schedule, {});
+    MK_REQUIRE(all_graphics_plan.succeeded());
+    MK_REQUIRE(all_graphics_plan.queue_waits.empty());
+}
+
+MK_TEST("frame graph rhi queue wait planning rejects duplicate and unscheduled pass queue bindings") {
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("graphics.draw"),
+    };
+    const std::vector<mirakana::FrameGraphRhiPassQueueBinding> pass_queues{
+        mirakana::FrameGraphRhiPassQueueBinding{
+            .pass_name = "graphics.draw",
+            .queue = mirakana::rhi::QueueKind::graphics,
+        },
+        mirakana::FrameGraphRhiPassQueueBinding{
+            .pass_name = "graphics.draw",
+            .queue = mirakana::rhi::QueueKind::compute,
+        },
+        mirakana::FrameGraphRhiPassQueueBinding{
+            .pass_name = "unscheduled",
+            .queue = mirakana::rhi::QueueKind::copy,
+        },
+    };
+
+    const auto plan = mirakana::plan_frame_graph_rhi_queue_waits(schedule, pass_queues);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.queue_waits.empty());
+    MK_REQUIRE(plan.diagnostics.size() == 2);
+    MK_REQUIRE(plan.diagnostics[0].pass == "graphics.draw");
+    MK_REQUIRE(plan.diagnostics[0].message == "frame graph pass queue binding is declared more than once");
+    MK_REQUIRE(plan.diagnostics[1].pass == "unscheduled");
+    MK_REQUIRE(plan.diagnostics[1].message == "frame graph pass queue binding targets an unscheduled pass");
+}
+
+MK_TEST("frame graph rhi queue wait recording waits on submitted producer pass fences") {
+    mirakana::rhi::NullRhiDevice device;
+    auto copy_commands = device.begin_command_list(mirakana::rhi::QueueKind::copy);
+    copy_commands->close();
+    const auto copy_fence = device.submit(*copy_commands);
+
+    const std::vector<mirakana::FrameGraphRhiQueueWait> queue_waits{
+        mirakana::FrameGraphRhiQueueWait{
+            .pass_name = "graphics.draw",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .waits_for_pass_name = "copy.upload",
+            .waits_for_queue = mirakana::rhi::QueueKind::copy,
+        },
+    };
+    const std::vector<mirakana::FrameGraphRhiSubmittedPassFence> submitted_fences{
+        mirakana::FrameGraphRhiSubmittedPassFence{
+            .pass_name = "copy.upload",
+            .fence = copy_fence,
+        },
+    };
+
+    const auto result = mirakana::record_frame_graph_rhi_queue_waits(device, queue_waits, submitted_fences);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.queue_waits_recorded == 1);
+    MK_REQUIRE(device.stats().queue_waits == 1);
+    MK_REQUIRE(device.stats().queue_wait_failures == 0);
+    MK_REQUIRE(device.stats().last_graphics_queue_wait_fence_value == copy_fence.value);
+    MK_REQUIRE(device.stats().last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy);
+}
+
+MK_TEST("frame graph rhi queue wait recording rejects missing and wrong queue submitted fences") {
+    mirakana::rhi::NullRhiDevice device;
+    const std::vector<mirakana::FrameGraphRhiQueueWait> queue_waits{
+        mirakana::FrameGraphRhiQueueWait{
+            .pass_name = "graphics.draw",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .waits_for_pass_name = "copy.upload",
+            .waits_for_queue = mirakana::rhi::QueueKind::copy,
+        },
+        mirakana::FrameGraphRhiQueueWait{
+            .pass_name = "graphics.draw",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .waits_for_pass_name = "compute.skin",
+            .waits_for_queue = mirakana::rhi::QueueKind::compute,
+        },
+    };
+    const std::vector<mirakana::FrameGraphRhiSubmittedPassFence> submitted_fences{
+        mirakana::FrameGraphRhiSubmittedPassFence{
+            .pass_name = "compute.skin",
+            .fence = mirakana::rhi::FenceValue{.value = 7, .queue = mirakana::rhi::QueueKind::copy},
+        },
+    };
+
+    const auto result = mirakana::record_frame_graph_rhi_queue_waits(device, queue_waits, submitted_fences);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.queue_waits_recorded == 0);
+    MK_REQUIRE(result.diagnostics.size() == 2);
+    MK_REQUIRE(result.diagnostics[0].pass == "graphics.draw");
+    MK_REQUIRE(result.diagnostics[0].resource == "copy.upload");
+    MK_REQUIRE(result.diagnostics[0].message == "frame graph queue wait has no submitted producer pass fence");
+    MK_REQUIRE(result.diagnostics[1].pass == "graphics.draw");
+    MK_REQUIRE(result.diagnostics[1].resource == "compute.skin");
+    MK_REQUIRE(result.diagnostics[1].message == "frame graph submitted producer pass fence queue mismatch");
+    MK_REQUIRE(device.stats().queue_waits == 0);
+}
+
 MK_TEST("frame graph rhi texture target access helper derives concrete writer rows") {
     mirakana::FrameGraphV1Desc desc;
     desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{

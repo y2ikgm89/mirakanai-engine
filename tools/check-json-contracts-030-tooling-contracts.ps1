@@ -913,6 +913,9 @@ foreach ($needle in @(
     "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
+    "Frame Graph RHI Queue Dependency Plan v1",
+    "plan_frame_graph_rhi_queue_waits",
+    "IRhiDevice::wait_for_queue",
     "frame-graph-v1"
 )) {
     if (-not $recommendedText.Contains($needle)) {
