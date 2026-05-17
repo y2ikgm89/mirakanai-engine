@@ -13,6 +13,7 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -95,6 +96,14 @@ void append_frame_graph_rhi_diagnostic(Result& result, FrameGraphDiagnosticCode 
 using FrameGraphRhiPassCallbackMap =
     std::map<std::string, std::function<FrameGraphExecutionCallbackResult(std::string_view pass_name)>>;
 
+struct FrameGraphRhiPassCommand {
+    rhi::QueueKind queue{rhi::QueueKind::graphics};
+    std::function<FrameGraphExecutionCallbackResult(std::string_view pass_name, rhi::IRhiCommandList& commands)>
+        callback;
+};
+
+using FrameGraphRhiPassCommandMap = std::map<std::string, FrameGraphRhiPassCommand>;
+
 template <typename Result>
 [[nodiscard]] std::map<std::string, std::size_t>
 build_binding_index(Result& result, std::span<const FrameGraphTextureBinding> texture_bindings) {
@@ -150,6 +159,33 @@ build_pass_callback_index(FrameGraphRhiTextureExecutionResult& result,
         }
     }
     return callbacks;
+}
+
+[[nodiscard]] FrameGraphRhiPassCommandMap
+build_pass_command_index(FrameGraphRhiMultiQueueExecutionResult& result,
+                         std::span<const FrameGraphRhiPassCommandBinding> pass_commands) {
+    FrameGraphRhiPassCommandMap commands;
+    for (const auto& binding : pass_commands) {
+        if (binding.pass_name.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph rhi pass command binding pass name is empty");
+            continue;
+        }
+        if (!binding.callback) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, binding.pass_name, {},
+                                              "frame graph rhi pass command callback is empty");
+            continue;
+        }
+        const auto [_, inserted] = commands.emplace(binding.pass_name, FrameGraphRhiPassCommand{
+                                                                           .queue = binding.queue,
+                                                                           .callback = binding.callback,
+                                                                       });
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, binding.pass_name, {},
+                                              "frame graph rhi pass command binding is declared more than once");
+        }
+    }
+    return commands;
 }
 
 [[nodiscard]] std::map<std::string, std::size_t>
@@ -1549,6 +1585,188 @@ record_frame_graph_rhi_queue_waits(rhi::IRhiDevice& device, std::span<const Fram
                                               wait.waits_for_pass_name, "frame graph queue wait recording failed");
             return result;
         }
+    }
+
+    return result;
+}
+
+FrameGraphRhiMultiQueueExecutionResult
+execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecutionDesc& desc) {
+    FrameGraphRhiMultiQueueExecutionResult result;
+    if (desc.device == nullptr) {
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                          "frame graph rhi multi queue execution requires a device");
+        return result;
+    }
+
+    const auto pass_commands = build_pass_command_index(result, desc.pass_commands);
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    std::vector<FrameGraphRhiPassQueueBinding> pass_queue_bindings;
+    pass_queue_bindings.reserve(desc.pass_commands.size());
+    for (const auto& binding : desc.pass_commands) {
+        pass_queue_bindings.push_back(FrameGraphRhiPassQueueBinding{
+            .pass_name = binding.pass_name,
+            .queue = binding.queue,
+        });
+    }
+
+    for (const auto& step : desc.schedule) {
+        switch (step.kind) {
+        case FrameGraphExecutionStep::Kind::barrier:
+            break;
+        case FrameGraphExecutionStep::Kind::pass_invoke:
+            if (step.pass_name.empty()) {
+                append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                                  "frame graph rhi multi queue schedule pass name is empty");
+            } else if (!pass_commands.contains(step.pass_name)) {
+                append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                                  "frame graph rhi pass command callback is missing");
+            }
+            break;
+        default:
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph execution step kind is invalid");
+            break;
+        }
+    }
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    const auto queue_wait_plan = plan_frame_graph_rhi_queue_waits(desc.schedule, pass_queue_bindings);
+    if (!queue_wait_plan.succeeded()) {
+        result.diagnostics.insert(result.diagnostics.end(), queue_wait_plan.diagnostics.begin(),
+                                  queue_wait_plan.diagnostics.end());
+        return result;
+    }
+
+    std::map<std::string, std::vector<FrameGraphRhiQueueWait>> queue_waits_by_pass;
+    for (const auto& wait : queue_wait_plan.queue_waits) {
+        queue_waits_by_pass[wait.pass_name].push_back(wait);
+    }
+
+    for (const auto& step : desc.schedule) {
+        if (step.kind == FrameGraphExecutionStep::Kind::barrier) {
+            continue;
+        }
+        if (step.kind != FrameGraphExecutionStep::Kind::pass_invoke) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph execution step kind is invalid");
+            return result;
+        }
+
+        const auto command_binding = pass_commands.find(step.pass_name);
+        if (command_binding == pass_commands.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              "frame graph rhi pass command callback is missing");
+            return result;
+        }
+
+        const auto waits = queue_waits_by_pass.find(step.pass_name);
+        if (waits != queue_waits_by_pass.end()) {
+            const auto wait_result =
+                record_frame_graph_rhi_queue_waits(*desc.device, waits->second, result.submitted_pass_fences);
+            result.queue_waits_recorded += wait_result.queue_waits_recorded;
+            if (!wait_result.succeeded()) {
+                result.diagnostics.insert(result.diagnostics.end(), wait_result.diagnostics.begin(),
+                                          wait_result.diagnostics.end());
+                return result;
+            }
+        }
+
+        std::unique_ptr<rhi::IRhiCommandList> commands;
+        try {
+            commands = desc.device->begin_command_list(command_binding->second.queue);
+        } catch (const std::exception& ex) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              std::string{"frame graph rhi pass command list begin failed: "} +
+                                                  ex.what());
+            return result;
+        } catch (...) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              "frame graph rhi pass command list begin failed");
+            return result;
+        }
+        if (commands == nullptr) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              "frame graph rhi pass command list begin returned null");
+            return result;
+        }
+        if (commands->closed()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              "frame graph rhi pass command list is already closed");
+            return result;
+        }
+
+        FrameGraphExecutionCallbackResult callback_result;
+        std::optional<std::string> callback_failure_message;
+        try {
+            callback_result = command_binding->second.callback(step.pass_name, *commands);
+        } catch (const std::exception& ex) {
+            callback_failure_message =
+                std::string{"frame graph rhi pass command callback threw an exception: "} + ex.what();
+        } catch (...) {
+            callback_failure_message = "frame graph rhi pass command callback threw an exception";
+        }
+        if (callback_failure_message.has_value()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              std::move(*callback_failure_message));
+            return result;
+        }
+        if (!callback_result.succeeded()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              callback_result.message.empty()
+                                                  ? "frame graph rhi pass command callback failed"
+                                                  : std::move(callback_result.message));
+            return result;
+        }
+        if (commands->closed()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              "frame graph rhi pass command callback closed command list");
+            return result;
+        }
+
+        try {
+            commands->close();
+        } catch (const std::exception& ex) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              std::string{"frame graph rhi pass command list close failed: "} +
+                                                  ex.what());
+            return result;
+        } catch (...) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              "frame graph rhi pass command list close failed");
+            return result;
+        }
+
+        rhi::FenceValue fence{};
+        try {
+            fence = desc.device->submit(*commands);
+        } catch (const std::exception& ex) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              std::string{"frame graph rhi pass command list submit failed: "} +
+                                                  ex.what());
+            return result;
+        } catch (...) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              "frame graph rhi pass command list submit failed");
+            return result;
+        }
+        if (fence.value == 0) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              "frame graph rhi pass command list submit returned empty fence");
+            return result;
+        }
+
+        result.submitted_pass_fences.push_back(FrameGraphRhiSubmittedPassFence{
+            .pass_name = step.pass_name,
+            .fence = fence,
+        });
+        ++result.command_lists_submitted;
+        ++result.pass_callbacks_invoked;
     }
 
     return result;

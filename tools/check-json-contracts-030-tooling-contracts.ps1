@@ -916,6 +916,9 @@ foreach ($needle in @(
     "Frame Graph RHI Queue Dependency Plan v1",
     "plan_frame_graph_rhi_queue_waits",
     "IRhiDevice::wait_for_queue",
+    "Frame Graph RHI Multi-Queue Executor v1",
+    "execute_frame_graph_rhi_multi_queue_schedule",
+    "multi-queue pass command submission envelope",
     "frame-graph-v1"
 )) {
     if (-not $recommendedText.Contains($needle)) {

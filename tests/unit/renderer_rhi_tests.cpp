@@ -133,6 +133,9 @@ class ThrowingSubmitRhiDevice : public mirakana::rhi::IRhiDevice {
 
     [[nodiscard]] std::unique_ptr<mirakana::rhi::IRhiCommandList>
     begin_command_list(mirakana::rhi::QueueKind queue) override {
+        if (throw_on_begin) {
+            throw std::runtime_error("begin failed");
+        }
         return inner.begin_command_list(queue);
     }
 
@@ -148,6 +151,9 @@ class ThrowingSubmitRhiDevice : public mirakana::rhi::IRhiDevice {
     }
 
     void wait_for_queue(mirakana::rhi::QueueKind queue, mirakana::rhi::FenceValue fence) override {
+        if (throw_on_queue_wait) {
+            throw std::runtime_error("queue wait failed");
+        }
         inner.wait_for_queue(queue, fence);
     }
 
@@ -162,7 +168,9 @@ class ThrowingSubmitRhiDevice : public mirakana::rhi::IRhiDevice {
     }
 
     mirakana::rhi::NullRhiDevice inner;
+    bool throw_on_begin{false};
     bool throw_on_submit{true};
+    bool throw_on_queue_wait{false};
 };
 
 class ThrowingTransitionCommandList final : public mirakana::rhi::IRhiCommandList {
@@ -2967,6 +2975,254 @@ MK_TEST("frame graph rhi queue wait recording rejects missing and wrong queue su
     MK_REQUIRE(result.diagnostics[1].resource == "compute.skin");
     MK_REQUIRE(result.diagnostics[1].message == "frame graph submitted producer pass fence queue mismatch");
     MK_REQUIRE(device.stats().queue_waits == 0);
+}
+
+MK_TEST("frame graph rhi multi queue executor submits declared pass queues and waits for producer fences") {
+    mirakana::rhi::NullRhiDevice device;
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("compute.write"),
+        mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
+            .resource = "output",
+            .from_pass = "compute.write",
+            .to_pass = "graphics.read",
+            .from = mirakana::FrameGraphAccess::copy_destination,
+            .to = mirakana::FrameGraphAccess::shader_read,
+        }),
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("graphics.read"),
+    };
+
+    std::vector<std::string> callback_order;
+    const std::vector<mirakana::FrameGraphRhiPassCommandBinding> pass_commands{
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "compute.write",
+            .queue = mirakana::rhi::QueueKind::compute,
+            .callback =
+                [&callback_order](std::string_view pass_name, mirakana::rhi::IRhiCommandList& commands) {
+                    callback_order.emplace_back(pass_name);
+                    MK_REQUIRE(commands.queue_kind() == mirakana::rhi::QueueKind::compute);
+                    MK_REQUIRE(!commands.closed());
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "graphics.read",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback =
+                [&callback_order](std::string_view pass_name, mirakana::rhi::IRhiCommandList& commands) {
+                    callback_order.emplace_back(pass_name);
+                    MK_REQUIRE(commands.queue_kind() == mirakana::rhi::QueueKind::graphics);
+                    MK_REQUIRE(!commands.closed());
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+
+    const auto result =
+        mirakana::execute_frame_graph_rhi_multi_queue_schedule(mirakana::FrameGraphRhiMultiQueueExecutionDesc{
+            .device = &device,
+            .schedule = schedule,
+            .pass_commands = pass_commands,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.pass_callbacks_invoked == 2);
+    MK_REQUIRE(result.command_lists_submitted == 2);
+    MK_REQUIRE(result.queue_waits_recorded == 1);
+    MK_REQUIRE(result.submitted_pass_fences.size() == 2);
+    MK_REQUIRE(result.submitted_pass_fences[0].pass_name == "compute.write");
+    MK_REQUIRE(result.submitted_pass_fences[0].fence.queue == mirakana::rhi::QueueKind::compute);
+    MK_REQUIRE(result.submitted_pass_fences[1].pass_name == "graphics.read");
+    MK_REQUIRE(result.submitted_pass_fences[1].fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(callback_order.size() == 2);
+    MK_REQUIRE(callback_order[0] == "compute.write");
+    MK_REQUIRE(callback_order[1] == "graphics.read");
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.compute_queue_submits == 1);
+    MK_REQUIRE(stats.graphics_queue_submits == 1);
+    MK_REQUIRE(stats.queue_waits == 1);
+    MK_REQUIRE(stats.last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::compute);
+}
+
+MK_TEST("frame graph rhi multi queue executor preserves submitted producer evidence on callback failure") {
+    mirakana::rhi::NullRhiDevice device;
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("copy.upload"),
+        mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
+            .resource = "texture",
+            .from_pass = "copy.upload",
+            .to_pass = "graphics.sample",
+            .from = mirakana::FrameGraphAccess::copy_destination,
+            .to = mirakana::FrameGraphAccess::shader_read,
+        }),
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("graphics.sample"),
+    };
+    const std::vector<mirakana::FrameGraphRhiPassCommandBinding> pass_commands{
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "copy.upload",
+            .queue = mirakana::rhi::QueueKind::copy,
+            .callback = [](std::string_view,
+                           mirakana::rhi::IRhiCommandList&) { return mirakana::FrameGraphExecutionCallbackResult{}; },
+        },
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "graphics.sample",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback =
+                [](std::string_view, mirakana::rhi::IRhiCommandList&) {
+                    return mirakana::FrameGraphExecutionCallbackResult{.ok = false, .message = "sample rejected"};
+                },
+        },
+    };
+
+    const auto result =
+        mirakana::execute_frame_graph_rhi_multi_queue_schedule(mirakana::FrameGraphRhiMultiQueueExecutionDesc{
+            .device = &device,
+            .schedule = schedule,
+            .pass_commands = pass_commands,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.pass_callbacks_invoked == 1);
+    MK_REQUIRE(result.command_lists_submitted == 1);
+    MK_REQUIRE(result.queue_waits_recorded == 1);
+    MK_REQUIRE(result.submitted_pass_fences.size() == 1);
+    MK_REQUIRE(result.submitted_pass_fences[0].pass_name == "copy.upload");
+    MK_REQUIRE(result.submitted_pass_fences[0].fence.queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].pass == "graphics.sample");
+    MK_REQUIRE(result.diagnostics[0].message == "sample rejected");
+    MK_REQUIRE(device.stats().copy_queue_submits == 1);
+    MK_REQUIRE(device.stats().graphics_queue_submits == 0);
+    MK_REQUIRE(device.stats().queue_waits == 1);
+}
+
+MK_TEST("frame graph rhi multi queue executor rejects invalid setup before command recording") {
+    mirakana::rhi::NullRhiDevice device;
+    const std::vector<mirakana::FrameGraphExecutionStep> schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("only.pass"),
+    };
+    const std::vector<mirakana::FrameGraphRhiPassCommandBinding> duplicate_pass_commands{
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "only.pass",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback = [](std::string_view,
+                           mirakana::rhi::IRhiCommandList&) { return mirakana::FrameGraphExecutionCallbackResult{}; },
+        },
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "only.pass",
+            .queue = mirakana::rhi::QueueKind::compute,
+            .callback = [](std::string_view,
+                           mirakana::rhi::IRhiCommandList&) { return mirakana::FrameGraphExecutionCallbackResult{}; },
+        },
+    };
+
+    const auto null_device_result = mirakana::execute_frame_graph_rhi_multi_queue_schedule(
+        mirakana::FrameGraphRhiMultiQueueExecutionDesc{.device = nullptr, .schedule = schedule, .pass_commands = {}});
+    MK_REQUIRE(!null_device_result.succeeded());
+    MK_REQUIRE(null_device_result.diagnostics.size() == 1);
+    MK_REQUIRE(null_device_result.diagnostics[0].message == "frame graph rhi multi queue execution requires a device");
+
+    const auto duplicate_result =
+        mirakana::execute_frame_graph_rhi_multi_queue_schedule(mirakana::FrameGraphRhiMultiQueueExecutionDesc{
+            .device = &device,
+            .schedule = schedule,
+            .pass_commands = duplicate_pass_commands,
+        });
+    MK_REQUIRE(!duplicate_result.succeeded());
+    MK_REQUIRE(duplicate_result.command_lists_submitted == 0);
+    MK_REQUIRE(duplicate_result.diagnostics.size() == 1);
+    MK_REQUIRE(duplicate_result.diagnostics[0].message ==
+               "frame graph rhi pass command binding is declared more than once");
+
+    const auto missing_result = mirakana::execute_frame_graph_rhi_multi_queue_schedule(
+        mirakana::FrameGraphRhiMultiQueueExecutionDesc{.device = &device, .schedule = schedule, .pass_commands = {}});
+    MK_REQUIRE(!missing_result.succeeded());
+    MK_REQUIRE(missing_result.command_lists_submitted == 0);
+    MK_REQUIRE(missing_result.diagnostics.size() == 1);
+    MK_REQUIRE(missing_result.diagnostics[0].message == "frame graph rhi pass command callback is missing");
+}
+
+MK_TEST("frame graph rhi multi queue executor reports begin submit and wait failures") {
+    const std::vector<mirakana::FrameGraphExecutionStep> single_pass_schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("single.pass"),
+    };
+    const std::vector<mirakana::FrameGraphRhiPassCommandBinding> single_pass_commands{
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "single.pass",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback = [](std::string_view,
+                           mirakana::rhi::IRhiCommandList&) { return mirakana::FrameGraphExecutionCallbackResult{}; },
+        },
+    };
+
+    ThrowingSubmitRhiDevice begin_failing_device;
+    begin_failing_device.throw_on_begin = true;
+    begin_failing_device.throw_on_submit = false;
+    const auto begin_result =
+        mirakana::execute_frame_graph_rhi_multi_queue_schedule(mirakana::FrameGraphRhiMultiQueueExecutionDesc{
+            .device = &begin_failing_device,
+            .schedule = single_pass_schedule,
+            .pass_commands = single_pass_commands,
+        });
+    MK_REQUIRE(!begin_result.succeeded());
+    MK_REQUIRE(begin_result.command_lists_submitted == 0);
+    MK_REQUIRE(begin_result.diagnostics.size() == 1);
+    MK_REQUIRE(begin_result.diagnostics[0].message == "frame graph rhi pass command list begin failed: begin failed");
+
+    ThrowingSubmitRhiDevice submit_failing_device;
+    const auto submit_result =
+        mirakana::execute_frame_graph_rhi_multi_queue_schedule(mirakana::FrameGraphRhiMultiQueueExecutionDesc{
+            .device = &submit_failing_device,
+            .schedule = single_pass_schedule,
+            .pass_commands = single_pass_commands,
+        });
+    MK_REQUIRE(!submit_result.succeeded());
+    MK_REQUIRE(submit_result.command_lists_submitted == 0);
+    MK_REQUIRE(submit_result.submitted_pass_fences.empty());
+    MK_REQUIRE(submit_result.diagnostics.size() == 1);
+    MK_REQUIRE(submit_result.diagnostics[0].message ==
+               "frame graph rhi pass command list submit failed: submit failed");
+
+    ThrowingSubmitRhiDevice wait_failing_device;
+    wait_failing_device.throw_on_submit = false;
+    wait_failing_device.throw_on_queue_wait = true;
+    const std::vector<mirakana::FrameGraphExecutionStep> wait_schedule{
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("copy.upload"),
+        mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
+            .resource = "texture",
+            .from_pass = "copy.upload",
+            .to_pass = "graphics.sample",
+            .from = mirakana::FrameGraphAccess::copy_destination,
+            .to = mirakana::FrameGraphAccess::shader_read,
+        }),
+        mirakana::FrameGraphExecutionStep::make_pass_invoke("graphics.sample"),
+    };
+    const std::vector<mirakana::FrameGraphRhiPassCommandBinding> wait_pass_commands{
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "copy.upload",
+            .queue = mirakana::rhi::QueueKind::copy,
+            .callback = [](std::string_view,
+                           mirakana::rhi::IRhiCommandList&) { return mirakana::FrameGraphExecutionCallbackResult{}; },
+        },
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "graphics.sample",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback = [](std::string_view,
+                           mirakana::rhi::IRhiCommandList&) { return mirakana::FrameGraphExecutionCallbackResult{}; },
+        },
+    };
+    const auto wait_result =
+        mirakana::execute_frame_graph_rhi_multi_queue_schedule(mirakana::FrameGraphRhiMultiQueueExecutionDesc{
+            .device = &wait_failing_device,
+            .schedule = wait_schedule,
+            .pass_commands = wait_pass_commands,
+        });
+    MK_REQUIRE(!wait_result.succeeded());
+    MK_REQUIRE(wait_result.command_lists_submitted == 1);
+    MK_REQUIRE(wait_result.queue_waits_recorded == 0);
+    MK_REQUIRE(wait_result.submitted_pass_fences.size() == 1);
+    MK_REQUIRE(wait_result.diagnostics.size() == 1);
+    MK_REQUIRE(wait_result.diagnostics[0].message == "frame graph queue wait recording failed: queue wait failed");
 }
 
 MK_TEST("frame graph rhi texture target access helper derives concrete writer rows") {

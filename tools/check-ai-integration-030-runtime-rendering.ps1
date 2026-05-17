@@ -1704,12 +1704,17 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiViewportSurface v
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph RHI Queue Dependency Plan v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_rhi_queue_waits" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "IRhiDevice::wait_for_queue" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph RHI Multi-Queue Executor v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_rhi_multi_queue_schedule" "MK_renderer module purpose"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Primary Pass Target-State Evidence v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Queue Dependency Plan v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "record_frame_graph_rhi_queue_waits" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Executor v1" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_frame_graph_rhi_multi_queue_schedule" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "primary pass texture-binding/target-state evidence is complete" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "backend-neutral RHI queue dependency wait planning/recording is complete" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "multi-queue pass command submission envelope" "recommended next plan reason"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
@@ -1780,6 +1785,10 @@ Assert-ContainsText $frameGraphRhiHeader "rhi::TransientTextureAliasGroup transi
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTextureAliasingBarrier" "Frame graph texture aliasing barrier command public API"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTextureAliasingBarrierRecordResult" "Frame graph texture aliasing barrier command public API"
 Assert-ContainsText $frameGraphRhiHeader "record_frame_graph_texture_aliasing_barriers" "Frame graph texture aliasing barrier command public API"
+Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiPassCommandBinding" "Frame graph RHI multi-queue executor public API"
+Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiMultiQueueExecutionDesc" "Frame graph RHI multi-queue executor public API"
+Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiMultiQueueExecutionResult" "Frame graph RHI multi-queue executor public API"
+Assert-ContainsText $frameGraphRhiHeader "execute_frame_graph_rhi_multi_queue_schedule" "Frame graph RHI multi-queue executor public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barriers" "RHI texture aliasing barrier command public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barrier(TextureHandle before, TextureHandle after)" "RHI texture aliasing barrier command public API"
 Assert-ContainsText $rhiPublicHeaderText "TransientTextureAliasGroup" "RHI transient texture alias-group public API"
@@ -1836,6 +1845,9 @@ Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target access
 Assert-ContainsText $frameGraphRhiSource "FrameGraphRhiRenderPassDesc" "Frame graph render pass envelope"
 Assert-ContainsText $frameGraphRhiSource "begin_planned_render_pass" "Frame graph render pass envelope"
 Assert-ContainsText $frameGraphRhiSource "attachment references an unknown resource" "Frame graph render pass envelope validation"
+Assert-ContainsText $frameGraphRhiSource "execute_frame_graph_rhi_multi_queue_schedule" "Frame graph RHI multi-queue executor"
+Assert-ContainsText $frameGraphRhiSource "record_frame_graph_rhi_queue_waits(*desc.device, waits->second, result.submitted_pass_fences)" "Frame graph RHI multi-queue executor"
+Assert-ContainsText $frameGraphRhiSource "frame graph rhi pass command callback failed" "Frame graph RHI multi-queue executor diagnostics"
 Assert-ContainsText $rhiFrameRendererSource "PrimaryColorFrameGraphExecutionPlan" "RhiFrameRenderer primary target-state evidence"
 Assert-ContainsText $rhiFrameRendererSource "build_frame_graph_texture_pass_target_accesses" "RhiFrameRenderer primary target-state evidence"
 Assert-ContainsText $rhiFrameRendererSource ".pass_target_states = pass_target_states" "RhiFrameRenderer primary target-state evidence"
@@ -1852,6 +1864,8 @@ Assert-ContainsText $rendererRhiTests "frame graph rhi transient texture lease b
 Assert-ContainsText $rendererRhiTests "frame graph rhi transient texture lease binding rejects duplicate backend alias handles" "Frame graph transient texture distinct alias-group lease tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution wraps render pass envelopes around callbacks" "Frame graph render pass envelope tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution rejects invalid render pass envelopes before callbacks" "Frame graph render pass envelope tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor submits declared pass queues and waits for producer fences" "Frame graph RHI multi-queue executor tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor preserves submitted producer evidence on callback failure" "Frame graph RHI multi-queue executor tests"
 Assert-ContainsText $rhiTestsText "null rhi records texture aliasing barriers without changing texture state" "NullRHI texture aliasing barrier command tests"
 Assert-ContainsText $rhiTestsText "null rhi transient texture alias group returns distinct handles under one lease" "NullRHI transient texture alias-group lease tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device records texture aliasing barrier commands" "D3D12 texture aliasing barrier command tests"
@@ -1955,9 +1969,10 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "after ``ExecuteCommandLists`` submits work rather than after fence completion" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "automatic aliasing barrier before the first pass" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "aliasing_barriers_recorded" $renderingGuidancePath
-    Assert-ContainsText $renderingGuidanceText "Frame Graph RHI queue dependency work" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "Frame Graph RHI queue dependency and multi-queue pass-command work" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "plan_frame_graph_rhi_queue_waits" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "IRhiDevice::wait_for_queue" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "execute_frame_graph_rhi_multi_queue_schedule" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "wildcard/null public aliasing barriers" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "data inheritance/content preservation" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "FrameGraphRhiRenderPassDesc`` envelope around the ``primary_color`` callback" $renderingGuidancePath
