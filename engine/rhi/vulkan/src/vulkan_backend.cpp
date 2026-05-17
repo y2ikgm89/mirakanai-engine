@@ -3660,7 +3660,7 @@ class VulkanRhiDevice final : public IRhiDevice {
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::buffer,
             .buffer = buffer,
-            .texture = TextureHandle{},
+            .textures = {},
             .active = true,
         });
         ++stats_.transient_resources_acquired;
@@ -3674,12 +3674,36 @@ class VulkanRhiDevice final : public IRhiDevice {
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::texture,
             .buffer = BufferHandle{},
-            .texture = texture,
+            .textures = {texture},
             .active = true,
         });
         ++stats_.transient_resources_acquired;
         ++stats_.transient_resources_active;
         return TransientTexture{.lease = lease, .texture = texture};
+    }
+
+    [[nodiscard]] TransientTextureAliasGroup acquire_transient_texture_alias_group(const TextureDesc& desc,
+                                                                                   std::size_t texture_count) override {
+        if (texture_count == 0) {
+            throw std::invalid_argument("vulkan rhi transient texture alias group requires at least one texture");
+        }
+
+        std::vector<TextureHandle> textures;
+        textures.reserve(texture_count);
+        for (std::size_t i = 0; i < texture_count; ++i) {
+            textures.push_back(create_texture(desc));
+        }
+
+        const auto lease = TransientResourceHandle{next_transient_resource_++};
+        transient_leases_.push_back(TransientLeaseRecord{
+            .kind = TransientResourceKind::texture,
+            .buffer = BufferHandle{},
+            .textures = textures,
+            .active = true,
+        });
+        ++stats_.transient_resources_acquired;
+        ++stats_.transient_resources_active;
+        return TransientTextureAliasGroup{.lease = lease, .textures = std::move(textures)};
     }
 
     void release_transient(TransientResourceHandle lease) override {
@@ -3701,12 +3725,14 @@ class VulkanRhiDevice final : public IRhiDevice {
                 buffer_active_.at(index) = false;
             }
         } else {
-            const auto index = record.texture.value - 1U;
-            if (texture_active_.at(index)) {
-                const auto release_fence = stats_.last_submitted_fence_value;
-                (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
-                texture_active_.at(index) = false;
-                texture_states_.at(index) = ResourceState::undefined;
+            for (const auto texture : record.textures) {
+                const auto index = texture.value - 1U;
+                if (texture_active_.at(index)) {
+                    const auto release_fence = stats_.last_submitted_fence_value;
+                    (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
+                    texture_active_.at(index) = false;
+                    texture_states_.at(index) = ResourceState::undefined;
+                }
             }
         }
         retire_deferred_native_resources(stats_.last_completed_fence_value);
@@ -4060,7 +4086,7 @@ class VulkanRhiDevice final : public IRhiDevice {
     struct TransientLeaseRecord {
         TransientResourceKind kind{TransientResourceKind::buffer};
         BufferHandle buffer;
-        TextureHandle texture;
+        std::vector<TextureHandle> textures;
         bool active{false};
     };
 
@@ -4420,19 +4446,30 @@ class VulkanRhiCommandList final : public IRhiCommandList {
     void texture_aliasing_barrier(TextureHandle before, TextureHandle after) override {
         require_open();
         require_no_render_pass();
-        if (before.value == 0 || after.value == 0 || before.value == after.value || !device_->owns_texture(before) ||
-            !device_->owns_texture(after)) {
-            throw std::invalid_argument("vulkan rhi texture aliasing barrier requires distinct texture handles");
+        if ((before.value != 0 && !device_->owns_texture(before)) ||
+            (after.value != 0 && !device_->owns_texture(after))) {
+            throw std::invalid_argument("vulkan rhi texture aliasing barrier handles are unknown");
+        }
+        if (before.value != 0 && before.value == after.value) {
+            throw std::invalid_argument(
+                "vulkan rhi texture aliasing barrier requires distinct texture handles or wildcard endpoints");
         }
 
-        const auto result = record_runtime_texture_aliasing_barrier(
-            device_->device_, pool_, device_->textures_.at(before.value - 1U), device_->textures_.at(after.value - 1U));
+        const auto result = before.value != 0 && after.value != 0
+                                ? record_runtime_texture_aliasing_barrier(device_->device_, pool_,
+                                                                          device_->textures_.at(before.value - 1U),
+                                                                          device_->textures_.at(after.value - 1U))
+                                : record_runtime_texture_aliasing_barrier(device_->device_, pool_);
         if (!result.recorded) {
             throw std::logic_error("vulkan rhi texture aliasing barrier failed: " + result.diagnostic);
         }
 
-        observe_texture(before);
-        observe_texture(after);
+        if (before.value != 0) {
+            observe_texture(before);
+        }
+        if (after.value != 0) {
+            observe_texture(after);
+        }
         recorded_work_ = true;
         ++device_->stats_.texture_aliasing_barriers;
     }
@@ -11767,8 +11804,7 @@ VulkanRuntimeTextureBarrierResult record_runtime_texture_barrier(VulkanRuntimeDe
 }
 
 VulkanRuntimeTextureAliasingBarrierResult
-record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
-                                        VulkanRuntimeTexture& before, VulkanRuntimeTexture& after) {
+record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool) {
     VulkanRuntimeTextureAliasingBarrierResult result;
     if (device.impl_ == nullptr || device.impl_->device == nullptr) {
         result.diagnostic = "Vulkan runtime device is not available";
@@ -11778,17 +11814,8 @@ record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRunti
         result.diagnostic = "Vulkan runtime command pool is required";
         return result;
     }
-    if (!before.owns_image() || !before.owns_memory() || !after.owns_image() || !after.owns_memory()) {
-        result.diagnostic = "Vulkan runtime texture aliasing barrier textures are required";
-        return result;
-    }
-    if (command_pool.impl_->device_owner != device.impl_ || before.impl_->device_owner != device.impl_ ||
-        after.impl_->device_owner != device.impl_) {
+    if (command_pool.impl_->device_owner != device.impl_) {
         result.diagnostic = "Vulkan texture aliasing barrier objects must share one runtime device";
-        return result;
-    }
-    if (before.impl_->image == after.impl_->image) {
-        result.diagnostic = "Vulkan texture aliasing barrier requires distinct textures";
         return result;
     }
     if (!command_pool.recording()) {
@@ -11825,6 +11852,34 @@ record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRunti
     result.barrier_count = 1;
     result.diagnostic = "Vulkan texture aliasing barrier recorded";
     return result;
+}
+
+VulkanRuntimeTextureAliasingBarrierResult
+record_runtime_texture_aliasing_barrier(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
+                                        VulkanRuntimeTexture& before, VulkanRuntimeTexture& after) {
+    VulkanRuntimeTextureAliasingBarrierResult result;
+    if (device.impl_ == nullptr || device.impl_->device == nullptr) {
+        result.diagnostic = "Vulkan runtime device is not available";
+        return result;
+    }
+    if (!command_pool.owns_primary_command_buffer()) {
+        result.diagnostic = "Vulkan runtime command pool is required";
+        return result;
+    }
+    if (!before.owns_image() || !before.owns_memory() || !after.owns_image() || !after.owns_memory()) {
+        result.diagnostic = "Vulkan runtime texture aliasing barrier textures are required";
+        return result;
+    }
+    if (command_pool.impl_->device_owner != device.impl_ || before.impl_->device_owner != device.impl_ ||
+        after.impl_->device_owner != device.impl_) {
+        result.diagnostic = "Vulkan texture aliasing barrier objects must share one runtime device";
+        return result;
+    }
+    if (before.impl_->image == after.impl_->image) {
+        result.diagnostic = "Vulkan texture aliasing barrier requires distinct textures";
+        return result;
+    }
+    return record_runtime_texture_aliasing_barrier(device, command_pool);
 }
 
 VulkanRuntimeBufferCopyResult record_runtime_buffer_copy(VulkanRuntimeDevice& device,

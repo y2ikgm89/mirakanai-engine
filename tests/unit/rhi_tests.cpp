@@ -469,6 +469,28 @@ MK_TEST("null rhi records texture aliasing barriers without changing texture sta
     MK_REQUIRE(stats.resource_transitions == 2);
 }
 
+MK_TEST("null rhi records wildcard texture aliasing barriers") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->texture_aliasing_barrier(mirakana::rhi::TextureHandle{}, texture);
+    commands->texture_aliasing_barrier(texture, mirakana::rhi::TextureHandle{});
+    commands->texture_aliasing_barrier(mirakana::rhi::TextureHandle{}, mirakana::rhi::TextureHandle{});
+    commands->close();
+
+    const auto fence = device.submit(*commands);
+    device.wait(fence);
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 3);
+    MK_REQUIRE(stats.resource_transitions == 0);
+}
+
 MK_TEST("null rhi rejects invalid texture aliasing barrier handles") {
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -485,13 +507,6 @@ MK_TEST("null rhi rejects invalid texture aliasing barrier handles") {
         rejected_same = true;
     }
 
-    bool rejected_empty = false;
-    try {
-        commands->texture_aliasing_barrier(mirakana::rhi::TextureHandle{}, texture);
-    } catch (const std::invalid_argument&) {
-        rejected_empty = true;
-    }
-
     bool rejected_unknown = false;
     try {
         commands->texture_aliasing_barrier(texture, mirakana::rhi::TextureHandle{999});
@@ -501,7 +516,6 @@ MK_TEST("null rhi rejects invalid texture aliasing barrier handles") {
     commands->close();
 
     MK_REQUIRE(rejected_same);
-    MK_REQUIRE(rejected_empty);
     MK_REQUIRE(rejected_unknown);
     MK_REQUIRE(device.stats().texture_aliasing_barriers == 0);
 }
@@ -988,6 +1002,47 @@ MK_TEST("null rhi acquires releases and invalidates transient resources") {
     MK_REQUIRE(device.stats().transient_resources_active == 0);
     MK_REQUIRE(rejected_released_buffer);
     MK_REQUIRE(rejected_double_release);
+}
+
+MK_TEST("null rhi transient texture alias group returns distinct handles under one lease") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto aliases = device.acquire_transient_texture_alias_group(
+        mirakana::rhi::TextureDesc{
+            .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+            .format = mirakana::rhi::Format::rgba8_unorm,
+            .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+        },
+        2);
+
+    MK_REQUIRE(aliases.lease.value != 0);
+    MK_REQUIRE(aliases.textures.size() == 2);
+    MK_REQUIRE(aliases.textures[0].value != 0);
+    MK_REQUIRE(aliases.textures[1].value != 0);
+    MK_REQUIRE(aliases.textures[0].value != aliases.textures[1].value);
+    MK_REQUIRE(device.stats().textures_created == 2);
+    MK_REQUIRE(device.stats().transient_resources_acquired == 1);
+    MK_REQUIRE(device.stats().transient_resources_active == 1);
+
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->texture_aliasing_barrier(aliases.textures[0], aliases.textures[1]);
+    commands->close();
+
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 1);
+
+    device.release_transient(aliases.lease);
+    MK_REQUIRE(device.stats().transient_resources_released == 1);
+    MK_REQUIRE(device.stats().transient_resources_active == 0);
+
+    auto released_commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    bool rejected_released_alias = false;
+    try {
+        released_commands->texture_aliasing_barrier(aliases.textures[0], aliases.textures[1]);
+    } catch (const std::invalid_argument&) {
+        rejected_released_alias = true;
+    }
+    released_commands->close();
+
+    MK_REQUIRE(rejected_released_alias);
 }
 
 MK_TEST("null rhi rejects invalid resource descriptions") {

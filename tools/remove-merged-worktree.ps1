@@ -135,6 +135,28 @@ function Remove-FileSystemInfoWithoutFollowingReparsePoints {
     $FileSystemInfo.Delete()
 }
 
+function Remove-WorktreeLocalReparsePointBeforeGitRemoval {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Parameter(Mandatory = $true)][string]$WorktreePath,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+
+    $candidate = Join-Path $WorktreePath $RelativePath
+    $item = Get-Item -LiteralPath $candidate -Force -ErrorAction SilentlyContinue
+    if ($null -eq $item) {
+        return
+    }
+    if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -eq 0) {
+        Write-Error "Refusing to remove worktree because protected ignored dependency path is not a reparse point: $candidate"
+    }
+
+    if ($PSCmdlet.ShouldProcess($candidate, "Unlink worktree-local reparse point before git worktree remove")) {
+        $item.Delete()
+        Write-Information "remove-merged-worktree: unlinked-worktree-reparse-point=$RelativePath" -InformationAction Continue
+    }
+}
+
 function Resolve-RepoPath {
     param(
         [Parameter(Mandatory = $true)][string]$RepoPath,
@@ -229,11 +251,18 @@ if ($comparableWorktreePath -eq $comparableLocalCheckoutPath) {
     Write-Error "Refusing to update and remove the same worktree path: $resolvedWorktreePath"
 }
 
+$worktreeRecords = @(Get-GitWorktreeRecords -RepoRoot $root)
+$mainWorktreeRecord = $worktreeRecords | Select-Object -First 1
+$standardWorktreeBasePaths = @($root, $resolvedLocalCheckoutPath)
+if ($null -ne $mainWorktreeRecord -and -not $mainWorktreeRecord.Bare) {
+    $standardWorktreeBasePaths += $mainWorktreeRecord.Path
+}
+
 $standardWorktreeRoots = @(
-    (Join-Path $root ".worktrees"),
-    (Join-Path (Join-Path $root ".claude") "worktrees"),
-    (Join-Path $resolvedLocalCheckoutPath ".worktrees"),
-    (Join-Path (Join-Path $resolvedLocalCheckoutPath ".claude") "worktrees")
+    foreach ($standardWorktreeBasePath in $standardWorktreeBasePaths) {
+        Join-Path $standardWorktreeBasePath ".worktrees"
+        Join-Path (Join-Path $standardWorktreeBasePath ".claude") "worktrees"
+    }
 )
 
 $isUnderStandardRoot = $false
@@ -248,7 +277,7 @@ if (-not $isUnderStandardRoot) {
     Write-Error "Refusing post-merge cleanup outside standard ignored worktree roots (.worktrees/ or .claude/worktrees/): $resolvedWorktreePath"
 }
 
-$matchingRecords = @(Get-GitWorktreeRecords -RepoRoot $root | Where-Object {
+$matchingRecords = @($worktreeRecords | Where-Object {
         (ConvertTo-ComparablePath -Path $_.Path) -eq $comparableWorktreePath
     })
 
@@ -316,6 +345,10 @@ Write-Information "remove-merged-worktree: local-branch=$localBranch" -Informati
 
 if ($PSCmdlet.ShouldProcess($resolvedLocalCheckoutPath, "Fast-forward local checkout to $BaseRef")) {
     $null = Invoke-GitCommand -RepoRoot $resolvedLocalCheckoutPath -Arguments @("merge", "--ff-only", $BaseRef)
+}
+
+foreach ($protectedWorktreeLocalLink in @("external/vcpkg", "vcpkg_installed")) {
+    Remove-WorktreeLocalReparsePointBeforeGitRemoval -WorktreePath $resolvedWorktreePath -RelativePath $protectedWorktreeLocalLink
 }
 
 if ($PSCmdlet.ShouldProcess($resolvedWorktreePath, "Remove merged Git worktree")) {

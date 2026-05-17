@@ -1071,6 +1071,11 @@ static void d3d12_set_object_name_fmt(ID3D12Object* object, const wchar_t* forma
     (void)object->SetName(buffer.data());
 }
 
+struct PlacedResourceStateUpdate {
+    NativeResourceHandle before;
+    NativeResourceHandle after;
+};
+
 struct CommandListRecord {
     QueueKind queue{QueueKind::graphics};
     Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator;
@@ -1084,7 +1089,7 @@ struct CommandListRecord {
     NativeDescriptorHeapBinding descriptor_heaps;
     NativeGraphicsPipelineHandle graphics_pipeline;
     NativeComputePipelineHandle compute_pipeline;
-    std::vector<NativeResourceHandle> placed_activation_resources;
+    std::vector<PlacedResourceStateUpdate> placed_resource_state_updates;
     bool render_target_set{false};
     bool closed{false};
     bool submitted{false};
@@ -1203,6 +1208,7 @@ struct DeviceContext::Impl {
     std::array<Microsoft::WRL::ComPtr<ID3D12Fence>, 3> queue_fences;
     std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> resources;
     std::vector<Microsoft::WRL::ComPtr<ID3D12Heap>> resource_heaps;
+    std::vector<std::uint64_t> resource_alias_group_ids;
     std::vector<bool> resource_placed_active;
     std::vector<ResourceRenderTargetViewRecord> resource_rtvs;
     std::vector<ResourceDepthStencilViewRecord> resource_dsvs;
@@ -1216,6 +1222,7 @@ struct DeviceContext::Impl {
     DeviceContextStats stats;
     std::uint64_t next_fence_value{0};
     std::array<std::uint64_t, 3> next_queue_fence_values{};
+    std::uint64_t next_resource_alias_group_id{0};
     FenceValue last_submitted_fence;
     bool used_warp{false};
     bool debug_layer_enabled{false};
@@ -1342,6 +1349,20 @@ struct DeviceContext::Impl {
             return false;
         }
         return resource_heaps[handle.value - 1U] != nullptr;
+    }
+
+    [[nodiscard]] bool resources_share_placed_alias_group(NativeResourceHandle lhs,
+                                                          NativeResourceHandle rhs) const noexcept {
+        if (lhs.value == 0 || rhs.value == 0 || lhs.value > resource_heaps.size() ||
+            rhs.value > resource_heaps.size() || lhs.value > resource_alias_group_ids.size() ||
+            rhs.value > resource_alias_group_ids.size()) {
+            return false;
+        }
+        const std::uint64_t lhs_group = resource_alias_group_ids[lhs.value - 1U];
+        const std::uint64_t rhs_group = resource_alias_group_ids[rhs.value - 1U];
+        ID3D12Heap* lhs_heap = resource_heaps[lhs.value - 1U].Get();
+        ID3D12Heap* rhs_heap = resource_heaps[rhs.value - 1U].Get();
+        return lhs_group != 0 && lhs_group == rhs_group && lhs_heap != nullptr && lhs_heap == rhs_heap;
     }
 
     [[nodiscard]] bool resource_is_placed_active(NativeResourceHandle handle) const noexcept {
@@ -1731,6 +1752,7 @@ NativeResourceHandle DeviceContext::create_committed_buffer(const BufferDesc& de
 
     impl_->resources.push_back(resource);
     impl_->resource_heaps.emplace_back();
+    impl_->resource_alias_group_ids.push_back(0);
     impl_->resource_placed_active.push_back(true);
     impl_->resource_rtvs.push_back(ResourceRenderTargetViewRecord{});
     impl_->resource_dsvs.push_back(ResourceDepthStencilViewRecord{});
@@ -1782,6 +1804,7 @@ NativeResourceHandle DeviceContext::create_committed_texture(const TextureDesc& 
 
     impl_->resources.push_back(resource);
     impl_->resource_heaps.emplace_back();
+    impl_->resource_alias_group_ids.push_back(0);
     impl_->resource_placed_active.push_back(true);
     impl_->resource_rtvs.push_back(std::move(rtv));
     impl_->resource_dsvs.push_back(std::move(dsv));
@@ -1852,6 +1875,7 @@ NativeResourceHandle DeviceContext::create_placed_texture(const TextureDesc& des
 
     impl_->resources.push_back(resource);
     impl_->resource_heaps.push_back(std::move(heap));
+    impl_->resource_alias_group_ids.push_back(0);
     impl_->resource_placed_active.push_back(false);
     impl_->resource_rtvs.push_back(std::move(rtv));
     impl_->resource_dsvs.push_back(std::move(dsv));
@@ -1859,6 +1883,105 @@ NativeResourceHandle DeviceContext::create_placed_texture(const TextureDesc& des
     ++impl_->stats.placed_textures_created;
     ++impl_->stats.placed_resources_alive;
     return NativeResourceHandle{static_cast<std::uint32_t>(impl_->resources.size())};
+}
+
+std::vector<NativeResourceHandle> DeviceContext::create_placed_texture_alias_group(const TextureDesc& desc,
+                                                                                   std::size_t texture_count) {
+    if (!valid() || !valid_texture_desc(desc) || texture_count < 2 ||
+        texture_count > static_cast<std::size_t>((std::numeric_limits<std::uint32_t>::max)()) ||
+        has_flag(desc.usage, TextureUsage::shared) || has_flag(desc.usage, TextureUsage::present)) {
+        return {};
+    }
+    if (impl_->resources.size() >
+        static_cast<std::size_t>((std::numeric_limits<std::uint32_t>::max)()) - texture_count) {
+        return {};
+    }
+
+    auto resource_desc = texture_resource_desc(Extent2D{.width = desc.extent.width, .height = desc.extent.height},
+                                               desc.format, desc.usage);
+    resource_desc.DepthOrArraySize = static_cast<UINT16>(desc.extent.depth);
+    resource_desc.Flags = committed_texture_flags(desc.usage);
+
+    const D3D12_RESOURCE_ALLOCATION_INFO allocation = impl_->device->GetResourceAllocationInfo(0, 1, &resource_desc);
+    if (allocation.SizeInBytes == 0 || allocation.SizeInBytes == (std::numeric_limits<std::uint64_t>::max)()) {
+        return {};
+    }
+
+    D3D12_HEAP_DESC heap_desc{};
+    heap_desc.SizeInBytes = allocation.SizeInBytes;
+    heap_desc.Properties = heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    heap_desc.Alignment = allocation.Alignment;
+    heap_desc.Flags = placed_texture_heap_flags(desc.usage);
+
+    Microsoft::WRL::ComPtr<ID3D12Heap> heap;
+    if (FAILED(impl_->device->CreateHeap(&heap_desc, IID_PPV_ARGS(&heap)))) {
+        return {};
+    }
+
+    D3D12_CLEAR_VALUE clear_value{};
+    const D3D12_CLEAR_VALUE* optimized_clear_value = nullptr;
+    if (has_flag(desc.usage, TextureUsage::depth_stencil)) {
+        clear_value.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        clear_value.DepthStencil.Depth = 1.0F;
+        clear_value.DepthStencil.Stencil = 0;
+        optimized_clear_value = &clear_value;
+    }
+
+    std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> resources;
+    std::vector<ResourceRenderTargetViewRecord> rtvs;
+    std::vector<ResourceDepthStencilViewRecord> dsvs;
+    resources.reserve(texture_count);
+    rtvs.reserve(texture_count);
+    dsvs.reserve(texture_count);
+
+    for (std::size_t i = 0; i < texture_count; ++i) {
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+        if (FAILED(impl_->device->CreatePlacedResource(heap.Get(), 0, &resource_desc,
+                                                       committed_texture_initial_state(desc.usage),
+                                                       optimized_clear_value, IID_PPV_ARGS(&resource)))) {
+            return {};
+        }
+
+        ResourceRenderTargetViewRecord rtv;
+        if (has_flag(desc.usage, TextureUsage::render_target) &&
+            !impl_->create_resource_render_target_view(resource.Get(), rtv)) {
+            return {};
+        }
+
+        ResourceDepthStencilViewRecord dsv;
+        if (has_flag(desc.usage, TextureUsage::depth_stencil) &&
+            !impl_->create_resource_depth_stencil_view(resource.Get(), dsv)) {
+            return {};
+        }
+
+        resources.push_back(std::move(resource));
+        rtvs.push_back(std::move(rtv));
+        dsvs.push_back(std::move(dsv));
+    }
+
+    d3d12_set_object_name_fmt(heap.Get(), L"GameEngine.RHI.D3D12.TransientTextureAliasHeap%u",
+                              static_cast<unsigned>(impl_->resources.size() + 1U));
+
+    const std::uint64_t alias_group_id = ++impl_->next_resource_alias_group_id;
+    std::vector<NativeResourceHandle> handles;
+    handles.reserve(resources.size());
+    for (std::size_t i = 0; i < resources.size(); ++i) {
+        d3d12_set_object_name_fmt(resources[i].Get(), L"GameEngine.RHI.D3D12.PlacedAliasTexture%u",
+                                  static_cast<unsigned>(impl_->resources.size() + 1U));
+        impl_->resources.push_back(std::move(resources[i]));
+        impl_->resource_heaps.push_back(heap);
+        impl_->resource_alias_group_ids.push_back(alias_group_id);
+        impl_->resource_placed_active.push_back(false);
+        impl_->resource_rtvs.push_back(std::move(rtvs[i]));
+        impl_->resource_dsvs.push_back(std::move(dsvs[i]));
+        handles.push_back(NativeResourceHandle{static_cast<std::uint32_t>(impl_->resources.size())});
+    }
+
+    ++impl_->stats.placed_texture_heaps_created;
+    ++impl_->stats.placed_texture_alias_groups_created;
+    impl_->stats.placed_textures_created += static_cast<std::uint64_t>(handles.size());
+    impl_->stats.placed_resources_alive += static_cast<std::uint64_t>(handles.size());
+    return handles;
 }
 
 bool DeviceContext::activate_placed_texture(NativeCommandListHandle commands, NativeResourceHandle texture) {
@@ -1879,13 +2002,16 @@ bool DeviceContext::activate_placed_texture(NativeCommandListHandle commands, Na
     if (desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;
     }
-    if (impl_->resource_is_placed_active(texture)) {
-        return true;
+    bool pending_active = impl_->resource_is_placed_active(texture);
+    for (const auto& update : command_record->placed_resource_state_updates) {
+        if (update.before.value == texture.value) {
+            pending_active = false;
+        }
+        if (update.after.value == texture.value) {
+            pending_active = true;
+        }
     }
-    const auto already_pending =
-        std::ranges::any_of(command_record->placed_activation_resources,
-                            [texture](NativeResourceHandle pending) { return pending.value == texture.value; });
-    if (already_pending) {
+    if (pending_active) {
         return true;
     }
 
@@ -1896,7 +2022,10 @@ bool DeviceContext::activate_placed_texture(NativeCommandListHandle commands, Na
     barrier.Aliasing.pResourceAfter = texture_resource;
 
     command_record->list->ResourceBarrier(1, &barrier);
-    command_record->placed_activation_resources.push_back(texture);
+    command_record->placed_resource_state_updates.push_back(PlacedResourceStateUpdate{
+        .before = NativeResourceHandle{},
+        .after = texture,
+    });
     ++impl_->stats.placed_resource_activation_barriers;
     return true;
 }
@@ -2559,39 +2688,69 @@ bool DeviceContext::transition_texture(NativeCommandListHandle commands, NativeR
 
 bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, NativeResourceHandle before,
                                              NativeResourceHandle after) {
-    if (!valid() || before.value == 0 || after.value == 0 || before.value == after.value) {
+    if (!valid() || (before.value != 0 && before.value == after.value)) {
         return false;
     }
 
     CommandListRecord* command_record = impl_->command_list(commands);
-    ID3D12Resource* before_resource = impl_->resource_record(before);
-    ID3D12Resource* after_resource = impl_->resource_record(after);
-    if (command_record == nullptr || before_resource == nullptr || after_resource == nullptr ||
-        command_record->closed) {
+    ID3D12Resource* before_resource = before.value == 0 ? nullptr : impl_->resource_record(before);
+    ID3D12Resource* after_resource = after.value == 0 ? nullptr : impl_->resource_record(after);
+    if (command_record == nullptr || command_record->closed || (before.value != 0 && before_resource == nullptr) ||
+        (after.value != 0 && after_resource == nullptr)) {
         return false;
     }
     if (command_record->queue != QueueKind::graphics) {
         return false;
     }
 
-    const auto before_desc = before_resource->GetDesc();
-    const auto after_desc = after_resource->GetDesc();
-    if (before_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ||
-        after_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+    if (before_resource != nullptr && before_resource->GetDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+        return false;
+    }
+    if (after_resource != nullptr && after_resource->GetDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;
     }
 
-    // Public RHI calls require concrete texture handles, but committed resources cannot be used
-    // as non-null D3D12 aliasing-barrier resources. Record a conservative backend-private
-    // null-resource aliasing barrier so the command has native synchronization evidence without
-    // exposing public wildcard/null handles or claiming placed-resource alias execution.
+    if (before.value != 0 && after.value != 0 && impl_->resources_share_placed_alias_group(before, after)) {
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.Aliasing.pResourceBefore = before_resource;
+        barrier.Aliasing.pResourceAfter = after_resource;
+
+        command_record->list->ResourceBarrier(1, &barrier);
+        command_record->placed_resource_state_updates.push_back(PlacedResourceStateUpdate{
+            .before = before,
+            .after = after,
+        });
+        ++impl_->stats.texture_aliasing_barriers;
+        ++impl_->stats.placed_resource_aliasing_barriers;
+        return true;
+    }
+
+    const bool before_is_placed = before.value != 0 && impl_->resource_is_placed(before);
+    const bool after_is_placed = after.value != 0 && impl_->resource_is_placed(after);
+
+    // Unproven pairs stay on a backend-private null-resource aliasing barrier.
+    // Explicit wildcard endpoints may name a proven placed resource on the concrete side.
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Aliasing.pResourceBefore = nullptr;
-    barrier.Aliasing.pResourceAfter = nullptr;
+    barrier.Aliasing.pResourceBefore = before_is_placed && after.value == 0 ? before_resource : nullptr;
+    barrier.Aliasing.pResourceAfter = before.value == 0 && after_is_placed ? after_resource : nullptr;
 
     command_record->list->ResourceBarrier(1, &barrier);
+    if (before_is_placed && after.value == 0) {
+        command_record->placed_resource_state_updates.push_back(PlacedResourceStateUpdate{
+            .before = before,
+            .after = NativeResourceHandle{},
+        });
+    }
+    if (before.value == 0 && after_is_placed) {
+        command_record->placed_resource_state_updates.push_back(PlacedResourceStateUpdate{
+            .before = NativeResourceHandle{},
+            .after = after,
+        });
+    }
     ++impl_->stats.texture_aliasing_barriers;
     ++impl_->stats.null_resource_aliasing_barriers;
     return true;
@@ -3487,7 +3646,7 @@ NativeCommandListHandle DeviceContext::create_command_list(QueueKind queue) {
         .descriptor_heaps = NativeDescriptorHeapBinding{},
         .graphics_pipeline = NativeGraphicsPipelineHandle{},
         .compute_pipeline = NativeComputePipelineHandle{},
-        .placed_activation_resources = {},
+        .placed_resource_state_updates = {},
         .render_target_set = false,
         .closed = false,
         .submitted = false,
@@ -3604,7 +3763,7 @@ bool DeviceContext::reset_command_list(NativeCommandListHandle handle) {
     record->descriptor_heaps = NativeDescriptorHeapBinding{};
     record->graphics_pipeline = NativeGraphicsPipelineHandle{};
     record->compute_pipeline = NativeComputePipelineHandle{};
-    record->placed_activation_resources.clear();
+    record->placed_resource_state_updates.clear();
     record->render_target_set = false;
     record->gpu_debug_scope_depth = 0;
     reset_submitted_command_timing_state(*record);
@@ -3662,6 +3821,16 @@ FenceValue DeviceContext::execute_command_list(NativeCommandListHandle handle) {
     std::array<ID3D12CommandList*, 1> lists{record->list.Get()};
     queue->ExecuteCommandLists(1, lists.data());
 
+    for (const auto& update : record->placed_resource_state_updates) {
+        if (update.before.value != 0) {
+            impl_->set_resource_placed_active(update.before, false);
+        }
+        if (update.after.value != 0) {
+            impl_->set_resource_placed_active(update.after, true);
+        }
+    }
+    record->placed_resource_state_updates.clear();
+
     std::uint64_t& next_fence_value =
         DeviceContext::Impl::queue_fence_value(impl_->next_queue_fence_values, record->queue);
     const auto next_fence = next_fence_value + 1U;
@@ -3674,10 +3843,6 @@ FenceValue DeviceContext::execute_command_list(NativeCommandListHandle handle) {
     record->submitted = true;
     record->submitted_fence = FenceValue{.value = next_fence, .queue = record->queue};
     impl_->last_submitted_fence = record->submitted_fence;
-    for (const auto resource : record->placed_activation_resources) {
-        impl_->set_resource_placed_active(resource, true);
-    }
-    record->placed_activation_resources.clear();
     if (can_read_submitted_timing &&
         record->submitted_timing_calibration_before.status == QueueClockCalibrationStatus::ready) {
         record->submitted_timing_status = SubmittedCommandCalibratedTimingStatus::not_ready;
@@ -4595,14 +4760,19 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (render_pass_active_) {
             throw std::logic_error("d3d12 rhi texture aliasing barriers must be recorded outside a render pass");
         }
-        if (before.value == 0 || after.value == 0 || before.value == after.value) {
-            throw std::invalid_argument("d3d12 rhi texture aliasing barrier requires distinct texture handles");
+        if (before.value != 0 && before.value == after.value) {
+            throw std::invalid_argument(
+                "d3d12 rhi texture aliasing barrier requires distinct texture handles or wildcard endpoints");
         }
 
-        const auto before_native = native_texture(before);
-        const auto after_native = native_texture(after);
-        observe_texture(before);
-        observe_texture(after);
+        const auto before_native = before.value == 0 ? NativeResourceHandle{} : native_texture(before);
+        const auto after_native = after.value == 0 ? NativeResourceHandle{} : native_texture(after);
+        if (before.value != 0) {
+            observe_texture(before);
+        }
+        if (after.value != 0) {
+            observe_texture(after);
+        }
         if (!context_->texture_aliasing_barrier(native_, before_native, after_native)) {
             throw std::logic_error("d3d12 rhi texture aliasing barrier recording failed");
         }
@@ -5875,7 +6045,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::buffer,
             .buffer = buffer,
-            .texture = TextureHandle{},
+            .textures = {},
             .active = true,
         });
         ++stats_.transient_resources_acquired;
@@ -5914,12 +6084,76 @@ class D3d12RhiDevice final : public IRhiDevice {
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::texture,
             .buffer = BufferHandle{},
-            .texture = texture,
+            .textures = {texture},
             .active = true,
         });
         ++stats_.transient_resources_acquired;
         ++stats_.transient_resources_active;
         return TransientTexture{.lease = lease, .texture = texture};
+    }
+
+    [[nodiscard]] TransientTextureAliasGroup acquire_transient_texture_alias_group(const TextureDesc& desc,
+                                                                                   std::size_t texture_count) override {
+        if (texture_count == 0) {
+            throw std::invalid_argument("d3d12 rhi transient texture alias group requires at least one texture");
+        }
+        if (texture_count == 1) {
+            const auto transient = acquire_transient_texture(desc);
+            return TransientTextureAliasGroup{.lease = transient.lease, .textures = {transient.texture}};
+        }
+
+        const auto natives = context_->create_placed_texture_alias_group(desc, texture_count);
+        if (natives.size() != texture_count) {
+            for (const auto native : natives) {
+                context_->destroy_committed_resource(native);
+            }
+            throw std::invalid_argument(
+                "d3d12 rhi transient texture alias group description is invalid or unsupported");
+        }
+
+        std::vector<RhiResourceHandle> lifetime_handles;
+        lifetime_handles.reserve(natives.size());
+        for (std::size_t i = 0; i < natives.size(); ++i) {
+            const auto lifetime_registration = resource_lifetime_.register_resource(RhiResourceRegistrationDesc{
+                .kind = RhiResourceKind::texture,
+                .owner = "d3d12",
+                .debug_name = d3d12_rhi_resource_debug_name(
+                    "texture", static_cast<std::uint32_t>(texture_handles_.size() + i + 1U)),
+            });
+            if (!lifetime_registration.succeeded()) {
+                for (const auto native : natives) {
+                    context_->destroy_committed_resource(native);
+                }
+                throw std::logic_error("d3d12 rhi transient texture alias group lifetime registration failed");
+            }
+            lifetime_handles.push_back(lifetime_registration.handle);
+        }
+
+        std::vector<TextureHandle> textures;
+        textures.reserve(natives.size());
+        for (std::size_t i = 0; i < natives.size(); ++i) {
+            texture_handles_.push_back(natives[i]);
+            texture_descs_.push_back(desc);
+            texture_active_.push_back(true);
+            texture_states_.push_back(initial_texture_state(desc.usage));
+            texture_lifetime_.push_back(lifetime_handles[i]);
+            ++stats_.textures_created;
+            ++stats_.transient_texture_placed_allocations;
+            ++stats_.transient_texture_placed_resources_alive;
+            textures.push_back(TextureHandle{static_cast<std::uint32_t>(texture_handles_.size())});
+        }
+
+        ++stats_.transient_texture_heap_allocations;
+        const auto lease = TransientResourceHandle{next_transient_resource_++};
+        transient_leases_.push_back(TransientLeaseRecord{
+            .kind = TransientResourceKind::texture,
+            .buffer = BufferHandle{},
+            .textures = textures,
+            .active = true,
+        });
+        ++stats_.transient_resources_acquired;
+        ++stats_.transient_resources_active;
+        return TransientTextureAliasGroup{.lease = lease, .textures = std::move(textures)};
     }
 
     void release_transient(TransientResourceHandle lease) override {
@@ -5941,13 +6175,14 @@ class D3d12RhiDevice final : public IRhiDevice {
                 buffer_active_.at(index) = false;
             }
         } else {
-            const auto texture = record.texture;
-            const auto index = texture.value - 1U;
-            if (texture_active_.at(index)) {
-                const auto release_fence = context_->last_submitted_fence().value;
-                (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
-                texture_active_.at(index) = false;
-                texture_states_.at(index) = ResourceState::undefined;
+            for (const auto texture : record.textures) {
+                const auto index = texture.value - 1U;
+                if (texture_active_.at(index)) {
+                    const auto release_fence = context_->last_submitted_fence().value;
+                    (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
+                    texture_active_.at(index) = false;
+                    texture_states_.at(index) = ResourceState::undefined;
+                }
             }
         }
         retire_deferred_committed_resources(context_->completed_fence().value);
@@ -6401,7 +6636,7 @@ class D3d12RhiDevice final : public IRhiDevice {
     struct TransientLeaseRecord {
         TransientResourceKind kind{TransientResourceKind::buffer};
         BufferHandle buffer;
-        TextureHandle texture;
+        std::vector<TextureHandle> textures;
         bool active{false};
     };
 

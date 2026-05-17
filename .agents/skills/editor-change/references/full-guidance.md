@@ -28,7 +28,7 @@ The visible `MK_editor` entry point is a large translation unit; keep it consist
 - **Sets / maps**: prefer `contains` over `count(...) > 0` where the container supports it.
 - **Disabled widgets**: prefer `ImGui::BeginDisabled(bool)` paired with `ImGui::EndDisabled()` instead of branching on `BeginDisabled()` with no predicate.
 - **`path::generic_string()` into `optional<string>`**: use `auto s = path.generic_string()` (non-const) when the value is returned or moved from; `const auto` can block move on some MSVC diagnostics.
-- **Validation loop** after substantive shell changes: `cmake --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/src/main.cpp` (add `editor/src/material_preview_gpu_cache.cpp` and/or `editor/src/sdl_viewport_texture.cpp` when those files change), and `cmake --build --preset dev` for `MK_editor` (then `validate.ps1` at the slice gate per **Required Checks** below).
+- **Validation loop** after substantive shell changes: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/src/main.cpp` (add `editor/src/material_preview_gpu_cache.cpp` and/or `editor/src/sdl_viewport_texture.cpp` when those files change), and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor` (then `validate.ps1` at the slice gate per **Required Checks** below).
 
 ## MK_editor Windows and material-preview host cache
 
@@ -42,7 +42,7 @@ The visible `MK_editor` entry point is a large translation unit; keep it consist
 ## Editor core unit tests (`MK_editor_core_tests`)
 
 - Large GUI-independent editor/core behavior is covered in **`tests/unit/editor_core_tests.cpp`** (CTest name **`MK_editor_core_tests`**). Keep it aligned with **Unit tests** in `docs/cpp-style.md` (complete designated initialization in **struct member declaration order**, including trailing **`std::function`** members such as **`ScenePrefabInstanceRefreshPolicy::load_prefab_for_nested_propagation = {}`** when unused, C++23 **`std::string::contains` / `starts_with`** and the same on **`std::string_view`** where applicable, anonymous namespace layout ending immediately before `int main()`, `class` test doubles with private state and `const` getters when guideline checks fire on counters).
-- Narrow validation: `cmake --build --preset dev --target MK_editor_core_tests` and/or `ctest --preset dev --output-on-failure -R MK_editor_core_tests` after changing `editor/core` or that TU.
+- Narrow validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` and/or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests` after changing `editor/core` or that TU.
 
 ## Editor core C++ (`editor/core/src/*.cpp`, `editor/core/include/**`)
 
@@ -52,14 +52,14 @@ The visible `MK_editor` entry point is a large translation unit; keep it consist
 - Small closed **`enum class`** in editor-core public headers: prefer an explicit **`std::uint8_t`** (or other fixed-width) underlying type when **`performance-enum-size`** would fire; see **`docs/cpp-style.md`** (ABI note).
 - **`bugprone-unchecked-optional-access`**: add explicit **`optional.has_value()`** (or an equivalent guard) before `->` / `*` when helper predicates do not satisfy clang-tidy’s dataflow.
 - **Planner / validation call graphs:** when a public planner calls validation that must re-plan the same surface (for example nested prefab propagation simulation), keep the **acyclic** shape by splitting **graph-only planning** from **post-plan simulation** in a file-local helper instead of **`plan` → `validate` → same public `plan`** (which triggers **recursive call chain** / **`misc-no-recursion`** diagnostics); see **`editor/core/src/scene_authoring.cpp`** (`plan_scene_prefab_instance_refresh_without_nested_propagation_simulation` + public `plan_scene_prefab_instance_refresh`).
-- After substantive edits outside the huge ImGui TU, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/core/src/<changed>.cpp` (after `cmake --preset dev`) alongside `cmake --build --preset dev --target MK_editor_core` when only `editor/core` changed; when only a paired header changed, pass the same primary `.cpp` to `-Files`.
+- After substantive edits outside the huge ImGui TU, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files editor/core/src/<changed>.cpp` after `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`, alongside `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core` when only `editor/core` changed; when only a paired header changed, pass the same primary `.cpp` to `-Files`.
 
 ## Required Checks
 
 1. Identify whether the change belongs in `editor/core`, `editor`, or an engine module.
 2. Add or update tests in **`tests/unit/editor_core_tests.cpp`** before production editor-core behavior (CMake executable and CTest filter: **`MK_editor_core_tests`**). Use the canonical `MK_editor_core_tests` name in new guidance and validation evidence.
 3. Update `docs/editor.md` and the engine agent manifest for new editor-facing contracts by editing the relevant `engine/agent/manifest.fragments/*.json` and running `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; when adding retained `play_in_editor.*` row ids, CMake target strings surfaced to agents, or other literals enforced in `tools/check-ai-integration.ps1`, extend the matching Needles blocks there and keep `.claude/skills/gameengine-editor/SKILL.md` equivalent paragraphs aligned in the same task.
-4. During implementation, prefer a focused loop: `cmake --build --preset dev --target MK_editor_core_tests` and `ctest --preset dev --output-on-failure -R MK_editor_core_tests` when `editor/core` or `tests/unit/editor_core_tests.cpp` changes, and run only the static checks matching touched docs/manifest/API files.
+4. During implementation, prefer a focused loop: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests` when `editor/core` or `tests/unit/editor_core_tests.cpp` changes, and run only the static checks matching touched docs/manifest/API files.
 5. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1` when `editor`, SDL3, Dear ImGui, or GUI CMake files change.
 6. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` once at the slice-closing gate after code, docs, manifest, and static-check updates are settled.
 

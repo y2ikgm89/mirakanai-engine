@@ -185,6 +185,11 @@ class ResizeRecordingRhiDevice final : public mirakana::rhi::IRhiDevice {
         return inner.acquire_transient_texture(desc);
     }
 
+    [[nodiscard]] mirakana::rhi::TransientTextureAliasGroup
+    acquire_transient_texture_alias_group(const mirakana::rhi::TextureDesc& desc, std::size_t texture_count) override {
+        return inner.acquire_transient_texture_alias_group(desc, texture_count);
+    }
+
     void release_transient(mirakana::rhi::TransientResourceHandle lease) override {
         inner.release_transient(lease);
     }

@@ -8,9 +8,11 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mirakana {
@@ -56,7 +58,7 @@ struct FrameGraphTransientTextureAliasPlan {
 
 struct FrameGraphTransientTextureLease {
     std::size_t alias_group{0};
-    rhi::TransientTexture transient;
+    rhi::TransientTextureAliasGroup transient_alias_group;
 };
 
 struct FrameGraphTransientTextureLeaseBindingResult {
@@ -92,6 +94,66 @@ struct FrameGraphTextureAliasingBarrierRecordResult {
     }
 };
 
+struct FrameGraphRhiPassQueueBinding {
+    std::string pass_name;
+    rhi::QueueKind queue{rhi::QueueKind::graphics};
+};
+
+struct FrameGraphRhiQueueWait {
+    std::string pass_name;
+    rhi::QueueKind queue{rhi::QueueKind::graphics};
+    std::string waits_for_pass_name;
+    rhi::QueueKind waits_for_queue{rhi::QueueKind::graphics};
+};
+
+struct FrameGraphRhiQueueWaitPlan {
+    std::vector<FrameGraphRhiQueueWait> queue_waits;
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
+struct FrameGraphRhiSubmittedPassFence {
+    std::string pass_name;
+    rhi::FenceValue fence;
+};
+
+struct FrameGraphRhiQueueWaitRecordResult {
+    std::size_t queue_waits_recorded{0};
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
+struct FrameGraphRhiPassCommandBinding {
+    std::string pass_name;
+    rhi::QueueKind queue{rhi::QueueKind::graphics};
+    std::function<FrameGraphExecutionCallbackResult(std::string_view pass_name, rhi::IRhiCommandList& commands)>
+        callback;
+};
+
+struct FrameGraphRhiMultiQueueExecutionDesc {
+    rhi::IRhiDevice* device{nullptr};
+    std::span<const FrameGraphExecutionStep> schedule;
+    std::span<const FrameGraphRhiPassCommandBinding> pass_commands;
+};
+
+struct FrameGraphRhiMultiQueueExecutionResult {
+    std::size_t command_lists_submitted{0};
+    std::size_t queue_waits_recorded{0};
+    std::size_t pass_callbacks_invoked{0};
+    std::vector<FrameGraphRhiSubmittedPassFence> submitted_pass_fences;
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 struct FrameGraphTextureFinalState {
     std::string resource;
     rhi::ResourceState state{rhi::ResourceState::undefined};
@@ -109,6 +171,29 @@ struct FrameGraphTexturePassTargetAccess {
     FrameGraphAccess access{FrameGraphAccess::unknown};
 };
 
+struct FrameGraphRhiRenderPassColorAttachment {
+    std::string resource;
+    rhi::TextureHandle texture;
+    rhi::SwapchainFrameHandle swapchain_frame;
+    rhi::LoadAction load_action{rhi::LoadAction::clear};
+    rhi::StoreAction store_action{rhi::StoreAction::store};
+    rhi::ClearColorValue clear_color;
+};
+
+struct FrameGraphRhiRenderPassDepthAttachment {
+    std::string resource;
+    rhi::TextureHandle texture;
+    rhi::LoadAction load_action{rhi::LoadAction::clear};
+    rhi::StoreAction store_action{rhi::StoreAction::store};
+    rhi::ClearDepthValue clear_depth;
+};
+
+struct FrameGraphRhiRenderPassDesc {
+    std::string pass_name;
+    FrameGraphRhiRenderPassColorAttachment color;
+    FrameGraphRhiRenderPassDepthAttachment depth;
+};
+
 struct FrameGraphRhiTextureExecutionDesc {
     rhi::IRhiCommandList* commands{nullptr};
     std::span<const FrameGraphExecutionStep> schedule;
@@ -116,12 +201,16 @@ struct FrameGraphRhiTextureExecutionDesc {
     std::span<const FrameGraphPassExecutionBinding> pass_callbacks;
     std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses;
     std::span<const FrameGraphTexturePassTargetState> pass_target_states;
+    std::span<const FrameGraphRhiRenderPassDesc> render_passes;
     std::span<const FrameGraphTextureFinalState> final_states;
+    std::span<const FrameGraphTransientTextureLifetime> transient_texture_lifetimes;
 };
 
 struct FrameGraphRhiTextureExecutionResult {
     std::size_t barriers_recorded{0};
+    std::size_t aliasing_barriers_recorded{0};
     std::size_t pass_target_state_barriers_recorded{0};
+    std::size_t render_passes_recorded{0};
     std::size_t final_state_barriers_recorded{0};
     std::size_t pass_callbacks_invoked{0};
     std::vector<FrameGraphDiagnostic> diagnostics;
@@ -155,6 +244,17 @@ record_frame_graph_texture_barriers(rhi::IRhiCommandList& commands, std::span<co
 record_frame_graph_texture_aliasing_barriers(rhi::IRhiCommandList& commands,
                                              std::span<const FrameGraphTextureAliasingBarrier> aliasing_barriers,
                                              std::span<const FrameGraphTextureBinding> texture_bindings);
+
+[[nodiscard]] FrameGraphRhiQueueWaitPlan
+plan_frame_graph_rhi_queue_waits(std::span<const FrameGraphExecutionStep> schedule,
+                                 std::span<const FrameGraphRhiPassQueueBinding> pass_queue_bindings);
+
+[[nodiscard]] FrameGraphRhiQueueWaitRecordResult
+record_frame_graph_rhi_queue_waits(rhi::IRhiDevice& device, std::span<const FrameGraphRhiQueueWait> queue_waits,
+                                   std::span<const FrameGraphRhiSubmittedPassFence> submitted_fences);
+
+[[nodiscard]] FrameGraphRhiMultiQueueExecutionResult
+execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecutionDesc& desc);
 
 [[nodiscard]] FrameGraphRhiTextureExecutionResult
 execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc& desc);

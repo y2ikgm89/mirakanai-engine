@@ -3953,13 +3953,14 @@ MK_TEST("vulkan rhi device bridge records texture aliasing barriers when runtime
 
     auto commands = rhi->begin_command_list(mirakana::rhi::QueueKind::graphics);
     commands->texture_aliasing_barrier(first, second);
+    commands->texture_aliasing_barrier({}, second);
     commands->close();
 
     const auto fence = rhi->submit(*commands);
     rhi->wait(fence);
 
     const auto stats = rhi->stats();
-    MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    MK_REQUIRE(stats.texture_aliasing_barriers == 2);
     MK_REQUIRE(stats.resource_transitions == 0);
 #endif
 }

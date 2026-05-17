@@ -1621,6 +1621,10 @@ $geRendererModule = @($manifest.modules | Where-Object { $_.name -eq "MK_rendere
 if ($geRendererModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_renderer module"
 }
+$geRuntimeRhiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime_rhi" })
+if ($geRuntimeRhiModule.Count -ne 1) {
+    Write-Error "engine/agent/manifest.json must expose exactly one MK_runtime_rhi module"
+}
 $geSceneRendererModule = @($manifest.modules | Where-Object { $_.name -eq "MK_scene_renderer" })
 if ($geSceneRendererModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_scene_renderer module"
@@ -1644,6 +1648,7 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "barrier intent" "MK_
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Pass Callback Execution v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_v1_schedule" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph RHI Texture Schedule Execution v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Render Pass Envelope v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiTextureExecutionDesc" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTexturePassTargetAccess" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "build_frame_graph_texture_pass_target_accesses" "MK_renderer module purpose"
@@ -1651,21 +1656,65 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTexturePas
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "pass_target_state_barriers_recorded" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTextureFinalState" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "final_state_barriers_recorded" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "aliasing_barriers_recorded" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiRenderPassDesc" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "render_passes_recorded" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "automatic aliasing-barrier insertion" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_rhi_texture_schedule" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transient Texture Alias Planning v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTransientTextureAliasPlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_transient_texture_aliases" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Transient Texture Lease Binding v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Backend-Neutral Distinct Alias-Group Lease Binding v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "IRhiDevice::acquire_transient_texture_alias_group" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "distinct resource-name FrameGraphTextureBinding rows" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "acquire_frame_graph_transient_texture_lease_bindings" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Texture Aliasing Barrier Command v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphTextureAliasingBarrier" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "record_frame_graph_texture_aliasing_barriers" "MK_renderer module purpose"
+if (@($geRuntimeRhiModule[0].publicHeaders) -notcontains "engine/runtime_rhi/include/mirakana/runtime_rhi/package_streaming_frame_graph.hpp") {
+    Write-Error "engine/agent/manifest.json MK_runtime_rhi publicHeaders must include package_streaming_frame_graph.hpp"
+}
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "make_runtime_package_streaming_frame_graph_texture_bindings" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingFrameGraphTextureBindingSource" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "broad/background package streaming" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "make_runtime_package_streaming_frame_graph_texture_bindings" "desktop runtime 3d package streaming guidance"
+foreach ($packageStreamingFrameGraphGuidance in @(
+        "docs/rhi.md",
+        "docs/current-capabilities.md",
+        "docs/ai-game-development.md",
+        "docs/architecture.md",
+        ".agents/skills/rendering-change/references/full-guidance.md",
+        ".claude/skills/gameengine-rendering/references/full-guidance.md",
+        ".codex/agents/rendering-auditor.toml",
+        ".claude/agents/rendering-auditor.md"
+    )) {
+    $packageStreamingFrameGraphText = Get-AgentSurfaceText $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "make_runtime_package_streaming_frame_graph_texture_bindings" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "broad" $packageStreamingFrameGraphGuidance
+}
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "IRhiCommandList::texture_aliasing_barrier" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiStats::texture_aliasing_barriers" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiFrameRenderer executor-owned primary_color pass timing" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiPostprocessFrameRenderer executor-owned scene-color/scene-depth target preparation plus scene pass callback recording and post-chain/final-state transition adoption" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiDirectionalShadowSmokeFrameRenderer scheduled shadow-depth/scene-color/scene-depth inter-pass plus shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state and scene-depth/shadow-depth final-state transition adoption" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiViewportSurface viewport_color render_target/copy_source/shader_read color-state transitions through execute_frame_graph_rhi_texture_schedule" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "primary_color pass timing and render pass envelope" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiFrameRenderer primary_color texture binding and target-state evidence" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "optional primary_depth depth target-state" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiPostprocessFrameRenderer executor-owned scene-color/scene-depth target preparation plus executor-owned scene/postprocess-chain render pass envelopes, pass-body callback recording, and post-chain/final-state transition adoption" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiDirectionalShadowSmokeFrameRenderer scheduled shadow-depth/scene-color/scene-depth inter-pass plus shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state, executor-owned shadow-depth/scene-receiver/postprocess render pass envelope, and scene-depth/shadow-depth final-state transition adoption" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "RhiViewportSurface viewport_color render_target/copy_source/shader_read color-state transitions through execute_frame_graph_rhi_texture_schedule plus executor-owned viewport.clear render pass envelope" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph RHI Queue Dependency Plan v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_rhi_queue_waits" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "IRhiDevice::wait_for_queue" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph RHI Multi-Queue Executor v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_rhi_multi_queue_schedule" "MK_renderer module purpose"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Primary Pass Target-State Evidence v1" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Queue Dependency Plan v1" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "record_frame_graph_rhi_queue_waits" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Executor v1" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_frame_graph_rhi_multi_queue_schedule" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "primary pass texture-binding/target-state evidence is complete" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "backend-neutral RHI queue dependency wait planning/recording is complete" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "multi-queue pass command submission envelope" "recommended next plan reason"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
@@ -1732,22 +1781,34 @@ Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTexturePassT
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTransientTextureLeaseBindingResult" "Frame graph transient texture lease binding public API"
 Assert-ContainsText $frameGraphRhiHeader "acquire_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding public API"
 Assert-ContainsText $frameGraphRhiHeader "release_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding public API"
+Assert-ContainsText $frameGraphRhiHeader "rhi::TransientTextureAliasGroup transient_alias_group" "Frame graph transient texture lease binding public API"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTextureAliasingBarrier" "Frame graph texture aliasing barrier command public API"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTextureAliasingBarrierRecordResult" "Frame graph texture aliasing barrier command public API"
 Assert-ContainsText $frameGraphRhiHeader "record_frame_graph_texture_aliasing_barriers" "Frame graph texture aliasing barrier command public API"
+Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiPassCommandBinding" "Frame graph RHI multi-queue executor public API"
+Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiMultiQueueExecutionDesc" "Frame graph RHI multi-queue executor public API"
+Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiMultiQueueExecutionResult" "Frame graph RHI multi-queue executor public API"
+Assert-ContainsText $frameGraphRhiHeader "execute_frame_graph_rhi_multi_queue_schedule" "Frame graph RHI multi-queue executor public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barriers" "RHI texture aliasing barrier command public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barrier(TextureHandle before, TextureHandle after)" "RHI texture aliasing barrier command public API"
+Assert-ContainsText $rhiPublicHeaderText "TransientTextureAliasGroup" "RHI transient texture alias-group public API"
+Assert-ContainsText $rhiPublicHeaderText "std::vector<TextureHandle> textures" "RHI transient texture alias-group public API"
+Assert-ContainsText $rhiPublicHeaderText "acquire_transient_texture_alias_group(const TextureDesc& desc" "RHI transient texture alias-group public API"
 Assert-ContainsText $rhiPublicHeaderText "transient_texture_heap_allocations" "RHI D3D12 placed transient texture lease evidence"
 Assert-ContainsText $rhiPublicHeaderText "transient_texture_placed_allocations" "RHI D3D12 placed transient texture lease evidence"
 Assert-ContainsText $rhiPublicHeaderText "transient_texture_placed_resources_alive" "RHI D3D12 placed transient texture lease evidence"
 Assert-ContainsText $nullRhiSourceText "void texture_aliasing_barrier(TextureHandle before, TextureHandle after) override" "NullRHI texture aliasing barrier command"
+Assert-ContainsText $nullRhiSourceText "NullRhiDevice::acquire_transient_texture_alias_group" "NullRHI transient texture alias-group lease"
 $d3d12RhiHeaderText = Get-AgentSurfaceText "engine/rhi/d3d12/include/mirakana/rhi/d3d12/d3d12_backend.hpp"
 Assert-ContainsText $d3d12RhiHeaderText "null_resource_aliasing_barriers" "D3D12 texture aliasing barrier command evidence"
 Assert-ContainsText $d3d12RhiHeaderText "placed_texture_heaps_created" "D3D12 placed transient texture lease evidence"
+Assert-ContainsText $d3d12RhiHeaderText "placed_texture_alias_groups_created" "D3D12 placed alias group evidence"
 Assert-ContainsText $d3d12RhiHeaderText "placed_textures_created" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiHeaderText "placed_resources_alive" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiHeaderText "placed_resource_activation_barriers" "D3D12 placed transient texture lease evidence"
+Assert-ContainsText $d3d12RhiHeaderText "placed_resource_aliasing_barriers" "D3D12 placed alias group evidence"
 Assert-ContainsText $d3d12RhiHeaderText "create_placed_texture" "D3D12 placed transient texture lease evidence"
+Assert-ContainsText $d3d12RhiHeaderText "create_placed_texture_alias_group" "D3D12 placed alias group evidence"
 Assert-ContainsText $d3d12RhiHeaderText "activate_placed_texture" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiSourceText "backend-private" "D3D12 texture aliasing barrier command"
 Assert-ContainsText $d3d12RhiSourceText "null-resource aliasing barrier" "D3D12 texture aliasing barrier command"
@@ -1757,10 +1818,20 @@ Assert-ContainsText $d3d12RhiSourceText "CreatePlacedResource" "D3D12 placed tra
 Assert-ContainsText $d3d12RhiSourceText "GetResourceAllocationInfo" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiSourceText "D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES" "D3D12 placed transient texture lease evidence"
 Assert-ContainsText $d3d12RhiSourceText "pResourceAfter = texture_resource" "D3D12 placed transient texture activation evidence"
+Assert-ContainsText $d3d12RhiSourceText "resource_alias_group_ids" "D3D12 placed alias group evidence"
+Assert-ContainsText $d3d12RhiSourceText "resources_share_placed_alias_group" "D3D12 placed alias group evidence"
+Assert-ContainsText $d3d12RhiSourceText "create_placed_texture_alias_group(desc, texture_count)" "D3D12 transient texture alias-group lease"
+Assert-ContainsText $d3d12RhiSourceText "pResourceBefore = before_resource" "D3D12 placed alias group non-null barrier evidence"
+Assert-ContainsText $d3d12RhiSourceText "pResourceAfter = after_resource" "D3D12 placed alias group non-null barrier evidence"
+Assert-ContainsText $d3d12RhiSourceText "placed_resource_state_updates" "D3D12 placed alias group submit-time state evidence"
 Assert-ContainsText $vulkanRhiSourceText "record_runtime_texture_aliasing_barrier" "Vulkan texture aliasing barrier command"
+Assert-ContainsText $vulkanRhiSourceText "acquire_transient_texture_alias_group" "Vulkan transient texture alias-group fallback"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group acquisition failed" "Frame graph transient texture lease binding failure cleanup"
+Assert-ContainsText $frameGraphRhiSource "device.acquire_transient_texture_alias_group(group.desc, group.resources.size())" "Frame graph transient texture distinct alias-group lease binding"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group has no resources" "Frame graph transient texture lease binding malformed-plan validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group resource name is empty" "Frame graph transient texture lease binding malformed-plan validation"
+Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group returned an invalid texture count" "Frame graph transient texture lease binding backend validation"
+Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group returned duplicate texture handles" "Frame graph transient texture lease binding backend validation"
 Assert-ContainsText $frameGraphRhiSource "release_frame_graph_transient_texture_lease_bindings" "Frame graph transient texture lease binding failure cleanup"
 Assert-ContainsText $frameGraphRhiSource "propagate_shared_simulated_texture_state" "Frame graph shared TextureHandle state handoff"
 Assert-ContainsText $frameGraphRhiSource "propagate_shared_texture_binding_state" "Frame graph shared TextureHandle state handoff"
@@ -1768,20 +1839,49 @@ Assert-ContainsText $frameGraphRhiSource "frame graph texture bindings sharing a
 Assert-ContainsText $frameGraphRhiSource "record_frame_graph_texture_aliasing_barriers" "Frame graph texture aliasing barrier command"
 Assert-ContainsText $frameGraphRhiSource "texture_aliasing_barrier" "Frame graph texture aliasing barrier command"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture aliasing barrier requires distinct texture handles" "Frame graph texture aliasing barrier command"
+Assert-ContainsText $frameGraphRhiSource "or wildcard endpoints" "Frame graph public null aliasing barrier command"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state has no declared writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target state disagrees with writer access" "Frame graph RHI pass target access validation"
 Assert-ContainsText $frameGraphRhiSource "frame graph texture pass target access is declared more than once" "Frame graph RHI pass target access validation"
+Assert-ContainsText $frameGraphRhiSource "FrameGraphRhiRenderPassDesc" "Frame graph render pass envelope"
+Assert-ContainsText $frameGraphRhiSource "begin_planned_render_pass" "Frame graph render pass envelope"
+Assert-ContainsText $frameGraphRhiSource "attachment references an unknown resource" "Frame graph render pass envelope validation"
+Assert-ContainsText $frameGraphRhiSource "execute_frame_graph_rhi_multi_queue_schedule" "Frame graph RHI multi-queue executor"
+Assert-ContainsText $frameGraphRhiSource "record_frame_graph_rhi_queue_waits(*desc.device, waits->second, result.submitted_pass_fences)" "Frame graph RHI multi-queue executor"
+Assert-ContainsText $frameGraphRhiSource "frame graph rhi pass command callback failed" "Frame graph RHI multi-queue executor diagnostics"
+Assert-ContainsText $rhiFrameRendererSource "PrimaryColorFrameGraphExecutionPlan" "RhiFrameRenderer primary target-state evidence"
+Assert-ContainsText $rhiFrameRendererSource "build_frame_graph_texture_pass_target_accesses" "RhiFrameRenderer primary target-state evidence"
+Assert-ContainsText $rhiFrameRendererSource ".pass_target_states = pass_target_states" "RhiFrameRenderer primary target-state evidence"
+Assert-ContainsText $rhiFrameRendererSource "primary_depth" "RhiFrameRenderer primary depth target-state evidence"
 $rendererRhiTests = Get-AgentSurfaceText "tests/unit/renderer_rhi_tests.cpp"
 Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording propagates shared texture handle state" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording rejects conflicting shared texture handle states" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution hands off shared texture handle state between aliases" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording maps resource names to texture handles" "Frame graph texture aliasing barrier command tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording maps empty resource names to wildcards" "Frame graph public null aliasing barrier tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording rejects missing resources and shared handles" "Frame graph texture aliasing barrier command tests"
+Assert-ContainsText $rendererRhiTests "rhi frame renderer carries primary target state across texture frames" "RhiFrameRenderer primary target-state evidence tests"
+Assert-ContainsText $rendererRhiTests "rhi frame renderer reports primary target state failures before pass body" "RhiFrameRenderer primary target-state evidence tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi transient texture lease binding acquires distinct handles per alias group resource" "Frame graph transient texture distinct alias-group lease tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi transient texture lease binding rejects duplicate backend alias handles" "Frame graph transient texture distinct alias-group lease tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution wraps render pass envelopes around callbacks" "Frame graph render pass envelope tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution rejects invalid render pass envelopes before callbacks" "Frame graph render pass envelope tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor submits declared pass queues and waits for producer fences" "Frame graph RHI multi-queue executor tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor preserves submitted producer evidence on callback failure" "Frame graph RHI multi-queue executor tests"
 Assert-ContainsText $rhiTestsText "null rhi records texture aliasing barriers without changing texture state" "NullRHI texture aliasing barrier command tests"
+Assert-ContainsText $rhiTestsText "null rhi records wildcard texture aliasing barriers" "NullRHI public null aliasing barrier tests"
+Assert-ContainsText $rhiTestsText "null rhi transient texture alias group returns distinct handles under one lease" "NullRHI transient texture alias-group lease tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device records texture aliasing barrier commands" "D3D12 texture aliasing barrier command tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device records public wildcard texture aliasing barrier commands" "D3D12 public null aliasing barrier tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 device context applies public null placed texture aliasing state updates" "D3D12 public null placed aliasing state tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 rhi device transient texture alias group returns distinct placed handles" "D3D12 transient texture alias-group lease tests"
 Assert-ContainsText $d3d12RhiTestsText "null_resource_aliasing_barriers" "D3D12 texture aliasing barrier command evidence tests"
 Assert-ContainsText $d3d12RhiTestsText "d3d12 device context creates placed transient texture resources" "D3D12 placed transient texture lease tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 device context keeps unrelated placed texture aliasing barriers conservative" "D3D12 placed alias group tests"
+Assert-ContainsText $d3d12RhiTestsText "d3d12 device context records non null placed resource aliasing barriers" "D3D12 placed alias group tests"
 Assert-ContainsText $d3d12RhiTestsText "placed_resource_activation_barriers" "D3D12 placed transient texture activation tests"
+Assert-ContainsText $d3d12RhiTestsText "placed_texture_alias_groups_created" "D3D12 placed alias group tests"
+Assert-ContainsText $d3d12RhiTestsText "placed_resource_aliasing_barriers" "D3D12 placed alias group tests"
 Assert-ContainsText $d3d12RhiTestsText "transient_texture_heap_allocations" "D3D12 placed transient texture lease tests"
 Assert-ContainsText $d3d12RhiTestsText "transient_texture_placed_allocations" "D3D12 placed transient texture lease tests"
 Assert-ContainsText $d3d12RhiTestsText "transient_texture_placed_resources_alive" "D3D12 placed transient texture release tests"
@@ -1790,6 +1890,10 @@ Assert-ContainsText $rhiFrameRendererSource "execute_frame_graph_rhi_texture_sch
 Assert-ContainsText $rhiFrameRendererSource "primary_color" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "framegraph_passes_executed" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "record_queued_mesh_command(draw.mesh, recorded_primary_stats)" "RHI frame renderer primary pass ownership"
+Assert-ContainsText $rhiFrameRendererSource "FrameGraphRhiRenderPassDesc" "RHI frame renderer primary render pass envelope"
+Assert-ContainsText $rhiFrameRendererSource ".render_passes = render_passes" "RHI frame renderer primary render pass envelope"
+Assert-DoesNotContainText $rhiFrameRendererSource "commands_->begin_render_pass" "RHI frame renderer primary render pass envelope"
+Assert-DoesNotContainText $rhiFrameRendererSource "commands_->end_render_pass" "RHI frame renderer primary render pass envelope"
 $beginFrameFunctionMatch = [regex]::Match(
     $rhiFrameRendererSource,
     '(?s)void RhiFrameRenderer::begin_frame\(\)(?<body>.*?)\r?\nvoid RhiFrameRenderer::draw_sprite'
@@ -1799,15 +1903,21 @@ if (-not $beginFrameFunctionMatch.Success) {
 }
 $beginFrameFunctionBody = $beginFrameFunctionMatch.Groups["body"].Value
 Assert-DoesNotContainText $beginFrameFunctionBody "begin_render_pass" "RHI frame renderer primary pass ownership"
-Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`r`n    require_active_frame();`r`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
+Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {
+    require_active_frame();
+    commands_->draw(3, 1);" "RHI postprocess sprite submission"
 Assert-DoesNotContainText $rhiPostprocessSource "void RhiPostprocessFrameRenderer::draw_sprite(const SpriteCommand&) {`n    require_active_frame();`n    commands_->draw(3, 1);" "RHI postprocess sprite submission"
 Assert-ContainsText $rhiPostprocessSource "execute_frame_graph_rhi_texture_schedule" "RHI postprocess frame graph RHI execution"
 Assert-ContainsText $rhiPostprocessSource "build_frame_graph_texture_pass_target_accesses" "RHI postprocess frame graph pass target access execution"
 Assert-ContainsText $rhiPostprocessSource ".pass_target_accesses = postprocess_frame_graph_target_accesses_" "RHI postprocess frame graph pass target access execution"
 Assert-ContainsText $rhiPostprocessSource "pending_meshes_" "RHI postprocess scene pass ownership"
-Assert-ContainsText $rhiPostprocessSource "record_scene_pass" "RHI postprocess scene pass ownership"
+Assert-ContainsText $rhiPostprocessSource "record_scene_pass_body" "RHI postprocess scene pass ownership"
 Assert-ContainsText $rhiPostprocessSource ".pass_name = `"scene_color`"" "RHI postprocess scene pass ownership"
 Assert-ContainsText $rhiPostprocessSource ".resource = `"scene_depth`"" "RHI postprocess scene pass ownership"
+Assert-ContainsText $rhiPostprocessSource "FrameGraphRhiRenderPassDesc" "RHI postprocess frame graph render pass envelope"
+Assert-ContainsText $rhiPostprocessSource ".render_passes = render_passes" "RHI postprocess frame graph render pass envelope"
+Assert-DoesNotContainText $rhiPostprocessSource "commands_->begin_render_pass" "RHI postprocess frame graph render pass envelope"
+Assert-DoesNotContainText $rhiPostprocessSource "commands_->end_render_pass" "RHI postprocess frame graph render pass envelope"
 Assert-ContainsText $rhiPostprocessSource "FrameGraphTexturePassTargetState" "RHI postprocess frame graph pass target-state execution"
 Assert-ContainsText $rhiPostprocessSource ".pass_target_states = pass_target_states" "RHI postprocess frame graph pass target-state execution"
 Assert-ContainsText $rhiPostprocessSource "FrameGraphTextureFinalState" "RHI postprocess frame graph final-state execution"
@@ -1817,6 +1927,10 @@ Assert-ContainsText $rhiPostprocessSource "frame_graph_execution.pass_callbacks_
 Assert-ContainsText $rhiDirectionalShadowSource "execute_frame_graph_rhi_texture_schedule" "RHI directional shadow frame graph RHI execution"
 Assert-ContainsText $rhiDirectionalShadowSource "build_frame_graph_texture_pass_target_accesses" "RHI directional shadow frame graph pass target access execution"
 Assert-ContainsText $rhiDirectionalShadowSource ".pass_target_accesses = shadow_smoke_frame_graph_target_accesses_" "RHI directional shadow frame graph pass target access execution"
+Assert-ContainsText $rhiDirectionalShadowSource "FrameGraphRhiRenderPassDesc" "RHI directional shadow frame graph render pass envelope"
+Assert-ContainsText $rhiDirectionalShadowSource ".render_passes = render_passes" "RHI directional shadow frame graph render pass envelope"
+Assert-DoesNotContainText $rhiDirectionalShadowSource "commands_->begin_render_pass" "RHI directional shadow frame graph render pass envelope"
+Assert-DoesNotContainText $rhiDirectionalShadowSource "commands_->end_render_pass" "RHI directional shadow frame graph render pass envelope"
 Assert-ContainsText $rhiDirectionalShadowSource "FrameGraphTexturePassTargetState" "RHI directional shadow frame graph pass target-state execution"
 Assert-ContainsText $rhiDirectionalShadowSource ".pass_target_states = pass_target_states" "RHI directional shadow frame graph pass target-state execution"
 Assert-ContainsText $rhiDirectionalShadowSource ".resource = `"shadow_color`"" "RHI directional shadow shadow_color pass target-state execution"
@@ -1834,10 +1948,14 @@ Assert-ContainsText $rhiDirectionalShadowSource "frame_graph_execution.barriers_
 Assert-ContainsText $rhiDirectionalShadowSource "frame_graph_execution.pass_callbacks_invoked" "RHI directional shadow frame graph RHI execution"
 Assert-DoesNotContainText $rhiDirectionalShadowSource "pending_sprites_" "RHI directional shadow sprite submission"
 Assert-ContainsText $rhiViewportSurfaceSource "execute_frame_graph_rhi_texture_schedule" "RHI viewport surface frame graph color state execution"
+Assert-ContainsText $rhiViewportSurfaceSource "FrameGraphRhiRenderPassDesc" "RHI viewport surface frame graph render pass envelope"
+Assert-ContainsText $rhiViewportSurfaceSource ".render_passes = std::span<const FrameGraphRhiRenderPassDesc>{render_passes}" "RHI viewport surface frame graph render pass envelope"
+Assert-DoesNotContainText $rhiViewportSurfaceSource "commands->begin_render_pass" "RHI viewport surface frame graph render pass envelope"
+Assert-DoesNotContainText $rhiViewportSurfaceSource "commands->end_render_pass" "RHI viewport surface frame graph render pass envelope"
 Assert-ContainsText $rhiViewportSurfaceSource "FrameGraphTextureFinalState" "RHI viewport surface frame graph color final state execution"
 Assert-ContainsText $rhiViewportSurfaceSource ".resource = `"viewport_color`"" "RHI viewport surface frame graph color final state execution"
 Assert-ContainsText $rhiViewportSurfaceSource ".final_states = std::span<const FrameGraphTextureFinalState>{final_states}" "RHI viewport surface frame graph color final state execution"
-Assert-ContainsText $rhiViewportSurfaceSource "color_state_ = execute_viewport_color_state_transition" "RHI viewport surface recorded color state adoption"
+Assert-ContainsText $rhiViewportSurfaceSource "color_state_ = texture_bindings.front().current_state" "RHI viewport surface recorded color state adoption"
 Assert-DoesNotContainText $rhiViewportSurfaceSource "transition_texture(" "RHI viewport surface high-level color transition ownership"
 foreach ($renderingGuidancePath in @(
     ".agents/skills/rendering-change/references/full-guidance.md",
@@ -1847,13 +1965,26 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "declared shadow-color/shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "viewport color-state executor slices" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "FrameGraphTransientTextureLeaseBindingResult" $renderingGuidancePath
-    Assert-ContainsText $renderingGuidanceText "one backend-neutral ``IRhiDevice::acquire_transient_texture`` lease per alias group" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "one backend-neutral ``IRhiDevice::acquire_transient_texture_alias_group`` lease per alias group" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "distinct texture handles in group resource order" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "shared-handle state-handoff aware" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "conflicting initial shared-handle states" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "FrameGraphTextureAliasingBarrier" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "record_frame_graph_texture_aliasing_barriers" $renderingGuidancePath
-    Assert-ContainsText $renderingGuidanceText "insert aliasing barriers automatically into ``execute_frame_graph_rhi_texture_schedule``" $renderingGuidancePath
-    Assert-ContainsText $renderingGuidanceText "wildcard/null public aliasing barriers" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "same alias-group placed pairs" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "same-offset placed textures" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "after ``ExecuteCommandLists`` submits work rather than after fence completion" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "automatic aliasing barrier before the first pass" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "aliasing_barriers_recorded" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "Frame Graph RHI queue dependency and multi-queue pass-command work" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "plan_frame_graph_rhi_queue_waits" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "IRhiDevice::wait_for_queue" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "execute_frame_graph_rhi_multi_queue_schedule" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "wildcard/null barrier support" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "data inheritance/content preservation" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "FrameGraphRhiRenderPassDesc`` envelope around the ``primary_color`` callback" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "viewport.clear`` render pass envelopes" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText "direct render pass begin/end APIs" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText 'engine/renderer/src/rhi_viewport_surface.cpp` must not call `transition_texture(' $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "declared shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "Treat those bindings as acquisition output only until a separate alias-aware executor state handoff/barrier slice exists" $renderingGuidancePath
@@ -1865,12 +1996,23 @@ foreach ($renderingAuditorPath in @(
     $renderingAuditorText = Get-AgentSurfaceText $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "FrameGraphTransientTextureLeaseBindingResult" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "acquire_frame_graph_transient_texture_lease_bindings" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "IRhiDevice::acquire_transient_texture_alias_group" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "distinct-handle binding rows" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "shared-handle executor state handoff" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "conflicting initial shared-handle state rejection" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "FrameGraphTextureAliasingBarrier" $renderingAuditorPath
     Assert-ContainsText $renderingAuditorText "record_frame_graph_texture_aliasing_barriers" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "automatic executor insertion" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "wildcard/null public aliasing barriers" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "same alias-group placed pairs" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "same-offset placed textures" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "ExecuteCommandLists" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "submits work rather than after fence completion" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "automatic executor aliasing barriers" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "aliasing_barriers_recorded" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "wildcard/null barrier support" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "primary_color" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "render pass envelope" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "viewport.clear" $renderingAuditorPath
+    Assert-ContainsText $renderingAuditorText "direct render pass begin/end" $renderingAuditorPath
     Assert-DoesNotContainText $renderingAuditorText "treating the current executor as alias-aware" $renderingAuditorPath
 }
 foreach ($postprocessDepthGuidance in @(

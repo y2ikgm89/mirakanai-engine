@@ -4,13 +4,20 @@
 #include "test_framework.hpp"
 
 #include "mirakana/assets/material.hpp"
+#include "mirakana/renderer/frame_graph.hpp"
+#include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/package_streaming.hpp"
+#include "mirakana/runtime/resource_runtime.hpp"
+#include "mirakana/runtime_rhi/package_streaming_frame_graph.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 
 #include <cstdint>
 #include <cstring>
 #include <span>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -44,6 +51,53 @@ void append_vec3(std::vector<std::uint8_t>& bytes, float x, float y, float z) {
     append_le_f32(bytes, x);
     append_le_f32(bytes, y);
     append_le_f32(bytes, z);
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeAssetRecord
+make_runtime_texture_record(mirakana::AssetId asset, mirakana::runtime::RuntimeAssetHandle handle) {
+    return mirakana::runtime::RuntimeAssetRecord{
+        .handle = handle,
+        .asset = asset,
+        .kind = mirakana::AssetKind::texture,
+        .path = "textures/" + std::to_string(asset.value) + ".geasset",
+        .content_hash = static_cast<std::uint64_t>(asset.value) + handle.value,
+        .source_revision = handle.value,
+        .dependencies = {},
+        .content = "texture",
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeResourceCatalogV2
+make_runtime_texture_catalog(std::vector<mirakana::runtime::RuntimeAssetRecord> records) {
+    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    const auto build = mirakana::runtime::build_runtime_resource_catalog_v2(
+        catalog, mirakana::runtime::RuntimeAssetPackage{std::move(records)});
+    MK_REQUIRE(build.succeeded());
+    return catalog;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimePackageStreamingExecutionResult make_committed_package_streaming_result() {
+    mirakana::runtime::RuntimePackageStreamingExecutionResult result;
+    result.status = mirakana::runtime::RuntimePackageStreamingExecutionStatus::committed;
+    result.target_id = "packaged-scene-streaming";
+    result.package_index_path = "runtime/game.geindex";
+    result.runtime_scene_validation_target_id = "packaged-scene";
+    result.committed = true;
+    return result;
+}
+
+[[nodiscard]] mirakana::runtime_rhi::RuntimeTextureUploadResult
+make_runtime_texture_upload(mirakana::rhi::IRhiDevice& device, mirakana::AssetId texture) {
+    const mirakana::runtime::RuntimeTexturePayload payload{
+        .asset = texture,
+        .handle = mirakana::runtime::RuntimeAssetHandle{.value = 10U},
+        .width = 1,
+        .height = 1,
+        .pixel_format = mirakana::TextureSourcePixelFormat::rgba8_unorm,
+        .source_bytes = 4,
+        .bytes = std::vector<std::uint8_t>{0x22, 0x33, 0x44, 0xff},
+    };
+    return mirakana::runtime_rhi::upload_runtime_texture(device, payload);
 }
 
 } // namespace
@@ -157,6 +211,190 @@ MK_TEST("runtime rhi upload reports submitted fence without forcing wait") {
     MK_REQUIRE(result.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
     MK_REQUIRE(device.stats().command_lists_submitted == 1);
     MK_REQUIRE(device.stats().fence_waits == 0);
+}
+
+MK_TEST("runtime package streaming frame graph handoff builds imported texture binding and executor callback") {
+    const auto texture = mirakana::AssetId::from_name("textures/streamed/albedo");
+    const auto catalog = make_runtime_texture_catalog(
+        {make_runtime_texture_record(texture, mirakana::runtime::RuntimeAssetHandle{.value = 1})});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    const auto upload = make_runtime_texture_upload(device, texture);
+    MK_REQUIRE(upload.succeeded());
+
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource{
+            .asset = texture,
+            .resource = "package_albedo",
+            .upload = &upload,
+            .current_state = mirakana::rhi::ResourceState::shader_read,
+        },
+    };
+
+    auto handoff =
+        mirakana::runtime_rhi::make_runtime_package_streaming_frame_graph_texture_bindings(streaming, catalog, sources);
+
+    MK_REQUIRE(handoff.succeeded());
+    MK_REQUIRE(handoff.texture_bindings.size() == 1);
+    MK_REQUIRE(handoff.texture_bindings[0].resource == "package_albedo");
+    MK_REQUIRE(handoff.texture_bindings[0].texture.value == upload.texture.value);
+    MK_REQUIRE(handoff.texture_bindings[0].current_state == mirakana::rhi::ResourceState::shader_read);
+
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "package_albedo", .lifetime = mirakana::FrameGraphResourceLifetime::imported});
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "sample_package_texture",
+        .reads = {mirakana::FrameGraphResourceAccess{.resource = "package_albedo",
+                                                     .access = mirakana::FrameGraphAccess::shader_read}},
+        .writes = {},
+    });
+    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    MK_REQUIRE(plan.succeeded());
+    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+
+    std::size_t callbacks_invoked = 0;
+    const std::vector<mirakana::FrameGraphPassExecutionBinding> callbacks{
+        mirakana::FrameGraphPassExecutionBinding{
+            .pass_name = "sample_package_texture",
+            .callback =
+                [&callbacks_invoked](std::string_view) {
+                    ++callbacks_invoked;
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+
+    const auto execution =
+        mirakana::execute_frame_graph_rhi_texture_schedule(mirakana::FrameGraphRhiTextureExecutionDesc{
+            .commands = commands.get(),
+            .schedule = schedule,
+            .texture_bindings = handoff.texture_bindings,
+            .pass_callbacks = callbacks,
+            .pass_target_accesses = {},
+            .pass_target_states = {},
+            .final_states = {},
+        });
+
+    MK_REQUIRE(execution.succeeded());
+    MK_REQUIRE(execution.pass_callbacks_invoked == 1);
+    MK_REQUIRE(callbacks_invoked == 1);
+    MK_REQUIRE(execution.barriers_recorded == 0);
+}
+
+MK_TEST("runtime package streaming frame graph handoff rejects non committed streaming result") {
+    mirakana::runtime::RuntimePackageStreamingExecutionResult streaming;
+    streaming.status = mirakana::runtime::RuntimePackageStreamingExecutionStatus::validation_preflight_required;
+    const mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+
+    const auto handoff =
+        mirakana::runtime_rhi::make_runtime_package_streaming_frame_graph_texture_bindings(streaming, catalog, {});
+
+    MK_REQUIRE(!handoff.succeeded());
+    MK_REQUIRE(handoff.texture_bindings.empty());
+    MK_REQUIRE(handoff.diagnostics.size() == 1);
+    MK_REQUIRE(handoff.diagnostics[0].code == "package-streaming-not-committed");
+}
+
+MK_TEST("runtime package streaming frame graph handoff rejects texture assets missing from resident catalog") {
+    const auto texture = mirakana::AssetId::from_name("textures/missing/albedo");
+    const auto streaming = make_committed_package_streaming_result();
+    const mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::rhi::NullRhiDevice device;
+    const auto upload = make_runtime_texture_upload(device, texture);
+
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource{
+            .asset = texture,
+            .resource = "missing_albedo",
+            .upload = &upload,
+            .current_state = mirakana::rhi::ResourceState::shader_read,
+        },
+    };
+
+    const auto handoff =
+        mirakana::runtime_rhi::make_runtime_package_streaming_frame_graph_texture_bindings(streaming, catalog, sources);
+
+    MK_REQUIRE(!handoff.succeeded());
+    MK_REQUIRE(handoff.texture_bindings.empty());
+    MK_REQUIRE(handoff.diagnostics.size() == 1);
+    MK_REQUIRE(handoff.diagnostics[0].asset == texture);
+    MK_REQUIRE(handoff.diagnostics[0].code == "runtime-resource-not-live");
+}
+
+MK_TEST("runtime package streaming frame graph handoff rejects failed and empty texture uploads") {
+    const auto failed_texture = mirakana::AssetId::from_name("textures/failed_upload");
+    const auto empty_texture = mirakana::AssetId::from_name("textures/empty_upload");
+    const auto catalog = make_runtime_texture_catalog({
+        make_runtime_texture_record(failed_texture, mirakana::runtime::RuntimeAssetHandle{.value = 1}),
+        make_runtime_texture_record(empty_texture, mirakana::runtime::RuntimeAssetHandle{.value = 2}),
+    });
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::runtime_rhi::RuntimeTextureUploadResult failed_upload;
+    failed_upload.diagnostic = "upload failed";
+    const mirakana::runtime_rhi::RuntimeTextureUploadResult empty_upload;
+
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource{
+            .asset = failed_texture,
+            .resource = "failed_upload",
+            .upload = &failed_upload,
+            .current_state = mirakana::rhi::ResourceState::shader_read,
+        },
+        mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource{
+            .asset = empty_texture,
+            .resource = "empty_upload",
+            .upload = &empty_upload,
+            .current_state = mirakana::rhi::ResourceState::shader_read,
+        },
+    };
+
+    const auto handoff =
+        mirakana::runtime_rhi::make_runtime_package_streaming_frame_graph_texture_bindings(streaming, catalog, sources);
+
+    MK_REQUIRE(!handoff.succeeded());
+    MK_REQUIRE(handoff.texture_bindings.empty());
+    MK_REQUIRE(handoff.diagnostics.size() == 2);
+    MK_REQUIRE(handoff.diagnostics[0].code == "texture-upload-failed");
+    MK_REQUIRE(handoff.diagnostics[1].code == "texture-upload-empty");
+}
+
+MK_TEST("runtime package streaming frame graph handoff rejects duplicate frame graph resource names") {
+    const auto albedo = mirakana::AssetId::from_name("textures/duplicate/albedo");
+    const auto normal = mirakana::AssetId::from_name("textures/duplicate/normal");
+    const auto catalog = make_runtime_texture_catalog({
+        make_runtime_texture_record(albedo, mirakana::runtime::RuntimeAssetHandle{.value = 1}),
+        make_runtime_texture_record(normal, mirakana::runtime::RuntimeAssetHandle{.value = 2}),
+    });
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    const auto albedo_upload = make_runtime_texture_upload(device, albedo);
+    const auto normal_upload = make_runtime_texture_upload(device, normal);
+
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource{
+            .asset = albedo,
+            .resource = "package_texture",
+            .upload = &albedo_upload,
+            .current_state = mirakana::rhi::ResourceState::shader_read,
+        },
+        mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureBindingSource{
+            .asset = normal,
+            .resource = "package_texture",
+            .upload = &normal_upload,
+            .current_state = mirakana::rhi::ResourceState::shader_read,
+        },
+    };
+
+    const auto handoff =
+        mirakana::runtime_rhi::make_runtime_package_streaming_frame_graph_texture_bindings(streaming, catalog, sources);
+
+    MK_REQUIRE(!handoff.succeeded());
+    MK_REQUIRE(handoff.texture_bindings.empty());
+    MK_REQUIRE(handoff.diagnostics.size() == 1);
+    MK_REQUIRE(handoff.diagnostics[0].code == "duplicate-frame-graph-resource");
+    MK_REQUIRE(handoff.diagnostics[0].resource == "package_texture");
 }
 
 MK_TEST("runtime rhi upload creates mesh buffers and records vertex index byte uploads") {

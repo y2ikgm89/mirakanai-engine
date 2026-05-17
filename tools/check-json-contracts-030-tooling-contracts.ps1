@@ -909,6 +909,16 @@ foreach ($needle in @(
     "Frame Graph Texture Aliasing Barrier Command v1",
     "record_frame_graph_texture_aliasing_barriers",
     "automatic executor insertion",
+    "Package Streaming Frame Graph Texture Binding Handoff v1",
+    "make_runtime_package_streaming_frame_graph_texture_bindings",
+    "Frame Graph Render Pass Envelope v1",
+    "render_passes_recorded",
+    "Frame Graph RHI Queue Dependency Plan v1",
+    "plan_frame_graph_rhi_queue_waits",
+    "IRhiDevice::wait_for_queue",
+    "Frame Graph RHI Multi-Queue Executor v1",
+    "execute_frame_graph_rhi_multi_queue_schedule",
+    "multi-queue pass command submission envelope",
     "frame-graph-v1"
 )) {
     if (-not $recommendedText.Contains($needle)) {

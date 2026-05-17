@@ -607,32 +607,65 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
                 .state = rhi::ResourceState::depth_write,
             },
         };
+        const std::vector<FrameGraphRhiRenderPassDesc> render_passes{
+            FrameGraphRhiRenderPassDesc{
+                .pass_name = "shadow.directional.depth",
+                .color =
+                    FrameGraphRhiRenderPassColorAttachment{
+                        .resource = "shadow_color",
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::dont_care,
+                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                    },
+                .depth =
+                    FrameGraphRhiRenderPassDepthAttachment{
+                        .resource = "shadow_depth",
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_depth = rhi::ClearDepthValue{1.0F},
+                    },
+            },
+            FrameGraphRhiRenderPassDesc{
+                .pass_name = "scene.shadow_receiver",
+                .color =
+                    FrameGraphRhiRenderPassColorAttachment{
+                        .resource = "scene_color",
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
+                                                            .green = clear_color_.g,
+                                                            .blue = clear_color_.b,
+                                                            .alpha = clear_color_.a},
+                    },
+                .depth =
+                    FrameGraphRhiRenderPassDepthAttachment{
+                        .resource = "scene_depth",
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_depth = rhi::ClearDepthValue{1.0F},
+                    },
+            },
+            FrameGraphRhiRenderPassDesc{
+                .pass_name = "postprocess",
+                .color =
+                    FrameGraphRhiRenderPassColorAttachment{
+                        .swapchain_frame = swapchain_frame_,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                    },
+            },
+        };
 
-        RhiNativeUiOverlayPreparedDraw overlay_draw;
+        RhiNativeUiOverlayPreparedDraw overlay_draw =
+            native_ui_overlay_ready() ? native_ui_overlay_->prepare(pending_overlay_sprites_, *commands_)
+                                      : RhiNativeUiOverlayPreparedDraw{};
         std::vector<FrameGraphPassExecutionBinding> pass_callbacks;
         pass_callbacks.reserve(shadow_smoke_frame_graph_plan_.ordered_passes.size());
         pass_callbacks.push_back(FrameGraphPassExecutionBinding{
             .pass_name = "shadow.directional.depth",
             .callback =
                 [this](std::string_view) {
-                    commands_->begin_render_pass(rhi::RenderPassDesc{
-                        .color =
-                            rhi::RenderPassColorAttachment{
-                                .texture = shadow_color_texture_,
-                                .load_action = rhi::LoadAction::clear,
-                                .store_action = rhi::StoreAction::dont_care,
-                                .swapchain_frame = rhi::SwapchainFrameHandle{},
-                                .clear_color =
-                                    rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
-                            },
-                        .depth =
-                            rhi::RenderPassDepthAttachment{
-                                .texture = shadow_depth_texture_,
-                                .load_action = rhi::LoadAction::clear,
-                                .store_action = rhi::StoreAction::store,
-                                .clear_depth = rhi::ClearDepthValue{1.0F},
-                            },
-                    });
                     commands_->bind_graphics_pipeline(shadow_graphics_pipeline_);
                     for (std::uint32_t cascade = 0; cascade < directional_shadow_cascade_count_; ++cascade) {
                         const auto tile_w = shadow_cascade_tile_width();
@@ -655,7 +688,6 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
                             record_shadow_mesh_draw(command);
                         }
                     }
-                    commands_->end_render_pass();
                     return FrameGraphExecutionCallbackResult{};
                 },
         });
@@ -663,33 +695,12 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             .pass_name = "scene.shadow_receiver",
             .callback =
                 [this](std::string_view) {
-                    commands_->begin_render_pass(rhi::RenderPassDesc{
-                        .color =
-                            rhi::RenderPassColorAttachment{
-                                .texture = scene_color_texture_,
-                                .load_action = rhi::LoadAction::clear,
-                                .store_action = rhi::StoreAction::store,
-                                .swapchain_frame = rhi::SwapchainFrameHandle{},
-                                .clear_color = rhi::ClearColorValue{.red = clear_color_.r,
-                                                                    .green = clear_color_.g,
-                                                                    .blue = clear_color_.b,
-                                                                    .alpha = clear_color_.a},
-                            },
-                        .depth =
-                            rhi::RenderPassDepthAttachment{
-                                .texture = scene_depth_texture_,
-                                .load_action = rhi::LoadAction::clear,
-                                .store_action = rhi::StoreAction::store,
-                                .clear_depth = rhi::ClearDepthValue{1.0F},
-                            },
-                    });
                     commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
                     commands_->bind_descriptor_set(scene_pipeline_layout_, shadow_receiver_descriptor_set_index_,
                                                    shadow_receiver_descriptor_set_);
                     for (const auto& command : pending_meshes_) {
                         record_scene_mesh_draw(command);
                     }
-                    commands_->end_render_pass();
                     return FrameGraphExecutionCallbackResult{};
                 },
         });
@@ -697,27 +708,12 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             .pass_name = "postprocess",
             .callback =
                 [&overlay_draw, this](std::string_view) {
-                    overlay_draw = native_ui_overlay_ready()
-                                       ? native_ui_overlay_->prepare(pending_overlay_sprites_, *commands_)
-                                       : RhiNativeUiOverlayPreparedDraw{};
-                    commands_->begin_render_pass(rhi::RenderPassDesc{
-                        .color =
-                            rhi::RenderPassColorAttachment{
-                                .texture = rhi::TextureHandle{},
-                                .load_action = rhi::LoadAction::clear,
-                                .store_action = rhi::StoreAction::store,
-                                .swapchain_frame = swapchain_frame_,
-                                .clear_color =
-                                    rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
-                            },
-                    });
                     commands_->bind_graphics_pipeline(postprocess_pipeline_);
                     commands_->bind_descriptor_set(postprocess_pipeline_layout_, 0, postprocess_descriptor_set_);
                     commands_->draw(3, 1);
                     if (native_ui_overlay_ready()) {
                         native_ui_overlay_->record_draw(overlay_draw, *commands_);
                     }
-                    commands_->end_render_pass();
                     return FrameGraphExecutionCallbackResult{};
                 },
         });
@@ -729,6 +725,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::end_frame() {
             .pass_callbacks = pass_callbacks,
             .pass_target_accesses = shadow_smoke_frame_graph_target_accesses_,
             .pass_target_states = pass_target_states,
+            .render_passes = render_passes,
             .final_states = final_states,
         });
         if (!frame_graph_execution.succeeded()) {
