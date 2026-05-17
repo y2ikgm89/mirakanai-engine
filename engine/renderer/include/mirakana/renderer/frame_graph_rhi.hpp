@@ -156,6 +156,24 @@ struct FrameGraphRhiMultiQueueExecutionResult {
     }
 };
 
+struct FrameGraphRhiMultiQueuePackageEvidence {
+    bool ready{false};
+    std::size_t command_lists_submitted{0};
+    std::size_t queue_waits_recorded{0};
+    std::size_t barriers_recorded{0};
+    std::size_t pass_callbacks_invoked{0};
+    std::size_t submitted_pass_fences{0};
+    std::uint64_t graphics_queue_submits{0};
+    std::uint64_t copy_queue_submits{0};
+    std::uint64_t queue_waits{0};
+    bool graphics_waited_for_copy{false};
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 struct FrameGraphTextureFinalState {
     std::string resource;
     rhi::ResourceState state{rhi::ResourceState::undefined};
@@ -257,6 +275,9 @@ record_frame_graph_rhi_queue_waits(rhi::IRhiDevice& device, std::span<const Fram
 
 [[nodiscard]] FrameGraphRhiMultiQueueExecutionResult
 execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecutionDesc& desc);
+
+[[nodiscard]] FrameGraphRhiMultiQueuePackageEvidence
+execute_frame_graph_rhi_multi_queue_package_evidence(rhi::IRhiDevice& device);
 
 [[nodiscard]] FrameGraphRhiTextureExecutionResult
 execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc& desc);
