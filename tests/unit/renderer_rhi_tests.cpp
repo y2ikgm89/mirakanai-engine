@@ -3162,6 +3162,24 @@ MK_TEST("frame graph rhi multi queue executor records texture barriers before co
     MK_REQUIRE(stats.last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy);
 }
 
+MK_TEST("frame graph rhi multi queue package evidence reports submitted waits and texture barriers") {
+    mirakana::rhi::NullRhiDevice device;
+
+    const auto evidence = mirakana::execute_frame_graph_rhi_multi_queue_package_evidence(device);
+
+    MK_REQUIRE(evidence.succeeded());
+    MK_REQUIRE(evidence.ready);
+    MK_REQUIRE(evidence.command_lists_submitted == 2);
+    MK_REQUIRE(evidence.queue_waits_recorded == 1);
+    MK_REQUIRE(evidence.barriers_recorded == 1);
+    MK_REQUIRE(evidence.pass_callbacks_invoked == 2);
+    MK_REQUIRE(evidence.submitted_pass_fences == 2);
+    MK_REQUIRE(evidence.copy_queue_submits >= 1);
+    MK_REQUIRE(evidence.graphics_queue_submits >= 1);
+    MK_REQUIRE(evidence.queue_waits >= 1);
+    MK_REQUIRE(evidence.graphics_waited_for_copy);
+}
+
 MK_TEST("frame graph rhi multi queue executor validates texture barriers before command recording") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_pass_invoke("upload"),
