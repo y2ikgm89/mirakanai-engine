@@ -369,7 +369,7 @@ foreach ($skillName in @("gameengine-agent-integration", "gameengine-cmake-build
         Write-Error "engine/agent/manifest.json aiSurfaces.claudeCode.requiredSkills missing $skillName"
     }
 }
-foreach ($agentName in @("build-fixer", "cpp-reviewer", "engine-architect", "explorer", "gameplay-builder", "rendering-auditor")) {
+foreach ($agentName in @("agent-surface-auditor", "build-fixer", "cpp-reviewer", "engine-architect", "explorer", "gameplay-builder", "rendering-auditor")) {
     if (@($manifest.aiSurfaces.codex.requiredAgents) -notcontains $agentName) {
         Write-Error "engine/agent/manifest.json aiSurfaces.codex.requiredAgents missing $agentName"
     }
@@ -377,7 +377,7 @@ foreach ($agentName in @("build-fixer", "cpp-reviewer", "engine-architect", "exp
         Write-Error "engine/agent/manifest.json aiSurfaces.claudeCode.requiredAgents missing $agentName"
     }
 }
-foreach ($agentName in @("cpp-reviewer", "engine-architect", "explorer", "rendering-auditor")) {
+foreach ($agentName in @("agent-surface-auditor", "cpp-reviewer", "engine-architect", "explorer", "rendering-auditor")) {
     if (@($manifest.aiSurfaces.codex.readOnlyAgents) -notcontains $agentName) {
         Write-Error "engine/agent/manifest.json aiSurfaces.codex.readOnlyAgents missing $agentName"
     }
@@ -907,9 +907,7 @@ foreach ($runtimeUiGuidance in @(
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md",
     "docs/ai-game-development.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/engine-architect.toml",
-    ".claude/agents/engine-architect.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $runtimeUiText = Get-AgentSurfaceText $runtimeUiGuidance
     Assert-ContainsText $runtimeUiText "MonospaceTextLayoutPolicy" $runtimeUiGuidance
@@ -935,9 +933,7 @@ foreach ($runtimeUiPngGuidance in @(
     "docs/superpowers/plans/README.md",
     "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/engine-architect.toml",
-    ".claude/agents/engine-architect.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $runtimeUiPngText = Get-AgentSurfaceText $runtimeUiPngGuidance
     Assert-ContainsText $runtimeUiPngText "PngImageDecodingAdapter" $runtimeUiPngGuidance
@@ -1179,9 +1175,7 @@ foreach ($inputGuidance in @(
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md",
     "docs/ai-game-development.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/gameplay-builder.toml",
-    ".claude/agents/gameplay-builder.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $inputText = Get-AgentSurfaceText $inputGuidance
     Assert-ContainsText $inputText "RuntimeInputStateView" $inputGuidance
@@ -1299,9 +1293,7 @@ foreach ($navigationGuidance in @(
     "docs/specs/generated-game-validation-scenarios.md",
     "docs/specs/game-prompt-pack.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/gameplay-builder.toml",
-    ".claude/agents/gameplay-builder.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $navigationText = Get-AgentSurfaceText $navigationGuidance
     Assert-ContainsText $navigationText "validate_navigation_grid_path" $navigationGuidance
@@ -1441,9 +1433,7 @@ foreach ($aiApiGuidance in @(
     "docs/specs/generated-game-validation-scenarios.md",
     "docs/specs/game-prompt-pack.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/gameplay-builder.toml",
-    ".claude/agents/gameplay-builder.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $aiApiText = Get-AgentSurfaceText $aiApiGuidance
     Assert-ContainsText $aiApiText "BehaviorTreeBlackboard" $aiApiGuidance
@@ -1580,11 +1570,7 @@ foreach ($animationGuidance in @(
     "docs/testing.md",
     "docs/ai-game-development.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/engine-architect.toml",
-    ".claude/agents/engine-architect.md",
-    ".codex/agents/gameplay-builder.toml",
-    ".claude/agents/gameplay-builder.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $animationText = Get-AgentSurfaceText $animationGuidance
     Assert-ContainsText $animationText "Animation CPU Skinning" $animationGuidance
@@ -1592,11 +1578,7 @@ foreach ($animationGuidance in @(
 foreach ($animationApiGuidance in @(
     "docs/ai-game-development.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/engine-architect.toml",
-    ".claude/agents/engine-architect.md",
-    ".codex/agents/gameplay-builder.toml",
-    ".claude/agents/gameplay-builder.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $animationApiText = Get-AgentSurfaceText $animationApiGuidance
     Assert-ContainsText $animationApiText "skin_animation_vertices_cpu" $animationApiGuidance
@@ -1685,9 +1667,7 @@ foreach ($packageStreamingFrameGraphGuidance in @(
         "docs/ai-game-development.md",
         "docs/architecture.md",
         ".agents/skills/rendering-change/references/full-guidance.md",
-        ".claude/skills/gameengine-rendering/references/full-guidance.md",
-        ".codex/agents/rendering-auditor.toml",
-        ".claude/agents/rendering-auditor.md"
+        ".claude/skills/gameengine-rendering/references/full-guidance.md"
     )) {
     $packageStreamingFrameGraphText = Get-AgentSurfaceText $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "make_runtime_package_streaming_frame_graph_texture_bindings" $packageStreamingFrameGraphGuidance
@@ -1710,6 +1690,9 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionDesc::texture_bindings" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "consumer-pass texture barriers recorded before callbacks" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Production Ownership Boundary Selection v1" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphProductionOwnershipPlan" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_production_ownership_boundary" "MK_renderer module purpose"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Primary Pass Target-State Evidence v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Queue Dependency Plan v1" "recommended next plan completed context"
@@ -1735,9 +1718,7 @@ foreach ($depthGuidance in @(
     "docs/roadmap.md",
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md",
     ".agents/skills/rendering-change/SKILL.md",
-    ".claude/skills/gameengine-rendering/SKILL.md",
-    ".codex/agents/rendering-auditor.toml",
-    ".claude/agents/rendering-auditor.md"
+    ".claude/skills/gameengine-rendering/SKILL.md"
 )) {
     $depthText = Get-AgentSurfaceText $depthGuidance
     Assert-ContainsText $depthText "RHI Depth Attachment Contract v0" $depthGuidance
@@ -1749,9 +1730,7 @@ foreach ($sampledDepthGuidance in @(
     "docs/roadmap.md",
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md",
     ".agents/skills/rendering-change/SKILL.md",
-    ".claude/skills/gameengine-rendering/SKILL.md",
-    ".codex/agents/rendering-auditor.toml",
-    ".claude/agents/rendering-auditor.md"
+    ".claude/skills/gameengine-rendering/SKILL.md"
 )) {
     $sampledDepthText = Get-AgentSurfaceText $sampledDepthGuidance
     Assert-ContainsText $sampledDepthText "MK_VULKAN_TEST_DEPTH_VERTEX_SPV" $sampledDepthGuidance
@@ -1775,6 +1754,8 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentVulkanRuntimeOwne
 $vulkanBackendSource = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_backend.cpp"
 Assert-ContainsText $vulkanBackendSource "refresh_surface_probe_queue_family_snapshots" "Vulkan surface support implementation"
 Assert-ContainsText $vulkanBackendSource "same native instance handles" "Vulkan surface support implementation"
+$frameGraphHeader = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/frame_graph.hpp"
+$frameGraphSource = Get-AgentSurfaceText "engine/renderer/src/frame_graph.cpp"
 $frameGraphRhiHeader = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/frame_graph_rhi.hpp"
 $frameGraphRhiSource = Get-AgentSurfaceText "engine/renderer/src/frame_graph_rhi.cpp"
 $rhiFrameRendererSource = Get-AgentSurfaceText "engine/renderer/src/rhi_frame_renderer.cpp"
@@ -1782,6 +1763,10 @@ $rhiPostprocessSource = Get-AgentSurfaceText "engine/renderer/src/rhi_postproces
 $rhiDirectionalShadowSource = Get-AgentSurfaceText "engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp"
 $rendererHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp"
 $rhiViewportSurfaceSource = Get-AgentSurfaceText "engine/renderer/src/rhi_viewport_surface.cpp"
+Assert-ContainsText $frameGraphHeader "FrameGraphProductionOwnershipCapability" "Frame graph production ownership boundary public API"
+Assert-ContainsText $frameGraphHeader "FrameGraphProductionOwnershipPlan" "Frame graph production ownership boundary public API"
+Assert-ContainsText $frameGraphHeader "plan_frame_graph_production_ownership_boundary" "Frame graph production ownership boundary public API"
+Assert-ContainsText $frameGraphSource "frame graph production ownership boundary request disagrees with supported boundary" "Frame graph production ownership boundary fail-closed diagnostics"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTexturePassTargetAccess" "Frame graph RHI pass target access public API"
 Assert-ContainsText $frameGraphRhiHeader "build_frame_graph_texture_pass_target_accesses" "Frame graph RHI pass target access public API"
 Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses" "Frame graph RHI pass target access public API"
@@ -1865,6 +1850,9 @@ Assert-ContainsText $rhiFrameRendererSource "build_frame_graph_texture_pass_targ
 Assert-ContainsText $rhiFrameRendererSource ".pass_target_states = pass_target_states" "RhiFrameRenderer primary target-state evidence"
 Assert-ContainsText $rhiFrameRendererSource "primary_depth" "RhiFrameRenderer primary depth target-state evidence"
 $rendererRhiTests = Get-AgentSurfaceText "tests/unit/renderer_rhi_tests.cpp"
+Assert-ContainsText $rendererRhiTests "frame graph production ownership boundary selects reviewed executor rows" "Frame graph production ownership boundary tests"
+Assert-ContainsText $rendererRhiTests "frame graph production ownership boundary rejects broadened ownership claims" "Frame graph production ownership boundary tests"
+Assert-ContainsText $rendererRhiTests "frame graph production ownership boundary rejects invalid candidate rows" "Frame graph production ownership boundary tests"
 Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording propagates shared texture handle state" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording rejects conflicting shared texture handle states" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution hands off shared texture handle state between aliases" "Frame graph shared TextureHandle state handoff tests"
@@ -2012,35 +2000,6 @@ foreach ($renderingGuidancePath in @(
     Assert-DoesNotContainText $renderingGuidanceText "declared shadow-depth/scene-color/scene-depth writer-access-backed target-state preparation" $renderingGuidancePath
     Assert-DoesNotContainText $renderingGuidanceText "Treat those bindings as acquisition output only until a separate alias-aware executor state handoff/barrier slice exists" $renderingGuidancePath
 }
-foreach ($renderingAuditorPath in @(
-    ".codex/agents/rendering-auditor.toml",
-    ".claude/agents/rendering-auditor.md"
-)) {
-    $renderingAuditorText = Get-AgentSurfaceText $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "FrameGraphTransientTextureLeaseBindingResult" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "acquire_frame_graph_transient_texture_lease_bindings" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "IRhiDevice::acquire_transient_texture_alias_group" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "distinct-handle binding rows" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "shared-handle executor state handoff" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "conflicting initial shared-handle state rejection" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "FrameGraphTextureAliasingBarrier" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "record_frame_graph_texture_aliasing_barriers" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "same alias-group placed pairs" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "same-offset placed textures" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "ExecuteCommandLists" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "submits work rather than after fence completion" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "automatic executor aliasing barriers" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "aliasing_barriers_recorded" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "FrameGraphRhiMultiQueueExecutionDesc::texture_bindings" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "producer queue waits to be recorded before consumer texture transitions" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "wildcard/null barrier support" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "primary_color" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "render pass envelope" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "viewport.clear" $renderingAuditorPath
-    Assert-ContainsText $renderingAuditorText "direct render pass begin/end" $renderingAuditorPath
-    Assert-DoesNotContainText $renderingAuditorText "treating the current executor as alias-aware" $renderingAuditorPath
-}
 foreach ($postprocessDepthGuidance in @(
     "docs/testing.md",
     "docs/rhi.md",
@@ -2048,9 +2007,7 @@ foreach ($postprocessDepthGuidance in @(
     "docs/roadmap.md",
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md",
     ".agents/skills/rendering-change/SKILL.md",
-    ".claude/skills/gameengine-rendering/SKILL.md",
-    ".codex/agents/rendering-auditor.toml",
-    ".claude/agents/rendering-auditor.md"
+    ".claude/skills/gameengine-rendering/SKILL.md"
 )) {
     $postprocessDepthText = Get-AgentSurfaceText $postprocessDepthGuidance
     Assert-ContainsText $postprocessDepthText "Postprocess Depth Input Readback Foundation v0" $postprocessDepthGuidance
@@ -2074,8 +2031,6 @@ foreach ($postprocessDepthReadyGuidance in @(
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md",
     ".agents/skills/rendering-change/SKILL.md",
     ".claude/skills/gameengine-rendering/SKILL.md",
-    ".codex/agents/rendering-auditor.toml",
-    ".claude/agents/rendering-auditor.md",
     "games/sample_desktop_runtime_game/README.md"
 )) {
     $postprocessDepthReadyText = Get-AgentSurfaceText $postprocessDepthReadyGuidance
@@ -2093,9 +2048,7 @@ foreach ($postprocessDepthPackageCommandGuidance in @(
 }
 foreach ($gameDevelopmentDepthGuidance in @(
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/gameplay-builder.toml",
-    ".claude/agents/gameplay-builder.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $gameDevelopmentDepthText = Get-AgentSurfaceText $gameDevelopmentDepthGuidance
     Assert-ContainsText $gameDevelopmentDepthText "generated color-postprocess scaffold" $gameDevelopmentDepthGuidance
@@ -2108,9 +2061,7 @@ foreach ($shadowReceiverGuidance in @(
     "docs/roadmap.md",
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md",
     ".agents/skills/rendering-change/SKILL.md",
-    ".claude/skills/gameengine-rendering/SKILL.md",
-    ".codex/agents/rendering-auditor.toml",
-    ".claude/agents/rendering-auditor.md"
+    ".claude/skills/gameengine-rendering/SKILL.md"
 )) {
     $shadowReceiverText = Get-AgentSurfaceText $shadowReceiverGuidance
     Assert-ContainsText $shadowReceiverText "MK_VULKAN_TEST_SHADOW_RECEIVER_VERTEX_SPV" $shadowReceiverGuidance
@@ -2170,8 +2121,6 @@ foreach ($renderPassPackageGuidance in @(
     ".claude/skills/gameengine-game-development/SKILL.md",
     ".agents/skills/gameengine-game-development/references/full-guidance.md",
     ".claude/skills/gameengine-game-development/references/full-guidance.md",
-    ".codex/agents/rendering-auditor.toml",
-    ".claude/agents/rendering-auditor.md",
     "docs/workflows.md",
     "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
 )) {
@@ -2218,10 +2167,6 @@ foreach ($stableLightSpaceGuidance in @(
     ".claude/skills/gameengine-rendering/SKILL.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/rendering-auditor.toml",
-    ".claude/agents/rendering-auditor.md",
-    ".codex/agents/gameplay-builder.toml",
-    ".claude/agents/gameplay-builder.md",
     "games/sample_desktop_runtime_game/README.md"
 )) {
     $stableLightSpaceText = Get-AgentSurfaceText $stableLightSpaceGuidance
@@ -2236,11 +2181,7 @@ foreach ($stableLightSpaceApiGuidance in @(
     ".agents/skills/rendering-change/SKILL.md",
     ".claude/skills/gameengine-rendering/SKILL.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/rendering-auditor.toml",
-    ".claude/agents/rendering-auditor.md",
-    ".codex/agents/gameplay-builder.toml",
-    ".claude/agents/gameplay-builder.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $stableLightSpaceApiText = Get-AgentSurfaceText $stableLightSpaceApiGuidance
     Assert-ContainsText $stableLightSpaceApiText "DirectionalShadowLightSpacePlan" $stableLightSpaceApiGuidance

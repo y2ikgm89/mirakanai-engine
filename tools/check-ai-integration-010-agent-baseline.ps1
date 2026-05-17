@@ -260,9 +260,17 @@ foreach ($cmakeSkillPath in @(
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "CMakeCache.txt" $cmakeSkillPath
 }
 foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/build-fixer.md")) {
-    Assert-ContainsText (Get-AgentSurfaceText $buildFixerPath) "LinkIncremental=false" $buildFixerPath
-    Assert-ContainsText (Get-AgentSurfaceText $buildFixerPath) 'Do not repair generated `out/build/<preset>` trees' $buildFixerPath
-    Assert-ContainsText (Get-AgentSurfaceText $buildFixerPath) "CMakeCache.txt" $buildFixerPath
+    $buildFixerAgentText = Get-AgentSurfaceText $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "tools/check-toolchain.ps1" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "tools/cmake.ps1" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "tools/ctest.ps1" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "tools/check-format.ps1" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "tools/check-tidy.ps1" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText 'Do not repair generated `out/build/<preset>` trees' $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "CMakeCache.txt" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "LinkIncremental=false" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "gh pr view <pr> --json headRefOid,statusCheckRollup,url" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "billing or account limits" $buildFixerPath
 }
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "/INCREMENTAL:NO" "engine/agent/manifest.json"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-MaxFiles 1" "tools/validate.ps1"

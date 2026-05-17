@@ -73,6 +73,81 @@ void append_diagnostic(FrameGraphExecutionResult& result, FrameGraphDiagnosticCo
     });
 }
 
+void append_diagnostic(FrameGraphProductionOwnershipPlan& result, FrameGraphDiagnosticCode code, std::string pass,
+                       std::string resource, std::string message) {
+    result.diagnostics.push_back(FrameGraphDiagnostic{
+        .code = code,
+        .pass = std::move(pass),
+        .resource = std::move(resource),
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] FrameGraphProductionOwnershipBoundary
+supported_production_ownership_boundary(FrameGraphProductionOwnershipCapability capability) noexcept {
+    switch (capability) {
+    case FrameGraphProductionOwnershipCapability::texture_state_transitions:
+    case FrameGraphProductionOwnershipCapability::texture_aliasing_barriers:
+    case FrameGraphProductionOwnershipCapability::pass_target_state_preparation:
+    case FrameGraphProductionOwnershipCapability::render_pass_envelopes:
+    case FrameGraphProductionOwnershipCapability::pass_callbacks:
+    case FrameGraphProductionOwnershipCapability::queue_waits:
+    case FrameGraphProductionOwnershipCapability::multi_queue_command_submission:
+    case FrameGraphProductionOwnershipCapability::runtime_upload_commands:
+    case FrameGraphProductionOwnershipCapability::package_streaming_texture_binding_handoff:
+        return FrameGraphProductionOwnershipBoundary::frame_graph_owned;
+    case FrameGraphProductionOwnershipCapability::swapchain_acquire_present:
+    case FrameGraphProductionOwnershipCapability::viewport_readback:
+    case FrameGraphProductionOwnershipCapability::native_overlay_preparation:
+        return FrameGraphProductionOwnershipBoundary::renderer_owned;
+    case FrameGraphProductionOwnershipCapability::package_streaming_residency:
+        return FrameGraphProductionOwnershipBoundary::runtime_host_owned;
+    case FrameGraphProductionOwnershipCapability::vulkan_metal_memory_aliasing:
+        return FrameGraphProductionOwnershipBoundary::host_gated;
+    case FrameGraphProductionOwnershipCapability::production_multi_queue_graph_adoption:
+    case FrameGraphProductionOwnershipCapability::broad_background_package_streaming:
+    case FrameGraphProductionOwnershipCapability::data_inheritance_preservation:
+    case FrameGraphProductionOwnershipCapability::async_overlap_performance:
+    case FrameGraphProductionOwnershipCapability::public_native_handles:
+        return FrameGraphProductionOwnershipBoundary::unsupported;
+    case FrameGraphProductionOwnershipCapability::none:
+        break;
+    }
+    return FrameGraphProductionOwnershipBoundary::unspecified;
+}
+
+void increment_production_ownership_boundary_count(FrameGraphProductionOwnershipPlan& result,
+                                                   FrameGraphProductionOwnershipBoundary boundary) noexcept {
+    switch (boundary) {
+    case FrameGraphProductionOwnershipBoundary::frame_graph_owned:
+        ++result.frame_graph_owned_count;
+        break;
+    case FrameGraphProductionOwnershipBoundary::renderer_owned:
+        ++result.renderer_owned_count;
+        break;
+    case FrameGraphProductionOwnershipBoundary::runtime_host_owned:
+        ++result.runtime_host_owned_count;
+        break;
+    case FrameGraphProductionOwnershipBoundary::host_gated:
+        ++result.host_gated_count;
+        break;
+    case FrameGraphProductionOwnershipBoundary::unsupported:
+        ++result.unsupported_count;
+        break;
+    case FrameGraphProductionOwnershipBoundary::unspecified:
+        break;
+    }
+}
+
+void clear_production_ownership_boundary_plan(FrameGraphProductionOwnershipPlan& result) noexcept {
+    result.selections.clear();
+    result.frame_graph_owned_count = 0;
+    result.renderer_owned_count = 0;
+    result.runtime_host_owned_count = 0;
+    result.host_gated_count = 0;
+    result.unsupported_count = 0;
+}
+
 [[nodiscard]] bool validate_access(FrameGraphV1BuildResult& result,
                                    const std::map<std::string, ResourceStateV1>& resources, std::string_view pass_name,
                                    const FrameGraphResourceAccess& access, bool write_access) {
@@ -474,6 +549,54 @@ FrameGraphExecutionResult execute_frame_graph_v1_schedule(std::span<const FrameG
         }
     }
 
+    return result;
+}
+
+FrameGraphProductionOwnershipPlan
+plan_frame_graph_production_ownership_boundary(std::span<const FrameGraphProductionOwnershipCandidate> candidates) {
+    FrameGraphProductionOwnershipPlan result;
+    std::map<std::string, std::size_t> candidate_indices;
+
+    for (std::size_t index = 0; index < candidates.size(); ++index) {
+        const auto& candidate = candidates[index];
+        if (candidate.id.empty()) {
+            append_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, {},
+                              "frame graph production ownership candidate id is empty");
+            continue;
+        }
+
+        const auto [_, inserted] = candidate_indices.emplace(candidate.id, index);
+        if (!inserted) {
+            append_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, candidate.id,
+                              "frame graph production ownership candidate is declared more than once");
+            continue;
+        }
+
+        const auto supported_boundary = supported_production_ownership_boundary(candidate.capability);
+        if (supported_boundary == FrameGraphProductionOwnershipBoundary::unspecified) {
+            append_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, candidate.id,
+                              "frame graph production ownership capability is invalid");
+            continue;
+        }
+
+        if (candidate.requested_boundary != FrameGraphProductionOwnershipBoundary::unspecified &&
+            candidate.requested_boundary != supported_boundary) {
+            append_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {}, candidate.id,
+                              "frame graph production ownership boundary request disagrees with supported boundary");
+            continue;
+        }
+
+        result.selections.push_back(FrameGraphProductionOwnershipSelection{
+            .id = candidate.id,
+            .capability = candidate.capability,
+            .boundary = supported_boundary,
+        });
+        increment_production_ownership_boundary_count(result, supported_boundary);
+    }
+
+    if (!result.succeeded()) {
+        clear_production_ownership_boundary_plan(result);
+    }
     return result;
 }
 

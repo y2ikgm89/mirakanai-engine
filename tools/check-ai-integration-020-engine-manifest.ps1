@@ -1611,6 +1611,9 @@ foreach ($needle in @(
     "automatic aliasing-barrier insertion",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
+    "Frame Graph Production Ownership Boundary Selection v1",
+    "FrameGraphProductionOwnershipPlan",
+    "plan_frame_graph_production_ownership_boundary",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
     "Frame Graph Render Pass Stats Evidence v1",
@@ -1700,6 +1703,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_v1_schedule") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_texture_schedule") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTextureFinalState") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Production Ownership Boundary Selection v1") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphProductionOwnershipPlan") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_production_ownership_boundary") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureAliasPlan") -or
     -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_transient_texture_aliases") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Shared Texture State Handoff v1") -or
@@ -1737,6 +1743,7 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("executor-recorded barriers") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final-state policy") -or
     -not ([string]$frameGraphGap[0].notes).Contains("production render graph") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("public native handles") -or
     -not ([string]$frameGraphGap[0].notes).Contains("2D/3D playable vertical slices")) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop frame-graph-v1 gap must keep foundation-only follow-up limits explicit"
 }

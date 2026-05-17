@@ -3443,6 +3443,135 @@ MK_TEST("frame graph rhi multi queue executor reports begin submit and wait fail
     MK_REQUIRE(wait_result.diagnostics[0].message == "frame graph queue wait recording failed: queue wait failed");
 }
 
+MK_TEST("frame graph production ownership boundary selects reviewed executor rows") {
+    const std::vector<mirakana::FrameGraphProductionOwnershipCandidate> candidates{
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "texture.transitions",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::texture_state_transitions,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "render_pass.envelopes",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::render_pass_envelopes,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "runtime.upload.commands",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::runtime_upload_commands,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "swapchain.present",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::swapchain_acquire_present,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "package.streaming.residency",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::package_streaming_residency,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "vulkan.metal.memory.aliasing",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::vulkan_metal_memory_aliasing,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "background.streaming",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::broad_background_package_streaming,
+        },
+    };
+
+    const auto plan = mirakana::plan_frame_graph_production_ownership_boundary(candidates);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.selections.size() == 7);
+    MK_REQUIRE(plan.frame_graph_owned_count == 3);
+    MK_REQUIRE(plan.renderer_owned_count == 1);
+    MK_REQUIRE(plan.runtime_host_owned_count == 1);
+    MK_REQUIRE(plan.host_gated_count == 1);
+    MK_REQUIRE(plan.unsupported_count == 1);
+
+    const auto find_selection = [&plan](std::string_view id) {
+        return std::ranges::find_if(plan.selections, [id](const mirakana::FrameGraphProductionOwnershipSelection& row) {
+            return row.id == id;
+        });
+    };
+    const auto texture = find_selection("texture.transitions");
+    MK_REQUIRE(texture != plan.selections.end());
+    MK_REQUIRE(texture->boundary == mirakana::FrameGraphProductionOwnershipBoundary::frame_graph_owned);
+    const auto swapchain = find_selection("swapchain.present");
+    MK_REQUIRE(swapchain != plan.selections.end());
+    MK_REQUIRE(swapchain->boundary == mirakana::FrameGraphProductionOwnershipBoundary::renderer_owned);
+    const auto residency = find_selection("package.streaming.residency");
+    MK_REQUIRE(residency != plan.selections.end());
+    MK_REQUIRE(residency->boundary == mirakana::FrameGraphProductionOwnershipBoundary::runtime_host_owned);
+    const auto memory_aliasing = find_selection("vulkan.metal.memory.aliasing");
+    MK_REQUIRE(memory_aliasing != plan.selections.end());
+    MK_REQUIRE(memory_aliasing->boundary == mirakana::FrameGraphProductionOwnershipBoundary::host_gated);
+    const auto streaming = find_selection("background.streaming");
+    MK_REQUIRE(streaming != plan.selections.end());
+    MK_REQUIRE(streaming->boundary == mirakana::FrameGraphProductionOwnershipBoundary::unsupported);
+}
+
+MK_TEST("frame graph production ownership boundary rejects broadened ownership claims") {
+    const std::vector<mirakana::FrameGraphProductionOwnershipCandidate> candidates{
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "swapchain.present",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::swapchain_acquire_present,
+            .requested_boundary = mirakana::FrameGraphProductionOwnershipBoundary::frame_graph_owned,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "async.overlap",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::async_overlap_performance,
+            .requested_boundary = mirakana::FrameGraphProductionOwnershipBoundary::frame_graph_owned,
+        },
+    };
+
+    const auto plan = mirakana::plan_frame_graph_production_ownership_boundary(candidates);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.selections.empty());
+    MK_REQUIRE(plan.frame_graph_owned_count == 0);
+    MK_REQUIRE(plan.diagnostics.size() == 2);
+    MK_REQUIRE(plan.diagnostics[0].resource == "swapchain.present");
+    MK_REQUIRE(plan.diagnostics[0].message ==
+               "frame graph production ownership boundary request disagrees with supported boundary");
+    MK_REQUIRE(plan.diagnostics[1].resource == "async.overlap");
+    MK_REQUIRE(plan.diagnostics[1].message ==
+               "frame graph production ownership boundary request disagrees with supported boundary");
+}
+
+MK_TEST("frame graph production ownership boundary rejects invalid candidate rows") {
+    const std::vector<mirakana::FrameGraphProductionOwnershipCandidate> candidates{
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = {},
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::texture_state_transitions,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "duplicate.capability",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::render_pass_envelopes,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "duplicate.capability",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::queue_waits,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "invalid.capability",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::none,
+        },
+    };
+
+    const auto plan = mirakana::plan_frame_graph_production_ownership_boundary(candidates);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.selections.empty());
+    MK_REQUIRE(plan.frame_graph_owned_count == 0);
+    MK_REQUIRE(plan.renderer_owned_count == 0);
+    MK_REQUIRE(plan.runtime_host_owned_count == 0);
+    MK_REQUIRE(plan.host_gated_count == 0);
+    MK_REQUIRE(plan.unsupported_count == 0);
+    MK_REQUIRE(plan.diagnostics.size() == 3);
+    MK_REQUIRE(plan.diagnostics[0].message == "frame graph production ownership candidate id is empty");
+    MK_REQUIRE(plan.diagnostics[1].resource == "duplicate.capability");
+    MK_REQUIRE(plan.diagnostics[1].message == "frame graph production ownership candidate is declared more than once");
+    MK_REQUIRE(plan.diagnostics[2].resource == "invalid.capability");
+    MK_REQUIRE(plan.diagnostics[2].message == "frame graph production ownership capability is invalid");
+}
+
 MK_TEST("frame graph rhi texture target access helper derives concrete writer rows") {
     mirakana::FrameGraphV1Desc desc;
     desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
