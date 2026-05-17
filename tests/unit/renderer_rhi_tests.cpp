@@ -1925,6 +1925,36 @@ MK_TEST("frame graph rhi texture aliasing barrier recording maps resource names 
     MK_REQUIRE(device.stats().resource_transitions == 0);
 }
 
+MK_TEST("frame graph rhi texture aliasing barrier recording maps empty resource names to wildcards") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{
+        mirakana::FrameGraphTextureBinding{
+            .resource = "late",
+            .texture = texture,
+            .current_state = mirakana::rhi::ResourceState::undefined,
+        },
+    };
+    const std::vector<mirakana::FrameGraphTextureAliasingBarrier> barriers{
+        mirakana::FrameGraphTextureAliasingBarrier{.before_resource = {}, .after_resource = "late"},
+        mirakana::FrameGraphTextureAliasingBarrier{.before_resource = "late", .after_resource = {}},
+        mirakana::FrameGraphTextureAliasingBarrier{.before_resource = {}, .after_resource = {}},
+    };
+
+    const auto result = mirakana::record_frame_graph_texture_aliasing_barriers(*commands, barriers, bindings);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.aliasing_barriers_recorded == 3);
+    MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::undefined);
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 3);
+    MK_REQUIRE(device.stats().resource_transitions == 0);
+}
+
 MK_TEST("frame graph rhi texture aliasing barrier recording rejects missing resources and shared handles") {
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -1963,7 +1993,7 @@ MK_TEST("frame graph rhi texture aliasing barrier recording rejects missing reso
     MK_REQUIRE(result.diagnostics.size() == 2);
     MK_REQUIRE(result.diagnostics[0].resource == "late");
     MK_REQUIRE(result.diagnostics[0].message ==
-               "frame graph texture aliasing barrier requires distinct texture handles");
+               "frame graph texture aliasing barrier requires distinct texture handles or wildcard endpoints");
     MK_REQUIRE(result.diagnostics[1].resource == "missing");
     MK_REQUIRE(result.diagnostics[1].message == "frame graph texture aliasing barrier references an unknown resource");
     MK_REQUIRE(device.stats().texture_aliasing_barriers == 0);

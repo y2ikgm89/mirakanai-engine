@@ -1171,6 +1171,84 @@ MK_TEST("d3d12 device context records committed texture aliasing barrier intent"
     MK_REQUIRE(context->stats().texture_transitions == 0);
 }
 
+MK_TEST("d3d12 device context records public null texture aliasing barriers") {
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
+        .prefer_warp = false,
+        .enable_debug_layer = false,
+    });
+
+    MK_REQUIRE(context != nullptr);
+
+    const auto texture = context->create_committed_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto commands = context->create_command_list(mirakana::rhi::QueueKind::graphics);
+
+    MK_REQUIRE(context->texture_aliasing_barrier(commands, {}, texture));
+    MK_REQUIRE(context->texture_aliasing_barrier(commands, texture, {}));
+    MK_REQUIRE(context->texture_aliasing_barrier(commands, {}, {}));
+    MK_REQUIRE(context->close_command_list(commands));
+
+    const auto stats = context->stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 3);
+    MK_REQUIRE(stats.null_resource_aliasing_barriers == 3);
+    MK_REQUIRE(stats.placed_resource_aliasing_barriers == 0);
+    MK_REQUIRE(stats.texture_transitions == 0);
+}
+
+MK_TEST("d3d12 device context applies public null placed texture aliasing state updates") {
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
+        .prefer_warp = false,
+        .enable_debug_layer = false,
+    });
+
+    MK_REQUIRE(context != nullptr);
+
+    const auto placed = context->create_placed_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    MK_REQUIRE(placed.value != 0);
+
+    const auto activate_from_wildcard = context->create_command_list(mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(context->texture_aliasing_barrier(activate_from_wildcard, {}, placed));
+    MK_REQUIRE(context->close_command_list(activate_from_wildcard));
+    const auto activate_fence = context->execute_command_list(activate_from_wildcard);
+    MK_REQUIRE(activate_fence.value != 0);
+    MK_REQUIRE(context->wait_for_fence(activate_fence, 0xFFFFFFFFU));
+
+    const auto already_active = context->create_command_list(mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(context->activate_placed_texture(already_active, placed));
+    MK_REQUIRE(context->close_command_list(already_active));
+    MK_REQUIRE(context->stats().placed_resource_activation_barriers == 0);
+
+    const auto deactivate_to_wildcard = context->create_command_list(mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(context->texture_aliasing_barrier(deactivate_to_wildcard, placed, {}));
+    MK_REQUIRE(context->close_command_list(deactivate_to_wildcard));
+    const auto deactivate_fence = context->execute_command_list(deactivate_to_wildcard);
+    MK_REQUIRE(deactivate_fence.value != 0);
+    MK_REQUIRE(context->wait_for_fence(deactivate_fence, 0xFFFFFFFFU));
+
+    const auto reactivate = context->create_command_list(mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(context->activate_placed_texture(reactivate, placed));
+    MK_REQUIRE(context->close_command_list(reactivate));
+    const auto reactivate_fence = context->execute_command_list(reactivate);
+    MK_REQUIRE(reactivate_fence.value != 0);
+    MK_REQUIRE(context->wait_for_fence(reactivate_fence, 0xFFFFFFFFU));
+
+    const auto stats = context->stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 2);
+    MK_REQUIRE(stats.null_resource_aliasing_barriers == 2);
+    MK_REQUIRE(stats.placed_resource_aliasing_barriers == 0);
+    MK_REQUIRE(stats.placed_resource_activation_barriers == 1);
+
+    context->destroy_committed_resource(placed);
+    MK_REQUIRE(context->stats().placed_resources_alive == 0);
+}
+
 MK_TEST("d3d12 device context creates placed transient texture resources") {
     auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
         .prefer_warp = false,
@@ -7608,6 +7686,34 @@ MK_TEST("d3d12 rhi device records texture aliasing barrier commands") {
 
     const auto stats = device->stats();
     MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    MK_REQUIRE(stats.resource_transitions == 0);
+}
+
+MK_TEST("d3d12 rhi device records public wildcard texture aliasing barrier commands") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
+        .prefer_warp = false,
+        .enable_debug_layer = false,
+    });
+
+    MK_REQUIRE(device != nullptr);
+
+    const auto texture = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+
+    auto commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->texture_aliasing_barrier(mirakana::rhi::TextureHandle{}, texture);
+    commands->texture_aliasing_barrier(texture, mirakana::rhi::TextureHandle{});
+    commands->texture_aliasing_barrier(mirakana::rhi::TextureHandle{}, mirakana::rhi::TextureHandle{});
+    commands->close();
+
+    const auto fence = device->submit(*commands);
+    device->wait(fence);
+
+    const auto stats = device->stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 3);
     MK_REQUIRE(stats.resource_transitions == 0);
 }
 

@@ -2688,29 +2688,29 @@ bool DeviceContext::transition_texture(NativeCommandListHandle commands, NativeR
 
 bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, NativeResourceHandle before,
                                              NativeResourceHandle after) {
-    if (!valid() || before.value == 0 || after.value == 0 || before.value == after.value) {
+    if (!valid() || (before.value != 0 && before.value == after.value)) {
         return false;
     }
 
     CommandListRecord* command_record = impl_->command_list(commands);
-    ID3D12Resource* before_resource = impl_->resource_record(before);
-    ID3D12Resource* after_resource = impl_->resource_record(after);
-    if (command_record == nullptr || before_resource == nullptr || after_resource == nullptr ||
-        command_record->closed) {
+    ID3D12Resource* before_resource = before.value == 0 ? nullptr : impl_->resource_record(before);
+    ID3D12Resource* after_resource = after.value == 0 ? nullptr : impl_->resource_record(after);
+    if (command_record == nullptr || command_record->closed || (before.value != 0 && before_resource == nullptr) ||
+        (after.value != 0 && after_resource == nullptr)) {
         return false;
     }
     if (command_record->queue != QueueKind::graphics) {
         return false;
     }
 
-    const auto before_desc = before_resource->GetDesc();
-    const auto after_desc = after_resource->GetDesc();
-    if (before_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER ||
-        after_desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+    if (before_resource != nullptr && before_resource->GetDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+        return false;
+    }
+    if (after_resource != nullptr && after_resource->GetDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;
     }
 
-    if (impl_->resources_share_placed_alias_group(before, after)) {
+    if (before.value != 0 && after.value != 0 && impl_->resources_share_placed_alias_group(before, after)) {
         D3D12_RESOURCE_BARRIER barrier{};
         barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
         barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -2727,17 +2727,30 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
         return true;
     }
 
-    // Public RHI calls require concrete texture handles, but committed resources cannot be used
-    // as non-null D3D12 aliasing-barrier resources. Record a conservative backend-private
-    // null-resource aliasing barrier so the command has native synchronization evidence without
-    // exposing public wildcard/null handles or claiming placed-resource alias execution.
+    const bool before_is_placed = before.value != 0 && impl_->resource_is_placed(before);
+    const bool after_is_placed = after.value != 0 && impl_->resource_is_placed(after);
+
+    // Unproven pairs stay on a backend-private null-resource aliasing barrier.
+    // Explicit wildcard endpoints may name a proven placed resource on the concrete side.
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Aliasing.pResourceBefore = nullptr;
-    barrier.Aliasing.pResourceAfter = nullptr;
+    barrier.Aliasing.pResourceBefore = before_is_placed && after.value == 0 ? before_resource : nullptr;
+    barrier.Aliasing.pResourceAfter = before.value == 0 && after_is_placed ? after_resource : nullptr;
 
     command_record->list->ResourceBarrier(1, &barrier);
+    if (before_is_placed && after.value == 0) {
+        command_record->placed_resource_state_updates.push_back(PlacedResourceStateUpdate{
+            .before = before,
+            .after = NativeResourceHandle{},
+        });
+    }
+    if (before.value == 0 && after_is_placed) {
+        command_record->placed_resource_state_updates.push_back(PlacedResourceStateUpdate{
+            .before = NativeResourceHandle{},
+            .after = after,
+        });
+    }
     ++impl_->stats.texture_aliasing_barriers;
     ++impl_->stats.null_resource_aliasing_barriers;
     return true;
@@ -4747,14 +4760,19 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (render_pass_active_) {
             throw std::logic_error("d3d12 rhi texture aliasing barriers must be recorded outside a render pass");
         }
-        if (before.value == 0 || after.value == 0 || before.value == after.value) {
-            throw std::invalid_argument("d3d12 rhi texture aliasing barrier requires distinct texture handles");
+        if (before.value != 0 && before.value == after.value) {
+            throw std::invalid_argument(
+                "d3d12 rhi texture aliasing barrier requires distinct texture handles or wildcard endpoints");
         }
 
-        const auto before_native = native_texture(before);
-        const auto after_native = native_texture(after);
-        observe_texture(before);
-        observe_texture(after);
+        const auto before_native = before.value == 0 ? NativeResourceHandle{} : native_texture(before);
+        const auto after_native = after.value == 0 ? NativeResourceHandle{} : native_texture(after);
+        if (before.value != 0) {
+            observe_texture(before);
+        }
+        if (after.value != 0) {
+            observe_texture(after);
+        }
         if (!context_->texture_aliasing_barrier(native_, before_native, after_native)) {
             throw std::logic_error("d3d12 rhi texture aliasing barrier recording failed");
         }
