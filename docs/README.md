@@ -24,6 +24,7 @@ When a historical Japanese note is promoted into a current doc, translate the pr
 - [Building](building.md): CMake presets, install layout, `find_package(Mirakanai)`, and module/import-std matrix.
 - [Testing](testing.md): validation commands, coverage expectations, and current test coverage.
 - [Workflows](workflows.md): task, validation, CI, packaging, and plan lifecycle rules.
+- [Codex local environment](codex-local-environment.md): Codex app setup script and project actions for lightweight worktree setup.
 - [Agent operational reference](agent-operational-reference.md): extended validation, editor shell, plan lifecycle, production completion, and game lanes (indexed from `AGENTS.md`).
 - Optional Windows PIX host helper (operator-run, non-repo scratch dirs): [`tools/launch-pix-host-helper.ps1`](../tools/launch-pix-host-helper.ps1) with plan [2026-05-11-editor-resource-capture-pix-launch-helper-v1.md](superpowers/plans/2026-05-11-editor-resource-capture-pix-launch-helper-v1.md); summarized under [Workflows — Windows diagnostics toolchain](workflows.md#windows-diagnostics-toolchain). Default **operator PIX + coding-agent analysis** pattern: [AI integration](ai-integration.md) subsection **Recommended workflow (operator PIX, AI analysis)**.
 - [AI integration](ai-integration.md) and [AI game development](ai-game-development.md): Codex, Claude Code, and Cursor agent-facing usage guidance.
