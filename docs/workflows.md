@@ -119,7 +119,15 @@ Documentation-only or similarly narrow non-runtime slices should use the cheapes
 
 ### Commit, Push, And Pull Request Workflow
 
-Use GitHub's official GitHub Flow for agent publishing: make a separate topic branch for each unrelated change, commit isolated complete changes, create a pull request for review, merge only after required reviews/checks pass, then delete the merged branch. Cadence is purpose/checkpoint-based, not count-based: commit complete validated phases, push validated checkpoints for remote backup/CI/review/handoff, and keep one PR per focused capability/gap-cluster/milestone unless the work is unrelated. Multiple local commits may share one push or PR when they form one validated, reviewable purpose; split unrelated gaps into separate branches and PRs. Open a ready PR at the main-merge review boundary for that purpose, and use an earlier draft PR only when CI, review, backup, or handoff value outweighs the extra PR/check overhead. Publish only task-owned changes and keep branch selection conservative.
+Use GitHub's official GitHub Flow as the publishing sequence:
+
+1. Create a topic branch for one unrelated set of changes.
+2. Make changes on that branch; commit isolated, complete changes and push validated checkpoints for remote backup, CI, review, or handoff.
+3. Create one pull request when the focused change is ready to ask for review and merge to `main`; use a draft pull request only to share work in progress or request early CI/review/handoff feedback before formal review.
+4. Address review comments with additional commits on the same branch; the pull request updates automatically.
+5. Merge only after required reviews/checks pass, then delete the merged branch.
+
+Cadence is purpose/checkpoint-based, not count-based: commit complete validated phases, push validated checkpoints, and keep one PR per focused capability/gap-cluster/milestone unless the work is unrelated. Multiple local commits may share one push or PR when they form one validated, reviewable purpose; split unrelated gaps into separate branches and PRs. Open a ready PR at the main-merge review boundary for that purpose, and use an earlier draft PR only when CI, review, backup, or handoff value outweighs the extra PR/check overhead. Publish only task-owned changes and keep branch selection conservative.
 
 Treat publishing as a slice-closing gate, not an optional epilogue. Unless the user explicitly asks for local-only/no-PR work, do not report a task complete while task-owned changes only exist locally after validation. At the reviewable main-merge boundary, complete branch creation, task-owned staging, commit, non-forced push, and PR creation/update with validation evidence in the same turn. If the branch is not yet reviewable, keep it in progress with validated local commits and optional non-forced checkpoint pushes, record the next gate/blocker, and avoid opening extra ready PRs. If any publishing step is blocked by permissions, authentication, command policy, branch protection, or dirty unrelated files that prevent safe staging, report that exact blocker. If the preferred `codex/<topic>` branch form conflicts with existing ref namespaces, use a conservative non-default fallback such as `codex-<topic>`.
 
@@ -132,9 +140,9 @@ Checkpoint guidance:
 | Review feedback | Each follow-up is an isolated, understandable fix or a small batch of related fixes. | The response batch is ready for reviewers; the PR will update automatically after the push. |
 | End of session or handoff | Only if the local state is coherent enough to preserve as history. | Push a task-owned topic branch when remote backup, CI, or review visibility is useful; do not push known-broken intermediate work just because a commit exists. |
 
-PR cadence is purpose-based, not commit-based: one PR should represent one reviewable capability/gap-cluster/milestone phase, one full small milestone, or one unrelated fix. Do not open a PR for every commit, checklist item, or validation-only follow-up; keep related phase commits in the same branch/PR until final validation, and split only when review, architecture, or validation boundaries diverge.
+PR cadence is purpose-based, not commit-based: one PR should represent one small, focused capability/gap-cluster/milestone phase, one full small milestone, or one unrelated fix. Do not open a PR for every commit, checklist item, or validation-only follow-up; keep related phase commits in the same branch/PR until final validation, and split only when review, architecture, or validation boundaries diverge.
 
-For large or review-sensitive slices, open a draft PR after the first coherent validated push only when early CI, review, or handoff feedback is worth the overhead. Keep draft PRs draft while follow-up checkpoint commits are still expected, and move to ready-for-review only after final validation, branch preflight, and task-owned PR evidence are in place. In unattended Codex sessions, `gh pr ready` and other PR state changes remain prompt-gated; use GitHub Web/Desktop or an approval-capable session when conversion is required and approvals are unavailable.
+For large or review-sensitive slices, open a draft PR after the first coherent validated push only when work-in-progress visibility or early CI, review, or handoff feedback is worth the overhead. Keep draft PRs draft while follow-up checkpoint commits are still expected, and move to ready-for-review only after final validation, branch preflight, and task-owned PR evidence are in place. In unattended Codex sessions, `gh pr ready` and other PR state changes remain prompt-gated; use GitHub Web/Desktop or an approval-capable session when conversion is required and approvals are unavailable.
 
 1. Inspect the branch and worktree before staging:
 
@@ -207,7 +215,7 @@ The check expects `main` as the default branch; repository `allow_auto_merge` en
 gh pr create --base <base-branch> --head <branch> --title "<title>" --body "<validation summary>"
 ```
 
-In unattended Codex sessions, `gh pr create` may run automatically after the branch is pushed and the validation evidence is ready. Use `--draft` only when early CI, review, or handoff value justifies the extra PR/check overhead; create a ready PR only when the work is ready for review at the main-merge boundary. The PR body must include actual validation evidence or blockers, and the head branch must be task-owned.
+In unattended Codex sessions, `gh pr create` may run automatically after the branch is pushed and the validation evidence is ready. Use `--draft` only when work-in-progress sharing or early CI, review, or handoff value justifies the extra PR/check overhead; create a ready PR only when the work is ready for review at the main-merge boundary. The PR body must include the purpose, change overview, relevant links or review order when helpful, and actual validation evidence or blockers; the head branch must be task-owned.
 
 The PR can also be created or updated through GitHub Web or GitHub Desktop. If authentication, branch protection, required reviews, required status checks, or remote permissions block the push or PR, report the blocker and stop instead of bypassing policy or asking to weaken safeguards.
 

@@ -148,7 +148,7 @@ prefix_rule(
 prefix_rule(
     pattern = ["gh", "pr", "create"],
     decision = "allow",
-    justification = "After task-owned validation checkpoints, PR creation is allowed so unattended sessions can publish a topic branch at the main-merge review boundary or open a draft PR when early CI/review/handoff value outweighs overhead.",
+    justification = "After task-owned validation checkpoints, PR creation is allowed so unattended sessions can publish a topic branch at the main-merge review boundary or open a draft PR for work in progress or when early CI/review/handoff value outweighs overhead.",
     match = [
         "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
         "gh pr create --draft --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: focused checks passed\"",
