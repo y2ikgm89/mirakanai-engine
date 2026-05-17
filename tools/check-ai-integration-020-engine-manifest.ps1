@@ -1789,6 +1789,8 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_frame_graph_rhi_queue_waits" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "IRhiDevice::wait_for_queue" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Executor v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Texture Barrier Execution v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Public Null Aliasing Barriers v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Stats Evidence v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RendererStats::framegraph_render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
@@ -1799,7 +1801,7 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "render pass envelope ownership" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "remaining raw-primary/viewport-clear render pass envelopes are complete" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "backend-neutral RHI queue dependency wait planning/recording is complete" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "multi-queue pass command submission envelope" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "multi-queue pass command submission and opt-in texture barrier recording envelope" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "public wildcard/null aliasing barriers are complete" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
