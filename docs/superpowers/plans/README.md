@@ -35,6 +35,7 @@ When new production work starts, prefer one dated capability/gap-cluster/milesto
 - Keep the live execution stack to at most three layers: the active roadmap, one active gap-cluster burn-down or milestone, and one active phase/child plan selected by `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
 - Create a new dated plan for a capability/gap-cluster/milestone, not for every behavior slice.
 - Plan width is wider than PR width: one dated plan may contain multiple phase checkpoints, but each phase/PR should stay one behavior/API/validation boundary and one reviewable purpose.
+- Do not split, merge, or rename dated plans to chase a commit, push, or PR count. Use GitHub Flow for publication: validated phase commits, non-forced checkpoint pushes, focused PRs, draft PRs for early feedback, review/checks before merge, and branch deletion after merge.
 - Distinguish plan files from execution steps: checkboxes can be small actions, and phases should close each phase behavior/API/validation boundary.
 - Do not create new plan files for validation-only follow-up, docs/manifest/static-check synchronization, small mechanical cleanup, or substeps that fit the current active plan checklist.
 - Prefer a gap-level burn-down or phase-gated milestone when one `unsupportedProductionGaps` row needs several linked phases. Track phase progress in that plan and create child plans only when a phase has a distinct architecture decision, public API family, validation surface, ownership/review boundary, or is too large to execute safely in one context.
@@ -45,6 +46,7 @@ When new production work starts, prefer one dated capability/gap-cluster/milesto
 
 - A good dated plan is usually one production capability, gap cluster, or milestone, not one assertion, mechanical test, or single API helper.
 - Prefer one gap-level burn-down or milestone plan when slices share the same architecture decision, public API family, and validation surface; create child plans only when the phase would exceed one safe implementation/review context.
+- If consecutive slices keep reloading the same context, touching the same manifest/docs, and proving the same validation surface, broaden the active plan and keep each PR as the reviewable checkpoint.
 - Do not create a new plan for docs-only synchronization, manifest pointer cleanup, static-check churn, existing-test initializer updates, or validation reruns unless that documentation or validation surface is itself the product behavior under test.
 - Keep active context short: link historical evidence instead of copying long completed-slice prose into active sections or `recommendedNextPlan.completedContext`.
 
