@@ -1366,6 +1366,194 @@ record_frame_graph_texture_aliasing_barriers(rhi::IRhiCommandList& commands,
     return result;
 }
 
+FrameGraphRhiQueueWaitPlan
+plan_frame_graph_rhi_queue_waits(std::span<const FrameGraphExecutionStep> schedule,
+                                 std::span<const FrameGraphRhiPassQueueBinding> pass_queue_bindings) {
+    FrameGraphRhiQueueWaitPlan result;
+
+    std::map<std::string, rhi::QueueKind> pass_queues;
+    for (const auto& step : schedule) {
+        if (step.kind != FrameGraphExecutionStep::Kind::pass_invoke) {
+            continue;
+        }
+        if (step.pass_name.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph schedule pass name is empty");
+            continue;
+        }
+        const auto [_, inserted] = pass_queues.emplace(step.pass_name, rhi::QueueKind::graphics);
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
+                                              "frame graph schedule pass is declared more than once");
+        }
+    }
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    std::map<std::string, std::size_t> pass_queue_binding_indices;
+    for (std::size_t index = 0; index < pass_queue_bindings.size(); ++index) {
+        const auto& binding = pass_queue_bindings[index];
+        if (binding.pass_name.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph pass queue binding pass name is empty");
+            continue;
+        }
+        const auto [_, inserted] = pass_queue_binding_indices.emplace(binding.pass_name, index);
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, binding.pass_name, {},
+                                              "frame graph pass queue binding is declared more than once");
+            continue;
+        }
+
+        auto pass_queue = pass_queues.find(binding.pass_name);
+        if (pass_queue == pass_queues.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, binding.pass_name, {},
+                                              "frame graph pass queue binding targets an unscheduled pass");
+            continue;
+        }
+        pass_queue->second = binding.queue;
+    }
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    std::map<std::pair<std::string, std::string>, std::size_t> wait_indices;
+    for (const auto& step : schedule) {
+        if (step.kind != FrameGraphExecutionStep::Kind::barrier) {
+            continue;
+        }
+        if (step.barrier.from_pass.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.barrier.to_pass,
+                                              step.barrier.resource,
+                                              "frame graph queue wait barrier producer pass is empty");
+            continue;
+        }
+        if (step.barrier.to_pass.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, step.barrier.resource,
+                                              "frame graph queue wait barrier consumer pass is empty");
+            continue;
+        }
+
+        const auto producer = pass_queues.find(step.barrier.from_pass);
+        if (producer == pass_queues.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.barrier.from_pass,
+                                              step.barrier.resource,
+                                              "frame graph queue wait barrier producer pass is unscheduled");
+            continue;
+        }
+        const auto consumer = pass_queues.find(step.barrier.to_pass);
+        if (consumer == pass_queues.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.barrier.to_pass,
+                                              step.barrier.resource,
+                                              "frame graph queue wait barrier consumer pass is unscheduled");
+            continue;
+        }
+        if (producer->second == consumer->second) {
+            continue;
+        }
+
+        const auto key = std::pair{step.barrier.to_pass, step.barrier.from_pass};
+        const auto [_, inserted] = wait_indices.emplace(key, result.queue_waits.size());
+        if (!inserted) {
+            continue;
+        }
+        result.queue_waits.push_back(FrameGraphRhiQueueWait{
+            .pass_name = step.barrier.to_pass,
+            .queue = consumer->second,
+            .waits_for_pass_name = step.barrier.from_pass,
+            .waits_for_queue = producer->second,
+        });
+    }
+    if (!result.succeeded()) {
+        result.queue_waits.clear();
+    }
+
+    return result;
+}
+
+FrameGraphRhiQueueWaitRecordResult
+record_frame_graph_rhi_queue_waits(rhi::IRhiDevice& device, std::span<const FrameGraphRhiQueueWait> queue_waits,
+                                   std::span<const FrameGraphRhiSubmittedPassFence> submitted_fences) {
+    FrameGraphRhiQueueWaitRecordResult result;
+
+    std::map<std::string, rhi::FenceValue> submitted_fence_index;
+    for (const auto& submitted : submitted_fences) {
+        if (submitted.pass_name.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph submitted producer pass fence pass name is empty");
+            continue;
+        }
+        if (submitted.fence.value == 0) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, submitted.pass_name, {},
+                                              "frame graph submitted producer pass fence value is empty");
+            continue;
+        }
+        const auto [_, inserted] = submitted_fence_index.emplace(submitted.pass_name, submitted.fence);
+        if (!inserted) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, submitted.pass_name, {},
+                                              "frame graph submitted producer pass fence is declared more than once");
+        }
+    }
+
+    for (const auto& wait : queue_waits) {
+        if (wait.pass_name.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, {}, {},
+                                              "frame graph queue wait pass name is empty");
+            continue;
+        }
+        if (wait.waits_for_pass_name.empty()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, wait.pass_name, {},
+                                              "frame graph queue wait producer pass name is empty");
+            continue;
+        }
+        if (wait.queue == wait.waits_for_queue) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, wait.pass_name,
+                                              wait.waits_for_pass_name,
+                                              "frame graph queue wait requires distinct queues");
+            continue;
+        }
+
+        const auto submitted = submitted_fence_index.find(wait.waits_for_pass_name);
+        if (submitted == submitted_fence_index.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, wait.pass_name,
+                                              wait.waits_for_pass_name,
+                                              "frame graph queue wait has no submitted producer pass fence");
+            continue;
+        }
+        if (submitted->second.queue != wait.waits_for_queue) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, wait.pass_name,
+                                              wait.waits_for_pass_name,
+                                              "frame graph submitted producer pass fence queue mismatch");
+        }
+    }
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    for (const auto& wait : queue_waits) {
+        const auto submitted = submitted_fence_index.find(wait.waits_for_pass_name);
+        if (submitted == submitted_fence_index.end()) {
+            continue;
+        }
+        try {
+            device.wait_for_queue(wait.queue, submitted->second);
+            ++result.queue_waits_recorded;
+        } catch (const std::exception& ex) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, wait.pass_name,
+                                              wait.waits_for_pass_name,
+                                              std::string{"frame graph queue wait recording failed: "} + ex.what());
+            return result;
+        } catch (...) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, wait.pass_name,
+                                              wait.waits_for_pass_name, "frame graph queue wait recording failed");
+            return result;
+        }
+    }
+
+    return result;
+}
+
 FrameGraphRhiTextureExecutionResult
 execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc& desc) {
     FrameGraphRhiTextureExecutionResult result;

@@ -92,6 +92,41 @@ struct FrameGraphTextureAliasingBarrierRecordResult {
     }
 };
 
+struct FrameGraphRhiPassQueueBinding {
+    std::string pass_name;
+    rhi::QueueKind queue{rhi::QueueKind::graphics};
+};
+
+struct FrameGraphRhiQueueWait {
+    std::string pass_name;
+    rhi::QueueKind queue{rhi::QueueKind::graphics};
+    std::string waits_for_pass_name;
+    rhi::QueueKind waits_for_queue{rhi::QueueKind::graphics};
+};
+
+struct FrameGraphRhiQueueWaitPlan {
+    std::vector<FrameGraphRhiQueueWait> queue_waits;
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
+struct FrameGraphRhiSubmittedPassFence {
+    std::string pass_name;
+    rhi::FenceValue fence;
+};
+
+struct FrameGraphRhiQueueWaitRecordResult {
+    std::size_t queue_waits_recorded{0};
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 struct FrameGraphTextureFinalState {
     std::string resource;
     rhi::ResourceState state{rhi::ResourceState::undefined};
@@ -182,6 +217,14 @@ record_frame_graph_texture_barriers(rhi::IRhiCommandList& commands, std::span<co
 record_frame_graph_texture_aliasing_barriers(rhi::IRhiCommandList& commands,
                                              std::span<const FrameGraphTextureAliasingBarrier> aliasing_barriers,
                                              std::span<const FrameGraphTextureBinding> texture_bindings);
+
+[[nodiscard]] FrameGraphRhiQueueWaitPlan
+plan_frame_graph_rhi_queue_waits(std::span<const FrameGraphExecutionStep> schedule,
+                                 std::span<const FrameGraphRhiPassQueueBinding> pass_queue_bindings);
+
+[[nodiscard]] FrameGraphRhiQueueWaitRecordResult
+record_frame_graph_rhi_queue_waits(rhi::IRhiDevice& device, std::span<const FrameGraphRhiQueueWait> queue_waits,
+                                   std::span<const FrameGraphRhiSubmittedPassFence> submitted_fences);
 
 [[nodiscard]] FrameGraphRhiTextureExecutionResult
 execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc& desc);
