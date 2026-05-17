@@ -420,6 +420,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Queue Dependency Plan v1") -or
     -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_rhi_queue_waits") -or
     -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::wait_for_queue") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Multi-Queue Executor v1") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_multi_queue_schedule") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("production multi-queue graph adoption") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
@@ -520,6 +523,9 @@ foreach ($needle in @(
     "Frame Graph RHI Queue Dependency Plan v1",
     "plan_frame_graph_rhi_queue_waits",
     "IRhiDevice::wait_for_queue",
+    "Frame Graph RHI Multi-Queue Executor v1",
+    "execute_frame_graph_rhi_multi_queue_schedule",
+    "multi-queue pass command submission envelope",
     "Frame Graph Remaining Render Pass Envelopes v1",
     "remaining raw-primary/viewport-clear render pass envelopes are complete",
     "frame-graph-v1"

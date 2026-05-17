@@ -8,9 +8,11 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mirakana {
@@ -127,6 +129,31 @@ struct FrameGraphRhiQueueWaitRecordResult {
     }
 };
 
+struct FrameGraphRhiPassCommandBinding {
+    std::string pass_name;
+    rhi::QueueKind queue{rhi::QueueKind::graphics};
+    std::function<FrameGraphExecutionCallbackResult(std::string_view pass_name, rhi::IRhiCommandList& commands)>
+        callback;
+};
+
+struct FrameGraphRhiMultiQueueExecutionDesc {
+    rhi::IRhiDevice* device{nullptr};
+    std::span<const FrameGraphExecutionStep> schedule;
+    std::span<const FrameGraphRhiPassCommandBinding> pass_commands;
+};
+
+struct FrameGraphRhiMultiQueueExecutionResult {
+    std::size_t command_lists_submitted{0};
+    std::size_t queue_waits_recorded{0};
+    std::size_t pass_callbacks_invoked{0};
+    std::vector<FrameGraphRhiSubmittedPassFence> submitted_pass_fences;
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 struct FrameGraphTextureFinalState {
     std::string resource;
     rhi::ResourceState state{rhi::ResourceState::undefined};
@@ -225,6 +252,9 @@ plan_frame_graph_rhi_queue_waits(std::span<const FrameGraphExecutionStep> schedu
 [[nodiscard]] FrameGraphRhiQueueWaitRecordResult
 record_frame_graph_rhi_queue_waits(rhi::IRhiDevice& device, std::span<const FrameGraphRhiQueueWait> queue_waits,
                                    std::span<const FrameGraphRhiSubmittedPassFence> submitted_fences);
+
+[[nodiscard]] FrameGraphRhiMultiQueueExecutionResult
+execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecutionDesc& desc);
 
 [[nodiscard]] FrameGraphRhiTextureExecutionResult
 execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc& desc);
