@@ -417,6 +417,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("automatic aliasing-barrier insertion") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiRenderPassDesc") -or
     -not ([string]$frameGraphGap[0].notes).Contains("render_passes_recorded") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Queue Dependency Plan v1") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_rhi_queue_waits") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::wait_for_queue") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
@@ -514,6 +517,9 @@ foreach ($needle in @(
     "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
+    "Frame Graph RHI Queue Dependency Plan v1",
+    "plan_frame_graph_rhi_queue_waits",
+    "IRhiDevice::wait_for_queue",
     "Frame Graph Remaining Render Pass Envelopes v1",
     "remaining raw-primary/viewport-clear render pass envelopes are complete",
     "frame-graph-v1"
