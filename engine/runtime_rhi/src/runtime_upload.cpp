@@ -4,12 +4,14 @@
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 
 #include "mirakana/assets/asset_source_format.hpp"
+#include "mirakana/renderer/frame_graph_rhi.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstring>
 #include <limits>
+#include <span>
 #include <stdexcept>
 #include <utility>
 
@@ -22,10 +24,32 @@ namespace {
     return result;
 }
 
+[[nodiscard]] std::string
+runtime_texture_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnostic> diagnostics) {
+    if (diagnostics.empty()) {
+        return "runtime texture upload frame graph execution failed";
+    }
+    if (diagnostics.front().message.empty()) {
+        return "runtime texture upload frame graph execution failed";
+    }
+    return "runtime texture upload frame graph execution failed: " + diagnostics.front().message;
+}
+
 [[nodiscard]] RuntimeMeshUploadResult mesh_upload_failure(std::string diagnostic) {
     RuntimeMeshUploadResult result;
     result.diagnostic = std::move(diagnostic);
     return result;
+}
+
+[[nodiscard]] std::string
+runtime_mesh_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnostic> diagnostics) {
+    if (diagnostics.empty()) {
+        return "runtime mesh upload frame graph execution failed";
+    }
+    if (diagnostics.front().message.empty()) {
+        return "runtime mesh upload frame graph execution failed";
+    }
+    return "runtime mesh upload frame graph execution failed: " + diagnostics.front().message;
 }
 
 [[nodiscard]] RuntimeSkinnedMeshUploadResult skinned_upload_failure(std::string diagnostic) {
@@ -34,10 +58,32 @@ namespace {
     return result;
 }
 
+[[nodiscard]] std::string
+runtime_skinned_mesh_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnostic> diagnostics) {
+    if (diagnostics.empty()) {
+        return "runtime skinned mesh upload frame graph execution failed";
+    }
+    if (diagnostics.front().message.empty()) {
+        return "runtime skinned mesh upload frame graph execution failed";
+    }
+    return "runtime skinned mesh upload frame graph execution failed: " + diagnostics.front().message;
+}
+
 [[nodiscard]] RuntimeMorphMeshUploadResult morph_upload_failure(std::string diagnostic) {
     RuntimeMorphMeshUploadResult result;
     result.diagnostic = std::move(diagnostic);
     return result;
+}
+
+[[nodiscard]] std::string
+runtime_morph_mesh_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnostic> diagnostics) {
+    if (diagnostics.empty()) {
+        return "runtime morph mesh upload frame graph execution failed";
+    }
+    if (diagnostics.front().message.empty()) {
+        return "runtime morph mesh upload frame graph execution failed";
+    }
+    return "runtime morph mesh upload frame graph execution failed: " + diagnostics.front().message;
 }
 
 [[nodiscard]] RuntimeMorphMeshComputeBinding morph_compute_binding_failure(std::string diagnostic) {
@@ -304,10 +350,63 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
         const auto upload_buffer = device.create_buffer(rhi::BufferDesc{
             .size_bytes = static_cast<std::uint64_t>(staging.bytes.size()), .usage = rhi::BufferUsage::copy_source});
         device.write_buffer(upload_buffer, 0, staging.bytes);
+
+        FrameGraphV1Desc upload_graph;
+        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "runtime.uploaded_texture",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
+        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+            .name = "runtime.texture_upload.copy",
+            .writes = {FrameGraphResourceAccess{
+                .resource = "runtime.uploaded_texture",
+                .access = FrameGraphAccess::copy_destination,
+            }},
+        });
+        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+        if (!upload_plan.succeeded()) {
+            return texture_upload_failure(runtime_texture_upload_frame_graph_diagnostic(upload_plan.diagnostics));
+        }
+        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+        const auto pass_target_accesses = build_frame_graph_texture_pass_target_accesses(upload_graph);
+        std::vector<FrameGraphTextureBinding> texture_bindings{FrameGraphTextureBinding{
+            .resource = "runtime.uploaded_texture",
+            .texture = texture,
+            .current_state = rhi::ResourceState::undefined,
+        }};
+        const std::vector<FrameGraphTexturePassTargetState> pass_target_states{FrameGraphTexturePassTargetState{
+            .pass_name = "runtime.texture_upload.copy",
+            .resource = "runtime.uploaded_texture",
+            .state = rhi::ResourceState::copy_destination,
+        }};
+        const std::vector<FrameGraphTextureFinalState> final_states{FrameGraphTextureFinalState{
+            .resource = "runtime.uploaded_texture",
+            .state = rhi::ResourceState::shader_read,
+        }};
         auto commands = device.begin_command_list(options.queue);
-        commands->transition_texture(texture, rhi::ResourceState::undefined, rhi::ResourceState::copy_destination);
-        commands->copy_buffer_to_texture(upload_buffer, texture, staging.region);
-        commands->transition_texture(texture, rhi::ResourceState::copy_destination, rhi::ResourceState::shader_read);
+        const std::vector<FrameGraphPassExecutionBinding> pass_callbacks{FrameGraphPassExecutionBinding{
+            .pass_name = "runtime.texture_upload.copy",
+            .callback =
+                [&](std::string_view) {
+                    commands->copy_buffer_to_texture(upload_buffer, texture, staging.region);
+                    return FrameGraphExecutionCallbackResult{};
+                },
+        }};
+        const auto frame_graph_execution = execute_frame_graph_rhi_texture_schedule(FrameGraphRhiTextureExecutionDesc{
+            .commands = commands.get(),
+            .schedule = upload_schedule,
+            .texture_bindings = texture_bindings,
+            .pass_callbacks = pass_callbacks,
+            .pass_target_accesses = pass_target_accesses,
+            .pass_target_states = pass_target_states,
+            .render_passes = {},
+            .final_states = final_states,
+            .transient_texture_lifetimes = {},
+        });
+        if (!frame_graph_execution.succeeded()) {
+            return texture_upload_failure(
+                runtime_texture_upload_frame_graph_diagnostic(frame_graph_execution.diagnostics));
+        }
         commands->close();
         const auto fence = device.submit(*commands);
         if (options.wait_for_completion) {
@@ -322,6 +421,11 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
             .uploaded_bytes = static_cast<std::uint64_t>(staging.bytes.size()),
             .owner_device = &device,
             .copy_recorded = true,
+            .frame_graph_barriers_recorded = frame_graph_execution.barriers_recorded,
+            .frame_graph_pass_target_state_barriers_recorded =
+                frame_graph_execution.pass_target_state_barriers_recorded,
+            .frame_graph_final_state_barriers_recorded = frame_graph_execution.final_state_barriers_recorded,
+            .frame_graph_pass_callbacks_invoked = frame_graph_execution.pass_callbacks_invoked,
             .diagnostic = {},
             .submitted_fence = fence,
         };
@@ -402,11 +506,55 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
         device.write_buffer(vertex_upload_buffer, 0, payload.vertex_bytes);
         device.write_buffer(index_upload_buffer, 0, payload.index_bytes);
 
-        auto commands = device.begin_command_list(upload_options.queue);
-        commands->copy_buffer(vertex_upload_buffer, vertex_buffer, vertex_region);
-        commands->copy_buffer(index_upload_buffer, index_buffer, index_region);
-        commands->close();
-        const auto fence = device.submit(*commands);
+        FrameGraphV1Desc upload_graph;
+        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "runtime.mesh_upload.vertex_buffer",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
+        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "runtime.mesh_upload.index_buffer",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
+        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+            .name = "runtime.mesh_upload.copy",
+            .writes = {FrameGraphResourceAccess{
+                           .resource = "runtime.mesh_upload.vertex_buffer",
+                           .access = FrameGraphAccess::copy_destination,
+                       },
+                       FrameGraphResourceAccess{
+                           .resource = "runtime.mesh_upload.index_buffer",
+                           .access = FrameGraphAccess::copy_destination,
+                       }},
+        });
+        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+        if (!upload_plan.succeeded()) {
+            return mesh_upload_failure(runtime_mesh_upload_frame_graph_diagnostic(upload_plan.diagnostics));
+        }
+        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+        const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{FrameGraphRhiPassCommandBinding{
+            .pass_name = "runtime.mesh_upload.copy",
+            .queue = upload_options.queue,
+            .callback =
+                [&](std::string_view, rhi::IRhiCommandList& commands) {
+                    commands.copy_buffer(vertex_upload_buffer, vertex_buffer, vertex_region);
+                    commands.copy_buffer(index_upload_buffer, index_buffer, index_region);
+                    return FrameGraphExecutionCallbackResult{};
+                },
+        }};
+        const auto frame_graph_execution =
+            execute_frame_graph_rhi_multi_queue_schedule(FrameGraphRhiMultiQueueExecutionDesc{
+                .device = &device,
+                .schedule = upload_schedule,
+                .pass_commands = pass_commands,
+                .texture_bindings = {},
+            });
+        if (!frame_graph_execution.succeeded()) {
+            return mesh_upload_failure(runtime_mesh_upload_frame_graph_diagnostic(frame_graph_execution.diagnostics));
+        }
+        if (frame_graph_execution.submitted_pass_fences.empty()) {
+            return mesh_upload_failure("runtime mesh upload frame graph execution failed: missing submitted fence");
+        }
+        const auto fence = frame_graph_execution.submitted_pass_fences.back().fence;
         if (upload_options.wait_for_completion) {
             device.wait(fence);
         }
@@ -428,6 +576,10 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
             .uploaded_vertex_bytes = vertex_size,
             .uploaded_index_bytes = index_size,
             .copy_recorded = true,
+            .frame_graph_command_lists_submitted = frame_graph_execution.command_lists_submitted,
+            .frame_graph_queue_waits_recorded = frame_graph_execution.queue_waits_recorded,
+            .frame_graph_barriers_recorded = frame_graph_execution.barriers_recorded,
+            .frame_graph_pass_callbacks_invoked = frame_graph_execution.pass_callbacks_invoked,
             .diagnostic = {},
             .submitted_fence = fence,
         };
@@ -595,12 +747,66 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
         std::ranges::copy(payload.joint_palette_bytes, padded_palette.begin());
         device.write_buffer(joint_palette_upload_buffer, 0, padded_palette);
 
-        auto commands = device.begin_command_list(options.queue);
-        commands->copy_buffer(vertex_upload_buffer, vertex_buffer, vertex_region);
-        commands->copy_buffer(index_upload_buffer, index_buffer, index_region);
-        commands->copy_buffer(joint_palette_upload_buffer, joint_palette_buffer, joint_palette_region);
-        commands->close();
-        const auto fence = device.submit(*commands);
+        FrameGraphV1Desc upload_graph;
+        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "runtime.skinned_mesh_upload.vertex_buffer",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
+        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "runtime.skinned_mesh_upload.index_buffer",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
+        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "runtime.skinned_mesh_upload.joint_palette_buffer",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
+        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+            .name = "runtime.skinned_mesh_upload.copy",
+            .writes = {FrameGraphResourceAccess{
+                           .resource = "runtime.skinned_mesh_upload.vertex_buffer",
+                           .access = FrameGraphAccess::copy_destination,
+                       },
+                       FrameGraphResourceAccess{
+                           .resource = "runtime.skinned_mesh_upload.index_buffer",
+                           .access = FrameGraphAccess::copy_destination,
+                       },
+                       FrameGraphResourceAccess{
+                           .resource = "runtime.skinned_mesh_upload.joint_palette_buffer",
+                           .access = FrameGraphAccess::copy_destination,
+                       }},
+        });
+        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+        if (!upload_plan.succeeded()) {
+            return skinned_upload_failure(runtime_skinned_mesh_upload_frame_graph_diagnostic(upload_plan.diagnostics));
+        }
+        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+        const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{FrameGraphRhiPassCommandBinding{
+            .pass_name = "runtime.skinned_mesh_upload.copy",
+            .queue = options.queue,
+            .callback =
+                [&](std::string_view, rhi::IRhiCommandList& commands) {
+                    commands.copy_buffer(vertex_upload_buffer, vertex_buffer, vertex_region);
+                    commands.copy_buffer(index_upload_buffer, index_buffer, index_region);
+                    commands.copy_buffer(joint_palette_upload_buffer, joint_palette_buffer, joint_palette_region);
+                    return FrameGraphExecutionCallbackResult{};
+                },
+        }};
+        const auto frame_graph_execution =
+            execute_frame_graph_rhi_multi_queue_schedule(FrameGraphRhiMultiQueueExecutionDesc{
+                .device = &device,
+                .schedule = upload_schedule,
+                .pass_commands = pass_commands,
+                .texture_bindings = {},
+            });
+        if (!frame_graph_execution.succeeded()) {
+            return skinned_upload_failure(
+                runtime_skinned_mesh_upload_frame_graph_diagnostic(frame_graph_execution.diagnostics));
+        }
+        if (frame_graph_execution.submitted_pass_fences.empty()) {
+            return skinned_upload_failure(
+                "runtime skinned mesh upload frame graph execution failed: missing submitted fence");
+        }
+        const auto fence = frame_graph_execution.submitted_pass_fences.back().fence;
         if (options.wait_for_completion) {
             device.wait(fence);
         }
@@ -629,6 +835,10 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
             .uploaded_index_bytes = index_size,
             .uploaded_joint_palette_bytes = aligned_palette_size,
             .copy_recorded = true,
+            .frame_graph_command_lists_submitted = frame_graph_execution.command_lists_submitted,
+            .frame_graph_queue_waits_recorded = frame_graph_execution.queue_waits_recorded,
+            .frame_graph_barriers_recorded = frame_graph_execution.barriers_recorded,
+            .frame_graph_pass_callbacks_invoked = frame_graph_execution.pass_callbacks_invoked,
             .diagnostic = {},
             .submitted_fence = fence,
         };
@@ -829,17 +1039,90 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
         }
         device.write_buffer(morph_weight_upload_buffer, 0, padded_weights);
 
-        auto commands = device.begin_command_list(options.queue);
-        commands->copy_buffer(position_delta_upload_buffer, position_delta_buffer, position_delta_region);
+        FrameGraphV1Desc upload_graph;
+        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "runtime.morph_mesh_upload.position_delta_buffer",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
         if (has_normal_deltas) {
-            commands->copy_buffer(normal_delta_upload_buffer, normal_delta_buffer, normal_delta_region);
+            upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+                .name = "runtime.morph_mesh_upload.normal_delta_buffer",
+                .lifetime = FrameGraphResourceLifetime::imported,
+            });
         }
         if (has_tangent_deltas) {
-            commands->copy_buffer(tangent_delta_upload_buffer, tangent_delta_buffer, tangent_delta_region);
+            upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+                .name = "runtime.morph_mesh_upload.tangent_delta_buffer",
+                .lifetime = FrameGraphResourceLifetime::imported,
+            });
         }
-        commands->copy_buffer(morph_weight_upload_buffer, morph_weight_buffer, morph_weight_region);
-        commands->close();
-        const auto fence = device.submit(*commands);
+        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            .name = "runtime.morph_mesh_upload.weight_buffer",
+            .lifetime = FrameGraphResourceLifetime::imported,
+        });
+
+        std::vector<FrameGraphResourceAccess> morph_upload_writes;
+        morph_upload_writes.push_back(FrameGraphResourceAccess{
+            .resource = "runtime.morph_mesh_upload.position_delta_buffer",
+            .access = FrameGraphAccess::copy_destination,
+        });
+        if (has_normal_deltas) {
+            morph_upload_writes.push_back(FrameGraphResourceAccess{
+                .resource = "runtime.morph_mesh_upload.normal_delta_buffer",
+                .access = FrameGraphAccess::copy_destination,
+            });
+        }
+        if (has_tangent_deltas) {
+            morph_upload_writes.push_back(FrameGraphResourceAccess{
+                .resource = "runtime.morph_mesh_upload.tangent_delta_buffer",
+                .access = FrameGraphAccess::copy_destination,
+            });
+        }
+        morph_upload_writes.push_back(FrameGraphResourceAccess{
+            .resource = "runtime.morph_mesh_upload.weight_buffer",
+            .access = FrameGraphAccess::copy_destination,
+        });
+        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+            .name = "runtime.morph_mesh_upload.copy",
+            .writes = std::move(morph_upload_writes),
+        });
+        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+        if (!upload_plan.succeeded()) {
+            return morph_upload_failure(runtime_morph_mesh_upload_frame_graph_diagnostic(upload_plan.diagnostics));
+        }
+        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+        const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{FrameGraphRhiPassCommandBinding{
+            .pass_name = "runtime.morph_mesh_upload.copy",
+            .queue = options.queue,
+            .callback =
+                [&](std::string_view, rhi::IRhiCommandList& commands) {
+                    commands.copy_buffer(position_delta_upload_buffer, position_delta_buffer, position_delta_region);
+                    if (has_normal_deltas) {
+                        commands.copy_buffer(normal_delta_upload_buffer, normal_delta_buffer, normal_delta_region);
+                    }
+                    if (has_tangent_deltas) {
+                        commands.copy_buffer(tangent_delta_upload_buffer, tangent_delta_buffer, tangent_delta_region);
+                    }
+                    commands.copy_buffer(morph_weight_upload_buffer, morph_weight_buffer, morph_weight_region);
+                    return FrameGraphExecutionCallbackResult{};
+                },
+        }};
+        const auto frame_graph_execution =
+            execute_frame_graph_rhi_multi_queue_schedule(FrameGraphRhiMultiQueueExecutionDesc{
+                .device = &device,
+                .schedule = upload_schedule,
+                .pass_commands = pass_commands,
+                .texture_bindings = {},
+            });
+        if (!frame_graph_execution.succeeded()) {
+            return morph_upload_failure(
+                runtime_morph_mesh_upload_frame_graph_diagnostic(frame_graph_execution.diagnostics));
+        }
+        if (frame_graph_execution.submitted_pass_fences.empty()) {
+            return morph_upload_failure(
+                "runtime morph mesh upload frame graph execution failed: missing submitted fence");
+        }
+        const auto fence = frame_graph_execution.submitted_pass_fences.back().fence;
         if (options.wait_for_completion) {
             device.wait(fence);
         }
@@ -870,6 +1153,10 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
             .morph_weight_uniform_allocation_bytes = aligned_weight_size,
             .owner_device = &device,
             .copy_recorded = true,
+            .frame_graph_command_lists_submitted = frame_graph_execution.command_lists_submitted,
+            .frame_graph_queue_waits_recorded = frame_graph_execution.queue_waits_recorded,
+            .frame_graph_barriers_recorded = frame_graph_execution.barriers_recorded,
+            .frame_graph_pass_callbacks_invoked = frame_graph_execution.pass_callbacks_invoked,
             .diagnostic = {},
             .submitted_fence = fence,
         };

@@ -180,6 +180,7 @@ $requiresNativeUiOverlay = @($SmokeArgs) -contains "--require-native-ui-overlay"
 $requiresNativeUiTexturedSpriteAtlas = @($SmokeArgs) -contains "--require-native-ui-textured-sprite-atlas"
 $requiresNativeUiTextGlyphAtlas = @($SmokeArgs) -contains "--require-native-ui-text-glyph-atlas"
 $requiresGpuSkinning = @($SmokeArgs) -contains "--require-gpu-skinning"
+$requiresFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-framegraph-multiqueue-evidence"
 $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
@@ -867,6 +868,34 @@ if ($requiresRendererQualityGates) {
         $expectedValue = [regex]::Escape($expectedRendererQualityFields[$field])
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove renderer quality gate field: $field=$($expectedRendererQualityFields[$field])"
+        }
+    }
+}
+if ($requiresFrameGraphMultiQueueEvidence) {
+    $expectedFrameGraphMultiQueueFields = @{
+        "framegraph_multiqueue_status" = "ready"
+        "framegraph_multiqueue_ready" = "1"
+        "framegraph_multiqueue_diagnostics" = "0"
+        "framegraph_multiqueue_command_lists_submitted" = "2"
+        "framegraph_multiqueue_queue_waits_recorded" = "1"
+        "framegraph_multiqueue_barriers_recorded" = "1"
+        "framegraph_multiqueue_pass_callbacks_invoked" = "2"
+        "framegraph_multiqueue_submitted_pass_fences" = "2"
+        "framegraph_multiqueue_graphics_waited_for_copy" = "1"
+    }
+    foreach ($field in $expectedFrameGraphMultiQueueFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedFrameGraphMultiQueueFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove Frame Graph multi-queue field: $field=$($expectedFrameGraphMultiQueueFields[$field])"
+        }
+    }
+    foreach ($field in @(
+            "framegraph_multiqueue_copy_queue_submits",
+            "framegraph_multiqueue_graphics_queue_submits",
+            "framegraph_multiqueue_queue_waits"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove positive Frame Graph multi-queue field: $field"
         }
     }
 }

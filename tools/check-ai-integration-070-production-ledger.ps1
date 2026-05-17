@@ -1268,7 +1268,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "CMake File API" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "VCPKG_MANIFEST_INSTALL=OFF" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "phase-gated milestone plan" $agentIntegrationSkill
-    foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "phase behavior/API/validation boundary", "fine-grained execution steps", "validation-only follow-up", "historical implementation evidence")) {
+    foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "phase behavior/API/validation boundary", "fine-grained execution steps", "commit/push/PR counts", "validation-only follow-up", "historical implementation evidence")) {
         Assert-ContainsText $agentIntegrationSkillText $planVolumeNeedle $agentIntegrationSkill
     }
     foreach ($productionPromptNeedle in @("currentActivePlan", "recommendedNextPlan", "unsupportedProductionGaps", "clean breaking greenfield designs", "official documentation", "focused validation")) {

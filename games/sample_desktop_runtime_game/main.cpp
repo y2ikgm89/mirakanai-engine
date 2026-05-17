@@ -7,6 +7,7 @@
 #include "mirakana/math/transform.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
+#include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
@@ -49,6 +50,7 @@ struct DesktopRuntimeGameOptions {
     bool require_directional_shadow{false};
     bool require_directional_shadow_filtering{false};
     bool require_renderer_quality_gates{false};
+    bool require_framegraph_multiqueue_evidence{false};
     bool require_native_ui_overlay{false};
     bool require_native_ui_textured_sprite_atlas{false};
     bool require_gpu_skinning{false};
@@ -607,7 +609,8 @@ void print_usage() {
                  "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
                  "[--require-directional-shadow] [--require-directional-shadow-filtering] "
-                 "[--require-renderer-quality-gates] [--require-native-ui-overlay] "
+                 "[--require-renderer-quality-gates] [--require-framegraph-multiqueue-evidence] "
+                 "[--require-native-ui-overlay] "
                  "[--require-native-ui-textured-sprite-atlas] "
                  "[--require-gpu-skinning] [--require-quaternion-animation]\n";
 }
@@ -674,6 +677,10 @@ void print_usage() {
             options.require_directional_shadow = true;
             options.require_directional_shadow_filtering = true;
             options.require_renderer_quality_gates = true;
+            continue;
+        }
+        if (arg == "--require-framegraph-multiqueue-evidence") {
+            options.require_framegraph_multiqueue_evidence = true;
             continue;
         }
         if (arg == "--require-native-ui-overlay") {
@@ -767,6 +774,32 @@ make_renderer_quality_gate_desc(const DesktopRuntimeGameOptions& options) noexce
         desc.expected_frames = options.max_frames;
     }
     return desc;
+}
+
+[[nodiscard]] std::string_view
+frame_graph_multi_queue_status_name(bool requested,
+                                    const mirakana::FrameGraphRhiMultiQueuePackageEvidence& evidence) noexcept {
+    if (!requested) {
+        return "not_requested";
+    }
+    return evidence.ready ? "ready" : "blocked";
+}
+
+[[nodiscard]] mirakana::FrameGraphRhiMultiQueuePackageEvidence
+run_frame_graph_multi_queue_package_evidence(mirakana::SdlDesktopPresentation& presentation) {
+    auto* device = presentation.scene_pbr_frame_rhi_device();
+    if (device != nullptr) {
+        return mirakana::execute_frame_graph_rhi_multi_queue_package_evidence(*device);
+    }
+
+    mirakana::FrameGraphRhiMultiQueuePackageEvidence evidence;
+    evidence.diagnostics.push_back(mirakana::FrameGraphDiagnostic{
+        .code = mirakana::FrameGraphDiagnosticCode::invalid_pass,
+        .pass = "framegraph_multiqueue",
+        .resource = "package.uploaded_texture",
+        .message = "Frame Graph multi-queue package evidence requires a native RHI device",
+    });
+    return evidence;
 }
 
 void print_package_failures(const std::vector<mirakana::runtime::RuntimeAssetPackageLoadFailure>& failures) {
@@ -1526,6 +1559,9 @@ int main(int argc, char** argv) {
     const auto scene_gpu_stats = report.scene_gpu_stats;
     const auto renderer_quality =
         mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
+    const auto framegraph_multiqueue = options.require_framegraph_multiqueue_evidence
+                                           ? run_frame_graph_multi_queue_package_evidence(host.presentation())
+                                           : mirakana::FrameGraphRhiMultiQueuePackageEvidence{};
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -1605,7 +1641,20 @@ int main(int argc, char** argv) {
         << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
         << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
         << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
-        << " renderer_quality_status="
+        << " framegraph_multiqueue_status="
+        << frame_graph_multi_queue_status_name(options.require_framegraph_multiqueue_evidence, framegraph_multiqueue)
+        << " framegraph_multiqueue_ready=" << (framegraph_multiqueue.ready ? 1 : 0)
+        << " framegraph_multiqueue_diagnostics=" << framegraph_multiqueue.diagnostics.size()
+        << " framegraph_multiqueue_command_lists_submitted=" << framegraph_multiqueue.command_lists_submitted
+        << " framegraph_multiqueue_queue_waits_recorded=" << framegraph_multiqueue.queue_waits_recorded
+        << " framegraph_multiqueue_barriers_recorded=" << framegraph_multiqueue.barriers_recorded
+        << " framegraph_multiqueue_pass_callbacks_invoked=" << framegraph_multiqueue.pass_callbacks_invoked
+        << " framegraph_multiqueue_submitted_pass_fences=" << framegraph_multiqueue.submitted_pass_fences
+        << " framegraph_multiqueue_copy_queue_submits=" << framegraph_multiqueue.copy_queue_submits
+        << " framegraph_multiqueue_graphics_queue_submits=" << framegraph_multiqueue.graphics_queue_submits
+        << " framegraph_multiqueue_queue_waits=" << framegraph_multiqueue.queue_waits
+        << " framegraph_multiqueue_graphics_waited_for_copy="
+        << (framegraph_multiqueue.graphics_waited_for_copy ? 1 : 0) << " renderer_quality_status="
         << mirakana::sdl_desktop_presentation_quality_gate_status_name(renderer_quality.status)
         << " renderer_quality_ready=" << (renderer_quality.ready ? 1 : 0)
         << " renderer_quality_diagnostics=" << renderer_quality.diagnostics_count
@@ -1659,6 +1708,9 @@ int main(int argc, char** argv) {
         std::cout << "sample_desktop_runtime_game native_ui_texture_overlay_diagnostic="
                   << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(diagnostic.status) << ": "
                   << diagnostic.message << '\n';
+    }
+    for (const auto& diagnostic : framegraph_multiqueue.diagnostics) {
+        std::cout << "sample_desktop_runtime_game framegraph_multiqueue_diagnostic=" << diagnostic.message << '\n';
     }
 
     if (options.smoke) {
@@ -1723,6 +1775,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {
+            return 3;
+        }
+        if (options.require_framegraph_multiqueue_evidence && !framegraph_multiqueue.ready) {
             return 3;
         }
         const auto expected_ui_overlay_sprites =

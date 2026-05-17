@@ -125,6 +125,10 @@ MK_TEST("runtime rhi upload creates texture resource and records byte upload whe
     MK_REQUIRE(result.uploaded_bytes == 512);
     MK_REQUIRE(result.submitted_fence.value != 0);
     MK_REQUIRE(result.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(result.frame_graph_barriers_recorded == 2);
+    MK_REQUIRE(result.frame_graph_pass_target_state_barriers_recorded == 1);
+    MK_REQUIRE(result.frame_graph_final_state_barriers_recorded == 1);
+    MK_REQUIRE(result.frame_graph_pass_callbacks_invoked == 1);
     MK_REQUIRE(result.texture_desc.extent.width == 4);
     MK_REQUIRE(result.texture_desc.extent.height == 2);
     MK_REQUIRE(result.texture_desc.format == mirakana::rhi::Format::rgba8_unorm);
@@ -136,6 +140,7 @@ MK_TEST("runtime rhi upload creates texture resource and records byte upload whe
     MK_REQUIRE(stats.buffer_writes == 1);
     MK_REQUIRE(stats.bytes_written == 512);
     MK_REQUIRE(stats.buffer_texture_copies == 1);
+    MK_REQUIRE(stats.resource_transitions == 2);
     MK_REQUIRE(stats.command_lists_submitted == 1);
 }
 
@@ -161,6 +166,10 @@ MK_TEST("runtime rhi upload creates texture resource without copy for metadata o
     MK_REQUIRE(!result.copy_recorded);
     MK_REQUIRE(result.uploaded_bytes == 0);
     MK_REQUIRE(result.submitted_fence.value == 0);
+    MK_REQUIRE(result.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(result.frame_graph_pass_target_state_barriers_recorded == 0);
+    MK_REQUIRE(result.frame_graph_final_state_barriers_recorded == 0);
+    MK_REQUIRE(result.frame_graph_pass_callbacks_invoked == 0);
 
     const auto stats = device.stats();
     MK_REQUIRE(stats.textures_created == 1);
@@ -424,6 +433,10 @@ MK_TEST("runtime rhi upload creates mesh buffers and records vertex index byte u
     MK_REQUIRE(result.vertex_upload_buffer.value != 0);
     MK_REQUIRE(result.index_upload_buffer.value != 0);
     MK_REQUIRE(result.copy_recorded);
+    MK_REQUIRE(result.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(result.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(result.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(result.frame_graph_pass_callbacks_invoked == 1);
     MK_REQUIRE(result.vertex_count == 3);
     MK_REQUIRE(result.index_count == 3);
     MK_REQUIRE(result.vertex_stride == 12);
@@ -861,6 +874,10 @@ MK_TEST("runtime rhi skinned mesh upload binds joint palette descriptor set") {
     MK_REQUIRE(upload.succeeded());
     MK_REQUIRE(upload.submitted_fence.value != 0);
     MK_REQUIRE(upload.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(upload.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(upload.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_pass_callbacks_invoked == 1);
     auto binding = mirakana::runtime_rhi::make_runtime_skinned_mesh_gpu_binding(upload);
     mirakana::rhi::DescriptorSetLayoutHandle shared_layout{};
     const auto diagnostic =
@@ -1009,6 +1026,14 @@ MK_TEST("runtime rhi morph mesh upload binds position delta storage and weight d
     MK_REQUIRE(upload.morph_weight_uniform_allocation_bytes == 256);
     MK_REQUIRE(upload.submitted_fence.value != 0);
     MK_REQUIRE(upload.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(upload.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(upload.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_pass_callbacks_invoked == 1);
+    MK_REQUIRE(device.read_buffer(upload.position_delta_buffer, 0, upload.uploaded_position_delta_bytes) ==
+               morph.targets.front().position_delta_bytes);
+    MK_REQUIRE(device.read_buffer(upload.morph_weight_buffer, 0, morph.target_weight_bytes.size()) ==
+               morph.target_weight_bytes);
 
     auto binding = mirakana::runtime_rhi::make_runtime_morph_mesh_gpu_binding(upload);
     mirakana::rhi::DescriptorSetLayoutHandle shared_layout{};
@@ -1058,6 +1083,14 @@ MK_TEST("runtime rhi morph mesh upload binds optional normal and tangent delta s
     MK_REQUIRE(upload.uploaded_tangent_delta_bytes == 36);
     MK_REQUIRE(upload.normal_delta_buffer.value != 0);
     MK_REQUIRE(upload.tangent_delta_buffer.value != 0);
+    MK_REQUIRE(upload.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(upload.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_pass_callbacks_invoked == 1);
+    MK_REQUIRE(device.read_buffer(upload.normal_delta_buffer, 0, upload.uploaded_normal_delta_bytes) ==
+               morph.targets.front().normal_delta_bytes);
+    MK_REQUIRE(device.read_buffer(upload.tangent_delta_buffer, 0, upload.uploaded_tangent_delta_bytes) ==
+               morph.targets.front().tangent_delta_bytes);
 
     auto binding = mirakana::runtime_rhi::make_runtime_morph_mesh_gpu_binding(upload);
     MK_REQUIRE(binding.normal_delta_buffer.value == upload.normal_delta_buffer.value);
@@ -1072,6 +1105,45 @@ MK_TEST("runtime rhi morph mesh upload binds optional normal and tangent delta s
     MK_REQUIRE(binding.morph_descriptor_set.value != 0);
     MK_REQUIRE(shared_layout.value != 0);
     MK_REQUIRE(device.stats().descriptor_sets_allocated >= 1);
+}
+
+MK_TEST("runtime rhi morph mesh upload honors selected queue without forcing wait") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto mesh = mirakana::AssetId::from_name("meshes/morph_runtime_upload_compute_queue");
+
+    mirakana::MorphMeshCpuSourceDocument morph;
+    morph.vertex_count = 3;
+    append_vec3(morph.bind_position_bytes, -0.6F, 0.75F, 0.0F);
+    append_vec3(morph.bind_position_bytes, 0.15F, -0.75F, 0.0F);
+    append_vec3(morph.bind_position_bytes, -1.35F, -0.75F, 0.0F);
+    mirakana::MorphMeshCpuTargetSourceDocument target;
+    append_vec3(target.position_delta_bytes, 0.25F, 0.0F, 0.0F);
+    append_vec3(target.position_delta_bytes, 0.0F, 0.25F, 0.0F);
+    append_vec3(target.position_delta_bytes, 0.0F, 0.0F, 0.25F);
+    morph.targets.push_back(std::move(target));
+    append_le_f32(morph.target_weight_bytes, 0.5F);
+
+    const mirakana::runtime::RuntimeMorphMeshCpuPayload payload{
+        .asset = mesh, .handle = mirakana::runtime::RuntimeAssetHandle{17}, .morph = morph};
+    mirakana::runtime_rhi::RuntimeMorphMeshUploadOptions options;
+    options.queue = mirakana::rhi::QueueKind::compute;
+    options.wait_for_completion = false;
+
+    const auto upload = mirakana::runtime_rhi::upload_runtime_morph_mesh_cpu(device, payload, options);
+    MK_REQUIRE(upload.succeeded());
+    MK_REQUIRE(upload.submitted_fence.value != 0);
+    MK_REQUIRE(upload.submitted_fence.queue == mirakana::rhi::QueueKind::compute);
+    MK_REQUIRE(upload.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(upload.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(upload.frame_graph_pass_callbacks_invoked == 1);
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.command_lists_submitted == 1);
+    MK_REQUIRE(stats.compute_queue_submits == 1);
+    MK_REQUIRE(stats.fence_waits == 0);
+    MK_REQUIRE(device.read_buffer(upload.position_delta_buffer, 0, upload.uploaded_position_delta_bytes) ==
+               morph.targets.front().position_delta_bytes);
 }
 
 MK_TEST("runtime rhi creates compute morph binding for position output") {
