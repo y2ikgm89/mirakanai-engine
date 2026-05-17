@@ -201,6 +201,10 @@ struct RuntimeMorphMeshUploadResult {
     std::uint64_t morph_weight_uniform_allocation_bytes{0};
     const rhi::IRhiDevice* owner_device{nullptr};
     bool copy_recorded{false};
+    std::size_t frame_graph_command_lists_submitted{0};
+    std::size_t frame_graph_queue_waits_recorded{0};
+    std::size_t frame_graph_barriers_recorded{0};
+    std::size_t frame_graph_pass_callbacks_invoked{0};
     std::string diagnostic;
     rhi::FenceValue submitted_fence{};
 
