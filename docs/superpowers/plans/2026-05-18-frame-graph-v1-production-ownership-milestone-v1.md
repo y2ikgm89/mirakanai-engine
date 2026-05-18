@@ -1,8 +1,8 @@
 # 2026-05-18 Frame Graph v1 Production Ownership Milestone v1
 
-> **For agentic workers:** Active `frame-graph-v1` phase-gated milestone. Keep phases reviewable and evidence-backed. Do not split one-function child plans out of this milestone unless a later phase has a distinct architecture, validation, or review boundary.
+> **For agentic workers:** Completed `frame-graph-v1` phase-gated milestone. Use the composed manifest `recommendedNextPlan` pointer for the next coherent `frame-graph-v1` foundation phase.
 
-**Status:** Active.
+**Status:** Completed.
 
 ## Goal
 
@@ -33,13 +33,17 @@ The remaining risk is overclaiming production graph ownership. Swapchain acquire
   - Route the material-factor uniform copy in `create_runtime_material_gpu_binding` through `execute_frame_graph_rhi_multi_queue_schedule`.
   - Report one submitted command list, zero queue waits, zero texture barriers, and one pass callback on `RuntimeMaterialGpuBinding`.
   - Keep buffer barriers, staging rings, native async upload execution, production graph ownership, async overlap/performance, public native handles, and broad renderer readiness unsupported.
-- [ ] Phase 3: Close or reclassify the milestone with manifest/docs/static guards and package-visible evidence.
+- [x] Phase 3: Close or reclassify the milestone with manifest/docs/static guards and package-visible evidence.
+  - Keep `frame-graph-v1` in `unsupportedProductionGaps` as `implemented-foundation-only`.
+  - Reset `currentActivePlan` to the production-completion master plan so the next coherent foundation phase is selected from `recommendedNextPlan`.
+  - Record PR #114 hosted check evidence for the Phase 2 material-factor upload checkpoint.
 
 ## Done When
 
 - Phase 1 and Phase 2 APIs and tests pass.
 - `docs/current-capabilities.md`, `docs/roadmap.md`, plan registry, renderer guidance, manifest fragments, composed manifest, and static integration checks describe the new boundary planner and material-factor upload evidence without broadening ready claims.
 - Focused renderer validation and full validation evidence are recorded in this plan.
+- `currentActivePlan` points back to the production-completion master plan after the milestone closeout, while `frame-graph-v1` remains `implemented-foundation-only`.
 
 ## Validation Evidence
 
@@ -55,3 +59,5 @@ The remaining risk is overclaiming production graph ownership. Swapchain acquire
 - 2026-05-18 GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_runtime_rhi_tests --output-on-failure` passed.
 - 2026-05-18 PHASE 2 AGENT SYNC: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after material-factor manifest/static guard synchronization.
 - 2026-05-18 PHASE 2 FULL GATE: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after Phase 2 code, docs, manifest, static guard, and rendering guidance updates.
+- 2026-05-18 HOSTED CHECKS: PR #114 (`eff2267acf4bccf0cbe963f68bbb282f688dcaed`) passed CodeQL, Select PR validation tier, Agent Static Guards, Windows MSVC, Linux CMake, Linux Clang ASan/UBSan, Full Repository Static Analysis, macOS Metal CMake, iOS Simulator smoke, and PR Gate before merge commit `957a35a887c1719f454c06573e3f9db330e71b5a`.
+- 2026-05-18 PHASE 3 CLOSEOUT: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after returning `currentActivePlan` to the master plan and keeping `frame-graph-v1` `implemented-foundation-only`.
