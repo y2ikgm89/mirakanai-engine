@@ -1659,10 +1659,13 @@ if (@($geRuntimeRhiModule[0].publicHeaders) -notcontains "engine/runtime_rhi/inc
 }
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "make_runtime_package_streaming_frame_graph_texture_bindings" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingFrameGraphTextureBindingSource" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "upload_runtime_package_streaming_frame_graph_texture_bindings" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingFrameGraphTextureUploadSource" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeMaterialGpuBinding command-list/queue-wait/barrier/callback counters" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "material-factor uploads" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "broad/background package streaming" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "make_runtime_package_streaming_frame_graph_texture_bindings" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "upload_runtime_package_streaming_frame_graph_texture_bindings" "desktop runtime 3d package streaming guidance"
 foreach ($packageStreamingFrameGraphGuidance in @(
         "docs/rhi.md",
         "docs/current-capabilities.md",
@@ -1673,6 +1676,7 @@ foreach ($packageStreamingFrameGraphGuidance in @(
     )) {
     $packageStreamingFrameGraphText = Get-AgentSurfaceText $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "make_runtime_package_streaming_frame_graph_texture_bindings" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "upload_runtime_package_streaming_frame_graph_texture_bindings" $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "broad" $packageStreamingFrameGraphGuidance
 }
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "IRhiCommandList::texture_aliasing_barrier" "MK_rhi module purpose"

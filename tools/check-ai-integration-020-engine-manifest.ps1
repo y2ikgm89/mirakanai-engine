@@ -1611,6 +1611,8 @@ foreach ($needle in @(
     "automatic aliasing-barrier insertion",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
+    "Runtime Package Streaming RHI Upload Binding Transaction v1",
+    "upload_runtime_package_streaming_frame_graph_texture_bindings",
     "Frame Graph Production Ownership Boundary Selection v1",
     "FrameGraphProductionOwnershipPlan",
     "plan_frame_graph_production_ownership_boundary",
@@ -1736,6 +1738,8 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::wait_for_queue") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Multi-Queue Executor v1") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_multi_queue_schedule") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("Runtime Package Streaming RHI Upload Binding Transaction v1") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("upload_runtime_package_streaming_frame_graph_texture_bindings") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Runtime Material Factor Frame Graph Command Evidence v1") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RuntimeMaterialGpuBinding") -or
     -not ([string]$frameGraphGap[0].notes).Contains("material-factor uniform copy") -or
@@ -1795,6 +1799,8 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "record_frame_graph_texture_aliasing_barriers" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText $recommendedText "Package Streaming Frame Graph Texture Binding Handoff v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
 Assert-ContainsText $recommendedText "make_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
+Assert-ContainsText $recommendedText "Runtime Package Streaming RHI Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
+Assert-ContainsText $recommendedText "upload_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
 Assert-ContainsText $recommendedText "automatic aliasing-barrier insertion" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"

@@ -518,6 +518,8 @@ foreach ($needle in @(
     "automatic aliasing-barrier insertion",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
+    "Runtime Package Streaming RHI Upload Binding Transaction v1",
+    "upload_runtime_package_streaming_frame_graph_texture_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
     "Frame Graph RHI Queue Dependency Plan v1",

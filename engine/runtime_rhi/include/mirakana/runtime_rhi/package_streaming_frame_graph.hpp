@@ -9,6 +9,8 @@
 #include "mirakana/runtime/resource_runtime.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <span>
 #include <string>
 #include <vector>
@@ -19,6 +21,14 @@ struct RuntimePackageStreamingFrameGraphTextureBindingSource {
     AssetId asset;
     std::string resource;
     const RuntimeTextureUploadResult* upload{nullptr};
+    rhi::ResourceState current_state{rhi::ResourceState::shader_read};
+};
+
+struct RuntimePackageStreamingFrameGraphTextureUploadSource {
+    AssetId asset;
+    std::string resource;
+    const runtime::RuntimeTexturePayload* payload{nullptr};
+    RuntimeTextureUploadOptions upload_options{};
     rhi::ResourceState current_state{rhi::ResourceState::shader_read};
 };
 
@@ -38,10 +48,31 @@ struct RuntimePackageStreamingFrameGraphTextureBindingResult {
     }
 };
 
+struct RuntimePackageStreamingFrameGraphTextureUploadBindingResult {
+    std::vector<RuntimeTextureUploadResult> uploads;
+    std::vector<FrameGraphTextureBinding> texture_bindings;
+    std::vector<RuntimePackageStreamingFrameGraphTextureBindingDiagnostic> diagnostics;
+    std::uint64_t uploaded_bytes{0};
+    std::size_t frame_graph_barriers_recorded{0};
+    std::size_t frame_graph_pass_target_state_barriers_recorded{0};
+    std::size_t frame_graph_final_state_barriers_recorded{0};
+    std::size_t frame_graph_pass_callbacks_invoked{0};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 [[nodiscard]] RuntimePackageStreamingFrameGraphTextureBindingResult
 make_runtime_package_streaming_frame_graph_texture_bindings(
     const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
     const runtime::RuntimeResourceCatalogV2& resident_catalog,
     std::span<const RuntimePackageStreamingFrameGraphTextureBindingSource> sources);
+
+[[nodiscard]] RuntimePackageStreamingFrameGraphTextureUploadBindingResult
+upload_runtime_package_streaming_frame_graph_texture_bindings(
+    rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
+    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    std::span<const RuntimePackageStreamingFrameGraphTextureUploadSource> sources);
 
 } // namespace mirakana::runtime_rhi
