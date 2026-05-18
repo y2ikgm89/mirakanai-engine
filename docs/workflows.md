@@ -58,7 +58,7 @@ When executing [Production Completion Master Plan v1](superpowers/plans/2026-05-
 - Burn down one selected production gap at a time until it is implemented, host-gated, blocked with evidence, or explicitly excluded from the 1.0 ready surface.
 - Prefer official documentation, Context7, project skills, and clean breaking greenfield designs over compatibility shims, broad ready claims, or undocumented shortcuts.
 - Use focused build/test/static checks during implementation, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the coherent slice-closing gate.
-- Use subagents only for bounded independent investigation, review, build-failure triage, or disjoint implementation that improves speed or confidence; keep immediate blocking work local.
+- Use subagents only for bounded independent investigation, plan lifecycle audit, review, build-failure triage, or disjoint implementation that improves speed or confidence; keep immediate blocking work local.
 - Before completion, reconcile code, tests, docs, plans, manifest, static checks, completed gap, remaining gaps, next active plan, and host-gated blockers against actual validation evidence.
 
 ## Static Analysis And API Boundaries
@@ -287,9 +287,10 @@ Use subagents only when the user explicitly asks for subagent delegation or para
 - `build-fixer`: build/test failure triage
 - `engine-architect`: read-only architecture exploration and scoped design review
 - `gameplay-builder`: C++ sample game or gameplay implementation against public APIs
+- `planning-auditor`: read-only plan lifecycle audit for plan necessity, active plan alignment, and production gap sequencing
 - `rendering-auditor`: rendering/RHI/shader changes
 
-Prefer per-invocation model overrides for cost control rather than durable hard-coded model names: use cheaper/faster models for bounded read-only exploration or agent-surface audits when available, and inherit or choose stronger models for implementation, C++ API, renderer/RHI, build-system, security-sensitive, integration, and final-review work. Keep immediate blocking work in the parent session and delegate only independent side work with clear ownership.
+Use fixed Codex model defaults only where the role's cost/quality profile is stable: `explorer` uses `gpt-5.3-codex-spark` with medium reasoning, `agent-surface-auditor` uses `gpt-5.4-mini` with medium reasoning, and `cpp-reviewer`, `engine-architect`, `planning-auditor`, and `rendering-auditor` use `gpt-5.4` with high reasoning. Leave write-capable `build-fixer` and `gameplay-builder` on inherited models unless the parent uses a per-invocation override for a specific delegated task. Keep immediate blocking work in the parent session and delegate only independent side work with clear ownership.
 
 ## Worktree And Parallel Agent Workflow
 
@@ -304,6 +305,7 @@ Prefer per-invocation model overrides for cost control rather than durable hard-
 - Treat the agent-surface drift check as a required part of implementation work. Do not defer stale guidance, stale manifest claims, stale rules, stale subagent instructions, or repeated agent failure guidance to a separate follow-up when the current change exposes the mismatch.
 - Keep drift checks targeted: compare the changed behavior/API/workflow against owning surfaces, and do not load every agent surface when the change is local and no durable guidance changed.
 - Use `agent-surface-auditor` only for bounded read-only drift audits; it reports affected paths and validation commands, while the parent agent remains responsible for edits, integration, and final validation.
+- Use `planning-auditor` only for bounded read-only plan lifecycle audits; it recommends whether to create a plan, update the active plan, or proceed without a plan file, while the parent agent remains responsible for edits and validation.
 - Use the OpenAI developer documentation MCP, or official OpenAI documentation when MCP is unavailable, for OpenAI API, Codex, ChatGPT Apps SDK, OpenAI agent, and OpenAI model behavior. Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagents.
 - Keep always-loaded instructions specific, concise, verifiable, and durable. Keep `AGENTS.md` under Codex's default 32 KiB `project_doc_max_bytes` budget, keep selected `SKILL.md` bodies as concise routers, and keep subagents narrowly scoped; put long procedures in skill-local `references/*.md` or docs, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the composed `engine/agent/manifest.json` (edit `engine/agent/manifest.fragments/*.json`, then `tools/compose-agent-manifest.ps1 -Write`).
 - Keep Codex project rules narrow with `match` / `not_match` examples. Cover Windows PowerShell deletion/network/host-servicing commands as well as POSIX-like spellings. Do not add broad allow rules for shells, package managers, network tools, destructive commands, force-pushes, or immediate PR merges; direct default-branch pushes must stay forbidden.

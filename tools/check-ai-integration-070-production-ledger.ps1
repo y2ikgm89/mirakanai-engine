@@ -1278,6 +1278,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "machine-readable status claims" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "OpenAI developer documentation MCP" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "official Anthropic documentation" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "reviewer, explorer, architect, planning, and auditor subagents read-only" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Windows host diagnostics guidance" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Debugging Tools for Windows" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "PIX on Windows" $agentIntegrationSkill
@@ -1443,6 +1444,7 @@ Assert-ContainsText $aiAgentRuleText "docs, skills, rules, settings, subagents" 
 Assert-ContainsText $aiAgentRuleText "lightweight static validation" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "OpenAI developer documentation MCP" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "official Anthropic docs" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "reviewer, explorer, architect, planning, and auditor subagents read-only" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "mergeStateStatus" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText '--match-head-commit <headRefOid>' ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText 'stale `headRefOid` invalidates the merge decision' ".claude/rules/ai-agent-integration.md"
@@ -1477,6 +1479,7 @@ foreach ($relativePath in @(
     ".codex/agents/engine-architect.toml",
     ".codex/agents/explorer.toml",
     ".codex/agents/gameplay-builder.toml",
+    ".codex/agents/planning-auditor.toml",
     ".codex/agents/rendering-auditor.toml",
     ".claude/agents/agent-surface-auditor.md",
     ".claude/agents/build-fixer.md",
@@ -1484,6 +1487,7 @@ foreach ($relativePath in @(
     ".claude/agents/engine-architect.md",
     ".claude/agents/explorer.md",
     ".claude/agents/gameplay-builder.md",
+    ".claude/agents/planning-auditor.md",
     ".claude/agents/rendering-auditor.md"
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $relativePath) "register auto-merge" $relativePath
@@ -1505,6 +1509,7 @@ foreach ($relativePath in @(
     ".codex/agents/cpp-reviewer.toml",
     ".codex/agents/explorer.toml",
     ".codex/agents/engine-architect.toml",
+    ".codex/agents/planning-auditor.toml",
     ".codex/agents/rendering-auditor.toml"
 )) {
     Assert-CodexReadOnlyAgent $relativePath
@@ -1515,6 +1520,7 @@ foreach ($relativePath in @(
     ".claude/agents/cpp-reviewer.md",
     ".claude/agents/explorer.md",
     ".claude/agents/engine-architect.md",
+    ".claude/agents/planning-auditor.md",
     ".claude/agents/rendering-auditor.md"
 )) {
     Assert-ClaudeReadOnlyAgent $relativePath
@@ -1525,6 +1531,35 @@ foreach ($relativePath in @(
     ".claude/agents/gameplay-builder.md"
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $relativePath) "isolation: worktree" $relativePath
+}
+
+foreach ($relativePath in @(
+    ".codex/agents/explorer.toml"
+)) {
+    $codexLightModelAgentText = Get-AgentSurfaceText $relativePath
+    Assert-ContainsText $codexLightModelAgentText 'model = "gpt-5.3-codex-spark"' $relativePath
+    Assert-ContainsText $codexLightModelAgentText 'model_reasoning_effort = "medium"' $relativePath
+}
+
+Assert-ContainsText (Get-AgentSurfaceText ".codex/agents/agent-surface-auditor.toml") 'model = "gpt-5.4-mini"' ".codex/agents/agent-surface-auditor.toml"
+Assert-ContainsText (Get-AgentSurfaceText ".codex/agents/agent-surface-auditor.toml") 'model_reasoning_effort = "medium"' ".codex/agents/agent-surface-auditor.toml"
+
+foreach ($relativePath in @(
+    ".codex/agents/cpp-reviewer.toml",
+    ".codex/agents/engine-architect.toml",
+    ".codex/agents/planning-auditor.toml",
+    ".codex/agents/rendering-auditor.toml"
+)) {
+    $codexStrongModelAgentText = Get-AgentSurfaceText $relativePath
+    Assert-ContainsText $codexStrongModelAgentText 'model = "gpt-5.4"' $relativePath
+    Assert-ContainsText $codexStrongModelAgentText 'model_reasoning_effort = "high"' $relativePath
+}
+
+foreach ($relativePath in @(
+    ".codex/agents/build-fixer.toml",
+    ".codex/agents/gameplay-builder.toml"
+)) {
+    Assert-DoesNotContainText (Get-AgentSurfaceText $relativePath) 'model = ' $relativePath
 }
 
 foreach ($buildFixerAgent in @(
@@ -1564,6 +1599,19 @@ foreach ($architectAgent in @(
     Assert-ContainsText $architectAgentText "agent-context.ps1 -ContextProfile Minimal|Standard" $architectAgent
     Assert-ContainsText $architectAgentText "Do not embed stale capability snapshots" $architectAgent
     Assert-ContainsText $architectAgentText "capability or milestone plan boundaries" $architectAgent
+}
+
+foreach ($planningAuditorAgent in @(
+    ".codex/agents/planning-auditor.toml",
+    ".claude/agents/planning-auditor.md"
+)) {
+    $planningAuditorText = Get-AgentSurfaceText $planningAuditorAgent
+    Assert-ContainsText $planningAuditorText "docs/superpowers/plans/README.md" $planningAuditorAgent
+    Assert-ContainsText $planningAuditorText "currentActivePlan" $planningAuditorAgent
+    Assert-ContainsText $planningAuditorText "recommendedNextPlan" $planningAuditorAgent
+    Assert-ContainsText $planningAuditorText "unsupportedProductionGaps" $planningAuditorAgent
+    Assert-ContainsText $planningAuditorText "one roadmap, one active gap-cluster burn-down or milestone" $planningAuditorAgent
+    Assert-ContainsText $planningAuditorText "Do not write plan files" $planningAuditorAgent
 }
 
 foreach ($gameplayBuilderAgent in @(

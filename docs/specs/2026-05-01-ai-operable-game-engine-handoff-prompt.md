@@ -49,8 +49,8 @@ Required discovery:
 
 Use subagents:
 - This prompt authorizes parallel read-only subagents for discovery and risk review.
-- Start with explorer for current AI/game workflow evidence, engine-architect for clean no-backcompat architecture sequencing, and rendering-auditor for renderer/RHI/GPU resource risks.
-- Keep reviewer, explorer, architect, and auditor roles read-only.
+- Start with explorer for current AI/game workflow evidence, planning-auditor for plan lifecycle fit, engine-architect for clean no-backcompat architecture sequencing, and rendering-auditor for renderer/RHI/GPU resource risks.
+- Keep reviewer, explorer, architect, planning, and auditor roles read-only.
 - Use write-capable builder/fixer roles only for scoped implementation tasks with disjoint file ownership.
 
 Use Context7 and official docs:

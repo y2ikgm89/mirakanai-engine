@@ -19,9 +19,10 @@ disable-model-invocation: true
 
 1. Read **`docs/superpowers/plans/README.md`** for active roadmap vs active phase/child vs completed vs host-gated rules.
 2. Read **`docs/current-capabilities.md`** and **`docs/roadmap.md`** for current truth; plans are evidence records, not replacements for those pages.
-3. **Do not append unrelated work** to **`docs/superpowers/plans/2026-05-01-core-first-mvp-closure.md`** or historical MVP bodies — start a dated capability/gap-cluster/milestone plan and use phases for behavior/API/validation boundary decisions.
-4. Keep plan width broader than PR width: one plan may hold multiple phase checkpoints, while each phase/PR stays one reviewable purpose with validation evidence. Do not split or merge plans to satisfy a commit, push, or PR count; use validated GitHub Flow checkpoints and draft PRs for early feedback when a broader plan needs staged review.
-5. **Pick the `YYYY-MM-DD` prefix** from the authoritative authoring date: use the Cursor/chat **`Today's date`** when present; otherwise confirm with the operator or read the local calendar (`Get-Date -Format yyyy-MM-dd`). Keep the same date in the filename and the plan heading. Do not use model-default or UTC-inferred “tomorrow” when the operator’s date is still “today.”
+3. In Codex or Claude Code, use the read-only `planning-auditor` subagent only for bounded plan lifecycle audits; this Cursor skill remains the thin plan-registry pointer.
+4. **Do not append unrelated work** to **`docs/superpowers/plans/2026-05-01-core-first-mvp-closure.md`** or historical MVP bodies — start a dated capability/gap-cluster/milestone plan and use phases for behavior/API/validation boundary decisions.
+5. Keep plan width broader than PR width: one plan may hold multiple phase checkpoints, while each phase/PR stays one reviewable purpose with validation evidence. Do not split or merge plans to satisfy a commit, push, or PR count; use validated GitHub Flow checkpoints and draft PRs for early feedback when a broader plan needs staged review.
+6. **Pick the `YYYY-MM-DD` prefix** from the authoritative authoring date: use the Cursor/chat **`Today's date`** when present; otherwise confirm with the operator or read the local calendar (`Get-Date -Format yyyy-MM-dd`). Keep the same date in the filename and the plan heading. Do not use model-default or UTC-inferred “tomorrow” when the operator’s date is still “today.”
 
 ## After a slice lands
 
