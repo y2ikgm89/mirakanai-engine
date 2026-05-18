@@ -624,6 +624,8 @@ Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transf
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transform_animation_tracks_3d" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transform_animation_float_clip" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transform_animation_binding_source" "MK_tools module purpose"
+Assert-ContainsText ([string]$geToolsModule[0].purpose) "refresh-prefab-instance" "MK_tools module purpose"
+Assert-ContainsText ([string]$geToolsModule[0].purpose) "apply_scene_prefab_instance_refresh_v2" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "PngImageDecodingAdapter" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "IImageDecodingAdapter" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "decode_audited_png_rgba8" "MK_tools module purpose"

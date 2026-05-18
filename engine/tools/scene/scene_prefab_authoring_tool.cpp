@@ -34,6 +34,8 @@ namespace {
         return "create_prefab";
     case ScenePrefabAuthoringCommandKind::instantiate_prefab:
         return "instantiate_prefab";
+    case ScenePrefabAuthoringCommandKind::refresh_prefab_instance:
+        return "refresh_prefab_instance";
     case ScenePrefabAuthoringCommandKind::free_form_edit:
         return "free_form_edit";
     }
@@ -207,6 +209,14 @@ void append_model_mutation(std::vector<ScenePrefabAuthoringModelMutation>& mutat
         return "missing_override_target";
     case SceneSchemaV2DiagnosticCode::duplicate_override_path:
         return "duplicate_override_path";
+    case SceneSchemaV2DiagnosticCode::duplicate_prefab_source_identity:
+        return "duplicate_prefab_source_identity";
+    case SceneSchemaV2DiagnosticCode::unsupported_nested_prefab_instance:
+        return "unsupported_nested_prefab_instance";
+    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_child:
+        return "unsupported_local_prefab_child";
+    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_component:
+        return "unsupported_local_prefab_component";
     }
     return "unknown_scene_schema_v2_diagnostic";
 }
@@ -238,6 +248,14 @@ void append_model_mutation(std::vector<ScenePrefabAuthoringModelMutation>& mutat
         return "missing prefab override target";
     case SceneSchemaV2DiagnosticCode::duplicate_override_path:
         return "duplicate prefab override path";
+    case SceneSchemaV2DiagnosticCode::duplicate_prefab_source_identity:
+        return "duplicate prefab source identity";
+    case SceneSchemaV2DiagnosticCode::unsupported_nested_prefab_instance:
+        return "nested prefab instance refresh is not supported";
+    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_child:
+        return "local prefab child merge resolution is not supported";
+    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_component:
+        return "local prefab component merge resolution is not supported";
     }
     return scene_schema_code_name(diagnostic.code);
 }
@@ -347,6 +365,7 @@ void validate_request_paths(std::vector<ScenePrefabAuthoringDiagnostic>& diagnos
         validate_authoring_path(diagnostics, request.prefab_path, ".prefab", "prefab_path");
         break;
     case ScenePrefabAuthoringCommandKind::instantiate_prefab:
+    case ScenePrefabAuthoringCommandKind::refresh_prefab_instance:
         validate_authoring_path(diagnostics, request.scene_path, ".scene", "scene_path");
         validate_authoring_path(diagnostics, request.prefab_path, ".prefab", "prefab_path");
         break;
@@ -488,6 +507,38 @@ void plan_instantiate_prefab(const ScenePrefabAuthoringRequest& request, ScenePr
                           request.prefab_path);
 }
 
+void plan_refresh_prefab_instance(const ScenePrefabAuthoringRequest& request, ScenePrefabAuthoringResult& result) {
+    auto scene = parse_scene_content(request, result);
+    if (!result.succeeded()) {
+        return;
+    }
+    auto prefab = parse_prefab_content(request, result);
+    if (!result.succeeded()) {
+        return;
+    }
+
+    const auto refresh_plan = plan_scene_prefab_instance_refresh_v2(scene, request.node_id, prefab);
+    append_scene_schema_diagnostics(result.diagnostics, refresh_plan.diagnostics, request.scene_path);
+    if (!result.succeeded()) {
+        return;
+    }
+    if (refresh_plan.prefab_path != request.prefab_path) {
+        add_diagnostic(result.diagnostics, "stale_prefab_reference",
+                       "stale prefab reference: selected instance source does not match refreshed prefab_path",
+                       request.scene_path, request.node_id);
+        return;
+    }
+
+    const auto refreshed = apply_scene_prefab_instance_refresh_v2(scene, request.node_id, prefab);
+    append_scene_schema_diagnostics(result.diagnostics, refreshed.diagnostics, request.scene_path);
+    if (!result.succeeded()) {
+        return;
+    }
+
+    finalize_scene_change(result, refreshed.scene, request.scene_path, "refresh_prefab_instance", request.node_id, {},
+                          request.prefab_path);
+}
+
 void load_apply_inputs(IFileSystem& filesystem, ScenePrefabAuthoringRequest& request,
                        ScenePrefabAuthoringResult& result) {
     try {
@@ -511,6 +562,7 @@ void load_apply_inputs(IFileSystem& filesystem, ScenePrefabAuthoringRequest& req
             }
             break;
         case ScenePrefabAuthoringCommandKind::instantiate_prefab:
+        case ScenePrefabAuthoringCommandKind::refresh_prefab_instance:
             request.scene_content = filesystem.read_text(request.scene_path);
             request.prefab_content = filesystem.read_text(request.prefab_path);
             break;
@@ -551,6 +603,9 @@ ScenePrefabAuthoringResult plan_scene_prefab_authoring(const ScenePrefabAuthorin
         break;
     case ScenePrefabAuthoringCommandKind::instantiate_prefab:
         plan_instantiate_prefab(request, result);
+        break;
+    case ScenePrefabAuthoringCommandKind::refresh_prefab_instance:
+        plan_refresh_prefab_instance(request, result);
         break;
     case ScenePrefabAuthoringCommandKind::free_form_edit:
         add_diagnostic(result.diagnostics, "unsupported_free_form_edit",

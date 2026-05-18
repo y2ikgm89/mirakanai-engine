@@ -692,6 +692,7 @@ $expectedCommandSurfaceIds = @(
     "add-or-update-component",
     "create-prefab",
     "instantiate-prefab",
+    "refresh-prefab-instance",
     "create-material-instance",
     "create-material-from-graph",
     "register-source-asset",
@@ -750,7 +751,7 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' cannot make execute ready before dry-run is ready"
     }
     if ($modeIds.ContainsKey("apply") -and $modeIds["apply"].status -eq "ready" -and
-        @("register-runtime-package-files", "update-ui-atlas-metadata-package", "create-material-instance", "create-material-from-graph", "update-scene-package", "migrate-scene-v2-runtime-package", "create-scene", "add-scene-node", "add-or-update-component", "create-prefab", "instantiate-prefab", "register-source-asset", "cook-registered-source-assets") -notcontains $commandSurface.id) {
+        @("register-runtime-package-files", "update-ui-atlas-metadata-package", "create-material-instance", "create-material-from-graph", "update-scene-package", "migrate-scene-v2-runtime-package", "create-scene", "add-scene-node", "add-or-update-component", "create-prefab", "instantiate-prefab", "refresh-prefab-instance", "register-source-asset", "cook-registered-source-assets") -notcontains $commandSurface.id) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' cannot make apply ready without a focused apply tooling slice"
     }
     if ($modeIds.ContainsKey("execute") -and $modeIds["execute"].status -eq "ready" -and
@@ -947,7 +948,8 @@ $scenePrefabAuthoringCommandIds = @(
     "add-scene-node",
     "add-or-update-component",
     "create-prefab",
-    "instantiate-prefab"
+    "instantiate-prefab",
+    "refresh-prefab-instance"
 )
 foreach ($commandId in $scenePrefabAuthoringCommandIds) {
     $scenePrefabCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq $commandId })

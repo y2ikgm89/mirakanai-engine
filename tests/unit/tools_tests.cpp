@@ -1236,6 +1236,82 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
     return prefab;
 }
 
+[[nodiscard]] mirakana::SceneDocumentV2 make_scene_prefab_refresh_authoring_scene_v2() {
+    constexpr std::string_view prefab_path = "source/prefabs/enemy.prefab";
+
+    mirakana::SceneDocumentV2 scene;
+    scene.name = "Refresh Authoring Level";
+    scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/level/root"}, .name = "LevelRoot"});
+    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/instance/root"},
+        .name = "EnemyInstance",
+        .parent = mirakana::AuthoringId{"node/level/root"},
+    });
+    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/instance/stale"},
+        .name = "StaleChild",
+        .parent = mirakana::AuthoringId{"node/instance/root"},
+    });
+    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/instance/mesh"},
+        .node = mirakana::AuthoringId{"node/instance/root"},
+        .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
+        .properties = {{.name = "mesh", .value = "assets/meshes/custom-enemy"}},
+    });
+    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/instance/stale"},
+        .node = mirakana::AuthoringId{"node/instance/stale"},
+        .type = mirakana::SceneComponentTypeId{"light"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/root"},
+        .prefab_path = std::string(prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/root"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/stale"},
+        .prefab_path = std::string(prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/stale"},
+    });
+    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSourceV2{
+        .component = mirakana::AuthoringId{"component/instance/mesh"},
+        .prefab_path = std::string(prefab_path),
+        .source_component_id = mirakana::AuthoringId{"component/source/mesh"},
+    });
+    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSourceV2{
+        .component = mirakana::AuthoringId{"component/instance/stale"},
+        .prefab_path = std::string(prefab_path),
+        .source_component_id = mirakana::AuthoringId{"component/source/stale"},
+    });
+    return scene;
+}
+
+[[nodiscard]] mirakana::PrefabDocumentV2 make_scene_prefab_refresh_authoring_prefab_v2() {
+    mirakana::PrefabDocumentV2 prefab;
+    prefab.name = "Enemy";
+    prefab.scene.name = "Enemy Scene";
+    prefab.scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/source/root"}, .name = "EnemyRoot"});
+    prefab.scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/source/weapon"},
+        .name = "Weapon",
+        .parent = mirakana::AuthoringId{"node/source/root"},
+    });
+    prefab.scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/source/mesh"},
+        .node = mirakana::AuthoringId{"node/source/root"},
+        .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
+        .properties = {{.name = "mesh", .value = "assets/meshes/source-enemy"}},
+    });
+    prefab.scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/source/light"},
+        .node = mirakana::AuthoringId{"node/source/weapon"},
+        .type = mirakana::SceneComponentTypeId{"light"},
+    });
+    return prefab;
+}
+
 [[nodiscard]] bool text_contains(std::string_view text, std::string_view needle) {
     return text.find(needle) != std::string_view::npos;
 }
@@ -3589,6 +3665,48 @@ MK_TEST("scene prefab authoring apply writes only validated deterministic change
     MK_REQUIRE(!failed.succeeded());
     MK_REQUIRE(failures_contain(failed.diagnostics, "duplicate authoring id"));
     MK_REQUIRE(fs.read_text(add_node.scene_path) == before);
+}
+
+MK_TEST("scene prefab authoring refreshes prefab instances through reviewed apply surface") {
+    constexpr std::string_view scene_path = "source/scenes/level.scene";
+    constexpr std::string_view prefab_path = "source/prefabs/enemy.prefab";
+    constexpr std::string_view added_weapon_id = "node/instance/root/refresh/node/source/weapon";
+    constexpr std::string_view added_light_id = "node/instance/root/refresh/component/source/light";
+
+    mirakana::MemoryFileSystem fs;
+    fs.write_text(scene_path, mirakana::serialize_scene_document_v2(make_scene_prefab_refresh_authoring_scene_v2()));
+    fs.write_text(prefab_path, mirakana::serialize_prefab_document_v2(make_scene_prefab_refresh_authoring_prefab_v2()));
+
+    mirakana::ScenePrefabAuthoringRequest refresh;
+    refresh.kind = mirakana::ScenePrefabAuthoringCommandKind::refresh_prefab_instance;
+    refresh.scene_path = std::string(scene_path);
+    refresh.prefab_path = std::string(prefab_path);
+    refresh.node_id = mirakana::AuthoringId{"node/instance/root"};
+
+    const auto applied = mirakana::apply_scene_prefab_authoring(fs, refresh);
+
+    MK_REQUIRE(applied.succeeded());
+    MK_REQUIRE(applied.changed_files.size() == 1);
+    MK_REQUIRE(applied.changed_files[0].path == refresh.scene_path);
+    MK_REQUIRE(applied.changed_files[0].document_kind == "GameEngine.Scene.v2");
+    MK_REQUIRE(applied.changed_files[0].content_hash == mirakana::hash_asset_cooked_content(applied.scene_content));
+    MK_REQUIRE(applied.model_mutations.size() == 1);
+    MK_REQUIRE(applied.model_mutations[0].kind == "refresh_prefab_instance");
+    MK_REQUIRE(applied.model_mutations[0].node.value == refresh.node_id.value);
+    MK_REQUIRE(applied.model_mutations[0].prefab_path == refresh.prefab_path);
+    MK_REQUIRE(fs.read_text(refresh.scene_path) == applied.scene_content);
+    MK_REQUIRE(applied.scene_content ==
+               mirakana::serialize_scene_document_v2(mirakana::deserialize_scene_document_v2(applied.scene_content)));
+    MK_REQUIRE(text_contains(applied.scene_content, std::string{"node.2.id="} + std::string{added_weapon_id} + "\n"));
+    MK_REQUIRE(
+        text_contains(applied.scene_content, std::string{"component.1.id="} + std::string{added_light_id} + "\n"));
+    MK_REQUIRE(text_contains(applied.scene_content, "component.0.property.0.value=assets/meshes/custom-enemy\n"));
+    MK_REQUIRE(text_contains(applied.scene_content,
+                             std::string{"node.2.prefab_source.prefab_path="} + std::string{prefab_path} + "\n"));
+    MK_REQUIRE(text_contains(applied.scene_content,
+                             std::string{"component.1.prefab_source.prefab_path="} + std::string{prefab_path} + "\n"));
+    MK_REQUIRE(!text_contains(applied.scene_content, "node/instance/stale"));
+    MK_REQUIRE(!text_contains(applied.scene_content, "component/instance/stale"));
 }
 
 MK_TEST("scene prefab authoring rejects unsafe paths unsupported payloads stale prefab refs and free form edits") {
