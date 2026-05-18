@@ -422,6 +422,9 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("Runtime Upload Queue Wait v1") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("wait_for_runtime_uploads_on_queue") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("upload_queue_waits_recorded") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("Staging Pool Lease Adoption v1") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RhiStagingBufferLease") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadRingDesc::buffer") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("selected 2D/3D package upload smoke evidence") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {
     Write-Error "engine manifest aiOperableProductionLoop upload-staging-v1 gap must keep foundation-only follow-up limits explicit"
@@ -513,7 +516,8 @@ foreach ($needle in @(
     "upload-staging-v1",
     "runtime/package upload queue consumption",
     "package mesh/skinned/morph upload binding transactions",
-    "staging-pool production adoption"
+    "staging-pool lease-backed upload rings",
+    "selected 2D/3D package upload evidence"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
         Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"

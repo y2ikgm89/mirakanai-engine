@@ -1136,8 +1136,8 @@ MK_TEST("runtime scene gpu binding safe point teardown keeps caller owned upload
     const auto scene = make_scene(mesh, material);
     const auto packet = mirakana::build_scene_render_packet(scene);
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
 
     mirakana::runtime_scene_rhi::RuntimeSceneGpuUploadExecutionDesc desc;
     desc.device = &device;

@@ -246,10 +246,14 @@ RhiUploadRing::RhiUploadRing(IRhiDevice& device, RhiUploadRingDesc desc)
     if (desc.size_bytes == 0) {
         throw std::invalid_argument("rhi upload ring size_bytes must be greater than zero");
     }
-    buffer_ = device.create_buffer(BufferDesc{
-        .size_bytes = desc.size_bytes,
-        .usage = BufferUsage::copy_source,
-    });
+    if (desc.buffer.value != 0) {
+        buffer_ = desc.buffer;
+    } else {
+        buffer_ = device.create_buffer(BufferDesc{
+            .size_bytes = desc.size_bytes,
+            .usage = BufferUsage::copy_source,
+        });
+    }
 }
 
 std::uint64_t RhiUploadRing::align_up(std::uint64_t value, std::uint64_t alignment) noexcept {
@@ -361,7 +365,8 @@ void RhiUploadRing::release_completed(FenceValue completed_fence) {
     spans_.erase(removed.begin(), removed.end());
 }
 
-RhiStagingBufferPool::RhiStagingBufferPool(IRhiDevice& device, RhiStagingBufferPoolDesc desc) : device_{&device} {
+RhiStagingBufferPool::RhiStagingBufferPool(IRhiDevice& device, RhiStagingBufferPoolDesc desc)
+    : device_{&device}, chunk_size_bytes_{desc.chunk_size_bytes} {
     if (desc.buffer_count == 0 || desc.chunk_size_bytes == 0) {
         throw std::invalid_argument("rhi staging buffer pool requires non-zero buffer_count and chunk_size_bytes");
     }
@@ -385,6 +390,17 @@ std::optional<BufferHandle> RhiStagingBufferPool::try_acquire() noexcept {
     return std::nullopt;
 }
 
+std::optional<RhiStagingBufferLease> RhiStagingBufferPool::try_acquire_lease() noexcept {
+    const auto buffer = try_acquire();
+    if (!buffer.has_value()) {
+        return std::nullopt;
+    }
+    return RhiStagingBufferLease{
+        .buffer = *buffer,
+        .size_bytes = chunk_size_bytes_,
+    };
+}
+
 void RhiStagingBufferPool::release(BufferHandle buffer) {
     for (std::size_t i = 0; i < buffers_.size(); ++i) {
         if (buffers_[i].value == buffer.value) {
@@ -393,6 +409,10 @@ void RhiStagingBufferPool::release(BufferHandle buffer) {
         }
     }
     throw std::invalid_argument("rhi staging buffer pool release handle is not owned by this pool");
+}
+
+void RhiStagingBufferPool::release(RhiStagingBufferLease lease) {
+    release(lease.buffer);
 }
 
 RhiUploadResult validate_upload_gpu_batch(const RhiUploadStagingPlan& plan,

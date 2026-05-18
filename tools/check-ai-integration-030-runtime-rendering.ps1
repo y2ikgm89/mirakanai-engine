@@ -1621,6 +1621,8 @@ if (@($geRhiModule[0].publicHeaders) -notcontains "engine/rhi/include/mirakana/r
 }
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiResourceLifetimeRegistry" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiUploadStagingPlan" "MK_rhi module purpose"
+Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiStagingBufferLease" "MK_rhi module purpose"
+Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiUploadRingDesc::buffer" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "FenceValue" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "foundation-only" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "GPU allocator" "MK_rhi module purpose"
@@ -1628,6 +1630,8 @@ $geRhiRecentEvidenceText = @($geRhiModule[0].recentEvidence | ForEach-Object { [
 Assert-ContainsText $geRhiRecentEvidenceText "RHI Native Async Upload Execution v1" "MK_rhi module recentEvidence"
 Assert-ContainsText $geRhiRecentEvidenceText "execute_upload_gpu_batch_async" "MK_rhi module recentEvidence"
 Assert-ContainsText $geRhiRecentEvidenceText "RhiUploadGpuBatchExecutionResult" "MK_rhi module recentEvidence"
+Assert-ContainsText $geRhiRecentEvidenceText "Staging Pool Lease Adoption v1" "MK_rhi module recentEvidence"
+Assert-ContainsText $geRhiRecentEvidenceText "RhiStagingBufferLease" "MK_rhi module recentEvidence"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph v1 foundation-only" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphV1Desc" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "barrier intent" "MK_renderer module purpose"
@@ -1687,6 +1691,8 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageS
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "wait_for_runtime_uploads_on_queue" "desktop runtime 3d package streaming guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "upload_queue_waits_recorded" "desktop runtime 3d package streaming guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "RuntimeMeshUploadOptions::upload_ring" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "RhiStagingBufferLease" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "RhiUploadRingDesc::buffer" "desktop runtime 3d package streaming guidance"
 foreach ($packageStreamingFrameGraphGuidance in @(
         "docs/rhi.md",
         "docs/current-capabilities.md",
@@ -1703,6 +1709,8 @@ foreach ($packageStreamingFrameGraphGuidance in @(
     Assert-ContainsText $packageStreamingFrameGraphText "upload_queue_waits_recorded" $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "RuntimeTextureUploadOptions::upload_ring" $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "RuntimeMeshUploadOptions::upload_ring" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "RhiStagingBufferLease" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "RhiUploadRingDesc::buffer" $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "broad" $packageStreamingFrameGraphGuidance
 }
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "IRhiCommandList::texture_aliasing_barrier" "MK_rhi module purpose"
@@ -1746,7 +1754,8 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame 
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime/package upload queue consumption" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package mesh/skinned/morph upload binding transactions" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool production adoption" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool lease-backed upload rings" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "selected 2D/3D package upload evidence" "recommended next plan reason"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"

@@ -1756,6 +1756,11 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("Runtime Upload Queue Wait v1") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("wait_for_runtime_uploads_on_queue") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("upload_queue_waits_recorded") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("Staging Pool Lease Adoption v1") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RhiStagingBufferLease") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RhiStagingBufferPool::try_acquire_lease") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RhiStagingBufferPool::release(RhiStagingBufferLease)") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadRingDesc::buffer") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("ring exhaustion") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("selected 2D/3D package upload smoke evidence") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {
@@ -1806,6 +1811,10 @@ Assert-ContainsText $recommendedText "Runtime Upload Queue Wait v1" "engine/agen
 Assert-ContainsText $recommendedText "wait_for_runtime_uploads_on_queue" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
 Assert-ContainsText $recommendedText "upload_queue_waits_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
 Assert-ContainsText $recommendedText "2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
+Assert-ContainsText $recommendedText "Staging Pool Lease Adoption v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
+Assert-ContainsText $recommendedText "RhiStagingBufferLease" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
+Assert-ContainsText $recommendedText "RhiUploadRingDesc::buffer" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
+Assert-ContainsText $recommendedText "2026-05-18-upload-staging-v1-staging-pool-lease-adoption-v1.md" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
 Assert-ContainsText $recommendedText "Frame Graph Automatic Aliasing Barrier Insertion v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
@@ -1835,7 +1844,8 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame 
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime/package upload queue consumption" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package mesh/skinned/morph upload binding transactions" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool production adoption" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool lease-backed upload rings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "selected 2D/3D package upload evidence" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must be partly-ready after Play-In-Editor Visible Viewport Wiring v1"

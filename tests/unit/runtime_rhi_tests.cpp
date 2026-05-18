@@ -262,8 +262,8 @@ MK_TEST("runtime rhi upload creates texture resource and records byte upload whe
 
 MK_TEST("runtime rhi texture upload can use caller owned upload ring staging") {
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
     const auto texture = mirakana::AssetId::from_name("textures/ring_albedo");
     const mirakana::runtime::RuntimeTexturePayload payload{
         .asset = texture,
@@ -305,7 +305,8 @@ MK_TEST("runtime rhi texture upload can use caller owned upload ring staging") {
 
 MK_TEST("runtime rhi texture upload rejects ring staging exhaustion before side effects") {
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 32, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 32, .min_alignment = 256, .buffer = {}});
     const auto texture = mirakana::AssetId::from_name("textures/ring_too_small");
     const mirakana::runtime::RuntimeTexturePayload payload{
         .asset = texture,
@@ -586,8 +587,8 @@ MK_TEST("runtime package streaming texture transaction can reuse caller owned up
     });
     const auto streaming = make_committed_package_streaming_result();
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
     mirakana::runtime_rhi::RuntimeTextureUploadOptions upload_options;
     upload_options.upload_ring = &ring;
     const auto albedo_payload = make_runtime_texture_payload(albedo, mirakana::runtime::RuntimeAssetHandle{.value = 1});
@@ -802,8 +803,8 @@ MK_TEST("runtime package streaming mesh upload transaction uploads resident stat
     const auto catalog = make_runtime_catalog({make_runtime_mesh_record(mesh, handle)});
     const auto streaming = make_committed_package_streaming_result();
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
     mirakana::runtime_rhi::RuntimeMeshUploadOptions upload_options;
     upload_options.upload_ring = &ring;
     const auto payload = make_runtime_mesh_payload(mesh, handle);
@@ -841,14 +842,67 @@ MK_TEST("runtime package streaming mesh upload transaction uploads resident stat
     MK_REQUIRE(device.stats().command_lists_submitted == 1);
 }
 
+MK_TEST("runtime package streaming mesh upload transaction reuses staging pool lease backed ring") {
+    const auto mesh = mirakana::AssetId::from_name("meshes/streamed/pool_ring_triangle");
+    const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 45};
+    const auto catalog = make_runtime_catalog({make_runtime_mesh_record(mesh, handle)});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiStagingBufferPool pool(
+        device, mirakana::rhi::RhiStagingBufferPoolDesc{.buffer_count = 1, .chunk_size_bytes = 512});
+    const auto lease = pool.try_acquire_lease();
+    MK_REQUIRE(lease.has_value());
+    const auto buffers_after_pool_create = device.stats().buffers_created;
+    mirakana::rhi::RhiUploadRing ring(device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = lease->size_bytes,
+                                                                               .min_alignment = 256,
+                                                                               .buffer = lease->buffer});
+    mirakana::runtime_rhi::RuntimeMeshUploadOptions upload_options;
+    upload_options.upload_ring = &ring;
+    upload_options.queue = mirakana::rhi::QueueKind::copy;
+    upload_options.wait_for_completion = false;
+    const auto payload = make_runtime_mesh_payload(mesh, handle);
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource{
+            .asset = mesh,
+            .payload = &payload,
+            .upload_options = upload_options,
+        },
+    };
+
+    auto transaction =
+        mirakana::runtime_rhi::upload_runtime_package_streaming_mesh_gpu_bindings(device, streaming, catalog, sources);
+
+    MK_REQUIRE(transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.size() == 1);
+    MK_REQUIRE(transaction.mesh_bindings.size() == 1);
+    MK_REQUIRE(transaction.uploaded_bytes == 48);
+    MK_REQUIRE(transaction.upload_queue_waits_recorded == 1);
+    MK_REQUIRE(transaction.submitted_fences.size() == 1);
+    MK_REQUIRE(transaction.submitted_fences.front().queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(transaction.uploads[0].vertex_upload_buffer.value == lease->buffer.value);
+    MK_REQUIRE(transaction.uploads[0].index_upload_buffer.value == lease->buffer.value);
+    MK_REQUIRE(transaction.uploads[0].upload_buffers_caller_owned);
+    MK_REQUIRE(transaction.mesh_bindings[0].asset == mesh);
+    MK_REQUIRE(device.stats().buffers_created == buffers_after_pool_create + 2);
+    MK_REQUIRE(device.stats().copy_queue_submits == 1);
+    MK_REQUIRE(device.stats().graphics_queue_submits == 0);
+    MK_REQUIRE(device.stats().fence_waits == 0);
+    MK_REQUIRE(device.stats().queue_waits == 1);
+    ring.release_completed(transaction.submitted_fences.front());
+    pool.release(*lease);
+    const auto reacquired = pool.try_acquire_lease();
+    MK_REQUIRE(reacquired.has_value());
+    MK_REQUIRE(reacquired->buffer.value == lease->buffer.value);
+}
+
 MK_TEST("runtime package streaming mesh upload transaction waits graphics queue for async copy upload") {
     const auto mesh = mirakana::AssetId::from_name("meshes/streamed/async_copy_triangle");
     const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 31};
     const auto catalog = make_runtime_catalog({make_runtime_mesh_record(mesh, handle)});
     const auto streaming = make_committed_package_streaming_result();
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
     mirakana::runtime_rhi::RuntimeMeshUploadOptions upload_options;
     upload_options.upload_ring = &ring;
     upload_options.queue = mirakana::rhi::QueueKind::copy;
@@ -936,8 +990,8 @@ MK_TEST(
     const auto catalog = make_runtime_catalog({make_runtime_skinned_mesh_record(mesh, handle)});
     const auto streaming = make_committed_package_streaming_result();
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 768, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 768, .min_alignment = 256, .buffer = {}});
     mirakana::runtime_rhi::RuntimeSkinnedMeshUploadOptions upload_options;
     upload_options.upload_ring = &ring;
     upload_options.queue = mirakana::rhi::QueueKind::copy;
@@ -993,8 +1047,8 @@ MK_TEST("runtime package streaming morph mesh upload transaction uploads residen
     const auto catalog = make_runtime_catalog({make_runtime_morph_mesh_record(morph_asset, handle)});
     const auto streaming = make_committed_package_streaming_result();
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
     mirakana::runtime_rhi::RuntimeMorphMeshUploadOptions upload_options;
     upload_options.upload_ring = &ring;
     upload_options.queue = mirakana::rhi::QueueKind::copy;
@@ -1162,8 +1216,8 @@ MK_TEST("runtime rhi upload creates mesh buffers and records vertex index byte u
 
 MK_TEST("runtime rhi mesh upload can use caller owned upload ring staging") {
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256, .buffer = {}});
     const auto mesh = mirakana::AssetId::from_name("meshes/ring_triangle");
     const std::vector<std::uint8_t> vertex_bytes(36, std::uint8_t{0x44});
     const std::vector<std::uint8_t> index_bytes{0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
@@ -1208,7 +1262,8 @@ MK_TEST("runtime rhi mesh upload can use caller owned upload ring staging") {
 
 MK_TEST("runtime rhi mesh upload rejects ring staging exhaustion before side effects") {
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 32, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 32, .min_alignment = 256, .buffer = {}});
     const auto mesh = mirakana::AssetId::from_name("meshes/ring_triangle_too_small");
     const mirakana::runtime::RuntimeMeshPayload payload{
         .asset = mesh,
@@ -1659,8 +1714,8 @@ MK_TEST("runtime rhi skinned mesh upload binds joint palette descriptor set") {
 
 MK_TEST("runtime rhi skinned mesh upload can use caller owned upload ring staging") {
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 768, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 768, .min_alignment = 256, .buffer = {}});
     const auto mesh = mirakana::AssetId::from_name("meshes/ring_skinned_runtime_upload");
     const std::vector<std::uint8_t> vertex_bytes(216, std::uint8_t{0x2b});
     const std::vector<std::uint8_t> index_bytes{0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
@@ -1931,8 +1986,8 @@ MK_TEST("runtime rhi morph mesh upload binds optional normal and tangent delta s
 
 MK_TEST("runtime rhi morph mesh upload can use caller owned upload ring staging") {
     mirakana::rhi::NullRhiDevice device;
-    mirakana::rhi::RhiUploadRing ring(device,
-                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 1024, .min_alignment = 256});
+    mirakana::rhi::RhiUploadRing ring(
+        device, mirakana::rhi::RhiUploadRingDesc{.size_bytes = 1024, .min_alignment = 256, .buffer = {}});
     const auto mesh = mirakana::AssetId::from_name("meshes/ring_morph_runtime_upload");
 
     mirakana::MorphMeshCpuSourceDocument morph;

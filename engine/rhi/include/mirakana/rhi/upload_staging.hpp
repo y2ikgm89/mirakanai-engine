@@ -124,6 +124,8 @@ struct RhiUploadRingDesc {
     std::uint64_t size_bytes{0};
     /// Minimum alignment applied to every sub-range start (use 256 for D3D12 constant buffer alignment defaults).
     std::uint64_t min_alignment{256};
+    /// Optional caller-owned `copy_source` buffer. When unset, the ring creates its own backing buffer.
+    BufferHandle buffer{};
 };
 
 /// Device-owned upload ring: one `copy_source` buffer and CPU/GPU lifetime tracking for byte spans keyed by
@@ -185,6 +187,11 @@ struct RhiStagingBufferPoolDesc {
     std::uint64_t chunk_size_bytes{0};
 };
 
+struct RhiStagingBufferLease {
+    BufferHandle buffer{};
+    std::uint64_t size_bytes{0};
+};
+
 /// Fixed-size pool of independent `copy_source` staging chunks (for uploads larger than a ring slot or parallel
 /// frames).
 class RhiStagingBufferPool {
@@ -197,10 +204,13 @@ class RhiStagingBufferPool {
     ~RhiStagingBufferPool() = default;
 
     [[nodiscard]] std::optional<BufferHandle> try_acquire() noexcept;
+    [[nodiscard]] std::optional<RhiStagingBufferLease> try_acquire_lease() noexcept;
     void release(BufferHandle buffer);
+    void release(RhiStagingBufferLease lease);
 
   private:
     IRhiDevice* device_{nullptr};
+    std::uint64_t chunk_size_bytes_{0};
     std::vector<BufferHandle> buffers_;
     std::vector<bool> free_;
 };
