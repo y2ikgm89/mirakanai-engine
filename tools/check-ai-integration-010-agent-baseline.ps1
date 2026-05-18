@@ -1340,7 +1340,7 @@ foreach ($needle in @(
     "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
     "upload-staging-v1",
     "native async upload execution",
-    "upload rings/staging pools"
+    "runtime mesh/skinned/morph ring-backed uploads"
 )) {
     Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout and upload-staging next gap"
 }

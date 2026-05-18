@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
+#include "mirakana/rhi/upload_staging.hpp"
 
 #include <algorithm>
 #include <array>
@@ -33,6 +34,14 @@ runtime_texture_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnost
         return "runtime texture upload frame graph execution failed";
     }
     return "runtime texture upload frame graph execution failed: " + diagnostics.front().message;
+}
+
+[[nodiscard]] std::string
+runtime_texture_upload_staging_diagnostic(std::span<const rhi::RhiUploadDiagnostic> diagnostics) {
+    if (diagnostics.empty() || diagnostics.front().message.empty()) {
+        return "runtime texture upload staging failed";
+    }
+    return "runtime texture upload staging failed: " + diagnostics.front().message;
 }
 
 [[nodiscard]] RuntimeMeshUploadResult mesh_upload_failure(std::string diagnostic) {
@@ -345,8 +354,8 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
                           .texture_extent = rhi::Extent3D{.width = payload.width, .height = payload.height, .depth = 1},
                       }};
 
-        const auto texture = device.create_texture(desc);
         if (payload.bytes.empty()) {
+            const auto texture = device.create_texture(desc);
             return RuntimeTextureUploadResult{.texture = texture,
                                               .upload_buffer = {},
                                               .texture_desc = desc,
@@ -358,9 +367,47 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
                                               .submitted_fence = {}};
         }
 
-        const auto upload_buffer = device.create_buffer(rhi::BufferDesc{
-            .size_bytes = static_cast<std::uint64_t>(staging.bytes.size()), .usage = rhi::BufferUsage::copy_source});
-        device.write_buffer(upload_buffer, 0, staging.bytes);
+        rhi::BufferHandle upload_buffer{};
+        rhi::RhiUploadStagingPlan ring_staging_plan;
+        rhi::RhiUploadAllocationHandle ring_staging_handle{};
+        if (options.upload_ring != nullptr) {
+            const auto allocation = ring_staging_plan.allocate_staging_bytes(rhi::RhiUploadAllocationDesc{
+                .size_bytes = static_cast<std::uint64_t>(staging.bytes.size()),
+                .debug_name = "runtime.texture_upload.staging",
+            });
+            if (!allocation.succeeded()) {
+                return texture_upload_failure(runtime_texture_upload_staging_diagnostic(allocation.diagnostics));
+            }
+            ring_staging_handle = allocation.handle;
+
+            const auto enqueued = ring_staging_plan.enqueue_texture_upload(rhi::RhiTextureUploadDesc{
+                .staging = ring_staging_handle,
+                .format = format,
+                .region = staging.region,
+                .debug_name = "runtime.texture_upload.copy",
+            });
+            if (!enqueued.succeeded()) {
+                return texture_upload_failure(runtime_texture_upload_staging_diagnostic(enqueued.diagnostics));
+            }
+
+            const auto reserved =
+                options.upload_ring->reserve_for_allocation(ring_staging_plan, ring_staging_handle, rhi::FenceValue{});
+            if (!reserved.succeeded()) {
+                return texture_upload_failure(runtime_texture_upload_staging_diagnostic(reserved.diagnostics));
+            }
+            const auto ring_offset = options.upload_ring->byte_offset_for(ring_staging_handle);
+            if (!ring_offset.has_value()) {
+                return texture_upload_failure("runtime texture upload staging failed: ring allocation offset missing");
+            }
+            upload_buffer = options.upload_ring->buffer();
+            device.write_buffer(upload_buffer, *ring_offset, staging.bytes);
+        } else {
+            upload_buffer =
+                device.create_buffer(rhi::BufferDesc{.size_bytes = static_cast<std::uint64_t>(staging.bytes.size()),
+                                                     .usage = rhi::BufferUsage::copy_source});
+            device.write_buffer(upload_buffer, 0, staging.bytes);
+        }
+        const auto texture = device.create_texture(desc);
 
         FrameGraphV1Desc upload_graph;
         upload_graph.resources.push_back(FrameGraphResourceV1Desc{
@@ -399,7 +446,21 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
             .queue = options.queue,
             .callback =
                 [&](std::string_view, rhi::IRhiCommandList& commands) {
-                    commands.copy_buffer_to_texture(upload_buffer, texture, staging.region);
+                    if (options.upload_ring != nullptr) {
+                        const auto recorded = rhi::record_upload_gpu_batch(
+                            commands, ring_staging_plan, *options.upload_ring, {},
+                            std::vector<rhi::RhiGpuTextureCopyTarget>{rhi::RhiGpuTextureCopyTarget{
+                                .destination = texture,
+                            }});
+                        if (!recorded.succeeded()) {
+                            return FrameGraphExecutionCallbackResult{
+                                .ok = false,
+                                .message = runtime_texture_upload_staging_diagnostic(recorded.diagnostics),
+                            };
+                        }
+                    } else {
+                        commands.copy_buffer_to_texture(upload_buffer, texture, staging.region);
+                    }
                     return FrameGraphExecutionCallbackResult{};
                 },
         }};
@@ -424,8 +485,18 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
                 "runtime texture upload frame graph execution failed: missing submitted fence");
         }
         const auto fence = frame_graph_execution.submitted_pass_fences.back().fence;
+        if (options.upload_ring != nullptr) {
+            const auto submitted =
+                rhi::mark_pending_allocations_submitted(ring_staging_plan, *options.upload_ring, fence);
+            if (!submitted.succeeded()) {
+                return texture_upload_failure(runtime_texture_upload_staging_diagnostic(submitted.diagnostics));
+            }
+        }
         if (options.wait_for_completion) {
             device.wait(fence);
+            if (options.upload_ring != nullptr) {
+                options.upload_ring->release_completed(fence);
+            }
         }
 
         return RuntimeTextureUploadResult{

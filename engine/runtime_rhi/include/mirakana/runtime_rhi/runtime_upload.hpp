@@ -13,6 +13,10 @@
 #include <string>
 #include <vector>
 
+namespace mirakana::rhi {
+class RhiUploadRing;
+}
+
 namespace mirakana::runtime_rhi {
 
 inline constexpr std::uint64_t runtime_material_uniform_buffer_size_bytes = material_factor_uniform_size_bytes;
@@ -46,6 +50,7 @@ enum class RuntimeMeshVertexLayout : std::uint8_t {
 struct RuntimeTextureUploadOptions {
     rhi::TextureUsage usage{rhi::TextureUsage::shader_resource | rhi::TextureUsage::copy_destination};
     rhi::QueueKind queue{rhi::QueueKind::graphics};
+    rhi::RhiUploadRing* upload_ring{nullptr};
     bool wait_for_completion{true};
 };
 

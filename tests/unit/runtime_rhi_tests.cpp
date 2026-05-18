@@ -7,6 +7,7 @@
 #include "mirakana/renderer/frame_graph.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/rhi/rhi.hpp"
+#include "mirakana/rhi/upload_staging.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
@@ -157,6 +158,79 @@ MK_TEST("runtime rhi upload creates texture resource and records byte upload whe
     MK_REQUIRE(stats.buffer_texture_copies == 1);
     MK_REQUIRE(stats.resource_transitions == 2);
     MK_REQUIRE(stats.command_lists_submitted == 1);
+}
+
+MK_TEST("runtime rhi texture upload can use caller owned upload ring staging") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    const auto texture = mirakana::AssetId::from_name("textures/ring_albedo");
+    const mirakana::runtime::RuntimeTexturePayload payload{
+        .asset = texture,
+        .handle = mirakana::runtime::RuntimeAssetHandle{31},
+        .width = 4,
+        .height = 2,
+        .pixel_format = mirakana::TextureSourcePixelFormat::rgba8_unorm,
+        .source_bytes = 32,
+        .bytes = std::vector<std::uint8_t>(32, std::uint8_t{0x51}),
+    };
+    mirakana::runtime_rhi::RuntimeTextureUploadOptions options;
+    options.upload_ring = &ring;
+    const auto buffers_before_upload = device.stats().buffers_created;
+
+    const auto result = mirakana::runtime_rhi::upload_runtime_texture(device, payload, options);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.texture.value != 0);
+    MK_REQUIRE(result.upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(result.owner_device == &device);
+    MK_REQUIRE(result.copy_recorded);
+    MK_REQUIRE(result.uploaded_bytes == 512);
+    MK_REQUIRE(result.submitted_fence.value != 0);
+    MK_REQUIRE(result.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(result.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(result.frame_graph_barriers_recorded == 2);
+    MK_REQUIRE(result.frame_graph_pass_target_state_barriers_recorded == 1);
+    MK_REQUIRE(result.frame_graph_final_state_barriers_recorded == 1);
+    MK_REQUIRE(result.frame_graph_pass_callbacks_invoked == 1);
+    MK_REQUIRE(device.stats().buffers_created == buffers_before_upload);
+    MK_REQUIRE(device.stats().buffer_writes == 1);
+    MK_REQUIRE(device.stats().bytes_written == 512);
+    MK_REQUIRE(device.stats().buffer_texture_copies == 1);
+    MK_REQUIRE(device.stats().textures_created == 1);
+    MK_REQUIRE(device.stats().command_lists_submitted == 1);
+    MK_REQUIRE(device.stats().fence_waits == 1);
+}
+
+MK_TEST("runtime rhi texture upload rejects ring staging exhaustion before side effects") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 256, .min_alignment = 256});
+    const auto texture = mirakana::AssetId::from_name("textures/ring_too_small");
+    const mirakana::runtime::RuntimeTexturePayload payload{
+        .asset = texture,
+        .handle = mirakana::runtime::RuntimeAssetHandle{32},
+        .width = 4,
+        .height = 2,
+        .pixel_format = mirakana::TextureSourcePixelFormat::rgba8_unorm,
+        .source_bytes = 32,
+        .bytes = std::vector<std::uint8_t>(32, std::uint8_t{0x52}),
+    };
+    mirakana::runtime_rhi::RuntimeTextureUploadOptions options;
+    options.upload_ring = &ring;
+    const auto buffers_after_ring_creation = device.stats().buffers_created;
+
+    const auto result = mirakana::runtime_rhi::upload_runtime_texture(device, payload, options);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.diagnostic.find("ring") != std::string::npos);
+    MK_REQUIRE(result.texture.value == 0);
+    MK_REQUIRE(result.upload_buffer.value == 0);
+    MK_REQUIRE(device.stats().buffers_created == buffers_after_ring_creation);
+    MK_REQUIRE(device.stats().textures_created == 0);
+    MK_REQUIRE(device.stats().buffer_writes == 0);
+    MK_REQUIRE(device.stats().buffer_texture_copies == 0);
+    MK_REQUIRE(device.stats().command_lists_begun == 0);
 }
 
 MK_TEST("runtime rhi upload creates texture resource without copy for metadata only payload") {
@@ -401,6 +475,59 @@ MK_TEST("runtime package streaming frame graph upload binding transaction upload
     MK_REQUIRE(stats.buffer_texture_copies == 2);
     MK_REQUIRE(stats.resource_transitions == 4);
     MK_REQUIRE(stats.command_lists_submitted == 2);
+}
+
+MK_TEST("runtime package streaming texture transaction can reuse caller owned upload ring") {
+    const auto albedo = mirakana::AssetId::from_name("textures/streamed/ring_transaction_albedo");
+    const auto normal = mirakana::AssetId::from_name("textures/streamed/ring_transaction_normal");
+    const auto catalog = make_runtime_texture_catalog({
+        make_runtime_texture_record(albedo, mirakana::runtime::RuntimeAssetHandle{.value = 1}),
+        make_runtime_texture_record(normal, mirakana::runtime::RuntimeAssetHandle{.value = 2}),
+    });
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::runtime_rhi::RuntimeTextureUploadOptions upload_options;
+    upload_options.upload_ring = &ring;
+    const auto albedo_payload = make_runtime_texture_payload(albedo, mirakana::runtime::RuntimeAssetHandle{.value = 1});
+    const auto normal_payload = make_runtime_texture_payload(normal, mirakana::runtime::RuntimeAssetHandle{.value = 2});
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureUploadSource{
+            .asset = albedo,
+            .resource = "package_ring_albedo",
+            .payload = &albedo_payload,
+            .upload_options = upload_options,
+            .current_state = mirakana::rhi::ResourceState::shader_read,
+        },
+        mirakana::runtime_rhi::RuntimePackageStreamingFrameGraphTextureUploadSource{
+            .asset = normal,
+            .resource = "package_ring_normal",
+            .payload = &normal_payload,
+            .upload_options = upload_options,
+            .current_state = mirakana::rhi::ResourceState::shader_read,
+        },
+    };
+    const auto buffers_after_ring_creation = device.stats().buffers_created;
+
+    auto transaction = mirakana::runtime_rhi::upload_runtime_package_streaming_frame_graph_texture_bindings(
+        device, streaming, catalog, sources);
+
+    MK_REQUIRE(transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.size() == 2);
+    MK_REQUIRE(transaction.texture_bindings.size() == 2);
+    MK_REQUIRE(transaction.uploaded_bytes == 512);
+    MK_REQUIRE(transaction.uploads[0].upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(transaction.uploads[1].upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(transaction.texture_bindings[0].resource == "package_ring_albedo");
+    MK_REQUIRE(transaction.texture_bindings[0].texture.value == transaction.uploads[0].texture.value);
+    MK_REQUIRE(transaction.texture_bindings[1].resource == "package_ring_normal");
+    MK_REQUIRE(transaction.texture_bindings[1].texture.value == transaction.uploads[1].texture.value);
+    MK_REQUIRE(device.stats().buffers_created == buffers_after_ring_creation);
+    MK_REQUIRE(device.stats().textures_created == 2);
+    MK_REQUIRE(device.stats().buffer_writes == 2);
+    MK_REQUIRE(device.stats().buffer_texture_copies == 2);
+    MK_REQUIRE(device.stats().command_lists_submitted == 2);
 }
 
 MK_TEST("runtime package streaming frame graph upload binding transaction rejects missing payload before upload") {
