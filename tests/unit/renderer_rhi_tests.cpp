@@ -3166,6 +3166,7 @@ MK_TEST("frame graph rhi multi queue executor submits declared pass queues and w
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
 
     MK_REQUIRE(result.succeeded());
@@ -3262,6 +3263,7 @@ MK_TEST("frame graph rhi multi queue executor records texture barriers before co
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
 
     MK_REQUIRE(result.succeeded());
@@ -3277,6 +3279,271 @@ MK_TEST("frame graph rhi multi queue executor records texture barriers before co
     MK_REQUIRE(stats.queue_waits == 1);
     MK_REQUIRE(stats.resource_transitions == 2);
     MK_REQUIRE(stats.last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy);
+}
+
+MK_TEST("frame graph rhi multi queue executor inserts aliasing barriers before later alias callbacks") {
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "early-color",
+        .lifetime = mirakana::FrameGraphResourceLifetime::transient,
+    });
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "late-color",
+        .lifetime = mirakana::FrameGraphResourceLifetime::transient,
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "early.upload",
+        .writes = {mirakana::FrameGraphResourceAccess{
+            .resource = "early-color",
+            .access = mirakana::FrameGraphAccess::copy_destination,
+        }},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "early.sample",
+        .reads = {mirakana::FrameGraphResourceAccess{
+            .resource = "early-color",
+            .access = mirakana::FrameGraphAccess::shader_read,
+        }},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "late.upload",
+        .writes = {mirakana::FrameGraphResourceAccess{
+            .resource = "late-color",
+            .access = mirakana::FrameGraphAccess::copy_destination,
+        }},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "late.sample",
+        .reads = {mirakana::FrameGraphResourceAccess{
+            .resource = "late-color",
+            .access = mirakana::FrameGraphAccess::shader_read,
+        }},
+    });
+    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    MK_REQUIRE(plan.succeeded());
+    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+
+    const auto texture_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination | mirakana::rhi::TextureUsage::shader_resource,
+    };
+    const std::vector<mirakana::FrameGraphTransientTextureDesc> transient_textures{
+        mirakana::FrameGraphTransientTextureDesc{.resource = "early-color", .desc = texture_desc},
+        mirakana::FrameGraphTransientTextureDesc{.resource = "late-color", .desc = texture_desc},
+    };
+    const auto alias_plan = mirakana::plan_frame_graph_transient_texture_aliases(desc, transient_textures);
+    MK_REQUIRE(alias_plan.succeeded());
+    MK_REQUIRE(alias_plan.alias_groups.size() == 1);
+    MK_REQUIRE(alias_plan.alias_groups[0].resources.size() == 2);
+
+    mirakana::rhi::NullRhiDevice device;
+    auto leases = mirakana::acquire_frame_graph_transient_texture_lease_bindings(device, alias_plan);
+    MK_REQUIRE(leases.succeeded());
+    MK_REQUIRE(leases.texture_bindings.size() == 2);
+    MK_REQUIRE(leases.texture_bindings[0].texture.value != leases.texture_bindings[1].texture.value);
+
+    const auto pass_target_accesses = mirakana::build_frame_graph_texture_pass_target_accesses(desc);
+    const std::vector<mirakana::FrameGraphTexturePassTargetState> pass_target_states{
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "early.upload",
+            .resource = "early-color",
+            .state = mirakana::rhi::ResourceState::copy_destination,
+        },
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "late.upload",
+            .resource = "late-color",
+            .state = mirakana::rhi::ResourceState::copy_destination,
+        },
+    };
+    std::vector<std::uint64_t> alias_barriers_seen_before_callback;
+    const auto record_alias_barrier_count =
+        [&device, &alias_barriers_seen_before_callback](std::string_view, mirakana::rhi::IRhiCommandList&) {
+            alias_barriers_seen_before_callback.push_back(device.stats().texture_aliasing_barriers);
+            return mirakana::FrameGraphExecutionCallbackResult{};
+        };
+    const std::vector<mirakana::FrameGraphRhiPassCommandBinding> pass_commands{
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "early.upload",
+            .queue = mirakana::rhi::QueueKind::copy,
+            .callback = record_alias_barrier_count,
+        },
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "early.sample",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback = record_alias_barrier_count,
+        },
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "late.upload",
+            .queue = mirakana::rhi::QueueKind::copy,
+            .callback = record_alias_barrier_count,
+        },
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "late.sample",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback = record_alias_barrier_count,
+        },
+    };
+
+    const auto result =
+        mirakana::execute_frame_graph_rhi_multi_queue_schedule(mirakana::FrameGraphRhiMultiQueueExecutionDesc{
+            .device = &device,
+            .schedule = schedule,
+            .pass_commands = pass_commands,
+            .texture_bindings = leases.texture_bindings,
+            .pass_target_accesses = pass_target_accesses,
+            .pass_target_states = pass_target_states,
+            .render_passes = {},
+            .final_states = {},
+            .transient_texture_lifetimes = alias_plan.lifetimes,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.command_lists_submitted == 4);
+    MK_REQUIRE(result.queue_waits_recorded == 2);
+    MK_REQUIRE(result.aliasing_barriers_recorded == 1);
+    MK_REQUIRE(result.pass_target_state_barriers_recorded == 2);
+    MK_REQUIRE(result.barriers_recorded == 4);
+    MK_REQUIRE(result.pass_callbacks_invoked == 4);
+    MK_REQUIRE(alias_barriers_seen_before_callback.size() == 4);
+    MK_REQUIRE(alias_barriers_seen_before_callback[0] == 0);
+    MK_REQUIRE(alias_barriers_seen_before_callback[1] == 0);
+    MK_REQUIRE(alias_barriers_seen_before_callback[2] == 1);
+    MK_REQUIRE(alias_barriers_seen_before_callback[3] == 1);
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    MK_REQUIRE(stats.resource_transitions == 4);
+    MK_REQUIRE(stats.copy_queue_submits == 2);
+    MK_REQUIRE(stats.graphics_queue_submits == 2);
+    MK_REQUIRE(stats.queue_waits == 2);
+
+    mirakana::release_frame_graph_transient_texture_lease_bindings(device, leases.leases);
+}
+
+MK_TEST("frame graph rhi multi queue executor rejects transient alias first render pass load") {
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "early-color",
+        .lifetime = mirakana::FrameGraphResourceLifetime::transient,
+    });
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "late-color",
+        .lifetime = mirakana::FrameGraphResourceLifetime::transient,
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "early.draw",
+        .writes = {mirakana::FrameGraphResourceAccess{
+            .resource = "early-color",
+            .access = mirakana::FrameGraphAccess::color_attachment_write,
+        }},
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "late.draw",
+        .writes = {mirakana::FrameGraphResourceAccess{
+            .resource = "late-color",
+            .access = mirakana::FrameGraphAccess::color_attachment_write,
+        }},
+    });
+    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    MK_REQUIRE(plan.succeeded());
+    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+
+    const auto texture_desc = mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    };
+    const std::vector<mirakana::FrameGraphTransientTextureDesc> transient_textures{
+        mirakana::FrameGraphTransientTextureDesc{.resource = "early-color", .desc = texture_desc},
+        mirakana::FrameGraphTransientTextureDesc{.resource = "late-color", .desc = texture_desc},
+    };
+    const auto alias_plan = mirakana::plan_frame_graph_transient_texture_aliases(desc, transient_textures);
+    MK_REQUIRE(alias_plan.succeeded());
+    MK_REQUIRE(alias_plan.alias_groups.size() == 1);
+
+    mirakana::rhi::NullRhiDevice device;
+    auto leases = mirakana::acquire_frame_graph_transient_texture_lease_bindings(device, alias_plan);
+    MK_REQUIRE(leases.succeeded());
+
+    const auto pass_target_accesses = mirakana::build_frame_graph_texture_pass_target_accesses(desc);
+    const std::vector<mirakana::FrameGraphTexturePassTargetState> pass_target_states{
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "early.draw",
+            .resource = "early-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "late.draw",
+            .resource = "late-color",
+            .state = mirakana::rhi::ResourceState::render_target,
+        },
+    };
+    const std::vector<mirakana::FrameGraphRhiRenderPassDesc> render_passes{
+        mirakana::FrameGraphRhiRenderPassDesc{
+            .pass_name = "early.draw",
+            .color =
+                mirakana::FrameGraphRhiRenderPassColorAttachment{
+                    .resource = "early-color",
+                    .load_action = mirakana::rhi::LoadAction::clear,
+                },
+        },
+        mirakana::FrameGraphRhiRenderPassDesc{
+            .pass_name = "late.draw",
+            .color =
+                mirakana::FrameGraphRhiRenderPassColorAttachment{
+                    .resource = "late-color",
+                    .load_action = mirakana::rhi::LoadAction::load,
+                },
+        },
+    };
+    std::size_t callbacks_invoked = 0;
+    const auto count_callback = [&callbacks_invoked](std::string_view, mirakana::rhi::IRhiCommandList&) {
+        ++callbacks_invoked;
+        return mirakana::FrameGraphExecutionCallbackResult{};
+    };
+    const std::vector<mirakana::FrameGraphRhiPassCommandBinding> pass_commands{
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "early.draw",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback = count_callback,
+        },
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "late.draw",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback = count_callback,
+        },
+    };
+
+    const auto result =
+        mirakana::execute_frame_graph_rhi_multi_queue_schedule(mirakana::FrameGraphRhiMultiQueueExecutionDesc{
+            .device = &device,
+            .schedule = schedule,
+            .pass_commands = pass_commands,
+            .texture_bindings = leases.texture_bindings,
+            .pass_target_accesses = pass_target_accesses,
+            .pass_target_states = pass_target_states,
+            .render_passes = render_passes,
+            .final_states = {},
+            .transient_texture_lifetimes = alias_plan.lifetimes,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.command_lists_submitted == 0);
+    MK_REQUIRE(result.aliasing_barriers_recorded == 0);
+    MK_REQUIRE(result.render_passes_recorded == 0);
+    MK_REQUIRE(result.pass_callbacks_invoked == 0);
+    MK_REQUIRE(callbacks_invoked == 0);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].pass == "late.draw");
+    MK_REQUIRE(result.diagnostics[0].resource == "late-color");
+    MK_REQUIRE(result.diagnostics[0].message ==
+               "frame graph transient texture first render pass cannot load previous contents");
+    MK_REQUIRE(device.stats().command_lists_begun == 0);
+    MK_REQUIRE(device.stats().texture_aliasing_barriers == 0);
+    MK_REQUIRE(device.stats().render_passes_begun == 0);
+
+    mirakana::release_frame_graph_transient_texture_lease_bindings(device, leases.leases);
 }
 
 MK_TEST("frame graph rhi multi queue executor records final texture state after producer callback") {
@@ -3343,6 +3610,7 @@ MK_TEST("frame graph rhi multi queue executor records final texture state after 
             .pass_target_states = pass_target_states,
             .render_passes = {},
             .final_states = final_states,
+            .transient_texture_lifetimes = {},
         });
 
     MK_REQUIRE(result.succeeded());
@@ -3434,6 +3702,7 @@ MK_TEST("frame graph rhi multi queue executor records render pass target state b
             .pass_target_states = pass_target_states,
             .render_passes = render_passes,
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
 
     MK_REQUIRE(result.succeeded());
@@ -3548,6 +3817,7 @@ MK_TEST("frame graph rhi multi queue executor simulates target state before down
             .pass_target_states = pass_target_states,
             .render_passes = render_passes,
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
 
     MK_REQUIRE(result.succeeded());
@@ -3612,6 +3882,7 @@ MK_TEST("frame graph rhi multi queue executor rejects render pass rows before co
                 .pass_target_states = {},
                 .render_passes = render_passes,
                 .final_states = {},
+                .transient_texture_lifetimes = {},
             });
 
         MK_REQUIRE(!result.succeeded());
@@ -3659,6 +3930,7 @@ MK_TEST("frame graph rhi multi queue executor rejects render pass rows before co
                 .pass_target_states = {},
                 .render_passes = render_passes,
                 .final_states = {},
+                .transient_texture_lifetimes = {},
             });
 
         MK_REQUIRE(!result.succeeded());
@@ -3746,6 +4018,7 @@ MK_TEST("frame graph rhi multi queue executor validates texture barriers before 
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
 
     MK_REQUIRE(!result.succeeded());
@@ -3801,6 +4074,7 @@ MK_TEST("frame graph rhi multi queue executor preserves submitted producer evide
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
 
     MK_REQUIRE(!result.succeeded());
@@ -3848,6 +4122,7 @@ MK_TEST("frame graph rhi multi queue executor rejects invalid setup before comma
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
     MK_REQUIRE(!null_device_result.succeeded());
     MK_REQUIRE(null_device_result.diagnostics.size() == 1);
@@ -3863,6 +4138,7 @@ MK_TEST("frame graph rhi multi queue executor rejects invalid setup before comma
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
     MK_REQUIRE(!duplicate_result.succeeded());
     MK_REQUIRE(duplicate_result.command_lists_submitted == 0);
@@ -3880,6 +4156,7 @@ MK_TEST("frame graph rhi multi queue executor rejects invalid setup before comma
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
     MK_REQUIRE(!missing_result.succeeded());
     MK_REQUIRE(missing_result.command_lists_submitted == 0);
@@ -3913,6 +4190,7 @@ MK_TEST("frame graph rhi multi queue executor reports begin submit and wait fail
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
     MK_REQUIRE(!begin_result.succeeded());
     MK_REQUIRE(begin_result.command_lists_submitted == 0);
@@ -3930,6 +4208,7 @@ MK_TEST("frame graph rhi multi queue executor reports begin submit and wait fail
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
     MK_REQUIRE(!submit_result.succeeded());
     MK_REQUIRE(submit_result.command_lists_submitted == 0);
@@ -3976,6 +4255,7 @@ MK_TEST("frame graph rhi multi queue executor reports begin submit and wait fail
             .pass_target_states = {},
             .render_passes = {},
             .final_states = {},
+            .transient_texture_lifetimes = {},
         });
     MK_REQUIRE(!wait_result.succeeded());
     MK_REQUIRE(wait_result.command_lists_submitted == 1);

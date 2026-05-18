@@ -1623,6 +1623,9 @@ foreach ($needle in @(
     "Runtime Material Factor Frame Graph Command Evidence v1",
     "RuntimeMaterialGpuBinding",
     "create_runtime_material_gpu_binding",
+    "Frame Graph Multi-Queue Automatic Aliasing Barrier Execution v1",
+    "FrameGraphRhiMultiQueueExecutionDesc::transient_texture_lifetimes",
+    "FrameGraphRhiMultiQueueExecutionResult::aliasing_barriers_recorded",
     "frame-graph-v1"
 )) {
     Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
@@ -1741,6 +1744,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::wait_for_queue") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Multi-Queue Executor v1") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_multi_queue_schedule") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Multi-Queue Automatic Aliasing Barrier Execution v1") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiMultiQueueExecutionDesc::transient_texture_lifetimes") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiMultiQueueExecutionResult::aliasing_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Runtime Package Streaming RHI Upload Binding Transaction v1") -or
     -not ([string]$frameGraphGap[0].notes).Contains("upload_runtime_package_streaming_frame_graph_texture_bindings") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Runtime Material Factor Frame Graph Command Evidence v1") -or
@@ -1813,6 +1819,9 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Executor v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Texture Barrier Execution v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Multi-Queue Automatic Aliasing Barrier Execution v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionDesc::transient_texture_lifetimes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::aliasing_barriers_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Public Null Aliasing Barriers v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Stats Evidence v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RendererStats::framegraph_render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"

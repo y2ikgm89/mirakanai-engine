@@ -413,6 +413,7 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
                 .pass_target_states = pass_target_states,
                 .render_passes = {},
                 .final_states = final_states,
+                .transient_texture_lifetimes = {},
             });
         if (!frame_graph_execution.succeeded()) {
             return texture_upload_failure(
@@ -567,6 +568,7 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
                 .pass_target_states = {},
                 .render_passes = {},
                 .final_states = {},
+                .transient_texture_lifetimes = {},
             });
         if (!frame_graph_execution.succeeded()) {
             return mesh_upload_failure(runtime_mesh_upload_frame_graph_diagnostic(frame_graph_execution.diagnostics));
@@ -821,6 +823,7 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
                 .pass_target_states = {},
                 .render_passes = {},
                 .final_states = {},
+                .transient_texture_lifetimes = {},
             });
         if (!frame_graph_execution.succeeded()) {
             return skinned_upload_failure(
@@ -1141,6 +1144,7 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
                 .pass_target_states = {},
                 .render_passes = {},
                 .final_states = {},
+                .transient_texture_lifetimes = {},
             });
         if (!frame_graph_execution.succeeded()) {
             return morph_upload_failure(
@@ -1927,6 +1931,7 @@ RuntimeMaterialGpuBinding create_runtime_material_gpu_binding(
                                 .pass_target_states = {},
                                 .render_passes = {},
                                 .final_states = {},
+                                .transient_texture_lifetimes = {},
                             });
                         if (!frame_graph_execution.succeeded()) {
                             return material_binding_failure(

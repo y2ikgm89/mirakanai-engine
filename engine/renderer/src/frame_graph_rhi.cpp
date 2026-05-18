@@ -278,9 +278,10 @@ void validate_transient_render_pass_content_initialization(
     }
 }
 
+template <typename Result>
 [[nodiscard]] std::map<std::string, std::vector<PlannedTextureAliasingBarrier>>
 plan_automatic_texture_aliasing_barriers(
-    FrameGraphRhiTextureExecutionResult& result, const std::map<std::string, std::size_t>& binding_indices,
+    Result& result, const std::map<std::string, std::size_t>& binding_indices,
     std::span<const std::string> scheduled_pass_order, std::span<const FrameGraphTextureBinding> texture_bindings,
     std::span<const FrameGraphTransientTextureLifetime> transient_texture_lifetimes) {
     std::map<std::size_t, std::vector<const FrameGraphTransientTextureLifetime*>> lifetimes_by_alias_group;
@@ -928,8 +929,8 @@ template <typename Result>
     }
 }
 
-[[nodiscard]] bool record_planned_texture_aliasing_barrier(FrameGraphRhiTextureExecutionResult& result,
-                                                           rhi::IRhiCommandList& commands,
+template <typename Result>
+[[nodiscard]] bool record_planned_texture_aliasing_barrier(Result& result, rhi::IRhiCommandList& commands,
                                                            std::span<FrameGraphTextureBinding> texture_bindings,
                                                            const PlannedTextureAliasingBarrier& planned) {
     const auto before = texture_bindings[planned.before_binding_index].texture;
@@ -1780,8 +1781,14 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
     }
 
     const auto scheduled_passes = build_scheduled_pass_index(desc.schedule);
+    const auto scheduled_pass_order = build_scheduled_pass_order(desc.schedule);
     const auto binding_indices = build_binding_index(result, desc.texture_bindings);
     const auto pass_target_accesses = build_pass_target_access_index(result, desc.pass_target_accesses);
+    const auto planned_aliasing_barriers =
+        result.succeeded()
+            ? plan_automatic_texture_aliasing_barriers(result, binding_indices, scheduled_pass_order,
+                                                       desc.texture_bindings, desc.transient_texture_lifetimes)
+            : std::map<std::string, std::vector<PlannedTextureAliasingBarrier>>{};
     const auto planned_pass_target_states = result.succeeded()
                                                 ? plan_pass_target_states(result, binding_indices, scheduled_passes,
                                                                           pass_target_accesses, desc.pass_target_states)
@@ -1790,6 +1797,10 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
                                            ? plan_render_pass_envelopes(result, binding_indices, scheduled_passes,
                                                                         desc.texture_bindings, desc.render_passes)
                                            : std::map<std::string, PlannedRenderPassEnvelope>{};
+    if (result.succeeded()) {
+        validate_transient_render_pass_content_initialization(result, scheduled_pass_order, desc.render_passes,
+                                                              desc.transient_texture_lifetimes);
+    }
     const auto planned_final_states = result.succeeded()
                                           ? plan_final_texture_states(result, binding_indices, desc.final_states)
                                           : std::vector<PlannedTextureFinalState>{};
@@ -1892,6 +1903,16 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
             append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
                                               "frame graph rhi pass command list is already closed");
             return result;
+        }
+
+        const auto aliasing_barriers = planned_aliasing_barriers.find(step.pass_name);
+        if (aliasing_barriers != planned_aliasing_barriers.end()) {
+            for (const auto& planned_aliasing_barrier : aliasing_barriers->second) {
+                if (!record_planned_texture_aliasing_barrier(result, *commands, desc.texture_bindings,
+                                                             planned_aliasing_barrier)) {
+                    return result;
+                }
+            }
         }
 
         const auto texture_barriers = texture_barriers_by_pass.find(step.pass_name);
@@ -2132,6 +2153,7 @@ FrameGraphRhiMultiQueuePackageEvidence execute_frame_graph_rhi_multi_queue_packa
         .pass_target_states = {},
         .render_passes = {},
         .final_states = {},
+        .transient_texture_lifetimes = {},
     });
     result.command_lists_submitted = execution.command_lists_submitted;
     result.queue_waits_recorded = execution.queue_waits_recorded;
