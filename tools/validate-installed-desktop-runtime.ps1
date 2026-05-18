@@ -181,6 +181,7 @@ $requiresNativeUiTexturedSpriteAtlas = @($SmokeArgs) -contains "--require-native
 $requiresNativeUiTextGlyphAtlas = @($SmokeArgs) -contains "--require-native-ui-text-glyph-atlas"
 $requiresGpuSkinning = @($SmokeArgs) -contains "--require-gpu-skinning"
 $requiresFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-framegraph-multiqueue-evidence"
+$requiresPackageUploadStaging = @($SmokeArgs) -contains "--require-package-upload-staging"
 $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
@@ -665,6 +666,40 @@ if ($requiresPackageStreamingSafePoint) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpackage_streaming_diagnostics=0\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove clean package streaming diagnostics."
+    }
+}
+if ($requiresPackageUploadStaging) {
+    $expectedPackageUploadStagingFields = @{
+        "package_upload_staging_status" = "ready"
+        "package_upload_staging_ready" = "1"
+        "package_upload_staging_diagnostics" = "0"
+        "package_upload_staging_package_transactions" = "4"
+        "package_upload_staging_texture_uploads" = "1"
+        "package_upload_staging_mesh_uploads" = "1"
+        "package_upload_staging_skinned_mesh_uploads" = "1"
+        "package_upload_staging_morph_mesh_uploads" = "1"
+        "package_upload_staging_texture_bindings" = "1"
+        "package_upload_staging_mesh_bindings" = "1"
+        "package_upload_staging_skinned_mesh_bindings" = "1"
+        "package_upload_staging_morph_mesh_bindings" = "1"
+        "package_upload_staging_staging_pool_leases" = "4"
+        "package_upload_staging_ring_backed_uploads" = "4"
+        "package_upload_staging_submitted_fences" = "4"
+        "package_upload_staging_upload_queue_waits_recorded" = "3"
+        "package_upload_staging_copy_queue_submits" = "3"
+        "package_upload_staging_graphics_queue_submits" = "1"
+        "package_upload_staging_queue_waits" = "3"
+        "package_upload_staging_fence_waits" = "0"
+        "package_upload_staging_graphics_waited_for_copy" = "1"
+    }
+    foreach ($field in $expectedPackageUploadStagingFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedPackageUploadStagingFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove package upload staging field: $field=$($expectedPackageUploadStagingFields[$field])"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpackage_upload_staging_uploaded_bytes=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive package upload staging bytes."
     }
 }
 if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=ready") {

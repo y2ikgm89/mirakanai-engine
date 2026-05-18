@@ -425,7 +425,11 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("Staging Pool Lease Adoption v1") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RhiStagingBufferLease") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadRingDesc::buffer") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("selected 2D/3D package upload smoke evidence") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("Selected D3D12 Generated 3D Package Upload Staging Smoke v1") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageUploadStagingEvidence") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("execute_runtime_package_upload_staging_evidence") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("package_upload_staging_*") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("async-ready resource updates") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {
     Write-Error "engine manifest aiOperableProductionLoop upload-staging-v1 gap must keep foundation-only follow-up limits explicit"
 }
@@ -517,7 +521,8 @@ foreach ($needle in @(
     "runtime/package upload queue consumption",
     "package mesh/skinned/morph upload binding transactions",
     "staging-pool lease-backed upload rings",
-    "selected 2D/3D package upload evidence"
+    "selected D3D12 generated 3D package upload staging evidence",
+    "async-ready resource updates"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
         Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"

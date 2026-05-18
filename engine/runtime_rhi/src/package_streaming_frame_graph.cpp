@@ -3,7 +3,10 @@
 
 #include "mirakana/runtime_rhi/package_streaming_frame_graph.hpp"
 
+#include "mirakana/rhi/upload_staging.hpp"
+
 #include <algorithm>
+#include <cstring>
 #include <string>
 #include <utility>
 #include <vector>
@@ -58,6 +61,13 @@ void add_diagnostic(RuntimePackageStreamingMorphMeshUploadBindingResult& result,
     });
 }
 
+void add_diagnostic(RuntimePackageUploadStagingEvidence& result, std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimePackageUploadStagingEvidenceDiagnostic{
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool contains_resource(const std::vector<std::string>& resources, const std::string& resource) {
     return std::ranges::find(resources, resource) != resources.end();
 }
@@ -74,6 +84,116 @@ void add_diagnostic(RuntimePackageStreamingMorphMeshUploadBindingResult& result,
         return "runtime upload queue wait failed";
     }
     return wait_result.diagnostics.front().message;
+}
+
+void append_le_u32(std::vector<std::uint8_t>& bytes, std::uint32_t value) {
+    bytes.push_back(static_cast<std::uint8_t>(value & 0xffU));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 8U) & 0xffU));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 16U) & 0xffU));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 24U) & 0xffU));
+}
+
+void append_le_f32(std::vector<std::uint8_t>& bytes, float value) {
+    std::uint32_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(float));
+    append_le_u32(bytes, bits);
+}
+
+void append_vec3(std::vector<std::uint8_t>& bytes, float x, float y, float z) {
+    append_le_f32(bytes, x);
+    append_le_f32(bytes, y);
+    append_le_f32(bytes, z);
+}
+
+[[nodiscard]] runtime::RuntimeAssetRecord make_upload_staging_evidence_record(AssetId asset,
+                                                                              runtime::RuntimeAssetHandle handle,
+                                                                              AssetKind kind, std::string content) {
+    return runtime::RuntimeAssetRecord{
+        .handle = handle,
+        .asset = asset,
+        .kind = kind,
+        .path = "runtime/package-upload-staging/" + std::to_string(asset.value) + ".geasset",
+        .content_hash = static_cast<std::uint64_t>(asset.value) + handle.value,
+        .source_revision = handle.value,
+        .dependencies = {},
+        .content = std::move(content),
+    };
+}
+
+[[nodiscard]] runtime::RuntimeTexturePayload make_upload_staging_texture_payload(AssetId asset,
+                                                                                 runtime::RuntimeAssetHandle handle) {
+    return runtime::RuntimeTexturePayload{
+        .asset = asset,
+        .handle = handle,
+        .width = 1,
+        .height = 1,
+        .pixel_format = TextureSourcePixelFormat::rgba8_unorm,
+        .source_bytes = 4,
+        .bytes = std::vector<std::uint8_t>{0x22, 0x33, 0x44, 0xff},
+    };
+}
+
+[[nodiscard]] runtime::RuntimeMeshPayload make_upload_staging_mesh_payload(AssetId asset,
+                                                                           runtime::RuntimeAssetHandle handle) {
+    return runtime::RuntimeMeshPayload{
+        .asset = asset,
+        .handle = handle,
+        .vertex_count = 3,
+        .index_count = 3,
+        .has_normals = false,
+        .has_uvs = false,
+        .has_tangent_frame = false,
+        .vertex_bytes = std::vector<std::uint8_t>(36, std::uint8_t{0x61}),
+        .index_bytes =
+            std::vector<std::uint8_t>{0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00},
+    };
+}
+
+[[nodiscard]] runtime::RuntimeSkinnedMeshPayload
+make_upload_staging_skinned_mesh_payload(AssetId asset, runtime::RuntimeAssetHandle handle) {
+    return runtime::RuntimeSkinnedMeshPayload{
+        .asset = asset,
+        .handle = handle,
+        .vertex_count = 3,
+        .index_count = 3,
+        .joint_count = 1,
+        .vertex_bytes = std::vector<std::uint8_t>(3U * runtime_skinned_mesh_vertex_stride_bytes, std::uint8_t{0x62}),
+        .index_bytes =
+            std::vector<std::uint8_t>{0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00},
+        .joint_palette_bytes = std::vector<std::uint8_t>(runtime_skinned_mesh_joint_matrix_bytes, std::uint8_t{0x00}),
+    };
+}
+
+[[nodiscard]] runtime::RuntimeMorphMeshCpuPayload
+make_upload_staging_morph_mesh_payload(AssetId asset, runtime::RuntimeAssetHandle handle) {
+    MorphMeshCpuSourceDocument morph;
+    morph.vertex_count = 3;
+    append_vec3(morph.bind_position_bytes, -0.6F, 0.75F, 0.0F);
+    append_vec3(morph.bind_position_bytes, 0.15F, -0.75F, 0.0F);
+    append_vec3(morph.bind_position_bytes, -1.35F, -0.75F, 0.0F);
+
+    MorphMeshCpuTargetSourceDocument target;
+    append_vec3(target.position_delta_bytes, 0.6F, 0.0F, 0.0F);
+    append_vec3(target.position_delta_bytes, 0.6F, 0.0F, 0.0F);
+    append_vec3(target.position_delta_bytes, 0.6F, 0.0F, 0.0F);
+    morph.targets.push_back(std::move(target));
+    append_le_f32(morph.target_weight_bytes, 1.0F);
+
+    return runtime::RuntimeMorphMeshCpuPayload{
+        .asset = asset,
+        .handle = handle,
+        .morph = std::move(morph),
+    };
+}
+
+[[nodiscard]] runtime::RuntimePackageStreamingExecutionResult make_upload_staging_streaming_result() {
+    runtime::RuntimePackageStreamingExecutionResult result;
+    result.status = runtime::RuntimePackageStreamingExecutionStatus::committed;
+    result.target_id = "package-upload-staging-evidence";
+    result.package_index_path = "runtime/package_upload_staging.geindex";
+    result.runtime_scene_validation_target_id = "package-upload-staging";
+    result.committed = true;
+    return result;
 }
 
 } // namespace
@@ -580,6 +700,206 @@ RuntimePackageStreamingMorphMeshUploadBindingResult upload_runtime_package_strea
 
     if (!result.succeeded()) {
         result.morph_mesh_bindings.clear();
+    }
+    return result;
+}
+
+RuntimePackageUploadStagingEvidence execute_runtime_package_upload_staging_evidence(rhi::IRhiDevice& device) {
+    RuntimePackageUploadStagingEvidence result;
+    const auto stats_before = device.stats();
+
+    constexpr std::uint64_t upload_ring_bytes = 16U * 1024U;
+    constexpr std::uint32_t upload_ring_count = 4;
+    rhi::RhiStagingBufferPool pool(device, rhi::RhiStagingBufferPoolDesc{.buffer_count = upload_ring_count,
+                                                                         .chunk_size_bytes = upload_ring_bytes});
+    std::vector<rhi::RhiUploadRing> upload_rings;
+    upload_rings.reserve(upload_ring_count);
+    for (std::uint32_t ring_index = 0; ring_index < upload_ring_count; ++ring_index) {
+        const auto lease = pool.try_acquire_lease();
+        if (!lease.has_value()) {
+            add_diagnostic(result, "staging-pool-lease-unavailable",
+                           "runtime package upload staging evidence requires four staging pool leases");
+            return result;
+        }
+        upload_rings.emplace_back(
+            device,
+            rhi::RhiUploadRingDesc{.size_bytes = lease->size_bytes, .min_alignment = 256, .buffer = lease->buffer});
+        ++result.staging_pool_leases;
+    }
+
+    const auto texture_asset = AssetId::from_name("package/upload_staging/texture");
+    const auto mesh_asset = AssetId::from_name("package/upload_staging/static_mesh");
+    const auto skinned_mesh_asset = AssetId::from_name("package/upload_staging/skinned_mesh");
+    const auto morph_mesh_asset = AssetId::from_name("package/upload_staging/morph_mesh");
+    const auto texture_handle = runtime::RuntimeAssetHandle{.value = 1};
+    const auto mesh_handle = runtime::RuntimeAssetHandle{.value = 2};
+    const auto skinned_mesh_handle = runtime::RuntimeAssetHandle{.value = 3};
+    const auto morph_mesh_handle = runtime::RuntimeAssetHandle{.value = 4};
+
+    std::vector<runtime::RuntimeAssetRecord> records;
+    records.push_back(
+        make_upload_staging_evidence_record(texture_asset, texture_handle, AssetKind::texture, "texture"));
+    records.push_back(make_upload_staging_evidence_record(mesh_asset, mesh_handle, AssetKind::mesh, "mesh"));
+    records.push_back(make_upload_staging_evidence_record(skinned_mesh_asset, skinned_mesh_handle,
+                                                          AssetKind::skinned_mesh, "skinned_mesh"));
+    records.push_back(make_upload_staging_evidence_record(morph_mesh_asset, morph_mesh_handle,
+                                                          AssetKind::morph_mesh_cpu, "morph_mesh_cpu"));
+
+    runtime::RuntimeResourceCatalogV2 catalog;
+    const auto catalog_build =
+        runtime::build_runtime_resource_catalog_v2(catalog, runtime::RuntimeAssetPackage{std::move(records)});
+    if (!catalog_build.succeeded()) {
+        add_diagnostic(result, "catalog-build-failed",
+                       catalog_build.diagnostics.empty() ? "runtime package upload staging catalog build failed"
+                                                         : catalog_build.diagnostics.front().diagnostic);
+        return result;
+    }
+
+    const auto streaming = make_upload_staging_streaming_result();
+    const auto texture_payload = make_upload_staging_texture_payload(texture_asset, texture_handle);
+    const auto mesh_payload = make_upload_staging_mesh_payload(mesh_asset, mesh_handle);
+    const auto skinned_mesh_payload = make_upload_staging_skinned_mesh_payload(skinned_mesh_asset, skinned_mesh_handle);
+    const auto morph_mesh_payload = make_upload_staging_morph_mesh_payload(morph_mesh_asset, morph_mesh_handle);
+
+    RuntimeTextureUploadOptions texture_options;
+    texture_options.queue = rhi::QueueKind::graphics;
+    texture_options.upload_ring = upload_rings.data();
+    texture_options.wait_for_completion = false;
+    RuntimeMeshUploadOptions mesh_options;
+    mesh_options.queue = rhi::QueueKind::copy;
+    mesh_options.upload_ring = upload_rings.data() + 1;
+    mesh_options.wait_for_completion = false;
+    RuntimeSkinnedMeshUploadOptions skinned_mesh_options;
+    skinned_mesh_options.queue = rhi::QueueKind::copy;
+    skinned_mesh_options.upload_ring = upload_rings.data() + 2;
+    skinned_mesh_options.wait_for_completion = false;
+    RuntimeMorphMeshUploadOptions morph_mesh_options;
+    morph_mesh_options.queue = rhi::QueueKind::copy;
+    morph_mesh_options.upload_ring = upload_rings.data() + 3;
+    morph_mesh_options.wait_for_completion = false;
+
+    const auto texture_upload = upload_runtime_package_streaming_frame_graph_texture_bindings(
+        device, streaming, catalog,
+        std::vector<RuntimePackageStreamingFrameGraphTextureUploadSource>{
+            RuntimePackageStreamingFrameGraphTextureUploadSource{
+                .asset = texture_asset,
+                .resource = "package.upload_staging.texture",
+                .payload = &texture_payload,
+                .upload_options = texture_options,
+                .current_state = rhi::ResourceState::shader_read,
+            },
+        });
+    if (!texture_upload.succeeded()) {
+        const auto& diagnostic = texture_upload.diagnostics.front();
+        add_diagnostic(result, diagnostic.code, diagnostic.message);
+        return result;
+    }
+    ++result.package_transactions;
+    result.texture_uploads = texture_upload.uploads.size();
+    result.texture_bindings = texture_upload.texture_bindings.size();
+    result.uploaded_bytes += texture_upload.uploaded_bytes;
+    for (const auto& upload : texture_upload.uploads) {
+        if (upload.upload_buffer_caller_owned) {
+            ++result.ring_backed_uploads;
+        }
+        if (upload.submitted_fence.value != 0) {
+            ++result.submitted_fences;
+        }
+    }
+
+    const auto mesh_upload = upload_runtime_package_streaming_mesh_gpu_bindings(
+        device, streaming, catalog,
+        std::vector<RuntimePackageStreamingMeshUploadSource>{RuntimePackageStreamingMeshUploadSource{
+            .asset = mesh_asset,
+            .payload = &mesh_payload,
+            .upload_options = mesh_options,
+        }});
+    if (!mesh_upload.succeeded()) {
+        const auto& diagnostic = mesh_upload.diagnostics.front();
+        add_diagnostic(result, diagnostic.code, diagnostic.message);
+        return result;
+    }
+    ++result.package_transactions;
+    result.mesh_uploads = mesh_upload.uploads.size();
+    result.mesh_bindings = mesh_upload.mesh_bindings.size();
+    result.uploaded_bytes += mesh_upload.uploaded_bytes;
+    result.submitted_fences += mesh_upload.submitted_fences.size();
+    result.upload_queue_waits_recorded += mesh_upload.upload_queue_waits_recorded;
+    for (const auto& upload : mesh_upload.uploads) {
+        if (upload.upload_buffers_caller_owned) {
+            ++result.ring_backed_uploads;
+        }
+    }
+
+    const auto skinned_mesh_upload = upload_runtime_package_streaming_skinned_mesh_gpu_bindings(
+        device, streaming, catalog,
+        std::vector<RuntimePackageStreamingSkinnedMeshUploadSource>{
+            RuntimePackageStreamingSkinnedMeshUploadSource{
+                .asset = skinned_mesh_asset,
+                .payload = &skinned_mesh_payload,
+                .upload_options = skinned_mesh_options,
+            },
+        });
+    if (!skinned_mesh_upload.succeeded()) {
+        const auto& diagnostic = skinned_mesh_upload.diagnostics.front();
+        add_diagnostic(result, diagnostic.code, diagnostic.message);
+        return result;
+    }
+    ++result.package_transactions;
+    result.skinned_mesh_uploads = skinned_mesh_upload.uploads.size();
+    result.skinned_mesh_bindings = skinned_mesh_upload.skinned_mesh_bindings.size();
+    result.uploaded_bytes += skinned_mesh_upload.uploaded_bytes;
+    result.submitted_fences += skinned_mesh_upload.submitted_fences.size();
+    result.upload_queue_waits_recorded += skinned_mesh_upload.upload_queue_waits_recorded;
+    for (const auto& upload : skinned_mesh_upload.uploads) {
+        if (upload.upload_buffers_caller_owned) {
+            ++result.ring_backed_uploads;
+        }
+    }
+
+    const auto morph_mesh_upload = upload_runtime_package_streaming_morph_mesh_gpu_bindings(
+        device, streaming, catalog,
+        std::vector<RuntimePackageStreamingMorphMeshUploadSource>{RuntimePackageStreamingMorphMeshUploadSource{
+            .asset = morph_mesh_asset,
+            .payload = &morph_mesh_payload,
+            .upload_options = morph_mesh_options,
+        }});
+    if (!morph_mesh_upload.succeeded()) {
+        const auto& diagnostic = morph_mesh_upload.diagnostics.front();
+        add_diagnostic(result, diagnostic.code, diagnostic.message);
+        return result;
+    }
+    ++result.package_transactions;
+    result.morph_mesh_uploads = morph_mesh_upload.uploads.size();
+    result.morph_mesh_bindings = morph_mesh_upload.morph_mesh_bindings.size();
+    result.uploaded_bytes += morph_mesh_upload.uploaded_bytes;
+    result.submitted_fences += morph_mesh_upload.submitted_fences.size();
+    result.upload_queue_waits_recorded += morph_mesh_upload.upload_queue_waits_recorded;
+    for (const auto& upload : morph_mesh_upload.uploads) {
+        if (upload.upload_buffers_caller_owned) {
+            ++result.ring_backed_uploads;
+        }
+    }
+
+    const auto stats_after = device.stats();
+    result.copy_queue_submits = stats_after.copy_queue_submits - stats_before.copy_queue_submits;
+    result.graphics_queue_submits = stats_after.graphics_queue_submits - stats_before.graphics_queue_submits;
+    result.queue_waits = stats_after.queue_waits - stats_before.queue_waits;
+    result.fence_waits = stats_after.fence_waits - stats_before.fence_waits;
+    result.graphics_waited_for_copy = result.queue_waits > 0 && stats_after.last_graphics_queue_wait_fence_value > 0 &&
+                                      stats_after.last_graphics_queue_wait_fence_queue == rhi::QueueKind::copy;
+
+    result.ready = result.package_transactions == 4 && result.texture_uploads == 1 && result.mesh_uploads == 1 &&
+                   result.skinned_mesh_uploads == 1 && result.morph_mesh_uploads == 1 && result.texture_bindings == 1 &&
+                   result.mesh_bindings == 1 && result.skinned_mesh_bindings == 1 && result.morph_mesh_bindings == 1 &&
+                   result.staging_pool_leases == upload_ring_count && result.ring_backed_uploads == 4 &&
+                   result.uploaded_bytes > 0 && result.submitted_fences == 4 &&
+                   result.upload_queue_waits_recorded == 3 && result.copy_queue_submits >= 3 &&
+                   result.graphics_queue_submits >= 1 && result.queue_waits == 3 && result.fence_waits == 0 &&
+                   result.graphics_waited_for_copy;
+    if (!result.ready) {
+        add_diagnostic(result, "package-upload-staging-counters-mismatch",
+                       "runtime package upload staging evidence did not meet expected counters");
     }
     return result;
 }

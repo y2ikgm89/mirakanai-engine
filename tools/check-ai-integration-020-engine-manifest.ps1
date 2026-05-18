@@ -1762,7 +1762,11 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RhiStagingBufferPool::release(RhiStagingBufferLease)") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadRingDesc::buffer") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("ring exhaustion") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("selected 2D/3D package upload smoke evidence") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("Selected D3D12 Generated 3D Package Upload Staging Smoke v1") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageUploadStagingEvidence") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("execute_runtime_package_upload_staging_evidence") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("package_upload_staging_*") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("async-ready resource updates") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop upload-staging-v1 gap must keep foundation-only follow-up limits explicit"
 }
@@ -1845,7 +1849,8 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime/package upload queue consumption" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package mesh/skinned/morph upload binding transactions" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool lease-backed upload rings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "selected 2D/3D package upload evidence" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "selected D3D12 generated 3D package upload staging evidence" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "async-ready resource updates" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must be partly-ready after Play-In-Editor Visible Viewport Wiring v1"

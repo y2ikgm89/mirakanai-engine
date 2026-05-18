@@ -153,6 +153,39 @@ struct RuntimePackageStreamingMorphMeshUploadBindingResult {
     }
 };
 
+struct RuntimePackageUploadStagingEvidenceDiagnostic {
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageUploadStagingEvidence {
+    bool ready{false};
+    std::size_t package_transactions{0};
+    std::size_t texture_uploads{0};
+    std::size_t mesh_uploads{0};
+    std::size_t skinned_mesh_uploads{0};
+    std::size_t morph_mesh_uploads{0};
+    std::size_t texture_bindings{0};
+    std::size_t mesh_bindings{0};
+    std::size_t skinned_mesh_bindings{0};
+    std::size_t morph_mesh_bindings{0};
+    std::size_t staging_pool_leases{0};
+    std::size_t ring_backed_uploads{0};
+    std::uint64_t uploaded_bytes{0};
+    std::size_t submitted_fences{0};
+    std::size_t upload_queue_waits_recorded{0};
+    std::uint64_t copy_queue_submits{0};
+    std::uint64_t graphics_queue_submits{0};
+    std::uint64_t queue_waits{0};
+    std::uint64_t fence_waits{0};
+    bool graphics_waited_for_copy{false};
+    std::vector<RuntimePackageUploadStagingEvidenceDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 [[nodiscard]] RuntimePackageStreamingFrameGraphTextureBindingResult
 make_runtime_package_streaming_frame_graph_texture_bindings(
     const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
@@ -181,5 +214,8 @@ upload_runtime_package_streaming_morph_mesh_gpu_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
     const runtime::RuntimeResourceCatalogV2& resident_catalog,
     std::span<const RuntimePackageStreamingMorphMeshUploadSource> sources);
+
+[[nodiscard]] RuntimePackageUploadStagingEvidence
+execute_runtime_package_upload_staging_evidence(rhi::IRhiDevice& device);
 
 } // namespace mirakana::runtime_rhi

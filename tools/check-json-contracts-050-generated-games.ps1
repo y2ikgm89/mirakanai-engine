@@ -546,6 +546,8 @@ $rhiUploadStaleGenerationPlanText =
     Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md") -Raw
 $runtimeUploadQueueWaitPlanText =
     Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md") -Raw
+$runtimePackageUploadStagingEvidencePlanText =
+    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-18-upload-staging-v1-selected-package-upload-evidence-v1.md") -Raw
 $rendererCmakeText = Get-Content -LiteralPath (Join-Path $root "engine/renderer/CMakeLists.txt") -Raw
 $engineManifestText = Get-Content -LiteralPath (Join-Path $root "engine/agent/manifest.json") -Raw
 foreach ($needle in @("FrameGraphPassExecutionBinding", "FrameGraphExecutionCallbacks", "FrameGraphExecutionResult", "execute_frame_graph_v1_schedule")) {
@@ -778,6 +780,26 @@ foreach ($needle in @("runtime package streaming mesh upload transaction waits g
 foreach ($needle in @("**Status:** Completed.", "Runtime Upload Queue Wait v1", "wait_for_runtime_uploads_on_queue", "upload_queue_waits_recorded")) {
     if (-not $runtimeUploadQueueWaitPlanText.Contains($needle)) {
         Write-Error "Runtime Upload Queue Wait plan missing text: $needle"
+    }
+}
+foreach ($needle in @("RuntimePackageUploadStagingEvidence", "execute_runtime_package_upload_staging_evidence")) {
+    if (-not $runtimeRhiPackageStreamingHeaderText.Contains($needle)) {
+        Write-Error "runtime RHI package streaming header missing package upload staging evidence contract text: $needle"
+    }
+}
+foreach ($needle in @("RhiStagingBufferPool", "try_acquire_lease", "upload_runtime_package_streaming_skinned_mesh_gpu_bindings", "package-upload-staging-counters-mismatch")) {
+    if (-not $runtimeRhiPackageStreamingSourceText.Contains($needle)) {
+        Write-Error "runtime RHI package streaming source missing package upload staging evidence implementation text: $needle"
+    }
+}
+foreach ($needle in @("runtime package upload staging evidence uses pooled async ring for selected package transactions", "evidence.package_transactions == 4", "evidence.ring_backed_uploads == 4", "evidence.graphics_waited_for_copy")) {
+    if (-not $runtimeRhiTestsText.Contains($needle)) {
+        Write-Error "MK_runtime_rhi_tests missing package upload staging evidence coverage: $needle"
+    }
+}
+foreach ($needle in @("**Status:**", "Selected Package Upload Evidence v1", "execute_runtime_package_upload_staging_evidence", "--require-package-upload-staging")) {
+    if (-not $runtimePackageUploadStagingEvidencePlanText.Contains($needle)) {
+        Write-Error "Selected Package Upload Evidence plan missing text: $needle"
     }
 }
 foreach ($needle in @("validate_upload_gpu_batch_execution", "device.begin_command_list(queue)", "mark_pending_allocations_submitted(plan, ring, result.submitted_fence)")) {

@@ -1685,6 +1685,9 @@ foreach ($recipe in @($committedDesktop3dManifest.validationRecipes)) {
     if ($isCommittedDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-gameplay-systems") {
         Write-Error "$committedDesktop3dManifestPath package validation recipe missing --require-gameplay-systems: $($recipe.name)"
     }
+    if ($recipe.name -eq "installed-d3d12-3d-package-smoke" -and [string]$recipe.command -notmatch "--require-package-upload-staging") {
+        Write-Error "$committedDesktop3dManifestPath D3D12 package recipe missing --require-package-upload-staging: $($recipe.name)"
+    }
     if ($recipe.name -match "scene-collision-package" -and [string]$recipe.command -notmatch "--require-scene-collision-package") {
         Write-Error "$committedDesktop3dManifestPath scene collision recipe missing --require-scene-collision-package: $($recipe.name)"
     }
@@ -1721,6 +1724,10 @@ foreach ($needle in @(
     "renderer_quality_expected_framegraph_barrier_steps=9",
     "selected generated 3D postprocess depth-input smoke",
     "selected generated 3D playable package smoke",
+    "selected D3D12 generated 3D package upload staging smoke",
+    "package_upload_staging_ready=1",
+    "package_upload_staging_package_transactions=4",
+    "package_upload_staging_ring_backed_uploads=4",
     "selected generated 3D gameplay systems package smoke",
     "selected D3D12 visible generated 3D production-style package proof",
     "selected generated 3D directional shadow package smoke",
@@ -1752,6 +1759,7 @@ foreach ($needle in @(
     "--require-renderer-quality-gates",
     "--require-postprocess-depth-input",
     "--require-playable-3d-slice",
+    "--require-package-upload-staging",
     "--require-gameplay-systems",
     "--require-native-ui-overlay",
     "--require-visible-3d-production-proof",
@@ -1781,6 +1789,7 @@ foreach ($needle in @(
     "runtime_animation_quaternion_clip_payload",
     "sample_and_apply_runtime_scene_render_animation_pose_3d",
     "scene_gpu_compute_morph_async_compute_queue_submits",
+    "mirakana/runtime_rhi/package_streaming_frame_graph.hpp",
     "execute_selected_runtime_package_streaming_safe_point",
     "residency_hint_failed",
     "required_preload_assets = {packaged_scene_asset_id()}",
@@ -1794,6 +1803,16 @@ foreach ($needle in @(
     "package_streaming_resident_resource_kinds=",
     "package_streaming_resident_packages=",
     "package_streaming_diagnostics=",
+    "--require-package-upload-staging",
+    "require_package_upload_staging",
+    "execute_runtime_package_upload_staging_evidence",
+    "package_upload_staging_status=",
+    "package_upload_staging_ready=",
+    "package_upload_staging_diagnostics=",
+    "package_upload_staging_package_transactions=",
+    "package_upload_staging_ring_backed_uploads=",
+    "package_upload_staging_submitted_fences=",
+    "package_upload_staging_graphics_waited_for_copy=",
     "--require-renderer-quality-gates",
     "evaluate_sdl_desktop_presentation_quality_gate",
     "renderer_quality_status=",

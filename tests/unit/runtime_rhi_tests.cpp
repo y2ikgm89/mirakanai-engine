@@ -895,6 +895,34 @@ MK_TEST("runtime package streaming mesh upload transaction reuses staging pool l
     MK_REQUIRE(reacquired->buffer.value == lease->buffer.value);
 }
 
+MK_TEST("runtime package upload staging evidence uses pooled async ring for selected package transactions") {
+    mirakana::rhi::NullRhiDevice device;
+
+    const auto evidence = mirakana::runtime_rhi::execute_runtime_package_upload_staging_evidence(device);
+
+    MK_REQUIRE(evidence.succeeded());
+    MK_REQUIRE(evidence.ready);
+    MK_REQUIRE(evidence.package_transactions == 4);
+    MK_REQUIRE(evidence.texture_uploads == 1);
+    MK_REQUIRE(evidence.mesh_uploads == 1);
+    MK_REQUIRE(evidence.skinned_mesh_uploads == 1);
+    MK_REQUIRE(evidence.morph_mesh_uploads == 1);
+    MK_REQUIRE(evidence.texture_bindings == 1);
+    MK_REQUIRE(evidence.mesh_bindings == 1);
+    MK_REQUIRE(evidence.skinned_mesh_bindings == 1);
+    MK_REQUIRE(evidence.morph_mesh_bindings == 1);
+    MK_REQUIRE(evidence.staging_pool_leases == 4);
+    MK_REQUIRE(evidence.ring_backed_uploads == 4);
+    MK_REQUIRE(evidence.uploaded_bytes > 0);
+    MK_REQUIRE(evidence.submitted_fences == 4);
+    MK_REQUIRE(evidence.upload_queue_waits_recorded == 3);
+    MK_REQUIRE(evidence.copy_queue_submits == 3);
+    MK_REQUIRE(evidence.graphics_queue_submits == 1);
+    MK_REQUIRE(evidence.queue_waits == 3);
+    MK_REQUIRE(evidence.fence_waits == 0);
+    MK_REQUIRE(evidence.graphics_waited_for_copy);
+}
+
 MK_TEST("runtime package streaming mesh upload transaction waits graphics queue for async copy upload") {
     const auto mesh = mirakana::AssetId::from_name("meshes/streamed/async_copy_triangle");
     const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 31};
