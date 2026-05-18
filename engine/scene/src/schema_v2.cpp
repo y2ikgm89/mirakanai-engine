@@ -260,6 +260,75 @@ void assign_component_field(SceneComponentDocumentV2& component, std::string_vie
     return it == scene.component_prefab_sources.end() ? nullptr : &*it;
 }
 
+[[nodiscard]] const SceneComponentDocumentV2* find_component_by_id(const SceneDocumentV2& scene,
+                                                                   std::string_view component_id) noexcept {
+    const auto it = std::ranges::find_if(
+        scene.components, [component_id](const auto& component) { return component.id.value == component_id; });
+    return it == scene.components.end() ? nullptr : &*it;
+}
+
+[[nodiscard]] std::unordered_set<std::string> collect_scene_subtree_node_ids_v2(const SceneDocumentV2& scene,
+                                                                                std::string_view root_node_id) {
+    std::unordered_set<std::string> subtree;
+    subtree.insert(std::string(root_node_id));
+
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (const auto& node : scene.nodes) {
+            if (!node.parent.value.empty() && subtree.contains(node.parent.value) &&
+                subtree.insert(node.id.value).second) {
+                changed = true;
+            }
+        }
+    }
+
+    return subtree;
+}
+
+[[nodiscard]] std::unordered_set<std::string> collect_prefab_node_ids_v2(const PrefabDocumentV2& prefab) {
+    std::unordered_set<std::string> node_ids;
+    for (const auto& node : prefab.scene.nodes) {
+        node_ids.insert(node.id.value);
+    }
+    return node_ids;
+}
+
+[[nodiscard]] std::unordered_map<std::string, const SceneComponentDocumentV2*>
+collect_prefab_components_by_id_v2(const PrefabDocumentV2& prefab) {
+    std::unordered_map<std::string, const SceneComponentDocumentV2*> components_by_id;
+    for (const auto& component : prefab.scene.components) {
+        components_by_id.emplace(component.id.value, &component);
+    }
+    return components_by_id;
+}
+
+void add_scene_prefab_instance_refresh_row_v2(ScenePrefabInstanceRefreshPlanV2& plan,
+                                              ScenePrefabInstanceRefreshRowV2 row) {
+    switch (row.kind) {
+    case ScenePrefabInstanceRefreshRowKindV2::preserve_node:
+        ++plan.preserve_node_count;
+        break;
+    case ScenePrefabInstanceRefreshRowKindV2::add_source_node:
+        ++plan.add_node_count;
+        break;
+    case ScenePrefabInstanceRefreshRowKindV2::remove_stale_node:
+        ++plan.remove_node_count;
+        break;
+    case ScenePrefabInstanceRefreshRowKindV2::preserve_component:
+        ++plan.preserve_component_count;
+        break;
+    case ScenePrefabInstanceRefreshRowKindV2::add_source_component:
+        ++plan.add_component_count;
+        break;
+    case ScenePrefabInstanceRefreshRowKindV2::remove_stale_component:
+        ++plan.remove_component_count;
+        break;
+    }
+
+    plan.rows.push_back(std::move(row));
+}
+
 void add_override_diagnostic(std::vector<SceneSchemaV2Diagnostic>& diagnostics, SceneSchemaV2DiagnosticCode code,
                              std::string_view path) {
     add_diagnostic(diagnostics, code, {}, {}, {}, std::string(path));
@@ -726,6 +795,114 @@ PrefabVariantComposeResultV2 compose_prefab_variant_v2(const PrefabVariantDocume
     result.diagnostics = validate_scene_document_v2(result.prefab.scene);
     result.success = result.diagnostics.empty();
     return result;
+}
+
+ScenePrefabInstanceRefreshPlanV2 plan_scene_prefab_instance_refresh_v2(const SceneDocumentV2& scene,
+                                                                       const AuthoringId& instance_root_node,
+                                                                       const PrefabDocumentV2& refreshed_prefab) {
+    ScenePrefabInstanceRefreshPlanV2 plan;
+    plan.instance_root_node = instance_root_node;
+
+    if (!is_valid_authoring_id(instance_root_node.value)) {
+        add_diagnostic(plan.diagnostics, SceneSchemaV2DiagnosticCode::invalid_authoring_id, instance_root_node, {}, {},
+                       "instance_root_node");
+    }
+
+    const auto scene_diagnostics = validate_scene_document_v2(scene);
+    plan.diagnostics.insert(plan.diagnostics.end(), scene_diagnostics.begin(), scene_diagnostics.end());
+    const auto prefab_diagnostics = validate_prefab_document_v2(refreshed_prefab);
+    plan.diagnostics.insert(plan.diagnostics.end(), prefab_diagnostics.begin(), prefab_diagnostics.end());
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    const auto* root_source = find_node_prefab_source(scene, instance_root_node.value);
+    if (root_source == nullptr) {
+        add_diagnostic(plan.diagnostics, SceneSchemaV2DiagnosticCode::missing_override_target, instance_root_node, {},
+                       {}, "node.prefab_source");
+        return plan;
+    }
+
+    plan.prefab_path = root_source->prefab_path;
+    const auto subtree_node_ids = collect_scene_subtree_node_ids_v2(scene, instance_root_node.value);
+    const auto refreshed_node_ids = collect_prefab_node_ids_v2(refreshed_prefab);
+    const auto refreshed_components_by_id = collect_prefab_components_by_id_v2(refreshed_prefab);
+
+    std::unordered_set<std::string> matched_source_node_ids;
+    for (const auto& source : scene.node_prefab_sources) {
+        if (source.prefab_path != plan.prefab_path || !subtree_node_ids.contains(source.node.value)) {
+            continue;
+        }
+
+        const auto is_preserved = refreshed_node_ids.contains(source.source_node_id.value);
+        add_scene_prefab_instance_refresh_row_v2(
+            plan, ScenePrefabInstanceRefreshRowV2{
+                      .kind = is_preserved ? ScenePrefabInstanceRefreshRowKindV2::preserve_node
+                                           : ScenePrefabInstanceRefreshRowKindV2::remove_stale_node,
+                      .current_node = source.node,
+                      .source_node_id = source.source_node_id,
+                      .prefab_path = plan.prefab_path,
+                  });
+        if (is_preserved) {
+            matched_source_node_ids.insert(source.source_node_id.value);
+        }
+    }
+
+    for (const auto& source_node : refreshed_prefab.scene.nodes) {
+        if (matched_source_node_ids.contains(source_node.id.value)) {
+            continue;
+        }
+
+        add_scene_prefab_instance_refresh_row_v2(plan, ScenePrefabInstanceRefreshRowV2{
+                                                           .kind = ScenePrefabInstanceRefreshRowKindV2::add_source_node,
+                                                           .source_node_id = source_node.id,
+                                                           .prefab_path = plan.prefab_path,
+                                                       });
+    }
+
+    std::unordered_set<std::string> matched_source_component_ids;
+    for (const auto& source : scene.component_prefab_sources) {
+        if (source.prefab_path != plan.prefab_path) {
+            continue;
+        }
+        const auto* component = find_component_by_id(scene, source.component.value);
+        if (component == nullptr || !subtree_node_ids.contains(component->node.value)) {
+            continue;
+        }
+
+        const auto refreshed_component = refreshed_components_by_id.find(source.source_component_id.value);
+        const auto is_preserved = refreshed_component != refreshed_components_by_id.end();
+        add_scene_prefab_instance_refresh_row_v2(
+            plan, ScenePrefabInstanceRefreshRowV2{
+                      .kind = is_preserved ? ScenePrefabInstanceRefreshRowKindV2::preserve_component
+                                           : ScenePrefabInstanceRefreshRowKindV2::remove_stale_component,
+                      .current_node = component->node,
+                      .current_component = source.component,
+                      .source_node_id = is_preserved ? refreshed_component->second->node : AuthoringId{},
+                      .source_component_id = source.source_component_id,
+                      .prefab_path = plan.prefab_path,
+                  });
+        if (is_preserved) {
+            matched_source_component_ids.insert(source.source_component_id.value);
+        }
+    }
+
+    for (const auto& source_component : refreshed_prefab.scene.components) {
+        if (matched_source_component_ids.contains(source_component.id.value)) {
+            continue;
+        }
+
+        add_scene_prefab_instance_refresh_row_v2(plan,
+                                                 ScenePrefabInstanceRefreshRowV2{
+                                                     .kind = ScenePrefabInstanceRefreshRowKindV2::add_source_component,
+                                                     .source_node_id = source_component.node,
+                                                     .source_component_id = source_component.id,
+                                                     .prefab_path = plan.prefab_path,
+                                                 });
+    }
+
+    plan.valid = true;
+    return plan;
 }
 
 } // namespace mirakana

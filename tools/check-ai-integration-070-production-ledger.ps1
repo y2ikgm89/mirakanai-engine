@@ -1790,6 +1790,19 @@ foreach ($forbiddenValidationRunnerClaim in @(
         }
     }
 }
+foreach ($sceneSchemaDoc in @(
+    @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+    @{ Text = $aiIntegrationText; Label = "docs/ai-integration.md" },
+    @{ Text = $generatedScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" },
+    @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
+    @{ Text = $promptPackText; Label = "docs/specs/game-prompt-pack.md" },
+    @{ Text = $handoffPromptText; Label = "docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md" },
+    @{ Text = $roadmapText; Label = "docs/roadmap.md" }
+)) {
+    Assert-ContainsText $sceneSchemaDoc.Text "plan_scene_prefab_instance_refresh_v2" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "contract-only" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "nested prefab" $sceneSchemaDoc.Label
+}
 foreach ($forbiddenScenePrefabAuthoringClaim in @(
     "Scene/Prefab v2 authoring makes Scene v2 runtime package migration ready",
     "Scene/Prefab v2 authoring alone makes Scene v2 package migration ready",

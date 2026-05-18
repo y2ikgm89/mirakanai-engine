@@ -70,7 +70,7 @@ Constraints:
 
 Execution order:
 1. Treat docs/superpowers/plans/2026-05-01-ai-operable-production-loop-foundation-v1.md as completed contract groundwork.
-2. Treat docs/superpowers/plans/2026-05-01-scene-component-prefab-schema-v2.md as a completed contract-only `mirakana_scene` slice.
+2. Treat docs/superpowers/plans/2026-05-01-scene-component-prefab-schema-v2.md as a completed contract-only `mirakana_scene` slice. Later focused slices add reviewed Scene/Prefab v2 authoring commands, runtime package migration proof, deterministic `prefab_source` provenance, and non-mutating `plan_scene_prefab_instance_refresh_v2` stable-id planning without making editor productization, nested prefab propagation/merge resolution UX, broad/dependent package cooking, renderer/RHI residency, package streaming, or runtime prefab semantics ready.
 3. Treat docs/superpowers/plans/2026-05-01-asset-identity-runtime-resource-v2.md as a completed foundation-only asset/runtime slice.
 4. Treat docs/superpowers/plans/2026-05-01-renderer-rhi-resource-foundation-v1.md as a completed foundation-only `mirakana_rhi` slice with `RhiResourceLifetimeRegistry`, resource ids, owner labels, debug names, deferred-release records, frame-indexed retirement, deterministic diagnostics, and marker-style events.
 5. Treat docs/superpowers/plans/2026-05-01-frame-graph-upload-staging-foundation-v1.md as a completed foundation-only `mirakana_renderer`/`mirakana_rhi` slice with `FrameGraphV1Desc`, barrier intent rows, `RhiUploadStagingPlan`, buffer/texture copy rows, submitted `FenceValue` tracking, and completed-fence retirement.
