@@ -853,7 +853,6 @@ foreach ($packageSurface in $productionLoop.packageSurfaces) {
 
 $requiredGapIds = @(
     "scene-component-prefab-schema-v2",
-    "frame-graph-v1",
     "upload-staging-v1",
     "2d-playable-vertical-slice",
     "3d-playable-vertical-slice",
@@ -908,7 +907,7 @@ foreach ($needle in @(
     "viewport_color",
     "Frame Graph Texture Aliasing Barrier Command v1",
     "record_frame_graph_texture_aliasing_barriers",
-    "automatic executor insertion",
+    "Frame Graph Automatic Aliasing Barrier Insertion v1",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Frame Graph Render Pass Envelope v1",
@@ -920,11 +919,13 @@ foreach ($needle in @(
     "execute_frame_graph_rhi_multi_queue_schedule",
     "Frame Graph RHI Multi-Queue Texture Barrier Execution v1",
     "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded",
-    "multi-queue pass command submission and opt-in texture barrier recording envelope",
-    "frame-graph-v1"
+    "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
+    "upload-staging-v1",
+    "native async upload execution",
+    "upload rings/staging pools"
 )) {
     if (-not $recommendedText.Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph transient alias planning and next gap: $needle"
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
     }
 }
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })

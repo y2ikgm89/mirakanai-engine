@@ -85,7 +85,7 @@ Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "RuntimeInputRebindingP
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "platform input glyph generation" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanText "Completed gap burn-down" "production master plan completed gap pointer"
 Assert-ContainsText $masterPlanText "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "production master plan renderer-rhi closeout pointer"
-Assert-ContainsText $masterPlanText "frame-graph-v1" "production master plan next foundation gap pointer"
+Assert-ContainsText $masterPlanText "upload-staging-v1" "production master plan next foundation gap pointer"
 Assert-ContainsText $rhiPublicHeaderText "struct ComputePipelineDesc" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "create_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "bind_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
@@ -1556,7 +1556,6 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
 
 $requiredProductionGapIds = @(
     "scene-component-prefab-schema-v2",
-    "frame-graph-v1",
     "upload-staging-v1",
     "2d-playable-vertical-slice",
     "3d-playable-vertical-slice",
@@ -1608,7 +1607,7 @@ foreach ($needle in @(
     "native heap allocation",
     "Frame Graph Texture Aliasing Barrier Command v1",
     "record_frame_graph_texture_aliasing_barriers",
-    "automatic aliasing-barrier insertion",
+    "Frame Graph Automatic Aliasing Barrier Insertion v1",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Runtime Package Streaming RHI Upload Binding Transaction v1",
@@ -1631,7 +1630,7 @@ foreach ($needle in @(
     "alias-induced cross-queue waits",
     "frame-graph-v1"
 )) {
-    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
+    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout evidence"
 }
 foreach ($check in @(
     @{
@@ -1705,71 +1704,25 @@ foreach ($check in @(
     }
 }
 $frameGraphGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "frame-graph-v1" })
-if ($frameGraphGap.Count -ne 1 -or $frameGraphGap[0].status -ne "implemented-foundation-only") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop frame-graph-v1 gap must be implemented-foundation-only"
+if ($frameGraphGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop frame-graph-v1 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphV1Desc") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("barrier intent") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_v1_schedule") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_texture_schedule") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTextureFinalState") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Production Ownership Boundary Selection v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphProductionOwnershipPlan") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_production_ownership_boundary") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureAliasPlan") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_transient_texture_aliases") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Shared Texture State Handoff v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("sharing one backend-neutral TextureHandle") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("conflicting initial shared-handle states") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Texture Aliasing Barrier Command v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("wildcard/null endpoints") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("texture_aliasing_barrier") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("record_frame_graph_texture_aliasing_barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("one CreatePlacedResource texture per lease") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("first command-list use") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("placed_resource_activation_barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("transient_texture_placed_resources_alive") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("backend-private alias-group texture leases") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("placed_resource_aliasing_barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Vulkan transient alias-group texture leases") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("VK_IMAGE_CREATE_ALIAS_BIT") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::acquire_transient_texture_alias_group") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("zero/duplicate/wrong-count backend-return validation") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("first render-pass LoadAction::load") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("data inheritance/content preservation") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("automatic aliasing-barrier insertion") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiRenderPassDesc") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("render_passes_recorded") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("RendererStats::framegraph_render_passes_recorded") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Queue Dependency Plan v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_rhi_queue_waits") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::wait_for_queue") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Multi-Queue Executor v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_multi_queue_schedule") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Multi-Queue Automatic Aliasing Barrier Execution v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiMultiQueueExecutionDesc::transient_texture_lifetimes") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiMultiQueueExecutionResult::aliasing_barriers_recorded") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("alias-induced cross-queue waits") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("aliasing-barrier, submitted-fence") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Runtime Package Streaming RHI Upload Binding Transaction v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("upload_runtime_package_streaming_frame_graph_texture_bindings") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Runtime Material Factor Frame Graph Command Evidence v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("RuntimeMaterialGpuBinding") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("material-factor uniform copy") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("production multi-queue graph adoption") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("RhiViewportSurface") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("viewport_color") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("viewport color-state executor") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("executor-recorded barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("final-state policy") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("production render graph") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("public native handles") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("2D/3D playable vertical slices")) {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop frame-graph-v1 gap must keep foundation-only follow-up limits explicit"
+foreach ($check in @(
+    @{
+        Path = "docs/superpowers/plans/2026-05-18-frame-graph-v1-1-0-scope-closeout-v1.md"
+        Needles = @(
+            "Frame Graph v1 1.0 Scope Closeout",
+            "upload-staging-v1",
+            "FrameGraphRhiMultiQueuePackageEvidence",
+            "broad production render graph scheduling",
+            "Metal memory alias allocation"
+        )
+    }
+)) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $fileText $needle "$($check.Path) frame-graph-v1 closeout evidence"
+    }
 }
 $uploadStagingGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "upload-staging-v1" })
 if ($uploadStagingGap.Count -ne 1 -or $uploadStagingGap[0].status -ne "implemented-foundation-only") {
@@ -1815,7 +1768,7 @@ Assert-ContainsText $recommendedText "Package Streaming Frame Graph Texture Bind
 Assert-ContainsText $recommendedText "make_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
 Assert-ContainsText $recommendedText "Runtime Package Streaming RHI Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
 Assert-ContainsText $recommendedText "upload_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
-Assert-ContainsText $recommendedText "automatic aliasing-barrier insertion" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
+Assert-ContainsText $recommendedText "Frame Graph Automatic Aliasing Barrier Insertion v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Queue Dependency Plan v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
@@ -1837,12 +1790,13 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiFrameRenderer primary_color" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiViewportSurface viewport.clear" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "render pass envelope ownership" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "remaining raw-primary/viewport-clear render pass envelopes are complete" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "backend-neutral RHI queue dependency wait planning/recording is complete" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "multi-queue pass command submission and opt-in texture barrier recording envelope" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "public wildcard/null aliasing barriers are complete" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "broad production render graph scheduling" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Metal memory alias allocation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1 is closed" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "native async upload execution" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload rings/staging pools" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must be partly-ready after Play-In-Editor Visible Viewport Wiring v1"

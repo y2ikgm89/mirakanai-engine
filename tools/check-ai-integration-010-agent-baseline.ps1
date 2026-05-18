@@ -1332,14 +1332,17 @@ foreach ($needle in @(
     "viewport_color",
     "Frame Graph Texture Aliasing Barrier Command v1",
     "record_frame_graph_texture_aliasing_barriers",
-    "automatic executor insertion",
+    "Frame Graph Automatic Aliasing Barrier Insertion v1",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
-    "frame-graph-v1"
+    "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
+    "upload-staging-v1",
+    "native async upload execution",
+    "upload rings/staging pools"
 )) {
-    Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
+    Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout and upload-staging next gap"
 }
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $masterPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
