@@ -3546,8 +3546,15 @@ MK_TEST("scene prefab authoring dry-runs create prefab and instantiate prefab") 
     MK_REQUIRE(text_contains(instantiated.scene_content, "node.1.name=Enemy 001 EnemyRoot\n"));
     MK_REQUIRE(text_contains(instantiated.scene_content, "node.1.parent=node/root\n"));
     MK_REQUIRE(text_contains(instantiated.scene_content, "node.1.position=9 8 7\n"));
+    MK_REQUIRE(
+        text_contains(instantiated.scene_content, "node.1.prefab_source.prefab_path=source/prefabs/enemy.prefab\n"));
+    MK_REQUIRE(text_contains(instantiated.scene_content, "node.1.prefab_source.source_node_id=node/enemy-root\n"));
     MK_REQUIRE(text_contains(instantiated.scene_content, "component.0.id=enemy/001/component/enemy/mesh\n"));
     MK_REQUIRE(text_contains(instantiated.scene_content, "component.0.node=enemy/001/node/enemy-root\n"));
+    MK_REQUIRE(text_contains(instantiated.scene_content,
+                             "component.0.prefab_source.prefab_path=source/prefabs/enemy.prefab\n"));
+    MK_REQUIRE(text_contains(instantiated.scene_content,
+                             "component.0.prefab_source.source_component_id=component/enemy/mesh\n"));
     MK_REQUIRE(instantiated.model_mutations[0].kind == "instantiate_prefab");
 }
 

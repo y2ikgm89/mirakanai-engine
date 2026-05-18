@@ -39,10 +39,24 @@ struct SceneComponentDocumentV2 {
     std::vector<SceneComponentPropertyV2> properties;
 };
 
+struct SceneNodePrefabSourceV2 {
+    AuthoringId node;
+    std::string prefab_path;
+    AuthoringId source_node_id;
+};
+
+struct SceneComponentPrefabSourceV2 {
+    AuthoringId component;
+    std::string prefab_path;
+    AuthoringId source_component_id;
+};
+
 struct SceneDocumentV2 {
     std::string name;
     std::vector<SceneNodeDocumentV2> nodes;
     std::vector<SceneComponentDocumentV2> components;
+    std::vector<SceneNodePrefabSourceV2> node_prefab_sources;
+    std::vector<SceneComponentPrefabSourceV2> component_prefab_sources;
 };
 
 struct PrefabDocumentV2 {

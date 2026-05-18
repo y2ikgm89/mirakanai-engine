@@ -455,6 +455,7 @@ void plan_instantiate_prefab(const ScenePrefabAuthoringRequest& request, ScenePr
 
     for (auto node : prefab.scene.nodes) {
         const auto was_prefab_root = node.parent.value.empty();
+        const auto source_node_id = node.id;
         node.id.value = request.instance_id_prefix + node.id.value;
         node.name = request.instance_name_prefix + node.name;
         if (was_prefab_root) {
@@ -463,12 +464,23 @@ void plan_instantiate_prefab(const ScenePrefabAuthoringRequest& request, ScenePr
         } else {
             node.parent.value = request.instance_id_prefix + node.parent.value;
         }
+        scene.node_prefab_sources.push_back(SceneNodePrefabSourceV2{
+            .node = node.id,
+            .prefab_path = request.prefab_path,
+            .source_node_id = source_node_id,
+        });
         scene.nodes.push_back(std::move(node));
     }
 
     for (auto component : prefab.scene.components) {
+        const auto source_component_id = component.id;
         component.id.value = request.instance_id_prefix + component.id.value;
         component.node.value = request.instance_id_prefix + component.node.value;
+        scene.component_prefab_sources.push_back(SceneComponentPrefabSourceV2{
+            .component = component.id,
+            .prefab_path = request.prefab_path,
+            .source_component_id = source_component_id,
+        });
         scene.components.push_back(std::move(component));
     }
 

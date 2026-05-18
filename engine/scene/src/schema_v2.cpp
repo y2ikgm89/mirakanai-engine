@@ -138,7 +138,15 @@ struct PendingProperty {
     bool has_value{false};
 };
 
-void assign_node_field(SceneNodeDocumentV2& node, std::string_view field, std::string_view value) {
+struct PendingPrefabSource {
+    std::string prefab_path;
+    AuthoringId source_id;
+    bool has_prefab_path{false};
+    bool has_source_id{false};
+};
+
+void assign_node_field(SceneNodeDocumentV2& node, std::string_view field, std::string_view value,
+                       PendingPrefabSource& pending_prefab_source) {
     if (field == "id") {
         node.id.value = std::string(value);
     } else if (field == "name") {
@@ -151,13 +159,20 @@ void assign_node_field(SceneNodeDocumentV2& node, std::string_view field, std::s
         node.transform.rotation_radians = parse_vec3(value, "scene v2 node rotation");
     } else if (field == "scale") {
         node.transform.scale = parse_vec3(value, "scene v2 node scale");
+    } else if (field == "prefab_source.prefab_path") {
+        pending_prefab_source.prefab_path = std::string(value);
+        pending_prefab_source.has_prefab_path = true;
+    } else if (field == "prefab_source.source_node_id") {
+        pending_prefab_source.source_id.value = std::string(value);
+        pending_prefab_source.has_source_id = true;
     } else {
         throw std::invalid_argument("unknown scene v2 node field");
     }
 }
 
 void assign_component_field(SceneComponentDocumentV2& component, std::string_view field, std::string_view value,
-                            std::unordered_map<std::size_t, PendingProperty>& pending_properties) {
+                            std::unordered_map<std::size_t, PendingProperty>& pending_properties,
+                            PendingPrefabSource& pending_prefab_source) {
     if (field == "id") {
         component.id.value = std::string(value);
     } else if (field == "node") {
@@ -182,6 +197,12 @@ void assign_component_field(SceneComponentDocumentV2& component, std::string_vie
         } else {
             throw std::invalid_argument("unknown scene v2 component property field");
         }
+    } else if (field == "prefab_source.prefab_path") {
+        pending_prefab_source.prefab_path = std::string(value);
+        pending_prefab_source.has_prefab_path = true;
+    } else if (field == "prefab_source.source_component_id") {
+        pending_prefab_source.source_id.value = std::string(value);
+        pending_prefab_source.has_source_id = true;
     } else {
         throw std::invalid_argument("unknown scene v2 component field");
     }
@@ -222,6 +243,21 @@ void assign_component_field(SceneComponentDocumentV2& component, std::string_vie
         }
     }
     return nullptr;
+}
+
+[[nodiscard]] const SceneNodePrefabSourceV2* find_node_prefab_source(const SceneDocumentV2& scene,
+                                                                     std::string_view node_id) noexcept {
+    const auto it = std::ranges::find_if(scene.node_prefab_sources,
+                                         [node_id](const auto& source) { return source.node.value == node_id; });
+    return it == scene.node_prefab_sources.end() ? nullptr : &*it;
+}
+
+[[nodiscard]] const SceneComponentPrefabSourceV2* find_component_prefab_source(const SceneDocumentV2& scene,
+                                                                               std::string_view component_id) noexcept {
+    const auto it = std::ranges::find_if(scene.component_prefab_sources, [component_id](const auto& source) {
+        return source.component.value == component_id;
+    });
+    return it == scene.component_prefab_sources.end() ? nullptr : &*it;
 }
 
 void add_override_diagnostic(std::vector<SceneSchemaV2Diagnostic>& diagnostics, SceneSchemaV2DiagnosticCode code,
@@ -329,6 +365,46 @@ std::vector<SceneSchemaV2Diagnostic> validate_scene_document_v2(const SceneDocum
         }
     }
 
+    std::unordered_set<std::string> node_prefab_source_targets;
+    for (const auto& source : scene.node_prefab_sources) {
+        if (!node_prefab_source_targets.insert(source.node.value).second) {
+            add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::duplicate_override_path, source.node, {}, {},
+                           "node.prefab_source");
+        }
+        if (node_ids.find(source.node.value) == node_ids.end()) {
+            add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::missing_override_target, source.node, {}, {},
+                           "node.prefab_source");
+        }
+        if (source.prefab_path.empty() || !is_line_text_value(source.prefab_path)) {
+            add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::invalid_text_value, source.node, {}, {},
+                           "node.prefab_source.prefab_path");
+        }
+        if (!is_valid_authoring_id(source.source_node_id.value)) {
+            add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::invalid_authoring_id, source.node, {}, {},
+                           "node.prefab_source.source_node_id");
+        }
+    }
+
+    std::unordered_set<std::string> component_prefab_source_targets;
+    for (const auto& source : scene.component_prefab_sources) {
+        if (!component_prefab_source_targets.insert(source.component.value).second) {
+            add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::duplicate_override_path, {}, source.component, {},
+                           "component.prefab_source");
+        }
+        if (component_ids.find(source.component.value) == component_ids.end()) {
+            add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::missing_override_target, {}, source.component, {},
+                           "component.prefab_source");
+        }
+        if (source.prefab_path.empty() || !is_line_text_value(source.prefab_path)) {
+            add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::invalid_text_value, {}, source.component, {},
+                           "component.prefab_source.prefab_path");
+        }
+        if (!is_valid_authoring_id(source.source_component_id.value)) {
+            add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::invalid_authoring_id, {}, source.component, {},
+                           "component.prefab_source.source_component_id");
+        }
+    }
+
     for (const auto& node : scene.nodes) {
         if (!node.parent.value.empty() && node_ids.find(node.parent.value) == node_ids.end()) {
             add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::missing_parent_node, node.id);
@@ -377,6 +453,10 @@ std::string serialize_scene_document_v2(const SceneDocumentV2& scene) {
         output << "node." << index << ".position=" << format_vec3(node.transform.position) << '\n';
         output << "node." << index << ".rotation=" << format_vec3(node.transform.rotation_radians) << '\n';
         output << "node." << index << ".scale=" << format_vec3(node.transform.scale) << '\n';
+        if (const auto* source = find_node_prefab_source(scene, node.id.value); source != nullptr) {
+            output << "node." << index << ".prefab_source.prefab_path=" << source->prefab_path << '\n';
+            output << "node." << index << ".prefab_source.source_node_id=" << source->source_node_id.value << '\n';
+        }
     }
 
     for (std::size_t index = 0; index < scene.components.size(); ++index) {
@@ -384,6 +464,11 @@ std::string serialize_scene_document_v2(const SceneDocumentV2& scene) {
         output << "component." << index << ".id=" << component.id.value << '\n';
         output << "component." << index << ".node=" << component.node.value << '\n';
         output << "component." << index << ".type=" << component.type.value << '\n';
+        if (const auto* source = find_component_prefab_source(scene, component.id.value); source != nullptr) {
+            output << "component." << index << ".prefab_source.prefab_path=" << source->prefab_path << '\n';
+            output << "component." << index
+                   << ".prefab_source.source_component_id=" << source->source_component_id.value << '\n';
+        }
 
         auto properties = component.properties;
         std::ranges::sort(properties, [](const auto& lhs, const auto& rhs) { return lhs.name < rhs.name; });
@@ -402,6 +487,8 @@ SceneDocumentV2 deserialize_scene_document_v2(std::string_view text) {
     bool has_format = false;
     SceneDocumentV2 scene;
     std::vector<std::unordered_map<std::size_t, PendingProperty>> pending_component_properties;
+    std::vector<PendingPrefabSource> pending_node_prefab_sources;
+    std::vector<PendingPrefabSource> pending_component_prefab_sources;
 
     std::istringstream input{std::string(text)};
     std::string line;
@@ -436,7 +523,8 @@ SceneDocumentV2 deserialize_scene_document_v2(std::string_view text) {
             }
             const auto index = parse_index(after_prefix.substr(0, field_separator), "scene v2 node index");
             auto& node = ensure_index(scene.nodes, index);
-            assign_node_field(node, after_prefix.substr(field_separator + 1U), value);
+            auto& pending_prefab_source = ensure_index(pending_node_prefab_sources, index);
+            assign_node_field(node, after_prefix.substr(field_separator + 1U), value, pending_prefab_source);
             continue;
         }
         if (key.starts_with("component.")) {
@@ -448,7 +536,9 @@ SceneDocumentV2 deserialize_scene_document_v2(std::string_view text) {
             const auto index = parse_index(after_prefix.substr(0, field_separator), "scene v2 component index");
             auto& component = ensure_index(scene.components, index);
             auto& pending_properties = ensure_index(pending_component_properties, index);
-            assign_component_field(component, after_prefix.substr(field_separator + 1U), value, pending_properties);
+            auto& pending_prefab_source = ensure_index(pending_component_prefab_sources, index);
+            assign_component_field(component, after_prefix.substr(field_separator + 1U), value, pending_properties,
+                                   pending_prefab_source);
             continue;
         }
 
@@ -457,6 +547,39 @@ SceneDocumentV2 deserialize_scene_document_v2(std::string_view text) {
 
     if (!has_format) {
         throw std::invalid_argument("scene v2 format is missing");
+    }
+
+    for (std::size_t node_index = 0; node_index < pending_node_prefab_sources.size(); ++node_index) {
+        const auto& pending_source = pending_node_prefab_sources[node_index];
+        if (pending_source.has_prefab_path != pending_source.has_source_id) {
+            throw std::invalid_argument("scene v2 node prefab source is incomplete");
+        }
+        if (!pending_source.has_prefab_path) {
+            continue;
+        }
+        auto& node = ensure_index(scene.nodes, node_index);
+        scene.node_prefab_sources.push_back(SceneNodePrefabSourceV2{
+            .node = node.id,
+            .prefab_path = pending_source.prefab_path,
+            .source_node_id = pending_source.source_id,
+        });
+    }
+
+    for (std::size_t component_index = 0; component_index < pending_component_prefab_sources.size();
+         ++component_index) {
+        const auto& pending_source = pending_component_prefab_sources[component_index];
+        if (pending_source.has_prefab_path != pending_source.has_source_id) {
+            throw std::invalid_argument("scene v2 component prefab source is incomplete");
+        }
+        if (!pending_source.has_prefab_path) {
+            continue;
+        }
+        auto& component = ensure_index(scene.components, component_index);
+        scene.component_prefab_sources.push_back(SceneComponentPrefabSourceV2{
+            .component = component.id,
+            .prefab_path = pending_source.prefab_path,
+            .source_component_id = pending_source.source_id,
+        });
     }
 
     for (std::size_t component_index = 0; component_index < pending_component_properties.size(); ++component_index) {

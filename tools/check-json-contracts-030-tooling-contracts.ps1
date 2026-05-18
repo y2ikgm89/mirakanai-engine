@@ -792,6 +792,9 @@ if ($sceneAuthoringSurface.Count -ne 1 -or $sceneAuthoringSurface[0].status -ne 
     Write-Error "engine manifest aiOperableProductionLoop authoring surface scene-component-prefab-schema-v2 must be ready as a contract-only MK_scene surface"
 }
 if (-not ([string]$sceneAuthoringSurface[0].notes).Contains("Contract-only") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("SceneNodePrefabSourceV2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("SceneComponentPrefabSourceV2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("prefab_source") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("nested prefab propagation/merge resolution UX") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("2D/3D vertical slices")) {
     Write-Error "engine manifest scene-component-prefab-schema-v2 authoring surface must keep contract-only follow-up limits explicit"
@@ -881,6 +884,8 @@ if ($sceneSchemaGap.Count -ne 1 -or $sceneSchemaGap[0].status -ne "implemented-c
     Write-Error "engine manifest aiOperableProductionLoop scene-component-prefab-schema-v2 gap must be implemented-contract-only"
 }
 if (-not ([string]$sceneSchemaGap[0].notes).Contains("contract-only") -or
+    -not ([string]$sceneSchemaGap[0].notes).Contains("prefab source provenance") -or
+    -not ([string]$sceneSchemaGap[0].notes).Contains("prefab_source") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("broad/dependent package cooking") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("nested prefab propagation/merge resolution UX")) {
     Write-Error "engine manifest aiOperableProductionLoop scene-component-prefab-schema-v2 gap must keep remaining unsupported claims explicit"
