@@ -545,22 +545,28 @@ foreach ($needle in @(
     }
 }
 $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "full-repository-quality-gate" })
-if ($fullRepoQualityGap.Count -ne 1 -or $fullRepoQualityGap[0].status -ne "partly-ready") {
-    Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must be partly-ready until Phase 1 quality gates complete"
+if ($fullRepoQualityGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-if (-not ([string]$fullRepoQualityGap[0].notes).Contains("clang-tidy") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("coverage") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("sanitizer") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("Phase 1") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("CI Matrix Contract Check v1") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("ci-matrix-check") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("Windows/Linux/sanitizer/macOS/iOS") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("targeted changed-file clang-tidy") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("Full Repository Static Analysis CI Contract v1") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("static-analysis") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("tools/check-tidy.ps1 -Strict") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("broader static analyzer profile")) {
-    Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must name tidy, coverage, sanitizer, CI matrix contract, and remaining analyzer limits explicitly"
+$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md"
+foreach ($needle in @(
+    "Full Repository Quality Gate 1.0 Closeout",
+    "local full validate",
+    "CI Matrix Contract Check v1",
+    "Full Repository Static Analysis CI Contract v1",
+    "Linux coverage threshold policy",
+    "sanitizer lane documentation",
+    "Windows release package artifact evidence",
+    "broader analyzer profile expansion",
+    "full cross-platform package execution evidence",
+    "signing",
+    "notarization",
+    "release distribution",
+    "unsupported_gaps=0"
+)) {
+    if (-not $fullRepoQualityCloseoutText.Contains($needle)) {
+        Write-Error "full repository quality closeout evidence missing: $needle"
+    }
 }
 
 $tidyWrapperContent = Get-Content -LiteralPath (Join-Path $root "tools/check-tidy.ps1") -Raw

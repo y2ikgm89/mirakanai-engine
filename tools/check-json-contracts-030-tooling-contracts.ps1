@@ -864,9 +864,7 @@ foreach ($packageSurface in $productionLoop.packageSurfaces) {
     }
 }
 
-$requiredGapIds = @(
-    "full-repository-quality-gate"
-)
+$requiredGapIds = @()
 $gapIds = @{}
 foreach ($gap in $productionLoop.unsupportedProductionGaps) {
     Assert-Properties $gap @("id", "oneDotZeroCloseoutTier", "status", "requiredBeforeReadyClaim", "notes") "engine manifest aiOperableProductionLoop unsupportedProductionGaps"
@@ -903,6 +901,10 @@ if ($editorProductizationGap.Count -ne 0) {
 $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
 if ($productionUiImporterPlatformGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "full-repository-quality-gate" })
+if ($fullRepoQualityGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {

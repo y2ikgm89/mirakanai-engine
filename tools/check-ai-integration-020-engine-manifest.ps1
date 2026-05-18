@@ -1563,9 +1563,7 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
     Write-Error "engine/agent/manifest.json ui-atlas-metadata-authoring-tooling-v1 authoring surface must keep cooked metadata tooling, decoded atlas bridge, and renderer-upload limits explicit"
 }
 
-$requiredProductionGapIds = @(
-    "full-repository-quality-gate"
-)
+$requiredProductionGapIds = @()
 $productionGapIds = @{}
 foreach ($gap in $productionLoop.unsupportedProductionGaps) {
     Assert-JsonProperty $gap @("id", "oneDotZeroCloseoutTier", "status", "requiredBeforeReadyClaim", "notes") "engine/agent/manifest.json aiOperableProductionLoop unsupportedProductionGaps"
@@ -1598,6 +1596,10 @@ if ($editorProductizationGap.Count -ne 0) {
 $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
 if ($productionUiImporterPlatformGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "full-repository-quality-gate" })
+if ($fullRepoQualityGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {
