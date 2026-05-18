@@ -865,7 +865,6 @@ foreach ($packageSurface in $productionLoop.packageSurfaces) {
 }
 
 $requiredGapIds = @(
-    "2d-playable-vertical-slice",
     "3d-playable-vertical-slice",
     "editor-productization",
     "production-ui-importer-platform-adapters",
@@ -891,6 +890,10 @@ foreach ($gapId in $requiredGapIds) {
 $sceneSchemaGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "scene-component-prefab-schema-v2" })
 if ($sceneSchemaGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop scene-component-prefab-schema-v2 gap must leave unsupportedProductionGaps after foundation closeout"
+}
+$playable2dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "2d-playable-vertical-slice" })
+if ($playable2dGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop 2d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {

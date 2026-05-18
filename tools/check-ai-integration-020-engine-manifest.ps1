@@ -1567,7 +1567,6 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
 }
 
 $requiredProductionGapIds = @(
-    "2d-playable-vertical-slice",
     "3d-playable-vertical-slice",
     "editor-productization",
     "production-ui-importer-platform-adapters",
@@ -1589,6 +1588,10 @@ foreach ($gapId in $requiredProductionGapIds) {
 $sceneSchemaGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "scene-component-prefab-schema-v2" })
 if ($sceneSchemaGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop scene-component-prefab-schema-v2 gap must leave unsupportedProductionGaps after foundation closeout"
+}
+$playable2dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "2d-playable-vertical-slice" })
+if ($playable2dGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop 2d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {

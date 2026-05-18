@@ -13,11 +13,10 @@ Expand **generated / desktop package smoke** (`--require-*` flags, fail-closed c
 
 - Phase 1 foundations for streaming, uploads, frame graph, and scene/cook authoring reduce duplicate work when adding new smokes.
 
-## 2D stream targets
+## 2D stream status
 
-- Atlas **authoring** workflow in editor (not only runtime metadata counters).
-- Full tilemap **editing canvas** UX beyond runtime UX counters.
-- Broader native sprite batching readiness with package-visible `sprite_batch_*` style evidence.
+- Closed for the Engine 1.0 Windows-default generated package surface by [2026-05-18-2d-playable-vertical-slice-1-0-closeout-v1.md](2026-05-18-2d-playable-vertical-slice-1-0-closeout-v1.md).
+- Atlas **authoring** workflow in editor, full tilemap **editing canvas** UX, and broader renderer-quality sprite batching are future/editor/renderer follow-ups, not blockers for the supported 1.0 generated 2D package claim.
 
 ## 3D stream targets
 
