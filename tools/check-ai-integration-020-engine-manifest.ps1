@@ -1564,7 +1564,6 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
 }
 
 $requiredProductionGapIds = @(
-    "editor-productization",
     "production-ui-importer-platform-adapters",
     "full-repository-quality-gate"
 )
@@ -1592,6 +1591,10 @@ if ($playable2dGap.Count -ne 0) {
 $playable3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" })
 if ($playable3dGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
+if ($editorProductizationGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {
@@ -1830,7 +1833,12 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-$editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
-if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must be partly-ready after Play-In-Editor Visible Viewport Wiring v1"
+foreach ($needle in @(
+    "editor-productization",
+    "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
+    "explicit host-gated exclusion of Vulkan/Metal material-preview display parity",
+    "production-ui-importer-platform-adapters",
+    "full-repository-quality-gate"
+)) {
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason editor closeout"
 }

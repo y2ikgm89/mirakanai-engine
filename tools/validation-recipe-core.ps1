@@ -54,7 +54,6 @@ function New-ValidationRecipeRejectedResult {
         blockedBy = @()
         validationRecipes = @()
         unsupportedGapIds = @(
-            "editor-productization",
             "production-ui-importer-platform-adapters"
         )
         undoToken = New-UndoToken
@@ -307,7 +306,6 @@ function New-ValidationRecipeDryRunResult {
         blockedBy = @()
         validationRecipes = @($Plan.recipe)
         unsupportedGapIds = @(
-            "editor-productization",
             "production-ui-importer-platform-adapters"
         )
         undoToken = New-UndoToken

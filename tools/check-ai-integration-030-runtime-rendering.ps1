@@ -3,183 +3,26 @@
 
 # Chapter 3 for check-ai-integration.ps1 static contracts.
 
-if (-not ([string]$editorProductizationGap[0].notes).Contains("EditorPlaySession") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("IEditorPlaySessionDriver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorPlaySessionTickContext") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorPlaySessionControlsModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorResourcePanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiCommandPanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiPlaytestEvidenceImportModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiPlaytestEvidenceImportReviewRow") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiReviewedValidationExecutionModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiReviewedValidationExecutionDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiReviewedValidationExecutionBatchModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Host-Gated Validation Execution Ack v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor AI Reviewed Validation Batch Execution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("-HostGateAcknowledgements") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorContentBrowserImportPanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorContentBrowserImportOpenDialogModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorContentBrowserImportExternalSourceCopyModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Content Browser Import Codec Adapter Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ExternalAssetImportAdapters") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorMaterialAssetPreviewPanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorMaterialGpuPreviewExecutionSnapshot") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("material_asset_preview.gpu.execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("material_asset_preview.gpu.execution.parity_checklist") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorMaterialGpuPreviewDisplayParityChecklistRow") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.material_gpu_preview_display_parity_checklist.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInputRebindingProfilePanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantConflictReviewModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantConflictRow") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_content_browser_import_panel_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_content_browser_import_open_dialog_request") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_content_browser_import_external_source_copy_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("content_browser_import.open_dialog") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("content_browser_import.external_copy") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Browse Import Sources") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Copy External Sources") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains(".png/.gltf/.glb/.wav/.mp3/.flac") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_material_asset_preview_panel_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_input_rebinding_profile_panel_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_ai_playtest_evidence_import_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_ai_playtest_evidence_import_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_ai_reviewed_validation_execution_plan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_ai_reviewed_validation_execution_batch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_ai_reviewed_validation_execution_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_prefab_variant_conflict_review_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_prefab_variant_conflict_review_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("deserialize_prefab_variant_definition_for_review") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Remove missing-node override") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabNodeOverride::source_node_name") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("override.N.source_node_name") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("source_node_mismatch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("accept_current_node") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Accept current node N") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("updates only source_node_name") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("strict MK_scene composition index-based") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Retarget override to node N") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("resolution kind/target") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_prefab_variant_conflict_resolution_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantConflictBatchResolutionPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("resolve_prefab_variant_conflicts") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_prefab_variant_conflict_batch_resolution_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_conflicts.batch_resolution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Apply All Reviewed") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ai_evidence_import") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ai_commands.execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ai_commands.execution.batch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Execute Ready") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_conflicts") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("simulation-scene viewport rendering") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("source-scene authoring plus undo/redo blocking") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorRuntimeHostPlaytestLaunchDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorRuntimeHostPlaytestLaunchModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_runtime_host_playtest_launch_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.runtime_host") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Win32ProcessRunner") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Resources diagnostics") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("AI Commands diagnostics") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Assets diagnostics") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Input Rebinding diagnostics") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInputRebindingCaptureModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("input_rebinding.capture") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("in-memory profile candidate application") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Prefab Variant Authoring conflict review") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("hot-reload summaries") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("residency enforcement") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("allocator policy") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Variant Base Refresh Merge Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantBaseRefreshPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("apply_prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Source-Link Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabSourceLink") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabInstantiateDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("SceneNode::prefab_source") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceSourceLinkModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_scene_prefab_instance_source_link_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_source_links") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Scene Prefab Instance Refresh Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Local Child Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceRefreshPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceRefreshPolicy") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_scene_prefab_instance_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_scene_prefab_instance_refresh_batch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_scene_prefab_instance_refresh_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_scene_prefab_instance_refresh_batch_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_instance_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_instance_refresh_batch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Refresh Prefab Instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Local Children") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_local_child") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Stale Node Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_stale_source_node_as_local") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Stale Source Nodes") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Nested Prefab Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_nested_prefab_instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("unsupported_nested_prefab_instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Nested Prefab Instances") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_prefab_nested_variant_alignment.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_prefab_local_child_variant_alignment.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_prefab_stale_source_variant_alignment.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_prefab_source_node_variant_alignment.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_nested_prefab_propagation_preview.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_conflict_resolution_kind_label") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("unsupported local children") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("reviewed missing-node/source-mismatch retarget, accept-current hint repair, batch cleanup, explicit base-refresh apply, source-link diagnostics, explicit scene prefab instance refresh, reviewed local child refresh preservation, and reviewed stale source-node keep-as-local preservation") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("isolated simulation scene") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor In-Process Runtime Host Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInProcessRuntimeHostDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("begin_editor_in_process_runtime_host_session") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.in_process_runtime_host") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("IEditorPlaySessionDriver handoff") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Dynamic Game Module Driver Load v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Safe Reload Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Contract Metadata Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("DynamicLibrary") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("LoadLibraryExW") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverApi") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverContractMetadataModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_game_module_driver_contract_metadata_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("GameEngine.EditorGameModuleDriver.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("mirakana_create_editor_game_module_driver_v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverReloadModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_game_module_driver_reload_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.reload") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.contract") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.session") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverHostSessionPhase") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.editor_game_module_driver_host_session.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.editor_game_module_driver_host_session_dll_barriers.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Load Game Module Driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Reload Game Module Driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Productization 1.0 Scope Closeout v1 reclassifies") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("active-session hot reload and broader dynamic game-module loading and in-process runtime-host embedding beyond reviewed external runtime-host launch, linked-driver handoff, and explicit editor game-module driver load evidence") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("package script execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("automatic host-gated validation recipe execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("arbitrary shell") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("raw manifest command evaluation") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("free-form manifest edits") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("renderer/RHI handle exposure") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("arbitrary importer adapters") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("automatic import execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("hot reload readiness beyond reviewed recook/apply state") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("shader compiler execution from editor core") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("axis input rebinding capture") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("runtime UI focus/consumption") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("input glyph generation") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("multiplayer device assignment") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Vulkan/Metal material-preview display parity beyond D3D12 host-owned execution evidence") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("automatic host-gated AI command execution workflows") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("vendor-stable third-party editor DLL ABI and unacknowledged or automatic host-gated AI command execution are explicit Engine 1.0 exclusions rather than required-before-ready claims") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Vulkan display parity") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("nested prefab propagation/merge resolution UX")) {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must keep Play-In-Editor, resource diagnostics, AI command diagnostics, AI evidence import review, reviewed validation execution, content browser/material/input/prefab diagnostics, and remaining unsupported claims explicit"
+$editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
+if ($editorProductizationGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 host-gated exclusion closeout"
 }
-$productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
+$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md"
+foreach ($needle in @(
+    "Editor Productization 1.0 Host-Gated Exclusion Closeout",
+    "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
+    "Vulkan/Metal material-preview display parity",
+    "explicit 1.0 host-gated exclusion",
+    "EditorPlaySession",
+    "EditorAiReviewedValidationExecutionModel",
+    "EditorMaterialGpuPreviewExecutionSnapshot",
+    "ScenePrefabInstanceRefreshPlan",
+    "PrefabVariantBaseRefreshPlan",
+    "production-ui-importer-platform-adapters",
+    "full-repository-quality-gate"
+)) {
+    Assert-ContainsText $editorProductizationCloseoutText $needle "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md editor-productization closeout evidence"
+}$productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
 if ($productionUiImporterPlatformGap.Count -ne 1 -or $productionUiImporterPlatformGap[0].status -ne "planned") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must remain planned until OS/platform adapter work is complete"
 }

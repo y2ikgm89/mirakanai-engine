@@ -200,7 +200,6 @@ Write-RunnerResult -Result ([ordered]@{
         diagnostics = @($diagnostics)
         validationRecipes = @($Recipe)
         unsupportedGapIds = @(
-            "editor-productization",
             "production-ui-importer-platform-adapters"
         )
         undoToken = New-UndoToken

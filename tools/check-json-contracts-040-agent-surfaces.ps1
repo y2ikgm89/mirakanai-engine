@@ -494,96 +494,21 @@ foreach ($needle in @(
     }
 }
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
-if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
-    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must be partly-ready until full editor productization closes"
+if ($editorProductizationGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-foreach ($claim in @(
-    "Vulkan/Metal material-preview display parity beyond D3D12 host-owned execution evidence"
+$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md"
+foreach ($needle in @(
+    "Editor Productization 1.0 Host-Gated Exclusion Closeout",
+    "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
+    "Vulkan/Metal material-preview display parity",
+    "explicit 1.0 exclusion",
+    "production-ui-importer-platform-adapters",
+    "full-repository-quality-gate"
 )) {
-    if (@($editorProductizationGap[0].requiredBeforeReadyClaim) -notcontains $claim) {
-        Write-Error "engine manifest aiOperableProductionLoop editor-productization gap requiredBeforeReadyClaim missing: $claim"
+    if (-not $editorProductizationCloseoutText.Contains($needle)) {
+        Write-Error "editor-productization closeout evidence missing: $needle"
     }
-}
-foreach ($excludedClaim in @(
-    "Unity/UE-like editor UX",
-    "active-session hot reload and broader in-process runtime-host embedding beyond reviewed external runtime-host launch, linked-driver handoff, and explicit editor game-module driver load evidence",
-    "nested prefab propagation/merge resolution UX",
-    "resource management/capture execution beyond host-owned evidence rows",
-    "stable third-party ABI",
-    "unacknowledged/automatic host-gated AI command execution workflows"
-)) {
-    if (@($editorProductizationGap[0].requiredBeforeReadyClaim) -contains $excludedClaim) {
-        Write-Error "engine manifest aiOperableProductionLoop editor-productization gap requiredBeforeReadyClaim must not require Engine 1.0 exclusions: $excludedClaim"
-    }
-}
-if (-not ([string]$editorProductizationGap[0].notes).Contains("EditorRuntimeHostPlaytestLaunchDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorRuntimeHostPlaytestLaunchModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_runtime_host_playtest_launch_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.runtime_host") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Win32ProcessRunner") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor In-Process Runtime Host Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInProcessRuntimeHostDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInProcessRuntimeHostModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("begin_editor_in_process_runtime_host_session") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.in_process_runtime_host") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("IEditorPlaySessionDriver handoff") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Dynamic Game Module Driver Load v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Safe Reload Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Contract Metadata Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Dynamic Probe v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("DynamicLibrary") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("LoadLibraryExW") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverApi") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverContractMetadataModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_game_module_driver_contract_metadata_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("MK_editor_game_module_driver_probe") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("MK_editor_game_module_driver_load_tests") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("GameEngine.EditorGameModuleDriver.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("mirakana_create_editor_game_module_driver_v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverReloadModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_game_module_driver_reload_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.reload") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.contract") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Load Game Module Driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Reload Game Module Driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Productization 1.0 Scope Closeout v1 reclassifies") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("vendor-stable third-party editor DLL ABI and unacknowledged or automatic host-gated AI command execution are explicit Engine 1.0 exclusions rather than required-before-ready claims")) {
-    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must describe reviewed external runtime-host launch, in-process linked-driver handoff, dynamic game-module driver load evidence, and remaining unsupported limits"
-}
-if (-not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Variant Base Refresh Merge Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantBaseRefreshPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("apply_prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Source-Link Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabSourceLink") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabInstantiateDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceSourceLinkModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_source_links") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Scene Prefab Instance Refresh Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Local Child Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceRefreshPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceRefreshPolicy") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_scene_prefab_instance_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_scene_prefab_instance_refresh_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_instance_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_local_child") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Local Children") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Stale Node Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_stale_source_node_as_local") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Stale Source Nodes") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Nested Prefab Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_nested_prefab_instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("unsupported_nested_prefab_instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Nested Prefab Instances") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("unsupported local children") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("explicit base-refresh apply")) {
-    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must describe reviewed prefab variant base-refresh/source-link/scene-refresh evidence and remaining unsupported limits"
-}
-if (([string]$editorProductizationGap[0].notes).Contains("Full editor productization, dynamic game-module/runtime-host Play-In-Editor execution")) {
-    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must not keep stale no-runtime-host-launch unsupported wording"
 }
 $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
 if ($productionUiImporterPlatformGap.Count -ne 1 -or $productionUiImporterPlatformGap[0].status -ne "planned") {
