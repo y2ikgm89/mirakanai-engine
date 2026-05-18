@@ -438,6 +438,9 @@ $rhiUploadStagingSource = Get-AgentSurfaceText "engine/rhi/src/upload_staging.cp
 $rhiUploadStagingTests = Get-AgentSurfaceText "tests/unit/rhi_upload_staging_tests.cpp"
 $runtimeRhiUploadHeader = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp"
 $runtimeRhiUploadSource = Get-AgentSurfaceText "engine/runtime_rhi/src/runtime_upload.cpp"
+$runtimeRhiPackageStreamingHeader =
+    Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/package_streaming_frame_graph.hpp"
+$runtimeRhiPackageStreamingSource = Get-AgentSurfaceText "engine/runtime_rhi/src/package_streaming_frame_graph.cpp"
 $runtimeSceneRhiHeader = Get-AgentSurfaceText "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp"
 $runtimeSceneRhiSource = Get-AgentSurfaceText "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp"
 $runtimeRhiTests = Get-AgentSurfaceText "tests/unit/runtime_rhi_tests.cpp"
@@ -447,6 +450,8 @@ $frameGraphRhiTextureSchedulePlan =
     Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md"
 $rhiUploadStaleGenerationPlan =
     Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md"
+$runtimeUploadQueueWaitPlan =
+    Get-AgentSurfaceText "docs/superpowers/plans/2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md"
 $rendererCmake = Get-AgentSurfaceText "engine/renderer/CMakeLists.txt"
 foreach ($needle in @(
     "FrameGraphPassExecutionBinding",
@@ -606,6 +611,48 @@ foreach ($needle in @(
     "execute_upload_gpu_batch_async"
 )) {
     Assert-ContainsText $rhiUploadStagingHeader $needle "RHI upload staging async execution header"
+}
+foreach ($needle in @(
+    "RuntimeUploadQueueWaitResult",
+    "wait_for_runtime_uploads_on_queue"
+)) {
+    Assert-ContainsText $runtimeRhiUploadHeader $needle "runtime RHI upload queue-wait header"
+}
+foreach ($needle in @(
+    "valid_runtime_upload_queue_kind",
+    "device.wait_for_queue(consumer_queue, fence)",
+    "queue_waits_recorded"
+)) {
+    Assert-ContainsText $runtimeRhiUploadSource $needle "runtime RHI upload queue-wait source"
+}
+foreach ($needle in @(
+    "upload_queue_waits_recorded",
+    "RuntimePackageStreamingMeshUploadBindingResult"
+)) {
+    Assert-ContainsText $runtimeRhiPackageStreamingHeader $needle "runtime RHI package upload queue-wait header"
+}
+foreach ($needle in @(
+    "async_upload_fences",
+    "wait_for_runtime_uploads_on_queue(device, rhi::QueueKind::graphics",
+    "mesh-upload-queue-wait-failed"
+)) {
+    Assert-ContainsText $runtimeRhiPackageStreamingSource $needle "runtime RHI package upload queue-wait source"
+}
+foreach ($needle in @(
+    "runtime package streaming mesh upload transaction waits graphics queue for async copy upload",
+    "transaction.upload_queue_waits_recorded == 1",
+    "device.stats().fence_waits == 0",
+    "device.stats().last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy"
+)) {
+    Assert-ContainsText $runtimeRhiTests $needle "MK_runtime_rhi_tests runtime upload queue-wait coverage"
+}
+foreach ($needle in @(
+    "**Status:** Completed.",
+    "Runtime Upload Queue Wait v1",
+    "wait_for_runtime_uploads_on_queue",
+    "upload_queue_waits_recorded"
+)) {
+    Assert-ContainsText $runtimeUploadQueueWaitPlan $needle "Runtime Upload Queue Wait plan"
 }
 foreach ($needle in @(
     "validate_upload_gpu_batch_execution",

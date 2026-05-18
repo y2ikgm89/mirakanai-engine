@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -315,6 +316,27 @@ struct RuntimeMaterialGpuBindingOptions {
     bool create_descriptor_set_layout{true};
     rhi::BufferHandle shared_scene_pbr_frame_uniform{};
 };
+
+struct RuntimeUploadQueueWaitDiagnostic {
+    std::string code;
+    std::string message;
+    rhi::FenceValue fence{};
+};
+
+struct RuntimeUploadQueueWaitResult {
+    std::vector<RuntimeUploadQueueWaitDiagnostic> diagnostics;
+    rhi::QueueKind consumer_queue{rhi::QueueKind::graphics};
+    std::size_t queue_waits_recorded{0};
+    rhi::FenceValue last_waited_fence{};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
+[[nodiscard]] RuntimeUploadQueueWaitResult
+wait_for_runtime_uploads_on_queue(rhi::IRhiDevice& device, rhi::QueueKind consumer_queue,
+                                  std::span<const rhi::FenceValue> upload_fences);
 
 [[nodiscard]] RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
                                                                 const runtime::RuntimeTexturePayload& payload,

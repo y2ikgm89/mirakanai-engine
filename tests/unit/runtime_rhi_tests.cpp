@@ -776,6 +776,45 @@ MK_TEST("runtime package streaming mesh upload transaction uploads resident stat
     MK_REQUIRE(device.stats().command_lists_submitted == 1);
 }
 
+MK_TEST("runtime package streaming mesh upload transaction waits graphics queue for async copy upload") {
+    const auto mesh = mirakana::AssetId::from_name("meshes/streamed/async_copy_triangle");
+    const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 31};
+    const auto catalog = make_runtime_catalog({make_runtime_mesh_record(mesh, handle)});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::runtime_rhi::RuntimeMeshUploadOptions upload_options;
+    upload_options.upload_ring = &ring;
+    upload_options.queue = mirakana::rhi::QueueKind::copy;
+    upload_options.wait_for_completion = false;
+    const auto payload = make_runtime_mesh_payload(mesh, handle);
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource{
+            .asset = mesh,
+            .payload = &payload,
+            .upload_options = upload_options,
+        },
+    };
+
+    auto transaction =
+        mirakana::runtime_rhi::upload_runtime_package_streaming_mesh_gpu_bindings(device, streaming, catalog, sources);
+
+    MK_REQUIRE(transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.size() == 1);
+    MK_REQUIRE(transaction.mesh_bindings.size() == 1);
+    MK_REQUIRE(transaction.submitted_fences.size() == 1);
+    MK_REQUIRE(transaction.submitted_fences.front().queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(transaction.upload_queue_waits_recorded == 1);
+    MK_REQUIRE(transaction.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(device.stats().copy_queue_submits == 1);
+    MK_REQUIRE(device.stats().graphics_queue_submits == 0);
+    MK_REQUIRE(device.stats().fence_waits == 0);
+    MK_REQUIRE(device.stats().queue_waits == 1);
+    MK_REQUIRE(device.stats().last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(device.stats().last_graphics_queue_wait_fence_value == transaction.submitted_fences.front().value);
+}
+
 MK_TEST("runtime package streaming mesh upload transaction rejects missing mesh payload before upload") {
     const auto mesh = mirakana::AssetId::from_name("meshes/streamed/missing_payload");
     const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 4};

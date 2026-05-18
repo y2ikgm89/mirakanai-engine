@@ -48,6 +48,16 @@ void add_diagnostic(RuntimePackageStreamingMeshUploadBindingResult& result, Asse
     return std::ranges::find(assets, asset) != assets.end();
 }
 
+[[nodiscard]] std::string runtime_upload_queue_wait_diagnostic(const RuntimeUploadQueueWaitResult& wait_result) {
+    if (wait_result.diagnostics.empty()) {
+        return "runtime upload queue wait failed";
+    }
+    if (wait_result.diagnostics.front().message.empty()) {
+        return "runtime upload queue wait failed";
+    }
+    return wait_result.diagnostics.front().message;
+}
+
 } // namespace
 
 RuntimePackageStreamingFrameGraphTextureBindingResult make_runtime_package_streaming_frame_graph_texture_bindings(
@@ -285,6 +295,22 @@ RuntimePackageStreamingMeshUploadBindingResult upload_runtime_package_streaming_
     }
 
     if (!result.succeeded()) {
+        return result;
+    }
+
+    std::vector<rhi::FenceValue> async_upload_fences;
+    async_upload_fences.reserve(result.submitted_fences.size());
+    for (std::size_t index = 0; index < sources.size(); ++index) {
+        const auto& upload = result.uploads[index];
+        if (!sources[index].upload_options.wait_for_completion && upload.submitted_fence.value != 0) {
+            async_upload_fences.push_back(upload.submitted_fence);
+        }
+    }
+
+    const auto queue_wait = wait_for_runtime_uploads_on_queue(device, rhi::QueueKind::graphics, async_upload_fences);
+    result.upload_queue_waits_recorded += queue_wait.queue_waits_recorded;
+    if (!queue_wait.succeeded()) {
+        add_diagnostic(result, {}, "mesh-upload-queue-wait-failed", runtime_upload_queue_wait_diagnostic(queue_wait));
         return result;
     }
 

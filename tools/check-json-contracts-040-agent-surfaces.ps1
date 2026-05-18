@@ -415,7 +415,10 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RHI Native Async Upload Execution v1") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("execute_upload_gpu_batch_async") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadGpuBatchExecutionResult") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("native GPU upload") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("Runtime Upload Queue Wait v1") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("wait_for_runtime_uploads_on_queue") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("upload_queue_waits_recorded") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("selected 2D/3D package upload smoke evidence") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {
     Write-Error "engine manifest aiOperableProductionLoop upload-staging-v1 gap must keep foundation-only follow-up limits explicit"
 }
@@ -489,6 +492,9 @@ foreach ($needle in @(
     "upload_runtime_package_streaming_frame_graph_texture_bindings",
     "Package Static Mesh Upload Binding Transaction v1",
     "upload_runtime_package_streaming_mesh_gpu_bindings",
+    "Runtime Upload Queue Wait v1",
+    "wait_for_runtime_uploads_on_queue",
+    "upload_queue_waits_recorded",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
     "Frame Graph RHI Queue Dependency Plan v1",
@@ -501,7 +507,7 @@ foreach ($needle in @(
     "Frame Graph Remaining Render Pass Envelopes v1",
     "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
     "upload-staging-v1",
-    "native async upload execution",
+    "runtime/package upload queue consumption",
     "package skinned/morph streaming",
     "staging-pool production adoption"
 )) {

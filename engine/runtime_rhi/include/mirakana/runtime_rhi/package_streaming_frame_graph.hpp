@@ -87,6 +87,7 @@ struct RuntimePackageStreamingMeshUploadBindingResult {
     std::vector<rhi::FenceValue> submitted_fences;
     std::uint64_t uploaded_bytes{0};
     std::size_t frame_graph_command_lists_submitted{0};
+    std::size_t upload_queue_waits_recorded{0};
     std::size_t frame_graph_queue_waits_recorded{0};
     std::size_t frame_graph_barriers_recorded{0};
     std::size_t frame_graph_pass_callbacks_invoked{0};

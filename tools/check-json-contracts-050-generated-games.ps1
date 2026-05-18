@@ -531,6 +531,10 @@ $rhiUploadStagingSourceText = Get-Content -LiteralPath (Join-Path $root "engine/
 $rhiUploadStagingTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/rhi_upload_staging_tests.cpp") -Raw
 $runtimeRhiUploadHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") -Raw
 $runtimeRhiUploadSourceText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_rhi/src/runtime_upload.cpp") -Raw
+$runtimeRhiPackageStreamingHeaderText =
+    Get-Content -LiteralPath (Join-Path $root "engine/runtime_rhi/include/mirakana/runtime_rhi/package_streaming_frame_graph.hpp") -Raw
+$runtimeRhiPackageStreamingSourceText =
+    Get-Content -LiteralPath (Join-Path $root "engine/runtime_rhi/src/package_streaming_frame_graph.cpp") -Raw
 $runtimeSceneRhiHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp") -Raw
 $runtimeSceneRhiSourceText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp") -Raw
 $runtimeRhiTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/runtime_rhi_tests.cpp") -Raw
@@ -540,6 +544,8 @@ $frameGraphRhiTextureSchedulePlanText =
     Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md") -Raw
 $rhiUploadStaleGenerationPlanText =
     Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md") -Raw
+$runtimeUploadQueueWaitPlanText =
+    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md") -Raw
 $rendererCmakeText = Get-Content -LiteralPath (Join-Path $root "engine/renderer/CMakeLists.txt") -Raw
 $engineManifestText = Get-Content -LiteralPath (Join-Path $root "engine/agent/manifest.json") -Raw
 foreach ($needle in @("FrameGraphPassExecutionBinding", "FrameGraphExecutionCallbacks", "FrameGraphExecutionResult", "execute_frame_graph_v1_schedule")) {
@@ -742,6 +748,36 @@ foreach ($needle in @(
 foreach ($needle in @("RhiUploadGpuBatchExecutionResult", "execute_upload_gpu_batch_async")) {
     if (-not $rhiUploadStagingHeaderText.Contains($needle)) {
         Write-Error "RHI upload staging header missing async execution contract text: $needle"
+    }
+}
+foreach ($needle in @("RuntimeUploadQueueWaitResult", "wait_for_runtime_uploads_on_queue")) {
+    if (-not $runtimeRhiUploadHeaderText.Contains($needle)) {
+        Write-Error "runtime RHI upload header missing queue-wait contract text: $needle"
+    }
+}
+foreach ($needle in @("valid_runtime_upload_queue_kind", "device.wait_for_queue(consumer_queue, fence)", "queue_waits_recorded")) {
+    if (-not $runtimeRhiUploadSourceText.Contains($needle)) {
+        Write-Error "runtime RHI upload source missing queue-wait implementation text: $needle"
+    }
+}
+foreach ($needle in @("upload_queue_waits_recorded", "RuntimePackageStreamingMeshUploadBindingResult")) {
+    if (-not $runtimeRhiPackageStreamingHeaderText.Contains($needle)) {
+        Write-Error "runtime RHI package streaming header missing queue-wait contract text: $needle"
+    }
+}
+foreach ($needle in @("async_upload_fences", "wait_for_runtime_uploads_on_queue(device, rhi::QueueKind::graphics", "mesh-upload-queue-wait-failed")) {
+    if (-not $runtimeRhiPackageStreamingSourceText.Contains($needle)) {
+        Write-Error "runtime RHI package streaming source missing queue-wait implementation text: $needle"
+    }
+}
+foreach ($needle in @("runtime package streaming mesh upload transaction waits graphics queue for async copy upload", "transaction.upload_queue_waits_recorded == 1", "device.stats().fence_waits == 0", "device.stats().last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy")) {
+    if (-not $runtimeRhiTestsText.Contains($needle)) {
+        Write-Error "MK_runtime_rhi_tests missing runtime upload queue-wait coverage: $needle"
+    }
+}
+foreach ($needle in @("**Status:** Completed.", "Runtime Upload Queue Wait v1", "wait_for_runtime_uploads_on_queue", "upload_queue_waits_recorded")) {
+    if (-not $runtimeUploadQueueWaitPlanText.Contains($needle)) {
+        Write-Error "Runtime Upload Queue Wait plan missing text: $needle"
     }
 }
 foreach ($needle in @("validate_upload_gpu_batch_execution", "device.begin_command_list(queue)", "mark_pending_allocations_submitted(plan, ring, result.submitted_fence)")) {

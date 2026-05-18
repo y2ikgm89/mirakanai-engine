@@ -243,6 +243,16 @@ runtime_material_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnos
     return RuntimeMaterialDescriptorSetLayoutDescResult{.desc = {}, .diagnostic = std::move(diagnostic)};
 }
 
+[[nodiscard]] bool valid_runtime_upload_queue_kind(rhi::QueueKind queue) noexcept {
+    switch (queue) {
+    case rhi::QueueKind::graphics:
+    case rhi::QueueKind::compute:
+    case rhi::QueueKind::copy:
+        return true;
+    }
+    return false;
+}
+
 struct TextureUploadStaging {
     std::vector<std::uint8_t> bytes;
     rhi::BufferTextureCopyRegion region;
@@ -399,6 +409,58 @@ pack_runtime_material_factors(const MaterialFactors& factors, MaterialShadingMod
 }
 
 } // namespace
+
+RuntimeUploadQueueWaitResult wait_for_runtime_uploads_on_queue(rhi::IRhiDevice& device, rhi::QueueKind consumer_queue,
+                                                               std::span<const rhi::FenceValue> upload_fences) {
+    RuntimeUploadQueueWaitResult result;
+    result.consumer_queue = consumer_queue;
+
+    if (!valid_runtime_upload_queue_kind(consumer_queue)) {
+        result.diagnostics.push_back(RuntimeUploadQueueWaitDiagnostic{
+            .code = "invalid-consumer-queue",
+            .message = "runtime upload queue wait consumer queue is invalid",
+            .fence = {},
+        });
+        return result;
+    }
+
+    for (const auto fence : upload_fences) {
+        if (!valid_runtime_upload_queue_kind(fence.queue)) {
+            result.diagnostics.push_back(RuntimeUploadQueueWaitDiagnostic{
+                .code = "invalid-upload-fence-queue",
+                .message = "runtime upload queue wait fence queue is invalid",
+                .fence = fence,
+            });
+            return result;
+        }
+        if (fence.value == 0) {
+            result.diagnostics.push_back(RuntimeUploadQueueWaitDiagnostic{
+                .code = "empty-upload-fence",
+                .message = "runtime upload queue wait fence value is required",
+                .fence = fence,
+            });
+            return result;
+        }
+        if (fence.queue == consumer_queue) {
+            continue;
+        }
+
+        try {
+            device.wait_for_queue(consumer_queue, fence);
+        } catch (const std::exception& error) {
+            result.diagnostics.push_back(RuntimeUploadQueueWaitDiagnostic{
+                .code = "queue-wait-failed",
+                .message = error.what(),
+                .fence = fence,
+            });
+            return result;
+        }
+        ++result.queue_waits_recorded;
+        result.last_waited_fence = fence;
+    }
+
+    return result;
+}
 
 RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
                                                   const runtime::RuntimeTexturePayload& payload,
