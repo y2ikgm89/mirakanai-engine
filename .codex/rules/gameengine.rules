@@ -72,6 +72,21 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/ready-task-pr.ps1"],
+    decision = "allow",
+    justification = "Guarded PR ready conversion is allowed because the repository script verifies a clean task-owned branch, current local and remote head, open draft PR state, expected base, clean merge state, no requested changes, no failed or pending checks, and PR Gate success before invoking gh pr ready.",
+    match = [
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1 -PullRequest 120 -ExpectedBase main",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1 -PullRequest 120 -ExpectedBase main -RequiredGate \"PR Gate\"",
+    ],
+    not_match = [
+        "gh pr ready 120",
+        "gh pr edit --base main",
+        "gh pr merge --merge --delete-branch",
+    ],
+)
+
+prefix_rule(
     pattern = ["git", "push", "origin", ["main", "master"]],
     decision = "forbidden",
     justification = "Direct pushes to default or protected branches are outside GitHub Flow; push a topic branch and use a pull request with branch protection instead.",
@@ -220,6 +235,7 @@ prefix_rule(
         "gh pr status",
         "gh pr view --json url,state",
         "gh auth status",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1 -PullRequest 120 -ExpectedBase main",
         "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
         "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
     ],

@@ -8,7 +8,8 @@
       "Bash(gh pr view:*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)",
-      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)"
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)",
+      "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)"
     ],
     "ask": [
       "Bash(git checkout:*)",
