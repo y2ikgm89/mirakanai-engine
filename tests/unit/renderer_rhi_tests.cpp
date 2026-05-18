@@ -3165,6 +3165,7 @@ MK_TEST("frame graph rhi multi queue executor submits declared pass queues and w
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
 
     MK_REQUIRE(result.succeeded());
@@ -3260,6 +3261,7 @@ MK_TEST("frame graph rhi multi queue executor records texture barriers before co
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
 
     MK_REQUIRE(result.succeeded());
@@ -3275,6 +3277,83 @@ MK_TEST("frame graph rhi multi queue executor records texture barriers before co
     MK_REQUIRE(stats.queue_waits == 1);
     MK_REQUIRE(stats.resource_transitions == 2);
     MK_REQUIRE(stats.last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy);
+}
+
+MK_TEST("frame graph rhi multi queue executor records final texture state after producer callback") {
+    mirakana::FrameGraphV1Desc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        .name = "upload-target",
+        .lifetime = mirakana::FrameGraphResourceLifetime::imported,
+    });
+    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        .name = "upload",
+        .writes = {mirakana::FrameGraphResourceAccess{
+            .resource = "upload-target",
+            .access = mirakana::FrameGraphAccess::copy_destination,
+        }},
+    });
+    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    MK_REQUIRE(plan.succeeded());
+    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+
+    mirakana::rhi::NullRhiDevice device;
+    const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    std::vector<mirakana::FrameGraphTextureBinding> bindings{mirakana::FrameGraphTextureBinding{
+        .resource = "upload-target",
+        .texture = texture,
+        .current_state = mirakana::rhi::ResourceState::undefined,
+    }};
+    const auto pass_target_accesses = mirakana::build_frame_graph_texture_pass_target_accesses(desc);
+    const std::vector<mirakana::FrameGraphTexturePassTargetState> pass_target_states{
+        mirakana::FrameGraphTexturePassTargetState{
+            .pass_name = "upload",
+            .resource = "upload-target",
+            .state = mirakana::rhi::ResourceState::copy_destination,
+        },
+    };
+    const std::vector<mirakana::FrameGraphTextureFinalState> final_states{
+        mirakana::FrameGraphTextureFinalState{
+            .resource = "upload-target",
+            .state = mirakana::rhi::ResourceState::shader_read,
+        },
+    };
+    const std::vector<mirakana::FrameGraphRhiPassCommandBinding> pass_commands{
+        mirakana::FrameGraphRhiPassCommandBinding{
+            .pass_name = "upload",
+            .queue = mirakana::rhi::QueueKind::graphics,
+            .callback =
+                [](std::string_view, mirakana::rhi::IRhiCommandList& commands) {
+                    MK_REQUIRE(commands.queue_kind() == mirakana::rhi::QueueKind::graphics);
+                    return mirakana::FrameGraphExecutionCallbackResult{};
+                },
+        },
+    };
+
+    const auto result =
+        mirakana::execute_frame_graph_rhi_multi_queue_schedule(mirakana::FrameGraphRhiMultiQueueExecutionDesc{
+            .device = &device,
+            .schedule = schedule,
+            .pass_commands = pass_commands,
+            .texture_bindings = bindings,
+            .pass_target_accesses = pass_target_accesses,
+            .pass_target_states = pass_target_states,
+            .render_passes = {},
+            .final_states = final_states,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.command_lists_submitted == 1);
+    MK_REQUIRE(result.queue_waits_recorded == 0);
+    MK_REQUIRE(result.barriers_recorded == 2);
+    MK_REQUIRE(result.pass_target_state_barriers_recorded == 1);
+    MK_REQUIRE(result.final_state_barriers_recorded == 1);
+    MK_REQUIRE(result.pass_callbacks_invoked == 1);
+    MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::shader_read);
+    MK_REQUIRE(device.stats().resource_transitions == 2);
 }
 
 MK_TEST("frame graph rhi multi queue executor records render pass target state before graphics callback") {
@@ -3354,6 +3433,7 @@ MK_TEST("frame graph rhi multi queue executor records render pass target state b
             .pass_target_accesses = pass_target_accesses,
             .pass_target_states = pass_target_states,
             .render_passes = render_passes,
+            .final_states = {},
         });
 
     MK_REQUIRE(result.succeeded());
@@ -3467,6 +3547,7 @@ MK_TEST("frame graph rhi multi queue executor simulates target state before down
             .pass_target_accesses = pass_target_accesses,
             .pass_target_states = pass_target_states,
             .render_passes = render_passes,
+            .final_states = {},
         });
 
     MK_REQUIRE(result.succeeded());
@@ -3530,6 +3611,7 @@ MK_TEST("frame graph rhi multi queue executor rejects render pass rows before co
                 .pass_target_accesses = {},
                 .pass_target_states = {},
                 .render_passes = render_passes,
+                .final_states = {},
             });
 
         MK_REQUIRE(!result.succeeded());
@@ -3576,6 +3658,7 @@ MK_TEST("frame graph rhi multi queue executor rejects render pass rows before co
                 .pass_target_accesses = {},
                 .pass_target_states = {},
                 .render_passes = render_passes,
+                .final_states = {},
             });
 
         MK_REQUIRE(!result.succeeded());
@@ -3662,6 +3745,7 @@ MK_TEST("frame graph rhi multi queue executor validates texture barriers before 
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
 
     MK_REQUIRE(!result.succeeded());
@@ -3716,6 +3800,7 @@ MK_TEST("frame graph rhi multi queue executor preserves submitted producer evide
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
 
     MK_REQUIRE(!result.succeeded());
@@ -3762,6 +3847,7 @@ MK_TEST("frame graph rhi multi queue executor rejects invalid setup before comma
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
     MK_REQUIRE(!null_device_result.succeeded());
     MK_REQUIRE(null_device_result.diagnostics.size() == 1);
@@ -3776,6 +3862,7 @@ MK_TEST("frame graph rhi multi queue executor rejects invalid setup before comma
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
     MK_REQUIRE(!duplicate_result.succeeded());
     MK_REQUIRE(duplicate_result.command_lists_submitted == 0);
@@ -3792,6 +3879,7 @@ MK_TEST("frame graph rhi multi queue executor rejects invalid setup before comma
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
     MK_REQUIRE(!missing_result.succeeded());
     MK_REQUIRE(missing_result.command_lists_submitted == 0);
@@ -3824,6 +3912,7 @@ MK_TEST("frame graph rhi multi queue executor reports begin submit and wait fail
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
     MK_REQUIRE(!begin_result.succeeded());
     MK_REQUIRE(begin_result.command_lists_submitted == 0);
@@ -3840,6 +3929,7 @@ MK_TEST("frame graph rhi multi queue executor reports begin submit and wait fail
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
     MK_REQUIRE(!submit_result.succeeded());
     MK_REQUIRE(submit_result.command_lists_submitted == 0);
@@ -3885,6 +3975,7 @@ MK_TEST("frame graph rhi multi queue executor reports begin submit and wait fail
             .pass_target_accesses = {},
             .pass_target_states = {},
             .render_passes = {},
+            .final_states = {},
         });
     MK_REQUIRE(!wait_result.succeeded());
     MK_REQUIRE(wait_result.command_lists_submitted == 1);

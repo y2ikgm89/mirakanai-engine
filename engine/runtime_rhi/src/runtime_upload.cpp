@@ -394,32 +394,35 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
             .resource = "runtime.uploaded_texture",
             .state = rhi::ResourceState::shader_read,
         }};
-        auto commands = device.begin_command_list(options.queue);
-        const std::vector<FrameGraphPassExecutionBinding> pass_callbacks{FrameGraphPassExecutionBinding{
+        const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{FrameGraphRhiPassCommandBinding{
             .pass_name = "runtime.texture_upload.copy",
+            .queue = options.queue,
             .callback =
-                [&](std::string_view) {
-                    commands->copy_buffer_to_texture(upload_buffer, texture, staging.region);
+                [&](std::string_view, rhi::IRhiCommandList& commands) {
+                    commands.copy_buffer_to_texture(upload_buffer, texture, staging.region);
                     return FrameGraphExecutionCallbackResult{};
                 },
         }};
-        const auto frame_graph_execution = execute_frame_graph_rhi_texture_schedule(FrameGraphRhiTextureExecutionDesc{
-            .commands = commands.get(),
-            .schedule = upload_schedule,
-            .texture_bindings = texture_bindings,
-            .pass_callbacks = pass_callbacks,
-            .pass_target_accesses = pass_target_accesses,
-            .pass_target_states = pass_target_states,
-            .render_passes = {},
-            .final_states = final_states,
-            .transient_texture_lifetimes = {},
-        });
+        const auto frame_graph_execution =
+            execute_frame_graph_rhi_multi_queue_schedule(FrameGraphRhiMultiQueueExecutionDesc{
+                .device = &device,
+                .schedule = upload_schedule,
+                .pass_commands = pass_commands,
+                .texture_bindings = texture_bindings,
+                .pass_target_accesses = pass_target_accesses,
+                .pass_target_states = pass_target_states,
+                .render_passes = {},
+                .final_states = final_states,
+            });
         if (!frame_graph_execution.succeeded()) {
             return texture_upload_failure(
                 runtime_texture_upload_frame_graph_diagnostic(frame_graph_execution.diagnostics));
         }
-        commands->close();
-        const auto fence = device.submit(*commands);
+        if (frame_graph_execution.submitted_pass_fences.empty()) {
+            return texture_upload_failure(
+                "runtime texture upload frame graph execution failed: missing submitted fence");
+        }
+        const auto fence = frame_graph_execution.submitted_pass_fences.back().fence;
         if (options.wait_for_completion) {
             device.wait(fence);
         }
@@ -432,6 +435,8 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
             .uploaded_bytes = static_cast<std::uint64_t>(staging.bytes.size()),
             .owner_device = &device,
             .copy_recorded = true,
+            .frame_graph_command_lists_submitted = frame_graph_execution.command_lists_submitted,
+            .frame_graph_queue_waits_recorded = frame_graph_execution.queue_waits_recorded,
             .frame_graph_barriers_recorded = frame_graph_execution.barriers_recorded,
             .frame_graph_pass_target_state_barriers_recorded =
                 frame_graph_execution.pass_target_state_barriers_recorded,
@@ -561,6 +566,7 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
                 .pass_target_accesses = {},
                 .pass_target_states = {},
                 .render_passes = {},
+                .final_states = {},
             });
         if (!frame_graph_execution.succeeded()) {
             return mesh_upload_failure(runtime_mesh_upload_frame_graph_diagnostic(frame_graph_execution.diagnostics));
@@ -814,6 +820,7 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
                 .pass_target_accesses = {},
                 .pass_target_states = {},
                 .render_passes = {},
+                .final_states = {},
             });
         if (!frame_graph_execution.succeeded()) {
             return skinned_upload_failure(
@@ -1133,6 +1140,7 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
                 .pass_target_accesses = {},
                 .pass_target_states = {},
                 .render_passes = {},
+                .final_states = {},
             });
         if (!frame_graph_execution.succeeded()) {
             return morph_upload_failure(
@@ -1918,6 +1926,7 @@ RuntimeMaterialGpuBinding create_runtime_material_gpu_binding(
                                 .pass_target_accesses = {},
                                 .pass_target_states = {},
                                 .render_passes = {},
+                                .final_states = {},
                             });
                         if (!frame_graph_execution.succeeded()) {
                             return material_binding_failure(

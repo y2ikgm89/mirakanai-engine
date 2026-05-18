@@ -722,9 +722,9 @@ void validate_transient_texture_usage(Result& result, const std::string& resourc
     return texture_descs_match(candidate.desc, group.group.desc) && group.last_pass_index < candidate.first_pass_index;
 }
 
+template <typename Result>
 [[nodiscard]] std::vector<PlannedTextureFinalState>
-plan_final_texture_states(FrameGraphRhiTextureExecutionResult& result,
-                          const std::map<std::string, std::size_t>& binding_indices,
+plan_final_texture_states(Result& result, const std::map<std::string, std::size_t>& binding_indices,
                           std::span<const FrameGraphTextureFinalState> final_states) {
     std::map<std::string, std::size_t> final_state_indices;
     std::vector<PlannedTextureFinalState> planned_final_states;
@@ -765,6 +765,60 @@ plan_final_texture_states(FrameGraphRhiTextureExecutionResult& result,
     }
 
     return planned_final_states;
+}
+
+template <typename Result>
+[[nodiscard]] std::map<std::string, std::vector<PlannedTextureFinalState>>
+bucket_final_texture_states_by_pass(Result& result, std::span<const PlannedTextureFinalState> planned_final_states,
+                                    std::span<const FrameGraphExecutionStep> schedule,
+                                    std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses) {
+    const auto scheduled_pass_order = build_scheduled_pass_order(schedule);
+    const auto pass_order_indices = build_scheduled_pass_order_index(scheduled_pass_order);
+    std::map<std::string, std::size_t> last_pass_order_by_resource;
+    std::map<std::string, std::string> last_pass_by_resource;
+
+    const auto note_resource_pass = [&](const std::string& resource, const std::string& pass_name) {
+        if (resource.empty() || pass_name.empty()) {
+            return;
+        }
+        const auto pass_order = pass_order_indices.find(pass_name);
+        if (pass_order == pass_order_indices.end()) {
+            return;
+        }
+        const auto previous = last_pass_order_by_resource.find(resource);
+        if (previous == last_pass_order_by_resource.end() || previous->second <= pass_order->second) {
+            last_pass_order_by_resource[resource] = pass_order->second;
+            last_pass_by_resource[resource] = pass_name;
+        }
+    };
+
+    for (const auto& access : pass_target_accesses) {
+        note_resource_pass(access.resource, access.pass_name);
+    }
+    for (const auto& step : schedule) {
+        if (step.kind != FrameGraphExecutionStep::Kind::barrier) {
+            continue;
+        }
+        note_resource_pass(step.barrier.resource, step.barrier.from_pass);
+        note_resource_pass(step.barrier.resource, step.barrier.to_pass);
+    }
+
+    std::map<std::string, std::vector<PlannedTextureFinalState>> planned_by_pass;
+    for (const auto& planned_final_state : planned_final_states) {
+        if (planned_final_state.final_state == nullptr) {
+            continue;
+        }
+        const auto final_pass = last_pass_by_resource.find(planned_final_state.final_state->resource);
+        if (final_pass == last_pass_by_resource.end()) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
+                                              planned_final_state.final_state->resource,
+                                              "frame graph texture final state has no scheduled resource pass");
+            continue;
+        }
+        planned_by_pass[final_pass->second].push_back(planned_final_state);
+    }
+
+    return planned_by_pass;
 }
 
 void propagate_shared_simulated_texture_state(std::span<const FrameGraphTextureBinding> texture_bindings,
@@ -937,8 +991,8 @@ template <typename Result>
     }
 }
 
-[[nodiscard]] bool record_planned_texture_final_state(FrameGraphRhiTextureExecutionResult& result,
-                                                      rhi::IRhiCommandList& commands,
+template <typename Result>
+[[nodiscard]] bool record_planned_texture_final_state(Result& result, rhi::IRhiCommandList& commands,
                                                       std::span<FrameGraphTextureBinding> texture_bindings,
                                                       const PlannedTextureFinalState& planned) {
     if (planned.final_state == nullptr) {
@@ -1736,6 +1790,13 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
                                            ? plan_render_pass_envelopes(result, binding_indices, scheduled_passes,
                                                                         desc.texture_bindings, desc.render_passes)
                                            : std::map<std::string, PlannedRenderPassEnvelope>{};
+    const auto planned_final_states = result.succeeded()
+                                          ? plan_final_texture_states(result, binding_indices, desc.final_states)
+                                          : std::vector<PlannedTextureFinalState>{};
+    const auto planned_final_states_by_pass =
+        result.succeeded() ? bucket_final_texture_states_by_pass(result, planned_final_states, desc.schedule,
+                                                                 desc.pass_target_accesses)
+                           : std::map<std::string, std::vector<PlannedTextureFinalState>>{};
     if (!result.succeeded()) {
         return result;
     }
@@ -1887,6 +1948,16 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
             append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
                                               "frame graph rhi pass command callback closed command list");
             return result;
+        }
+
+        const auto final_states = planned_final_states_by_pass.find(step.pass_name);
+        if (final_states != planned_final_states_by_pass.end()) {
+            for (const auto& planned_final_state : final_states->second) {
+                if (!record_planned_texture_final_state(result, *commands, desc.texture_bindings,
+                                                        planned_final_state)) {
+                    return result;
+                }
+            }
         }
 
         try {
@@ -2060,6 +2131,7 @@ FrameGraphRhiMultiQueuePackageEvidence execute_frame_graph_rhi_multi_queue_packa
         .pass_target_accesses = {},
         .pass_target_states = {},
         .render_passes = {},
+        .final_states = {},
     });
     result.command_lists_submitted = execution.command_lists_submitted;
     result.queue_waits_recorded = execution.queue_waits_recorded;

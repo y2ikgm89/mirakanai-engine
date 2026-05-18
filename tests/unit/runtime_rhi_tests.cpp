@@ -138,6 +138,8 @@ MK_TEST("runtime rhi upload creates texture resource and records byte upload whe
     MK_REQUIRE(result.uploaded_bytes == 512);
     MK_REQUIRE(result.submitted_fence.value != 0);
     MK_REQUIRE(result.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(result.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(result.frame_graph_queue_waits_recorded == 0);
     MK_REQUIRE(result.frame_graph_barriers_recorded == 2);
     MK_REQUIRE(result.frame_graph_pass_target_state_barriers_recorded == 1);
     MK_REQUIRE(result.frame_graph_final_state_barriers_recorded == 1);
@@ -179,6 +181,8 @@ MK_TEST("runtime rhi upload creates texture resource without copy for metadata o
     MK_REQUIRE(!result.copy_recorded);
     MK_REQUIRE(result.uploaded_bytes == 0);
     MK_REQUIRE(result.submitted_fence.value == 0);
+    MK_REQUIRE(result.frame_graph_command_lists_submitted == 0);
+    MK_REQUIRE(result.frame_graph_queue_waits_recorded == 0);
     MK_REQUIRE(result.frame_graph_barriers_recorded == 0);
     MK_REQUIRE(result.frame_graph_pass_target_state_barriers_recorded == 0);
     MK_REQUIRE(result.frame_graph_final_state_barriers_recorded == 0);
@@ -231,6 +235,8 @@ MK_TEST("runtime rhi upload reports submitted fence without forcing wait") {
     MK_REQUIRE(result.copy_recorded);
     MK_REQUIRE(result.submitted_fence.value != 0);
     MK_REQUIRE(result.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(result.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(result.frame_graph_queue_waits_recorded == 0);
     MK_REQUIRE(device.stats().command_lists_submitted == 1);
     MK_REQUIRE(device.stats().fence_waits == 0);
 }

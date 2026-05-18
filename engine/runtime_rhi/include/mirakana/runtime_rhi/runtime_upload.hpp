@@ -57,6 +57,8 @@ struct RuntimeTextureUploadResult {
     std::uint64_t uploaded_bytes{0};
     const rhi::IRhiDevice* owner_device{nullptr};
     bool copy_recorded{false};
+    std::size_t frame_graph_command_lists_submitted{0};
+    std::size_t frame_graph_queue_waits_recorded{0};
     std::size_t frame_graph_barriers_recorded{0};
     std::size_t frame_graph_pass_target_state_barriers_recorded{0};
     std::size_t frame_graph_final_state_barriers_recorded{0};

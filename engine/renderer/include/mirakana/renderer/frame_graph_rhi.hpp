@@ -184,6 +184,7 @@ struct FrameGraphRhiMultiQueueExecutionDesc {
     std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses;
     std::span<const FrameGraphTexturePassTargetState> pass_target_states;
     std::span<const FrameGraphRhiRenderPassDesc> render_passes;
+    std::span<const FrameGraphTextureFinalState> final_states;
 };
 
 struct FrameGraphRhiMultiQueueExecutionResult {
@@ -191,6 +192,7 @@ struct FrameGraphRhiMultiQueueExecutionResult {
     std::size_t queue_waits_recorded{0};
     std::size_t barriers_recorded{0};
     std::size_t pass_target_state_barriers_recorded{0};
+    std::size_t final_state_barriers_recorded{0};
     std::size_t render_passes_recorded{0};
     std::size_t pass_callbacks_invoked{0};
     std::vector<FrameGraphRhiSubmittedPassFence> submitted_pass_fences;
