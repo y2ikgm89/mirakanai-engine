@@ -200,6 +200,119 @@ MK_TEST("rhi upload ring and gpu batch record buffer copies on null rhi") {
     MK_REQUIRE(copied.front() == 0x5A);
 }
 
+MK_TEST("rhi upload async execution submits staged buffer batch without waiting") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadStagingPlan plan;
+    const auto allocation = plan.allocate_staging_bytes(
+        mirakana::rhi::RhiUploadAllocationDesc{.size_bytes = 256, .debug_name = "async-staging"});
+    MK_REQUIRE(allocation.succeeded());
+
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 1024, .min_alignment = 256});
+    MK_REQUIRE(ring.reserve_for_allocation(plan, allocation.handle, mirakana::rhi::FenceValue{}).succeeded());
+    const auto base = ring.byte_offset_for(allocation.handle);
+    MK_REQUIRE(base.has_value());
+
+    const std::vector<std::uint8_t> payload(64, std::uint8_t{0xC7});
+    device.write_buffer(ring.buffer(), *base, payload);
+    MK_REQUIRE(plan.enqueue_buffer_upload(mirakana::rhi::RhiBufferUploadDesc{
+                                              .staging = allocation.handle,
+                                              .staging_offset = 0,
+                                              .size_bytes = payload.size(),
+                                              .debug_name = "async-vertex-slice",
+                                          })
+                   .succeeded());
+
+    const auto destination = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 256, .usage = mirakana::rhi::BufferUsage::copy_destination | mirakana::rhi::BufferUsage::vertex});
+
+    const auto executed = mirakana::rhi::execute_upload_gpu_batch_async(
+        device, plan, ring, mirakana::rhi::QueueKind::copy,
+        std::vector<mirakana::rhi::RhiGpuBufferCopyTarget>{{.destination = destination, .destination_offset = 8}}, {});
+    MK_REQUIRE(executed.succeeded());
+    MK_REQUIRE(executed.submitted_fence.value != 0);
+    MK_REQUIRE(executed.submitted_fence.queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(executed.command_lists_submitted == 1);
+    MK_REQUIRE(executed.buffer_copies_recorded == 1);
+    MK_REQUIRE(executed.texture_copies_recorded == 0);
+    MK_REQUIRE(device.stats().command_lists_begun == 1);
+    MK_REQUIRE(device.stats().command_lists_submitted == 1);
+    MK_REQUIRE(device.stats().copy_queue_submits == 1);
+    MK_REQUIRE(device.stats().fence_waits == 0);
+    MK_REQUIRE(device.stats().queue_waits == 0);
+    MK_REQUIRE(plan.allocations().size() == 1);
+    MK_REQUIRE(plan.allocations().front().submitted);
+    MK_REQUIRE(plan.allocations().front().submitted_fence.value == executed.submitted_fence.value);
+    MK_REQUIRE(plan.allocations().front().submitted_fence.queue == executed.submitted_fence.queue);
+
+    const auto copied = device.read_buffer(destination, 8, payload.size());
+    MK_REQUIRE(copied.size() == payload.size());
+    MK_REQUIRE(copied.front() == 0xC7);
+    MK_REQUIRE(copied.back() == 0xC7);
+    MK_REQUIRE(plan.retire_completed_uploads(executed.submitted_fence) == 1);
+    ring.release_completed(executed.submitted_fence);
+    MK_REQUIRE(!ring.owns_allocation(allocation.handle));
+}
+
+MK_TEST("rhi upload async execution rejects target mismatch before command list creation") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadStagingPlan plan;
+    const auto allocation = plan.allocate_staging_bytes(
+        mirakana::rhi::RhiUploadAllocationDesc{.size_bytes = 128, .debug_name = "async-mismatch"});
+    MK_REQUIRE(allocation.succeeded());
+
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    MK_REQUIRE(ring.reserve_for_allocation(plan, allocation.handle, mirakana::rhi::FenceValue{}).succeeded());
+    MK_REQUIRE(plan.enqueue_buffer_upload(mirakana::rhi::RhiBufferUploadDesc{
+                                              .staging = allocation.handle,
+                                              .staging_offset = 0,
+                                              .size_bytes = 64,
+                                              .debug_name = "missing-target",
+                                          })
+                   .succeeded());
+
+    const auto executed =
+        mirakana::rhi::execute_upload_gpu_batch_async(device, plan, ring, mirakana::rhi::QueueKind::copy, {}, {});
+    MK_REQUIRE(!executed.succeeded());
+    MK_REQUIRE(executed.diagnostics.front().code == mirakana::rhi::RhiUploadDiagnosticCode::gpu_batch_mismatch);
+    MK_REQUIRE(executed.command_lists_submitted == 0);
+    MK_REQUIRE(device.stats().command_lists_begun == 0);
+    MK_REQUIRE(device.stats().command_lists_submitted == 0);
+    MK_REQUIRE(!plan.allocations().front().submitted);
+}
+
+MK_TEST("rhi upload async execution rejects unreserved staging before command list creation") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadStagingPlan plan;
+    const auto allocation = plan.allocate_staging_bytes(
+        mirakana::rhi::RhiUploadAllocationDesc{.size_bytes = 128, .debug_name = "async-unreserved"});
+    MK_REQUIRE(allocation.succeeded());
+    MK_REQUIRE(plan.enqueue_buffer_upload(mirakana::rhi::RhiBufferUploadDesc{
+                                              .staging = allocation.handle,
+                                              .staging_offset = 0,
+                                              .size_bytes = 64,
+                                              .debug_name = "unreserved",
+                                          })
+                   .succeeded());
+
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    const auto destination = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 128, .usage = mirakana::rhi::BufferUsage::copy_destination | mirakana::rhi::BufferUsage::vertex});
+
+    const auto executed = mirakana::rhi::execute_upload_gpu_batch_async(
+        device, plan, ring, mirakana::rhi::QueueKind::copy,
+        std::vector<mirakana::rhi::RhiGpuBufferCopyTarget>{{.destination = destination, .destination_offset = 0}}, {});
+    MK_REQUIRE(!executed.succeeded());
+    MK_REQUIRE(executed.diagnostics.front().code == mirakana::rhi::RhiUploadDiagnosticCode::invalid_allocation);
+    MK_REQUIRE(executed.diagnostics.front().handle == allocation.handle);
+    MK_REQUIRE(executed.command_lists_submitted == 0);
+    MK_REQUIRE(device.stats().command_lists_begun == 0);
+    MK_REQUIRE(device.stats().command_lists_submitted == 0);
+    MK_REQUIRE(!plan.allocations().front().submitted);
+}
+
 MK_TEST("rhi staging buffer pool hands out buffers until exhausted then release") {
     mirakana::rhi::NullRhiDevice device;
     mirakana::rhi::RhiStagingBufferPool pool(

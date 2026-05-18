@@ -214,6 +214,19 @@ struct RhiGpuTextureCopyTarget {
     TextureHandle destination{};
 };
 
+struct RhiUploadGpuBatchExecutionResult {
+    std::vector<RhiUploadDiagnostic> diagnostics;
+    FenceValue submitted_fence;
+    QueueKind queue{QueueKind::copy};
+    std::uint64_t command_lists_submitted{0};
+    std::uint64_t buffer_copies_recorded{0};
+    std::uint64_t texture_copies_recorded{0};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 [[nodiscard]] RhiUploadResult validate_upload_gpu_batch(const RhiUploadStagingPlan& plan,
                                                         const std::vector<RhiGpuBufferCopyTarget>& buffer_targets,
                                                         const std::vector<RhiGpuTextureCopyTarget>& texture_targets);
@@ -229,5 +242,12 @@ struct RhiGpuTextureCopyTarget {
 /// Marks every allocation touched by `pending_copies` as submitted, then tags ring spans with `fence`.
 [[nodiscard]] RhiUploadResult mark_pending_allocations_submitted(RhiUploadStagingPlan& plan, RhiUploadRing& ring,
                                                                  FenceValue fence);
+
+/// Records, closes, submits, and marks one pending upload batch on `queue` without waiting on the submitted fence.
+/// Invalid target counts or unreserved staging handles fail before command-list creation.
+[[nodiscard]] RhiUploadGpuBatchExecutionResult
+execute_upload_gpu_batch_async(IRhiDevice& device, RhiUploadStagingPlan& plan, RhiUploadRing& ring, QueueKind queue,
+                               const std::vector<RhiGpuBufferCopyTarget>& buffer_targets,
+                               const std::vector<RhiGpuTextureCopyTarget>& texture_targets);
 
 } // namespace mirakana::rhi

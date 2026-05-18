@@ -412,6 +412,9 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("submitted_upload_fence_count") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RHI Upload Stale Generation Diagnostics v1") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("stale_generation") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RHI Native Async Upload Execution v1") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("execute_upload_gpu_batch_async") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadGpuBatchExecutionResult") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("native GPU upload") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {
     Write-Error "engine manifest aiOperableProductionLoop upload-staging-v1 gap must keep foundation-only follow-up limits explicit"

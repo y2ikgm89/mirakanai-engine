@@ -739,6 +739,21 @@ foreach ($needle in @(
         Write-Error "MK_rhi_upload_staging_tests missing stale-generation coverage: $needle"
     }
 }
+foreach ($needle in @("RhiUploadGpuBatchExecutionResult", "execute_upload_gpu_batch_async")) {
+    if (-not $rhiUploadStagingHeaderText.Contains($needle)) {
+        Write-Error "RHI upload staging header missing async execution contract text: $needle"
+    }
+}
+foreach ($needle in @("validate_upload_gpu_batch_execution", "device.begin_command_list(queue)", "mark_pending_allocations_submitted(plan, ring, result.submitted_fence)")) {
+    if (-not $rhiUploadStagingSourceText.Contains($needle)) {
+        Write-Error "RHI upload staging source missing async execution implementation text: $needle"
+    }
+}
+foreach ($needle in @("rhi upload async execution submits staged buffer batch without waiting", "rhi upload async execution rejects target mismatch before command list creation", "rhi upload async execution rejects unreserved staging before command list creation", "device.stats().fence_waits == 0", "device.stats().queue_waits == 0")) {
+    if (-not $rhiUploadStagingTestsText.Contains($needle)) {
+        Write-Error "MK_rhi_upload_staging_tests missing async execution coverage: $needle"
+    }
+}
 foreach ($needle in @("**Status:** Completed.", "RHI Upload Stale Generation Diagnostics v1", "stale_generation", "native async upload execution")) {
     if (-not $rhiUploadStaleGenerationPlanText.Contains($needle)) {
         Write-Error "RHI Upload Stale Generation Diagnostics plan missing text: $needle"

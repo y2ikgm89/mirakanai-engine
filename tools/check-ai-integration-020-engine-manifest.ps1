@@ -1746,6 +1746,9 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMeshUploadSource") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMeshUploadBindingResult") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_mesh_gpu_bindings") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RHI Native Async Upload Execution v1") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("execute_upload_gpu_batch_async") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadGpuBatchExecutionResult") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("ring exhaustion") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("native GPU upload") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {

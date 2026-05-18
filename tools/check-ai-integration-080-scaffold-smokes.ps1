@@ -602,6 +602,28 @@ foreach ($needle in @(
     Assert-ContainsText $rhiUploadStagingTests $needle "MK_rhi_upload_staging_tests stale-generation coverage"
 }
 foreach ($needle in @(
+    "RhiUploadGpuBatchExecutionResult",
+    "execute_upload_gpu_batch_async"
+)) {
+    Assert-ContainsText $rhiUploadStagingHeader $needle "RHI upload staging async execution header"
+}
+foreach ($needle in @(
+    "validate_upload_gpu_batch_execution",
+    "device.begin_command_list(queue)",
+    "mark_pending_allocations_submitted(plan, ring, result.submitted_fence)"
+)) {
+    Assert-ContainsText $rhiUploadStagingSource $needle "RHI upload staging async execution source"
+}
+foreach ($needle in @(
+    "rhi upload async execution submits staged buffer batch without waiting",
+    "rhi upload async execution rejects target mismatch before command list creation",
+    "rhi upload async execution rejects unreserved staging before command list creation",
+    "device.stats().fence_waits == 0",
+    "device.stats().queue_waits == 0"
+)) {
+    Assert-ContainsText $rhiUploadStagingTests $needle "MK_rhi_upload_staging_tests async execution coverage"
+}
+foreach ($needle in @(
     "**Status:** Completed.",
     "RHI Upload Stale Generation Diagnostics v1",
     "stale_generation",
