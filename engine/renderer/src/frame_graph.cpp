@@ -95,6 +95,7 @@ supported_production_ownership_boundary(FrameGraphProductionOwnershipCapability 
     case FrameGraphProductionOwnershipCapability::multi_queue_command_submission:
     case FrameGraphProductionOwnershipCapability::runtime_upload_commands:
     case FrameGraphProductionOwnershipCapability::package_streaming_texture_binding_handoff:
+    case FrameGraphProductionOwnershipCapability::vulkan_memory_aliasing:
         return FrameGraphProductionOwnershipBoundary::frame_graph_owned;
     case FrameGraphProductionOwnershipCapability::swapchain_acquire_present:
     case FrameGraphProductionOwnershipCapability::viewport_readback:
@@ -102,7 +103,7 @@ supported_production_ownership_boundary(FrameGraphProductionOwnershipCapability 
         return FrameGraphProductionOwnershipBoundary::renderer_owned;
     case FrameGraphProductionOwnershipCapability::package_streaming_residency:
         return FrameGraphProductionOwnershipBoundary::runtime_host_owned;
-    case FrameGraphProductionOwnershipCapability::vulkan_metal_memory_aliasing:
+    case FrameGraphProductionOwnershipCapability::metal_memory_aliasing:
         return FrameGraphProductionOwnershipBoundary::host_gated;
     case FrameGraphProductionOwnershipCapability::production_multi_queue_graph_adoption:
     case FrameGraphProductionOwnershipCapability::broad_background_package_streaming:

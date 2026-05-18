@@ -23,6 +23,7 @@ Khronos Vulkan docs confirm `VK_IMAGE_CREATE_ALIAS_BIT = 0x00000400` and describ
 - Shared memory lifetime is owned once and remains valid until all alias textures are reset.
 - `RhiStats::transient_texture_heap_allocations`, `transient_texture_placed_allocations`, and `transient_texture_placed_resources_alive` report allocation and retirement evidence for Vulkan alias groups.
 - `MK_backend_scaffold_tests` covers the Vulkan alias-group allocation/stat path when a Vulkan runtime is available.
+- `FrameGraphProductionOwnershipCapability` distinguishes implemented Vulkan alias memory from host-gated Metal alias memory.
 - Docs, manifest fragments, skills, and static guards no longer describe Vulkan alias memory allocation as unsupported.
 
 ## Validation
@@ -33,3 +34,6 @@ Khronos Vulkan docs confirm `VK_IMAGE_CREATE_ALIAS_BIT = 0x00000400` and describ
 - Agent/static sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/check-ai-integration.ps1` passed.
 - Coherent phase gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after the implementation, docs, manifest, skills, and static guard sync.
 - Post-registry text check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` passed after updating the plan registry.
+- Follow-up RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` failed because `FrameGraphProductionOwnershipCapability::vulkan_memory_aliasing` and `metal_memory_aliasing` were not yet defined.
+- Follow-up GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` passed.
+- Follow-up GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_renderer_tests` passed.

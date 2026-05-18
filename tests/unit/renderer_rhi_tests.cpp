@@ -3917,8 +3917,12 @@ MK_TEST("frame graph production ownership boundary selects reviewed executor row
             .capability = mirakana::FrameGraphProductionOwnershipCapability::package_streaming_residency,
         },
         mirakana::FrameGraphProductionOwnershipCandidate{
-            .id = "vulkan.metal.memory.aliasing",
-            .capability = mirakana::FrameGraphProductionOwnershipCapability::vulkan_metal_memory_aliasing,
+            .id = "vulkan.memory.aliasing",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::vulkan_memory_aliasing,
+        },
+        mirakana::FrameGraphProductionOwnershipCandidate{
+            .id = "metal.memory.aliasing",
+            .capability = mirakana::FrameGraphProductionOwnershipCapability::metal_memory_aliasing,
         },
         mirakana::FrameGraphProductionOwnershipCandidate{
             .id = "background.streaming",
@@ -3929,8 +3933,8 @@ MK_TEST("frame graph production ownership boundary selects reviewed executor row
     const auto plan = mirakana::plan_frame_graph_production_ownership_boundary(candidates);
 
     MK_REQUIRE(plan.succeeded());
-    MK_REQUIRE(plan.selections.size() == 7);
-    MK_REQUIRE(plan.frame_graph_owned_count == 3);
+    MK_REQUIRE(plan.selections.size() == 8);
+    MK_REQUIRE(plan.frame_graph_owned_count == 4);
     MK_REQUIRE(plan.renderer_owned_count == 1);
     MK_REQUIRE(plan.runtime_host_owned_count == 1);
     MK_REQUIRE(plan.host_gated_count == 1);
@@ -3950,9 +3954,12 @@ MK_TEST("frame graph production ownership boundary selects reviewed executor row
     const auto residency = find_selection("package.streaming.residency");
     MK_REQUIRE(residency != plan.selections.end());
     MK_REQUIRE(residency->boundary == mirakana::FrameGraphProductionOwnershipBoundary::runtime_host_owned);
-    const auto memory_aliasing = find_selection("vulkan.metal.memory.aliasing");
-    MK_REQUIRE(memory_aliasing != plan.selections.end());
-    MK_REQUIRE(memory_aliasing->boundary == mirakana::FrameGraphProductionOwnershipBoundary::host_gated);
+    const auto vulkan_memory_aliasing = find_selection("vulkan.memory.aliasing");
+    MK_REQUIRE(vulkan_memory_aliasing != plan.selections.end());
+    MK_REQUIRE(vulkan_memory_aliasing->boundary == mirakana::FrameGraphProductionOwnershipBoundary::frame_graph_owned);
+    const auto metal_memory_aliasing = find_selection("metal.memory.aliasing");
+    MK_REQUIRE(metal_memory_aliasing != plan.selections.end());
+    MK_REQUIRE(metal_memory_aliasing->boundary == mirakana::FrameGraphProductionOwnershipBoundary::host_gated);
     const auto streaming = find_selection("background.streaming");
     MK_REQUIRE(streaming != plan.selections.end());
     MK_REQUIRE(streaming->boundary == mirakana::FrameGraphProductionOwnershipBoundary::unsupported);
