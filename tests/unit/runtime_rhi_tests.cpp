@@ -68,13 +68,32 @@ make_runtime_texture_record(mirakana::AssetId asset, mirakana::runtime::RuntimeA
     };
 }
 
+[[nodiscard]] mirakana::runtime::RuntimeAssetRecord
+make_runtime_mesh_record(mirakana::AssetId asset, mirakana::runtime::RuntimeAssetHandle handle) {
+    return mirakana::runtime::RuntimeAssetRecord{
+        .handle = handle,
+        .asset = asset,
+        .kind = mirakana::AssetKind::mesh,
+        .path = "meshes/" + std::to_string(asset.value) + ".geasset",
+        .content_hash = static_cast<std::uint64_t>(asset.value) + handle.value,
+        .source_revision = handle.value,
+        .dependencies = {},
+        .content = "mesh",
+    };
+}
+
 [[nodiscard]] mirakana::runtime::RuntimeResourceCatalogV2
-make_runtime_texture_catalog(std::vector<mirakana::runtime::RuntimeAssetRecord> records) {
+make_runtime_catalog(std::vector<mirakana::runtime::RuntimeAssetRecord> records) {
     mirakana::runtime::RuntimeResourceCatalogV2 catalog;
     const auto build = mirakana::runtime::build_runtime_resource_catalog_v2(
         catalog, mirakana::runtime::RuntimeAssetPackage{std::move(records)});
     MK_REQUIRE(build.succeeded());
     return catalog;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeResourceCatalogV2
+make_runtime_texture_catalog(std::vector<mirakana::runtime::RuntimeAssetRecord> records) {
+    return make_runtime_catalog(std::move(records));
 }
 
 [[nodiscard]] mirakana::runtime::RuntimePackageStreamingExecutionResult make_committed_package_streaming_result() {
@@ -111,6 +130,22 @@ make_runtime_texture_payload(mirakana::AssetId texture, mirakana::runtime::Runti
         .pixel_format = mirakana::TextureSourcePixelFormat::rgba8_unorm,
         .source_bytes = 4,
         .bytes = std::vector<std::uint8_t>{0x22, 0x33, 0x44, 0xff},
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeMeshPayload
+make_runtime_mesh_payload(mirakana::AssetId mesh, mirakana::runtime::RuntimeAssetHandle handle) {
+    return mirakana::runtime::RuntimeMeshPayload{
+        .asset = mesh,
+        .handle = handle,
+        .vertex_count = 3,
+        .index_count = 3,
+        .has_normals = false,
+        .has_uvs = false,
+        .has_tangent_frame = false,
+        .vertex_bytes = std::vector<std::uint8_t>(36, std::uint8_t{0x61}),
+        .index_bytes =
+            std::vector<std::uint8_t>{0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00},
     };
 }
 
@@ -694,6 +729,100 @@ MK_TEST("runtime package streaming frame graph handoff rejects duplicate frame g
     MK_REQUIRE(handoff.diagnostics.size() == 1);
     MK_REQUIRE(handoff.diagnostics[0].code == "duplicate-frame-graph-resource");
     MK_REQUIRE(handoff.diagnostics[0].resource == "package_texture");
+}
+
+MK_TEST("runtime package streaming mesh upload transaction uploads resident static mesh with caller owned ring") {
+    const auto mesh = mirakana::AssetId::from_name("meshes/streamed/ring_triangle");
+    const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 3};
+    const auto catalog = make_runtime_catalog({make_runtime_mesh_record(mesh, handle)});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::runtime_rhi::RuntimeMeshUploadOptions upload_options;
+    upload_options.upload_ring = &ring;
+    const auto payload = make_runtime_mesh_payload(mesh, handle);
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource{
+            .asset = mesh,
+            .payload = &payload,
+            .upload_options = upload_options,
+        },
+    };
+    const auto buffers_after_ring_creation = device.stats().buffers_created;
+
+    auto transaction =
+        mirakana::runtime_rhi::upload_runtime_package_streaming_mesh_gpu_bindings(device, streaming, catalog, sources);
+
+    MK_REQUIRE(transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.size() == 1);
+    MK_REQUIRE(transaction.mesh_bindings.size() == 1);
+    MK_REQUIRE(transaction.uploaded_bytes == 48);
+    MK_REQUIRE(transaction.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(transaction.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(transaction.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(transaction.frame_graph_pass_callbacks_invoked == 1);
+    MK_REQUIRE(transaction.submitted_fences.size() == 1);
+    MK_REQUIRE(transaction.uploads[0].vertex_upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(transaction.uploads[0].index_upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(transaction.uploads[0].upload_buffers_caller_owned);
+    MK_REQUIRE(transaction.mesh_bindings[0].asset == mesh);
+    MK_REQUIRE(transaction.mesh_bindings[0].binding.vertex_buffer.value == transaction.uploads[0].vertex_buffer.value);
+    MK_REQUIRE(transaction.mesh_bindings[0].binding.index_buffer.value == transaction.uploads[0].index_buffer.value);
+    MK_REQUIRE(transaction.mesh_bindings[0].binding.owner_device == &device);
+    MK_REQUIRE(device.stats().buffers_created == buffers_after_ring_creation + 2);
+    MK_REQUIRE(device.stats().buffer_writes == 2);
+    MK_REQUIRE(device.stats().buffer_copies == 2);
+    MK_REQUIRE(device.stats().command_lists_submitted == 1);
+}
+
+MK_TEST("runtime package streaming mesh upload transaction rejects missing mesh payload before upload") {
+    const auto mesh = mirakana::AssetId::from_name("meshes/streamed/missing_payload");
+    const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 4};
+    const auto catalog = make_runtime_catalog({make_runtime_mesh_record(mesh, handle)});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource{.asset = mesh},
+    };
+
+    auto transaction =
+        mirakana::runtime_rhi::upload_runtime_package_streaming_mesh_gpu_bindings(device, streaming, catalog, sources);
+
+    MK_REQUIRE(!transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.empty());
+    MK_REQUIRE(transaction.mesh_bindings.empty());
+    MK_REQUIRE(transaction.diagnostics.size() == 1);
+    MK_REQUIRE(transaction.diagnostics[0].asset == mesh);
+    MK_REQUIRE(transaction.diagnostics[0].code == "mesh-payload-missing");
+    MK_REQUIRE(device.stats().buffers_created == 0);
+    MK_REQUIRE(device.stats().buffer_writes == 0);
+    MK_REQUIRE(device.stats().command_lists_begun == 0);
+}
+
+MK_TEST("runtime package streaming mesh upload transaction rejects non mesh resident rows before upload") {
+    const auto mesh = mirakana::AssetId::from_name("meshes/streamed/wrong_kind");
+    const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 5};
+    const auto catalog = make_runtime_catalog({make_runtime_texture_record(mesh, handle)});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    const auto payload = make_runtime_mesh_payload(mesh, handle);
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingMeshUploadSource{.asset = mesh, .payload = &payload},
+    };
+
+    auto transaction =
+        mirakana::runtime_rhi::upload_runtime_package_streaming_mesh_gpu_bindings(device, streaming, catalog, sources);
+
+    MK_REQUIRE(!transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.empty());
+    MK_REQUIRE(transaction.mesh_bindings.empty());
+    MK_REQUIRE(transaction.diagnostics.size() == 1);
+    MK_REQUIRE(transaction.diagnostics[0].asset == mesh);
+    MK_REQUIRE(transaction.diagnostics[0].code == "runtime-resource-not-mesh");
+    MK_REQUIRE(device.stats().buffers_created == 0);
+    MK_REQUIRE(device.stats().buffer_writes == 0);
+    MK_REQUIRE(device.stats().command_lists_begun == 0);
 }
 
 MK_TEST("runtime rhi upload creates mesh buffers and records vertex index byte uploads") {

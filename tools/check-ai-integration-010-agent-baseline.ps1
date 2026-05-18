@@ -1335,12 +1335,14 @@ foreach ($needle in @(
     "Frame Graph Automatic Aliasing Barrier Insertion v1",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
+    "Package Static Mesh Upload Binding Transaction v1",
+    "upload_runtime_package_streaming_mesh_gpu_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
     "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
     "upload-staging-v1",
     "native async upload execution",
-    "package mesh streaming",
+    "package skinned/morph streaming",
     "staging-pool production adoption"
 )) {
     Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout and upload-staging next gap"

@@ -32,9 +32,26 @@ struct RuntimePackageStreamingFrameGraphTextureUploadSource {
     rhi::ResourceState current_state{rhi::ResourceState::shader_read};
 };
 
+struct RuntimePackageStreamingMeshUploadSource {
+    AssetId asset;
+    const runtime::RuntimeMeshPayload* payload{nullptr};
+    RuntimeMeshUploadOptions upload_options{};
+};
+
+struct RuntimePackageStreamingMeshGpuBinding {
+    AssetId asset;
+    MeshGpuBinding binding;
+};
+
 struct RuntimePackageStreamingFrameGraphTextureBindingDiagnostic {
     AssetId asset;
     std::string resource;
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageStreamingMeshUploadDiagnostic {
+    AssetId asset;
     std::string code;
     std::string message;
 };
@@ -63,6 +80,22 @@ struct RuntimePackageStreamingFrameGraphTextureUploadBindingResult {
     }
 };
 
+struct RuntimePackageStreamingMeshUploadBindingResult {
+    std::vector<RuntimeMeshUploadResult> uploads;
+    std::vector<RuntimePackageStreamingMeshGpuBinding> mesh_bindings;
+    std::vector<RuntimePackageStreamingMeshUploadDiagnostic> diagnostics;
+    std::vector<rhi::FenceValue> submitted_fences;
+    std::uint64_t uploaded_bytes{0};
+    std::size_t frame_graph_command_lists_submitted{0};
+    std::size_t frame_graph_queue_waits_recorded{0};
+    std::size_t frame_graph_barriers_recorded{0};
+    std::size_t frame_graph_pass_callbacks_invoked{0};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 [[nodiscard]] RuntimePackageStreamingFrameGraphTextureBindingResult
 make_runtime_package_streaming_frame_graph_texture_bindings(
     const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
@@ -74,5 +107,10 @@ upload_runtime_package_streaming_frame_graph_texture_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
     const runtime::RuntimeResourceCatalogV2& resident_catalog,
     std::span<const RuntimePackageStreamingFrameGraphTextureUploadSource> sources);
+
+[[nodiscard]] RuntimePackageStreamingMeshUploadBindingResult upload_runtime_package_streaming_mesh_gpu_bindings(
+    rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
+    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    std::span<const RuntimePackageStreamingMeshUploadSource> sources);
 
 } // namespace mirakana::runtime_rhi

@@ -1661,6 +1661,10 @@ Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "make_runtime_packa
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingFrameGraphTextureBindingSource" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "upload_runtime_package_streaming_frame_graph_texture_bindings" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingFrameGraphTextureUploadSource" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "upload_runtime_package_streaming_mesh_gpu_bindings" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingMeshUploadSource" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingMeshUploadBindingResult" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "MeshGpuBinding rows" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeTextureUploadOptions::upload_ring" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeMeshUploadOptions::upload_ring" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeSkinnedMeshUploadOptions::upload_ring" "MK_runtime_rhi module purpose"
@@ -1672,6 +1676,8 @@ Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "material-factor up
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "broad/background package streaming" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "make_runtime_package_streaming_frame_graph_texture_bindings" "desktop runtime 3d package streaming guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "upload_runtime_package_streaming_frame_graph_texture_bindings" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "upload_runtime_package_streaming_mesh_gpu_bindings" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "RuntimeMeshUploadOptions::upload_ring" "desktop runtime 3d package streaming guidance"
 foreach ($packageStreamingFrameGraphGuidance in @(
         "docs/rhi.md",
         "docs/current-capabilities.md",
@@ -1683,7 +1689,9 @@ foreach ($packageStreamingFrameGraphGuidance in @(
     $packageStreamingFrameGraphText = Get-AgentSurfaceText $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "make_runtime_package_streaming_frame_graph_texture_bindings" $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "upload_runtime_package_streaming_frame_graph_texture_bindings" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "upload_runtime_package_streaming_mesh_gpu_bindings" $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "RuntimeTextureUploadOptions::upload_ring" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "RuntimeMeshUploadOptions::upload_ring" $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "broad" $packageStreamingFrameGraphGuidance
 }
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "IRhiCommandList::texture_aliasing_barrier" "MK_rhi module purpose"
@@ -1726,7 +1734,7 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1 is closed" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "native async upload execution" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package mesh streaming" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package skinned/morph streaming" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool production adoption" "recommended next plan reason"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"

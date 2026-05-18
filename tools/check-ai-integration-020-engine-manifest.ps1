@@ -1742,6 +1742,10 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RuntimeMeshUploadOptions::upload_ring") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RuntimeSkinnedMeshUploadOptions::upload_ring") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RuntimeMorphMeshUploadOptions::upload_ring") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("Package Static Mesh Upload Binding Transaction v1") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMeshUploadSource") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMeshUploadBindingResult") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_mesh_gpu_bindings") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("ring exhaustion") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("native GPU upload") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {
@@ -1783,6 +1787,11 @@ Assert-ContainsText $recommendedText "RuntimeMeshUploadOptions::upload_ring" "en
 Assert-ContainsText $recommendedText "RuntimeSkinnedMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
 Assert-ContainsText $recommendedText "RuntimeMorphMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
 Assert-ContainsText $recommendedText "2026-05-18-upload-staging-v1-runtime-buffer-ring-backed-uploads-v1.md" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
+Assert-ContainsText $recommendedText "Package Static Mesh Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+Assert-ContainsText $recommendedText "RuntimePackageStreamingMeshUploadSource" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+Assert-ContainsText $recommendedText "RuntimePackageStreamingMeshUploadBindingResult" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+Assert-ContainsText $recommendedText "upload_runtime_package_streaming_mesh_gpu_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+Assert-ContainsText $recommendedText "2026-05-18-upload-staging-v1-package-static-mesh-upload-binding-transaction-v1.md" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
 Assert-ContainsText $recommendedText "Frame Graph Automatic Aliasing Barrier Insertion v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
@@ -1811,7 +1820,7 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1 is closed" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "native async upload execution" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package mesh streaming" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package skinned/morph streaming" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool production adoption" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {

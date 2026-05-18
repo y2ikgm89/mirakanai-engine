@@ -484,6 +484,8 @@ foreach ($needle in @(
     "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Runtime Package Streaming RHI Upload Binding Transaction v1",
     "upload_runtime_package_streaming_frame_graph_texture_bindings",
+    "Package Static Mesh Upload Binding Transaction v1",
+    "upload_runtime_package_streaming_mesh_gpu_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
     "Frame Graph RHI Queue Dependency Plan v1",
@@ -497,7 +499,7 @@ foreach ($needle in @(
     "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
     "upload-staging-v1",
     "native async upload execution",
-    "package mesh streaming",
+    "package skinned/morph streaming",
     "staging-pool production adoption"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
