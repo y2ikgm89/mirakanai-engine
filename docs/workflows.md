@@ -281,12 +281,15 @@ These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclud
 
 Use subagents only when the user explicitly asks for subagent delegation or parallel agent work. Use them for independent work:
 
+- `agent-surface-auditor`: read-only Codex/Claude/Cursor guidance, manifest, rules, and validation-policy drift audit
 - `explorer`: read-only codebase exploration
 - `cpp-reviewer`: C++ lifetime, ownership, and API review
 - `build-fixer`: build/test failure triage
 - `engine-architect`: read-only architecture exploration and scoped design review
 - `gameplay-builder`: C++ sample game or gameplay implementation against public APIs
 - `rendering-auditor`: rendering/RHI/shader changes
+
+Prefer per-invocation model overrides for cost control rather than durable hard-coded model names: use cheaper/faster models for bounded read-only exploration or agent-surface audits when available, and inherit or choose stronger models for implementation, C++ API, renderer/RHI, build-system, security-sensitive, integration, and final-review work. Keep immediate blocking work in the parent session and delegate only independent side work with clear ownership.
 
 ## Worktree And Parallel Agent Workflow
 
@@ -300,6 +303,7 @@ Use subagents only when the user explicitly asks for subagent delegation or para
 - Keep Codex and Claude Code behavior synchronized through `AGENTS.md`, `CLAUDE.md`, `.agents/skills/`, `.codex/agents/`, `.codex/rules/`, `.claude/settings.json`, `.claude/rules/`, `.claude/skills/`, `.claude/agents/`, `engine/agent/manifest.fragments/` + composed `engine/agent/manifest.json`, and `tools/check-ai-integration.ps1`.
 - Treat the agent-surface drift check as a required part of implementation work. Do not defer stale guidance, stale manifest claims, stale rules, stale subagent instructions, or repeated agent failure guidance to a separate follow-up when the current change exposes the mismatch.
 - Keep drift checks targeted: compare the changed behavior/API/workflow against owning surfaces, and do not load every agent surface when the change is local and no durable guidance changed.
+- Use `agent-surface-auditor` only for bounded read-only drift audits; it reports affected paths and validation commands, while the parent agent remains responsible for edits, integration, and final validation.
 - Use the OpenAI developer documentation MCP, or official OpenAI documentation when MCP is unavailable, for OpenAI API, Codex, ChatGPT Apps SDK, OpenAI agent, and OpenAI model behavior. Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagents.
 - Keep always-loaded instructions specific, concise, verifiable, and durable. Keep `AGENTS.md` under Codex's default 32 KiB `project_doc_max_bytes` budget, keep selected `SKILL.md` bodies as concise routers, and keep subagents narrowly scoped; put long procedures in skill-local `references/*.md` or docs, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the composed `engine/agent/manifest.json` (edit `engine/agent/manifest.fragments/*.json`, then `tools/compose-agent-manifest.ps1 -Write`).
 - Keep Codex project rules narrow with `match` / `not_match` examples. Cover Windows PowerShell deletion/network/host-servicing commands as well as POSIX-like spellings. Do not add broad allow rules for shells, package managers, network tools, destructive commands, force-pushes, or immediate PR merges; direct default-branch pushes must stay forbidden.

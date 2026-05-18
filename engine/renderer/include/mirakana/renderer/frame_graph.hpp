@@ -167,6 +167,64 @@ struct FrameGraphExecutionResult {
     }
 };
 
+enum class FrameGraphProductionOwnershipCapability : std::uint8_t {
+    none = 0,
+    texture_state_transitions,
+    texture_aliasing_barriers,
+    pass_target_state_preparation,
+    render_pass_envelopes,
+    pass_callbacks,
+    queue_waits,
+    multi_queue_command_submission,
+    runtime_upload_commands,
+    package_streaming_texture_binding_handoff,
+    swapchain_acquire_present,
+    viewport_readback,
+    native_overlay_preparation,
+    package_streaming_residency,
+    vulkan_metal_memory_aliasing,
+    production_multi_queue_graph_adoption,
+    broad_background_package_streaming,
+    data_inheritance_preservation,
+    async_overlap_performance,
+    public_native_handles,
+};
+
+enum class FrameGraphProductionOwnershipBoundary : std::uint8_t {
+    unspecified = 0,
+    frame_graph_owned,
+    renderer_owned,
+    runtime_host_owned,
+    host_gated,
+    unsupported,
+};
+
+struct FrameGraphProductionOwnershipCandidate {
+    std::string id;
+    FrameGraphProductionOwnershipCapability capability{FrameGraphProductionOwnershipCapability::none};
+    FrameGraphProductionOwnershipBoundary requested_boundary{FrameGraphProductionOwnershipBoundary::unspecified};
+};
+
+struct FrameGraphProductionOwnershipSelection {
+    std::string id;
+    FrameGraphProductionOwnershipCapability capability{FrameGraphProductionOwnershipCapability::none};
+    FrameGraphProductionOwnershipBoundary boundary{FrameGraphProductionOwnershipBoundary::unspecified};
+};
+
+struct FrameGraphProductionOwnershipPlan {
+    std::vector<FrameGraphProductionOwnershipSelection> selections;
+    std::size_t frame_graph_owned_count{0};
+    std::size_t renderer_owned_count{0};
+    std::size_t runtime_host_owned_count{0};
+    std::size_t host_gated_count{0};
+    std::size_t unsupported_count{0};
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 /// Builds a linear schedule: for each pass in topological order, emit all barriers targeting that pass
 /// (sorted by resource name, then writer pass name) followed by one pass-invoke step.
 /// Returns an empty vector when `built` did not succeed.
@@ -179,5 +237,8 @@ schedule_frame_graph_v1_execution(const FrameGraphV1BuildResult& built);
 [[nodiscard]] FrameGraphExecutionResult
 execute_frame_graph_v1_schedule(std::span<const FrameGraphExecutionStep> schedule,
                                 const FrameGraphExecutionCallbacks& callbacks);
+
+[[nodiscard]] FrameGraphProductionOwnershipPlan
+plan_frame_graph_production_ownership_boundary(std::span<const FrameGraphProductionOwnershipCandidate> candidates);
 
 } // namespace mirakana

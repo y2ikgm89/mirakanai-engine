@@ -16,6 +16,7 @@
         "rendering-change"
       ],
       "requiredAgents": [
+        "agent-surface-auditor",
         "build-fixer",
         "cpp-reviewer",
         "engine-architect",
@@ -24,6 +25,7 @@
         "rendering-auditor"
       ],
       "readOnlyAgents": [
+        "agent-surface-auditor",
         "cpp-reviewer",
         "engine-architect",
         "explorer",
@@ -52,6 +54,7 @@
         "gameengine-rendering"
       ],
       "requiredAgents": [
+        "agent-surface-auditor",
         "build-fixer",
         "cpp-reviewer",
         "engine-architect",
@@ -60,6 +63,7 @@
         "rendering-auditor"
       ],
       "readOnlyAgents": [
+        "agent-surface-auditor",
         "cpp-reviewer",
         "engine-architect",
         "explorer",

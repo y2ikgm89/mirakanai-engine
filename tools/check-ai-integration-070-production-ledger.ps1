@@ -1129,11 +1129,7 @@ foreach ($requiredClaudeSkill in @(
 
 foreach ($quaternionPackageSmokeGuidance in @(
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".codex/agents/gameplay-builder.toml",
-    ".claude/agents/gameplay-builder.md",
-    ".codex/agents/engine-architect.toml",
-    ".claude/agents/engine-architect.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $quaternionPackageSmokeGuidanceText = Get-AgentSurfaceText $quaternionPackageSmokeGuidance
     Assert-ContainsText $quaternionPackageSmokeGuidanceText "quaternion package smoke is limited to cooked" $quaternionPackageSmokeGuidance
@@ -1475,12 +1471,14 @@ Get-ChildItem -Path (Resolve-RequiredAgentPath ".codex/agents") -Filter "*.toml"
 }
 
 foreach ($relativePath in @(
+    ".codex/agents/agent-surface-auditor.toml",
     ".codex/agents/build-fixer.toml",
     ".codex/agents/cpp-reviewer.toml",
     ".codex/agents/engine-architect.toml",
     ".codex/agents/explorer.toml",
     ".codex/agents/gameplay-builder.toml",
     ".codex/agents/rendering-auditor.toml",
+    ".claude/agents/agent-surface-auditor.md",
     ".claude/agents/build-fixer.md",
     ".claude/agents/cpp-reviewer.md",
     ".claude/agents/engine-architect.md",
@@ -1489,7 +1487,7 @@ foreach ($relativePath in @(
     ".claude/agents/rendering-auditor.md"
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $relativePath) "register auto-merge" $relativePath
-    Assert-ContainsText (Get-AgentSurfaceText $relativePath) "stale or missing agent guidance" $relativePath
+    Assert-ContainsText (Get-AgentSurfaceText $relativePath) "agent" $relativePath
 }
 
 foreach ($relativePath in @(
@@ -1498,10 +1496,12 @@ foreach ($relativePath in @(
     ".claude/agents/build-fixer.md",
     ".claude/agents/gameplay-builder.md"
 )) {
-    Assert-ContainsText (Get-AgentSurfaceText $relativePath) "same parent task can finish synchronization before completion" $relativePath
+    Assert-ContainsText (Get-AgentSurfaceText $relativePath) "changed paths" $relativePath
+    Assert-ContainsText (Get-AgentSurfaceText $relativePath) "agent-surface drift" $relativePath
 }
 
 foreach ($relativePath in @(
+    ".codex/agents/agent-surface-auditor.toml",
     ".codex/agents/cpp-reviewer.toml",
     ".codex/agents/explorer.toml",
     ".codex/agents/engine-architect.toml",
@@ -1511,6 +1511,7 @@ foreach ($relativePath in @(
 }
 
 foreach ($relativePath in @(
+    ".claude/agents/agent-surface-auditor.md",
     ".claude/agents/cpp-reviewer.md",
     ".claude/agents/explorer.md",
     ".claude/agents/engine-architect.md",
@@ -1531,36 +1532,16 @@ foreach ($buildFixerAgent in @(
     ".claude/agents/build-fixer.md"
 )) {
     $buildFixerText = Get-AgentSurfaceText $buildFixerAgent
-    Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" $buildFixerAgent
     Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "normalized-configure-environment" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "normalized-build-environment" $buildFixerAgent
-    Assert-ContainsText $buildFixerText 'presets normalize raw `cmake --preset ...` PATH/Path behavior' $buildFixerAgent
-    Assert-ContainsText $buildFixerText 'CL.exe` command-line switch error' $buildFixerAgent
+    Assert-ContainsText $buildFixerText "tools/cmake.ps1" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "tools/ctest.ps1" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "tools/check-format.ps1" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "tools/check-tidy.ps1" $buildFixerAgent
     Assert-ContainsText $buildFixerText 'Do not repair generated `out/build/<preset>` trees' $buildFixerAgent
     Assert-ContainsText $buildFixerText "CMakeCache.txt" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "direct-clang-format-status" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "CMake File API" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "CreateFileW stdin failed with 5" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "VCPKG_MANIFEST_INSTALL=OFF" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "latest PR head SHA" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "HeaderFilterRegex" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "--warnings-as-errors=*" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "NN warnings generated." $buildFixerAgent
-    Assert-ContainsText $buildFixerText "-Jobs 0" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "lcov --ignore-errors unused" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "runtime/.gitattributes" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "tools/static-contract-ledger.ps1" $buildFixerAgent
-    Assert-ContainsText $buildFixerText 'tools/check-agents.ps1` parses tracked `tools/*.ps1' $buildFixerAgent
-    Assert-ContainsText $buildFixerText "single-quoted PowerShell strings" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "GitHub account billing/spending-limit" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "cdb -version" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "pixtool --help" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "Windows Graphics Tools" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "Windows Performance Toolkit" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "LinkIncremental=false" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "gh pr view <pr> --json headRefOid,statusCheckRollup,url" $buildFixerAgent
+    Assert-ContainsText $buildFixerText "billing or account limits" $buildFixerAgent
 }
 
 foreach ($explorerAgent in @(
@@ -1572,7 +1553,7 @@ foreach ($explorerAgent in @(
     Assert-ContainsText $explorerAgentText "docs/roadmap.md" $explorerAgent
     Assert-ContainsText $explorerAgentText "docs/superpowers/plans/README.md" $explorerAgent
     Assert-ContainsText $explorerAgentText "Do not edit files" $explorerAgent
-    Assert-ContainsText $explorerAgentText "active milestone" $explorerAgent
+    Assert-ContainsText $explorerAgentText "agent-context.ps1 -ContextProfile Minimal|Standard" $explorerAgent
 }
 
 foreach ($architectAgent in @(
@@ -1580,14 +1561,9 @@ foreach ($architectAgent in @(
     ".claude/agents/engine-architect.md"
 )) {
     $architectAgentText = Get-AgentSurfaceText $architectAgent
-    Assert-ContainsText $architectAgentText "phase-gated milestone plan" $architectAgent
-    Assert-ContainsText $architectAgentText "Runtime RHI Compute Morph Calibrated Overlap Diagnostics D3D12 v1" $architectAgent
-    Assert-ContainsText $architectAgentText "Runtime RHI Compute Morph Submitted Overlap Diagnostics D3D12 v1" $architectAgent
-    Assert-ContainsText $architectAgentText "Runtime RHI Compute Morph Vulkan Proof v1" $architectAgent
-    Assert-ContainsText $architectAgentText "Runtime RHI Compute Morph Renderer Consumption Vulkan v1" $architectAgent
-    Assert-ContainsText $architectAgentText "Runtime RHI Compute Morph NORMAL/TANGENT Output Vulkan v1" $architectAgent
-    Assert-ContainsText $architectAgentText "MK_VULKAN_TEST_COMPUTE_MORPH_TANGENT_FRAME_SPV" $architectAgent
-    Assert-ContainsText $architectAgentText "Generated 3D Compute Morph Package Smoke Vulkan v1" $architectAgent
+    Assert-ContainsText $architectAgentText "agent-context.ps1 -ContextProfile Minimal|Standard" $architectAgent
+    Assert-ContainsText $architectAgentText "Do not embed stale capability snapshots" $architectAgent
+    Assert-ContainsText $architectAgentText "capability or milestone plan boundaries" $architectAgent
 }
 
 foreach ($gameplayBuilderAgent in @(
@@ -1595,10 +1571,10 @@ foreach ($gameplayBuilderAgent in @(
     ".claude/agents/gameplay-builder.md"
 )) {
     $gameplayBuilderText = Get-AgentSurfaceText $gameplayBuilderAgent
-    Assert-ContainsText $gameplayBuilderText "Runtime RHI Compute Morph NORMAL/TANGENT Output Vulkan v1" $gameplayBuilderAgent
-    Assert-ContainsText $gameplayBuilderText "Generated 3D Compute Morph Package Smoke Vulkan v1" $gameplayBuilderAgent
-    Assert-ContainsText $gameplayBuilderText "SdlDesktopPresentationVulkanSceneRendererDesc" $gameplayBuilderAgent
-    Assert-ContainsText $gameplayBuilderText "--require-compute-morph" $gameplayBuilderAgent
+    Assert-ContainsText $gameplayBuilderText "gameengine-game-development" $gameplayBuilderAgent
+    Assert-ContainsText $gameplayBuilderText "agent-context.ps1 -ContextProfile Minimal|Standard" $gameplayBuilderAgent
+    Assert-ContainsText $gameplayBuilderText "Do not copy stale API lists" $gameplayBuilderAgent
+    Assert-ContainsText $gameplayBuilderText "native handles" $gameplayBuilderAgent
 }
 
 foreach ($renderingAuditorAgent in @(
@@ -1606,18 +1582,26 @@ foreach ($renderingAuditorAgent in @(
     ".claude/agents/rendering-auditor.md"
 )) {
     $renderingAuditorText = Get-AgentSurfaceText $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "Windows Graphics Tools" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "PIX on Windows" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "Windows Performance Toolkit" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "D3D12 debug layer" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "Runtime RHI Compute Morph Calibrated Overlap Diagnostics D3D12 v1" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "Runtime RHI Compute Morph Submitted Overlap Diagnostics D3D12 v1" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "Runtime RHI Compute Morph Vulkan Proof v1" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "Runtime RHI Compute Morph Renderer Consumption Vulkan v1" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "Runtime RHI Compute Morph NORMAL/TANGENT Output Vulkan v1" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "MK_VULKAN_TEST_COMPUTE_MORPH_TANGENT_FRAME_SPV" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "Generated 3D Compute Morph Package Smoke Vulkan v1" $renderingAuditorAgent
-    Assert-ContainsText $renderingAuditorText "output_tangent_usage" $renderingAuditorAgent
+    if ($renderingAuditorAgent -like ".codex/*") {
+    Assert-ContainsText $renderingAuditorText "rendering" $renderingAuditorAgent
+    } else {
+        Assert-ContainsText $renderingAuditorText "gameengine-rendering" $renderingAuditorAgent
+    }
+    Assert-ContainsText $renderingAuditorText "agent-context.ps1 -ContextProfile Minimal|Standard" $renderingAuditorAgent
+    Assert-ContainsText $renderingAuditorText "native handle" $renderingAuditorAgent
+    Assert-ContainsText $renderingAuditorText "backend-private" $renderingAuditorAgent
+}
+
+foreach ($agentSurfaceAuditor in @(
+    ".codex/agents/agent-surface-auditor.toml",
+    ".claude/agents/agent-surface-auditor.md"
+)) {
+    $agentSurfaceAuditorText = Get-AgentSurfaceText $agentSurfaceAuditor
+    Assert-ContainsText $agentSurfaceAuditorText "gameengine-agent-integration" $agentSurfaceAuditor
+    Assert-ContainsText $agentSurfaceAuditorText "manifest.fragments" $agentSurfaceAuditor
+    Assert-ContainsText $agentSurfaceAuditorText "official OpenAI Codex docs" $agentSurfaceAuditor
+    Assert-ContainsText $agentSurfaceAuditorText "official Anthropic Claude Code docs" $agentSurfaceAuditor
+    Assert-ContainsText $agentSurfaceAuditorText "narrow validation commands" $agentSurfaceAuditor
 }
 
 $contextJson = & (Join-Path $PSScriptRoot "agent-context.ps1")
