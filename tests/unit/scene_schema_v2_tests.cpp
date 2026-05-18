@@ -338,6 +338,86 @@ MK_TEST("scene schema v2 plans prefab instance refresh through stable source ids
     MK_REQUIRE(plan.rows[5].source_node_id.value == "node/source/weapon");
 }
 
+MK_TEST("scene schema v2 rejects ambiguous prefab refresh source identities") {
+    constexpr std::string_view prefab_path = "source/prefabs/enemy.prefab";
+
+    mirakana::SceneDocumentV2 scene;
+    scene.name = "Level";
+    scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/instance/root"}, .name = "EnemyRoot"});
+    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/instance/left"},
+        .name = "Left",
+        .parent = mirakana::AuthoringId{"node/instance/root"},
+    });
+    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/instance/right"},
+        .name = "Right",
+        .parent = mirakana::AuthoringId{"node/instance/root"},
+    });
+    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/instance/left-mesh"},
+        .node = mirakana::AuthoringId{"node/instance/left"},
+        .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
+    });
+    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/instance/right-mesh"},
+        .node = mirakana::AuthoringId{"node/instance/right"},
+        .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/root"},
+        .prefab_path = std::string(prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/root"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/left"},
+        .prefab_path = std::string(prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/duplicate"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/right"},
+        .prefab_path = std::string(prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/duplicate"},
+    });
+    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSourceV2{
+        .component = mirakana::AuthoringId{"component/instance/left-mesh"},
+        .prefab_path = std::string(prefab_path),
+        .source_component_id = mirakana::AuthoringId{"component/source/duplicate"},
+    });
+    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSourceV2{
+        .component = mirakana::AuthoringId{"component/instance/right-mesh"},
+        .prefab_path = std::string(prefab_path),
+        .source_component_id = mirakana::AuthoringId{"component/source/duplicate"},
+    });
+
+    mirakana::PrefabDocumentV2 refreshed_prefab;
+    refreshed_prefab.name = "Enemy";
+    refreshed_prefab.scene.name = "EnemyScene";
+    refreshed_prefab.scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/source/root"}, .name = "EnemyRoot"});
+    refreshed_prefab.scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/source/duplicate"},
+        .name = "Duplicate",
+        .parent = mirakana::AuthoringId{"node/source/root"},
+    });
+    refreshed_prefab.scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/source/duplicate"},
+        .node = mirakana::AuthoringId{"node/source/duplicate"},
+        .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
+    });
+
+    const auto plan = mirakana::plan_scene_prefab_instance_refresh_v2(
+        scene, mirakana::AuthoringId{"node/instance/root"}, refreshed_prefab);
+
+    MK_REQUIRE(!plan.valid);
+    MK_REQUIRE(!plan.mutates);
+    MK_REQUIRE(!plan.executes);
+    MK_REQUIRE(plan.rows.empty());
+    MK_REQUIRE(
+        contains_diagnostic(plan.diagnostics, mirakana::SceneSchemaV2DiagnosticCode::duplicate_prefab_source_identity));
+}
+
 int main() {
     return mirakana::test::run_all();
 }

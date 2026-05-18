@@ -1800,6 +1800,7 @@ foreach ($sceneSchemaDoc in @(
     @{ Text = $roadmapText; Label = "docs/roadmap.md" }
 )) {
     Assert-ContainsText $sceneSchemaDoc.Text "plan_scene_prefab_instance_refresh_v2" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "duplicate_prefab_source_identity" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "contract-only" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "nested prefab" $sceneSchemaDoc.Label
 }

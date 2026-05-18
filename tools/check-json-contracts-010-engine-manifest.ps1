@@ -360,6 +360,7 @@ if (-not ([string]$geSceneModule[0].purpose).Contains("contract-only") -or
     -not ([string]$geSceneModule[0].purpose).Contains("GameEngine.Scene.v2") -or
     -not ([string]$geSceneModule[0].purpose).Contains("ScenePrefabInstanceRefreshPlanV2") -or
     -not ([string]$geSceneModule[0].purpose).Contains("plan_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("duplicate_prefab_source_identity") -or
     -not ([string]$geSceneModule[0].purpose).Contains("source_node_id") -or
     -not ([string]$geSceneModule[0].purpose).Contains("source_component_id") -or
     -not ([string]$geSceneModule[0].purpose).Contains("nested prefab propagation/merge resolution UX")) {

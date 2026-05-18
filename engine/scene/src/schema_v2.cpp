@@ -329,6 +329,36 @@ void add_scene_prefab_instance_refresh_row_v2(ScenePrefabInstanceRefreshPlanV2& 
     plan.rows.push_back(std::move(row));
 }
 
+void add_prefab_refresh_source_identity_diagnostics_v2(ScenePrefabInstanceRefreshPlanV2& plan,
+                                                       const SceneDocumentV2& scene,
+                                                       const std::unordered_set<std::string>& subtree_node_ids) {
+    std::unordered_set<std::string> source_node_ids;
+    for (const auto& source : scene.node_prefab_sources) {
+        if (source.prefab_path != plan.prefab_path || !subtree_node_ids.contains(source.node.value)) {
+            continue;
+        }
+        if (!source_node_ids.insert(source.source_node_id.value).second) {
+            add_diagnostic(plan.diagnostics, SceneSchemaV2DiagnosticCode::duplicate_prefab_source_identity, source.node,
+                           {}, {}, "node.prefab_source.source_node_id");
+        }
+    }
+
+    std::unordered_set<std::string> source_component_ids;
+    for (const auto& source : scene.component_prefab_sources) {
+        if (source.prefab_path != plan.prefab_path) {
+            continue;
+        }
+        const auto* component = find_component_by_id(scene, source.component.value);
+        if (component == nullptr || !subtree_node_ids.contains(component->node.value)) {
+            continue;
+        }
+        if (!source_component_ids.insert(source.source_component_id.value).second) {
+            add_diagnostic(plan.diagnostics, SceneSchemaV2DiagnosticCode::duplicate_prefab_source_identity, {},
+                           source.component, {}, "component.prefab_source.source_component_id");
+        }
+    }
+}
+
 void add_override_diagnostic(std::vector<SceneSchemaV2Diagnostic>& diagnostics, SceneSchemaV2DiagnosticCode code,
                              std::string_view path) {
     add_diagnostic(diagnostics, code, {}, {}, {}, std::string(path));
@@ -825,6 +855,11 @@ ScenePrefabInstanceRefreshPlanV2 plan_scene_prefab_instance_refresh_v2(const Sce
 
     plan.prefab_path = root_source->prefab_path;
     const auto subtree_node_ids = collect_scene_subtree_node_ids_v2(scene, instance_root_node.value);
+    add_prefab_refresh_source_identity_diagnostics_v2(plan, scene, subtree_node_ids);
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
     const auto refreshed_node_ids = collect_prefab_node_ids_v2(refreshed_prefab);
     const auto refreshed_components_by_id = collect_prefab_components_by_id_v2(refreshed_prefab);
 
