@@ -415,6 +415,7 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Vulkan transient alias-group texture leases") -or
     -not ([string]$frameGraphGap[0].notes).Contains("VK_IMAGE_CREATE_ALIAS_BIT") -or
     -not ([string]$frameGraphGap[0].notes).Contains("zero/duplicate/wrong-count backend-return validation") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("first render-pass LoadAction::load") -or
     -not ([string]$frameGraphGap[0].notes).Contains("data inheritance/content preservation") -or
     -not ([string]$frameGraphGap[0].notes).Contains("automatic aliasing-barrier insertion") -or
     -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiRenderPassDesc") -or

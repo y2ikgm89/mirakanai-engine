@@ -231,6 +231,53 @@ build_scheduled_pass_index(std::span<const FrameGraphExecutionStep> schedule) {
     return scheduled_passes;
 }
 
+[[nodiscard]] std::map<std::string, std::size_t>
+build_scheduled_pass_order_index(std::span<const std::string> scheduled_pass_order) {
+    std::map<std::string, std::size_t> pass_order_indices;
+    for (std::size_t index = 0; index < scheduled_pass_order.size(); ++index) {
+        pass_order_indices.emplace(scheduled_pass_order[index], index);
+    }
+    return pass_order_indices;
+}
+
+template <typename Result>
+void validate_transient_render_pass_content_initialization(
+    Result& result, std::span<const std::string> scheduled_pass_order,
+    std::span<const FrameGraphRhiRenderPassDesc> render_passes,
+    std::span<const FrameGraphTransientTextureLifetime> transient_texture_lifetimes) {
+    const auto pass_order_indices = build_scheduled_pass_order_index(scheduled_pass_order);
+    std::map<std::string, std::size_t> first_pass_by_resource;
+    for (const auto& lifetime : transient_texture_lifetimes) {
+        if (lifetime.resource.empty()) {
+            continue;
+        }
+        first_pass_by_resource.emplace(lifetime.resource, lifetime.first_pass_index);
+    }
+
+    const auto validate_attachment = [&](std::string_view pass_name, const std::string& resource,
+                                         rhi::LoadAction load_action) {
+        if (resource.empty() || load_action != rhi::LoadAction::load) {
+            return;
+        }
+        const auto first_pass = first_pass_by_resource.find(resource);
+        if (first_pass == first_pass_by_resource.end()) {
+            return;
+        }
+        const auto pass_index = pass_order_indices.find(std::string(pass_name));
+        if (pass_index == pass_order_indices.end() || pass_index->second != first_pass->second) {
+            return;
+        }
+        append_frame_graph_rhi_diagnostic(
+            result, FrameGraphDiagnosticCode::invalid_resource, std::string(pass_name), resource,
+            "frame graph transient texture first render pass cannot load previous contents");
+    };
+
+    for (const auto& render_pass : render_passes) {
+        validate_attachment(render_pass.pass_name, render_pass.color.resource, render_pass.color.load_action);
+        validate_attachment(render_pass.pass_name, render_pass.depth.resource, render_pass.depth.load_action);
+    }
+}
+
 [[nodiscard]] std::map<std::string, std::vector<PlannedTextureAliasingBarrier>>
 plan_automatic_texture_aliasing_barriers(
     FrameGraphRhiTextureExecutionResult& result, const std::map<std::string, std::size_t>& binding_indices,
@@ -2075,6 +2122,10 @@ execute_frame_graph_rhi_texture_schedule(const FrameGraphRhiTextureExecutionDesc
                                            ? plan_render_pass_envelopes(result, binding_indices, scheduled_passes,
                                                                         desc.texture_bindings, desc.render_passes)
                                            : std::map<std::string, PlannedRenderPassEnvelope>{};
+    if (result.succeeded()) {
+        validate_transient_render_pass_content_initialization(result, scheduled_pass_order, desc.render_passes,
+                                                              desc.transient_texture_lifetimes);
+    }
     const auto planned_final_states = plan_final_texture_states(result, binding_indices, desc.final_states);
     for (const auto& step : desc.schedule) {
         switch (step.kind) {

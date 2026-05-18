@@ -1996,6 +1996,7 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "after ``ExecuteCommandLists`` submits work rather than after fence completion" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "automatic aliasing barrier before the first pass" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "aliasing_barriers_recorded" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText 'resource-backed transient first render-pass `LoadAction::load` rows' $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "Frame Graph RHI queue dependency and multi-queue pass-command work" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "plan_frame_graph_rhi_queue_waits" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "IRhiDevice::wait_for_queue" $renderingGuidancePath
