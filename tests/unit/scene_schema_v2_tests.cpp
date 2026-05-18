@@ -48,6 +48,36 @@ namespace {
     return nullptr;
 }
 
+[[nodiscard]] const mirakana::SceneNodeDocumentV2* find_node(const mirakana::SceneDocumentV2& scene,
+                                                             std::string_view id) {
+    for (const auto& node : scene.nodes) {
+        if (node.id.value == id) {
+            return &node;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] const mirakana::SceneNodePrefabSourceV2* find_node_prefab_source(const mirakana::SceneDocumentV2& scene,
+                                                                               std::string_view node_id) {
+    for (const auto& source : scene.node_prefab_sources) {
+        if (source.node.value == node_id) {
+            return &source;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] const mirakana::SceneComponentPrefabSourceV2*
+find_component_prefab_source(const mirakana::SceneDocumentV2& scene, std::string_view component_id) {
+    for (const auto& source : scene.component_prefab_sources) {
+        if (source.component.value == component_id) {
+            return &source;
+        }
+    }
+    return nullptr;
+}
+
 [[nodiscard]] std::string property_value(const mirakana::SceneComponentDocumentV2& component, std::string_view name) {
     for (const auto& property : component.properties) {
         if (property.name == name) {
@@ -527,6 +557,138 @@ MK_TEST("scene schema v2 rejects local prefab components during instance refresh
     MK_REQUIRE(plan.rows.empty());
     MK_REQUIRE(contains_diagnostic(plan.diagnostics,
                                    mirakana::SceneSchemaV2DiagnosticCode::unsupported_local_prefab_component));
+}
+
+MK_TEST("scene schema v2 applies stable id prefab instance refresh") {
+    constexpr std::string_view prefab_path = "source/prefabs/enemy.prefab";
+    constexpr std::string_view added_node_id = "node/instance/root/refresh/node/source/weapon";
+    constexpr std::string_view added_component_id = "node/instance/root/refresh/component/source/light";
+
+    mirakana::SceneDocumentV2 scene;
+    scene.name = "Level";
+    scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/level/root"}, .name = "LevelRoot"});
+    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/instance/root"},
+        .name = "EnemyInstance",
+        .parent = mirakana::AuthoringId{"node/level/root"},
+    });
+    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/instance/stale"},
+        .name = "Stale",
+        .parent = mirakana::AuthoringId{"node/instance/root"},
+    });
+    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/instance/mesh"},
+        .node = mirakana::AuthoringId{"node/instance/root"},
+        .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
+        .properties = {{.name = "mesh", .value = "assets/meshes/custom-enemy"}},
+    });
+    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/instance/stale"},
+        .node = mirakana::AuthoringId{"node/instance/stale"},
+        .type = mirakana::SceneComponentTypeId{"light"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/root"},
+        .prefab_path = std::string(prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/root"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/stale"},
+        .prefab_path = std::string(prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/stale"},
+    });
+    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSourceV2{
+        .component = mirakana::AuthoringId{"component/instance/mesh"},
+        .prefab_path = std::string(prefab_path),
+        .source_component_id = mirakana::AuthoringId{"component/source/mesh"},
+    });
+    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSourceV2{
+        .component = mirakana::AuthoringId{"component/instance/stale"},
+        .prefab_path = std::string(prefab_path),
+        .source_component_id = mirakana::AuthoringId{"component/source/stale"},
+    });
+
+    mirakana::PrefabDocumentV2 refreshed_prefab;
+    refreshed_prefab.name = "Enemy";
+    refreshed_prefab.scene.name = "EnemyScene";
+    refreshed_prefab.scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/source/root"}, .name = "EnemyRoot"});
+    refreshed_prefab.scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/source/weapon"},
+        .name = "Weapon",
+        .parent = mirakana::AuthoringId{"node/source/root"},
+    });
+    refreshed_prefab.scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/source/mesh"},
+        .node = mirakana::AuthoringId{"node/source/root"},
+        .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
+        .properties = {{.name = "mesh", .value = "assets/meshes/source-enemy"}},
+    });
+    refreshed_prefab.scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/source/light"},
+        .node = mirakana::AuthoringId{"node/source/weapon"},
+        .type = mirakana::SceneComponentTypeId{"light"},
+    });
+
+    const auto result = mirakana::apply_scene_prefab_instance_refresh_v2(
+        scene, mirakana::AuthoringId{"node/instance/root"}, refreshed_prefab);
+
+    MK_REQUIRE(result.applied);
+    MK_REQUIRE(result.mutates);
+    MK_REQUIRE(!result.executes);
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(result.preserved_node_count == 1U);
+    MK_REQUIRE(result.added_node_count == 1U);
+    MK_REQUIRE(result.removed_node_count == 1U);
+    MK_REQUIRE(result.preserved_component_count == 1U);
+    MK_REQUIRE(result.added_component_count == 1U);
+    MK_REQUIRE(result.removed_component_count == 1U);
+    MK_REQUIRE(result.source_to_result_node_ids.size() == 2U);
+    MK_REQUIRE(result.source_to_result_node_ids[0].source_node_id.value == "node/source/root");
+    MK_REQUIRE(result.source_to_result_node_ids[0].result_node.value == "node/instance/root");
+    MK_REQUIRE(result.source_to_result_node_ids[1].source_node_id.value == "node/source/weapon");
+    MK_REQUIRE(result.source_to_result_node_ids[1].result_node.value == added_node_id);
+    MK_REQUIRE(result.source_to_result_component_ids.size() == 2U);
+    MK_REQUIRE(result.source_to_result_component_ids[0].source_component_id.value == "component/source/mesh");
+    MK_REQUIRE(result.source_to_result_component_ids[0].result_component.value == "component/instance/mesh");
+    MK_REQUIRE(result.source_to_result_component_ids[1].source_component_id.value == "component/source/light");
+    MK_REQUIRE(result.source_to_result_component_ids[1].result_component.value == added_component_id);
+
+    const auto* level_root = find_node(result.scene, "node/level/root");
+    const auto* enemy_root = find_node(result.scene, "node/instance/root");
+    const auto* weapon = find_node(result.scene, added_node_id);
+    MK_REQUIRE(level_root != nullptr);
+    MK_REQUIRE(enemy_root != nullptr);
+    MK_REQUIRE(enemy_root->name == "EnemyInstance");
+    MK_REQUIRE(enemy_root->parent.value == "node/level/root");
+    MK_REQUIRE(weapon != nullptr);
+    MK_REQUIRE(weapon->name == "Weapon");
+    MK_REQUIRE(weapon->parent.value == "node/instance/root");
+    MK_REQUIRE(find_node(result.scene, "node/instance/stale") == nullptr);
+
+    const auto* mesh = find_component(result.scene, "component/instance/mesh");
+    const auto* light = find_component(result.scene, added_component_id);
+    MK_REQUIRE(mesh != nullptr);
+    MK_REQUIRE(mesh->node.value == "node/instance/root");
+    MK_REQUIRE(property_value(*mesh, "mesh") == "assets/meshes/custom-enemy");
+    MK_REQUIRE(light != nullptr);
+    MK_REQUIRE(light->node.value == added_node_id);
+    MK_REQUIRE(find_component(result.scene, "component/instance/stale") == nullptr);
+
+    const auto* root_source = find_node_prefab_source(result.scene, "node/instance/root");
+    const auto* weapon_source = find_node_prefab_source(result.scene, added_node_id);
+    const auto* mesh_source = find_component_prefab_source(result.scene, "component/instance/mesh");
+    const auto* light_source = find_component_prefab_source(result.scene, added_component_id);
+    MK_REQUIRE(root_source != nullptr);
+    MK_REQUIRE(root_source->source_node_id.value == "node/source/root");
+    MK_REQUIRE(weapon_source != nullptr);
+    MK_REQUIRE(weapon_source->source_node_id.value == "node/source/weapon");
+    MK_REQUIRE(mesh_source != nullptr);
+    MK_REQUIRE(mesh_source->source_component_id.value == "component/source/mesh");
+    MK_REQUIRE(light_source != nullptr);
+    MK_REQUIRE(light_source->source_component_id.value == "component/source/light");
 }
 
 int main() {

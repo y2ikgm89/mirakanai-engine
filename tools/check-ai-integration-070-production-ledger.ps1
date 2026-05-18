@@ -1800,6 +1800,8 @@ foreach ($sceneSchemaDoc in @(
     @{ Text = $roadmapText; Label = "docs/roadmap.md" }
 )) {
     Assert-ContainsText $sceneSchemaDoc.Text "plan_scene_prefab_instance_refresh_v2" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "ScenePrefabInstanceRefreshResultV2" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "apply_scene_prefab_instance_refresh_v2" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "duplicate_prefab_source_identity" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "unsupported_nested_prefab_instance" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "unsupported_local_prefab_child" $sceneSchemaDoc.Label

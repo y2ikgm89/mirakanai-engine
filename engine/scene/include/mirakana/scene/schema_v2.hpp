@@ -148,6 +148,32 @@ struct ScenePrefabInstanceRefreshPlanV2 {
     std::vector<SceneSchemaV2Diagnostic> diagnostics;
 };
 
+struct ScenePrefabInstanceRefreshNodeMappingV2 {
+    AuthoringId source_node_id;
+    AuthoringId result_node;
+};
+
+struct ScenePrefabInstanceRefreshComponentMappingV2 {
+    AuthoringId source_component_id;
+    AuthoringId result_component;
+};
+
+struct ScenePrefabInstanceRefreshResultV2 {
+    bool applied{false};
+    bool mutates{false};
+    bool executes{false};
+    std::size_t preserved_node_count{0};
+    std::size_t added_node_count{0};
+    std::size_t removed_node_count{0};
+    std::size_t preserved_component_count{0};
+    std::size_t added_component_count{0};
+    std::size_t removed_component_count{0};
+    SceneDocumentV2 scene;
+    std::vector<ScenePrefabInstanceRefreshNodeMappingV2> source_to_result_node_ids;
+    std::vector<ScenePrefabInstanceRefreshComponentMappingV2> source_to_result_component_ids;
+    std::vector<SceneSchemaV2Diagnostic> diagnostics;
+};
+
 [[nodiscard]] std::vector<SceneSchemaV2Diagnostic> validate_scene_document_v2(const SceneDocumentV2& scene);
 [[nodiscard]] std::string serialize_scene_document_v2(const SceneDocumentV2& scene);
 [[nodiscard]] SceneDocumentV2 deserialize_scene_document_v2(std::string_view text);
@@ -158,5 +184,8 @@ struct ScenePrefabInstanceRefreshPlanV2 {
 [[nodiscard]] ScenePrefabInstanceRefreshPlanV2
 plan_scene_prefab_instance_refresh_v2(const SceneDocumentV2& scene, const AuthoringId& instance_root_node,
                                       const PrefabDocumentV2& refreshed_prefab);
+[[nodiscard]] ScenePrefabInstanceRefreshResultV2
+apply_scene_prefab_instance_refresh_v2(const SceneDocumentV2& scene, const AuthoringId& instance_root_node,
+                                       const PrefabDocumentV2& refreshed_prefab);
 
 } // namespace mirakana

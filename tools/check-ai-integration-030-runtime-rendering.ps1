@@ -563,6 +563,8 @@ Assert-ContainsText ([string]$geSceneModule[0].purpose) "GameEngine.Scene.v2" "M
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshPlanV2" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshRowV2" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "plan_scene_prefab_instance_refresh_v2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshResultV2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "apply_scene_prefab_instance_refresh_v2" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "duplicate_prefab_source_identity" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "unsupported_nested_prefab_instance" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "unsupported_local_prefab_child" "MK_scene module purpose"

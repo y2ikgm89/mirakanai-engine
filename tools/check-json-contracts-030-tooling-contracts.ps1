@@ -797,6 +797,8 @@ if (-not ([string]$sceneAuthoringSurface[0].notes).Contains("Contract-only") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("prefab_source") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("ScenePrefabInstanceRefreshPlanV2") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("plan_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("ScenePrefabInstanceRefreshResultV2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("apply_scene_prefab_instance_refresh_v2") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("duplicate_prefab_source_identity") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("unsupported_nested_prefab_instance") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("unsupported_local_prefab_child") -or
@@ -896,6 +898,8 @@ if (-not ([string]$sceneSchemaGap[0].notes).Contains("contract-only") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("prefab_source") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("ScenePrefabInstanceRefreshPlanV2") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("plan_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$sceneSchemaGap[0].notes).Contains("ScenePrefabInstanceRefreshResultV2") -or
+    -not ([string]$sceneSchemaGap[0].notes).Contains("apply_scene_prefab_instance_refresh_v2") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("duplicate_prefab_source_identity") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("unsupported_nested_prefab_instance") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("unsupported_local_prefab_child") -or
