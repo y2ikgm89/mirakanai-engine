@@ -48,7 +48,9 @@ Sources: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/executing-a
 
 - RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` failed before the new multi-queue descriptor/result fields existed.
 - RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_renderer_tests --output-on-failure` failed before multi-queue render-pass target-state execution and prevalidation were implemented.
+- RED review fix: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests; ... tools/ctest.ps1 --preset dev -R MK_renderer_tests --output-on-failure` failed on `frame graph rhi multi queue executor simulates target state before downstream texture barriers` before multi-queue barrier preplanning simulated writer target-state rows.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` passed.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_renderer_tests --output-on-failure` passed.
-- Slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, with expected diagnostic-only host gates for Metal/Apple packaging on this Windows host.
+- GREEN review fix: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests; ... tools/ctest.ps1 --preset dev -R MK_renderer_tests --output-on-failure` passed after multi-queue barrier preplanning simulated writer target-state rows before downstream barrier planning.
+- Slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after the review fix, with expected diagnostic-only host gates for Metal/Apple packaging on this Windows host.
 - Agent-surface drift follow-up: plan registry, current capabilities, roadmap, manifest fragment, and composed manifest were updated without broadening `frame-graph-v1` beyond `implemented-foundation-only`.
