@@ -459,6 +459,76 @@ MK_TEST("scene schema v2 rejects nested prefab roots during instance refresh pla
                                    mirakana::SceneSchemaV2DiagnosticCode::unsupported_nested_prefab_instance));
 }
 
+MK_TEST("scene schema v2 rejects local prefab children during instance refresh planning") {
+    constexpr std::string_view prefab_path = "source/prefabs/enemy.prefab";
+
+    mirakana::SceneDocumentV2 scene;
+    scene.name = "Level";
+    scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/instance/root"}, .name = "EnemyRoot"});
+    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/instance/local"},
+        .name = "LocalAttachment",
+        .parent = mirakana::AuthoringId{"node/instance/root"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/root"},
+        .prefab_path = std::string(prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/root"},
+    });
+
+    mirakana::PrefabDocumentV2 refreshed_prefab;
+    refreshed_prefab.name = "Enemy";
+    refreshed_prefab.scene.name = "EnemyScene";
+    refreshed_prefab.scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/source/root"}, .name = "EnemyRoot"});
+
+    const auto plan = mirakana::plan_scene_prefab_instance_refresh_v2(
+        scene, mirakana::AuthoringId{"node/instance/root"}, refreshed_prefab);
+
+    MK_REQUIRE(!plan.valid);
+    MK_REQUIRE(!plan.mutates);
+    MK_REQUIRE(!plan.executes);
+    MK_REQUIRE(plan.rows.empty());
+    MK_REQUIRE(
+        contains_diagnostic(plan.diagnostics, mirakana::SceneSchemaV2DiagnosticCode::unsupported_local_prefab_child));
+}
+
+MK_TEST("scene schema v2 rejects local prefab components during instance refresh planning") {
+    constexpr std::string_view prefab_path = "source/prefabs/enemy.prefab";
+
+    mirakana::SceneDocumentV2 scene;
+    scene.name = "Level";
+    scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/instance/root"}, .name = "EnemyRoot"});
+    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        .id = mirakana::AuthoringId{"component/instance/local"},
+        .node = mirakana::AuthoringId{"node/instance/root"},
+        .type = mirakana::SceneComponentTypeId{"light"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/root"},
+        .prefab_path = std::string(prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/root"},
+    });
+
+    mirakana::PrefabDocumentV2 refreshed_prefab;
+    refreshed_prefab.name = "Enemy";
+    refreshed_prefab.scene.name = "EnemyScene";
+    refreshed_prefab.scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/source/root"}, .name = "EnemyRoot"});
+
+    const auto plan = mirakana::plan_scene_prefab_instance_refresh_v2(
+        scene, mirakana::AuthoringId{"node/instance/root"}, refreshed_prefab);
+
+    MK_REQUIRE(!plan.valid);
+    MK_REQUIRE(!plan.mutates);
+    MK_REQUIRE(!plan.executes);
+    MK_REQUIRE(plan.rows.empty());
+    MK_REQUIRE(contains_diagnostic(plan.diagnostics,
+                                   mirakana::SceneSchemaV2DiagnosticCode::unsupported_local_prefab_component));
+}
+
 int main() {
     return mirakana::test::run_all();
 }

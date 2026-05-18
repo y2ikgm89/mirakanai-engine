@@ -1802,6 +1802,8 @@ foreach ($sceneSchemaDoc in @(
     Assert-ContainsText $sceneSchemaDoc.Text "plan_scene_prefab_instance_refresh_v2" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "duplicate_prefab_source_identity" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "unsupported_nested_prefab_instance" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "unsupported_local_prefab_child" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "unsupported_local_prefab_component" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "contract-only" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "nested prefab" $sceneSchemaDoc.Label
 }

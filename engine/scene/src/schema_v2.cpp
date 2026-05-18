@@ -371,6 +371,32 @@ void add_prefab_refresh_nested_prefab_diagnostics_v2(ScenePrefabInstanceRefreshP
     }
 }
 
+void add_prefab_refresh_local_ownership_diagnostics_v2(ScenePrefabInstanceRefreshPlanV2& plan,
+                                                       const SceneDocumentV2& scene,
+                                                       const std::unordered_set<std::string>& subtree_node_ids) {
+    for (const auto& node : scene.nodes) {
+        if (!subtree_node_ids.contains(node.id.value) || node.id.value == plan.instance_root_node.value) {
+            continue;
+        }
+        const auto* source = find_node_prefab_source(scene, node.id.value);
+        if (source == nullptr) {
+            add_diagnostic(plan.diagnostics, SceneSchemaV2DiagnosticCode::unsupported_local_prefab_child, node.id, {},
+                           {}, "node.prefab_source");
+        }
+    }
+
+    for (const auto& component : scene.components) {
+        if (!subtree_node_ids.contains(component.node.value)) {
+            continue;
+        }
+        const auto* source = find_component_prefab_source(scene, component.id.value);
+        if (source == nullptr || source->prefab_path != plan.prefab_path) {
+            add_diagnostic(plan.diagnostics, SceneSchemaV2DiagnosticCode::unsupported_local_prefab_component,
+                           component.node, component.id, component.type, "component.prefab_source");
+        }
+    }
+}
+
 void add_override_diagnostic(std::vector<SceneSchemaV2Diagnostic>& diagnostics, SceneSchemaV2DiagnosticCode code,
                              std::string_view path) {
     add_diagnostic(diagnostics, code, {}, {}, {}, std::string(path));
@@ -868,6 +894,11 @@ ScenePrefabInstanceRefreshPlanV2 plan_scene_prefab_instance_refresh_v2(const Sce
     plan.prefab_path = root_source->prefab_path;
     const auto subtree_node_ids = collect_scene_subtree_node_ids_v2(scene, instance_root_node.value);
     add_prefab_refresh_nested_prefab_diagnostics_v2(plan, scene, subtree_node_ids);
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    add_prefab_refresh_local_ownership_diagnostics_v2(plan, scene, subtree_node_ids);
     if (!plan.diagnostics.empty()) {
         return plan;
     }
