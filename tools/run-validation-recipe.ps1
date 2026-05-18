@@ -201,8 +201,7 @@ Write-RunnerResult -Result ([ordered]@{
         validationRecipes = @($Recipe)
         unsupportedGapIds = @(
             "editor-productization",
-            "production-ui-importer-platform-adapters",
-            "3d-playable-vertical-slice"
+            "production-ui-importer-platform-adapters"
         )
         undoToken = New-UndoToken
     }) -ExitCode $execution.exitCode

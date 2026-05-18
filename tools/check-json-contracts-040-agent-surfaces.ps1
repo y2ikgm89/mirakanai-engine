@@ -422,39 +422,17 @@ foreach ($check in @(
     }
 }
 $playable3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" })
-if ($playable3dGap.Count -ne 1 -or $playable3dGap[0].status -ne "implemented-generated-desktop-3d-package-proof") {
-    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must be implemented-generated-desktop-3d-package-proof"
+if ($playable3dGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-if (@($playable3dGap[0].requiredBeforeReadyClaim) -contains "AI-created visible 3D game") {
-    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must not keep AI-created visible 3D game as an unmet claim after the committed generated package proof"
-}
-foreach ($claim in @(
-    "broader generated 3D production readiness",
-    "broad dependency cooking and package streaming",
-    "production material/shader graph and live shader generation",
-    "Metal readiness and broad backend parity",
-    "editor productization and general renderer quality"
+foreach ($needle in @(
+    "3d-playable-vertical-slice",
+    "generated desktop 3D package proof",
+    "host-gated D3D12/Vulkan package smokes",
+    "visible 3D aggregate counters",
+    "native UI overlay/atlas package counters"
 )) {
-    if (@($playable3dGap[0].requiredBeforeReadyClaim) -notcontains $claim) {
-        Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap requiredBeforeReadyClaim missing: $claim"
-    }
-}
-if (-not ([string]$playable3dGap[0].notes).Contains("sample_generated_desktop_runtime_3d_package") -or
-    -not ([string]$playable3dGap[0].notes).Contains("committed generated") -or
-    -not ([string]$playable3dGap[0].notes).Contains("camera/controller") -or
-    -not ([string]$playable3dGap[0].notes).Contains("compute morph") -or
-    -not ([string]$playable3dGap[0].notes).Contains("selected generated directional shadow package smoke") -or
-    -not ([string]$playable3dGap[0].notes).Contains("directional_shadow_status=ready") -or
-    -not ([string]$playable3dGap[0].notes).Contains("selected generated gameplay systems package smoke") -or
-    -not ([string]$playable3dGap[0].notes).Contains("gameplay_systems_status=ready") -or
-    -not ([string]$playable3dGap[0].notes).Contains("production directional shadow quality") -or
-    -not ([string]$playable3dGap[0].notes).Contains("broad shadow+morph composition beyond the selected receiver smoke") -or
-    -not ([string]$playable3dGap[0].notes).Contains("broad generated 3D production readiness") -or
-    -not ([string]$playable3dGap[0].notes).Contains("Metal readiness")) {
-    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must describe the committed generated 3D package proof and remaining unsupported limits"
-}
-if (([string]$playable3dGap[0].notes).Contains("directional shadows and shadow filtering for generated packages")) {
-    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must not keep stale generated directional shadow unsupported text"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "engine manifest aiOperableProductionLoop recommendedNextPlan 3d closeout"
 }
 $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "physics-1-0-collision-system" })
 if ($physicsCollisionGap.Count -ne 0) {

@@ -55,8 +55,7 @@ function New-ValidationRecipeRejectedResult {
         validationRecipes = @()
         unsupportedGapIds = @(
             "editor-productization",
-            "production-ui-importer-platform-adapters",
-            "3d-playable-vertical-slice"
+            "production-ui-importer-platform-adapters"
         )
         undoToken = New-UndoToken
     }
@@ -309,8 +308,7 @@ function New-ValidationRecipeDryRunResult {
         validationRecipes = @($Plan.recipe)
         unsupportedGapIds = @(
             "editor-productization",
-            "production-ui-importer-platform-adapters",
-            "3d-playable-vertical-slice"
+            "production-ui-importer-platform-adapters"
         )
         undoToken = New-UndoToken
     }

@@ -18,11 +18,10 @@ Expand **generated / desktop package smoke** (`--require-*` flags, fail-closed c
 - Closed for the Engine 1.0 Windows-default generated package surface by [2026-05-18-2d-playable-vertical-slice-1-0-closeout-v1.md](2026-05-18-2d-playable-vertical-slice-1-0-closeout-v1.md).
 - Atlas **authoring** workflow in editor, full tilemap **editing canvas** UX, and broader renderer-quality sprite batching are future/editor/renderer follow-ups, not blockers for the supported 1.0 generated 2D package claim.
 
-## 3D stream targets
+## 3D stream status
 
-- Dependency cook + package streaming **execution** evidence (not only planning APIs).
-- Material graph + **live shader generation** pipeline with audited tool dispatch.
-- Metal / broad backend parity only with `metal-apple` / `vulkan-strict` recipes.
+- Closed for the Engine 1.0 Windows-default generated package surface by [2026-05-18-3d-playable-vertical-slice-1-0-closeout-v1.md](2026-05-18-3d-playable-vertical-slice-1-0-closeout-v1.md).
+- Dependency cook + package streaming **execution**, material graph + **live shader generation**, Metal / broad backend parity, native handles, and general renderer quality are future/host-gated follow-ups, not blockers for the supported 1.0 generated 3D package claim.
 
 ## Constraints
 
@@ -37,4 +36,5 @@ Expand **generated / desktop package smoke** (`--require-*` flags, fail-closed c
 
 | Gap id | Plan | Status |
 | --- | --- | --- |
-| (pending) | — | Add row per landed Phase 2 child plan |
+| `2d-playable-vertical-slice` | [2026-05-18-2d-playable-vertical-slice-1-0-closeout-v1.md](2026-05-18-2d-playable-vertical-slice-1-0-closeout-v1.md) | Completed |
+| `3d-playable-vertical-slice` | [2026-05-18-3d-playable-vertical-slice-1-0-closeout-v1.md](2026-05-18-3d-playable-vertical-slice-1-0-closeout-v1.md) | Completed |

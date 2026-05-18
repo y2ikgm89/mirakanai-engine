@@ -785,9 +785,6 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
             Write-Error "engine manifest aiOperableProductionLoop command surface '$($commandSurface.id)' references unknown unsupported gap: $gapId"
         }
     }
-    if (@($commandSurface.unsupportedGapIds).Count -lt 1) {
-        Write-Error "engine manifest aiOperableProductionLoop command surface '$($commandSurface.id)' must list unsupportedGapIds for diagnostics"
-    }
     Assert-Properties $commandSurface.undoToken @("status", "notes") "engine manifest aiOperableProductionLoop command surface undoToken"
     if ($commandSurface.undoToken.status -ne "placeholder-only") {
         Write-Error "engine manifest aiOperableProductionLoop command surface '$($commandSurface.id)' undoToken must remain placeholder-only in this slice"

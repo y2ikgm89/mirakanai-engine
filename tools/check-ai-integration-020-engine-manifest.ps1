@@ -811,9 +811,6 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
             Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' references unknown unsupported gap: $gapId"
         }
     }
-    if (@($commandSurface.unsupportedGapIds).Count -lt 1) {
-        Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' must list unsupportedGapIds for diagnostics"
-    }
     Assert-JsonProperty $commandSurface.undoToken @("status", "notes") "engine/agent/manifest.json aiOperableProductionLoop command surface undoToken"
     if ($commandSurface.undoToken.status -ne "placeholder-only") {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' undoToken must remain placeholder-only in this slice"
@@ -1567,7 +1564,6 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
 }
 
 $requiredProductionGapIds = @(
-    "3d-playable-vertical-slice",
     "editor-productization",
     "production-ui-importer-platform-adapters",
     "full-repository-quality-gate"
@@ -1592,6 +1588,10 @@ if ($sceneSchemaGap.Count -ne 0) {
 $playable2dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "2d-playable-vertical-slice" })
 if ($playable2dGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop 2d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$playable3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" })
+if ($playable3dGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {
@@ -1753,17 +1753,15 @@ foreach ($check in @(
         Assert-ContainsText $fileText $needle "$($check.Path) upload-staging-v1 closeout evidence"
     }
 }
-$desktop3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" })
-if ($desktop3dGap.Count -ne 1 -or $desktop3dGap[0].status -ne "implemented-generated-desktop-3d-package-proof") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap must keep the generated desktop 3D package proof status"
+foreach ($needle in @(
+    "3d-playable-vertical-slice",
+    "generated desktop 3D package proof",
+    "host-gated D3D12/Vulkan package smokes",
+    "visible 3D aggregate counters",
+    "native UI overlay/atlas package counters"
+)) {
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason 3d closeout"
 }
-Assert-ContainsText ([string]$desktop3dGap[0].notes) "selected generated directional shadow package smoke" "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap"
-Assert-ContainsText ([string]$desktop3dGap[0].notes) "directional_shadow_status=ready" "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap"
-Assert-ContainsText ([string]$desktop3dGap[0].notes) "selected generated graphics morph + directional shadow receiver package smoke" "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap"
-Assert-ContainsText ([string]$desktop3dGap[0].notes) "renderer_morph_descriptor_binds" "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap"
-Assert-ContainsText ([string]$desktop3dGap[0].notes) "production directional shadow quality" "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap"
-Assert-ContainsText ([string]$desktop3dGap[0].notes) "broad shadow+morph composition beyond the selected receiver smoke" "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap"
-Assert-DoesNotContainText ([string]$desktop3dGap[0].notes) "directional shadows and shadow filtering for generated packages" "engine/agent/manifest.json aiOperableProductionLoop 3d-playable-vertical-slice gap"
 $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "physics-1-0-collision-system" })
 if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
