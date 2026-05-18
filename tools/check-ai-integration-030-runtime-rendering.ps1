@@ -22,152 +22,38 @@ foreach ($needle in @(
     "full-repository-quality-gate"
 )) {
     Assert-ContainsText $editorProductizationCloseoutText $needle "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md editor-productization closeout evidence"
-}$productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
-if ($productionUiImporterPlatformGap.Count -ne 1 -or $productionUiImporterPlatformGap[0].status -ne "planned") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must remain planned until OS/platform adapter work is complete"
 }
+$productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
+if ($productionUiImporterPlatformGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md"
 foreach ($needle in @(
-    "Runtime UI Accessibility Publish Plan v1",
+    "Production UI Importer Platform Adapters 1.0 Closeout",
+    "reviewed adapter-boundary and package evidence",
     "AccessibilityPublishPlan",
-    "AccessibilityPublishResult",
-    "plan_accessibility_publish",
-    "publish_accessibility_payload",
-    "AccessibilityPayload",
-    "IAccessibilityAdapter",
-    "OS accessibility bridge publication",
-    "native accessibility objects",
-    "platform SDK calls",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI IME Composition Publish Plan v1",
     "ImeCompositionPublishPlan",
-    "ImeCompositionPublishResult",
-    "plan_ime_composition_update",
-    "publish_ime_composition",
-    "ImeComposition",
-    "IImeAdapter",
-    "native IME/text-input sessions",
-    "platform SDK calls",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Platform Text Input Session Plan v1",
     "PlatformTextInputSessionPlan",
-    "PlatformTextInputSessionResult",
-    "PlatformTextInputEndPlan",
-    "PlatformTextInputEndResult",
-    "plan_platform_text_input_session",
-    "begin_platform_text_input",
-    "plan_platform_text_input_end",
-    "end_platform_text_input",
-    "PlatformTextInputRequest",
-    "IPlatformIntegrationAdapter",
-    "native text-input object/session ownership",
-    "virtual keyboard behavior",
-    "platform SDK calls",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Text Shaping Request Plan v1",
     "TextShapingRequestPlan",
-    "TextShapingResult",
-    "plan_text_shaping_request",
-    "shape_text_run",
-    "TextLayoutRequest",
-    "TextLayoutRun",
-    "ITextShapingAdapter",
-    "production text shaping implementation",
-    "bidirectional reordering",
-    "production line breaking",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Font Rasterization Request Plan v1",
     "FontRasterizationRequestPlan",
-    "FontRasterizationResult",
-    "plan_font_rasterization_request",
-    "rasterize_font_glyph",
-    "FontRasterizationRequest",
-    "GlyphAtlasAllocation",
-    "IFontRasterizerAdapter",
-    "real font loading/rasterization",
-    "renderer texture upload",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Image Decode Request Plan v1",
     "ImageDecodeRequestPlan",
-    "ImageDecodeDispatchResult",
-    "ImageDecodePixelFormat",
-    "plan_image_decode_request",
-    "decode_image_request",
-    "ImageDecodeRequest",
-    "ImageDecodeResult",
-    "IImageDecodingAdapter",
-    "runtime image decoding",
-    "source image codecs",
-    "SVG/vector decoding",
-    "renderer texture upload",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI PNG Image Decoding Adapter v1",
     "PngImageDecodingAdapter",
-    "IImageDecodingAdapter",
-    "decode_audited_png_rgba8",
-    "libspng",
-    "asset-importers",
-    "without new dependency, legal, vcpkg, or notice records",
-    "runtime image decoding beyond the reviewed PNG adapter",
-    "broader source image codecs"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Decoded Image Atlas Package Bridge v1",
-    "PackedUiAtlasAuthoringDesc",
     "author_packed_ui_atlas_from_decoded_images",
-    "plan_packed_ui_atlas_package_update",
-    "apply_packed_ui_atlas_package_update",
-    "pack_sprite_atlas_rgba8_max_side",
-    "GameEngine.CookedTexture.v1",
-    "GameEngine.UiAtlas.v1",
-    "without new dependency, legal, vcpkg, or notice records",
-    "renderer texture upload"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Glyph Atlas Package Bridge v1",
-    "UiAtlasMetadataGlyph",
-    "RuntimeUiAtlasGlyph",
-    "PackedUiGlyphAtlasAuthoringDesc",
     "author_packed_ui_glyph_atlas_from_rasterized_glyphs",
-    "plan_packed_ui_glyph_atlas_package_update",
-    "apply_packed_ui_glyph_atlas_package_update",
-    "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas",
-    "source.decoding=rasterized-glyph-adapter",
-    "atlas.packing=deterministic-glyph-atlas-rgba8-max-side",
-    "GameEngine.CookedTexture.v1",
-    "GameEngine.UiAtlas.v1",
-    "without new dependency, legal, vcpkg, or notice records",
+    "selected SDL3 platform bridges",
+    "package-visible native UI overlay/atlas smokes",
+    "production text shaping implementation",
     "real font loading/rasterization",
-    "renderer texture upload"
+    "OS accessibility publication",
+    "broad native IME/text services",
+    "broader source codecs",
+    "SVG/vector parsing",
+    "renderer texture-upload APIs",
+    "arbitrary importer adapters",
+    "UI middleware",
+    "full-repository-quality-gate"
 )) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
+    Assert-ContainsText $productionUiCloseoutText $needle "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md production-ui closeout evidence"
 }
 $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "full-repository-quality-gate" })
 if ($fullRepoQualityGap.Count -ne 1 -or $fullRepoQualityGap[0].status -ne "partly-ready") {

@@ -22,8 +22,10 @@ namespace {
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
     return {
-        "runtime-resource-v2",   "renderer-rhi-resource-foundation", "production-ui-importer-platform-adapters",
-        "editor-productization", "3d-playable-vertical-slice",
+        "runtime-resource-v2",
+        "renderer-rhi-resource-foundation",
+        "editor-productization",
+        "3d-playable-vertical-slice",
     };
 }
 
@@ -168,8 +170,7 @@ void validate_unsupported_claims(std::vector<RuntimeScenePackageValidationDiagno
                    "runtime source parsing is not supported by runtime scene package validation",
                    "runtime-resource-v2");
     validate_claim(diagnostics, request.external_importer_execution, "unsupported_external_importer_execution",
-                   "external importer execution is not supported by runtime scene package validation",
-                   "production-ui-importer-platform-adapters");
+                   "external importer execution is not supported by runtime scene package validation", {});
     validate_claim(diagnostics, request.renderer_rhi_residency, "unsupported_renderer_rhi_residency",
                    "renderer/RHI residency is not supported by runtime scene package validation",
                    "renderer-rhi-resource-foundation");

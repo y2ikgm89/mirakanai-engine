@@ -27,8 +27,8 @@ namespace {
 }
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
-    return {"runtime-resource-v2", "renderer-rhi-resource-foundation", "production-ui-importer-platform-adapters",
-            "editor-productization", "3d-playable-vertical-slice"};
+    return {"runtime-resource-v2", "renderer-rhi-resource-foundation", "editor-productization",
+            "3d-playable-vertical-slice"};
 }
 
 [[nodiscard]] bool has_control_character(std::string_view value) noexcept {
@@ -178,8 +178,7 @@ void validate_unsupported_claims(std::vector<RegisteredSourceAssetCookPackageDia
                                  const RegisteredSourceAssetCookPackageRequest& request) {
     validate_dependency_cooking_sentinel(diagnostics, request);
     validate_claim(diagnostics, request.external_importer_execution, "unsupported_external_importer_execution",
-                   "external importer execution is not supported by registered source asset cook/package tooling",
-                   "production-ui-importer-platform-adapters");
+                   "external importer execution is not supported by registered source asset cook/package tooling", {});
     validate_claim(diagnostics, request.renderer_rhi_residency, "unsupported_renderer_rhi_residency",
                    "renderer/RHI residency is not supported by registered source asset cook/package tooling",
                    "renderer-rhi-resource-foundation");

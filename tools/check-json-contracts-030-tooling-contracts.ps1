@@ -865,7 +865,6 @@ foreach ($packageSurface in $productionLoop.packageSurfaces) {
 }
 
 $requiredGapIds = @(
-    "production-ui-importer-platform-adapters",
     "full-repository-quality-gate"
 )
 $gapIds = @{}
@@ -900,6 +899,10 @@ if ($playable3dGap.Count -ne 0) {
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
+if ($productionUiImporterPlatformGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {

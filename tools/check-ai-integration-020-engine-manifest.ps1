@@ -1564,7 +1564,6 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
 }
 
 $requiredProductionGapIds = @(
-    "production-ui-importer-platform-adapters",
     "full-repository-quality-gate"
 )
 $productionGapIds = @{}
@@ -1595,6 +1594,10 @@ if ($playable3dGap.Count -ne 0) {
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
+if ($productionUiImporterPlatformGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {
@@ -1838,7 +1841,11 @@ foreach ($needle in @(
     "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
     "explicit host-gated exclusion of Vulkan/Metal material-preview display parity",
     "production-ui-importer-platform-adapters",
+    "reviewed runtime UI adapter contracts",
+    "selected SDL3 text/clipboard bridges",
+    "reviewed PNG/UI atlas/glyph atlas package bridges",
+    "explicit future/dependency-gated exclusions for broad low-level UI, codec, importer, platform SDK",
     "full-repository-quality-gate"
 )) {
-    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason editor closeout"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason closeout wedges"
 }

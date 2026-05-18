@@ -129,8 +129,7 @@ void validate_unsupported_claims(std::vector<ScenePrefabAuthoringDiagnostic>& di
                    "Scene v2 runtime package migration is not supported by Scene/Prefab v2 authoring tooling",
                    "scene-component-prefab-schema-v2");
     validate_claim(diagnostics, request.source_asset_import, "unsupported_source_asset_import",
-                   "source asset import is not supported by Scene/Prefab v2 authoring tooling",
-                   "production-ui-importer-platform-adapters");
+                   "source asset import is not supported by Scene/Prefab v2 authoring tooling", {});
     validate_claim(diagnostics, request.package_cooking, "unsupported_package_cooking",
                    "package cooking is not supported by Scene/Prefab v2 authoring tooling", "runtime-resource-v2");
     validate_claim(diagnostics, request.editor_productization, "unsupported_editor_productization",

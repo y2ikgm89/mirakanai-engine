@@ -53,9 +53,7 @@ function New-ValidationRecipeRejectedResult {
         diagnostics = @($Diagnostic)
         blockedBy = @()
         validationRecipes = @()
-        unsupportedGapIds = @(
-            "production-ui-importer-platform-adapters"
-        )
+        unsupportedGapIds = @()
         undoToken = New-UndoToken
     }
 }
@@ -305,9 +303,7 @@ function New-ValidationRecipeDryRunResult {
         diagnostics = @($Plan.diagnostics)
         blockedBy = @()
         validationRecipes = @($Plan.recipe)
-        unsupportedGapIds = @(
-            "production-ui-importer-platform-adapters"
-        )
+        unsupportedGapIds = @()
         undoToken = New-UndoToken
     }
 }

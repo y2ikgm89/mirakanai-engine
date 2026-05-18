@@ -1316,6 +1316,10 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
     return text.find(needle) != std::string_view::npos;
 }
 
+[[nodiscard]] bool gap_ids_contain(const std::vector<std::string>& gap_ids, std::string_view id) {
+    return std::ranges::any_of(gap_ids, [id](const auto& gap_id) { return gap_id == id; });
+}
+
 [[nodiscard]] bool failures_contain(const std::vector<mirakana::CookedUiAtlasAuthoringFailure>& failures,
                                     std::string_view needle) {
     return std::ranges::any_of(
@@ -4168,6 +4172,7 @@ MK_TEST("registered source asset cook package dry-runs selected rows into cooked
     MK_REQUIRE(result.model_mutations[1].asset_key.value == "assets/textures/hero");
     MK_REQUIRE(result.validation_recipes.size() == 3);
     MK_REQUIRE(result.unsupported_gap_ids.size() >= 3);
+    MK_REQUIRE(!gap_ids_contain(result.unsupported_gap_ids, "production-ui-importer-platform-adapters"));
     MK_REQUIRE(result.undo_token == "placeholder-only");
 
     const auto index = mirakana::deserialize_asset_cooked_package_index(result.package_index_content);
@@ -4642,6 +4647,7 @@ MK_TEST("runtime scene package validation dry-runs and executes package scene in
     MK_REQUIRE(dry_run.summary.scene_asset == fixture.scene_asset);
     MK_REQUIRE(dry_run.validation_recipes.size() == 3);
     MK_REQUIRE(dry_run.unsupported_gap_ids.size() >= 3);
+    MK_REQUIRE(!gap_ids_contain(dry_run.unsupported_gap_ids, "production-ui-importer-platform-adapters"));
     MK_REQUIRE(dry_run.undo_token == "placeholder-only");
 
     const auto executed = mirakana::execute_runtime_scene_package_validation(fs, fixture.request);
@@ -4936,6 +4942,7 @@ MK_TEST("scene v2 runtime package migration dry-runs scene and package index cha
     MK_REQUIRE(result.model_mutations[0].dependency_rows[2].kind == mirakana::AssetDependencyKind::scene_sprite);
     MK_REQUIRE(result.validation_recipes.size() == 3);
     MK_REQUIRE(result.unsupported_gap_ids.size() >= 3);
+    MK_REQUIRE(!gap_ids_contain(result.unsupported_gap_ids, "production-ui-importer-platform-adapters"));
     MK_REQUIRE(result.undo_token == "placeholder-only");
 
     const auto index = mirakana::deserialize_asset_cooked_package_index(result.package_index_content);

@@ -64,8 +64,9 @@ struct ResolvedAssetReference {
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
     return {
-        "scene-component-prefab-schema-v2",         "runtime-resource-v2",   "renderer-rhi-resource-foundation",
-        "production-ui-importer-platform-adapters", "editor-productization", "3d-playable-vertical-slice",
+        "scene-component-prefab-schema-v2", "runtime-resource-v2",
+        "renderer-rhi-resource-foundation", "editor-productization",
+        "3d-playable-vertical-slice",
     };
 }
 
@@ -221,8 +222,7 @@ void validate_unsupported_claims(std::vector<SceneV2RuntimePackageMigrationDiagn
                    "dependent asset cooking is not supported by Scene v2 runtime package migration",
                    "runtime-resource-v2");
     validate_claim(diagnostics, request.external_importer_execution, "unsupported_external_importer_execution",
-                   "external importer execution is not supported by Scene v2 runtime package migration",
-                   "production-ui-importer-platform-adapters");
+                   "external importer execution is not supported by Scene v2 runtime package migration", {});
     validate_claim(diagnostics, request.renderer_rhi_residency, "unsupported_renderer_rhi_residency",
                    "renderer/RHI residency is not supported by Scene v2 runtime package migration",
                    "renderer-rhi-resource-foundation");

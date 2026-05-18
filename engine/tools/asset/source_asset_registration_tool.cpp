@@ -17,11 +17,7 @@ namespace {
 }
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
-    return {"asset-identity-v2",
-            "runtime-resource-v2",
-            "renderer-rhi-resource-foundation",
-            "production-ui-importer-platform-adapters",
-            "editor-productization",
+    return {"asset-identity-v2", "runtime-resource-v2", "renderer-rhi-resource-foundation", "editor-productization",
             "3d-playable-vertical-slice"};
 }
 
@@ -135,12 +131,10 @@ void validate_unsupported_claims(std::vector<SourceAssetRegistrationDiagnostic>&
                                  const SourceAssetRegistrationRequest& request) {
     if (request.import_settings != "default-only") {
         add_diagnostic(diagnostics, "unsupported_import_settings",
-                       "custom import settings are not supported by source asset registration tooling", {}, {},
-                       "production-ui-importer-platform-adapters");
+                       "custom import settings are not supported by source asset registration tooling");
     }
     validate_claim(diagnostics, request.external_importer, "unsupported_external_importer",
-                   "external importer execution is not supported by source asset registration tooling",
-                   "production-ui-importer-platform-adapters");
+                   "external importer execution is not supported by source asset registration tooling", {});
     validate_claim(diagnostics, request.package_cooking, "unsupported_package_cooking",
                    "package cooking is not supported by source asset registration tooling", "runtime-resource-v2");
     validate_claim(diagnostics, request.renderer_rhi_residency, "unsupported_renderer_rhi_residency",
