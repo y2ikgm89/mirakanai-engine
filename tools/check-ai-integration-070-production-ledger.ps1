@@ -1285,7 +1285,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "merge/delete-branch" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "auto-merge registration" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "official GitHub Flow" $agentIntegrationSkill
-    foreach ($agentIntegrationCadenceNeedle in @("purpose/checkpoint-based cadence", "validated phase commits", "one PR per focused capability/gap-cluster/milestone", "early draft PRs")) {
+    foreach ($agentIntegrationCadenceNeedle in @("purpose/checkpoint-based cadence", "validated checkpoint commits", 'one production-completion PR per `unsupportedProductionGaps` row', "early draft PRs")) {
         Assert-ContainsText $agentIntegrationSkillText $agentIntegrationCadenceNeedle $agentIntegrationSkill
     }
     Assert-ContainsText $agentIntegrationSkillText "final completion report must not stop after local validation" $agentIntegrationSkill

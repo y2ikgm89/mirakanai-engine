@@ -53,8 +53,8 @@ if ($agentsContent -notmatch "docs/README\.md" -or $agentsContent -notmatch "doc
 }
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "AGENTS.md"
-Assert-ContainsText $agentsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch]" "AGENTS.md"
-Assert-ContainsText $agentsContent "fast-forwards it" "AGENTS.md"
+Assert-ContainsText $agentsContent "tools/remove-merged-worktree.ps1 -WorktreePath <path> [-LocalCheckoutPath <path>] [-DeleteLocalBranch]" "AGENTS.md"
+Assert-ContainsText $agentsContent "fast-forwards a clean base checkout" "AGENTS.md"
 Assert-ContainsText $agentsContent "accepts standard roots" "AGENTS.md"
 Assert-ContainsText $agentsContent "unlinks worktree-local vcpkg links" "AGENTS.md"
 Assert-ContainsText $agentsContent "Windows fallback guarded/non-following" "AGENTS.md"
@@ -73,7 +73,7 @@ Assert-ContainsText $agentsContent "VCPKG_MANIFEST_INSTALL=OFF" "AGENTS.md"
 Assert-ContainsText $agentsContent 'VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed' "AGENTS.md"
 Assert-ContainsText $agentsContent "CMake configure must not install, restore, or download vcpkg packages" "AGENTS.md"
 Assert-ContainsText $agentsContent "phase-gated milestone plan" "AGENTS.md"
-foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "not PR/task-count units", "phase behavior/API/validation", "validation-only follow-up", "historical implementation evidence")) {
+foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "not PR/task-count units", "phase gates/checklists", "validation-only", "historical implementation evidence")) {
     Assert-ContainsText $agentsContent $planVolumeNeedle "AGENTS.md"
 }
 foreach ($productionPromptNeedle in @("Production Completion Execution", "currentActivePlan", "recommendedNextPlan", "unsupportedProductionGaps", "clean breaking greenfield designs", "completed gap, remaining gaps, next active plan")) {
@@ -81,7 +81,7 @@ foreach ($productionPromptNeedle in @("Production Completion Execution", "curren
 }
 Assert-ContainsText $agentsContent "validated commit checkpoints" "AGENTS.md"
 Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
-Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
+Assert-ContainsText $agentsContent "PR update with validation evidence" "AGENTS.md"
 Assert-ContainsText $agentsContent "official GitHub Flow" "AGENTS.md"
 
 $removeMergedWorktreeToolContent = Get-Content -LiteralPath $removeMergedWorktreeToolPath -Raw
@@ -107,11 +107,11 @@ Assert-ContainsText $agentsContent "clean local worktree" "AGENTS.md"
 Assert-ContainsText $agentsContent "commits pushed after a PR merged need a new PR" "AGENTS.md"
 Assert-ContainsText $agentsContent "not publication-complete after local validation alone" "AGENTS.md"
 Assert-ContainsText $agentsContent "checkpoint-based, not commit-count-based" "AGENTS.md"
-foreach ($gitCadenceNeedle in @("purpose/checkpoint-based", "commit validated phases", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "split unrelated work")) {
+foreach ($gitCadenceNeedle in @("purpose/checkpoint-based", "commit task-owned validated checkpoints", "push validated checkpoints", 'one `unsupportedProductionGaps` row', "split unrelated work")) {
     Assert-ContainsText $agentsContent $gitCadenceNeedle "AGENTS.md"
 }
 Assert-ContainsText $agentsContent "remote state" "AGENTS.md"
-Assert-ContainsText $agentsContent "open draft PR" "AGENTS.md"
+Assert-ContainsText $agentsContent "open one draft PR" "AGENTS.md"
 Assert-ContainsText $agentsContent "before final report" "AGENTS.md"
 Assert-ContainsText $agentsContent "codex-<topic>" "AGENTS.md"
 Assert-ContainsText $agentsContent "Codex app Worktree/Handoff" "AGENTS.md"
@@ -196,7 +196,7 @@ Assert-ContainsText $workflowsContent "protected branches" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "policy reload" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "GitHub flow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "official GitHub Flow" "docs/workflows.md"
-foreach ($workflowCadenceNeedle in @("purpose/checkpoint-based", "commit complete validated phases", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "Do not open a PR for every commit")) {
+foreach ($workflowCadenceNeedle in @("purpose/checkpoint-based", "commit complete task-owned checkpoints", "push validated checkpoints", 'one `unsupportedProductionGaps` row', "Do not open a PR for every commit")) {
     Assert-ContainsText $workflowsContent $workflowCadenceNeedle "docs/workflows.md"
 }
 Assert-ContainsText $workflowsContent "direct default-branch pushes must stay forbidden" "docs/workflows.md"
@@ -324,7 +324,7 @@ Assert-ContainsText $aiIntegrationContent "gh pr view" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "gh pr merge --auto --merge --delete-branch" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "official GitHub Flow" "docs/ai-integration.md"
-foreach ($aiIntegrationCadenceNeedle in @("purpose/checkpoint-based", "one PR per focused capability/gap-cluster/milestone", "never open PRs per commit or checklist item")) {
+foreach ($aiIntegrationCadenceNeedle in @("purpose/checkpoint-based", 'one production-completion PR per `unsupportedProductionGaps` row', "never open PRs per commit, plan slice, or checklist item")) {
     Assert-ContainsText $aiIntegrationContent $aiIntegrationCadenceNeedle "docs/ai-integration.md"
 }
 Assert-ContainsText $aiIntegrationContent "Direct default-branch pushes are blocked" "docs/ai-integration.md"
@@ -365,7 +365,7 @@ $cursorBaselineSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-curso
 Assert-ContainsText $cursorBaselineSkillText "Cursor global instructions" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "workspace override" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "official GitHub Flow" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
-foreach ($cursorBaselineCadenceNeedle in @("purpose/checkpoint-based", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
+foreach ($cursorBaselineCadenceNeedle in @("purpose/checkpoint-based", "push validated checkpoints", 'one production-completion PR per `unsupportedProductionGaps` row', "avoid PRs per commit/plan-slice/checklist item")) {
     Assert-ContainsText $cursorBaselineSkillText $cursorBaselineCadenceNeedle ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 }
 Assert-ContainsText $cursorBaselineSkillText "selected hosted checks to complete" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
@@ -382,7 +382,7 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText 'stale `headRefOid` invalidates the merge decision' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cursor/skills/gameengine-agent-integration/SKILL.md"
-foreach ($cursorAgentCadenceNeedle in @("purpose/checkpoint-based", "push validated topic-branch checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
+foreach ($cursorAgentCadenceNeedle in @("purpose/checkpoint-based", "push validated topic-branch checkpoints", 'one production-completion PR per `unsupportedProductionGaps` row', "avoid PRs per commit/plan-slice/checklist item")) {
     Assert-ContainsText $cursorAgentIntegrationSkillText $cursorAgentCadenceNeedle ".cursor/skills/gameengine-agent-integration/SKILL.md"
 }
 Assert-ContainsText $cursorAgentIntegrationSkillText "final completion report must not stop after local validation" ".cursor/skills/gameengine-agent-integration/SKILL.md"

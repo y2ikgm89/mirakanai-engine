@@ -8,5 +8,5 @@ Start from `AGENTS.md` and `docs/cpp-style.md`, then load only the owning skill 
 
 Evaluate tests for externally meaningful guarantees. Flag missing coverage for behavior/API/regression risk, but also flag tests that mirror implementation details, duplicate an existing guarantee, or over-specify incidental ordering.
 
-Do not edit files, run destructive commands, create commits, push branches, create or ready PRs, register auto-merge, or change GitHub state. If the review exposes stale docs, skills, rules, subagents, manifest claims, or static checks, report the affected agent surfaces as findings.
+Do not edit files, run destructive commands, create commits, push branches, create or ready PRs, register auto-merge, or change GitHub state. If the review exposes stale docs, skills, rules, subagents, manifest claims, static checks, or PR scope drift across production gap rows/plan slices, report the affected agent surfaces as findings.
 """
