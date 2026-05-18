@@ -6,6 +6,7 @@
 #include "mirakana/assets/material.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
+#include "mirakana/rhi/upload_staging.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 #include "mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp"
@@ -1126,6 +1127,36 @@ MK_TEST("runtime scene gpu binding safe point teardown invalidates null device m
         write_threw = true;
     }
     MK_REQUIRE(write_threw);
+}
+
+MK_TEST("runtime scene gpu binding safe point teardown keeps caller owned upload ring alive") {
+    const auto mesh = mirakana::AssetId::from_name("meshes/ring_triangle_scene");
+    const auto material = mirakana::AssetId::from_name("materials/ring_untextured_scene");
+    const auto package = make_untextured_package(mesh, material);
+    const auto scene = make_scene(mesh, material);
+    const auto packet = mirakana::build_scene_render_packet(scene);
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+
+    mirakana::runtime_scene_rhi::RuntimeSceneGpuUploadExecutionDesc desc;
+    desc.device = &device;
+    desc.package = &package;
+    desc.packet = &packet;
+    desc.binding_options.mesh_upload.upload_ring = &ring;
+    const auto execution = mirakana::runtime_scene_rhi::execute_runtime_scene_gpu_upload(desc);
+    MK_REQUIRE(execution.bindings.succeeded());
+    MK_REQUIRE(execution.bindings.mesh_uploads.size() == 1);
+    MK_REQUIRE(execution.bindings.mesh_uploads[0].upload.upload_buffers_caller_owned);
+    MK_REQUIRE(execution.bindings.mesh_uploads[0].upload.vertex_upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(execution.bindings.mesh_uploads[0].upload.index_upload_buffer.value == ring.buffer().value);
+
+    const auto teardown =
+        mirakana::runtime_scene_rhi::execute_runtime_scene_gpu_binding_safe_point_teardown(device, execution.bindings);
+    MK_REQUIRE(teardown.null_device_teardown_completed());
+
+    const std::array<std::uint8_t, 4> bytes{1, 2, 3, 4};
+    device.write_buffer(ring.buffer(), 0, bytes);
 }
 
 MK_TEST("runtime scene gpu binding safe point teardown skips failed binding palettes") {

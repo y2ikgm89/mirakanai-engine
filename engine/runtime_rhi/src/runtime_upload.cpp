@@ -14,6 +14,7 @@
 #include <limits>
 #include <span>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 namespace mirakana::runtime_rhi {
@@ -36,12 +37,99 @@ runtime_texture_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnost
     return "runtime texture upload frame graph execution failed: " + diagnostics.front().message;
 }
 
+[[nodiscard]] std::string runtime_upload_staging_diagnostic(std::string_view upload_name,
+                                                            std::span<const rhi::RhiUploadDiagnostic> diagnostics) {
+    std::string prefix = std::string{upload_name} + " staging failed";
+    if (diagnostics.empty() || diagnostics.front().message.empty()) {
+        return prefix;
+    }
+    return prefix + ": " + diagnostics.front().message;
+}
+
 [[nodiscard]] std::string
 runtime_texture_upload_staging_diagnostic(std::span<const rhi::RhiUploadDiagnostic> diagnostics) {
-    if (diagnostics.empty() || diagnostics.front().message.empty()) {
-        return "runtime texture upload staging failed";
+    return runtime_upload_staging_diagnostic("runtime texture upload", diagnostics);
+}
+
+struct RuntimeRingBufferUploadSource {
+    std::span<const std::uint8_t> bytes;
+    std::string_view debug_name;
+};
+
+struct RuntimeRingBufferUploadPlan {
+    rhi::RhiUploadStagingPlan staging_plan;
+    rhi::BufferHandle upload_buffer;
+    std::string diagnostic;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostic.empty();
     }
-    return "runtime texture upload staging failed: " + diagnostics.front().message;
+};
+
+[[nodiscard]] RuntimeRingBufferUploadPlan
+prepare_runtime_ring_buffer_uploads(rhi::IRhiDevice& device, rhi::RhiUploadRing& ring,
+                                    std::span<const RuntimeRingBufferUploadSource> sources,
+                                    std::string_view upload_name) {
+    RuntimeRingBufferUploadPlan prepared;
+    prepared.upload_buffer = ring.buffer();
+    if (sources.empty()) {
+        prepared.diagnostic = std::string{upload_name} + " staging failed: no upload sources";
+        return prepared;
+    }
+
+    std::uint64_t total_size = 0;
+    std::vector<std::uint64_t> offsets;
+    offsets.reserve(sources.size());
+    for (const auto& source : sources) {
+        if (source.bytes.empty()) {
+            prepared.diagnostic = std::string{upload_name} + " staging failed: empty upload source";
+            return prepared;
+        }
+        const auto source_size = static_cast<std::uint64_t>(source.bytes.size());
+        if (total_size > (std::numeric_limits<std::uint64_t>::max)() - source_size) {
+            prepared.diagnostic = std::string{upload_name} + " staging failed: staging byte count overflowed";
+            return prepared;
+        }
+        offsets.push_back(total_size);
+        total_size += source_size;
+    }
+
+    const auto allocation = prepared.staging_plan.allocate_staging_bytes(rhi::RhiUploadAllocationDesc{
+        .size_bytes = total_size,
+        .debug_name = std::string{upload_name} + ".staging",
+    });
+    if (!allocation.succeeded()) {
+        prepared.diagnostic = runtime_upload_staging_diagnostic(upload_name, allocation.diagnostics);
+        return prepared;
+    }
+
+    for (std::size_t index = 0; index < sources.size(); ++index) {
+        const auto enqueued = prepared.staging_plan.enqueue_buffer_upload(rhi::RhiBufferUploadDesc{
+            .staging = allocation.handle,
+            .staging_offset = offsets[index],
+            .size_bytes = static_cast<std::uint64_t>(sources[index].bytes.size()),
+            .debug_name = std::string{sources[index].debug_name},
+        });
+        if (!enqueued.succeeded()) {
+            prepared.diagnostic = runtime_upload_staging_diagnostic(upload_name, enqueued.diagnostics);
+            return prepared;
+        }
+    }
+
+    const auto reserved = ring.reserve_for_allocation(prepared.staging_plan, allocation.handle, rhi::FenceValue{});
+    if (!reserved.succeeded()) {
+        prepared.diagnostic = runtime_upload_staging_diagnostic(upload_name, reserved.diagnostics);
+        return prepared;
+    }
+    const auto base_offset = ring.byte_offset_for(allocation.handle);
+    if (!base_offset.has_value()) {
+        prepared.diagnostic = std::string{upload_name} + " staging failed: ring allocation offset missing";
+        return prepared;
+    }
+    for (std::size_t index = 0; index < sources.size(); ++index) {
+        device.write_buffer(prepared.upload_buffer, *base_offset + offsets[index], sources[index].bytes);
+    }
+    return prepared;
 }
 
 [[nodiscard]] RuntimeMeshUploadResult mesh_upload_failure(std::string diagnostic) {
@@ -358,6 +446,7 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
             const auto texture = device.create_texture(desc);
             return RuntimeTextureUploadResult{.texture = texture,
                                               .upload_buffer = {},
+                                              .upload_buffer_caller_owned = false,
                                               .texture_desc = desc,
                                               .copy_region = staging.region,
                                               .uploaded_bytes = 0,
@@ -502,6 +591,7 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
         return RuntimeTextureUploadResult{
             .texture = texture,
             .upload_buffer = upload_buffer,
+            .upload_buffer_caller_owned = options.upload_ring != nullptr,
             .texture_desc = desc,
             .copy_region = staging.region,
             .uploaded_bytes = static_cast<std::uint64_t>(staging.bytes.size()),
@@ -585,14 +675,34 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
         const auto index_region =
             rhi::BufferCopyRegion{.source_offset = 0, .destination_offset = 0, .size_bytes = index_size};
 
+        RuntimeRingBufferUploadPlan ring_upload;
+        rhi::BufferHandle vertex_upload_buffer{};
+        rhi::BufferHandle index_upload_buffer{};
+        if (upload_options.upload_ring != nullptr) {
+            const std::array<RuntimeRingBufferUploadSource, 2> sources{
+                RuntimeRingBufferUploadSource{.bytes = std::span<const std::uint8_t>{payload.vertex_bytes},
+                                              .debug_name = "runtime.mesh_upload.vertex"},
+                RuntimeRingBufferUploadSource{.bytes = std::span<const std::uint8_t>{payload.index_bytes},
+                                              .debug_name = "runtime.mesh_upload.index"},
+            };
+            ring_upload = prepare_runtime_ring_buffer_uploads(device, *upload_options.upload_ring, sources,
+                                                              "runtime mesh upload");
+            if (!ring_upload.succeeded()) {
+                return mesh_upload_failure(ring_upload.diagnostic);
+            }
+            vertex_upload_buffer = ring_upload.upload_buffer;
+            index_upload_buffer = ring_upload.upload_buffer;
+        } else {
+            vertex_upload_buffer = device.create_buffer(
+                rhi::BufferDesc{.size_bytes = vertex_size, .usage = rhi::BufferUsage::copy_source});
+            index_upload_buffer =
+                device.create_buffer(rhi::BufferDesc{.size_bytes = index_size, .usage = rhi::BufferUsage::copy_source});
+            device.write_buffer(vertex_upload_buffer, 0, payload.vertex_bytes);
+            device.write_buffer(index_upload_buffer, 0, payload.index_bytes);
+        }
+
         const auto vertex_buffer = device.create_buffer(vertex_desc);
         const auto index_buffer = device.create_buffer(index_desc);
-        const auto vertex_upload_buffer =
-            device.create_buffer(rhi::BufferDesc{.size_bytes = vertex_size, .usage = rhi::BufferUsage::copy_source});
-        const auto index_upload_buffer =
-            device.create_buffer(rhi::BufferDesc{.size_bytes = index_size, .usage = rhi::BufferUsage::copy_source});
-        device.write_buffer(vertex_upload_buffer, 0, payload.vertex_bytes);
-        device.write_buffer(index_upload_buffer, 0, payload.index_bytes);
 
         FrameGraphV1Desc upload_graph;
         upload_graph.resources.push_back(FrameGraphResourceV1Desc{
@@ -624,8 +734,25 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
             .queue = upload_options.queue,
             .callback =
                 [&](std::string_view, rhi::IRhiCommandList& commands) {
-                    commands.copy_buffer(vertex_upload_buffer, vertex_buffer, vertex_region);
-                    commands.copy_buffer(index_upload_buffer, index_buffer, index_region);
+                    if (upload_options.upload_ring != nullptr) {
+                        const auto recorded = rhi::record_upload_gpu_batch(
+                            commands, ring_upload.staging_plan, *upload_options.upload_ring,
+                            std::vector<rhi::RhiGpuBufferCopyTarget>{
+                                rhi::RhiGpuBufferCopyTarget{.destination = vertex_buffer, .destination_offset = 0},
+                                rhi::RhiGpuBufferCopyTarget{.destination = index_buffer, .destination_offset = 0},
+                            },
+                            {});
+                        if (!recorded.succeeded()) {
+                            return FrameGraphExecutionCallbackResult{
+                                .ok = false,
+                                .message =
+                                    runtime_upload_staging_diagnostic("runtime mesh upload", recorded.diagnostics),
+                            };
+                        }
+                    } else {
+                        commands.copy_buffer(vertex_upload_buffer, vertex_buffer, vertex_region);
+                        commands.copy_buffer(index_upload_buffer, index_buffer, index_region);
+                    }
                     return FrameGraphExecutionCallbackResult{};
                 },
         }};
@@ -648,8 +775,19 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
             return mesh_upload_failure("runtime mesh upload frame graph execution failed: missing submitted fence");
         }
         const auto fence = frame_graph_execution.submitted_pass_fences.back().fence;
+        if (upload_options.upload_ring != nullptr) {
+            const auto submitted =
+                rhi::mark_pending_allocations_submitted(ring_upload.staging_plan, *upload_options.upload_ring, fence);
+            if (!submitted.succeeded()) {
+                return mesh_upload_failure(
+                    runtime_upload_staging_diagnostic("runtime mesh upload", submitted.diagnostics));
+            }
+        }
         if (upload_options.wait_for_completion) {
             device.wait(fence);
+            if (upload_options.upload_ring != nullptr) {
+                upload_options.upload_ring->release_completed(fence);
+            }
         }
 
         return RuntimeMeshUploadResult{
@@ -657,6 +795,7 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
             .index_buffer = index_buffer,
             .vertex_upload_buffer = vertex_upload_buffer,
             .index_upload_buffer = index_upload_buffer,
+            .upload_buffers_caller_owned = upload_options.upload_ring != nullptr,
             .vertex_buffer_desc = vertex_desc,
             .index_buffer_desc = index_desc,
             .vertex_copy_region = vertex_region,
@@ -824,21 +963,45 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
         const auto joint_palette_region =
             rhi::BufferCopyRegion{.source_offset = 0, .destination_offset = 0, .size_bytes = aligned_palette_size};
 
+        std::vector<std::uint8_t> padded_palette(static_cast<std::size_t>(aligned_palette_size), std::uint8_t{0});
+        std::ranges::copy(payload.joint_palette_bytes, padded_palette.begin());
+        RuntimeRingBufferUploadPlan ring_upload;
+        rhi::BufferHandle vertex_upload_buffer{};
+        rhi::BufferHandle index_upload_buffer{};
+        rhi::BufferHandle joint_palette_upload_buffer{};
+        if (options.upload_ring != nullptr) {
+            const std::array<RuntimeRingBufferUploadSource, 3> sources{
+                RuntimeRingBufferUploadSource{.bytes = std::span<const std::uint8_t>{payload.vertex_bytes},
+                                              .debug_name = "runtime.skinned_mesh_upload.vertex"},
+                RuntimeRingBufferUploadSource{.bytes = std::span<const std::uint8_t>{payload.index_bytes},
+                                              .debug_name = "runtime.skinned_mesh_upload.index"},
+                RuntimeRingBufferUploadSource{.bytes = std::span<const std::uint8_t>{padded_palette},
+                                              .debug_name = "runtime.skinned_mesh_upload.joint_palette"},
+            };
+            ring_upload = prepare_runtime_ring_buffer_uploads(device, *options.upload_ring, sources,
+                                                              "runtime skinned mesh upload");
+            if (!ring_upload.succeeded()) {
+                return skinned_upload_failure(ring_upload.diagnostic);
+            }
+            vertex_upload_buffer = ring_upload.upload_buffer;
+            index_upload_buffer = ring_upload.upload_buffer;
+            joint_palette_upload_buffer = ring_upload.upload_buffer;
+        } else {
+            vertex_upload_buffer = device.create_buffer(
+                rhi::BufferDesc{.size_bytes = vertex_size, .usage = rhi::BufferUsage::copy_source});
+            index_upload_buffer =
+                device.create_buffer(rhi::BufferDesc{.size_bytes = index_size, .usage = rhi::BufferUsage::copy_source});
+            joint_palette_upload_buffer = device.create_buffer(
+                rhi::BufferDesc{.size_bytes = aligned_palette_size, .usage = rhi::BufferUsage::copy_source});
+
+            device.write_buffer(vertex_upload_buffer, 0, payload.vertex_bytes);
+            device.write_buffer(index_upload_buffer, 0, payload.index_bytes);
+            device.write_buffer(joint_palette_upload_buffer, 0, padded_palette);
+        }
+
         const auto vertex_buffer = device.create_buffer(vertex_desc);
         const auto index_buffer = device.create_buffer(index_desc);
         const auto joint_palette_buffer = device.create_buffer(joint_palette_desc);
-        const auto vertex_upload_buffer =
-            device.create_buffer(rhi::BufferDesc{.size_bytes = vertex_size, .usage = rhi::BufferUsage::copy_source});
-        const auto index_upload_buffer =
-            device.create_buffer(rhi::BufferDesc{.size_bytes = index_size, .usage = rhi::BufferUsage::copy_source});
-        const auto joint_palette_upload_buffer = device.create_buffer(
-            rhi::BufferDesc{.size_bytes = aligned_palette_size, .usage = rhi::BufferUsage::copy_source});
-
-        device.write_buffer(vertex_upload_buffer, 0, payload.vertex_bytes);
-        device.write_buffer(index_upload_buffer, 0, payload.index_bytes);
-        std::vector<std::uint8_t> padded_palette(static_cast<std::size_t>(aligned_palette_size), std::uint8_t{0});
-        std::ranges::copy(payload.joint_palette_bytes, padded_palette.begin());
-        device.write_buffer(joint_palette_upload_buffer, 0, padded_palette);
 
         FrameGraphV1Desc upload_graph;
         upload_graph.resources.push_back(FrameGraphResourceV1Desc{
@@ -878,9 +1041,28 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
             .queue = options.queue,
             .callback =
                 [&](std::string_view, rhi::IRhiCommandList& commands) {
-                    commands.copy_buffer(vertex_upload_buffer, vertex_buffer, vertex_region);
-                    commands.copy_buffer(index_upload_buffer, index_buffer, index_region);
-                    commands.copy_buffer(joint_palette_upload_buffer, joint_palette_buffer, joint_palette_region);
+                    if (options.upload_ring != nullptr) {
+                        const auto recorded = rhi::record_upload_gpu_batch(
+                            commands, ring_upload.staging_plan, *options.upload_ring,
+                            std::vector<rhi::RhiGpuBufferCopyTarget>{
+                                rhi::RhiGpuBufferCopyTarget{.destination = vertex_buffer, .destination_offset = 0},
+                                rhi::RhiGpuBufferCopyTarget{.destination = index_buffer, .destination_offset = 0},
+                                rhi::RhiGpuBufferCopyTarget{.destination = joint_palette_buffer,
+                                                            .destination_offset = 0},
+                            },
+                            {});
+                        if (!recorded.succeeded()) {
+                            return FrameGraphExecutionCallbackResult{
+                                .ok = false,
+                                .message = runtime_upload_staging_diagnostic("runtime skinned mesh upload",
+                                                                             recorded.diagnostics),
+                            };
+                        }
+                    } else {
+                        commands.copy_buffer(vertex_upload_buffer, vertex_buffer, vertex_region);
+                        commands.copy_buffer(index_upload_buffer, index_buffer, index_region);
+                        commands.copy_buffer(joint_palette_upload_buffer, joint_palette_buffer, joint_palette_region);
+                    }
                     return FrameGraphExecutionCallbackResult{};
                 },
         }};
@@ -905,8 +1087,19 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
                 "runtime skinned mesh upload frame graph execution failed: missing submitted fence");
         }
         const auto fence = frame_graph_execution.submitted_pass_fences.back().fence;
+        if (options.upload_ring != nullptr) {
+            const auto submitted =
+                rhi::mark_pending_allocations_submitted(ring_upload.staging_plan, *options.upload_ring, fence);
+            if (!submitted.succeeded()) {
+                return skinned_upload_failure(
+                    runtime_upload_staging_diagnostic("runtime skinned mesh upload", submitted.diagnostics));
+            }
+        }
         if (options.wait_for_completion) {
             device.wait(fence);
+            if (options.upload_ring != nullptr) {
+                options.upload_ring->release_completed(fence);
+            }
         }
 
         return RuntimeSkinnedMeshUploadResult{
@@ -916,6 +1109,7 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
             .vertex_upload_buffer = vertex_upload_buffer,
             .index_upload_buffer = index_upload_buffer,
             .joint_palette_upload_buffer = joint_palette_upload_buffer,
+            .upload_buffers_caller_owned = options.upload_ring != nullptr,
             .vertex_buffer_desc = vertex_desc,
             .index_buffer_desc = index_desc,
             .joint_palette_buffer_desc = joint_palette_desc,
@@ -1107,35 +1301,78 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
         const auto morph_weight_region =
             rhi::BufferCopyRegion{.source_offset = 0, .destination_offset = 0, .size_bytes = aligned_weight_size};
 
+        std::vector<std::uint8_t> padded_weights(static_cast<std::size_t>(aligned_weight_size), std::uint8_t{0});
+        std::ranges::copy(payload.morph.target_weight_bytes, padded_weights.begin());
+        RuntimeRingBufferUploadPlan ring_upload;
+        rhi::BufferHandle position_delta_upload_buffer{};
+        rhi::BufferHandle normal_delta_upload_buffer{};
+        rhi::BufferHandle tangent_delta_upload_buffer{};
+        rhi::BufferHandle morph_weight_upload_buffer{};
+        if (options.upload_ring != nullptr) {
+            std::vector<RuntimeRingBufferUploadSource> sources;
+            sources.push_back(RuntimeRingBufferUploadSource{
+                .bytes = std::span<const std::uint8_t>{position_delta_bytes},
+                .debug_name = "runtime.morph_mesh_upload.position_delta",
+            });
+            if (has_normal_deltas) {
+                sources.push_back(RuntimeRingBufferUploadSource{
+                    .bytes = std::span<const std::uint8_t>{normal_delta_bytes},
+                    .debug_name = "runtime.morph_mesh_upload.normal_delta",
+                });
+            }
+            if (has_tangent_deltas) {
+                sources.push_back(RuntimeRingBufferUploadSource{
+                    .bytes = std::span<const std::uint8_t>{tangent_delta_bytes},
+                    .debug_name = "runtime.morph_mesh_upload.tangent_delta",
+                });
+            }
+            sources.push_back(RuntimeRingBufferUploadSource{
+                .bytes = std::span<const std::uint8_t>{padded_weights},
+                .debug_name = "runtime.morph_mesh_upload.weights",
+            });
+            ring_upload =
+                prepare_runtime_ring_buffer_uploads(device, *options.upload_ring, sources, "runtime morph mesh upload");
+            if (!ring_upload.succeeded()) {
+                return morph_upload_failure(ring_upload.diagnostic);
+            }
+            position_delta_upload_buffer = ring_upload.upload_buffer;
+            if (has_normal_deltas) {
+                normal_delta_upload_buffer = ring_upload.upload_buffer;
+            }
+            if (has_tangent_deltas) {
+                tangent_delta_upload_buffer = ring_upload.upload_buffer;
+            }
+            morph_weight_upload_buffer = ring_upload.upload_buffer;
+        } else {
+            position_delta_upload_buffer = device.create_buffer(
+                rhi::BufferDesc{.size_bytes = position_delta_size, .usage = rhi::BufferUsage::copy_source});
+            normal_delta_upload_buffer =
+                has_normal_deltas ? device.create_buffer(rhi::BufferDesc{.size_bytes = normal_delta_size,
+                                                                         .usage = rhi::BufferUsage::copy_source})
+                                  : rhi::BufferHandle{};
+            tangent_delta_upload_buffer =
+                has_tangent_deltas ? device.create_buffer(rhi::BufferDesc{.size_bytes = tangent_delta_size,
+                                                                          .usage = rhi::BufferUsage::copy_source})
+                                   : rhi::BufferHandle{};
+            morph_weight_upload_buffer = device.create_buffer(
+                rhi::BufferDesc{.size_bytes = aligned_weight_size, .usage = rhi::BufferUsage::copy_source});
+
+            device.write_buffer(position_delta_upload_buffer, 0, position_delta_bytes);
+            if (has_normal_deltas) {
+                device.write_buffer(normal_delta_upload_buffer, 0, normal_delta_bytes);
+            }
+            if (has_tangent_deltas) {
+                device.write_buffer(tangent_delta_upload_buffer, 0, tangent_delta_bytes);
+            }
+            device.write_buffer(morph_weight_upload_buffer, 0, padded_weights);
+        }
+
         const auto position_delta_buffer = device.create_buffer(position_delta_desc);
         const auto normal_delta_buffer =
             has_normal_deltas ? device.create_buffer(normal_delta_desc) : rhi::BufferHandle{};
         const auto tangent_delta_buffer =
             has_tangent_deltas ? device.create_buffer(tangent_delta_desc) : rhi::BufferHandle{};
         const auto morph_weight_buffer = device.create_buffer(morph_weight_desc);
-        const auto position_delta_upload_buffer = device.create_buffer(
-            rhi::BufferDesc{.size_bytes = position_delta_size, .usage = rhi::BufferUsage::copy_source});
-        const auto normal_delta_upload_buffer =
-            has_normal_deltas ? device.create_buffer(rhi::BufferDesc{.size_bytes = normal_delta_size,
-                                                                     .usage = rhi::BufferUsage::copy_source})
-                              : rhi::BufferHandle{};
-        const auto tangent_delta_upload_buffer =
-            has_tangent_deltas ? device.create_buffer(rhi::BufferDesc{.size_bytes = tangent_delta_size,
-                                                                      .usage = rhi::BufferUsage::copy_source})
-                               : rhi::BufferHandle{};
-        const auto morph_weight_upload_buffer = device.create_buffer(
-            rhi::BufferDesc{.size_bytes = aligned_weight_size, .usage = rhi::BufferUsage::copy_source});
-
-        std::vector<std::uint8_t> padded_weights(static_cast<std::size_t>(aligned_weight_size), std::uint8_t{0});
-        std::ranges::copy(payload.morph.target_weight_bytes, padded_weights.begin());
-        device.write_buffer(position_delta_upload_buffer, 0, position_delta_bytes);
-        if (has_normal_deltas) {
-            device.write_buffer(normal_delta_upload_buffer, 0, normal_delta_bytes);
-        }
-        if (has_tangent_deltas) {
-            device.write_buffer(tangent_delta_upload_buffer, 0, tangent_delta_bytes);
-        }
-        device.write_buffer(morph_weight_upload_buffer, 0, padded_weights);
 
         FrameGraphV1Desc upload_graph;
         upload_graph.resources.push_back(FrameGraphResourceV1Desc{
@@ -1194,14 +1431,41 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
             .queue = options.queue,
             .callback =
                 [&](std::string_view, rhi::IRhiCommandList& commands) {
-                    commands.copy_buffer(position_delta_upload_buffer, position_delta_buffer, position_delta_region);
-                    if (has_normal_deltas) {
-                        commands.copy_buffer(normal_delta_upload_buffer, normal_delta_buffer, normal_delta_region);
+                    if (options.upload_ring != nullptr) {
+                        std::vector<rhi::RhiGpuBufferCopyTarget> targets;
+                        targets.push_back(
+                            rhi::RhiGpuBufferCopyTarget{.destination = position_delta_buffer, .destination_offset = 0});
+                        if (has_normal_deltas) {
+                            targets.push_back(rhi::RhiGpuBufferCopyTarget{.destination = normal_delta_buffer,
+                                                                          .destination_offset = 0});
+                        }
+                        if (has_tangent_deltas) {
+                            targets.push_back(rhi::RhiGpuBufferCopyTarget{.destination = tangent_delta_buffer,
+                                                                          .destination_offset = 0});
+                        }
+                        targets.push_back(
+                            rhi::RhiGpuBufferCopyTarget{.destination = morph_weight_buffer, .destination_offset = 0});
+                        const auto recorded = rhi::record_upload_gpu_batch(commands, ring_upload.staging_plan,
+                                                                           *options.upload_ring, targets, {});
+                        if (!recorded.succeeded()) {
+                            return FrameGraphExecutionCallbackResult{
+                                .ok = false,
+                                .message = runtime_upload_staging_diagnostic("runtime morph mesh upload",
+                                                                             recorded.diagnostics),
+                            };
+                        }
+                    } else {
+                        commands.copy_buffer(position_delta_upload_buffer, position_delta_buffer,
+                                             position_delta_region);
+                        if (has_normal_deltas) {
+                            commands.copy_buffer(normal_delta_upload_buffer, normal_delta_buffer, normal_delta_region);
+                        }
+                        if (has_tangent_deltas) {
+                            commands.copy_buffer(tangent_delta_upload_buffer, tangent_delta_buffer,
+                                                 tangent_delta_region);
+                        }
+                        commands.copy_buffer(morph_weight_upload_buffer, morph_weight_buffer, morph_weight_region);
                     }
-                    if (has_tangent_deltas) {
-                        commands.copy_buffer(tangent_delta_upload_buffer, tangent_delta_buffer, tangent_delta_region);
-                    }
-                    commands.copy_buffer(morph_weight_upload_buffer, morph_weight_buffer, morph_weight_region);
                     return FrameGraphExecutionCallbackResult{};
                 },
         }};
@@ -1226,8 +1490,19 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
                 "runtime morph mesh upload frame graph execution failed: missing submitted fence");
         }
         const auto fence = frame_graph_execution.submitted_pass_fences.back().fence;
+        if (options.upload_ring != nullptr) {
+            const auto submitted =
+                rhi::mark_pending_allocations_submitted(ring_upload.staging_plan, *options.upload_ring, fence);
+            if (!submitted.succeeded()) {
+                return morph_upload_failure(
+                    runtime_upload_staging_diagnostic("runtime morph mesh upload", submitted.diagnostics));
+            }
+        }
         if (options.wait_for_completion) {
             device.wait(fence);
+            if (options.upload_ring != nullptr) {
+                options.upload_ring->release_completed(fence);
+            }
         }
 
         return RuntimeMorphMeshUploadResult{
@@ -1239,6 +1514,7 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
             .normal_delta_upload_buffer = normal_delta_upload_buffer,
             .tangent_delta_upload_buffer = tangent_delta_upload_buffer,
             .morph_weight_upload_buffer = morph_weight_upload_buffer,
+            .upload_buffers_caller_owned = options.upload_ring != nullptr,
             .position_delta_buffer_desc = position_delta_desc,
             .normal_delta_buffer_desc = normal_delta_desc,
             .tangent_delta_buffer_desc = tangent_delta_desc,

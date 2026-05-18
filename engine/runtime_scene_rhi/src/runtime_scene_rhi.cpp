@@ -927,14 +927,16 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         if (device.null_mark_buffer_released(upload.joint_palette_buffer)) {
             ++report.buffers_released;
         }
-        if (device.null_mark_buffer_released(upload.vertex_upload_buffer)) {
-            ++report.buffers_released;
-        }
-        if (device.null_mark_buffer_released(upload.index_upload_buffer)) {
-            ++report.buffers_released;
-        }
-        if (device.null_mark_buffer_released(upload.joint_palette_upload_buffer)) {
-            ++report.buffers_released;
+        if (!upload.upload_buffers_caller_owned) {
+            if (device.null_mark_buffer_released(upload.vertex_upload_buffer)) {
+                ++report.buffers_released;
+            }
+            if (device.null_mark_buffer_released(upload.index_upload_buffer)) {
+                ++report.buffers_released;
+            }
+            if (device.null_mark_buffer_released(upload.joint_palette_upload_buffer)) {
+                ++report.buffers_released;
+            }
         }
     }
 
@@ -981,11 +983,13 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         if (device.null_mark_buffer_released(base_upload.index_buffer)) {
             ++report.buffers_released;
         }
-        if (device.null_mark_buffer_released(base_upload.vertex_upload_buffer)) {
-            ++report.buffers_released;
-        }
-        if (device.null_mark_buffer_released(base_upload.index_upload_buffer)) {
-            ++report.buffers_released;
+        if (!base_upload.upload_buffers_caller_owned) {
+            if (device.null_mark_buffer_released(base_upload.vertex_upload_buffer)) {
+                ++report.buffers_released;
+            }
+            if (device.null_mark_buffer_released(base_upload.index_upload_buffer)) {
+                ++report.buffers_released;
+            }
         }
     }
 
@@ -997,11 +1001,13 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         if (device.null_mark_buffer_released(upload.index_buffer)) {
             ++report.buffers_released;
         }
-        if (device.null_mark_buffer_released(upload.vertex_upload_buffer)) {
-            ++report.buffers_released;
-        }
-        if (device.null_mark_buffer_released(upload.index_upload_buffer)) {
-            ++report.buffers_released;
+        if (!upload.upload_buffers_caller_owned) {
+            if (device.null_mark_buffer_released(upload.vertex_upload_buffer)) {
+                ++report.buffers_released;
+            }
+            if (device.null_mark_buffer_released(upload.index_upload_buffer)) {
+                ++report.buffers_released;
+            }
         }
     }
 
@@ -1030,17 +1036,19 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         if (device.null_mark_buffer_released(upload.morph_weight_buffer)) {
             ++report.buffers_released;
         }
-        if (device.null_mark_buffer_released(upload.position_delta_upload_buffer)) {
-            ++report.buffers_released;
-        }
-        if (device.null_mark_buffer_released(upload.normal_delta_upload_buffer)) {
-            ++report.buffers_released;
-        }
-        if (device.null_mark_buffer_released(upload.tangent_delta_upload_buffer)) {
-            ++report.buffers_released;
-        }
-        if (device.null_mark_buffer_released(upload.morph_weight_upload_buffer)) {
-            ++report.buffers_released;
+        if (!upload.upload_buffers_caller_owned) {
+            if (device.null_mark_buffer_released(upload.position_delta_upload_buffer)) {
+                ++report.buffers_released;
+            }
+            if (device.null_mark_buffer_released(upload.normal_delta_upload_buffer)) {
+                ++report.buffers_released;
+            }
+            if (device.null_mark_buffer_released(upload.tangent_delta_upload_buffer)) {
+                ++report.buffers_released;
+            }
+            if (device.null_mark_buffer_released(upload.morph_weight_upload_buffer)) {
+                ++report.buffers_released;
+            }
         }
     }
 
@@ -1049,7 +1057,7 @@ static void teardown_runtime_scene_gpu_bindings_on_null_device(rhi::NullRhiDevic
         if (device.null_mark_texture_released(upload.texture)) {
             ++report.textures_released;
         }
-        if (device.null_mark_buffer_released(upload.upload_buffer)) {
+        if (!upload.upload_buffer_caller_owned && device.null_mark_buffer_released(upload.upload_buffer)) {
             ++report.buffers_released;
         }
     }
