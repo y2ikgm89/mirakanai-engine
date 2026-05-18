@@ -534,7 +534,7 @@ parse_rgba_value(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnost
     }
     if (type == "light") {
         return property == "type" || property == "color" || property == "intensity" || property == "range" ||
-               property == "casts_shadows";
+               property == "inner_cone_radians" || property == "outer_cone_radians" || property == "casts_shadows";
     }
     if (type == "mesh_renderer") {
         return property == "mesh" || property == "material" || property == "visible";
@@ -843,6 +843,20 @@ void assign_light_component(std::vector<SceneV2RuntimePackageMigrationDiagnostic
                 parse_float_value(diagnostics, property_value(component, "range"), component, "range", scene_path);
             value.has_value()) {
             light.range = *value;
+        }
+    }
+    if (has_property(component, "inner_cone_radians")) {
+        if (const auto value = parse_float_value(diagnostics, property_value(component, "inner_cone_radians"),
+                                                 component, "inner_cone_radians", scene_path);
+            value.has_value()) {
+            light.inner_cone_radians = *value;
+        }
+    }
+    if (has_property(component, "outer_cone_radians")) {
+        if (const auto value = parse_float_value(diagnostics, property_value(component, "outer_cone_radians"),
+                                                 component, "outer_cone_radians", scene_path);
+            value.has_value()) {
+            light.outer_cone_radians = *value;
         }
     }
     if (has_property(component, "casts_shadows")) {

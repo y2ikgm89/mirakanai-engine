@@ -570,7 +570,7 @@ $handoffPromptText = Get-Content -LiteralPath (Join-Path $root "docs/specs/2026-
 $roadmapText = Get-Content -LiteralPath (Join-Path $root "docs/roadmap.md") -Raw
 $authoredRuntimeWorkflowRequiredText = @(
     "validated authored-to-runtime workflow",
-    "register-source-asset -> cook-registered-source-assets -> migrate-scene-v2-runtime-package -> mirakana::runtime::load_runtime_asset_package -> mirakana::runtime_scene::instantiate_runtime_scene"
+    "register-source-asset -> cook-registered-source-assets -> migrate-scene-v2-runtime-package -> validate-runtime-scene-package"
 )
 foreach ($workflowDoc in @(
     @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
