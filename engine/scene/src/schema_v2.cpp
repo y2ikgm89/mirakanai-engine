@@ -359,6 +359,18 @@ void add_prefab_refresh_source_identity_diagnostics_v2(ScenePrefabInstanceRefres
     }
 }
 
+void add_prefab_refresh_nested_prefab_diagnostics_v2(ScenePrefabInstanceRefreshPlanV2& plan,
+                                                     const SceneDocumentV2& scene,
+                                                     const std::unordered_set<std::string>& subtree_node_ids) {
+    for (const auto& source : scene.node_prefab_sources) {
+        if (!subtree_node_ids.contains(source.node.value) || source.prefab_path == plan.prefab_path) {
+            continue;
+        }
+        add_diagnostic(plan.diagnostics, SceneSchemaV2DiagnosticCode::unsupported_nested_prefab_instance, source.node,
+                       {}, {}, "node.prefab_source.prefab_path");
+    }
+}
+
 void add_override_diagnostic(std::vector<SceneSchemaV2Diagnostic>& diagnostics, SceneSchemaV2DiagnosticCode code,
                              std::string_view path) {
     add_diagnostic(diagnostics, code, {}, {}, {}, std::string(path));
@@ -855,6 +867,11 @@ ScenePrefabInstanceRefreshPlanV2 plan_scene_prefab_instance_refresh_v2(const Sce
 
     plan.prefab_path = root_source->prefab_path;
     const auto subtree_node_ids = collect_scene_subtree_node_ids_v2(scene, instance_root_node.value);
+    add_prefab_refresh_nested_prefab_diagnostics_v2(plan, scene, subtree_node_ids);
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
     add_prefab_refresh_source_identity_diagnostics_v2(plan, scene, subtree_node_ids);
     if (!plan.diagnostics.empty()) {
         return plan;

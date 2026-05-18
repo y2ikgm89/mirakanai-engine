@@ -564,6 +564,7 @@ Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefr
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshRowV2" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "plan_scene_prefab_instance_refresh_v2" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "duplicate_prefab_source_identity" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "unsupported_nested_prefab_instance" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "source_node_id" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "source_component_id" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "nested prefab propagation/merge resolution UX" "MK_scene module purpose"

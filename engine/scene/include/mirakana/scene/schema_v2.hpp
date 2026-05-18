@@ -95,6 +95,7 @@ enum class SceneSchemaV2DiagnosticCode : std::uint8_t {
     missing_override_target,
     duplicate_override_path,
     duplicate_prefab_source_identity,
+    unsupported_nested_prefab_instance,
 };
 
 struct SceneSchemaV2Diagnostic {

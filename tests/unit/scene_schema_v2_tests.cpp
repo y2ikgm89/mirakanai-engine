@@ -418,6 +418,47 @@ MK_TEST("scene schema v2 rejects ambiguous prefab refresh source identities") {
         contains_diagnostic(plan.diagnostics, mirakana::SceneSchemaV2DiagnosticCode::duplicate_prefab_source_identity));
 }
 
+MK_TEST("scene schema v2 rejects nested prefab roots during instance refresh planning") {
+    constexpr std::string_view root_prefab_path = "source/prefabs/enemy.prefab";
+    constexpr std::string_view nested_prefab_path = "source/prefabs/weapon.prefab";
+
+    mirakana::SceneDocumentV2 scene;
+    scene.name = "Level";
+    scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/instance/root"}, .name = "EnemyRoot"});
+    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        .id = mirakana::AuthoringId{"node/instance/weapon"},
+        .name = "Weapon",
+        .parent = mirakana::AuthoringId{"node/instance/root"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/root"},
+        .prefab_path = std::string(root_prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/root"},
+    });
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+        .node = mirakana::AuthoringId{"node/instance/weapon"},
+        .prefab_path = std::string(nested_prefab_path),
+        .source_node_id = mirakana::AuthoringId{"node/source/weapon"},
+    });
+
+    mirakana::PrefabDocumentV2 refreshed_prefab;
+    refreshed_prefab.name = "Enemy";
+    refreshed_prefab.scene.name = "EnemyScene";
+    refreshed_prefab.scene.nodes.push_back(
+        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/source/root"}, .name = "EnemyRoot"});
+
+    const auto plan = mirakana::plan_scene_prefab_instance_refresh_v2(
+        scene, mirakana::AuthoringId{"node/instance/root"}, refreshed_prefab);
+
+    MK_REQUIRE(!plan.valid);
+    MK_REQUIRE(!plan.mutates);
+    MK_REQUIRE(!plan.executes);
+    MK_REQUIRE(plan.rows.empty());
+    MK_REQUIRE(contains_diagnostic(plan.diagnostics,
+                                   mirakana::SceneSchemaV2DiagnosticCode::unsupported_nested_prefab_instance));
+}
+
 int main() {
     return mirakana::test::run_all();
 }

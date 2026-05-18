@@ -798,6 +798,7 @@ if (-not ([string]$sceneAuthoringSurface[0].notes).Contains("Contract-only") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("ScenePrefabInstanceRefreshPlanV2") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("plan_scene_prefab_instance_refresh_v2") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("duplicate_prefab_source_identity") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("unsupported_nested_prefab_instance") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("source_node_id") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("source_component_id") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("nested prefab propagation/merge resolution UX") -or
@@ -894,6 +895,7 @@ if (-not ([string]$sceneSchemaGap[0].notes).Contains("contract-only") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("ScenePrefabInstanceRefreshPlanV2") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("plan_scene_prefab_instance_refresh_v2") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("duplicate_prefab_source_identity") -or
+    -not ([string]$sceneSchemaGap[0].notes).Contains("unsupported_nested_prefab_instance") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("broad/dependent package cooking") -or
     -not ([string]$sceneSchemaGap[0].notes).Contains("nested prefab propagation/merge resolution UX")) {
     Write-Error "engine manifest aiOperableProductionLoop scene-component-prefab-schema-v2 gap must keep remaining unsupported claims explicit"
