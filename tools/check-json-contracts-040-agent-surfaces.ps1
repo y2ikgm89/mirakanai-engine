@@ -415,6 +415,10 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RHI Native Async Upload Execution v1") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("execute_upload_gpu_batch_async") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadGpuBatchExecutionResult") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingSkinnedMeshUploadSource") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMorphMeshUploadSource") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_skinned_mesh_gpu_bindings") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_morph_mesh_gpu_bindings") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("Runtime Upload Queue Wait v1") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("wait_for_runtime_uploads_on_queue") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("upload_queue_waits_recorded") -or
@@ -508,7 +512,7 @@ foreach ($needle in @(
     "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
     "upload-staging-v1",
     "runtime/package upload queue consumption",
-    "package skinned/morph streaming",
+    "package mesh/skinned/morph upload binding transactions",
     "staging-pool production adoption"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {

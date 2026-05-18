@@ -40,6 +40,24 @@ void add_diagnostic(RuntimePackageStreamingMeshUploadBindingResult& result, Asse
     });
 }
 
+void add_diagnostic(RuntimePackageStreamingSkinnedMeshUploadBindingResult& result, AssetId asset, std::string code,
+                    std::string message) {
+    result.diagnostics.push_back(RuntimePackageStreamingMeshUploadDiagnostic{
+        .asset = asset,
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void add_diagnostic(RuntimePackageStreamingMorphMeshUploadBindingResult& result, AssetId asset, std::string code,
+                    std::string message) {
+    result.diagnostics.push_back(RuntimePackageStreamingMeshUploadDiagnostic{
+        .asset = asset,
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool contains_resource(const std::vector<std::string>& resources, const std::string& resource) {
     return std::ranges::find(resources, resource) != resources.end();
 }
@@ -330,6 +348,238 @@ RuntimePackageStreamingMeshUploadBindingResult upload_runtime_package_streaming_
 
     if (!result.succeeded()) {
         result.mesh_bindings.clear();
+    }
+    return result;
+}
+
+RuntimePackageStreamingSkinnedMeshUploadBindingResult upload_runtime_package_streaming_skinned_mesh_gpu_bindings(
+    rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
+    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    std::span<const RuntimePackageStreamingSkinnedMeshUploadSource> sources) {
+    RuntimePackageStreamingSkinnedMeshUploadBindingResult result;
+
+    if (!streaming_result.succeeded()) {
+        add_diagnostic(result, {}, "package-streaming-not-committed",
+                       "package streaming result must be committed before uploading skinned mesh GPU bindings");
+        return result;
+    }
+
+    std::vector<AssetId> seen_assets;
+    seen_assets.reserve(sources.size());
+    for (const auto& source : sources) {
+        if (contains_asset(seen_assets, source.asset)) {
+            add_diagnostic(result, source.asset, "duplicate-skinned-mesh-asset",
+                           "package streaming skinned mesh upload source assets must be unique");
+        } else {
+            seen_assets.push_back(source.asset);
+        }
+
+        const auto handle = runtime::find_runtime_resource_v2(resident_catalog, source.asset);
+        const runtime::RuntimeResourceRecordV2* record = nullptr;
+        if (!handle.has_value()) {
+            add_diagnostic(result, source.asset, "runtime-resource-not-live",
+                           "skinned mesh asset is not live in the resident runtime resource catalog");
+        } else {
+            record = runtime::runtime_resource_record_v2(resident_catalog, *handle);
+            if (record == nullptr) {
+                add_diagnostic(result, source.asset, "runtime-resource-not-live",
+                               "skinned mesh asset catalog handle is stale");
+            } else if (record->kind != AssetKind::skinned_mesh) {
+                add_diagnostic(result, source.asset, "runtime-resource-not-skinned-mesh",
+                               "resident runtime resource is not a skinned mesh asset");
+            }
+        }
+
+        if (source.payload == nullptr) {
+            add_diagnostic(result, source.asset, "skinned-mesh-payload-missing",
+                           "runtime skinned mesh payload is required before uploading skinned mesh GPU bindings");
+            continue;
+        }
+        if (source.payload->asset != source.asset) {
+            add_diagnostic(result, source.asset, "skinned-mesh-payload-asset-mismatch",
+                           "runtime skinned mesh payload asset must match the selected resident skinned mesh asset");
+        }
+        if (record != nullptr && source.payload->handle != record->package_handle) {
+            add_diagnostic(result, source.asset, "skinned-mesh-payload-handle-mismatch",
+                           "runtime skinned mesh payload handle must match the selected resident skinned mesh handle");
+        }
+    }
+
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    result.uploads.reserve(sources.size());
+    for (const auto& source : sources) {
+        auto upload = upload_runtime_skinned_mesh(device, *source.payload, source.upload_options);
+        if (!upload.succeeded()) {
+            add_diagnostic(result, source.asset, "skinned-mesh-upload-failed", upload.diagnostic);
+        }
+        result.uploaded_bytes +=
+            upload.uploaded_vertex_bytes + upload.uploaded_index_bytes + upload.uploaded_joint_palette_bytes;
+        result.frame_graph_command_lists_submitted += upload.frame_graph_command_lists_submitted;
+        result.frame_graph_queue_waits_recorded += upload.frame_graph_queue_waits_recorded;
+        result.frame_graph_barriers_recorded += upload.frame_graph_barriers_recorded;
+        result.frame_graph_pass_callbacks_invoked += upload.frame_graph_pass_callbacks_invoked;
+        if (upload.submitted_fence.value != 0) {
+            result.submitted_fences.push_back(upload.submitted_fence);
+        }
+        result.uploads.push_back(std::move(upload));
+    }
+
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    std::vector<rhi::FenceValue> async_upload_fences;
+    async_upload_fences.reserve(result.submitted_fences.size());
+    for (std::size_t index = 0; index < sources.size(); ++index) {
+        const auto& upload = result.uploads[index];
+        if (!sources[index].upload_options.wait_for_completion && upload.submitted_fence.value != 0) {
+            async_upload_fences.push_back(upload.submitted_fence);
+        }
+    }
+
+    const auto queue_wait = wait_for_runtime_uploads_on_queue(device, rhi::QueueKind::graphics, async_upload_fences);
+    result.upload_queue_waits_recorded += queue_wait.queue_waits_recorded;
+    if (!queue_wait.succeeded()) {
+        add_diagnostic(result, {}, "skinned-mesh-upload-queue-wait-failed",
+                       runtime_upload_queue_wait_diagnostic(queue_wait));
+        return result;
+    }
+
+    result.skinned_mesh_bindings.reserve(sources.size());
+    for (std::size_t index = 0; index < sources.size(); ++index) {
+        auto binding = make_runtime_skinned_mesh_gpu_binding(result.uploads[index]);
+        if (binding.owner_device == nullptr) {
+            add_diagnostic(result, sources[index].asset, "skinned-mesh-binding-empty",
+                           "runtime skinned mesh upload did not produce a renderer skinned mesh binding");
+            continue;
+        }
+        result.skinned_mesh_bindings.push_back(RuntimePackageStreamingSkinnedMeshGpuBinding{
+            .asset = sources[index].asset,
+            .binding = binding,
+        });
+    }
+
+    if (!result.succeeded()) {
+        result.skinned_mesh_bindings.clear();
+    }
+    return result;
+}
+
+RuntimePackageStreamingMorphMeshUploadBindingResult upload_runtime_package_streaming_morph_mesh_gpu_bindings(
+    rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
+    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    std::span<const RuntimePackageStreamingMorphMeshUploadSource> sources) {
+    RuntimePackageStreamingMorphMeshUploadBindingResult result;
+
+    if (!streaming_result.succeeded()) {
+        add_diagnostic(result, {}, "package-streaming-not-committed",
+                       "package streaming result must be committed before uploading morph mesh GPU bindings");
+        return result;
+    }
+
+    std::vector<AssetId> seen_assets;
+    seen_assets.reserve(sources.size());
+    for (const auto& source : sources) {
+        if (contains_asset(seen_assets, source.asset)) {
+            add_diagnostic(result, source.asset, "duplicate-morph-mesh-asset",
+                           "package streaming morph mesh upload source assets must be unique");
+        } else {
+            seen_assets.push_back(source.asset);
+        }
+
+        const auto handle = runtime::find_runtime_resource_v2(resident_catalog, source.asset);
+        const runtime::RuntimeResourceRecordV2* record = nullptr;
+        if (!handle.has_value()) {
+            add_diagnostic(result, source.asset, "runtime-resource-not-live",
+                           "morph mesh asset is not live in the resident runtime resource catalog");
+        } else {
+            record = runtime::runtime_resource_record_v2(resident_catalog, *handle);
+            if (record == nullptr) {
+                add_diagnostic(result, source.asset, "runtime-resource-not-live",
+                               "morph mesh asset catalog handle is stale");
+            } else if (record->kind != AssetKind::morph_mesh_cpu) {
+                add_diagnostic(result, source.asset, "runtime-resource-not-morph-mesh",
+                               "resident runtime resource is not a morph mesh CPU asset");
+            }
+        }
+
+        if (source.payload == nullptr) {
+            add_diagnostic(result, source.asset, "morph-mesh-payload-missing",
+                           "runtime morph mesh CPU payload is required before uploading morph mesh GPU bindings");
+            continue;
+        }
+        if (source.payload->asset != source.asset) {
+            add_diagnostic(result, source.asset, "morph-mesh-payload-asset-mismatch",
+                           "runtime morph mesh CPU payload asset must match the selected resident morph mesh asset");
+        }
+        if (record != nullptr && source.payload->handle != record->package_handle) {
+            add_diagnostic(result, source.asset, "morph-mesh-payload-handle-mismatch",
+                           "runtime morph mesh CPU payload handle must match the selected resident morph mesh handle");
+        }
+    }
+
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    result.uploads.reserve(sources.size());
+    for (const auto& source : sources) {
+        auto upload = upload_runtime_morph_mesh_cpu(device, *source.payload, source.upload_options);
+        if (!upload.succeeded()) {
+            add_diagnostic(result, source.asset, "morph-mesh-upload-failed", upload.diagnostic);
+        }
+        result.uploaded_bytes += upload.uploaded_position_delta_bytes + upload.uploaded_normal_delta_bytes +
+                                 upload.uploaded_tangent_delta_bytes + upload.uploaded_weight_bytes;
+        result.frame_graph_command_lists_submitted += upload.frame_graph_command_lists_submitted;
+        result.frame_graph_queue_waits_recorded += upload.frame_graph_queue_waits_recorded;
+        result.frame_graph_barriers_recorded += upload.frame_graph_barriers_recorded;
+        result.frame_graph_pass_callbacks_invoked += upload.frame_graph_pass_callbacks_invoked;
+        if (upload.submitted_fence.value != 0) {
+            result.submitted_fences.push_back(upload.submitted_fence);
+        }
+        result.uploads.push_back(std::move(upload));
+    }
+
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    std::vector<rhi::FenceValue> async_upload_fences;
+    async_upload_fences.reserve(result.submitted_fences.size());
+    for (std::size_t index = 0; index < sources.size(); ++index) {
+        const auto& upload = result.uploads[index];
+        if (!sources[index].upload_options.wait_for_completion && upload.submitted_fence.value != 0) {
+            async_upload_fences.push_back(upload.submitted_fence);
+        }
+    }
+
+    const auto queue_wait = wait_for_runtime_uploads_on_queue(device, rhi::QueueKind::graphics, async_upload_fences);
+    result.upload_queue_waits_recorded += queue_wait.queue_waits_recorded;
+    if (!queue_wait.succeeded()) {
+        add_diagnostic(result, {}, "morph-mesh-upload-queue-wait-failed",
+                       runtime_upload_queue_wait_diagnostic(queue_wait));
+        return result;
+    }
+
+    result.morph_mesh_bindings.reserve(sources.size());
+    for (std::size_t index = 0; index < sources.size(); ++index) {
+        auto binding = make_runtime_morph_mesh_gpu_binding(result.uploads[index]);
+        if (binding.owner_device == nullptr) {
+            add_diagnostic(result, sources[index].asset, "morph-mesh-binding-empty",
+                           "runtime morph mesh upload did not produce a renderer morph mesh binding");
+            continue;
+        }
+        result.morph_mesh_bindings.push_back(RuntimePackageStreamingMorphMeshGpuBinding{
+            .asset = sources[index].asset,
+            .binding = binding,
+        });
+    }
+
+    if (!result.succeeded()) {
+        result.morph_mesh_bindings.clear();
     }
     return result;
 }

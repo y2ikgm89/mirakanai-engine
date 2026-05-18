@@ -82,6 +82,34 @@ make_runtime_mesh_record(mirakana::AssetId asset, mirakana::runtime::RuntimeAsse
     };
 }
 
+[[nodiscard]] mirakana::runtime::RuntimeAssetRecord
+make_runtime_skinned_mesh_record(mirakana::AssetId asset, mirakana::runtime::RuntimeAssetHandle handle) {
+    return mirakana::runtime::RuntimeAssetRecord{
+        .handle = handle,
+        .asset = asset,
+        .kind = mirakana::AssetKind::skinned_mesh,
+        .path = "meshes/" + std::to_string(asset.value) + ".skinned.geasset",
+        .content_hash = static_cast<std::uint64_t>(asset.value) + handle.value,
+        .source_revision = handle.value,
+        .dependencies = {},
+        .content = "skinned_mesh",
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeAssetRecord
+make_runtime_morph_mesh_record(mirakana::AssetId asset, mirakana::runtime::RuntimeAssetHandle handle) {
+    return mirakana::runtime::RuntimeAssetRecord{
+        .handle = handle,
+        .asset = asset,
+        .kind = mirakana::AssetKind::morph_mesh_cpu,
+        .path = "meshes/" + std::to_string(asset.value) + ".morph.geasset",
+        .content_hash = static_cast<std::uint64_t>(asset.value) + handle.value,
+        .source_revision = handle.value,
+        .dependencies = {},
+        .content = "morph_mesh_cpu",
+    };
+}
+
 [[nodiscard]] mirakana::runtime::RuntimeResourceCatalogV2
 make_runtime_catalog(std::vector<mirakana::runtime::RuntimeAssetRecord> records) {
     mirakana::runtime::RuntimeResourceCatalogV2 catalog;
@@ -146,6 +174,43 @@ make_runtime_mesh_payload(mirakana::AssetId mesh, mirakana::runtime::RuntimeAsse
         .vertex_bytes = std::vector<std::uint8_t>(36, std::uint8_t{0x61}),
         .index_bytes =
             std::vector<std::uint8_t>{0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00},
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeSkinnedMeshPayload
+make_runtime_skinned_mesh_payload(mirakana::AssetId mesh, mirakana::runtime::RuntimeAssetHandle handle) {
+    return mirakana::runtime::RuntimeSkinnedMeshPayload{
+        .asset = mesh,
+        .handle = handle,
+        .vertex_count = 3,
+        .index_count = 3,
+        .joint_count = 1,
+        .vertex_bytes = std::vector<std::uint8_t>(3U * mirakana::runtime_rhi::runtime_skinned_mesh_vertex_stride_bytes,
+                                                  std::uint8_t{0x62}),
+        .index_bytes =
+            std::vector<std::uint8_t>{0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00},
+        .joint_palette_bytes = std::vector<std::uint8_t>(mirakana::runtime_rhi::runtime_skinned_mesh_joint_matrix_bytes,
+                                                         std::uint8_t{0x00}),
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeMorphMeshCpuPayload
+make_runtime_morph_mesh_payload(mirakana::AssetId morph_asset, mirakana::runtime::RuntimeAssetHandle handle) {
+    mirakana::MorphMeshCpuSourceDocument morph;
+    morph.vertex_count = 3;
+    append_vec3(morph.bind_position_bytes, -0.6F, 0.75F, 0.0F);
+    append_vec3(morph.bind_position_bytes, 0.15F, -0.75F, 0.0F);
+    append_vec3(morph.bind_position_bytes, -1.35F, -0.75F, 0.0F);
+    mirakana::MorphMeshCpuTargetSourceDocument target;
+    append_vec3(target.position_delta_bytes, 0.6F, 0.0F, 0.0F);
+    append_vec3(target.position_delta_bytes, 0.6F, 0.0F, 0.0F);
+    append_vec3(target.position_delta_bytes, 0.6F, 0.0F, 0.0F);
+    morph.targets.push_back(std::move(target));
+    append_le_f32(morph.target_weight_bytes, 1.0F);
+    return mirakana::runtime::RuntimeMorphMeshCpuPayload{
+        .asset = morph_asset,
+        .handle = handle,
+        .morph = std::move(morph),
     };
 }
 
@@ -859,6 +924,169 @@ MK_TEST("runtime package streaming mesh upload transaction rejects non mesh resi
     MK_REQUIRE(transaction.diagnostics.size() == 1);
     MK_REQUIRE(transaction.diagnostics[0].asset == mesh);
     MK_REQUIRE(transaction.diagnostics[0].code == "runtime-resource-not-mesh");
+    MK_REQUIRE(device.stats().buffers_created == 0);
+    MK_REQUIRE(device.stats().buffer_writes == 0);
+    MK_REQUIRE(device.stats().command_lists_begun == 0);
+}
+
+MK_TEST(
+    "runtime package streaming skinned mesh upload transaction uploads resident skinned mesh with async copy wait") {
+    const auto mesh = mirakana::AssetId::from_name("meshes/streamed/skinned_copy_queue");
+    const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 41};
+    const auto catalog = make_runtime_catalog({make_runtime_skinned_mesh_record(mesh, handle)});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 768, .min_alignment = 256});
+    mirakana::runtime_rhi::RuntimeSkinnedMeshUploadOptions upload_options;
+    upload_options.upload_ring = &ring;
+    upload_options.queue = mirakana::rhi::QueueKind::copy;
+    upload_options.wait_for_completion = false;
+    const auto payload = make_runtime_skinned_mesh_payload(mesh, handle);
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingSkinnedMeshUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingSkinnedMeshUploadSource{
+            .asset = mesh,
+            .payload = &payload,
+            .upload_options = upload_options,
+        },
+    };
+    const auto buffers_after_ring_creation = device.stats().buffers_created;
+
+    auto transaction = mirakana::runtime_rhi::upload_runtime_package_streaming_skinned_mesh_gpu_bindings(
+        device, streaming, catalog, sources);
+
+    MK_REQUIRE(transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.size() == 1);
+    MK_REQUIRE(transaction.skinned_mesh_bindings.size() == 1);
+    MK_REQUIRE(transaction.uploaded_bytes == 484);
+    MK_REQUIRE(transaction.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(transaction.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(transaction.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(transaction.frame_graph_pass_callbacks_invoked == 1);
+    MK_REQUIRE(transaction.submitted_fences.size() == 1);
+    MK_REQUIRE(transaction.submitted_fences.front().queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(transaction.upload_queue_waits_recorded == 1);
+    MK_REQUIRE(transaction.uploads[0].vertex_upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(transaction.uploads[0].index_upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(transaction.uploads[0].joint_palette_upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(transaction.uploads[0].upload_buffers_caller_owned);
+    MK_REQUIRE(transaction.skinned_mesh_bindings[0].asset == mesh);
+    MK_REQUIRE(transaction.skinned_mesh_bindings[0].binding.mesh.vertex_buffer.value ==
+               transaction.uploads[0].vertex_buffer.value);
+    MK_REQUIRE(transaction.skinned_mesh_bindings[0].binding.joint_palette_buffer.value ==
+               transaction.uploads[0].joint_palette_buffer.value);
+    MK_REQUIRE(transaction.skinned_mesh_bindings[0].binding.owner_device == &device);
+    MK_REQUIRE(device.stats().buffers_created == buffers_after_ring_creation + 3);
+    MK_REQUIRE(device.stats().buffer_writes == 3);
+    MK_REQUIRE(device.stats().buffer_copies == 3);
+    MK_REQUIRE(device.stats().copy_queue_submits == 1);
+    MK_REQUIRE(device.stats().graphics_queue_submits == 0);
+    MK_REQUIRE(device.stats().fence_waits == 0);
+    MK_REQUIRE(device.stats().queue_waits == 1);
+    MK_REQUIRE(device.stats().last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(device.stats().last_graphics_queue_wait_fence_value == transaction.submitted_fences.front().value);
+}
+
+MK_TEST("runtime package streaming morph mesh upload transaction uploads resident morph mesh with async copy wait") {
+    const auto morph_asset = mirakana::AssetId::from_name("morphs/streamed/copy_queue_delta");
+    const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 42};
+    const auto catalog = make_runtime_catalog({make_runtime_morph_mesh_record(morph_asset, handle)});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::rhi::RhiUploadRing ring(device,
+                                      mirakana::rhi::RhiUploadRingDesc{.size_bytes = 512, .min_alignment = 256});
+    mirakana::runtime_rhi::RuntimeMorphMeshUploadOptions upload_options;
+    upload_options.upload_ring = &ring;
+    upload_options.queue = mirakana::rhi::QueueKind::copy;
+    upload_options.wait_for_completion = false;
+    const auto payload = make_runtime_morph_mesh_payload(morph_asset, handle);
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingMorphMeshUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingMorphMeshUploadSource{
+            .asset = morph_asset,
+            .payload = &payload,
+            .upload_options = upload_options,
+        },
+    };
+    const auto buffers_after_ring_creation = device.stats().buffers_created;
+
+    auto transaction = mirakana::runtime_rhi::upload_runtime_package_streaming_morph_mesh_gpu_bindings(
+        device, streaming, catalog, sources);
+
+    MK_REQUIRE(transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.size() == 1);
+    MK_REQUIRE(transaction.morph_mesh_bindings.size() == 1);
+    MK_REQUIRE(transaction.uploaded_bytes == 292);
+    MK_REQUIRE(transaction.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(transaction.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(transaction.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(transaction.frame_graph_pass_callbacks_invoked == 1);
+    MK_REQUIRE(transaction.submitted_fences.size() == 1);
+    MK_REQUIRE(transaction.submitted_fences.front().queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(transaction.upload_queue_waits_recorded == 1);
+    MK_REQUIRE(transaction.uploads[0].position_delta_upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(transaction.uploads[0].morph_weight_upload_buffer.value == ring.buffer().value);
+    MK_REQUIRE(transaction.uploads[0].upload_buffers_caller_owned);
+    MK_REQUIRE(transaction.morph_mesh_bindings[0].asset == morph_asset);
+    MK_REQUIRE(transaction.morph_mesh_bindings[0].binding.position_delta_buffer.value ==
+               transaction.uploads[0].position_delta_buffer.value);
+    MK_REQUIRE(transaction.morph_mesh_bindings[0].binding.morph_weight_buffer.value ==
+               transaction.uploads[0].morph_weight_buffer.value);
+    MK_REQUIRE(transaction.morph_mesh_bindings[0].binding.owner_device == &device);
+    MK_REQUIRE(device.stats().buffers_created == buffers_after_ring_creation + 2);
+    MK_REQUIRE(device.stats().buffer_writes == 2);
+    MK_REQUIRE(device.stats().buffer_copies == 2);
+    MK_REQUIRE(device.stats().copy_queue_submits == 1);
+    MK_REQUIRE(device.stats().graphics_queue_submits == 0);
+    MK_REQUIRE(device.stats().fence_waits == 0);
+    MK_REQUIRE(device.stats().queue_waits == 1);
+    MK_REQUIRE(device.stats().last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(device.stats().last_graphics_queue_wait_fence_value == transaction.submitted_fences.front().value);
+}
+
+MK_TEST("runtime package streaming skinned mesh upload transaction rejects non skinned resident rows before upload") {
+    const auto mesh = mirakana::AssetId::from_name("meshes/streamed/skinned_wrong_kind");
+    const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 43};
+    const auto catalog = make_runtime_catalog({make_runtime_mesh_record(mesh, handle)});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    const auto payload = make_runtime_skinned_mesh_payload(mesh, handle);
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingSkinnedMeshUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingSkinnedMeshUploadSource{.asset = mesh, .payload = &payload},
+    };
+
+    auto transaction = mirakana::runtime_rhi::upload_runtime_package_streaming_skinned_mesh_gpu_bindings(
+        device, streaming, catalog, sources);
+
+    MK_REQUIRE(!transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.empty());
+    MK_REQUIRE(transaction.skinned_mesh_bindings.empty());
+    MK_REQUIRE(transaction.diagnostics.size() == 1);
+    MK_REQUIRE(transaction.diagnostics[0].asset == mesh);
+    MK_REQUIRE(transaction.diagnostics[0].code == "runtime-resource-not-skinned-mesh");
+    MK_REQUIRE(device.stats().buffers_created == 0);
+    MK_REQUIRE(device.stats().buffer_writes == 0);
+    MK_REQUIRE(device.stats().command_lists_begun == 0);
+}
+
+MK_TEST("runtime package streaming morph mesh upload transaction rejects missing morph payload before upload") {
+    const auto morph_asset = mirakana::AssetId::from_name("morphs/streamed/missing_payload");
+    const auto handle = mirakana::runtime::RuntimeAssetHandle{.value = 44};
+    const auto catalog = make_runtime_catalog({make_runtime_morph_mesh_record(morph_asset, handle)});
+    const auto streaming = make_committed_package_streaming_result();
+    mirakana::rhi::NullRhiDevice device;
+    const std::vector<mirakana::runtime_rhi::RuntimePackageStreamingMorphMeshUploadSource> sources{
+        mirakana::runtime_rhi::RuntimePackageStreamingMorphMeshUploadSource{.asset = morph_asset},
+    };
+
+    auto transaction = mirakana::runtime_rhi::upload_runtime_package_streaming_morph_mesh_gpu_bindings(
+        device, streaming, catalog, sources);
+
+    MK_REQUIRE(!transaction.succeeded());
+    MK_REQUIRE(transaction.uploads.empty());
+    MK_REQUIRE(transaction.morph_mesh_bindings.empty());
+    MK_REQUIRE(transaction.diagnostics.size() == 1);
+    MK_REQUIRE(transaction.diagnostics[0].asset == morph_asset);
+    MK_REQUIRE(transaction.diagnostics[0].code == "morph-mesh-payload-missing");
     MK_REQUIRE(device.stats().buffers_created == 0);
     MK_REQUIRE(device.stats().buffer_writes == 0);
     MK_REQUIRE(device.stats().command_lists_begun == 0);

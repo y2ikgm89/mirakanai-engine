@@ -38,9 +38,31 @@ struct RuntimePackageStreamingMeshUploadSource {
     RuntimeMeshUploadOptions upload_options{};
 };
 
+struct RuntimePackageStreamingSkinnedMeshUploadSource {
+    AssetId asset;
+    const runtime::RuntimeSkinnedMeshPayload* payload{nullptr};
+    RuntimeSkinnedMeshUploadOptions upload_options{};
+};
+
+struct RuntimePackageStreamingMorphMeshUploadSource {
+    AssetId asset;
+    const runtime::RuntimeMorphMeshCpuPayload* payload{nullptr};
+    RuntimeMorphMeshUploadOptions upload_options{};
+};
+
 struct RuntimePackageStreamingMeshGpuBinding {
     AssetId asset;
     MeshGpuBinding binding;
+};
+
+struct RuntimePackageStreamingSkinnedMeshGpuBinding {
+    AssetId asset;
+    SkinnedMeshGpuBinding binding;
+};
+
+struct RuntimePackageStreamingMorphMeshGpuBinding {
+    AssetId asset;
+    MorphMeshGpuBinding binding;
 };
 
 struct RuntimePackageStreamingFrameGraphTextureBindingDiagnostic {
@@ -97,6 +119,40 @@ struct RuntimePackageStreamingMeshUploadBindingResult {
     }
 };
 
+struct RuntimePackageStreamingSkinnedMeshUploadBindingResult {
+    std::vector<RuntimeSkinnedMeshUploadResult> uploads;
+    std::vector<RuntimePackageStreamingSkinnedMeshGpuBinding> skinned_mesh_bindings;
+    std::vector<RuntimePackageStreamingMeshUploadDiagnostic> diagnostics;
+    std::vector<rhi::FenceValue> submitted_fences;
+    std::uint64_t uploaded_bytes{0};
+    std::size_t frame_graph_command_lists_submitted{0};
+    std::size_t upload_queue_waits_recorded{0};
+    std::size_t frame_graph_queue_waits_recorded{0};
+    std::size_t frame_graph_barriers_recorded{0};
+    std::size_t frame_graph_pass_callbacks_invoked{0};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
+struct RuntimePackageStreamingMorphMeshUploadBindingResult {
+    std::vector<RuntimeMorphMeshUploadResult> uploads;
+    std::vector<RuntimePackageStreamingMorphMeshGpuBinding> morph_mesh_bindings;
+    std::vector<RuntimePackageStreamingMeshUploadDiagnostic> diagnostics;
+    std::vector<rhi::FenceValue> submitted_fences;
+    std::uint64_t uploaded_bytes{0};
+    std::size_t frame_graph_command_lists_submitted{0};
+    std::size_t upload_queue_waits_recorded{0};
+    std::size_t frame_graph_queue_waits_recorded{0};
+    std::size_t frame_graph_barriers_recorded{0};
+    std::size_t frame_graph_pass_callbacks_invoked{0};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 [[nodiscard]] RuntimePackageStreamingFrameGraphTextureBindingResult
 make_runtime_package_streaming_frame_graph_texture_bindings(
     const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
@@ -113,5 +169,17 @@ upload_runtime_package_streaming_frame_graph_texture_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
     const runtime::RuntimeResourceCatalogV2& resident_catalog,
     std::span<const RuntimePackageStreamingMeshUploadSource> sources);
+
+[[nodiscard]] RuntimePackageStreamingSkinnedMeshUploadBindingResult
+upload_runtime_package_streaming_skinned_mesh_gpu_bindings(
+    rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
+    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    std::span<const RuntimePackageStreamingSkinnedMeshUploadSource> sources);
+
+[[nodiscard]] RuntimePackageStreamingMorphMeshUploadBindingResult
+upload_runtime_package_streaming_morph_mesh_gpu_bindings(
+    rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
+    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    std::span<const RuntimePackageStreamingMorphMeshUploadSource> sources);
 
 } // namespace mirakana::runtime_rhi

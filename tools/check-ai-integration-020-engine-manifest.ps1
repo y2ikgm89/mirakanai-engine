@@ -1746,6 +1746,10 @@ if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMeshUploadSource") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMeshUploadBindingResult") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_mesh_gpu_bindings") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingSkinnedMeshUploadSource") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMorphMeshUploadSource") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_skinned_mesh_gpu_bindings") -or
+    -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_morph_mesh_gpu_bindings") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RHI Native Async Upload Execution v1") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("execute_upload_gpu_batch_async") -or
     -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadGpuBatchExecutionResult") -or
@@ -1830,7 +1834,7 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1 is closed" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime/package upload queue consumption" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package skinned/morph streaming" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package mesh/skinned/morph upload binding transactions" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool production adoption" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
