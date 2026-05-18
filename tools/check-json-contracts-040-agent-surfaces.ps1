@@ -506,12 +506,10 @@ foreach ($needle in @(
     "Frame Graph Remaining Render Pass Envelopes v1",
     "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
     "upload-staging-v1",
-    "runtime/package upload queue consumption",
-    "package mesh/skinned/morph upload binding transactions",
-    "staging-pool lease-backed upload rings",
-    "selected D3D12 generated 3D package upload staging evidence",
-    "upload-staging-v1 is closed",
-    "scene-component-prefab-schema-v2"
+    "scene-component-prefab-schema-v2",
+    "refresh-prefab-instance",
+    "2d-playable-vertical-slice",
+    "3d-playable-vertical-slice"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
         Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"

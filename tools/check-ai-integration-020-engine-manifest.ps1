@@ -1567,7 +1567,6 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
 }
 
 $requiredProductionGapIds = @(
-    "scene-component-prefab-schema-v2",
     "2d-playable-vertical-slice",
     "3d-playable-vertical-slice",
     "editor-productization",
@@ -1588,21 +1587,8 @@ foreach ($gapId in $requiredProductionGapIds) {
     }
 }
 $sceneSchemaGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "scene-component-prefab-schema-v2" })
-if ($sceneSchemaGap.Count -ne 1 -or $sceneSchemaGap[0].status -ne "implemented-contract-only") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop scene-component-prefab-schema-v2 gap must be implemented-contract-only"
-}
-if (-not ([string]$sceneSchemaGap[0].notes).Contains("contract-only") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("ScenePrefabInstanceRefreshPlanV2") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("plan_scene_prefab_instance_refresh_v2") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("ScenePrefabInstanceRefreshResultV2") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("apply_scene_prefab_instance_refresh_v2") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("duplicate_prefab_source_identity") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("unsupported_nested_prefab_instance") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("unsupported_local_prefab_child") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("unsupported_local_prefab_component") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("broad/dependent package cooking") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("nested prefab propagation/merge resolution UX")) {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop scene-component-prefab-schema-v2 gap must keep remaining unsupported claims explicit"
+if ($sceneSchemaGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop scene-component-prefab-schema-v2 gap must leave unsupportedProductionGaps after foundation closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {
@@ -1838,14 +1824,11 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "broad production render graph scheduling" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Metal memory alias allocation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1 is closed" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime/package upload queue consumption" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package mesh/skinned/morph upload binding transactions" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool lease-backed upload rings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "selected D3D12 generated 3D package upload staging evidence" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1 is closed" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must be partly-ready after Play-In-Editor Visible Viewport Wiring v1"
