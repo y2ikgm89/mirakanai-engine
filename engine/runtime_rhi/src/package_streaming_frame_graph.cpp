@@ -68,12 +68,32 @@ void add_diagnostic(RuntimePackageUploadStagingEvidence& result, std::string cod
     });
 }
 
+void add_diagnostic(RuntimePackageResourceUpdateReadinessResult& result, AssetId asset,
+                    RuntimePackageResourceUpdateKind kind, std::string code, std::string message) {
+    result.diagnostics.push_back(RuntimePackageResourceUpdateDiagnostic{
+        .asset = asset,
+        .kind = kind,
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool contains_resource(const std::vector<std::string>& resources, const std::string& resource) {
     return std::ranges::find(resources, resource) != resources.end();
 }
 
 [[nodiscard]] bool contains_asset(const std::vector<AssetId>& assets, AssetId asset) {
     return std::ranges::find(assets, asset) != assets.end();
+}
+
+[[nodiscard]] bool valid_runtime_resource_update_queue_kind(rhi::QueueKind queue) noexcept {
+    switch (queue) {
+    case rhi::QueueKind::graphics:
+    case rhi::QueueKind::compute:
+    case rhi::QueueKind::copy:
+        return true;
+    }
+    return false;
 }
 
 [[nodiscard]] std::string runtime_upload_queue_wait_diagnostic(const RuntimeUploadQueueWaitResult& wait_result) {
@@ -341,6 +361,9 @@ upload_runtime_package_streaming_frame_graph_texture_bindings(
             upload.frame_graph_pass_target_state_barriers_recorded;
         result.frame_graph_final_state_barriers_recorded += upload.frame_graph_final_state_barriers_recorded;
         result.frame_graph_pass_callbacks_invoked += upload.frame_graph_pass_callbacks_invoked;
+        if (upload.submitted_fence.value != 0) {
+            result.submitted_fences.push_back(upload.submitted_fence);
+        }
         result.uploads.push_back(std::move(upload));
     }
 
@@ -348,12 +371,35 @@ upload_runtime_package_streaming_frame_graph_texture_bindings(
         return result;
     }
 
+    std::vector<rhi::FenceValue> async_upload_fences;
+    async_upload_fences.reserve(result.submitted_fences.size());
+    for (std::size_t index = 0; index < sources.size(); ++index) {
+        const auto& upload = result.uploads[index];
+        if (!sources[index].upload_options.wait_for_completion && upload.submitted_fence.value != 0) {
+            async_upload_fences.push_back(upload.submitted_fence);
+        }
+    }
+
+    const auto queue_wait = wait_for_runtime_uploads_on_queue(device, rhi::QueueKind::graphics, async_upload_fences);
+    result.upload_queue_waits_recorded += queue_wait.queue_waits_recorded;
+    if (!queue_wait.succeeded()) {
+        add_diagnostic(result, {}, {}, "texture-upload-queue-wait-failed",
+                       runtime_upload_queue_wait_diagnostic(queue_wait));
+        return result;
+    }
+
     result.texture_bindings.reserve(sources.size());
+    result.texture_resource_bindings.reserve(sources.size());
     for (std::size_t index = 0; index < sources.size(); ++index) {
         result.texture_bindings.push_back(FrameGraphTextureBinding{
             .resource = sources[index].resource,
             .texture = result.uploads[index].texture,
             .current_state = sources[index].current_state,
+        });
+        result.texture_resource_bindings.push_back(RuntimePackageStreamingFrameGraphTextureGpuBinding{
+            .asset = sources[index].asset,
+            .resource = sources[index].resource,
+            .binding = result.texture_bindings.back(),
         });
     }
     return result;
@@ -704,6 +750,245 @@ RuntimePackageStreamingMorphMeshUploadBindingResult upload_runtime_package_strea
     return result;
 }
 
+namespace {
+
+void reset_resource_update_counters(RuntimePackageResourceUpdateReadinessResult& result) {
+    result.updates.clear();
+    result.texture_updates = 0;
+    result.mesh_updates = 0;
+    result.skinned_mesh_updates = 0;
+    result.morph_mesh_updates = 0;
+    result.submitted_fences = 0;
+    result.graphics_queue_ready_updates = 0;
+    result.graphics_queue_waits_recorded = 0;
+    result.same_queue_graphics_updates = 0;
+    result.ready = false;
+}
+
+void record_resource_update(RuntimePackageResourceUpdateReadinessResult& result, RuntimePackageResourceUpdate update) {
+    switch (update.kind) {
+    case RuntimePackageResourceUpdateKind::texture:
+        ++result.texture_updates;
+        break;
+    case RuntimePackageResourceUpdateKind::static_mesh:
+        ++result.mesh_updates;
+        break;
+    case RuntimePackageResourceUpdateKind::skinned_mesh:
+        ++result.skinned_mesh_updates;
+        break;
+    case RuntimePackageResourceUpdateKind::morph_mesh:
+        ++result.morph_mesh_updates;
+        break;
+    }
+
+    ++result.submitted_fences;
+    if (update.graphics_queue_ready) {
+        ++result.graphics_queue_ready_updates;
+    }
+    if (update.graphics_queue_wait_recorded) {
+        ++result.graphics_queue_waits_recorded;
+    }
+    if (update.same_queue_graphics_order) {
+        ++result.same_queue_graphics_updates;
+    }
+    result.updates.push_back(std::move(update));
+}
+
+void append_resource_update(RuntimePackageResourceUpdateReadinessResult& result,
+                            const runtime::RuntimeResourceCatalogV2& resident_catalog, AssetId asset,
+                            RuntimePackageResourceUpdateKind update_kind, AssetKind expected_kind, std::string resource,
+                            rhi::FenceValue fence, std::size_t& graphics_waits_remaining) {
+    const auto handle = runtime::find_runtime_resource_v2(resident_catalog, asset);
+    const runtime::RuntimeResourceRecordV2* record = nullptr;
+    if (!handle.has_value()) {
+        add_diagnostic(result, asset, update_kind, "runtime-resource-not-live",
+                       "package resource update asset is not live in the resident runtime resource catalog");
+        return;
+    }
+
+    record = runtime::runtime_resource_record_v2(resident_catalog, *handle);
+    if (record == nullptr) {
+        add_diagnostic(result, asset, update_kind, "runtime-resource-not-live",
+                       "package resource update catalog handle is stale");
+        return;
+    }
+    if (record->kind != expected_kind) {
+        add_diagnostic(result, asset, update_kind, "runtime-resource-kind-mismatch",
+                       "package resource update resident catalog kind does not match the uploaded binding kind");
+        return;
+    }
+
+    if (fence.value == 0) {
+        add_diagnostic(result, asset, update_kind, "resource-update-upload-fence-missing",
+                       "package resource update requires a submitted upload fence");
+        return;
+    }
+    if (!valid_runtime_resource_update_queue_kind(fence.queue)) {
+        add_diagnostic(result, asset, update_kind, "resource-update-upload-fence-invalid-queue",
+                       "package resource update upload fence queue is invalid");
+        return;
+    }
+
+    bool same_queue_graphics_order = false;
+    bool graphics_queue_wait_recorded = false;
+    if (fence.queue == rhi::QueueKind::graphics) {
+        same_queue_graphics_order = true;
+    } else if (graphics_waits_remaining > 0) {
+        --graphics_waits_remaining;
+        graphics_queue_wait_recorded = true;
+    } else {
+        add_diagnostic(result, asset, update_kind, "resource-update-upload-not-waited",
+                       "package resource update requires graphics queue wait evidence for async non-graphics uploads");
+        return;
+    }
+
+    record_resource_update(result, RuntimePackageResourceUpdate{
+                                       .asset = asset,
+                                       .kind = update_kind,
+                                       .catalog_kind = record->kind,
+                                       .resource_handle = record->handle,
+                                       .package_handle = record->package_handle,
+                                       .resource = std::move(resource),
+                                       .submitted_upload_fence = fence,
+                                       .graphics_queue_ready = true,
+                                       .graphics_queue_wait_recorded = graphics_queue_wait_recorded,
+                                       .same_queue_graphics_order = same_queue_graphics_order,
+                                   });
+}
+
+} // namespace
+
+RuntimePackageResourceUpdateReadinessResult
+make_runtime_package_resource_update_readiness(const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
+                                               const runtime::RuntimeResourceCatalogV2& resident_catalog,
+                                               const RuntimePackageResourceUpdateReadinessSources& sources) {
+    RuntimePackageResourceUpdateReadinessResult result;
+
+    if (!streaming_result.succeeded()) {
+        add_diagnostic(result, {}, RuntimePackageResourceUpdateKind::texture, "package-streaming-not-committed",
+                       "package streaming result must be committed before publishing package resource updates");
+        return result;
+    }
+
+    std::size_t source_groups = 0;
+    if (sources.texture_uploads != nullptr) {
+        ++source_groups;
+        const auto& transaction = *sources.texture_uploads;
+        if (!transaction.succeeded()) {
+            const auto diagnostic = transaction.diagnostics.empty()
+                                        ? RuntimePackageStreamingFrameGraphTextureBindingDiagnostic{}
+                                        : transaction.diagnostics.front();
+            add_diagnostic(result, diagnostic.asset, RuntimePackageResourceUpdateKind::texture,
+                           "resource-update-transaction-failed",
+                           diagnostic.message.empty() ? "texture package upload transaction failed"
+                                                      : diagnostic.message);
+        } else if (transaction.uploads.size() != transaction.texture_resource_bindings.size()) {
+            add_diagnostic(result, {}, RuntimePackageResourceUpdateKind::texture,
+                           "resource-update-binding-count-mismatch",
+                           "texture package resource update rows must match uploaded texture rows");
+        } else {
+            auto graphics_waits_remaining = transaction.upload_queue_waits_recorded;
+            for (std::size_t index = 0; index < transaction.texture_resource_bindings.size(); ++index) {
+                append_resource_update(result, resident_catalog, transaction.texture_resource_bindings[index].asset,
+                                       RuntimePackageResourceUpdateKind::texture, AssetKind::texture,
+                                       transaction.texture_resource_bindings[index].resource,
+                                       transaction.uploads[index].submitted_fence, graphics_waits_remaining);
+            }
+        }
+    }
+
+    if (sources.mesh_uploads != nullptr) {
+        ++source_groups;
+        const auto& transaction = *sources.mesh_uploads;
+        if (!transaction.succeeded()) {
+            const auto diagnostic = transaction.diagnostics.empty() ? RuntimePackageStreamingMeshUploadDiagnostic{}
+                                                                    : transaction.diagnostics.front();
+            add_diagnostic(result, diagnostic.asset, RuntimePackageResourceUpdateKind::static_mesh,
+                           "resource-update-transaction-failed",
+                           diagnostic.message.empty() ? "static mesh package upload transaction failed"
+                                                      : diagnostic.message);
+        } else if (transaction.uploads.size() != transaction.mesh_bindings.size()) {
+            add_diagnostic(result, {}, RuntimePackageResourceUpdateKind::static_mesh,
+                           "resource-update-binding-count-mismatch",
+                           "static mesh package resource update rows must match uploaded mesh rows");
+        } else {
+            auto graphics_waits_remaining = transaction.upload_queue_waits_recorded;
+            for (std::size_t index = 0; index < transaction.mesh_bindings.size(); ++index) {
+                append_resource_update(result, resident_catalog, transaction.mesh_bindings[index].asset,
+                                       RuntimePackageResourceUpdateKind::static_mesh, AssetKind::mesh, {},
+                                       transaction.uploads[index].submitted_fence, graphics_waits_remaining);
+            }
+        }
+    }
+
+    if (sources.skinned_mesh_uploads != nullptr) {
+        ++source_groups;
+        const auto& transaction = *sources.skinned_mesh_uploads;
+        if (!transaction.succeeded()) {
+            const auto diagnostic = transaction.diagnostics.empty() ? RuntimePackageStreamingMeshUploadDiagnostic{}
+                                                                    : transaction.diagnostics.front();
+            add_diagnostic(result, diagnostic.asset, RuntimePackageResourceUpdateKind::skinned_mesh,
+                           "resource-update-transaction-failed",
+                           diagnostic.message.empty() ? "skinned mesh package upload transaction failed"
+                                                      : diagnostic.message);
+        } else if (transaction.uploads.size() != transaction.skinned_mesh_bindings.size()) {
+            add_diagnostic(result, {}, RuntimePackageResourceUpdateKind::skinned_mesh,
+                           "resource-update-binding-count-mismatch",
+                           "skinned mesh package resource update rows must match uploaded skinned mesh rows");
+        } else {
+            auto graphics_waits_remaining = transaction.upload_queue_waits_recorded;
+            for (std::size_t index = 0; index < transaction.skinned_mesh_bindings.size(); ++index) {
+                append_resource_update(result, resident_catalog, transaction.skinned_mesh_bindings[index].asset,
+                                       RuntimePackageResourceUpdateKind::skinned_mesh, AssetKind::skinned_mesh, {},
+                                       transaction.uploads[index].submitted_fence, graphics_waits_remaining);
+            }
+        }
+    }
+
+    if (sources.morph_mesh_uploads != nullptr) {
+        ++source_groups;
+        const auto& transaction = *sources.morph_mesh_uploads;
+        if (!transaction.succeeded()) {
+            const auto diagnostic = transaction.diagnostics.empty() ? RuntimePackageStreamingMeshUploadDiagnostic{}
+                                                                    : transaction.diagnostics.front();
+            add_diagnostic(result, diagnostic.asset, RuntimePackageResourceUpdateKind::morph_mesh,
+                           "resource-update-transaction-failed",
+                           diagnostic.message.empty() ? "morph mesh package upload transaction failed"
+                                                      : diagnostic.message);
+        } else if (transaction.uploads.size() != transaction.morph_mesh_bindings.size()) {
+            add_diagnostic(result, {}, RuntimePackageResourceUpdateKind::morph_mesh,
+                           "resource-update-binding-count-mismatch",
+                           "morph mesh package resource update rows must match uploaded morph mesh rows");
+        } else {
+            auto graphics_waits_remaining = transaction.upload_queue_waits_recorded;
+            for (std::size_t index = 0; index < transaction.morph_mesh_bindings.size(); ++index) {
+                append_resource_update(result, resident_catalog, transaction.morph_mesh_bindings[index].asset,
+                                       RuntimePackageResourceUpdateKind::morph_mesh, AssetKind::morph_mesh_cpu, {},
+                                       transaction.uploads[index].submitted_fence, graphics_waits_remaining);
+            }
+        }
+    }
+
+    if (source_groups == 0) {
+        add_diagnostic(result, {}, RuntimePackageResourceUpdateKind::texture, "resource-update-source-missing",
+                       "package resource update readiness requires at least one upload transaction source");
+    }
+
+    if (!result.succeeded()) {
+        reset_resource_update_counters(result);
+        return result;
+    }
+
+    result.ready = !result.updates.empty() && result.submitted_fences == result.updates.size() &&
+                   result.graphics_queue_ready_updates == result.updates.size();
+    if (!result.ready) {
+        add_diagnostic(result, {}, RuntimePackageResourceUpdateKind::texture, "resource-update-counters-mismatch",
+                       "package resource update readiness counters did not meet expected values");
+        reset_resource_update_counters(result);
+    }
+    return result;
+}
+
 RuntimePackageUploadStagingEvidence execute_runtime_package_upload_staging_evidence(rhi::IRhiDevice& device) {
     RuntimePackageUploadStagingEvidence result;
     const auto stats_before = device.stats();
@@ -881,6 +1166,26 @@ RuntimePackageUploadStagingEvidence execute_runtime_package_upload_staging_evide
         }
     }
 
+    const auto resource_updates =
+        make_runtime_package_resource_update_readiness(streaming, catalog,
+                                                       RuntimePackageResourceUpdateReadinessSources{
+                                                           .texture_uploads = &texture_upload,
+                                                           .mesh_uploads = &mesh_upload,
+                                                           .skinned_mesh_uploads = &skinned_mesh_upload,
+                                                           .morph_mesh_uploads = &morph_mesh_upload,
+                                                       });
+    if (!resource_updates.succeeded()) {
+        const auto& diagnostic = resource_updates.diagnostics.front();
+        add_diagnostic(result, diagnostic.code, diagnostic.message);
+        return result;
+    }
+    result.resource_updates_ready = resource_updates.ready;
+    result.resource_updates = resource_updates.updates.size();
+    result.resource_update_submitted_fences = resource_updates.submitted_fences;
+    result.resource_update_graphics_ready_updates = resource_updates.graphics_queue_ready_updates;
+    result.resource_update_graphics_queue_waits_recorded = resource_updates.graphics_queue_waits_recorded;
+    result.resource_update_same_queue_graphics_updates = resource_updates.same_queue_graphics_updates;
+
     const auto stats_after = device.stats();
     result.copy_queue_submits = stats_after.copy_queue_submits - stats_before.copy_queue_submits;
     result.graphics_queue_submits = stats_after.graphics_queue_submits - stats_before.graphics_queue_submits;
@@ -896,7 +1201,10 @@ RuntimePackageUploadStagingEvidence execute_runtime_package_upload_staging_evide
                    result.uploaded_bytes > 0 && result.submitted_fences == 4 &&
                    result.upload_queue_waits_recorded == 3 && result.copy_queue_submits >= 3 &&
                    result.graphics_queue_submits >= 1 && result.queue_waits == 3 && result.fence_waits == 0 &&
-                   result.graphics_waited_for_copy;
+                   result.graphics_waited_for_copy && result.resource_updates_ready && result.resource_updates == 4 &&
+                   result.resource_update_submitted_fences == 4 && result.resource_update_graphics_ready_updates == 4 &&
+                   result.resource_update_graphics_queue_waits_recorded == 3 &&
+                   result.resource_update_same_queue_graphics_updates == 1;
     if (!result.ready) {
         add_diagnostic(result, "package-upload-staging-counters-mismatch",
                        "runtime package upload staging evidence did not meet expected counters");

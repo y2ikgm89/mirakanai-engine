@@ -782,17 +782,17 @@ foreach ($needle in @("**Status:** Completed.", "Runtime Upload Queue Wait v1", 
         Write-Error "Runtime Upload Queue Wait plan missing text: $needle"
     }
 }
-foreach ($needle in @("RuntimePackageUploadStagingEvidence", "execute_runtime_package_upload_staging_evidence")) {
+foreach ($needle in @("RuntimePackageUploadStagingEvidence", "RuntimePackageResourceUpdateReadinessResult", "make_runtime_package_resource_update_readiness", "execute_runtime_package_upload_staging_evidence")) {
     if (-not $runtimeRhiPackageStreamingHeaderText.Contains($needle)) {
         Write-Error "runtime RHI package streaming header missing package upload staging evidence contract text: $needle"
     }
 }
-foreach ($needle in @("RhiStagingBufferPool", "try_acquire_lease", "upload_runtime_package_streaming_skinned_mesh_gpu_bindings", "package-upload-staging-counters-mismatch")) {
+foreach ($needle in @("RhiStagingBufferPool", "try_acquire_lease", "upload_runtime_package_streaming_skinned_mesh_gpu_bindings", "make_runtime_package_resource_update_readiness", "package-upload-staging-counters-mismatch")) {
     if (-not $runtimeRhiPackageStreamingSourceText.Contains($needle)) {
         Write-Error "runtime RHI package streaming source missing package upload staging evidence implementation text: $needle"
     }
 }
-foreach ($needle in @("runtime package upload staging evidence uses pooled async ring for selected package transactions", "evidence.package_transactions == 4", "evidence.ring_backed_uploads == 4", "evidence.graphics_waited_for_copy")) {
+foreach ($needle in @("runtime package upload staging evidence uses pooled async ring for selected package transactions", "runtime package resource update readiness publishes rows after upload fences are graphics ready", "evidence.package_transactions == 4", "evidence.ring_backed_uploads == 4", "evidence.graphics_waited_for_copy", "evidence.resource_updates_ready")) {
     if (-not $runtimeRhiTestsText.Contains($needle)) {
         Write-Error "MK_runtime_rhi_tests missing package upload staging evidence coverage: $needle"
     }

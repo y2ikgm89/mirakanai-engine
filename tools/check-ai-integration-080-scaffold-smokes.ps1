@@ -1813,6 +1813,8 @@ foreach ($needle in @(
     "package_upload_staging_ring_backed_uploads=",
     "package_upload_staging_submitted_fences=",
     "package_upload_staging_graphics_waited_for_copy=",
+    "package_upload_staging_resource_updates_ready=",
+    "package_upload_staging_resource_update_graphics_queue_waits_recorded=",
     "--require-renderer-quality-gates",
     "evaluate_sdl_desktop_presentation_quality_gate",
     "renderer_quality_status=",

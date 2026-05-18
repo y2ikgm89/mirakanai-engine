@@ -1556,7 +1556,6 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
 
 $requiredProductionGapIds = @(
     "scene-component-prefab-schema-v2",
-    "upload-staging-v1",
     "2d-playable-vertical-slice",
     "3d-playable-vertical-slice",
     "editor-productization",
@@ -1725,50 +1724,25 @@ foreach ($check in @(
     }
 }
 $uploadStagingGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "upload-staging-v1" })
-if ($uploadStagingGap.Count -ne 1 -or $uploadStagingGap[0].status -ne "implemented-foundation-only") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop upload-staging-v1 gap must be implemented-foundation-only"
+if ($uploadStagingGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop upload-staging-v1 gap must leave unsupportedProductionGaps after async-ready resource update closeout"
 }
-if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadStagingPlan") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("FenceValue") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("Runtime RHI Upload Submission Fence Rows v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("submitted_upload_fences") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("submitted_upload_fence_count") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RHI Upload Stale Generation Diagnostics v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("stale_generation") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("Runtime Ring-Backed Texture Upload v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimeTextureUploadOptions::upload_ring") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("Runtime Buffer Ring-Backed Uploads v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimeMeshUploadOptions::upload_ring") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimeSkinnedMeshUploadOptions::upload_ring") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimeMorphMeshUploadOptions::upload_ring") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("Package Static Mesh Upload Binding Transaction v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMeshUploadSource") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMeshUploadBindingResult") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_mesh_gpu_bindings") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingSkinnedMeshUploadSource") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageStreamingMorphMeshUploadSource") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_skinned_mesh_gpu_bindings") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("upload_runtime_package_streaming_morph_mesh_gpu_bindings") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RHI Native Async Upload Execution v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("execute_upload_gpu_batch_async") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadGpuBatchExecutionResult") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("Runtime Upload Queue Wait v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("wait_for_runtime_uploads_on_queue") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("upload_queue_waits_recorded") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("Staging Pool Lease Adoption v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RhiStagingBufferLease") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RhiStagingBufferPool::try_acquire_lease") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RhiStagingBufferPool::release(RhiStagingBufferLease)") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadRingDesc::buffer") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("ring exhaustion") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("Selected D3D12 Generated 3D Package Upload Staging Smoke v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RuntimePackageUploadStagingEvidence") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("execute_runtime_package_upload_staging_evidence") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("package_upload_staging_*") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("async-ready resource updates") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop upload-staging-v1 gap must keep foundation-only follow-up limits explicit"
+foreach ($check in @(
+    @{
+        Path = "docs/superpowers/plans/2026-05-18-upload-staging-v1-async-ready-resource-updates-v1.md"
+        Needles = @(
+            "Upload Staging v1 Async-Ready Resource Updates",
+            "make_runtime_package_resource_update_readiness",
+            "RuntimePackageResourceUpdateReadinessResult",
+            "package_upload_staging_resource_updates_ready",
+            "broad/background streaming"
+        )
+    }
+)) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $fileText $needle "$($check.Path) upload-staging-v1 closeout evidence"
+    }
 }
 $desktop3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" })
 if ($desktop3dGap.Count -ne 1 -or $desktop3dGap[0].status -ne "implemented-generated-desktop-3d-package-proof") {
@@ -1850,7 +1824,8 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtim
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "package mesh/skinned/morph upload binding transactions" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "staging-pool lease-backed upload rings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "selected D3D12 generated 3D package upload staging evidence" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "async-ready resource updates" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1 is closed" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must be partly-ready after Play-In-Editor Visible Viewport Wiring v1"

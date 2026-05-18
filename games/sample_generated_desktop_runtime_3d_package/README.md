@@ -23,7 +23,7 @@ This `DesktopRuntime3DPackage` game uses the optional desktop runtime package la
 - cooked morph mesh CPU payload consumed with scalar morph-weight animation smoke counters
 - cooked quaternion local-pose animation consumed through first-party `mirakana_animation` sampling counters
 - selected host-gated package streaming safe-point smoke over the packaged scene validation target
-- selected D3D12 package upload staging smoke with `--require-package-upload-staging`, `package_upload_staging_ready=1`, `package_upload_staging_package_transactions=4`, `package_upload_staging_ring_backed_uploads=4`, and `package_upload_staging_graphics_waited_for_copy=1`
+- selected D3D12 package upload staging smoke with `--require-package-upload-staging`, `package_upload_staging_ready=1`, `package_upload_staging_package_transactions=4`, `package_upload_staging_ring_backed_uploads=4`, `package_upload_staging_graphics_waited_for_copy=1`, and `package_upload_staging_resource_updates_ready=1`
 - selected generated 3D renderer quality smoke over scene GPU, depth-aware postprocess, framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9
 - selected generated 3D postprocess depth-input smoke with `postprocess_depth_input_ready=1` and `renderer_quality_postprocess_depth_input_ready=1`
 - selected generated 3D directional shadow package smoke with `directional_shadow_ready=1`, fixed PCF 3x3 filtering counters, `framegraph_passes=3`, `framegraph_passes_executed=6`, `framegraph_render_passes_recorded=6`, and `framegraph_barrier_steps_executed=15`

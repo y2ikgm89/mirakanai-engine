@@ -853,7 +853,6 @@ foreach ($packageSurface in $productionLoop.packageSurfaces) {
 
 $requiredGapIds = @(
     "scene-component-prefab-schema-v2",
-    "upload-staging-v1",
     "2d-playable-vertical-slice",
     "3d-playable-vertical-slice",
     "editor-productization",

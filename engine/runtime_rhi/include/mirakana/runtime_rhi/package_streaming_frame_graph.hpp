@@ -55,6 +55,12 @@ struct RuntimePackageStreamingMeshGpuBinding {
     MeshGpuBinding binding;
 };
 
+struct RuntimePackageStreamingFrameGraphTextureGpuBinding {
+    AssetId asset;
+    std::string resource;
+    FrameGraphTextureBinding binding;
+};
+
 struct RuntimePackageStreamingSkinnedMeshGpuBinding {
     AssetId asset;
     SkinnedMeshGpuBinding binding;
@@ -90,8 +96,11 @@ struct RuntimePackageStreamingFrameGraphTextureBindingResult {
 struct RuntimePackageStreamingFrameGraphTextureUploadBindingResult {
     std::vector<RuntimeTextureUploadResult> uploads;
     std::vector<FrameGraphTextureBinding> texture_bindings;
+    std::vector<RuntimePackageStreamingFrameGraphTextureGpuBinding> texture_resource_bindings;
     std::vector<RuntimePackageStreamingFrameGraphTextureBindingDiagnostic> diagnostics;
+    std::vector<rhi::FenceValue> submitted_fences;
     std::uint64_t uploaded_bytes{0};
+    std::size_t upload_queue_waits_recorded{0};
     std::size_t frame_graph_barriers_recorded{0};
     std::size_t frame_graph_pass_target_state_barriers_recorded{0};
     std::size_t frame_graph_final_state_barriers_recorded{0};
@@ -153,6 +162,53 @@ struct RuntimePackageStreamingMorphMeshUploadBindingResult {
     }
 };
 
+enum class RuntimePackageResourceUpdateKind : std::uint8_t { texture = 0, static_mesh, skinned_mesh, morph_mesh };
+
+struct RuntimePackageResourceUpdate {
+    AssetId asset;
+    RuntimePackageResourceUpdateKind kind{RuntimePackageResourceUpdateKind::texture};
+    AssetKind catalog_kind{AssetKind::unknown};
+    runtime::RuntimeResourceHandleV2 resource_handle;
+    runtime::RuntimeAssetHandle package_handle;
+    std::string resource;
+    rhi::FenceValue submitted_upload_fence{};
+    bool graphics_queue_ready{false};
+    bool graphics_queue_wait_recorded{false};
+    bool same_queue_graphics_order{false};
+};
+
+struct RuntimePackageResourceUpdateDiagnostic {
+    AssetId asset;
+    RuntimePackageResourceUpdateKind kind{RuntimePackageResourceUpdateKind::texture};
+    std::string code;
+    std::string message;
+};
+
+struct RuntimePackageResourceUpdateReadinessSources {
+    const RuntimePackageStreamingFrameGraphTextureUploadBindingResult* texture_uploads{nullptr};
+    const RuntimePackageStreamingMeshUploadBindingResult* mesh_uploads{nullptr};
+    const RuntimePackageStreamingSkinnedMeshUploadBindingResult* skinned_mesh_uploads{nullptr};
+    const RuntimePackageStreamingMorphMeshUploadBindingResult* morph_mesh_uploads{nullptr};
+};
+
+struct RuntimePackageResourceUpdateReadinessResult {
+    bool ready{false};
+    std::vector<RuntimePackageResourceUpdate> updates;
+    std::vector<RuntimePackageResourceUpdateDiagnostic> diagnostics;
+    std::size_t texture_updates{0};
+    std::size_t mesh_updates{0};
+    std::size_t skinned_mesh_updates{0};
+    std::size_t morph_mesh_updates{0};
+    std::size_t submitted_fences{0};
+    std::size_t graphics_queue_ready_updates{0};
+    std::size_t graphics_queue_waits_recorded{0};
+    std::size_t same_queue_graphics_updates{0};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 struct RuntimePackageUploadStagingEvidenceDiagnostic {
     std::string code;
     std::string message;
@@ -171,6 +227,12 @@ struct RuntimePackageUploadStagingEvidence {
     std::size_t morph_mesh_bindings{0};
     std::size_t staging_pool_leases{0};
     std::size_t ring_backed_uploads{0};
+    bool resource_updates_ready{false};
+    std::size_t resource_updates{0};
+    std::size_t resource_update_submitted_fences{0};
+    std::size_t resource_update_graphics_ready_updates{0};
+    std::size_t resource_update_graphics_queue_waits_recorded{0};
+    std::size_t resource_update_same_queue_graphics_updates{0};
     std::uint64_t uploaded_bytes{0};
     std::size_t submitted_fences{0};
     std::size_t upload_queue_waits_recorded{0};
@@ -214,6 +276,11 @@ upload_runtime_package_streaming_morph_mesh_gpu_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
     const runtime::RuntimeResourceCatalogV2& resident_catalog,
     std::span<const RuntimePackageStreamingMorphMeshUploadSource> sources);
+
+[[nodiscard]] RuntimePackageResourceUpdateReadinessResult
+make_runtime_package_resource_update_readiness(const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
+                                               const runtime::RuntimeResourceCatalogV2& resident_catalog,
+                                               const RuntimePackageResourceUpdateReadinessSources& sources);
 
 [[nodiscard]] RuntimePackageUploadStagingEvidence
 execute_runtime_package_upload_staging_evidence(rhi::IRhiDevice& device);

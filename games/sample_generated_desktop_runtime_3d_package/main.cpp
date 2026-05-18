@@ -3988,6 +3988,16 @@ int main(int argc, char** argv) {
         << " package_upload_staging_morph_mesh_bindings=" << package_upload_staging.morph_mesh_bindings
         << " package_upload_staging_staging_pool_leases=" << package_upload_staging.staging_pool_leases
         << " package_upload_staging_ring_backed_uploads=" << package_upload_staging.ring_backed_uploads
+        << " package_upload_staging_resource_updates_ready=" << (package_upload_staging.resource_updates_ready ? 1 : 0)
+        << " package_upload_staging_resource_updates=" << package_upload_staging.resource_updates
+        << " package_upload_staging_resource_update_submitted_fences="
+        << package_upload_staging.resource_update_submitted_fences
+        << " package_upload_staging_resource_update_graphics_ready_updates="
+        << package_upload_staging.resource_update_graphics_ready_updates
+        << " package_upload_staging_resource_update_graphics_queue_waits_recorded="
+        << package_upload_staging.resource_update_graphics_queue_waits_recorded
+        << " package_upload_staging_resource_update_same_queue_graphics_updates="
+        << package_upload_staging.resource_update_same_queue_graphics_updates
         << " package_upload_staging_uploaded_bytes=" << package_upload_staging.uploaded_bytes
         << " package_upload_staging_submitted_fences=" << package_upload_staging.submitted_fences
         << " package_upload_staging_upload_queue_waits_recorded=" << package_upload_staging.upload_queue_waits_recorded
