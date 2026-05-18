@@ -1659,6 +1659,8 @@ if (@($geRuntimeRhiModule[0].publicHeaders) -notcontains "engine/runtime_rhi/inc
 }
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "make_runtime_package_streaming_frame_graph_texture_bindings" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingFrameGraphTextureBindingSource" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeMaterialGpuBinding command-list/queue-wait/barrier/callback counters" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "material-factor uploads" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "broad/background package streaming" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "make_runtime_package_streaming_frame_graph_texture_bindings" "desktop runtime 3d package streaming guidance"
 foreach ($packageStreamingFrameGraphGuidance in @(
@@ -1701,9 +1703,12 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_frame_graph_rhi_multi_queue_schedule" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Texture Barrier Execution v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Material Factor Frame Graph Command Evidence v1" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RuntimeMaterialGpuBinding" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "primary pass texture-binding/target-state evidence is complete" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "backend-neutral RHI queue dependency wait planning/recording is complete" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "multi-queue pass command submission and opt-in texture barrier recording envelope" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime mesh, skinned mesh, morph mesh, and material-factor upload Frame Graph command evidence are complete" "recommended next plan reason"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"

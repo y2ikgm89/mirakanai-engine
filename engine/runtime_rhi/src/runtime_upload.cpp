@@ -131,6 +131,17 @@ runtime_morph_compute_output_slot(const RuntimeMorphMeshComputeBinding& binding,
     return result;
 }
 
+[[nodiscard]] std::string
+runtime_material_upload_frame_graph_diagnostic(std::span<const FrameGraphDiagnostic> diagnostics) {
+    if (diagnostics.empty()) {
+        return "runtime material upload frame graph execution failed";
+    }
+    if (diagnostics.front().message.empty()) {
+        return "runtime material upload frame graph execution failed";
+    }
+    return "runtime material upload frame graph execution failed: " + diagnostics.front().message;
+}
+
 [[nodiscard]] RuntimeMaterialDescriptorSetLayoutDescResult material_layout_desc_failure(std::string diagnostic) {
     return RuntimeMaterialDescriptorSetLayoutDescResult{.desc = {}, .diagnostic = std::move(diagnostic)};
 }
@@ -1854,19 +1865,65 @@ RuntimeMaterialGpuBinding create_runtime_material_gpu_binding(
                         std::array<std::uint8_t, runtime_material_uniform_buffer_allocation_size_bytes> upload_bytes{};
                         std::ranges::copy(factor_bytes, upload_bytes.begin());
                         device.write_buffer(result.uniform_upload_buffer, 0, upload_bytes);
-                        auto commands = device.begin_command_list(rhi::QueueKind::graphics);
-                        commands->copy_buffer(result.uniform_upload_buffer, result.uniform_buffer,
-                                              rhi::BufferCopyRegion{
-                                                  .source_offset = 0,
-                                                  .destination_offset = 0,
-                                                  .size_bytes = runtime_material_uniform_buffer_allocation_size_bytes,
-                                              });
-                        commands->close();
-                        const auto fence = device.submit(*commands);
+                        const auto factor_region = rhi::BufferCopyRegion{
+                            .source_offset = 0,
+                            .destination_offset = 0,
+                            .size_bytes = runtime_material_uniform_buffer_allocation_size_bytes,
+                        };
+                        FrameGraphV1Desc upload_graph;
+                        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+                            .name = "runtime.material_upload.factor_buffer",
+                            .lifetime = FrameGraphResourceLifetime::imported,
+                        });
+                        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+                            .name = "runtime.material_upload.copy",
+                            .writes = {FrameGraphResourceAccess{
+                                .resource = "runtime.material_upload.factor_buffer",
+                                .access = FrameGraphAccess::copy_destination,
+                            }},
+                        });
+                        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+                        if (!upload_plan.succeeded()) {
+                            return material_binding_failure(
+                                runtime_material_upload_frame_graph_diagnostic(upload_plan.diagnostics));
+                        }
+                        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+                        const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{
+                            FrameGraphRhiPassCommandBinding{
+                                .pass_name = "runtime.material_upload.copy",
+                                .queue = rhi::QueueKind::graphics,
+                                .callback =
+                                    [&](std::string_view, rhi::IRhiCommandList& commands) {
+                                        commands.copy_buffer(result.uniform_upload_buffer, result.uniform_buffer,
+                                                             factor_region);
+                                        return FrameGraphExecutionCallbackResult{};
+                                    },
+                            },
+                        };
+                        const auto frame_graph_execution =
+                            execute_frame_graph_rhi_multi_queue_schedule(FrameGraphRhiMultiQueueExecutionDesc{
+                                .device = &device,
+                                .schedule = upload_schedule,
+                                .pass_commands = pass_commands,
+                                .texture_bindings = {},
+                            });
+                        if (!frame_graph_execution.succeeded()) {
+                            return material_binding_failure(
+                                runtime_material_upload_frame_graph_diagnostic(frame_graph_execution.diagnostics));
+                        }
+                        if (frame_graph_execution.submitted_pass_fences.empty()) {
+                            return material_binding_failure(
+                                "runtime material upload frame graph execution failed: missing submitted fence");
+                        }
+                        const auto fence = frame_graph_execution.submitted_pass_fences.back().fence;
                         device.wait(fence);
                         result.factor_bytes_uploaded = runtime_material_uniform_buffer_size_bytes;
                         result.submitted_fence = fence;
                         result.factor_copy_recorded = true;
+                        result.frame_graph_command_lists_submitted = frame_graph_execution.command_lists_submitted;
+                        result.frame_graph_queue_waits_recorded = frame_graph_execution.queue_waits_recorded;
+                        result.frame_graph_barriers_recorded = frame_graph_execution.barriers_recorded;
+                        result.frame_graph_pass_callbacks_invoked = frame_graph_execution.pass_callbacks_invoked;
                     }
                     rhi::DescriptorWrite write{
                         .set = result.descriptor_set,
