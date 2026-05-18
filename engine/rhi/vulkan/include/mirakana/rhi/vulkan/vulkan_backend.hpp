@@ -966,6 +966,7 @@ class VulkanRuntimeTexture {
     record_runtime_texture_buffer_copy(VulkanRuntimeDevice& device, VulkanRuntimeCommandPool& command_pool,
                                        VulkanRuntimeTexture& source, VulkanRuntimeBuffer& destination,
                                        const VulkanRuntimeTextureBufferCopyDesc& desc);
+    friend class VulkanRhiDevice;
 };
 
 struct VulkanRuntimeTextureCreateResult {

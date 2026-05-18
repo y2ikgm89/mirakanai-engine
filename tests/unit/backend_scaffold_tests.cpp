@@ -3965,6 +3965,63 @@ MK_TEST("vulkan rhi device bridge records texture aliasing barriers when runtime
 #endif
 }
 
+MK_TEST("vulkan rhi device transient texture alias group shares one memory allocation when runtime is available") {
+#if defined(_WIN32)
+    HiddenVulkanTestWindow window;
+    if (!window.valid()) {
+        return;
+    }
+
+    mirakana::rhi::vulkan::VulkanInstanceCreateDesc instance_desc;
+    instance_desc.application_name = "GameEngineVulkanRhiTransientTextureAliasMemory";
+    instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+
+    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device(
+        mirakana::rhi::vulkan::VulkanLoaderProbeDesc{.host = mirakana::rhi::current_rhi_host_platform()}, instance_desc,
+        {}, surface);
+    if (!device_result.created) {
+        MK_REQUIRE(!device_result.diagnostic.empty());
+        return;
+    }
+
+    auto rhi =
+        mirakana::rhi::vulkan::create_rhi_device(std::move(device_result.device), ready_vulkan_rhi_mapping_plan());
+    MK_REQUIRE(rhi != nullptr);
+
+    const auto aliases = rhi->acquire_transient_texture_alias_group(
+        mirakana::rhi::TextureDesc{
+            .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+            .format = mirakana::rhi::Format::rgba8_unorm,
+            .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+        },
+        2);
+
+    MK_REQUIRE(aliases.lease.value != 0);
+    MK_REQUIRE(aliases.textures.size() == 2);
+    MK_REQUIRE(aliases.textures[0].value != 0);
+    MK_REQUIRE(aliases.textures[1].value != 0);
+    MK_REQUIRE(aliases.textures[0].value != aliases.textures[1].value);
+
+    auto commands = rhi->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->texture_aliasing_barrier(aliases.textures[0], aliases.textures[1]);
+    commands->close();
+
+    const auto fence = rhi->submit(*commands);
+    rhi->release_transient(aliases.lease);
+    rhi->wait(fence);
+
+    const auto stats = rhi->stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    MK_REQUIRE(stats.transient_resources_acquired == 1);
+    MK_REQUIRE(stats.transient_resources_released == 1);
+    MK_REQUIRE(stats.transient_resources_active == 0);
+    MK_REQUIRE(stats.transient_texture_heap_allocations == 1);
+    MK_REQUIRE(stats.transient_texture_placed_allocations == 2);
+    MK_REQUIRE(stats.transient_texture_placed_resources_alive == 0);
+#endif
+}
+
 MK_TEST("vulkan rhi command list abandons texture transitions without committing state") {
 #if defined(_WIN32)
     HiddenVulkanTestWindow window;

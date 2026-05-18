@@ -199,6 +199,7 @@ inline constexpr std::uint32_t vulkan_image_usage_sampled_bit = 0x00000004U;
 inline constexpr std::uint32_t vulkan_image_usage_storage_bit = 0x00000008U;
 inline constexpr std::uint32_t vulkan_image_usage_color_attachment_bit = 0x00000010U;
 inline constexpr std::uint32_t vulkan_image_usage_depth_stencil_attachment_bit = 0x00000020U;
+inline constexpr std::uint32_t vulkan_image_create_alias_bit = 0x00000400U;
 inline constexpr std::uint32_t vulkan_buffer_usage_transfer_src_bit = 0x00000001U;
 inline constexpr std::uint32_t vulkan_buffer_usage_transfer_dst_bit = 0x00000002U;
 inline constexpr std::uint32_t vulkan_buffer_usage_uniform_buffer_bit = 0x00000010U;
@@ -3223,9 +3224,27 @@ void VulkanRuntimeBuffer::reset() noexcept {
 }
 
 struct VulkanRuntimeTexture::Impl {
+    struct MemoryAllocation {
+        std::shared_ptr<VulkanRuntimeDevice::Impl> device_owner;
+        NativeVulkanDeviceMemory memory{0};
+
+        ~MemoryAllocation() {
+            reset();
+        }
+
+        void reset() noexcept {
+            if (device_owner != nullptr && device_owner->device != nullptr && device_owner->free_memory != nullptr &&
+                memory != 0) {
+                device_owner->free_memory(device_owner->device, memory, nullptr);
+            }
+            memory = 0;
+        }
+    };
+
     std::shared_ptr<VulkanRuntimeDevice::Impl> device_owner;
     NativeVulkanImage image{0};
     NativeVulkanImageView image_view{0};
+    std::shared_ptr<MemoryAllocation> memory_allocation;
     NativeVulkanDeviceMemory memory{0};
     TextureDesc desc;
     bool destroyed{false};
@@ -3245,12 +3264,10 @@ struct VulkanRuntimeTexture::Impl {
             if (image != 0 && device_owner->destroy_image != nullptr) {
                 device_owner->destroy_image(device_owner->device, image, nullptr);
             }
-            if (memory != 0 && device_owner->free_memory != nullptr) {
-                device_owner->free_memory(device_owner->device, memory, nullptr);
-            }
         }
         image_view = 0;
         image = 0;
+        memory_allocation.reset();
         memory = 0;
     }
 };
@@ -3270,7 +3287,8 @@ bool VulkanRuntimeTexture::owns_image() const noexcept {
 }
 
 bool VulkanRuntimeTexture::owns_memory() const noexcept {
-    return impl_ != nullptr && impl_->memory != 0;
+    return impl_ != nullptr && impl_->memory != 0 && impl_->memory_allocation != nullptr &&
+           impl_->memory_allocation->memory != 0;
 }
 
 bool VulkanRuntimeTexture::destroyed() const noexcept {
@@ -3488,23 +3506,7 @@ class VulkanRhiDevice final : public IRhiDevice {
         }
 
         VulkanRuntimeTexture texture = std::move(result.texture);
-        const auto lifetime_registration = resource_lifetime_.register_resource(RhiResourceRegistrationDesc{
-            .kind = RhiResourceKind::texture,
-            .owner = "vulkan",
-            .debug_name = vulkan_rhi_resource_debug_name("texture", static_cast<std::uint32_t>(textures_.size() + 1U)),
-        });
-        if (!lifetime_registration.succeeded()) {
-            texture.reset();
-            throw std::logic_error("vulkan rhi texture lifetime registration failed");
-        }
-
-        textures_.push_back(std::move(texture));
-        texture_descs_.push_back(desc);
-        texture_active_.push_back(true);
-        texture_lifetime_.push_back(lifetime_registration.handle);
-        texture_states_.push_back(ResourceState::undefined);
-        ++stats_.textures_created;
-        return TextureHandle{static_cast<std::uint32_t>(textures_.size())};
+        return register_texture(std::move(texture), desc, false);
     }
 
     [[nodiscard]] SamplerHandle create_sampler(const SamplerDesc& desc) override {
@@ -3670,6 +3672,7 @@ class VulkanRhiDevice final : public IRhiDevice {
 
     [[nodiscard]] TransientTexture acquire_transient_texture(const TextureDesc& desc) override {
         const auto texture = create_texture(desc);
+        texture_transient_placed_alive_.at(texture.value - 1U) = true;
         const auto lease = TransientResourceHandle{next_transient_resource_++};
         transient_leases_.push_back(TransientLeaseRecord{
             .kind = TransientResourceKind::texture,
@@ -3679,6 +3682,9 @@ class VulkanRhiDevice final : public IRhiDevice {
         });
         ++stats_.transient_resources_acquired;
         ++stats_.transient_resources_active;
+        ++stats_.transient_texture_heap_allocations;
+        ++stats_.transient_texture_placed_allocations;
+        ++stats_.transient_texture_placed_resources_alive;
         return TransientTexture{.lease = lease, .texture = texture};
     }
 
@@ -3688,10 +3694,12 @@ class VulkanRhiDevice final : public IRhiDevice {
             throw std::invalid_argument("vulkan rhi transient texture alias group requires at least one texture");
         }
 
+        auto runtime_textures = create_transient_texture_alias_images(desc, texture_count);
+
         std::vector<TextureHandle> textures;
-        textures.reserve(texture_count);
-        for (std::size_t i = 0; i < texture_count; ++i) {
-            textures.push_back(create_texture(desc));
+        textures.reserve(runtime_textures.size());
+        for (auto& texture : runtime_textures) {
+            textures.push_back(register_texture(std::move(texture), desc, true));
         }
 
         const auto lease = TransientResourceHandle{next_transient_resource_++};
@@ -3703,6 +3711,9 @@ class VulkanRhiDevice final : public IRhiDevice {
         });
         ++stats_.transient_resources_acquired;
         ++stats_.transient_resources_active;
+        ++stats_.transient_texture_heap_allocations;
+        stats_.transient_texture_placed_allocations += static_cast<std::uint64_t>(textures.size());
+        stats_.transient_texture_placed_resources_alive += static_cast<std::uint64_t>(textures.size());
         return TransientTextureAliasGroup{.lease = lease, .textures = std::move(textures)};
     }
 
@@ -3732,6 +3743,11 @@ class VulkanRhiDevice final : public IRhiDevice {
                     (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
                     texture_active_.at(index) = false;
                     texture_states_.at(index) = ResourceState::undefined;
+                    if (texture_transient_placed_alive_.at(index) &&
+                        stats_.transient_texture_placed_resources_alive > 0) {
+                        texture_transient_placed_alive_.at(index) = false;
+                        --stats_.transient_texture_placed_resources_alive;
+                    }
                 }
             }
         }
@@ -4094,6 +4110,12 @@ class VulkanRhiDevice final : public IRhiDevice {
         throw std::logic_error("vulkan IRhiDevice " + std::string(feature) + " is not implemented yet");
     }
 
+    [[nodiscard]] TextureHandle register_texture(VulkanRuntimeTexture texture, const TextureDesc& desc,
+                                                 bool transient_placed_alive);
+
+    [[nodiscard]] std::vector<VulkanRuntimeTexture> create_transient_texture_alias_images(const TextureDesc& desc,
+                                                                                          std::size_t texture_count);
+
     struct SurfaceSupportQuery {
         bool queried{false};
         VulkanSwapchainSupport support;
@@ -4348,6 +4370,7 @@ class VulkanRhiDevice final : public IRhiDevice {
     std::vector<VulkanRuntimeTexture> textures_;
     std::vector<TextureDesc> texture_descs_;
     std::vector<bool> texture_active_;
+    std::vector<bool> texture_transient_placed_alive_;
     std::vector<RhiResourceHandle> texture_lifetime_;
     std::vector<bool> sampler_active_;
     std::vector<RhiResourceHandle> sampler_lifetime_;
@@ -5621,6 +5644,219 @@ void VulkanRhiDevice::advance_gpu_timeline_completion(std::uint64_t target_timel
 
         stats_.last_completed_fence_value = std::max(stats_.last_completed_fence_value, entry.timeline_value);
     }
+}
+
+TextureHandle VulkanRhiDevice::register_texture(VulkanRuntimeTexture texture, const TextureDesc& desc,
+                                                bool transient_placed_alive) {
+    const auto lifetime_registration = resource_lifetime_.register_resource(RhiResourceRegistrationDesc{
+        .kind = RhiResourceKind::texture,
+        .owner = "vulkan",
+        .debug_name = vulkan_rhi_resource_debug_name("texture", static_cast<std::uint32_t>(textures_.size() + 1U)),
+    });
+    if (!lifetime_registration.succeeded()) {
+        texture.reset();
+        throw std::logic_error("vulkan rhi texture lifetime registration failed");
+    }
+
+    textures_.push_back(std::move(texture));
+    texture_descs_.push_back(desc);
+    texture_active_.push_back(true);
+    texture_transient_placed_alive_.push_back(transient_placed_alive);
+    texture_lifetime_.push_back(lifetime_registration.handle);
+    texture_states_.push_back(ResourceState::undefined);
+    ++stats_.textures_created;
+    return TextureHandle{static_cast<std::uint32_t>(textures_.size())};
+}
+
+std::vector<VulkanRuntimeTexture> VulkanRhiDevice::create_transient_texture_alias_images(const TextureDesc& desc,
+                                                                                         std::size_t texture_count) {
+    const auto runtime_desc = VulkanRuntimeTextureDesc{desc};
+    const auto plan = build_runtime_texture_create_plan(runtime_desc);
+    const auto fail = [](std::string diagnostic) -> std::vector<VulkanRuntimeTexture> {
+        throw std::invalid_argument("vulkan rhi transient texture alias group creation failed: " + diagnostic);
+    };
+
+    if (!plan.supported) {
+        return fail(plan.diagnostic);
+    }
+    if (device_.impl_ == nullptr || device_.impl_->device == nullptr) {
+        return fail("Vulkan runtime device is not available");
+    }
+    if (device_.impl_->create_image == nullptr || device_.impl_->destroy_image == nullptr ||
+        device_.impl_->get_image_memory_requirements == nullptr || device_.impl_->allocate_memory == nullptr ||
+        device_.impl_->free_memory == nullptr || device_.impl_->bind_image_memory == nullptr ||
+        device_.impl_->get_physical_device_memory_properties == nullptr) {
+        return fail("Vulkan runtime texture commands are unavailable");
+    }
+
+    const bool needs_image_view =
+        has_flag(desc.usage, TextureUsage::render_target) || has_flag(desc.usage, TextureUsage::depth_stencil) ||
+        has_flag(desc.usage, TextureUsage::shader_resource) || has_flag(desc.usage, TextureUsage::storage);
+    if (needs_image_view &&
+        (device_.impl_->create_image_view == nullptr || device_.impl_->destroy_image_view == nullptr)) {
+        return fail("Vulkan runtime texture image-view commands are unavailable");
+    }
+
+    std::vector<NativeVulkanImage> images(texture_count, 0);
+    std::vector<NativeVulkanImageView> image_views(texture_count, 0);
+    std::vector<NativeVulkanMemoryRequirements> requirements(texture_count);
+
+    const auto destroy_image_views = [&]() noexcept {
+        if (device_.impl_->destroy_image_view == nullptr) {
+            return;
+        }
+        for (auto& image_view : image_views) {
+            if (image_view != 0) {
+                device_.impl_->destroy_image_view(device_.impl_->device, image_view, nullptr);
+                image_view = 0;
+            }
+        }
+    };
+    const auto destroy_images = [&]() noexcept {
+        for (auto& image : images) {
+            if (image != 0) {
+                device_.impl_->destroy_image(device_.impl_->device, image, nullptr);
+                image = 0;
+            }
+        }
+    };
+    const auto cleanup = [&]() noexcept {
+        destroy_image_views();
+        destroy_images();
+    };
+
+    const NativeVulkanImageCreateInfo image_create_info{
+        .s_type = vulkan_structure_type_image_create_info,
+        .next = nullptr,
+        .flags = vulkan_image_create_alias_bit,
+        .image_type = vulkan_image_type_2d,
+        .format = native_vulkan_format(plan.format),
+        .extent =
+            NativeVulkanExtent3D{.width = plan.extent.width, .height = plan.extent.height, .depth = plan.extent.depth},
+        .mip_levels = 1,
+        .array_layers = 1,
+        .samples = vulkan_sample_count_1_bit,
+        .tiling = vulkan_image_tiling_optimal,
+        .usage = native_vulkan_texture_usage_flags(plan.usage),
+        .sharing_mode = vulkan_sharing_mode_exclusive,
+        .queue_family_index_count = 0,
+        .queue_family_indices = nullptr,
+        .initial_layout = vulkan_image_layout_undefined,
+    };
+
+    for (std::size_t i = 0; i < texture_count; ++i) {
+        const auto image_result =
+            device_.impl_->create_image(device_.impl_->device, &image_create_info, nullptr, &images[i]);
+        if (image_result != vulkan_success || images[i] == 0) {
+            cleanup();
+            return fail(vulkan_result_diagnostic("Vulkan vkCreateImage failed", image_result));
+        }
+
+        device_.impl_->get_image_memory_requirements(device_.impl_->device, images[i], &requirements[i]);
+        if (requirements[i].size == 0 || requirements[i].memory_type_bits == 0) {
+            cleanup();
+            return fail("Vulkan image memory requirements are unavailable");
+        }
+        if (i > 0 &&
+            (requirements[i].size != requirements[0].size || requirements[i].alignment != requirements[0].alignment ||
+             requirements[i].memory_type_bits != requirements[0].memory_type_bits)) {
+            cleanup();
+            return fail("Vulkan alias image memory requirements are incompatible");
+        }
+    }
+
+    NativeVulkanPhysicalDeviceMemoryProperties memory_properties{};
+    device_.impl_->get_physical_device_memory_properties(device_.impl_->physical_device, &memory_properties);
+    const auto memory_type_index = find_memory_type_index(memory_properties, requirements[0].memory_type_bits,
+                                                          native_vulkan_memory_property_flags(plan.memory));
+    if (memory_type_index == invalid_vulkan_queue_family) {
+        cleanup();
+        return fail("Vulkan image memory type is unavailable");
+    }
+
+    const NativeVulkanMemoryAllocateInfo allocate_info{
+        .s_type = vulkan_structure_type_memory_allocate_info,
+        .next = nullptr,
+        .allocation_size = requirements[0].size,
+        .memory_type_index = memory_type_index,
+    };
+    NativeVulkanDeviceMemory memory = 0;
+    const auto allocate_result =
+        device_.impl_->allocate_memory(device_.impl_->device, &allocate_info, nullptr, &memory);
+    if (allocate_result != vulkan_success || memory == 0) {
+        cleanup();
+        return fail(vulkan_result_diagnostic("Vulkan vkAllocateMemory failed", allocate_result));
+    }
+
+    for (const auto image : images) {
+        const auto bind_result = device_.impl_->bind_image_memory(device_.impl_->device, image, memory, 0);
+        if (bind_result != vulkan_success) {
+            cleanup();
+            device_.impl_->free_memory(device_.impl_->device, memory, nullptr);
+            return fail(vulkan_result_diagnostic("Vulkan vkBindImageMemory failed", bind_result));
+        }
+    }
+
+    if (needs_image_view) {
+        for (std::size_t i = 0; i < images.size(); ++i) {
+            const NativeVulkanImageViewCreateInfo view_info{
+                .s_type = vulkan_structure_type_image_view_create_info,
+                .next = nullptr,
+                .flags = 0,
+                .image = images[i],
+                .view_type = vulkan_image_view_type_2d,
+                .format = native_vulkan_format(plan.format),
+                .components =
+                    NativeVulkanComponentMapping{
+                        .r = vulkan_component_swizzle_identity,
+                        .g = vulkan_component_swizzle_identity,
+                        .b = vulkan_component_swizzle_identity,
+                        .a = vulkan_component_swizzle_identity,
+                    },
+                .subresource_range =
+                    NativeVulkanImageSubresourceRange{.aspect_mask = native_vulkan_image_aspect_flags(plan.format),
+                                                      .base_mip_level = 0,
+                                                      .level_count = 1,
+                                                      .base_array_layer = 0,
+                                                      .layer_count = 1},
+            };
+            const auto view_result =
+                device_.impl_->create_image_view(device_.impl_->device, &view_info, nullptr, &image_views[i]);
+            if (view_result != vulkan_success || image_views[i] == 0) {
+                cleanup();
+                device_.impl_->free_memory(device_.impl_->device, memory, nullptr);
+                return fail(vulkan_result_diagnostic("Vulkan vkCreateImageView failed", view_result));
+            }
+        }
+    }
+
+    auto memory_allocation = std::make_shared<VulkanRuntimeTexture::Impl::MemoryAllocation>();
+    memory_allocation->device_owner = device_.impl_;
+    memory_allocation->memory = memory;
+
+    std::vector<VulkanRuntimeTexture> textures;
+    textures.reserve(images.size());
+    for (std::size_t i = 0; i < images.size(); ++i) {
+        vulkan_label_runtime_object(static_cast<void*>(device_.impl_.get()), vulkan_object_type_image, images[i],
+                                    "GameEngine.RHI.Vulkan.TransientAliasTextureImage");
+        if (image_views[i] != 0) {
+            vulkan_label_runtime_object(static_cast<void*>(device_.impl_.get()), vulkan_object_type_image_view,
+                                        image_views[i], "GameEngine.RHI.Vulkan.TransientAliasTextureImageView");
+        }
+
+        auto impl = std::make_unique<VulkanRuntimeTexture::Impl>();
+        impl->device_owner = device_.impl_;
+        impl->image = images[i];
+        impl->image_view = image_views[i];
+        impl->memory_allocation = memory_allocation;
+        impl->memory = memory;
+        impl->desc = desc;
+        textures.emplace_back(VulkanRuntimeTexture{std::move(impl)});
+        images[i] = 0;
+        image_views[i] = 0;
+    }
+
+    return textures;
 }
 
 VulkanRhiDevice::~VulkanRhiDevice() {
@@ -9153,10 +9389,15 @@ VulkanRuntimeTextureCreateResult create_runtime_texture(VulkanRuntimeDevice& dev
                                     "GameEngine.RHI.Vulkan.TextureImageView");
     }
 
+    auto memory_allocation = std::make_shared<VulkanRuntimeTexture::Impl::MemoryAllocation>();
+    memory_allocation->device_owner = device.impl_;
+    memory_allocation->memory = memory;
+
     auto impl = std::make_unique<VulkanRuntimeTexture::Impl>();
     impl->device_owner = device.impl_;
     impl->image = image;
     impl->image_view = image_view;
+    impl->memory_allocation = std::move(memory_allocation);
     impl->memory = memory;
     impl->desc = desc.texture;
     result.texture = VulkanRuntimeTexture{std::move(impl)};

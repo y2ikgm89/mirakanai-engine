@@ -1726,6 +1726,8 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("transient_texture_placed_resources_alive") -or
     -not ([string]$frameGraphGap[0].notes).Contains("backend-private alias-group texture leases") -or
     -not ([string]$frameGraphGap[0].notes).Contains("placed_resource_aliasing_barriers") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("Vulkan transient alias-group texture leases") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("VK_IMAGE_CREATE_ALIAS_BIT") -or
     -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::acquire_transient_texture_alias_group") -or
     -not ([string]$frameGraphGap[0].notes).Contains("zero/duplicate/wrong-count backend-return validation") -or
     -not ([string]$frameGraphGap[0].notes).Contains("data inheritance/content preservation") -or
