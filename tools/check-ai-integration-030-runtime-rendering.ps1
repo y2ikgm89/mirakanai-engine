@@ -1699,6 +1699,9 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQu
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionResult::final_state_barriers_recorded" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "consumer-pass texture barriers recorded before callbacks" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "alias-induced cross-queue waits" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueuePackageEvidence" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "aliasing-barrier, submitted-fence" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "final-state transitions recorded on the last scheduled resource pass command list" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Production Ownership Boundary Selection v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphProductionOwnershipPlan" "MK_renderer module purpose"
@@ -2142,6 +2145,34 @@ foreach ($rendererQualityPackageGuidance in @(
     Assert-ContainsText $rendererQualityPackageText "renderer_quality_framegraph_barrier_steps_ok" $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "framegraph_render_passes_recorded" $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "framegraph_barrier_steps_executed" $rendererQualityPackageGuidance
+}
+foreach ($multiQueuePackageGuidance in @(
+    "engine/agent/manifest.json",
+    "games/sample_desktop_runtime_game/game.agent.json",
+    "games/sample_desktop_runtime_game/README.md",
+    "docs/ai-game-development.md",
+    "docs/roadmap.md",
+    ".agents/skills/rendering-change/references/full-guidance.md",
+    ".claude/skills/gameengine-rendering/references/full-guidance.md"
+)) {
+    $multiQueuePackageText = Get-AgentSurfaceText $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "--require-framegraph-multiqueue-evidence" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_command_lists_submitted=4" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_queue_waits_recorded=3" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_barriers_recorded=4" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_aliasing_barriers_recorded=1" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_submitted_pass_fences=4" $multiQueuePackageGuidance
+}
+$installedMultiQueuePackageValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
+foreach ($installedMultiQueueExpectedField in @(
+    '"framegraph_multiqueue_command_lists_submitted" = "4"',
+    '"framegraph_multiqueue_queue_waits_recorded" = "3"',
+    '"framegraph_multiqueue_barriers_recorded" = "4"',
+    '"framegraph_multiqueue_aliasing_barriers_recorded" = "1"',
+    '"framegraph_multiqueue_pass_callbacks_invoked" = "4"',
+    '"framegraph_multiqueue_submitted_pass_fences" = "4"'
+)) {
+    Assert-ContainsText $installedMultiQueuePackageValidationText $installedMultiQueueExpectedField "tools/validate-installed-desktop-runtime.ps1"
 }
 foreach ($renderPassPackageGuidance in @(
     ".agents/skills/rendering-change/references/full-guidance.md",

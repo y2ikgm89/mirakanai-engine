@@ -876,11 +876,12 @@ if ($requiresFrameGraphMultiQueueEvidence) {
         "framegraph_multiqueue_status" = "ready"
         "framegraph_multiqueue_ready" = "1"
         "framegraph_multiqueue_diagnostics" = "0"
-        "framegraph_multiqueue_command_lists_submitted" = "2"
-        "framegraph_multiqueue_queue_waits_recorded" = "1"
-        "framegraph_multiqueue_barriers_recorded" = "1"
-        "framegraph_multiqueue_pass_callbacks_invoked" = "2"
-        "framegraph_multiqueue_submitted_pass_fences" = "2"
+        "framegraph_multiqueue_command_lists_submitted" = "4"
+        "framegraph_multiqueue_queue_waits_recorded" = "3"
+        "framegraph_multiqueue_barriers_recorded" = "4"
+        "framegraph_multiqueue_aliasing_barriers_recorded" = "1"
+        "framegraph_multiqueue_pass_callbacks_invoked" = "4"
+        "framegraph_multiqueue_submitted_pass_fences" = "4"
         "framegraph_multiqueue_graphics_waited_for_copy" = "1"
     }
     foreach ($field in $expectedFrameGraphMultiQueueFields.Keys) {

@@ -796,7 +796,7 @@ run_frame_graph_multi_queue_package_evidence(mirakana::SdlDesktopPresentation& p
     evidence.diagnostics.push_back(mirakana::FrameGraphDiagnostic{
         .code = mirakana::FrameGraphDiagnosticCode::invalid_pass,
         .pass = "framegraph_multiqueue",
-        .resource = "package.uploaded_texture",
+        .resource = "package.alias.early",
         .message = "Frame Graph multi-queue package evidence requires a native RHI device",
     });
     return evidence;
@@ -1648,6 +1648,7 @@ int main(int argc, char** argv) {
         << " framegraph_multiqueue_command_lists_submitted=" << framegraph_multiqueue.command_lists_submitted
         << " framegraph_multiqueue_queue_waits_recorded=" << framegraph_multiqueue.queue_waits_recorded
         << " framegraph_multiqueue_barriers_recorded=" << framegraph_multiqueue.barriers_recorded
+        << " framegraph_multiqueue_aliasing_barriers_recorded=" << framegraph_multiqueue.aliasing_barriers_recorded
         << " framegraph_multiqueue_pass_callbacks_invoked=" << framegraph_multiqueue.pass_callbacks_invoked
         << " framegraph_multiqueue_submitted_pass_fences=" << framegraph_multiqueue.submitted_pass_fences
         << " framegraph_multiqueue_copy_queue_submits=" << framegraph_multiqueue.copy_queue_submits

@@ -3400,7 +3400,7 @@ MK_TEST("frame graph rhi multi queue executor inserts aliasing barriers before l
 
     MK_REQUIRE(result.succeeded());
     MK_REQUIRE(result.command_lists_submitted == 4);
-    MK_REQUIRE(result.queue_waits_recorded == 2);
+    MK_REQUIRE(result.queue_waits_recorded == 3);
     MK_REQUIRE(result.aliasing_barriers_recorded == 1);
     MK_REQUIRE(result.pass_target_state_barriers_recorded == 2);
     MK_REQUIRE(result.barriers_recorded == 4);
@@ -3416,7 +3416,9 @@ MK_TEST("frame graph rhi multi queue executor inserts aliasing barriers before l
     MK_REQUIRE(stats.resource_transitions == 4);
     MK_REQUIRE(stats.copy_queue_submits == 2);
     MK_REQUIRE(stats.graphics_queue_submits == 2);
-    MK_REQUIRE(stats.queue_waits == 2);
+    MK_REQUIRE(stats.queue_waits == 3);
+    MK_REQUIRE(stats.last_copy_queue_wait_fence_queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(stats.last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy);
 
     mirakana::release_frame_graph_transient_texture_lease_bindings(device, leases.leases);
 }
@@ -3944,21 +3946,22 @@ MK_TEST("frame graph rhi multi queue executor rejects render pass rows before co
     }
 }
 
-MK_TEST("frame graph rhi multi queue package evidence reports submitted waits and texture barriers") {
+MK_TEST("frame graph rhi multi queue package evidence reports submitted waits texture and aliasing barriers") {
     mirakana::rhi::NullRhiDevice device;
 
     const auto evidence = mirakana::execute_frame_graph_rhi_multi_queue_package_evidence(device);
 
     MK_REQUIRE(evidence.succeeded());
     MK_REQUIRE(evidence.ready);
-    MK_REQUIRE(evidence.command_lists_submitted == 2);
-    MK_REQUIRE(evidence.queue_waits_recorded == 1);
-    MK_REQUIRE(evidence.barriers_recorded == 1);
-    MK_REQUIRE(evidence.pass_callbacks_invoked == 2);
-    MK_REQUIRE(evidence.submitted_pass_fences == 2);
-    MK_REQUIRE(evidence.copy_queue_submits >= 1);
-    MK_REQUIRE(evidence.graphics_queue_submits >= 1);
-    MK_REQUIRE(evidence.queue_waits >= 1);
+    MK_REQUIRE(evidence.command_lists_submitted == 4);
+    MK_REQUIRE(evidence.queue_waits_recorded == 3);
+    MK_REQUIRE(evidence.barriers_recorded == 4);
+    MK_REQUIRE(evidence.aliasing_barriers_recorded == 1);
+    MK_REQUIRE(evidence.pass_callbacks_invoked == 4);
+    MK_REQUIRE(evidence.submitted_pass_fences == 4);
+    MK_REQUIRE(evidence.copy_queue_submits >= 2);
+    MK_REQUIRE(evidence.graphics_queue_submits >= 2);
+    MK_REQUIRE(evidence.queue_waits >= 3);
     MK_REQUIRE(evidence.graphics_waited_for_copy);
 }
 

@@ -47,6 +47,7 @@ struct PlannedTextureAliasingBarrier {
     std::size_t before_binding_index{0};
     std::size_t after_binding_index{0};
     std::string pass_name;
+    std::string waits_for_pass_name;
     std::string before_resource;
     std::string after_resource;
 };
@@ -363,6 +364,7 @@ plan_automatic_texture_aliasing_barriers(
                 .before_binding_index = before_binding->second,
                 .after_binding_index = after_binding->second,
                 .pass_name = pass_name,
+                .waits_for_pass_name = scheduled_pass_order[before.last_pass_index],
                 .before_resource = before.resource,
                 .after_resource = after.resource,
             });
@@ -370,6 +372,43 @@ plan_automatic_texture_aliasing_barriers(
     }
 
     return planned_barriers_by_pass;
+}
+
+void append_aliasing_queue_waits(
+    std::map<std::string, std::vector<FrameGraphRhiQueueWait>>& queue_waits_by_pass,
+    const std::map<std::string, std::vector<PlannedTextureAliasingBarrier>>& planned_aliasing_barriers,
+    const FrameGraphRhiPassCommandMap& pass_commands) {
+    std::map<std::pair<std::string, std::string>, bool> wait_keys;
+    for (const auto& [pass_name, waits] : queue_waits_by_pass) {
+        for (const auto& wait : waits) {
+            wait_keys.emplace(std::pair{pass_name, wait.waits_for_pass_name}, true);
+        }
+    }
+
+    for (const auto& [pass_name, aliasing_barriers] : planned_aliasing_barriers) {
+        const auto consumer = pass_commands.find(pass_name);
+        if (consumer == pass_commands.end()) {
+            continue;
+        }
+        for (const auto& aliasing_barrier : aliasing_barriers) {
+            const auto producer = pass_commands.find(aliasing_barrier.waits_for_pass_name);
+            if (producer == pass_commands.end() || producer->second.queue == consumer->second.queue) {
+                continue;
+            }
+
+            const auto key = std::pair{pass_name, aliasing_barrier.waits_for_pass_name};
+            const auto [_, inserted] = wait_keys.emplace(key, true);
+            if (!inserted) {
+                continue;
+            }
+            queue_waits_by_pass[pass_name].push_back(FrameGraphRhiQueueWait{
+                .pass_name = pass_name,
+                .queue = consumer->second.queue,
+                .waits_for_pass_name = aliasing_barrier.waits_for_pass_name,
+                .waits_for_queue = producer->second.queue,
+            });
+        }
+    }
 }
 
 template <typename Result>
@@ -1789,6 +1828,7 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
             ? plan_automatic_texture_aliasing_barriers(result, binding_indices, scheduled_pass_order,
                                                        desc.texture_bindings, desc.transient_texture_lifetimes)
             : std::map<std::string, std::vector<PlannedTextureAliasingBarrier>>{};
+    append_aliasing_queue_waits(queue_waits_by_pass, planned_aliasing_barriers, pass_commands);
     const auto planned_pass_target_states = result.succeeded()
                                                 ? plan_pass_target_states(result, binding_indices, scheduled_passes,
                                                                           pass_target_accesses, desc.pass_target_states)
@@ -2029,20 +2069,38 @@ FrameGraphRhiMultiQueuePackageEvidence execute_frame_graph_rhi_multi_queue_packa
 
     FrameGraphV1Desc desc;
     desc.resources.push_back(FrameGraphResourceV1Desc{
-        .name = "package.uploaded_texture",
-        .lifetime = FrameGraphResourceLifetime::imported,
+        .name = "package.alias.early",
+        .lifetime = FrameGraphResourceLifetime::transient,
+    });
+    desc.resources.push_back(FrameGraphResourceV1Desc{
+        .name = "package.alias.late",
+        .lifetime = FrameGraphResourceLifetime::transient,
     });
     desc.passes.push_back(FrameGraphPassV1Desc{
-        .name = "copy.upload",
+        .name = "early.copy",
         .writes = {FrameGraphResourceAccess{
-            .resource = "package.uploaded_texture",
+            .resource = "package.alias.early",
             .access = FrameGraphAccess::copy_destination,
         }},
     });
     desc.passes.push_back(FrameGraphPassV1Desc{
-        .name = "graphics.sample",
+        .name = "early.sample",
         .reads = {FrameGraphResourceAccess{
-            .resource = "package.uploaded_texture",
+            .resource = "package.alias.early",
+            .access = FrameGraphAccess::shader_read,
+        }},
+    });
+    desc.passes.push_back(FrameGraphPassV1Desc{
+        .name = "late.copy",
+        .writes = {FrameGraphResourceAccess{
+            .resource = "package.alias.late",
+            .access = FrameGraphAccess::copy_destination,
+        }},
+    });
+    desc.passes.push_back(FrameGraphPassV1Desc{
+        .name = "late.sample",
+        .reads = {FrameGraphResourceAccess{
+            .resource = "package.alias.late",
             .access = FrameGraphAccess::shader_read,
         }},
     });
@@ -2054,93 +2112,77 @@ FrameGraphRhiMultiQueuePackageEvidence execute_frame_graph_rhi_multi_queue_packa
     }
     const auto schedule = schedule_frame_graph_v1_execution(plan);
 
-    rhi::TextureHandle texture;
-    try {
-        texture = device.create_texture(rhi::TextureDesc{
-            .extent = rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
-            .format = rhi::Format::rgba8_unorm,
-            .usage = rhi::TextureUsage::copy_destination | rhi::TextureUsage::shader_resource,
-        });
-    } catch (const std::exception& ex) {
-        append_frame_graph_rhi_diagnostic(
-            result, FrameGraphDiagnosticCode::invalid_resource, {}, "package.uploaded_texture",
-            std::string{"frame graph multi queue package evidence texture creation failed: "} + ex.what());
-        return result;
-    } catch (...) {
-        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, {},
-                                          "package.uploaded_texture",
-                                          "frame graph multi queue package evidence texture creation failed");
-        return result;
-    }
-    if (texture.value == 0) {
-        append_frame_graph_rhi_diagnostic(
-            result, FrameGraphDiagnosticCode::invalid_resource, {}, "package.uploaded_texture",
-            "frame graph multi queue package evidence texture creation returned empty handle");
+    const auto texture_desc = rhi::TextureDesc{
+        .extent = rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = rhi::Format::rgba8_unorm,
+        .usage = rhi::TextureUsage::copy_destination | rhi::TextureUsage::shader_resource,
+    };
+    const std::vector<FrameGraphTransientTextureDesc> transient_textures{
+        FrameGraphTransientTextureDesc{.resource = "package.alias.early", .desc = texture_desc},
+        FrameGraphTransientTextureDesc{.resource = "package.alias.late", .desc = texture_desc},
+    };
+    const auto alias_plan = plan_frame_graph_transient_texture_aliases(desc, transient_textures);
+    if (!alias_plan.succeeded()) {
+        result.diagnostics = alias_plan.diagnostics;
         return result;
     }
 
-    try {
-        auto setup = device.begin_command_list(rhi::QueueKind::copy);
-        if (setup == nullptr || setup->closed()) {
-            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, "copy.upload",
-                                              "package.uploaded_texture",
-                                              "frame graph multi queue package evidence setup command list is invalid");
-            return result;
-        }
-        setup->transition_texture(texture, rhi::ResourceState::undefined, rhi::ResourceState::copy_destination);
-        setup->close();
-        const auto setup_fence = device.submit(*setup);
-        if (setup_fence.value == 0) {
-            append_frame_graph_rhi_diagnostic(
-                result, FrameGraphDiagnosticCode::invalid_pass, "copy.upload", "package.uploaded_texture",
-                "frame graph multi queue package evidence setup submit returned empty fence");
-            return result;
-        }
-    } catch (const std::exception& ex) {
-        append_frame_graph_rhi_diagnostic(
-            result, FrameGraphDiagnosticCode::invalid_pass, "copy.upload", "package.uploaded_texture",
-            std::string{"frame graph multi queue package evidence setup failed: "} + ex.what());
-        return result;
-    } catch (...) {
-        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, "copy.upload",
-                                          "package.uploaded_texture",
-                                          "frame graph multi queue package evidence setup failed");
+    auto leases = acquire_frame_graph_transient_texture_lease_bindings(device, alias_plan);
+    if (!leases.succeeded()) {
+        result.diagnostics = leases.diagnostics;
         return result;
     }
 
-    std::vector<FrameGraphTextureBinding> bindings{FrameGraphTextureBinding{
-        .resource = "package.uploaded_texture",
-        .texture = texture,
-        .current_state = rhi::ResourceState::copy_destination,
-    }};
+    const auto pass_target_accesses = build_frame_graph_texture_pass_target_accesses(desc);
+    const std::vector<FrameGraphTexturePassTargetState> pass_target_states{
+        FrameGraphTexturePassTargetState{
+            .pass_name = "early.copy",
+            .resource = "package.alias.early",
+            .state = rhi::ResourceState::copy_destination,
+        },
+        FrameGraphTexturePassTargetState{
+            .pass_name = "late.copy",
+            .resource = "package.alias.late",
+            .state = rhi::ResourceState::copy_destination,
+        },
+    };
+    const auto make_queue_callback = [](rhi::QueueKind expected, std::string message) {
+        return [expected, message = std::move(message)](std::string_view, rhi::IRhiCommandList& commands) {
+            if (commands.queue_kind() != expected) {
+                return FrameGraphExecutionCallbackResult{
+                    .ok = false,
+                    .message = message,
+                };
+            }
+            return FrameGraphExecutionCallbackResult{};
+        };
+    };
     const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{
         FrameGraphRhiPassCommandBinding{
-            .pass_name = "copy.upload",
+            .pass_name = "early.copy",
             .queue = rhi::QueueKind::copy,
-            .callback =
-                [](std::string_view, rhi::IRhiCommandList& commands) {
-                    if (commands.queue_kind() != rhi::QueueKind::copy) {
-                        return FrameGraphExecutionCallbackResult{
-                            .ok = false,
-                            .message = "frame graph multi queue package evidence expected copy queue command list",
-                        };
-                    }
-                    return FrameGraphExecutionCallbackResult{};
-                },
+            .callback = make_queue_callback(
+                rhi::QueueKind::copy, "frame graph multi queue package evidence expected copy queue command list"),
         },
         FrameGraphRhiPassCommandBinding{
-            .pass_name = "graphics.sample",
+            .pass_name = "early.sample",
             .queue = rhi::QueueKind::graphics,
             .callback =
-                [](std::string_view, rhi::IRhiCommandList& commands) {
-                    if (commands.queue_kind() != rhi::QueueKind::graphics) {
-                        return FrameGraphExecutionCallbackResult{
-                            .ok = false,
-                            .message = "frame graph multi queue package evidence expected graphics queue command list",
-                        };
-                    }
-                    return FrameGraphExecutionCallbackResult{};
-                },
+                make_queue_callback(rhi::QueueKind::graphics,
+                                    "frame graph multi queue package evidence expected graphics queue command list"),
+        },
+        FrameGraphRhiPassCommandBinding{
+            .pass_name = "late.copy",
+            .queue = rhi::QueueKind::copy,
+            .callback = make_queue_callback(
+                rhi::QueueKind::copy, "frame graph multi queue package evidence expected copy queue command list"),
+        },
+        FrameGraphRhiPassCommandBinding{
+            .pass_name = "late.sample",
+            .queue = rhi::QueueKind::graphics,
+            .callback =
+                make_queue_callback(rhi::QueueKind::graphics,
+                                    "frame graph multi queue package evidence expected graphics queue command list"),
         },
     };
 
@@ -2148,20 +2190,22 @@ FrameGraphRhiMultiQueuePackageEvidence execute_frame_graph_rhi_multi_queue_packa
         .device = &device,
         .schedule = schedule,
         .pass_commands = pass_commands,
-        .texture_bindings = bindings,
-        .pass_target_accesses = {},
-        .pass_target_states = {},
+        .texture_bindings = leases.texture_bindings,
+        .pass_target_accesses = pass_target_accesses,
+        .pass_target_states = pass_target_states,
         .render_passes = {},
         .final_states = {},
-        .transient_texture_lifetimes = {},
+        .transient_texture_lifetimes = alias_plan.lifetimes,
     });
     result.command_lists_submitted = execution.command_lists_submitted;
     result.queue_waits_recorded = execution.queue_waits_recorded;
     result.barriers_recorded = execution.barriers_recorded;
+    result.aliasing_barriers_recorded = execution.aliasing_barriers_recorded;
     result.pass_callbacks_invoked = execution.pass_callbacks_invoked;
     result.submitted_pass_fences = execution.submitted_pass_fences.size();
     if (!execution.succeeded()) {
         result.diagnostics = execution.diagnostics;
+        release_frame_graph_transient_texture_lease_bindings(device, leases.leases);
         return result;
     }
 
@@ -2171,15 +2215,17 @@ FrameGraphRhiMultiQueuePackageEvidence execute_frame_graph_rhi_multi_queue_packa
     result.queue_waits = stats.queue_waits;
     result.graphics_waited_for_copy = stats.last_graphics_queue_wait_fence_value > 0 &&
                                       stats.last_graphics_queue_wait_fence_queue == rhi::QueueKind::copy;
-    result.ready = result.command_lists_submitted == 2 && result.queue_waits_recorded == 1 &&
-                   result.barriers_recorded == 1 && result.pass_callbacks_invoked == 2 &&
-                   result.submitted_pass_fences == 2 && result.copy_queue_submits >= 1 &&
-                   result.graphics_queue_submits >= 1 && result.queue_waits >= 1 && result.graphics_waited_for_copy;
+    result.ready = result.command_lists_submitted == 4 && result.queue_waits_recorded == 3 &&
+                   result.barriers_recorded == 4 && result.aliasing_barriers_recorded == 1 &&
+                   result.pass_callbacks_invoked == 4 && result.submitted_pass_fences == 4 &&
+                   result.copy_queue_submits >= 2 && result.graphics_queue_submits >= 2 && result.queue_waits >= 3 &&
+                   result.graphics_waited_for_copy;
     if (!result.ready) {
-        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, "graphics.sample",
-                                          "package.uploaded_texture",
+        append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, "late.sample",
+                                          "package.alias.late",
                                           "frame graph multi queue package evidence did not meet expected counters");
     }
+    release_frame_graph_transient_texture_lease_bindings(device, leases.leases);
     return result;
 }
 

@@ -210,6 +210,7 @@ struct FrameGraphRhiMultiQueuePackageEvidence {
     std::size_t command_lists_submitted{0};
     std::size_t queue_waits_recorded{0};
     std::size_t barriers_recorded{0};
+    std::size_t aliasing_barriers_recorded{0};
     std::size_t pass_callbacks_invoked{0};
     std::size_t submitted_pass_fences{0};
     std::uint64_t graphics_queue_submits{0};

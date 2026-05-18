@@ -1418,6 +1418,46 @@ MK_TEST("d3d12 device context records non null placed resource aliasing barriers
     MK_REQUIRE(context->stats().placed_resources_alive == 0);
 }
 
+MK_TEST("d3d12 device context records placed resource aliasing barriers on copy command lists") {
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
+        .prefer_warp = false,
+        .enable_debug_layer = false,
+    });
+
+    MK_REQUIRE(context != nullptr);
+
+    const auto aliases = context->create_placed_texture_alias_group(
+        mirakana::rhi::TextureDesc{
+            .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+            .format = mirakana::rhi::Format::rgba8_unorm,
+            .usage = mirakana::rhi::TextureUsage::copy_source | mirakana::rhi::TextureUsage::copy_destination |
+                     mirakana::rhi::TextureUsage::shader_resource,
+        },
+        2);
+
+    MK_REQUIRE(aliases.size() == 2);
+    MK_REQUIRE(aliases[0].value != 0);
+    MK_REQUIRE(aliases[1].value != 0);
+    MK_REQUIRE(aliases[0].value != aliases[1].value);
+
+    const auto commands = context->create_command_list(mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(context->texture_aliasing_barrier(commands, aliases[0], aliases[1]));
+    MK_REQUIRE(context->close_command_list(commands));
+    const auto fence = context->execute_command_list(commands);
+    MK_REQUIRE(fence.value != 0);
+    MK_REQUIRE(fence.queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(context->wait_for_fence(fence, 0xFFFFFFFFU));
+
+    const auto stats = context->stats();
+    MK_REQUIRE(stats.texture_aliasing_barriers == 1);
+    MK_REQUIRE(stats.placed_resource_aliasing_barriers == 1);
+    MK_REQUIRE(stats.null_resource_aliasing_barriers == 0);
+
+    context->destroy_committed_resource(aliases[0]);
+    context->destroy_committed_resource(aliases[1]);
+    MK_REQUIRE(context->stats().placed_resources_alive == 0);
+}
+
 MK_TEST("d3d12 device context executes closed command lists and signals fences") {
     auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
         .prefer_warp = false,
