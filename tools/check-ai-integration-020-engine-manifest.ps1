@@ -1618,6 +1618,9 @@ foreach ($needle in @(
     "render_passes_recorded",
     "Frame Graph Render Pass Stats Evidence v1",
     "RendererStats::framegraph_render_passes_recorded",
+    "Runtime Material Factor Frame Graph Command Evidence v1",
+    "RuntimeMaterialGpuBinding",
+    "create_runtime_material_gpu_binding",
     "frame-graph-v1"
 )) {
     Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph transient alias planning"
@@ -1733,6 +1736,9 @@ if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
     -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::wait_for_queue") -or
     -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Multi-Queue Executor v1") -or
     -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_multi_queue_schedule") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("Runtime Material Factor Frame Graph Command Evidence v1") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("RuntimeMaterialGpuBinding") -or
+    -not ([string]$frameGraphGap[0].notes).Contains("material-factor uniform copy") -or
     -not ([string]$frameGraphGap[0].notes).Contains("production multi-queue graph adoption") -or
     -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
     -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or

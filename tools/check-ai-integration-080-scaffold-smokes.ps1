@@ -513,7 +513,11 @@ foreach ($needle in @(
     "RuntimeMeshUploadResult",
     "RuntimeSkinnedMeshUploadResult",
     "RuntimeMorphMeshUploadResult",
-    "RuntimeMaterialGpuBinding"
+    "RuntimeMaterialGpuBinding",
+    "frame_graph_command_lists_submitted",
+    "frame_graph_queue_waits_recorded",
+    "frame_graph_barriers_recorded",
+    "frame_graph_pass_callbacks_invoked"
 )) {
     Assert-ContainsText $runtimeRhiUploadHeader $needle "Runtime RHI upload submission fence header"
 }
@@ -525,7 +529,11 @@ foreach ($needle in @(
     "return RuntimeTextureUploadResult",
     "return RuntimeMeshUploadResult",
     "return RuntimeSkinnedMeshUploadResult",
-    "return RuntimeMorphMeshUploadResult"
+    "return RuntimeMorphMeshUploadResult",
+    "result.frame_graph_command_lists_submitted = frame_graph_execution.command_lists_submitted",
+    "result.frame_graph_queue_waits_recorded = frame_graph_execution.queue_waits_recorded",
+    "result.frame_graph_barriers_recorded = frame_graph_execution.barriers_recorded",
+    "result.frame_graph_pass_callbacks_invoked = frame_graph_execution.pass_callbacks_invoked"
 )) {
     Assert-ContainsText $runtimeRhiUploadSource $needle "Runtime RHI upload submission fence source"
 }
@@ -543,7 +551,11 @@ foreach ($needle in @(
     "runtime rhi upload reports submitted fence without forcing wait",
     "result.submitted_fence.value != 0",
     "binding.submitted_fence.value != 0",
-    "upload.submitted_fence.value != 0"
+    "upload.submitted_fence.value != 0",
+    "binding.frame_graph_command_lists_submitted == 1",
+    "binding.frame_graph_queue_waits_recorded == 0",
+    "binding.frame_graph_barriers_recorded == 0",
+    "binding.frame_graph_pass_callbacks_invoked == 1"
 )) {
     Assert-ContainsText $runtimeRhiTests $needle "MK_runtime_rhi_tests upload submission fence coverage"
 }

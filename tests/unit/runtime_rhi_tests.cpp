@@ -737,6 +737,10 @@ MK_TEST("runtime material gpu binding uploads material factors into uniform buff
     MK_REQUIRE(binding.factor_bytes_uploaded == mirakana::runtime_rhi::runtime_material_uniform_buffer_size_bytes);
     MK_REQUIRE(binding.submitted_fence.value != 0);
     MK_REQUIRE(binding.submitted_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(binding.frame_graph_command_lists_submitted == 1);
+    MK_REQUIRE(binding.frame_graph_queue_waits_recorded == 0);
+    MK_REQUIRE(binding.frame_graph_barriers_recorded == 0);
+    MK_REQUIRE(binding.frame_graph_pass_callbacks_invoked == 1);
 
     const auto stats = device.stats();
     MK_REQUIRE(stats.buffers_created == 3);
