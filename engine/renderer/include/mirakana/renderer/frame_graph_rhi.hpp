@@ -120,60 +120,6 @@ struct FrameGraphRhiSubmittedPassFence {
     rhi::FenceValue fence;
 };
 
-struct FrameGraphRhiQueueWaitRecordResult {
-    std::size_t queue_waits_recorded{0};
-    std::vector<FrameGraphDiagnostic> diagnostics;
-
-    [[nodiscard]] bool succeeded() const noexcept {
-        return diagnostics.empty();
-    }
-};
-
-struct FrameGraphRhiPassCommandBinding {
-    std::string pass_name;
-    rhi::QueueKind queue{rhi::QueueKind::graphics};
-    std::function<FrameGraphExecutionCallbackResult(std::string_view pass_name, rhi::IRhiCommandList& commands)>
-        callback;
-};
-
-struct FrameGraphRhiMultiQueueExecutionDesc {
-    rhi::IRhiDevice* device{nullptr};
-    std::span<const FrameGraphExecutionStep> schedule;
-    std::span<const FrameGraphRhiPassCommandBinding> pass_commands;
-    std::span<FrameGraphTextureBinding> texture_bindings;
-};
-
-struct FrameGraphRhiMultiQueueExecutionResult {
-    std::size_t command_lists_submitted{0};
-    std::size_t queue_waits_recorded{0};
-    std::size_t barriers_recorded{0};
-    std::size_t pass_callbacks_invoked{0};
-    std::vector<FrameGraphRhiSubmittedPassFence> submitted_pass_fences;
-    std::vector<FrameGraphDiagnostic> diagnostics;
-
-    [[nodiscard]] bool succeeded() const noexcept {
-        return diagnostics.empty();
-    }
-};
-
-struct FrameGraphRhiMultiQueuePackageEvidence {
-    bool ready{false};
-    std::size_t command_lists_submitted{0};
-    std::size_t queue_waits_recorded{0};
-    std::size_t barriers_recorded{0};
-    std::size_t pass_callbacks_invoked{0};
-    std::size_t submitted_pass_fences{0};
-    std::uint64_t graphics_queue_submits{0};
-    std::uint64_t copy_queue_submits{0};
-    std::uint64_t queue_waits{0};
-    bool graphics_waited_for_copy{false};
-    std::vector<FrameGraphDiagnostic> diagnostics;
-
-    [[nodiscard]] bool succeeded() const noexcept {
-        return diagnostics.empty();
-    }
-};
-
 struct FrameGraphTextureFinalState {
     std::string resource;
     rhi::ResourceState state{rhi::ResourceState::undefined};
@@ -212,6 +158,65 @@ struct FrameGraphRhiRenderPassDesc {
     std::string pass_name;
     FrameGraphRhiRenderPassColorAttachment color;
     FrameGraphRhiRenderPassDepthAttachment depth;
+};
+
+struct FrameGraphRhiQueueWaitRecordResult {
+    std::size_t queue_waits_recorded{0};
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
+struct FrameGraphRhiPassCommandBinding {
+    std::string pass_name;
+    rhi::QueueKind queue{rhi::QueueKind::graphics};
+    std::function<FrameGraphExecutionCallbackResult(std::string_view pass_name, rhi::IRhiCommandList& commands)>
+        callback;
+};
+
+struct FrameGraphRhiMultiQueueExecutionDesc {
+    rhi::IRhiDevice* device{nullptr};
+    std::span<const FrameGraphExecutionStep> schedule;
+    std::span<const FrameGraphRhiPassCommandBinding> pass_commands;
+    std::span<FrameGraphTextureBinding> texture_bindings;
+    std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses;
+    std::span<const FrameGraphTexturePassTargetState> pass_target_states;
+    std::span<const FrameGraphRhiRenderPassDesc> render_passes;
+};
+
+struct FrameGraphRhiMultiQueueExecutionResult {
+    std::size_t command_lists_submitted{0};
+    std::size_t queue_waits_recorded{0};
+    std::size_t barriers_recorded{0};
+    std::size_t pass_target_state_barriers_recorded{0};
+    std::size_t render_passes_recorded{0};
+    std::size_t pass_callbacks_invoked{0};
+    std::vector<FrameGraphRhiSubmittedPassFence> submitted_pass_fences;
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
+struct FrameGraphRhiMultiQueuePackageEvidence {
+    bool ready{false};
+    std::size_t command_lists_submitted{0};
+    std::size_t queue_waits_recorded{0};
+    std::size_t barriers_recorded{0};
+    std::size_t pass_callbacks_invoked{0};
+    std::size_t submitted_pass_fences{0};
+    std::uint64_t graphics_queue_submits{0};
+    std::uint64_t copy_queue_submits{0};
+    std::uint64_t queue_waits{0};
+    bool graphics_waited_for_copy{false};
+    std::vector<FrameGraphDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
 };
 
 struct FrameGraphRhiTextureExecutionDesc {

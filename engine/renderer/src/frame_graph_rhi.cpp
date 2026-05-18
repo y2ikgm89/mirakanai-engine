@@ -188,6 +188,27 @@ build_pass_command_index(FrameGraphRhiMultiQueueExecutionResult& result,
     return commands;
 }
 
+void validate_multi_queue_render_pass_rows(FrameGraphRhiMultiQueueExecutionResult& result,
+                                           const FrameGraphRhiPassCommandMap& pass_commands,
+                                           std::span<const FrameGraphRhiRenderPassDesc> render_passes) {
+    for (const auto& render_pass : render_passes) {
+        if (render_pass.pass_name.empty()) {
+            continue;
+        }
+        if (render_pass.color.swapchain_frame.value != 0) {
+            append_frame_graph_rhi_diagnostic(
+                result, FrameGraphDiagnosticCode::invalid_resource, render_pass.pass_name, {},
+                "frame graph multi queue render pass cannot target swapchain attachments");
+            continue;
+        }
+        const auto command = pass_commands.find(render_pass.pass_name);
+        if (command != pass_commands.end() && command->second.queue != rhi::QueueKind::graphics) {
+            append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, render_pass.pass_name, {},
+                                              "frame graph multi queue render pass requires a graphics pass command");
+        }
+    }
+}
+
 [[nodiscard]] std::map<std::string, std::size_t>
 build_scheduled_pass_index(std::span<const FrameGraphExecutionStep> schedule) {
     std::map<std::string, std::size_t> scheduled_passes;
@@ -303,9 +324,9 @@ plan_automatic_texture_aliasing_barriers(
     return planned_barriers_by_pass;
 }
 
+template <typename Result>
 [[nodiscard]] std::map<std::string, std::vector<PlannedTexturePassTargetState>>
-plan_pass_target_states(FrameGraphRhiTextureExecutionResult& result,
-                        const std::map<std::string, std::size_t>& binding_indices,
+plan_pass_target_states(Result& result, const std::map<std::string, std::size_t>& binding_indices,
                         const std::map<std::string, std::size_t>& scheduled_passes,
                         const TexturePassTargetAccessIndex& pass_target_accesses,
                         std::span<const FrameGraphTexturePassTargetState> pass_target_states) {
@@ -384,8 +405,9 @@ plan_pass_target_states(FrameGraphRhiTextureExecutionResult& result,
     return planned_pass_target_states;
 }
 
+template <typename Result>
 [[nodiscard]] TexturePassTargetAccessIndex
-build_pass_target_access_index(FrameGraphRhiTextureExecutionResult& result,
+build_pass_target_access_index(Result& result,
                                std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses) {
     TexturePassTargetAccessIndex pass_target_access_index;
     for (const auto& pass_target_access : pass_target_accesses) {
@@ -418,10 +440,12 @@ build_pass_target_access_index(FrameGraphRhiTextureExecutionResult& result,
     return pass_target_access_index;
 }
 
-[[nodiscard]] rhi::TextureHandle resolve_render_pass_texture_attachment(
-    FrameGraphRhiTextureExecutionResult& result, const std::map<std::string, std::size_t>& binding_indices,
-    std::span<const FrameGraphTextureBinding> texture_bindings, std::string_view pass_name,
-    std::string_view attachment_name, const std::string& resource, rhi::TextureHandle texture) {
+template <typename Result>
+[[nodiscard]] rhi::TextureHandle
+resolve_render_pass_texture_attachment(Result& result, const std::map<std::string, std::size_t>& binding_indices,
+                                       std::span<const FrameGraphTextureBinding> texture_bindings,
+                                       std::string_view pass_name, std::string_view attachment_name,
+                                       const std::string& resource, rhi::TextureHandle texture) {
     if (!resource.empty() && texture.value != 0) {
         append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_resource, std::string(pass_name),
                                           resource,
@@ -443,9 +467,9 @@ build_pass_target_access_index(FrameGraphRhiTextureExecutionResult& result,
     return texture_bindings[binding->second].texture;
 }
 
+template <typename Result>
 [[nodiscard]] std::map<std::string, PlannedRenderPassEnvelope>
-plan_render_pass_envelopes(FrameGraphRhiTextureExecutionResult& result,
-                           const std::map<std::string, std::size_t>& binding_indices,
+plan_render_pass_envelopes(Result& result, const std::map<std::string, std::size_t>& binding_indices,
                            const std::map<std::string, std::size_t>& scheduled_passes,
                            std::span<const FrameGraphTextureBinding> texture_bindings,
                            std::span<const FrameGraphRhiRenderPassDesc> render_passes) {
@@ -833,8 +857,8 @@ template <typename Result>
     }
 }
 
-[[nodiscard]] bool record_planned_texture_pass_target_state(FrameGraphRhiTextureExecutionResult& result,
-                                                            rhi::IRhiCommandList& commands,
+template <typename Result>
+[[nodiscard]] bool record_planned_texture_pass_target_state(Result& result, rhi::IRhiCommandList& commands,
                                                             std::span<FrameGraphTextureBinding> texture_bindings,
                                                             const PlannedTexturePassTargetState& planned) {
     if (planned.pass_target_state == nullptr) {
@@ -899,8 +923,9 @@ template <typename Result>
     }
 }
 
-[[nodiscard]] bool begin_planned_render_pass(FrameGraphRhiTextureExecutionResult& result,
-                                             rhi::IRhiCommandList& commands, const PlannedRenderPassEnvelope& planned) {
+template <typename Result>
+[[nodiscard]] bool begin_planned_render_pass(Result& result, rhi::IRhiCommandList& commands,
+                                             const PlannedRenderPassEnvelope& planned) {
     try {
         commands.begin_render_pass(planned.desc);
         return true;
@@ -915,7 +940,8 @@ template <typename Result>
     }
 }
 
-[[nodiscard]] bool end_planned_render_pass(FrameGraphRhiTextureExecutionResult& result, rhi::IRhiCommandList& commands,
+template <typename Result>
+[[nodiscard]] bool end_planned_render_pass(Result& result, rhi::IRhiCommandList& commands,
                                            const PlannedRenderPassEnvelope& planned) {
     try {
         commands.end_render_pass();
@@ -1635,6 +1661,11 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
         return result;
     }
 
+    validate_multi_queue_render_pass_rows(result, pass_commands, desc.render_passes);
+    if (!result.succeeded()) {
+        return result;
+    }
+
     const auto queue_wait_plan = plan_frame_graph_rhi_queue_waits(desc.schedule, pass_queue_bindings);
     if (!queue_wait_plan.succeeded()) {
         result.diagnostics.insert(result.diagnostics.end(), queue_wait_plan.diagnostics.begin(),
@@ -1647,13 +1678,23 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
         queue_waits_by_pass[wait.pass_name].push_back(wait);
     }
 
+    const auto scheduled_passes = build_scheduled_pass_index(desc.schedule);
+    const auto binding_indices = build_binding_index(result, desc.texture_bindings);
+    const auto pass_target_accesses = build_pass_target_access_index(result, desc.pass_target_accesses);
+    const auto planned_pass_target_states = result.succeeded()
+                                                ? plan_pass_target_states(result, binding_indices, scheduled_passes,
+                                                                          pass_target_accesses, desc.pass_target_states)
+                                                : std::map<std::string, std::vector<PlannedTexturePassTargetState>>{};
+    const auto planned_render_passes = result.succeeded()
+                                           ? plan_render_pass_envelopes(result, binding_indices, scheduled_passes,
+                                                                        desc.texture_bindings, desc.render_passes)
+                                           : std::map<std::string, PlannedRenderPassEnvelope>{};
+    if (!result.succeeded()) {
+        return result;
+    }
+
     std::map<std::string, std::vector<PlannedTextureBarrier>> texture_barriers_by_pass;
     if (!desc.texture_bindings.empty()) {
-        const auto binding_indices = build_binding_index(result, desc.texture_bindings);
-        if (!result.succeeded()) {
-            return result;
-        }
-
         auto simulated_states = copy_binding_states(desc.texture_bindings);
         for (const auto& step : desc.schedule) {
             if (step.kind != FrameGraphExecutionStep::Kind::barrier) {
@@ -1737,6 +1778,22 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
             }
         }
 
+        const auto target_states = planned_pass_target_states.find(step.pass_name);
+        if (target_states != planned_pass_target_states.end()) {
+            for (const auto& planned_target_state : target_states->second) {
+                if (!record_planned_texture_pass_target_state(result, *commands, desc.texture_bindings,
+                                                              planned_target_state)) {
+                    return result;
+                }
+            }
+        }
+
+        const auto render_pass = planned_render_passes.find(step.pass_name);
+        const bool has_render_pass = render_pass != planned_render_passes.end();
+        if (has_render_pass && !begin_planned_render_pass(result, *commands, render_pass->second)) {
+            return result;
+        }
+
         FrameGraphExecutionCallbackResult callback_result;
         std::optional<std::string> callback_failure_message;
         try {
@@ -1746,6 +1803,9 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
                 std::string{"frame graph rhi pass command callback threw an exception: "} + ex.what();
         } catch (...) {
             callback_failure_message = "frame graph rhi pass command callback threw an exception";
+        }
+        if (has_render_pass && !end_planned_render_pass(result, *commands, render_pass->second)) {
+            return result;
         }
         if (callback_failure_message.has_value()) {
             append_frame_graph_rhi_diagnostic(result, FrameGraphDiagnosticCode::invalid_pass, step.pass_name, {},
@@ -1933,6 +1993,9 @@ FrameGraphRhiMultiQueuePackageEvidence execute_frame_graph_rhi_multi_queue_packa
         .schedule = schedule,
         .pass_commands = pass_commands,
         .texture_bindings = bindings,
+        .pass_target_accesses = {},
+        .pass_target_states = {},
+        .render_passes = {},
     });
     result.command_lists_submitted = execution.command_lists_submitted;
     result.queue_waits_recorded = execution.queue_waits_recorded;
