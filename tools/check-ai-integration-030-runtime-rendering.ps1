@@ -182,6 +182,9 @@ if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEd
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentAssetPlaceholderGeneration")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentAssetPlaceholderGeneration"
 }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentGameplayDebugOverlay")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentGameplayDebugOverlay"
+}
 $geUiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_ui" })
 if ($geUiModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_ui module"
@@ -652,6 +655,20 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderG
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "GameEngine.SourceAssetRegistry.v1" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetProvenanceRow" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "must not download external assets" "asset placeholder game guidance"
+foreach ($gameplayDebugOverlayGuidanceNeedle in @(
+    "RuntimeGameplayDebugOverlayRowDesc",
+    "RuntimeGameplayDebugOverlayCategory",
+    "RuntimeGameplayDebugOverlayRowKind",
+    "RuntimeGameplayDebugOverlayDiagnosticCode",
+    "RuntimeGameplayDebugOverlayRow",
+    "RuntimeGameplayDebugOverlayDiagnostic",
+    "RuntimeGameplayDebugOverlayPlan",
+    "plan_runtime_gameplay_debug_overlay",
+    "value-only",
+    "does not render UI"
+)) {
+    Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentGameplayDebugOverlay) $gameplayDebugOverlayGuidanceNeedle "gameplay debug overlay game guidance"
+}
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_accessibility_publish" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "publish_accessibility_payload" "runtime UI game guidance"
@@ -709,6 +726,22 @@ foreach ($runtimeUiGuidance in @(
     Assert-ContainsText $runtimeUiText "plan_image_decode_request" $runtimeUiGuidance
     Assert-ContainsText $runtimeUiText "glyph atlas generation" $runtimeUiGuidance
     Assert-ContainsText $runtimeUiText "image decoding" $runtimeUiGuidance
+}
+foreach ($gameplayDebugOverlayGuidance in @(
+    "docs/ui.md",
+    "docs/architecture.md",
+    "docs/roadmap.md",
+    "docs/ai-game-development.md",
+    "docs/current-capabilities.md",
+    "docs/specs/generated-game-validation-scenarios.md",
+    ".agents/skills/gameengine-game-development/SKILL.md",
+    ".claude/skills/gameengine-game-development/SKILL.md",
+    ".cursor/skills/gameengine-game-development/SKILL.md"
+)) {
+    $gameplayDebugOverlayText = Get-AgentSurfaceText $gameplayDebugOverlayGuidance
+    Assert-ContainsText $gameplayDebugOverlayText "debug overlay" $gameplayDebugOverlayGuidance
+    Assert-ContainsText $gameplayDebugOverlayText "RuntimeGameplayDebugOverlayPlan" $gameplayDebugOverlayGuidance
+    Assert-ContainsText $gameplayDebugOverlayText "plan_runtime_gameplay_debug_overlay" $gameplayDebugOverlayGuidance
 }
 foreach ($runtimeUiPngGuidance in @(
     "docs/ui.md",
@@ -791,6 +824,18 @@ Assert-ContainsText $geUiHeaderText "plan_image_decode_request" "MK_ui public he
 Assert-ContainsText $geUiHeaderText "decode_image_request" "MK_ui public header"
 Assert-ContainsText $geUiHeaderText "IImageDecodingAdapter" "MK_ui public header"
 Assert-ContainsText $geUiHeaderText "invalid_image_decode_result" "MK_ui public header"
+foreach ($gameplayDebugOverlayHeaderNeedle in @(
+    "RuntimeGameplayDebugOverlayCategory",
+    "RuntimeGameplayDebugOverlayRowKind",
+    "RuntimeGameplayDebugOverlayDiagnosticCode",
+    "RuntimeGameplayDebugOverlayRowDesc",
+    "RuntimeGameplayDebugOverlayRow",
+    "RuntimeGameplayDebugOverlayDiagnostic",
+    "RuntimeGameplayDebugOverlayPlan",
+    "plan_runtime_gameplay_debug_overlay"
+)) {
+    Assert-ContainsText $geUiHeaderText $gameplayDebugOverlayHeaderNeedle "MK_ui public header"
+}
 Assert-ContainsText $geUiSourceText "utf8_scalar_glyph" "MK_ui source"
 Assert-ContainsText $geUiSourceText "span.glyph" "MK_ui source"
 Assert-ContainsText $geUiSourceText "AccessibilityPublishPlan::ready" "MK_ui source"
@@ -830,6 +875,20 @@ Assert-ContainsText $geUiSourceText "adapter.decode_image" "MK_ui source"
 Assert-ContainsText $geUiSourceText "invalid_image_decode_uri" "MK_ui source"
 Assert-ContainsText $geUiSourceText "empty_image_decode_bytes" "MK_ui source"
 Assert-ContainsText $geUiSourceText "invalid_image_decode_result" "MK_ui source"
+foreach ($gameplayDebugOverlaySourceNeedle in @(
+    "RuntimeGameplayDebugOverlayPlan::succeeded",
+    "is_valid_runtime_gameplay_debug_overlay_category",
+    "is_valid_runtime_gameplay_debug_overlay_row_kind",
+    "append_runtime_gameplay_debug_overlay_diagnostic",
+    "RuntimeGameplayDebugOverlayDiagnosticCode::duplicate_row_id",
+    "RuntimeGameplayDebugOverlayDiagnosticCode::missing_label",
+    "RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_category",
+    "RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_row_kind"
+)) {
+    Assert-ContainsText $geUiSourceText $gameplayDebugOverlaySourceNeedle "MK_ui source"
+}
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/core_tests.cpp") "runtime gameplay debug overlay plan produces deterministic display rows" "tests/unit/core_tests.cpp"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/core_tests.cpp") "runtime gameplay debug overlay plan rejects duplicate and invalid rows" "tests/unit/core_tests.cpp"
 Assert-ContainsText $sourceImageDecodeHeaderText "PngImageDecodingAdapter" "MK_tools source image decode public header"
 Assert-ContainsText $sourceImageDecodeHeaderText "ui::IImageDecodingAdapter" "MK_tools source image decode public header"
 Assert-ContainsText $sourceImageDecodeHeaderText "decode_image" "MK_tools source image decode public header"

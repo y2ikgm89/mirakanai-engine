@@ -865,6 +865,22 @@ if (-not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_pla
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("renderer/RHI residency")) {
     Write-Error "engine manifest asset-placeholder-generation-v1 authoring surface must keep placeholder contract and non-goals explicit"
 }
+$runtimeGameplayDebugOverlayAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-gameplay-debug-overlay-v1" })
+if ($runtimeGameplayDebugOverlayAuthoringSurface.Count -ne 1 -or
+    $runtimeGameplayDebugOverlayAuthoringSurface[0].status -ne "ready" -or
+    $runtimeGameplayDebugOverlayAuthoringSurface[0].owner -ne "MK_ui") {
+    Write-Error "engine manifest aiOperableProductionLoop authoring surface runtime-gameplay-debug-overlay-v1 must be ready as an MK_ui surface"
+}
+if (-not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayRowDesc") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayCategory") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayRowKind") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayDiagnosticCode") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayPlan") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("plan_runtime_gameplay_debug_overlay") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("game-specific debug schema") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("renderer/RHI execution path")) {
+    Write-Error "engine manifest runtime-gameplay-debug-overlay-v1 authoring surface must keep debug overlay contract and non-goals explicit"
+}
 
 foreach ($packageSurface in $productionLoop.packageSurfaces) {
     Assert-Properties $packageSurface @("id", "status", "targets", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop packageSurfaces"

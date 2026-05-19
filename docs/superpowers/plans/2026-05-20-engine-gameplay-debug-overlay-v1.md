@@ -38,7 +38,7 @@ Make the manifest pointers, master-plan ledger, and plan registry agree that `en
 
 ## Phase 1: Overlay Row Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -67,3 +67,7 @@ Adopt the overlay row contract in one source-tree or package sample that already
 ## Validation Evidence
 
 - Phase 0 pointer sync: plan registry, production master-plan index, readiness ledger, manifest fragments, and composed manifest point `currentActivePlan` / `recommendedNextPlan` at this plan while keeping `unsupportedProductionGaps = []`.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed before implementation because `RuntimeGameplayDebugOverlayRowDesc`, `RuntimeGameplayDebugOverlayCategory`, `RuntimeGameplayDebugOverlayRowKind`, `RuntimeGameplayDebugOverlayDiagnosticCode`, `RuntimeGameplayDebugOverlayPlan`, and `plan_runtime_gameplay_debug_overlay` were undefined.
+- Phase 1 GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` passed after adding `RuntimeGameplayDebugOverlayRow`, `RuntimeGameplayDebugOverlayDiagnostic`, `RuntimeGameplayDebugOverlayPlan`, and fail-closed validation in `MK_ui`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests` passed.
+- Phase 1 surface gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-public-api-boundaries.ps1` passed after docs, manifest fragments, skills, and static needles were synchronized.
+- Phase 1 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `production-readiness-audit: unsupported_gaps=0` and 65/65 CTest tests passing; Metal/Apple host diagnostics remained host-gated on this Windows host.

@@ -1777,6 +1777,62 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "plan_runtime_menu_hud" $docSurface.Label
     Assert-ContainsText $docSurface.Text "RuntimeMenuHudCommandRow" $docSurface.Label
 }
+$runtimeGameplayDebugOverlayAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-gameplay-debug-overlay-v1" })
+if ($runtimeGameplayDebugOverlayAuthoringSurface.Count -ne 1 -or
+    $runtimeGameplayDebugOverlayAuthoringSurface[0].status -ne "ready" -or
+    $runtimeGameplayDebugOverlayAuthoringSurface[0].owner -ne "MK_ui") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-gameplay-debug-overlay-v1 must be ready as an MK_ui surface"
+}
+foreach ($gameplayDebugOverlaySurfaceNeedle in @(
+        "RuntimeGameplayDebugOverlayRowDesc",
+        "RuntimeGameplayDebugOverlayCategory",
+        "RuntimeGameplayDebugOverlayRowKind",
+        "RuntimeGameplayDebugOverlayDiagnosticCode",
+        "RuntimeGameplayDebugOverlayRow",
+        "RuntimeGameplayDebugOverlayDiagnostic",
+        "RuntimeGameplayDebugOverlayPlan",
+        "plan_runtime_gameplay_debug_overlay",
+        "missing or duplicate row ids",
+        "unsupported categories",
+        "unsupported row kinds",
+        "game-specific debug schema"
+    )) {
+    Assert-ContainsText ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes) $gameplayDebugOverlaySurfaceNeedle "engine/agent/manifest.json runtime-gameplay-debug-overlay-v1 authoring surface"
+}
+foreach ($gameplayDebugOverlayHeaderNeedle in @(
+        "RuntimeGameplayDebugOverlayCategory",
+        "RuntimeGameplayDebugOverlayRowKind",
+        "RuntimeGameplayDebugOverlayDiagnosticCode",
+        "RuntimeGameplayDebugOverlayRowDesc",
+        "RuntimeGameplayDebugOverlayRow",
+        "RuntimeGameplayDebugOverlayDiagnostic",
+        "RuntimeGameplayDebugOverlayPlan",
+        "plan_runtime_gameplay_debug_overlay"
+    )) {
+    Assert-ContainsText $uiHeaderText $gameplayDebugOverlayHeaderNeedle "engine/ui/include/mirakana/ui/ui.hpp"
+}
+foreach ($gameplayDebugOverlaySourceNeedle in @(
+        "is_valid_runtime_gameplay_debug_overlay_category",
+        "is_valid_runtime_gameplay_debug_overlay_row_kind",
+        "append_runtime_gameplay_debug_overlay_diagnostic",
+        "RuntimeGameplayDebugOverlayDiagnosticCode::duplicate_row_id",
+        "RuntimeGameplayDebugOverlayDiagnosticCode::missing_label",
+        "RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_category",
+        "RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_row_kind"
+    )) {
+    Assert-ContainsText $uiSourceText $gameplayDebugOverlaySourceNeedle "engine/ui/src/ui.cpp"
+}
+Assert-ContainsText $coreTestsText "runtime gameplay debug overlay plan produces deterministic display rows" "tests/unit/core_tests.cpp"
+Assert-ContainsText $coreTestsText "runtime gameplay debug overlay plan rejects duplicate and invalid rows" "tests/unit/core_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeGameplayDebugOverlayPlan" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_gameplay_debug_overlay" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "debug overlay" $docSurface.Label
+}
 $runtimeInputContextStackPlannerAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-input-context-stack-planner-v1" })
 if ($runtimeInputContextStackPlannerAuthoringSurface.Count -ne 1 -or
     $runtimeInputContextStackPlannerAuthoringSurface[0].status -ne "ready" -or

@@ -898,6 +898,69 @@ struct RuntimeMenuHudPlan {
 
 [[nodiscard]] RuntimeMenuHudPlan plan_runtime_menu_hud(const std::vector<RuntimeMenuHudRowDesc>& rows);
 
+enum class RuntimeGameplayDebugOverlayCategory : std::uint8_t {
+    gameplay,
+    input,
+    audio,
+    physics,
+    navigation,
+    ai,
+    package,
+    session,
+    custom,
+};
+
+enum class RuntimeGameplayDebugOverlayRowKind : std::uint8_t {
+    status,
+    counter,
+    warning,
+    error,
+};
+
+enum class RuntimeGameplayDebugOverlayDiagnosticCode : std::uint8_t {
+    missing_row_id,
+    duplicate_row_id,
+    missing_label,
+    unsupported_category,
+    unsupported_row_kind,
+};
+
+struct RuntimeGameplayDebugOverlayRowDesc {
+    std::string id;
+    RuntimeGameplayDebugOverlayCategory category{RuntimeGameplayDebugOverlayCategory::gameplay};
+    RuntimeGameplayDebugOverlayRowKind kind{RuntimeGameplayDebugOverlayRowKind::status};
+    std::string label;
+    std::string value;
+    bool highlighted{false};
+    bool visible{true};
+};
+
+struct RuntimeGameplayDebugOverlayRow {
+    std::string id;
+    RuntimeGameplayDebugOverlayCategory category{RuntimeGameplayDebugOverlayCategory::gameplay};
+    RuntimeGameplayDebugOverlayRowKind kind{RuntimeGameplayDebugOverlayRowKind::status};
+    std::string label;
+    std::string value;
+    bool highlighted{false};
+    bool visible{true};
+};
+
+struct RuntimeGameplayDebugOverlayDiagnostic {
+    RuntimeGameplayDebugOverlayDiagnosticCode code{RuntimeGameplayDebugOverlayDiagnosticCode::missing_row_id};
+    std::string row_id;
+    std::string message;
+};
+
+struct RuntimeGameplayDebugOverlayPlan {
+    std::vector<RuntimeGameplayDebugOverlayRow> rows;
+    std::vector<RuntimeGameplayDebugOverlayDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+[[nodiscard]] RuntimeGameplayDebugOverlayPlan
+plan_runtime_gameplay_debug_overlay(const std::vector<RuntimeGameplayDebugOverlayRowDesc>& rows);
+
 struct CommandBinding {
     std::string id;
     std::function<void()> action;

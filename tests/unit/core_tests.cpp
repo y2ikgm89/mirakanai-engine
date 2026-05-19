@@ -1224,6 +1224,107 @@ MK_TEST("runtime menu hud plan rejects missing command ids and invalid command t
     MK_REQUIRE(plan.diagnostics[2].row_id == "menu.bad_intent");
 }
 
+MK_TEST("runtime gameplay debug overlay plan produces deterministic display rows") {
+    const std::vector<mirakana::ui::RuntimeGameplayDebugOverlayRowDesc> rows{
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "gameplay.bindings",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::gameplay,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+            .label = "Gameplay bindings",
+            .value = "2",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "input.context",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::input,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .label = "Input context",
+            .value = "gameplay",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "package.streaming",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::package,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::warning,
+            .label = "Package streaming",
+            .value = "host-gated",
+            .highlighted = true,
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_gameplay_debug_overlay(rows);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.rows.size() == 3);
+    MK_REQUIRE(plan.rows[0].id == "gameplay.bindings");
+    MK_REQUIRE(plan.rows[0].category == mirakana::ui::RuntimeGameplayDebugOverlayCategory::gameplay);
+    MK_REQUIRE(plan.rows[0].kind == mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter);
+    MK_REQUIRE(plan.rows[0].label == "Gameplay bindings");
+    MK_REQUIRE(plan.rows[0].value == "2");
+    MK_REQUIRE(!plan.rows[0].highlighted);
+    MK_REQUIRE(plan.rows[2].id == "package.streaming");
+    MK_REQUIRE(plan.rows[2].highlighted);
+}
+
+MK_TEST("runtime gameplay debug overlay plan rejects duplicate and invalid rows") {
+    const std::vector<mirakana::ui::RuntimeGameplayDebugOverlayRowDesc> rows{
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "gameplay.bindings",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::gameplay,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+            .label = "Gameplay bindings",
+            .value = "2",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "gameplay.bindings",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::input,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .label = "Input context",
+            .value = "gameplay",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "bad.kind",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::audio,
+            .kind = static_cast<mirakana::ui::RuntimeGameplayDebugOverlayRowKind>(255),
+            .label = "Audio",
+            .value = "bad",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "bad.category",
+            .category = static_cast<mirakana::ui::RuntimeGameplayDebugOverlayCategory>(255),
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .label = "Package",
+            .value = "bad",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "missing.label",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::package,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .value = "bad",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::ai,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .label = "AI",
+            .value = "bad",
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_gameplay_debug_overlay(rows);
+    const auto has_diagnostic = [&plan](mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode code) {
+        return std::ranges::any_of(plan.diagnostics,
+                                   [code](const mirakana::ui::RuntimeGameplayDebugOverlayDiagnostic& diagnostic) {
+                                       return diagnostic.code == code;
+                                   });
+    };
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.empty());
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::duplicate_row_id));
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_row_kind));
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_category));
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::missing_label));
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::missing_row_id));
+}
+
 MK_TEST("virtual input reports pressed down and released states") {
     mirakana::VirtualInput input;
 

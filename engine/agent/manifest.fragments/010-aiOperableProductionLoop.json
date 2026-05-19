@@ -4538,6 +4538,12 @@
         "notes": "Runtime Menu HUD Intent Model v1 is a host-independent value contract for generated game HUD/menu intent: RuntimeMenuHudRowDesc rows carry label, counter, prompt, or command row intent; RuntimeMenuHudCommandIntent and RuntimeMenuHudCommandTarget encode pause/resume/restart/menu/custom commands before game code executes them; and plan_runtime_menu_hud returns deterministic RuntimeMenuHudDisplayRow and RuntimeMenuHudCommandRow rows only when validation succeeds. Diagnostics cover missing or duplicate row ids, unsupported row kinds, missing or duplicate command ids, invalid command intents, and invalid command targets; failed plans clear display and command rows. This is not a widget toolkit, UI renderer, focus/navigation system, input binding system, command execution dispatcher, Dear ImGui/editor surface, platform UI service, native handle surface, or game-specific menu schema."
       },
       {
+        "id": "runtime-gameplay-debug-overlay-v1",
+        "status": "ready",
+        "owner": "MK_ui",
+        "notes": "Runtime Gameplay Debug Overlay v1 is a host-independent value contract for generated gameplay diagnostics: RuntimeGameplayDebugOverlayRowDesc rows carry deterministic row id, RuntimeGameplayDebugOverlayCategory, RuntimeGameplayDebugOverlayRowKind, label, value, highlighted, and visible fields for gameplay, input, audio, physics, navigation, AI, package, session, or custom rows; and plan_runtime_gameplay_debug_overlay returns RuntimeGameplayDebugOverlayPlan rows only when validation succeeds. Diagnostics through RuntimeGameplayDebugOverlayDiagnosticCode and RuntimeGameplayDebugOverlayDiagnostic cover missing or duplicate row ids, missing labels, unsupported categories, and unsupported row kinds; failed plans clear overlay rows. This is not a widget toolkit, UI renderer, renderer/RHI execution path, focus/navigation system, input binding system, debug command dispatcher, Dear ImGui/editor surface, platform UI service, native handle surface, telemetry backend, package streaming path, or game-specific debug schema."
+      },
+      {
         "id": "runtime-input-context-stack-planner-v1",
         "status": "ready",
         "owner": "MK_runtime",

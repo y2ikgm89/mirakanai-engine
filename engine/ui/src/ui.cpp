@@ -102,7 +102,7 @@ namespace {
     return false;
 }
 
-[[nodiscard]] bool contains_runtime_menu_hud_row_id(const std::vector<std::string>& ids, std::string_view id) noexcept {
+[[nodiscard]] bool contains_runtime_ui_row_id(const std::vector<std::string>& ids, std::string_view id) noexcept {
     return std::ranges::find(ids, id) != ids.end();
 }
 
@@ -111,6 +111,44 @@ void append_runtime_menu_hud_diagnostic(std::vector<RuntimeMenuHudDiagnostic>& d
                                         std::string message) {
     diagnostics.push_back(RuntimeMenuHudDiagnostic{
         .code = code, .row_id = std::move(row_id), .command_id = std::move(command_id), .message = std::move(message)});
+}
+
+[[nodiscard]] bool
+is_valid_runtime_gameplay_debug_overlay_category(RuntimeGameplayDebugOverlayCategory category) noexcept {
+    switch (category) {
+    case RuntimeGameplayDebugOverlayCategory::gameplay:
+    case RuntimeGameplayDebugOverlayCategory::input:
+    case RuntimeGameplayDebugOverlayCategory::audio:
+    case RuntimeGameplayDebugOverlayCategory::physics:
+    case RuntimeGameplayDebugOverlayCategory::navigation:
+    case RuntimeGameplayDebugOverlayCategory::ai:
+    case RuntimeGameplayDebugOverlayCategory::package:
+    case RuntimeGameplayDebugOverlayCategory::session:
+    case RuntimeGameplayDebugOverlayCategory::custom:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool is_valid_runtime_gameplay_debug_overlay_row_kind(RuntimeGameplayDebugOverlayRowKind kind) noexcept {
+    switch (kind) {
+    case RuntimeGameplayDebugOverlayRowKind::status:
+    case RuntimeGameplayDebugOverlayRowKind::counter:
+    case RuntimeGameplayDebugOverlayRowKind::warning:
+    case RuntimeGameplayDebugOverlayRowKind::error:
+        return true;
+    }
+    return false;
+}
+
+void append_runtime_gameplay_debug_overlay_diagnostic(std::vector<RuntimeGameplayDebugOverlayDiagnostic>& diagnostics,
+                                                      RuntimeGameplayDebugOverlayDiagnosticCode code,
+                                                      std::string row_id, std::string message) {
+    diagnostics.push_back(RuntimeGameplayDebugOverlayDiagnostic{
+        .code = code,
+        .row_id = std::move(row_id),
+        .message = std::move(message),
+    });
 }
 
 [[nodiscard]] bool is_accessibility_candidate(const Element& element) noexcept {
@@ -2274,7 +2312,7 @@ RuntimeMenuHudPlan plan_runtime_menu_hud(const std::vector<RuntimeMenuHudRowDesc
         if (row.id.empty()) {
             append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::missing_row_id, {},
                                                row.command_id, "runtime menu hud row id must not be empty");
-        } else if (contains_runtime_menu_hud_row_id(row_ids, row.id)) {
+        } else if (contains_runtime_ui_row_id(row_ids, row.id)) {
             append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::duplicate_row_id, row.id,
                                                row.command_id, "runtime menu hud row id must be unique");
         } else {
@@ -2294,7 +2332,7 @@ RuntimeMenuHudPlan plan_runtime_menu_hud(const std::vector<RuntimeMenuHudRowDesc
         if (row.command_id.empty()) {
             append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::missing_command_id,
                                                row.id, {}, "runtime menu hud command row requires a command id");
-        } else if (contains_runtime_menu_hud_row_id(command_ids, row.command_id)) {
+        } else if (contains_runtime_ui_row_id(command_ids, row.command_id)) {
             append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::duplicate_command_id,
                                                row.id, row.command_id, "runtime menu hud command id must be unique");
         } else {
@@ -2330,6 +2368,66 @@ RuntimeMenuHudPlan plan_runtime_menu_hud(const std::vector<RuntimeMenuHudRowDesc
                                                                  .target = row.command_target,
                                                                  .enabled = row.enabled});
         }
+    }
+
+    return plan;
+}
+
+bool RuntimeGameplayDebugOverlayPlan::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
+RuntimeGameplayDebugOverlayPlan
+plan_runtime_gameplay_debug_overlay(const std::vector<RuntimeGameplayDebugOverlayRowDesc>& rows) {
+    RuntimeGameplayDebugOverlayPlan plan;
+    std::vector<std::string> row_ids;
+    row_ids.reserve(rows.size());
+
+    for (const auto& row : rows) {
+        if (row.id.empty()) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::missing_row_id, {},
+                "runtime gameplay debug overlay row id must not be empty");
+        } else if (contains_runtime_ui_row_id(row_ids, row.id)) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::duplicate_row_id, row.id,
+                "runtime gameplay debug overlay row id must be unique");
+        } else {
+            row_ids.push_back(row.id);
+        }
+
+        if (row.label.empty()) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::missing_label, row.id,
+                "runtime gameplay debug overlay row label must not be empty");
+        }
+        if (!is_valid_runtime_gameplay_debug_overlay_category(row.category)) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_category, row.id,
+                "runtime gameplay debug overlay row category is not supported");
+        }
+        if (!is_valid_runtime_gameplay_debug_overlay_row_kind(row.kind)) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_row_kind, row.id,
+                "runtime gameplay debug overlay row kind is not supported");
+        }
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    plan.rows.reserve(rows.size());
+    for (const auto& row : rows) {
+        plan.rows.push_back(RuntimeGameplayDebugOverlayRow{
+            .id = row.id,
+            .category = row.category,
+            .kind = row.kind,
+            .label = row.label,
+            .value = row.value,
+            .highlighted = row.highlighted,
+            .visible = row.visible,
+        });
     }
 
     return plan;
