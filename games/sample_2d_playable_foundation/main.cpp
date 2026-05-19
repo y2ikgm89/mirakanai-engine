@@ -29,6 +29,19 @@ namespace {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
 
+[[nodiscard]] constexpr std::string_view
+runtime_scene_gameplay_session_state_name(mirakana::runtime_scene::RuntimeSceneGameplaySessionState state) noexcept {
+    switch (state) {
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running:
+        return "running";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won:
+        return "won";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::lost:
+        return "lost";
+    }
+    return "unknown";
+}
+
 class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
   public:
     Sample2DPlayableFoundationGame(mirakana::VirtualInput& input, mirakana::NullRenderer& renderer)
@@ -173,6 +186,8 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
         audio_commands_ += audio.plan.commands.size();
         audio_underruns_ += audio.plan.underruns.size();
 
+        plan_debug_overlay();
+
         ++frames_;
         input_.begin_frame();
         return frames_ < 3;
@@ -193,7 +208,8 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
                stats.sprites_submitted == 6 && input_context_plan_ok_ && input_contexts_planned_ == 6U &&
                gameplay_input_available_seen_ && hud_overlay_seen_ && gameplay_audio_plan_ok_ &&
                gameplay_audio_buses_planned_ == 1U && gameplay_audio_commands_planned_ == 1U &&
-               gameplay_interaction_plan_.succeeded() && gameplay_interaction_plan_.rows.size() == 3U &&
+               debug_overlay_plan_ok_ && debug_overlay_rows_planned_ == 12U && gameplay_interaction_plan_.succeeded() &&
+               gameplay_interaction_plan_.rows.size() == 3U &&
                gameplay_interaction_plan_.final_session_state ==
                    mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won;
     }
@@ -216,6 +232,10 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t gameplay_audio_count() const noexcept {
         return gameplay_audio_commands_planned_;
+    }
+
+    [[nodiscard]] std::size_t debug_overlay_row_count() const noexcept {
+        return debug_overlay_rows_planned_;
     }
 
   private:
@@ -309,6 +329,44 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
             });
     }
 
+    void plan_debug_overlay() {
+        debug_overlay_plan_ = mirakana::ui::plan_runtime_gameplay_debug_overlay({
+            mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+                .id = "gameplay.interactions",
+                .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::gameplay,
+                .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+                .label = "Gameplay interactions",
+                .value = std::to_string(gameplay_interaction_plan_.rows.size()),
+            },
+            mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+                .id = "input.contexts",
+                .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::input,
+                .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+                .label = "Input contexts",
+                .value = std::to_string(input_context_plan_.stack.active_contexts.size()),
+            },
+            mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+                .id = "audio.cues",
+                .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::audio,
+                .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+                .label = "Audio cues",
+                .value = std::to_string(gameplay_audio_commands_planned_),
+            },
+            mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+                .id = "session.state",
+                .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::session,
+                .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+                .label = "Session",
+                .value = std::string{runtime_scene_gameplay_session_state_name(
+                    gameplay_interaction_plan_.final_session_state)},
+            },
+        });
+        debug_overlay_plan_ok_ = debug_overlay_plan_ok_ && debug_overlay_plan_.succeeded();
+        if (debug_overlay_plan_.succeeded()) {
+            debug_overlay_rows_planned_ += debug_overlay_plan_.rows.size();
+        }
+    }
+
     [[nodiscard]] bool build_hud() {
         mirakana::ui::ElementDesc root;
         root.id = mirakana::ui::ElementId{"hud.root"};
@@ -347,6 +405,7 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     mirakana::Scene scene_{"Sample 2D Playable Foundation"};
     mirakana::SceneNodeId player_;
     mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlan gameplay_interaction_plan_;
+    mirakana::ui::RuntimeGameplayDebugOverlayPlan debug_overlay_plan_;
     mirakana::ui::UiDocument hud_;
     mirakana::UiRendererTheme theme_;
     mirakana::AudioMixer mixer_;
@@ -361,6 +420,7 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     std::size_t input_contexts_planned_{0};
     std::size_t gameplay_audio_buses_planned_{0};
     std::size_t gameplay_audio_commands_planned_{0};
+    std::size_t debug_overlay_rows_planned_{0};
     std::size_t audio_commands_{0};
     std::size_t audio_underruns_{0};
     int frames_{0};
@@ -374,6 +434,7 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     bool input_context_plan_ok_{true};
     bool gameplay_input_available_seen_{false};
     bool hud_overlay_seen_{false};
+    bool debug_overlay_plan_ok_{true};
 };
 
 } // namespace
@@ -390,7 +451,7 @@ int main() {
     std::cout << "sample_2d_playable_foundation frames=" << result.frames_run << " final_x=" << game.final_x()
               << " gameplay_interactions=" << game.gameplay_interaction_count()
               << " input_contexts=" << game.input_context_count() << " audio_cues=" << game.gameplay_audio_count()
-              << '\n';
+              << " debug_overlay_rows=" << game.debug_overlay_row_count() << '\n';
 
     return result.status == mirakana::RunStatus::stopped_by_app && result.frames_run == 3 && game.passed() ? 0 : 1;
 }

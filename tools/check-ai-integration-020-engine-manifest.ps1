@@ -1874,8 +1874,10 @@ Assert-ContainsText $runtimeTestsText "runtime input context stack plan rejects 
 $sample2DPlayableFoundationText = Get-AgentSurfaceText "games/sample_2d_playable_foundation/main.cpp"
 Assert-ContainsText $sample2DPlayableFoundationText "plan_runtime_input_context_stack" "games/sample_2d_playable_foundation/main.cpp"
 Assert-ContainsText $sample2DPlayableFoundationText "plan_gameplay_audio_mix" "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "plan_runtime_gameplay_debug_overlay" "games/sample_2d_playable_foundation/main.cpp"
 Assert-ContainsText $sample2DPlayableFoundationText "RuntimeInputContextLayerKind::overlay" "games/sample_2d_playable_foundation/main.cpp"
 Assert-ContainsText $sample2DPlayableFoundationText "input_contexts=" "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "debug_overlay_rows=" "games/sample_2d_playable_foundation/main.cpp"
 foreach ($docSurface in @(
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
         @{ Text = $roadmapText; Label = "docs/roadmap.md" },

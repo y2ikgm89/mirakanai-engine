@@ -1,8 +1,8 @@
 # Engine Gameplay Debug Overlay v1 (2026-05-20)
 
 **Plan ID:** `engine-gameplay-debug-overlay-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** Historical evidence only. After closeout, `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` moves to the next active developer-owned capability. Keep `unsupportedProductionGaps = []`; this was a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
@@ -52,7 +52,7 @@ Add the smallest host-independent public API that can plan deterministic debug o
 
 ## Phase 2: Sample Adoption Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -71,3 +71,6 @@ Adopt the overlay row contract in one source-tree or package sample that already
 - Phase 1 GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` passed after adding `RuntimeGameplayDebugOverlayRow`, `RuntimeGameplayDebugOverlayDiagnostic`, `RuntimeGameplayDebugOverlayPlan`, and fail-closed validation in `MK_ui`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests` passed.
 - Phase 1 surface gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-public-api-boundaries.ps1` passed after docs, manifest fragments, skills, and static needles were synchronized.
 - Phase 1 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `production-readiness-audit: unsupported_gaps=0` and 65/65 CTest tests passing; Metal/Apple host diagnostics remained host-gated on this Windows host.
+- Phase 2 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` failed before sample adoption because `games/sample_2d_playable_foundation/main.cpp` did not contain `plan_runtime_gameplay_debug_overlay`.
+- Phase 2 GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_playable_foundation`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R sample_2d_playable_foundation`, direct `out/build/dev/games/Debug/sample_2d_playable_foundation.exe`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after the sample reported `debug_overlay_rows=12`.
+- Phase 2 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `production-readiness-audit: unsupported_gaps=0` and 65/65 CTest tests passing; Metal/Apple host diagnostics remained host-gated on this Windows host.

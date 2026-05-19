@@ -15,8 +15,8 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: `docs/superpowers/plans/2026-05-20-engine-gameplay-debug-overlay-v1.md`.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-gameplay-debug-overlay-v1` as the next developer-owned capability, not a reopened Engine 1.0 production gap. `engine-asset-placeholder-generation-v1` is completed for deterministic placeholder source documents plus registered source cook/package routing evidence.
+- Current active plan: `docs/superpowers/plans/2026-05-20-sprite-atlas-authoring-v1.md`.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `sprite-atlas-authoring-v1` as the next developer-owned 2D capability, not a reopened Engine 1.0 production gap. `engine-gameplay-debug-overlay-v1` is completed for deterministic `MK_ui` debug overlay rows plus `sample_2d_playable_foundation` `debug_overlay_rows=12` adoption evidence.
 - Current gap cluster: none selected after the 2026-05-19 gameplay/physics/navigation/AI foundation closeout.
 
 ## Plan map
