@@ -106,7 +106,7 @@ foreach ($skillName in @("gameengine-agent-integration", "gameengine-cmake-build
         Write-Error "engine/agent/manifest.json aiSurfaces.claudeCode.requiredSkills missing $skillName"
     }
 }
-foreach ($agentName in @("agent-surface-auditor", "build-fixer", "cpp-reviewer", "engine-architect", "explorer", "gameplay-builder", "rendering-auditor")) {
+foreach ($agentName in @("agent-surface-auditor", "build-fixer", "cpp-reviewer", "engine-architect", "explorer", "gameplay-builder", "planning-auditor", "rendering-auditor")) {
     if (@($manifest.aiSurfaces.codex.requiredAgents) -notcontains $agentName) {
         Write-Error "engine/agent/manifest.json aiSurfaces.codex.requiredAgents missing $agentName"
     }
@@ -114,7 +114,7 @@ foreach ($agentName in @("agent-surface-auditor", "build-fixer", "cpp-reviewer",
         Write-Error "engine/agent/manifest.json aiSurfaces.claudeCode.requiredAgents missing $agentName"
     }
 }
-foreach ($agentName in @("agent-surface-auditor", "cpp-reviewer", "engine-architect", "explorer", "rendering-auditor")) {
+foreach ($agentName in @("agent-surface-auditor", "cpp-reviewer", "engine-architect", "explorer", "planning-auditor", "rendering-auditor")) {
     if (@($manifest.aiSurfaces.codex.readOnlyAgents) -notcontains $agentName) {
         Write-Error "engine/agent/manifest.json aiSurfaces.codex.readOnlyAgents missing $agentName"
     }

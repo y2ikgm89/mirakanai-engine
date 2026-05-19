@@ -5956,6 +5956,7 @@
         "engine-architect",
         "explorer",
         "gameplay-builder",
+        "planning-auditor",
         "rendering-auditor"
       ],
       "readOnlyAgents": [
@@ -5963,6 +5964,7 @@
         "cpp-reviewer",
         "engine-architect",
         "explorer",
+        "planning-auditor",
         "rendering-auditor"
       ]
     },
@@ -5994,6 +5996,7 @@
         "engine-architect",
         "explorer",
         "gameplay-builder",
+        "planning-auditor",
         "rendering-auditor"
       ],
       "readOnlyAgents": [
@@ -6001,6 +6004,7 @@
         "cpp-reviewer",
         "engine-architect",
         "explorer",
+        "planning-auditor",
         "rendering-auditor"
       ]
     }
