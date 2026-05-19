@@ -12,8 +12,11 @@
 #include "mirakana/navigation/local_avoidance.hpp"
 #include "mirakana/navigation/navigation_agent.hpp"
 #include "mirakana/navigation/navigation_grid.hpp"
+#include "mirakana/navigation/navigation_navmesh.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
 #include "mirakana/physics/physics3d.hpp"
+#include "mirakana/runtime/session_services.hpp"
+#include "mirakana/runtime_scene/runtime_scene.hpp"
 
 #include <array>
 #include <cmath>
@@ -93,6 +96,62 @@ navigation_grid_replan_status_name(mirakana::NavigationGridReplanStatus status) 
 }
 
 [[nodiscard]] constexpr std::string_view
+navigation_navmesh_path_status_name(mirakana::NavigationNavmeshPathStatus status) noexcept {
+    switch (status) {
+    case mirakana::NavigationNavmeshPathStatus::success:
+        return "success";
+    case mirakana::NavigationNavmeshPathStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::NavigationNavmeshPathStatus::invalid_navmesh:
+        return "invalid_navmesh";
+    case mirakana::NavigationNavmeshPathStatus::invalid_endpoint:
+        return "invalid_endpoint";
+    case mirakana::NavigationNavmeshPathStatus::blocked_endpoint:
+        return "blocked_endpoint";
+    case mirakana::NavigationNavmeshPathStatus::no_path:
+        return "no_path";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view
+navigation_navmesh_path_diagnostic_name(mirakana::NavigationNavmeshPathDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::NavigationNavmeshPathDiagnostic::none:
+        return "none";
+    case mirakana::NavigationNavmeshPathDiagnostic::empty_navmesh:
+        return "empty_navmesh";
+    case mirakana::NavigationNavmeshPathDiagnostic::invalid_polygon_id:
+        return "invalid_polygon_id";
+    case mirakana::NavigationNavmeshPathDiagnostic::duplicate_polygon_id:
+        return "duplicate_polygon_id";
+    case mirakana::NavigationNavmeshPathDiagnostic::invalid_scene_ref:
+        return "invalid_scene_ref";
+    case mirakana::NavigationNavmeshPathDiagnostic::duplicate_scene_ref:
+        return "duplicate_scene_ref";
+    case mirakana::NavigationNavmeshPathDiagnostic::invalid_polygon_center:
+        return "invalid_polygon_center";
+    case mirakana::NavigationNavmeshPathDiagnostic::invalid_traversal_cost:
+        return "invalid_traversal_cost";
+    case mirakana::NavigationNavmeshPathDiagnostic::invalid_portal_endpoint:
+        return "invalid_portal_endpoint";
+    case mirakana::NavigationNavmeshPathDiagnostic::invalid_portal_cost:
+        return "invalid_portal_cost";
+    case mirakana::NavigationNavmeshPathDiagnostic::invalid_obstacle:
+        return "invalid_obstacle";
+    case mirakana::NavigationNavmeshPathDiagnostic::duplicate_obstacle_id:
+        return "duplicate_obstacle_id";
+    case mirakana::NavigationNavmeshPathDiagnostic::blocked_start:
+        return "blocked_start";
+    case mirakana::NavigationNavmeshPathDiagnostic::blocked_goal:
+        return "blocked_goal";
+    case mirakana::NavigationNavmeshPathDiagnostic::cost_overflow:
+        return "cost_overflow";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view
 navigation_local_avoidance_status_name(mirakana::NavigationLocalAvoidanceStatus status) noexcept {
     switch (status) {
     case mirakana::NavigationLocalAvoidanceStatus::success:
@@ -136,6 +195,51 @@ navigation_local_avoidance_diagnostic_name(mirakana::NavigationLocalAvoidanceDia
         return "invalid_epsilon";
     case mirakana::NavigationLocalAvoidanceDiagnostic::calculation_overflow:
         return "calculation_overflow";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view
+physics_character_dynamic_policy_status_name(mirakana::PhysicsCharacterDynamicPolicy3DStatus status) noexcept {
+    switch (status) {
+    case mirakana::PhysicsCharacterDynamicPolicy3DStatus::moved:
+        return "moved";
+    case mirakana::PhysicsCharacterDynamicPolicy3DStatus::constrained:
+        return "constrained";
+    case mirakana::PhysicsCharacterDynamicPolicy3DStatus::stepped:
+        return "stepped";
+    case mirakana::PhysicsCharacterDynamicPolicy3DStatus::initial_overlap:
+        return "initial_overlap";
+    case mirakana::PhysicsCharacterDynamicPolicy3DStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view physics_character_dynamic_policy_diagnostic_name(
+    mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic::none:
+        return "none";
+    case mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic::invalid_request:
+        return "invalid_request";
+    case mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic::initial_overlap:
+        return "initial_overlap";
+    case mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic::step_blocked:
+        return "step_blocked";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view
+runtime_scene_gameplay_session_state_name(mirakana::runtime_scene::RuntimeSceneGameplaySessionState state) noexcept {
+    switch (state) {
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running:
+        return "running";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won:
+        return "won";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::lost:
+        return "lost";
     }
     return "unknown";
 }
@@ -239,7 +343,11 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
 
         build_authored_collision_probe();
         build_navigation_agent();
+        build_navigation_navmesh_probe();
+        build_physics_movement_policy_probe();
         render_audio_stream_probe();
+        build_runtime_scene_gameplay_interaction_probe();
+        build_runtime_profile_documents_probe();
 
         (void)animation_.trigger("move");
         context.logger.write(mirakana::LogRecord{
@@ -382,6 +490,10 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         return navigation_replan_replanned_count_;
     }
 
+    [[nodiscard]] std::size_t navigation_replan_reused_count() const noexcept {
+        return navigation_replan_reused_count_;
+    }
+
     [[nodiscard]] std::size_t local_avoidance_applied_neighbor_count() const noexcept {
         return local_avoidance_applied_neighbor_count_;
     }
@@ -412,6 +524,79 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
 
     [[nodiscard]] mirakana::NavigationLocalAvoidanceDiagnostic local_avoidance_last_diagnostic() const noexcept {
         return local_avoidance_last_diagnostic_;
+    }
+
+    [[nodiscard]] mirakana::NavigationNavmeshPathStatus navigation_navmesh_status() const noexcept {
+        return navigation_navmesh_plan_.status;
+    }
+
+    [[nodiscard]] mirakana::NavigationNavmeshPathDiagnostic navigation_navmesh_diagnostic() const noexcept {
+        return navigation_navmesh_plan_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t navigation_navmesh_polygon_count() const noexcept {
+        return navigation_navmesh_plan_.polygon_path.size();
+    }
+
+    [[nodiscard]] std::size_t navigation_navmesh_dynamic_obstacle_count() const noexcept {
+        return navigation_navmesh_plan_.dynamic_obstacle_count;
+    }
+
+    [[nodiscard]] std::uint32_t navigation_navmesh_total_cost() const noexcept {
+        return navigation_navmesh_plan_.total_cost;
+    }
+
+    [[nodiscard]] mirakana::PhysicsCharacterDynamicPolicy3DStatus physics_policy_status() const noexcept {
+        return physics_policy_result_.status;
+    }
+
+    [[nodiscard]] mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic physics_policy_diagnostic() const noexcept {
+        return physics_policy_result_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t physics_policy_row_count() const noexcept {
+        return physics_policy_result_.rows.size();
+    }
+
+    [[nodiscard]] std::size_t physics_policy_dynamic_push_count() const noexcept {
+        return physics_policy_dynamic_push_count_;
+    }
+
+    [[nodiscard]] std::size_t physics_policy_solid_contact_count() const noexcept {
+        return physics_policy_solid_contact_count_;
+    }
+
+    [[nodiscard]] std::size_t physics_policy_trigger_overlap_count() const noexcept {
+        return physics_policy_trigger_overlap_count_;
+    }
+
+    [[nodiscard]] bool runtime_scene_gameplay_interactions_ready() const noexcept {
+        return runtime_scene_gameplay_interaction_plan_.succeeded() &&
+               runtime_scene_gameplay_interaction_plan_.rows.size() == 4U &&
+               runtime_scene_gameplay_interaction_plan_.final_session_state ==
+                   mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won;
+    }
+
+    [[nodiscard]] std::size_t runtime_scene_gameplay_interaction_count() const noexcept {
+        return runtime_scene_gameplay_interaction_plan_.rows.size();
+    }
+
+    [[nodiscard]] mirakana::runtime_scene::RuntimeSceneGameplaySessionState
+    runtime_scene_gameplay_final_state() const noexcept {
+        return runtime_scene_gameplay_interaction_plan_.final_session_state;
+    }
+
+    [[nodiscard]] bool runtime_profile_documents_ready() const noexcept {
+        return runtime_profile_write_.succeeded() && runtime_profile_load_.succeeded() &&
+               runtime_profile_load_.rows.size() == 3U && runtime_profile_write_.documents_written == 3U;
+    }
+
+    [[nodiscard]] std::size_t runtime_profile_document_rows() const noexcept {
+        return runtime_profile_load_.rows.size();
+    }
+
+    [[nodiscard]] std::size_t runtime_profile_documents_written() const noexcept {
+        return runtime_profile_write_.documents_written;
     }
 
     [[nodiscard]] std::string gameplay_tick_order_trace() const {
@@ -487,12 +672,123 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         navigation_agent_ = plan.agent_state;
     }
 
+    void build_navigation_navmesh_probe() {
+        const std::array polygons{
+            mirakana::NavigationNavmeshPolygon{.id = 1U,
+                                               .scene_ref = "gameplay.start",
+                                               .center = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+                                               .traversal_cost = 1U},
+            mirakana::NavigationNavmeshPolygon{.id = 2U,
+                                               .scene_ref = "gameplay.direct",
+                                               .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+                                               .traversal_cost = 1U},
+            mirakana::NavigationNavmeshPolygon{.id = 3U,
+                                               .scene_ref = "gameplay.goal",
+                                               .center = mirakana::NavigationPoint2{.x = 2.0F, .y = 0.0F},
+                                               .traversal_cost = 1U},
+            mirakana::NavigationNavmeshPolygon{.id = 4U,
+                                               .scene_ref = "gameplay.detour",
+                                               .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 1.0F},
+                                               .traversal_cost = 1U},
+        };
+        const std::array portals{
+            mirakana::NavigationNavmeshPortal{.from = 1U, .to = 2U, .cost = 1U, .bidirectional = true},
+            mirakana::NavigationNavmeshPortal{.from = 2U, .to = 3U, .cost = 1U, .bidirectional = true},
+            mirakana::NavigationNavmeshPortal{.from = 1U, .to = 4U, .cost = 1U, .bidirectional = true},
+            mirakana::NavigationNavmeshPortal{.from = 4U, .to = 3U, .cost = 1U, .bidirectional = true},
+        };
+        const std::array obstacles{
+            mirakana::NavigationNavmeshDynamicObstacle{
+                .id = 1U, .blocked_polygon = 2U, .scene_ref = "gameplay.dynamic_obstacle", .enabled = true},
+        };
+        navigation_navmesh_plan_ = mirakana::plan_navigation_navmesh_path(mirakana::NavigationNavmeshPathRequest{
+            .polygons = std::span<const mirakana::NavigationNavmeshPolygon>{polygons},
+            .portals = std::span<const mirakana::NavigationNavmeshPortal>{portals},
+            .dynamic_obstacles = std::span<const mirakana::NavigationNavmeshDynamicObstacle>{obstacles},
+            .start = 1U,
+            .goal = 3U,
+        });
+    }
+
+    void build_physics_movement_policy_probe() {
+        mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+        constexpr std::uint32_t character_layer = 1U << 0U;
+        constexpr std::uint32_t trigger_layer = 1U << 1U;
+        constexpr std::uint32_t dynamic_layer = 1U << 2U;
+        constexpr std::uint32_t solid_layer = 1U << 3U;
+        (void)world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 0.8F, .y = 1.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 1.0F, .z = 1.0F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .collision_layer = trigger_layer,
+            .collision_mask = character_layer,
+            .trigger = true,
+        });
+        (void)world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 2.5F, .y = 1.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.25F, .y = 0.5F, .z = 0.5F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .collision_layer = dynamic_layer,
+            .collision_mask = character_layer,
+        });
+        (void)world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 4.0F, .y = 1.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec3{.x = 0.25F, .y = 1.0F, .z = 1.0F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .collision_layer = solid_layer,
+            .collision_mask = character_layer,
+        });
+
+        mirakana::PhysicsCharacterDynamicPolicy3DDesc request;
+        request.position = mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F};
+        request.displacement = mirakana::Vec3{.x = 5.0F, .y = 0.0F, .z = 0.0F};
+        request.radius = 0.5F;
+        request.half_height = 0.5F;
+        request.character_layer = character_layer;
+        request.collision_mask = trigger_layer | dynamic_layer | solid_layer;
+        request.include_triggers = true;
+        request.skin_width = 0.05F;
+        request.dynamic_push_distance = 0.25F;
+        physics_policy_result_ = mirakana::evaluate_physics_character_dynamic_policy_3d(world, request);
+        physics_policy_dynamic_push_count_ = 0U;
+        physics_policy_solid_contact_count_ = 0U;
+        physics_policy_trigger_overlap_count_ = 0U;
+        for (const auto& row : physics_policy_result_.rows) {
+            if (row.kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::dynamic_push) {
+                ++physics_policy_dynamic_push_count_;
+            } else if (row.kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::solid_contact) {
+                ++physics_policy_solid_contact_count_;
+            } else if (row.kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::trigger_overlap) {
+                ++physics_policy_trigger_overlap_count_;
+            }
+        }
+    }
+
     void seed_navigation_dynamic_obstacle() {
         if (navigation_dynamic_obstacle_injected_) {
             return;
         }
 
-        constexpr mirakana::NavigationGridCoord obstacle_coord{.x = 2, .y = 0};
+        if (navigation_agent_.path.size() < 3U) {
+            return;
+        }
+
+        const mirakana::NavigationGridCoord obstacle_coord = to_navigation_grid_coord(navigation_agent_.path[1U]);
         if (!navigation_grid_.in_bounds(obstacle_coord) || !navigation_grid_.cell(obstacle_coord).walkable) {
             return;
         }
@@ -581,6 +877,83 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         audio_stream_status_ = output.plan.status;
         audio_stream_frames_ = output.buffer.frame_count;
         audio_stream_sample_count_ = output.buffer.interleaved_float_samples.size();
+    }
+
+    void build_runtime_scene_gameplay_interaction_probe() {
+        const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayBindingRow> bindings{
+            {
+                .binding_id = "actor.player",
+                .gameplay_system_id = "sample_gameplay",
+                .slot_id = "actor",
+                .node_name = "Player",
+                .node = mirakana::SceneNodeId{1U},
+                .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::mesh_renderer,
+            },
+            {
+                .binding_id = "hazard.trigger",
+                .gameplay_system_id = "sample_gameplay",
+                .slot_id = "hazard",
+                .node_name = "Hazard",
+                .node = mirakana::SceneNodeId{2U},
+                .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::any_renderable,
+            },
+            {
+                .binding_id = "goal.exit",
+                .gameplay_system_id = "sample_gameplay",
+                .slot_id = "goal",
+                .node_name = "Exit",
+                .node = mirakana::SceneNodeId{3U},
+                .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::any_renderable,
+            },
+        };
+        const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayInteractionSourceRow> interactions{
+            {
+                .action_id = "hazard.enter",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::trigger,
+                .source_binding_id = "actor.player",
+                .target_binding_id = "hazard.trigger",
+            },
+            {
+                .action_id = "hazard.damage",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::damage,
+                .source_binding_id = "hazard.trigger",
+                .target_binding_id = "actor.player",
+                .amount = 1,
+            },
+            {
+                .action_id = "objective.escape",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::objective_progress,
+                .source_binding_id = "actor.player",
+                .objective_id = "escape",
+                .amount = 1,
+            },
+            {
+                .action_id = "goal.win",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::win,
+                .source_binding_id = "goal.exit",
+            },
+        };
+        runtime_scene_gameplay_interaction_plan_ = mirakana::runtime_scene::plan_runtime_scene_gameplay_interactions(
+            bindings, interactions,
+            mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlanRequest{
+                .session_state = mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running,
+            });
+    }
+
+    void build_runtime_profile_documents_probe() {
+        mirakana::MemoryFileSystem fs;
+        mirakana::runtime::RuntimeSessionProfileDocuments documents;
+        documents.save_data.set_value("checkpoint", "intro");
+        documents.settings.set_value("audio.master_volume", "0.80");
+        documents.input_rebinding_profile.profile_id = "slot_1";
+
+        const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "sample_gameplay", .profile_id = "slot_1", .root_path = "profiles"};
+        runtime_profile_write_ = mirakana::runtime::write_runtime_session_profile_documents(
+            fs,
+            mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+        runtime_profile_load_ = mirakana::runtime::load_runtime_session_profile_documents(
+            fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
     }
 
     void update_ai_navigation_composition() {
@@ -676,6 +1049,7 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
             return;
         }
 
+        update_navigation_local_avoidance_probe();
         const auto update = mirakana::update_navigation_agent(mirakana::NavigationAgentUpdateRequest{
             .state = navigation_agent_,
             .config =
@@ -685,13 +1059,49 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         navigation_agent_ = update.state;
     }
 
+    void update_navigation_local_avoidance_probe() {
+        const std::array neighbors{
+            mirakana::NavigationLocalAvoidanceNeighborDesc{
+                .id = 200U,
+                .position = mirakana::NavigationPoint2{.x = navigation_agent_.position.x + 0.25F,
+                                                       .y = navigation_agent_.position.y},
+                .velocity = mirakana::NavigationPoint2{.x = -0.25F, .y = 0.0F},
+                .radius = 0.5F,
+            },
+        };
+        const auto avoidance = mirakana::calculate_navigation_local_avoidance(mirakana::NavigationLocalAvoidanceRequest{
+            .agent =
+                mirakana::NavigationLocalAvoidanceAgentDesc{
+                    .id = 100U,
+                    .position = navigation_agent_.position,
+                    .desired_velocity = mirakana::NavigationPoint2{.x = 2.0F, .y = 0.0F},
+                    .radius = 0.5F,
+                    .max_speed = 2.0F,
+                },
+            .neighbors = std::span<const mirakana::NavigationLocalAvoidanceNeighborDesc>{neighbors},
+            .separation_weight = 1.0F,
+            .prediction_time_seconds = 1.0F,
+        });
+        local_avoidance_last_status_ = avoidance.status;
+        local_avoidance_last_diagnostic_ = avoidance.diagnostic;
+        if (avoidance.status == mirakana::NavigationLocalAvoidanceStatus::success) {
+            ++local_avoidance_step_count_;
+            local_avoidance_applied_neighbor_count_ += avoidance.applied_neighbor_count;
+        }
+    }
+
     mirakana::NavigationGrid navigation_grid_;
     mirakana::PhysicsWorld3D physics_;
     mirakana::AnimationStateMachine animation_;
     mirakana::PhysicsAuthoredCollisionScene3DBuildResult authored_collision_;
     mirakana::PhysicsCharacterController3DResult controller_result_;
+    mirakana::PhysicsCharacterDynamicPolicy3DResult physics_policy_result_;
+    mirakana::NavigationNavmeshPathResult navigation_navmesh_plan_;
     mirakana::NavigationAgentState navigation_agent_;
     mirakana::BehaviorTreeTickResult last_tree_result_;
+    mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlan runtime_scene_gameplay_interaction_plan_;
+    mirakana::runtime::RuntimeSessionProfileDocumentWriteResult runtime_profile_write_;
+    mirakana::runtime::RuntimeSessionProfileDocumentLoadResult runtime_profile_load_;
     mirakana::Entity actor_entity_{};
     mirakana::PhysicsBody3DId floor_body_{};
     mirakana::PhysicsBody3DId actor_body_{};
@@ -710,6 +1120,9 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
     std::uint32_t navigation_replan_last_total_cost_{0U};
     std::size_t local_avoidance_step_count_{0U};
     std::size_t navigation_replan_last_path_point_count_{0U};
+    std::size_t physics_policy_dynamic_push_count_{0U};
+    std::size_t physics_policy_solid_contact_count_{0U};
+    std::size_t physics_policy_trigger_overlap_count_{0U};
     std::size_t last_perception_target_count_{0U};
     std::uint32_t audio_stream_frames_{0U};
     std::size_t audio_stream_sample_count_{0U};
@@ -750,7 +1163,38 @@ int main() {
               << " gameplay_tick_steps=" << game.last_tick_step_count()
               << " gameplay_tick_order_ok=" << (game.gameplay_tick_order_stable() ? 1 : 0)
               << " gameplay_tick_order_violations=" << game.gameplay_tick_order_violations()
-              << " gameplay_tick_order_trace=" << game.gameplay_tick_order_trace() << '\n';
+              << " gameplay_tick_order_trace=" << game.gameplay_tick_order_trace()
+              << " navigation_navmesh_status=" << navigation_navmesh_path_status_name(game.navigation_navmesh_status())
+              << " navigation_navmesh_diagnostic="
+              << navigation_navmesh_path_diagnostic_name(game.navigation_navmesh_diagnostic())
+              << " navigation_navmesh_polygons=" << game.navigation_navmesh_polygon_count()
+              << " navigation_navmesh_dynamic_obstacles=" << game.navigation_navmesh_dynamic_obstacle_count()
+              << " navigation_navmesh_total_cost=" << game.navigation_navmesh_total_cost()
+              << " navigation_dynamic_obstacles=" << game.navigation_dynamic_obstacle_count()
+              << " navigation_replan_attempts=" << game.navigation_replan_attempt_count()
+              << " navigation_replan_replanned=" << game.navigation_replan_replanned_count()
+              << " navigation_replan_reused=" << game.navigation_replan_reused_count()
+              << " navigation_replan_last_status="
+              << navigation_grid_replan_status_name(game.navigation_replan_last_status())
+              << " navigation_replan_last_path_points=" << game.navigation_replan_last_path_point_count()
+              << " local_avoidance_status="
+              << navigation_local_avoidance_status_name(game.local_avoidance_last_status())
+              << " local_avoidance_diagnostic="
+              << navigation_local_avoidance_diagnostic_name(game.local_avoidance_last_diagnostic())
+              << " local_avoidance_steps=" << game.local_avoidance_step_count()
+              << " local_avoidance_applied_neighbors=" << game.local_avoidance_applied_neighbor_count()
+              << " physics_policy_status=" << physics_character_dynamic_policy_status_name(game.physics_policy_status())
+              << " physics_policy_diagnostic="
+              << physics_character_dynamic_policy_diagnostic_name(game.physics_policy_diagnostic())
+              << " physics_policy_rows=" << game.physics_policy_row_count()
+              << " physics_policy_dynamic_pushes=" << game.physics_policy_dynamic_push_count()
+              << " physics_policy_solid_contacts=" << game.physics_policy_solid_contact_count()
+              << " physics_policy_trigger_overlaps=" << game.physics_policy_trigger_overlap_count()
+              << " runtime_scene_gameplay_interactions=" << game.runtime_scene_gameplay_interaction_count()
+              << " runtime_scene_gameplay_final_state="
+              << runtime_scene_gameplay_session_state_name(game.runtime_scene_gameplay_final_state())
+              << " runtime_profile_documents=" << game.runtime_profile_document_rows()
+              << " runtime_profile_writes=" << game.runtime_profile_documents_written() << '\n';
 
     return result.status == mirakana::RunStatus::stopped_by_app && result.frames_run == 4 && game.frames() == 4 &&
                    game.initialized() && registry.living_count() == 0 && std::abs(position.x - 1.25F) < 0.0001F &&
@@ -760,7 +1204,19 @@ int main() {
                    navigation.status == mirakana::NavigationAgentStatus::reached_destination &&
                    behavior.status == mirakana::BehaviorTreeStatus::success && behavior.visited_nodes.size() == 4U &&
                    game.perception_target_count() == 1U && game.audio_stream_frames() == 2U &&
-                   game.audio_stream_sample_count() == 2U && game.gameplay_tick_order_stable()
+                   game.audio_stream_sample_count() == 2U && game.gameplay_tick_order_stable() &&
+                   game.navigation_navmesh_status() == mirakana::NavigationNavmeshPathStatus::success &&
+                   game.navigation_navmesh_polygon_count() == 3U &&
+                   game.navigation_navmesh_dynamic_obstacle_count() == 1U &&
+                   game.navigation_dynamic_obstacle_count() == 1U && game.navigation_replan_replanned_count() > 0U &&
+                   game.local_avoidance_last_status() == mirakana::NavigationLocalAvoidanceStatus::success &&
+                   game.local_avoidance_step_count() > 0U && game.local_avoidance_applied_neighbor_count() > 0U &&
+                   game.physics_policy_status() == mirakana::PhysicsCharacterDynamicPolicy3DStatus::constrained &&
+                   game.physics_policy_diagnostic() == mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic::none &&
+                   game.physics_policy_row_count() == 3U && game.physics_policy_dynamic_push_count() == 1U &&
+                   game.physics_policy_solid_contact_count() == 1U &&
+                   game.physics_policy_trigger_overlap_count() == 1U &&
+                   game.runtime_scene_gameplay_interactions_ready() && game.runtime_profile_documents_ready()
                ? 0
                : 1;
 }

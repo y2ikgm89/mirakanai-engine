@@ -1,0 +1,83 @@
+# Sprite Atlas Authoring v1 (2026-05-20)
+
+**Plan ID:** `sprite-atlas-authoring-v1`
+**Status:** Completed.
+**Current pointer rule:** This plan is historical closeout evidence. After completion, `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` moves to the next developer-owned capability plan. Keep `unsupportedProductionGaps = []`; this is developer-owned 2D capability work, not a reopened Engine 1.0 production gap.
+
+## Goal
+
+Add the first source-authoring primitive for generated-game sprite atlases so AI and developer workflows can describe reviewed sprite frames, pack them through existing deterministic atlas policy, and produce package-ready source/cook rows without inventing game-specific asset pipelines.
+
+## Context
+
+- The foundational unblockers are complete: gameplay binding/interactions, save/settings/profile, runtime menu/HUD intent, input contexts, gameplay audio mix planning, asset placeholder generation, and gameplay debug overlay rows.
+- Existing `MK_assets` already exposes deterministic RGBA8 sprite atlas packing, and existing package/UI atlas work proves adjacent metadata/cooked-package patterns.
+- The next backlog priority is 2D strengthening. `sprite-atlas-authoring-v1` should bridge generated-game source sprite rows to reviewed atlas metadata and cook/package planning before renderer batching or flipbook animation work expands the runtime side.
+
+## Constraints
+
+- Keep the work host-independent and deterministic. Do not require native GPU handles, renderer residency, runtime source image decoding, package streaming, editor-only UI, or broad production atlas tooling.
+- Reuse existing first-party image decode, atlas packing, source asset registry, and registered source cook/package contracts where they fit.
+- Game-specific art direction, frame naming policy, animation semantics, and replacement workflows stay in game-owned code/data unless they become reusable engine contracts.
+- Preserve `unsupportedProductionGaps = []`. If the work needs a reopened Engine 1.0 blocker, stop.
+- Use RED tests or static guards before behavior/API changes.
+
+## Phase 0: Pointer Sync
+
+**Status:** Completed.
+
+### Goal
+
+Make the manifest pointers, master-plan ledger, and plan registry select `sprite-atlas-authoring-v1` as the next active developer-owned capability after debug overlay closeout.
+
+### Done When
+
+- `docs/superpowers/plans/README.md` lists this plan as the active `currentActivePlan` milestone and records `engine-gameplay-debug-overlay-v1` as completed.
+- The production master plan and readiness ledger name this milestone as developer-owned 2D capability work, not an Engine 1.0 unsupported gap.
+- `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and composed `engine/agent/manifest.json` point `currentActivePlan` and `recommendedNextPlan` at this plan while preserving `unsupportedProductionGaps = []`.
+
+## Phase 1: Source Atlas Authoring Contract
+
+**Status:** Completed.
+
+### Goal
+
+Add a narrow public contract that validates generated sprite atlas source rows and produces deterministic atlas metadata/provenance rows ready for the existing cook/package path.
+
+### Done When
+
+- RED tests describe valid sprite atlas source rows, duplicate/invalid frame ids, unsupported dimensions or formats, deterministic packing order, and fail-closed diagnostics.
+- Focused `MK_assets` / `MK_tools` build and tests pass.
+- Docs, manifest fragments, and static checks describe the source atlas authoring contract without claiming runtime image decoding, renderer residency, production batching, or animation semantics.
+
+## Phase 2: Package Adoption Evidence
+
+**Status:** Completed.
+
+### Goal
+
+Adopt the sprite atlas authoring contract in a generated 2D source/package path that already consumes cooked 2D assets.
+
+### Done When
+
+- At least one sample or scaffold uses the atlas authoring planner before package registration or runtime consumption.
+- Focused sample/package validation proves the adoption with deterministic atlas metadata counters.
+- Agent-surface drift is checked and updated if durable guidance changed.
+
+## Validation Evidence
+
+- Phase 0 pointer sync: plan registry, production master-plan index, readiness ledger, manifest fragments, and composed manifest point `currentActivePlan` / `recommendedNextPlan` at this plan while keeping `unsupportedProductionGaps = []`.
+- Phase 0 surface/full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and `tools/validate.ps1` passed while selecting this plan; `production-readiness-audit` reported `unsupported_gaps=0` and 65/65 CTest tests passed.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests` failed while `tests/unit/tools_tests.cpp` referenced missing `mirakana/tools/sprite_atlas_tool.hpp`.
+- Phase 1 implementation: `MK_tools` now exposes `SpriteAtlasSourceFrameDesc`, `SpriteAtlasSourceAuthoringDesc`, `SpriteAtlasSourceAuthoringPlan`, and `plan_sprite_atlas_source_authoring` to validate reviewed RGBA8 source frames, canonicalize frame ordering by frame id, pack through `pack_sprite_atlas_rgba8_max_side`, emit `GameEngine.TextureSource.v1` atlas source content, synchronize one `GameEngine.SourceAssetRegistry.v1` texture row, and return changed-file hashes plus frame UV/provenance rows. Unsupported runtime source decoding, renderer/RHI residency, package streaming, animation semantics, editor productization, and free-form editing stay fail-closed.
+- Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_tests` passed for the new source atlas authoring tests.
+- Phase 1 surface/full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-ai-integration.ps1`, and `tools/validate.ps1` passed; `production-readiness-audit` reported `unsupported_gaps=0` and 65/65 CTest tests passed.
+- Phase 2 RED: after adding static expectations first, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` failed as expected because `DesktopRuntime2DPackage` did not create `source/assets/package.geassets`.
+- Phase 2 adoption: `DesktopRuntime2DPackage` and `games/sample_2d_desktop_runtime_package` now declare `spriteAtlasSourceAuthoringTargets` over reviewed RGBA8 frame rows, `source/assets/package.geassets`, and `source/sprites/player_atlas.texture_source`, while keeping those source authoring files out of `runtimePackageFiles` before cooked package consumption. `schemas/game-agent.schema.json`, static contract checks, docs, skills, and manifest fragments were updated for the new game manifest contract. Installed 2D sample validation also now matches the sample's default 3-frame smoke when `--max-frames` is omitted.
+- Phase 2 focused GREEN/static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed after the scaffold/sample/schema/surface updates.
+- Phase 2 package gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed; the installed D3D12 smoke reported `native_2d_texture_atlas_ready=1`, `sprite_batch_plan_diagnostics=0`, `gameplay_systems_status=ready`, `gameplay_systems_ticks=3`, and `package_records=6`.
+- Phase 2 closeout/full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after the package adoption, static contract updates, plan closeout, and next-plan pointer sync; `production-readiness-audit` reported `unsupported_gaps=0` and 65/65 CTest tests passed.
+
+## Next-Step Decision
+
+This milestone completes the reviewed source atlas authoring foundation and package/scaffold adoption without claiming runtime source image decoding, renderer/RHI residency, production sprite batching, animation semantics, editor productization, or free-form art editing. The next active developer-owned capability is [Sprite Batching Renderer v1](2026-05-20-sprite-batching-renderer-v1.md), which should build on atlas authoring rows and the earlier native sprite batching execution proof to improve renderer-facing 2D batching evidence without reopening an Engine 1.0 production gap.

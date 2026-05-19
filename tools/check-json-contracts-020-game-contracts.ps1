@@ -537,6 +537,12 @@ if ($desktop2dRecipe.Count -ne 1) {
             Write-Error "engine manifest 2d-desktop-runtime-package recipe missing required module: $module"
         }
     }
+    Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "spriteAtlasSourceAuthoringTargets" "2d-desktop-runtime-package cooked runtime assumptions"
+    foreach ($sourceFormat in @("GameEngine.TextureSource.v1", "GameEngine.SourceAssetRegistry.v1", "first-party-cooked-fixture")) {
+        if (@($desktop2dRecipe[0].importerAssumptions.sourceFormats) -notcontains $sourceFormat) {
+            Write-Error "engine manifest 2d-desktop-runtime-package recipe importerAssumptions.sourceFormats missing $sourceFormat"
+        }
+    }
     if (@($desktop2dRecipe[0].allowedTemplates) -notcontains "DesktopRuntime2DPackage") {
         Write-Error "engine manifest 2d-desktop-runtime-package recipe must allow DesktopRuntime2DPackage"
     }

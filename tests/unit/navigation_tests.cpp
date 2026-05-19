@@ -6,6 +6,7 @@
 #include "mirakana/navigation/local_avoidance.hpp"
 #include "mirakana/navigation/navigation_agent.hpp"
 #include "mirakana/navigation/navigation_grid.hpp"
+#include "mirakana/navigation/navigation_navmesh.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
 #include "mirakana/navigation/navigation_replan.hpp"
 #include "mirakana/navigation/path_following.hpp"
@@ -339,6 +340,112 @@ MK_TEST("navigation grid replan forwards pathfinding failures") {
                                                     });
     MK_REQUIRE(blocked_endpoint.status == mirakana::NavigationGridReplanStatus::blocked_endpoint);
     MK_REQUIRE(blocked_endpoint.path.empty());
+}
+
+MK_TEST("navigation navmesh plans scene referenced route around dynamic obstacles") {
+    const std::vector<mirakana::NavigationNavmeshPolygon> polygons{
+        mirakana::NavigationNavmeshPolygon{.id = 1U,
+                                           .scene_ref = "scene.start",
+                                           .center = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 2U,
+                                           .scene_ref = "scene.direct",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 3U,
+                                           .scene_ref = "scene.goal",
+                                           .center = mirakana::NavigationPoint2{.x = 2.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 4U,
+                                           .scene_ref = "scene.detour",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 1.0F},
+                                           .traversal_cost = 1U},
+    };
+    const std::vector<mirakana::NavigationNavmeshPortal> portals{
+        mirakana::NavigationNavmeshPortal{.from = 1U, .to = 2U, .cost = 1U, .bidirectional = true},
+        mirakana::NavigationNavmeshPortal{.from = 2U, .to = 3U, .cost = 1U, .bidirectional = true},
+        mirakana::NavigationNavmeshPortal{.from = 1U, .to = 4U, .cost = 1U, .bidirectional = true},
+        mirakana::NavigationNavmeshPortal{.from = 4U, .to = 3U, .cost = 1U, .bidirectional = true},
+    };
+    const std::vector<mirakana::NavigationNavmeshDynamicObstacle> obstacles{
+        mirakana::NavigationNavmeshDynamicObstacle{
+            .id = 77U, .blocked_polygon = 2U, .scene_ref = "scene.crate", .enabled = true},
+    };
+
+    const auto blocked = mirakana::plan_navigation_navmesh_path(mirakana::NavigationNavmeshPathRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .dynamic_obstacles = obstacles,
+        .start = 1U,
+        .goal = 3U,
+    });
+
+    const std::vector<std::uint32_t> expected_detour{1U, 4U, 3U};
+    const std::vector<std::string> expected_scene_refs{"scene.start", "scene.detour", "scene.goal"};
+    MK_REQUIRE(blocked.status == mirakana::NavigationNavmeshPathStatus::success);
+    MK_REQUIRE(blocked.diagnostic == mirakana::NavigationNavmeshPathDiagnostic::none);
+    MK_REQUIRE(blocked.polygon_path == expected_detour);
+    MK_REQUIRE(blocked.scene_refs == expected_scene_refs);
+    MK_REQUIRE(blocked.dynamic_obstacle_count == 1U);
+    MK_REQUIRE(blocked.total_cost == 4U);
+
+    const auto unblocked = mirakana::plan_navigation_navmesh_path(mirakana::NavigationNavmeshPathRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .start = 1U,
+        .goal = 3U,
+    });
+    const std::vector<std::uint32_t> expected_direct{1U, 2U, 3U};
+    MK_REQUIRE(unblocked.status == mirakana::NavigationNavmeshPathStatus::success);
+    MK_REQUIRE(unblocked.polygon_path == expected_direct);
+    MK_REQUIRE(unblocked.dynamic_obstacle_count == 0U);
+    MK_REQUIRE(unblocked.total_cost == 4U);
+}
+
+MK_TEST("navigation navmesh reports deterministic diagnostics for invalid scene references") {
+    const std::vector<mirakana::NavigationNavmeshPolygon> duplicate_scene_refs{
+        mirakana::NavigationNavmeshPolygon{.id = 1U,
+                                           .scene_ref = "scene.duplicate",
+                                           .center = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 2U,
+                                           .scene_ref = "scene.duplicate",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+    };
+    const auto duplicate = mirakana::plan_navigation_navmesh_path(mirakana::NavigationNavmeshPathRequest{
+        .polygons = duplicate_scene_refs,
+        .start = 1U,
+        .goal = 2U,
+    });
+    MK_REQUIRE(duplicate.status == mirakana::NavigationNavmeshPathStatus::invalid_navmesh);
+    MK_REQUIRE(duplicate.diagnostic == mirakana::NavigationNavmeshPathDiagnostic::duplicate_scene_ref);
+    MK_REQUIRE(duplicate.failing_polygon == 2U);
+
+    const std::vector<mirakana::NavigationNavmeshPolygon> polygons{
+        mirakana::NavigationNavmeshPolygon{.id = 1U,
+                                           .scene_ref = "scene.start",
+                                           .center = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 2U,
+                                           .scene_ref = "scene.goal",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+    };
+    const std::vector<mirakana::NavigationNavmeshDynamicObstacle> obstacles{
+        mirakana::NavigationNavmeshDynamicObstacle{
+            .id = 1U, .blocked_polygon = 1U, .scene_ref = "scene.blocker", .enabled = true},
+    };
+    const auto blocked_start = mirakana::plan_navigation_navmesh_path(mirakana::NavigationNavmeshPathRequest{
+        .polygons = polygons,
+        .dynamic_obstacles = obstacles,
+        .start = 1U,
+        .goal = 2U,
+    });
+    MK_REQUIRE(blocked_start.status == mirakana::NavigationNavmeshPathStatus::blocked_endpoint);
+    MK_REQUIRE(blocked_start.diagnostic == mirakana::NavigationNavmeshPathDiagnostic::blocked_start);
+    MK_REQUIRE(blocked_start.dynamic_obstacle_count == 1U);
+    MK_REQUIRE(blocked_start.failing_polygon == 1U);
 }
 
 MK_TEST("navigation grid path smoothing preserves direct paths") {

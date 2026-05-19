@@ -328,6 +328,7 @@ Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json"
     Assert-MaterialShaderAuthoringTargets $game $relative $requiresMaterialShaderTargets
     $requiresAtlasTilemapTargets = $game.gameplayContract.productionRecipe -eq "2d-desktop-runtime-package"
     Assert-AtlasTilemapAuthoringTargets $game $relative $requiresAtlasTilemapTargets
+    Assert-SpriteAtlasSourceAuthoringTargets $game $relative $requiresAtlasTilemapTargets
     $requiresPrefabScene3dTargets = $game.gameplayContract.productionRecipe -eq "3d-playable-desktop-package"
     Assert-PrefabScenePackageAuthoringTargets $game $relative $requiresPrefabScene3dTargets
     Assert-RegisteredSourceAssetCookTargets $game $relative $requiresPrefabScene3dTargets
@@ -377,7 +378,7 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
     if ($sample2dDesktopManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
         Write-Error "$sample2dDesktopManifestPath gameplayContract.productionRecipe must be 2d-desktop-runtime-package"
     }
-    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($sample2dDesktopManifest.engineModules) -notcontains $module) {
             Write-Error "$sample2dDesktopManifestPath engineModules missing $module"
         }
@@ -416,6 +417,8 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "--require-vulkan-shaders",
         "--require-vulkan-renderer",
         "--require-native-2d-sprites",
+        "--require-gameplay-systems",
+        "gameplay systems package proof",
         "public native or RHI handle access remains unsupported",
         "broad production sprite batching readiness remains unsupported",
         "general production renderer quality remains unsupported"
@@ -429,11 +432,15 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
     foreach ($needle in @(
         "mirakana/runtime_host/shader_bytecode.hpp",
         "mirakana/renderer/sprite_batch.hpp",
+        "mirakana/ai/behavior_tree.hpp",
+        "mirakana/navigation/navigation_path_planner.hpp",
+        "mirakana/physics/physics2d.hpp",
         "--require-d3d12-shaders",
         "--require-d3d12-renderer",
         "--require-vulkan-shaders",
         "--require-vulkan-renderer",
         "--require-native-2d-sprites",
+        "--require-gameplay-systems",
         "sample_2d_desktop_runtime_package_sprite.vs.dxil",
         "sample_2d_desktop_runtime_package_sprite.ps.dxil",
         "sample_2d_desktop_runtime_package_sprite.vs.spv",
@@ -448,7 +455,24 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "plan_scene_sprite_batches",
         "sprite_batch_plan_draws",
         "sprite_batch_plan_texture_binds",
+        "sprite_batch_plan_atlas_backed_batches",
+        "sprite_batch_plan_repeated_atlas_batches",
+        "sprite_batch_plan_repeated_atlas_sprites",
         "sprite_batch_plan_diagnostics",
+        "advance_runtime_sprite_flipbook",
+        "sprite_flipbook_ticks",
+        "sprite_flipbook_frames_sampled",
+        "sprite_flipbook_frames_applied",
+        "sprite_flipbook_selected_frame_sum",
+        "sprite_flipbook_diagnostics",
+        "gameplay_systems_status=",
+        "gameplay_systems_physics_contacts=",
+        "gameplay_systems_navigation_plan_status=",
+        "gameplay_systems_behavior_status=",
+        "gameplay_systems_behavior_authoring_ready=",
+        "gameplay_systems_behavior_authoring_diagnostics=",
+        "gameplay_systems_behavior_authoring_trace_nodes=",
+        "required_gameplay_systems_unavailable",
         "required_native_2d_sprites_unavailable",
         "required_d3d12_renderer_unavailable",
         "required_vulkan_renderer_unavailable"
@@ -468,6 +492,10 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "sample_2d_desktop_runtime_package_native_sprite_overlay.vs.spv",
         "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv",
         "--require-native-2d-sprites",
+        "--require-gameplay-systems",
+        "MK_ai",
+        "MK_navigation",
+        "MK_physics",
         "sample_2d_desktop_runtime_package_shaders",
         "sample_2d_desktop_runtime_package_vulkan_shaders",
         "REQUIRES_D3D12_SHADERS"
@@ -484,7 +512,22 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "native_2d_texture_binds",
         "sprite_batch_plan_draws",
         "sprite_batch_plan_texture_binds",
-        "sprite_batch_plan_diagnostics"
+        "sprite_batch_plan_atlas_backed_batches",
+        "sprite_batch_plan_repeated_atlas_batches",
+        "sprite_batch_plan_repeated_atlas_sprites",
+        "sprite_batch_plan_diagnostics",
+        "sprite_flipbook_ticks",
+        "sprite_flipbook_frames_sampled",
+        "sprite_flipbook_frames_applied",
+        "sprite_flipbook_selected_frame_sum",
+        "sprite_flipbook_diagnostics",
+        "gameplay_systems_status",
+        "gameplay_systems_physics_contacts",
+        "gameplay_systems_navigation_plan_status",
+        "gameplay_systems_behavior_status",
+        "gameplay_systems_behavior_authoring_ready",
+        "gameplay_systems_behavior_authoring_diagnostics",
+        "gameplay_systems_behavior_authoring_trace_nodes"
     )) {
         if (-not $installedDesktopRuntimeValidationText.Contains($needle)) {
             Write-Error "tools/validate-installed-desktop-runtime.ps1 missing 2D native sprite package validation field: $needle"
@@ -817,12 +860,31 @@ foreach ($needle in @("**Status:** Completed.", "RHI Upload Stale Generation Dia
         Write-Error "RHI Upload Stale Generation Diagnostics plan missing text: $needle"
     }
 }
-foreach ($needle in @("SpriteBatchPlan", "SpriteBatchRange", "SpriteBatchDiagnosticCode", "plan_sprite_batches")) {
+foreach ($needle in @(
+        "SpriteBatchPlan",
+        "SpriteBatchPlanDesc",
+        "SpriteBatchPlanOptions",
+        "SpriteBatchRange",
+        "SpriteBatchDiagnosticCode",
+        "atlas_backed_batch_count",
+        "repeated_atlas_batch_count",
+        "repeated_atlas_sprite_count",
+        "unsupported_reordering_policy",
+        "untextured_sprite_disallowed",
+        "plan_sprite_batches"
+    )) {
     if (-not $spriteBatchHeaderText.Contains($needle)) {
         Write-Error "2D sprite batch planning header missing contract text: $needle"
     }
 }
-foreach ($needle in @("append_or_extend_batch", "missing_texture_atlas", "invalid_uv_rect", "texture_bind_count")) {
+foreach ($needle in @(
+        "append_or_extend_batch",
+        "missing_texture_atlas",
+        "invalid_uv_rect",
+        "allow_sprite_reordering",
+        "require_atlas_backed_sprites",
+        "texture_bind_count"
+    )) {
     if (-not $spriteBatchSourceText.Contains($needle)) {
         Write-Error "2D sprite batch planning source missing contract text: $needle"
     }
@@ -856,8 +918,15 @@ foreach ($needle in @("mirakana/renderer/sprite_batch.hpp", "plan_scene_sprite_b
 foreach ($needle in @(
     "2d-sprite-batch-planning-contract",
     "2d-sprite-batch-package-telemetry",
+    "Sprite Batching Renderer v1",
     "plan_sprite_batches",
+    "SpriteBatchPlanDesc",
+    "atlas_backed_batch_count",
+    "unsupported_reordering_policy",
     "plan_scene_sprite_batches",
+    "sprite_batch_plan_atlas_backed_batches",
+    "sprite_batch_plan_repeated_atlas_batches",
+    "sprite_batch_plan_repeated_atlas_sprites",
     "production sprite batching readiness",
     "native_sprite_batches_executed"
 )) {
@@ -1157,6 +1226,12 @@ if (-not (Test-Path -LiteralPath $generated3dPackageManifestFullPath)) {
         "gameplay_systems_status=",
         "gameplay_systems_ready=",
         "gameplay_systems_navigation_plan_status=",
+        "gameplay_systems_navigation_navmesh_status=",
+        "gameplay_systems_navigation_navmesh_dynamic_obstacles=",
+        "gameplay_systems_local_avoidance_status=",
+        "gameplay_systems_local_avoidance_applied_neighbors=",
+        "gameplay_systems_physics_policy_status=",
+        "gameplay_systems_physics_policy_dynamic_pushes=",
         "gameplay_systems_blackboard_status=",
         "gameplay_systems_behavior_status=",
         "gameplay_systems_audio_status=",

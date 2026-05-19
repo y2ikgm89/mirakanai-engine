@@ -4262,7 +4262,7 @@ audio.data_hex=0000803e0000003f0000803e00000000
     $scene = @"
 format=GameEngine.Scene.v1
 scene.name=$DisplayTitle Generated 2D Scene
-node.count=2
+node.count=3
 node.1.name=Main Camera
 node.1.parent=0
 node.1.position=0,0,10
@@ -4284,6 +4284,16 @@ node.2.sprite_renderer.material=$materialId
 node.2.sprite_renderer.size=1.5,2
 node.2.sprite_renderer.tint=0.2,0.7,1,1
 node.2.sprite_renderer.visible=true
+node.3.name=Player Echo
+node.3.parent=0
+node.3.position=1.75,0,0
+node.3.scale=1,1,1
+node.3.rotation=0,0,0
+node.3.sprite_renderer.sprite=$textureId
+node.3.sprite_renderer.material=$materialId
+node.3.sprite_renderer.size=1.5,2
+node.3.sprite_renderer.tint=0.2,0.7,1,0.8
+node.3.sprite_renderer.visible=true
 "@
     $scene = ConvertTo-LfText -Text $scene
 
@@ -4340,6 +4350,26 @@ frame.1.size=2,1.25
 frame.1.tint=1,0.4,0.2,1
 "@
     $spriteAnimation = ConvertTo-LfText -Text $spriteAnimation
+
+    $sourceAtlasTexture = @"
+format=GameEngine.TextureSource.v1
+texture.width=1
+texture.height=1
+texture.pixel_format=rgba8_unorm
+texture.data_hex=33b3ffff
+"@
+    $sourceAtlasTexture = ConvertTo-LfText -Text $sourceAtlasTexture
+
+    $sourceRegistry = @"
+format=GameEngine.SourceAssetRegistry.v1
+asset.0.key=$textureName
+asset.0.id=$textureId
+asset.0.kind=texture
+asset.0.source=source/sprites/player_atlas.texture_source
+asset.0.source_format=GameEngine.TextureSource.v1
+asset.0.imported=runtime/assets/2d/player.texture.geasset
+"@
+    $sourceRegistry = ConvertTo-LfText -Text $sourceRegistry
 
     $spriteShader = @"
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
@@ -4506,6 +4536,8 @@ dependency.5.path=runtime/assets/2d/player.sprite_animation
             "runtime/assets/2d/player.sprite_animation" = $spriteAnimation
             "runtime/assets/2d/playable.scene" = $scene
             "runtime/$GameName.geindex" = $index
+            "source/assets/package.geassets" = $sourceRegistry
+            "source/sprites/player_atlas.texture_source" = $sourceAtlasTexture
             "shaders/runtime_2d_sprite.hlsl" = $spriteShader
         }
     }
@@ -5001,7 +5033,9 @@ This game uses the optional desktop runtime package lane with a first-party cook
 - `mirakana::runtime::runtime_sprite_animation_payload`
 - `mirakana::instantiate_runtime_scene_render_data`
 - `mirakana::validate_playable_2d_scene`
+- `mirakana::advance_runtime_sprite_flipbook`
 - `mirakana::sample_and_apply_runtime_scene_render_sprite_animation`
+- deterministic public gameplay systems composition through `MK_physics`, `MK_navigation`, and `MK_ai`
 - `mirakana::submit_scene_render_packet`
 - `mirakana::ui::UiDocument` plus `mirakana::submit_ui_renderer_submission`
 - `mirakana::AudioMixer` over a cooked audio payload
@@ -5013,7 +5047,7 @@ This game uses the optional desktop runtime package lane with a first-party cook
 - `game.agent.json.packageStreamingResidencyTargets` as host-gated safe-point package streaming intent
 - `PACKAGE_FILES_FROM_MANIFEST`
 
-The generated package proves cooked sprite/material/audio/scene loading, first-party cooked sprite animation frame sampling and application, deterministic data-only tilemap metadata with visible-cell runtime sampling counters through `--require-tilemap-runtime-ux`, 2D scene validation, HUD submission, audio cue intent, package smoke validation, and a host-gated D3D12 native 2D sprite overlay smoke through `--require-native-2d-sprites`. It does not claim production atlas packing, full tilemap editor UX, runtime image decoding, production sprite batching, package streaming execution, Metal readiness, public native/RHI handles, or general renderer quality.
+The generated package proves cooked sprite/material/audio/scene loading, atlas-backed repeated scene sprite planning counters through `sprite_batch_plan_atlas_backed_batches`, `sprite_batch_plan_repeated_atlas_batches`, and `sprite_batch_plan_repeated_atlas_sprites`, first-party cooked sprite animation frame sampling and application, deterministic flipbook ticks with package-visible `sprite_flipbook_frames_sampled` / `sprite_flipbook_frames_applied` counters through `--require-sprite-animation`, deterministic data-only tilemap metadata with visible-cell runtime sampling counters through `--require-tilemap-runtime-ux`, a deterministic 2D gameplay systems package proof through `--require-gameplay-systems`, 2D scene validation, HUD submission, audio cue intent, package smoke validation, and a host-gated D3D12 native 2D sprite overlay smoke through `--require-native-2d-sprites`. It does not claim production atlas packing, full tilemap editor UX, runtime image decoding, production sprite batching, package streaming execution, Metal readiness, public native/RHI handles, or general renderer quality.
 
 ## Validate
 
@@ -5025,7 +5059,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 The installed package smoke uses:
 
 ```powershell
-out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux
+out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems
 ```
 '@
     return $template.Replace("__TITLE__", $Title).Replace("__TARGET_NAME__", $TargetName).Replace("__GAME_NAME__", $GameName)
@@ -5069,7 +5103,7 @@ This `DesktopRuntime3DPackage` game uses the optional desktop runtime package la
 - selected generated 3D playable package smoke through `--require-playable-3d-slice`
 - selected generated 3D directional shadow package smoke with `directional_shadow_ready=1`, fixed PCF 3x3 filtering counters, `framegraph_passes=3`, `framegraph_passes_executed=6`, `framegraph_render_passes_recorded=6`, and `framegraph_barrier_steps_executed=15`
 - selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke with `--require-shadow-morph-composition`, `renderer_gpu_morph_draws`, `renderer_morph_descriptor_binds`, `directional_shadow_ready=1`, `framegraph_passes=3`, `framegraph_passes_executed=6`, `framegraph_render_passes_recorded=6`, and `framegraph_barrier_steps_executed=15`
-- selected generated 3D gameplay systems package smoke with `gameplay_systems_status=ready`, `gameplay_systems_ready=1`, physics authored collision/controller counters, navigation, AI perception/behavior, audio stream, and animation/lifecycle counters
+- selected generated 3D gameplay systems package smoke with `gameplay_systems_status=ready`, `gameplay_systems_ready=1`, physics authored collision/controller counters, navmesh dynamic-obstacle counters, local avoidance counters, character/dynamic physics policy counters, navigation, AI perception/behavior, audio stream, and animation/lifecycle counters
 - selected generated 3D scene collision package smoke with `--require-scene-collision-package`, `collision_package_status=ready`, `collision_package_bodies=3`, `collision_package_trigger_overlaps=1`, and `gameplay_systems_collision_package_ready=1`
 - selected D3D12 visible generated 3D production-style package proof with `--require-visible-3d-production-proof`, `visible_3d_status=ready`, `visible_3d_presented_frames=2`, D3D12 selection, scene GPU, postprocess, renderer quality, playable aggregate, and native UI overlay readiness counters
 - selected D3D12 generated 3D native UI overlay HUD box package smoke with `--require-native-ui-overlay`, `hud_boxes=2`, `ui_overlay_ready=1`, `ui_overlay_sprites_submitted=2`, and `ui_overlay_draws=2`
@@ -5084,7 +5118,7 @@ This `DesktopRuntime3DPackage` game uses the optional desktop runtime package la
 - `game.agent.json.packageStreamingResidencyTargets` as host-gated safe-point package streaming intent
 - `PACKAGE_FILES_FROM_MANIFEST`
 
-The generated package proves cooked texture/mesh/skinned-mesh/material/animation/morph/quaternion-animation/scene/physics-collision loading, runtime scene validation target descriptors, camera/controller package smoke validation, transform animation binding smoke validation, morph package consumption smoke validation, quaternion local-pose sampling smoke validation, selected host-gated safe-point package streaming counters through `--require-package-streaming-safe-point`, selected generated gameplay systems counters through `--require-gameplay-systems`, selected package collision counters through `--require-scene-collision-package`, generated 3D renderer quality counters through `--require-renderer-quality-gates` for scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9 only, generated 3D postprocess depth-input counters through `--require-postprocess-depth-input`, selected generated 3D directional shadow counters through `--require-directional-shadow --require-directional-shadow-filtering`, selected D3D12 generated 3D graphics morph + directional shadow receiver counters through `--require-shadow-morph-composition` with framegraph_render_passes_recorded=6, selected D3D12 visible generated 3D production-style package counters through `--require-visible-3d-production-proof`, selected D3D12 generated 3D native UI overlay HUD box counters through `--require-native-ui-overlay`, selected D3D12 generated 3D cooked UI atlas image sprite counters through `--require-native-ui-textured-sprite-atlas`, selected D3D12 generated 3D cooked UI atlas text glyph counters through `--require-native-ui-text-glyph-atlas`, selected generated 3D playable package counters through `--require-playable-3d-slice`, D3D12 compute morph dispatch into renderer-consumed POSITION/NORMAL/TANGENT buffers, generated D3D12 skin+compute package smoke counters, Vulkan POSITION/NORMAL/TANGENT compute morph package smoke through explicit SPIR-V artifacts, Vulkan skin+compute package smoke counters through explicit SPIR-V artifacts, and selected-target shader artifact metadata. It does not claim runtime source parsing, broad dependency cooking, broad async/background package streaming, scene/physics perception integration, navmesh/crowd, middleware, production physics middleware/native backend readiness, CCD, joints, production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, authored animation graph workflows, broad skeletal renderer deformation, broad directional shadow production quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, broad shadow+morph composition, Metal compute morph deformation, async compute overlap/performance, broad frame graph scheduling, graphics morph+skin composition beyond the host-owned skin+compute package smoke, material/shader graphs, live shader generation, editor productization, native/RHI handle exposure, Vulkan/Metal parity for the visible proof, general renderer quality, or broad generated 3D production readiness.
+The generated package proves cooked texture/mesh/skinned-mesh/material/animation/morph/quaternion-animation/scene/physics-collision loading, runtime scene validation target descriptors, camera/controller package smoke validation, transform animation binding smoke validation, morph package consumption smoke validation, quaternion local-pose sampling smoke validation, selected host-gated safe-point package streaming counters through `--require-package-streaming-safe-point`, selected generated gameplay systems counters through `--require-gameplay-systems`, including `gameplay_systems_navigation_navmesh_dynamic_obstacles=1`, `gameplay_systems_local_avoidance_applied_neighbors`, and `gameplay_systems_physics_policy_dynamic_pushes=1`, selected package collision counters through `--require-scene-collision-package`, generated 3D renderer quality counters through `--require-renderer-quality-gates` for scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9 only, generated 3D postprocess depth-input counters through `--require-postprocess-depth-input`, selected generated 3D directional shadow counters through `--require-directional-shadow --require-directional-shadow-filtering`, selected D3D12 generated 3D graphics morph + directional shadow receiver counters through `--require-shadow-morph-composition` with framegraph_render_passes_recorded=6, selected D3D12 visible generated 3D production-style package counters through `--require-visible-3d-production-proof`, selected D3D12 generated 3D native UI overlay HUD box counters through `--require-native-ui-overlay`, selected D3D12 generated 3D cooked UI atlas image sprite counters through `--require-native-ui-textured-sprite-atlas`, selected D3D12 generated 3D cooked UI atlas text glyph counters through `--require-native-ui-text-glyph-atlas`, selected generated 3D playable package counters through `--require-playable-3d-slice`, D3D12 compute morph dispatch into renderer-consumed POSITION/NORMAL/TANGENT buffers, generated D3D12 skin+compute package smoke counters, Vulkan POSITION/NORMAL/TANGENT compute morph package smoke through explicit SPIR-V artifacts, Vulkan skin+compute package smoke counters through explicit SPIR-V artifacts, and selected-target shader artifact metadata. It does not claim runtime source parsing, broad dependency cooking, broad async/background package streaming, scene/physics perception integration, navmesh asset import, crowd simulation, middleware, production physics middleware/native backend readiness, dynamic-vs-dynamic TOI, rotational CCD, 2D CCD, persistent joint assets, production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, authored animation graph workflows, broad skeletal renderer deformation, broad directional shadow production quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, broad shadow+morph composition, Metal compute morph deformation, async compute overlap/performance, broad frame graph scheduling, graphics morph+skin composition beyond the host-owned skin+compute package smoke, material/shader graphs, live shader generation, editor productization, native/RHI handle exposure, Vulkan/Metal parity for the visible proof, general renderer quality, or broad generated 3D production readiness.
 
 ## Validate
 
@@ -5404,7 +5438,10 @@ function New-DesktopRuntime2DManifest {
             "MK_scene_renderer",
             "MK_ui",
             "MK_ui_renderer",
-            "MK_audio"
+            "MK_audio",
+            "MK_ai",
+            "MK_navigation",
+            "MK_physics"
         )
         aiWorkflow = [ordered]@{
             spec = "games/$GameName/README.md"
@@ -5420,18 +5457,27 @@ function New-DesktopRuntime2DManifest {
             sceneRenderer = "mirakana::submit_scene_render_packet"
             ui = "mirakana::ui::UiDocument through mirakana::submit_ui_renderer_submission"
             audio = "mirakana::AudioMixer using a cooked audio payload"
+            physics = "mirakana::PhysicsWorld2D deterministic contact and trigger counters"
+            navigation = "mirakana::plan_navigation_grid_agent_path plus mirakana::update_navigation_agent"
+            ai = "mirakana::build_ai_perception_snapshot_2d, mirakana::write_ai_perception_blackboard, and mirakana::evaluate_behavior_tree"
             renderer = "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback or host-owned RHI-backed native 2D sprite overlay when packaged shader artifacts are present"
-            currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-native-2d-sprites so cooked scene sprite texture/material identity and HUD submission flow through the host-owned native RHI sprite overlay path with native_2d_sprite_batches_executed counters. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic frame sampling and sprite frame application emit sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming production atlas packing or full tilemap editor UX. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
+            currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-native-2d-sprites so cooked scene sprite texture/material identity, atlas-backed scene sprite planning counters including sprite_batch_plan_atlas_backed_batches, sprite_batch_plan_repeated_atlas_batches, and sprite_batch_plan_repeated_atlas_sprites, and HUD submission flow through the host-owned native RHI sprite overlay path with native_2d_sprite_batches_executed counters. The sprite atlas source authoring target records reviewed RGBA8 frame rows for plan_sprite_atlas_source_authoring, emits GameEngine.TextureSource.v1 plus GameEngine.SourceAssetRegistry.v1 authoring files, and keeps those source files outside runtimePackageFiles before cooked runtime consumption. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic flipbook ticks through advance_runtime_sprite_flipbook emit sprite_flipbook_frames_sampled and sprite_flipbook_frames_applied counters before sprite frame application emits sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming runtime image decoding, production atlas packing, or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, behavior authoring validation, and behavior tree counters emit gameplay_systems_* fields including gameplay_systems_behavior_authoring_diagnostics and gameplay_systems_behavior_authoring_trace_nodes. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
         }
         backendReadiness = [ordered]@{
             platform = "sdl3-desktop-host-gated"
-            graphics = "NullRenderer fallback plus host-gated D3D12 native 2D sprite batch execution counters through generated shader artifacts. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
+            graphics = "NullRenderer fallback plus host-gated D3D12 native 2D sprite batch execution counters and atlas-backed scene sprite plan counters through generated shader artifacts. Sprite atlas source authoring remains a reviewed tooling/source contract only; runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness, and general production renderer quality remain unsupported."
             audio = "device-independent cooked audio payload mixed through MK_audio"
             ui = "MK_ui-headless renderer submission"
-            physics = "not-required"
+            physics = "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems"
+            navigation = "MK_navigation grid path planning and agent update proof through --require-gameplay-systems"
+            ai = "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof through --require-gameplay-systems"
         }
         importerRequirements = [ordered]@{
-            sourceFormats = @("first-party-cooked-fixture")
+            sourceFormats = @(
+                "GameEngine.TextureSource.v1",
+                "GameEngine.SourceAssetRegistry.v1",
+                "first-party-cooked-fixture"
+            )
             cookedOnlyRuntime = $true
             externalImportersRequired = @()
         }
@@ -5446,6 +5492,37 @@ function New-DesktopRuntime2DManifest {
             "runtime/assets/2d/player.sprite_animation",
             "runtime/assets/2d/playable.scene"
         )
+        spriteAtlasSourceAuthoringTargets = @(
+            [ordered]@{
+                id = "packaged-2d-player-source-atlas"
+                mode = "reviewed-rgba8-source-frames"
+                planner = "plan_sprite_atlas_source_authoring"
+                sourceRegistryPath = "source/assets/package.geassets"
+                atlasSourcePath = "source/sprites/player_atlas.texture_source"
+                atlasImportedPath = "runtime/assets/2d/player.texture.geasset"
+                atlasAssetKey = "$assetKeyPrefix/textures/player"
+                packageIndexPath = "runtime/$GameName.geindex"
+                maxSide = 1024
+                sourceDecoding = "provided-rgba8-texture-source"
+                atlasPacking = "deterministic-sprite-atlas-rgba8-max-side"
+                runtimeSourceImageDecoding = "unsupported"
+                rendererRhiResidency = "unsupported"
+                packageStreaming = "unsupported"
+                animationSemantics = "unsupported"
+                editorProductization = "unsupported"
+                freeFormEdit = "unsupported"
+                frameRows = @(
+                    [ordered]@{
+                        id = "player/idle"
+                        sourcePath = "source/sprites/player_idle.reviewed-rgba8"
+                        width = 1
+                        height = 1
+                        pixelFormat = "rgba8_unorm"
+                    }
+                )
+                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")
+            }
+        )
         atlasTilemapAuthoringTargets = @(
             [ordered]@{
                 id = "packaged-2d-tilemap"
@@ -5458,7 +5535,7 @@ function New-DesktopRuntime2DManifest {
                 sourceDecoding = "unsupported"
                 atlasPacking = "unsupported"
                 nativeGpuSpriteBatching = "unsupported"
-                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-native-2d-sprite-smoke")
+                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")
             }
         )
         runtimeSceneValidationTargets = @(
@@ -5481,7 +5558,7 @@ function New-DesktopRuntime2DManifest {
                 maxResidentPackages = 1
                 preloadAssetKeys = @("$assetKeyPrefix/scenes/packaged-2d-scene", "$assetKeyPrefix/tilemaps/level", "$assetKeyPrefix/animations/player-sprite-animation")
                 residentResourceKinds = @("texture", "material", "scene", "audio", "tilemap", "sprite_animation")
-                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-native-2d-sprite-smoke")
+                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")
             }
         )
         validationRecipes = @(
@@ -5506,8 +5583,12 @@ function New-DesktopRuntime2DManifest {
                 command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-tilemap-runtime-ux"
             },
             [ordered]@{
+                name = "installed-2d-gameplay-systems-smoke"
+                command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-gameplay-systems"
+            },
+            [ordered]@{
                 name = "installed-native-2d-sprite-smoke"
-                command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux"
+                command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems"
             }
         )
     }
@@ -5565,14 +5646,14 @@ function New-DesktopRuntime3DManifest {
             scene = "GameEngine.Scene.v1 loaded from a cooked package with static mesh, primary perspective camera, and directional light metadata"
             sceneRenderer = "mirakana::submit_scene_render_packet with material instance intent through first-party scene/material contracts"
             renderer = "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback and host-gated scene GPU binding when selected"
-        currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 3D gameplay with camera/controller movement, transform/quaternion animation, morph and compute morph package smokes, selected host-gated package streaming safe-point smoke, selected generated 3D renderer quality smoke over scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9 counters, selected generated 3D postprocess depth-input smoke through postprocess_depth_input_ready=1 and renderer_quality_postprocess_depth_input_ready=1, selected generated 3D playable package smoke through playable_3d_* counters, selected generated 3D directional shadow package smoke through directional_shadow_* counters with fixed_pcf_3x3 filtering, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected D3D12 generated 3D graphics morph + directional shadow receiver smoke through --require-shadow-morph-composition with renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected generated 3D gameplay systems package smoke through gameplay_systems_* counters over deterministic public physics, navigation, AI, audio, animation, and lifecycle APIs, selected generated 3D scene collision package smoke through --require-scene-collision-package, collision_package_status=ready, collision_package_bodies=3, collision_package_trigger_overlaps=1, and gameplay_systems_collision_package_ready=1, selected D3D12 visible generated 3D production-style package proof through --require-visible-3d-production-proof and visible_3d_* counters, selected D3D12 generated 3D native UI overlay HUD box package smoke through --require-native-ui-overlay, hud_boxes=2, ui_overlay_ready=1, ui_overlay_sprites_submitted=2, and ui_overlay_draws=2, selected D3D12 generated 3D cooked UI atlas image sprite package smoke through --require-native-ui-textured-sprite-atlas, hud_images=2, ui_atlas_metadata_status=ready, ui_texture_overlay_atlas_ready=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2, and selected D3D12 generated 3D cooked UI atlas text glyph package smoke through --require-native-ui-text-glyph-atlas, hud_text_glyphs=2, text_glyphs_resolved=2, text_glyphs_missing=0, ui_atlas_metadata_glyphs=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2; runtime source asset parsing remains unsupported; broad dependency cooking remains unsupported; broad async/background package streaming remains unsupported; scene/physics perception integration remains unsupported; navmesh/crowd remains unsupported; middleware remains unsupported; production physics middleware/native backend readiness, CCD, and joints remain unsupported; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, material graph, and live shader generation remain unsupported; broad directional shadow production quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, and broad shadow+morph composition remain unsupported for this generated sample; public native or RHI handle access remains unsupported; Vulkan/Metal parity for the visible proof remains unsupported; Metal readiness remains unsupported; broad generated 3D production readiness remains unsupported"
+        currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 3D gameplay with camera/controller movement, transform/quaternion animation, morph and compute morph package smokes, selected host-gated package streaming safe-point smoke, selected generated 3D renderer quality smoke over scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9 counters, selected generated 3D postprocess depth-input smoke through postprocess_depth_input_ready=1 and renderer_quality_postprocess_depth_input_ready=1, selected generated 3D playable package smoke through playable_3d_* counters, selected generated 3D directional shadow package smoke through directional_shadow_* counters with fixed_pcf_3x3 filtering, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected D3D12 generated 3D graphics morph + directional shadow receiver smoke through --require-shadow-morph-composition with renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected generated 3D gameplay systems package smoke through gameplay_systems_* counters over deterministic public physics, navmesh dynamic obstacles, local avoidance, navigation, AI, audio, animation, and lifecycle APIs, including gameplay_systems_navigation_navmesh_dynamic_obstacles=1, gameplay_systems_local_avoidance_applied_neighbors, and gameplay_systems_physics_policy_dynamic_pushes=1, selected generated 3D scene collision package smoke through --require-scene-collision-package, collision_package_status=ready, collision_package_bodies=3, collision_package_trigger_overlaps=1, and gameplay_systems_collision_package_ready=1, selected D3D12 visible generated 3D production-style package proof through --require-visible-3d-production-proof and visible_3d_* counters, selected D3D12 generated 3D native UI overlay HUD box package smoke through --require-native-ui-overlay, hud_boxes=2, ui_overlay_ready=1, ui_overlay_sprites_submitted=2, and ui_overlay_draws=2, selected D3D12 generated 3D cooked UI atlas image sprite package smoke through --require-native-ui-textured-sprite-atlas, hud_images=2, ui_atlas_metadata_status=ready, ui_texture_overlay_atlas_ready=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2, and selected D3D12 generated 3D cooked UI atlas text glyph package smoke through --require-native-ui-text-glyph-atlas, hud_text_glyphs=2, text_glyphs_resolved=2, text_glyphs_missing=0, ui_atlas_metadata_glyphs=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2; runtime source asset parsing remains unsupported; broad dependency cooking remains unsupported; broad async/background package streaming remains unsupported; scene/physics perception integration remains unsupported; navmesh asset import and crowd simulation remain unsupported; middleware remains unsupported; production physics middleware/native backend readiness, dynamic-vs-dynamic TOI, rotational CCD, 2D CCD, and persistent joint assets remain unsupported; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, material graph, and live shader generation remain unsupported; broad directional shadow production quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, and broad shadow+morph composition remain unsupported for this generated sample; public native or RHI handle access remains unsupported; Vulkan/Metal parity for the visible proof remains unsupported; Metal readiness remains unsupported; broad generated 3D production readiness remains unsupported"
         }
         backendReadiness = [ordered]@{
             platform = "sdl3-desktop-host-gated"
             graphics = "host-built D3D12 DXIL shader artifacts for selected package validation with optional generated 3D renderer quality counters for scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9, selected visible generated 3D production-style counters, selected directional shadow smoke counters with framegraph_render_passes_recorded=6, selected D3D12 graphics morph + directional shadow receiver counters with framegraph_render_passes_recorded=6, selected D3D12 native UI overlay HUD box counters, selected D3D12 cooked UI atlas image sprite and text glyph texture overlay counters, and selected playable_3d_* package counters; Vulkan SPIR-V artifacts are toolchain-gated for generated 3D quality, shadow, playable, and native UI overlay artifacts, while visible proof, shadow-morph composition, native UI overlay readiness, and generated 3D cooked UI atlas texture overlay readiness remain D3D12-selected until separate Vulkan recipes land; NullRenderer fallback remains available; Metal readiness, broad shadow quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, broad shadow+morph composition, production text/font UI, runtime source image decoding, source image atlas packing, GPU timestamps, backend-native stats, broad renderer quality, and broad generated 3D readiness remain unsupported"
             audio = "device-independent gameplay systems package smoke plus deterministic NullRenderer fallback"
             ui = "MK_ui HUD box submission plus one cooked GameEngine.UiAtlas.v1 image sprite and one cooked GameEngine.UiAtlas.v1 text glyph are validated through selected D3D12 host-owned native UI overlay package smokes; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, native accessibility bridges, Metal overlay readiness, and broad UI renderer quality remain unsupported"
-        physics = "first-party deterministic authored-collision/controller package smoke plus selected GameEngine.PhysicsCollisionScene3D.v1 package collision smoke only; no middleware, native physics backend, joints, CCD, or scene/physics perception integration"
+        physics = "first-party deterministic authored-collision/controller package smoke, character/dynamic interaction policy counters, and selected GameEngine.PhysicsCollisionScene3D.v1 package collision smoke only; no middleware, native physics backend, dynamic-vs-dynamic TOI, rotational CCD, 2D CCD, persistent joint assets, or scene/physics perception integration"
         }
         importerRequirements = [ordered]@{
             sourceFormats = @(
@@ -6079,6 +6160,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             runtime/$GameName.geindex
             --require-sprite-animation
             --require-tilemap-runtime-ux
+            --require-gameplay-systems
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -6092,6 +6174,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-native-2d-sprites
             --require-sprite-animation
             --require-tilemap-runtime-ux
+            --require-gameplay-systems
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )
@@ -6104,6 +6187,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             MK_ui
             MK_ui_renderer
             MK_audio
+            MK_ai
+            MK_navigation
+            MK_physics
     )
     MK_configure_desktop_runtime_2d_sprite_shader_artifacts(
         TARGET $TargetName

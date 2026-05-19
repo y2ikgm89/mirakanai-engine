@@ -9,6 +9,7 @@
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/runtime/session_services.hpp"
+#include "mirakana/runtime_scene/runtime_scene.hpp"
 #include "mirakana/scene/playable_2d.hpp"
 #include "mirakana/scene/render_packet.hpp"
 #include "mirakana/scene/scene.hpp"
@@ -28,6 +29,19 @@ namespace {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
 
+[[nodiscard]] constexpr std::string_view
+runtime_scene_gameplay_session_state_name(mirakana::runtime_scene::RuntimeSceneGameplaySessionState state) noexcept {
+    switch (state) {
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running:
+        return "running";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won:
+        return "won";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::lost:
+        return "lost";
+    }
+    return "unknown";
+}
+
 class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
   public:
     Sample2DPlayableFoundationGame(mirakana::VirtualInput& input, mirakana::NullRenderer& renderer)
@@ -37,8 +51,9 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
         context.logger.write(mirakana::LogRecord{
             .level = mirakana::LogLevel::info, .category = "sample", .message = "2d playable foundation started"});
 
-        actions_.bind_key_axis("move_x", mirakana::Key::left, mirakana::Key::right);
-        actions_.bind_key("jump", mirakana::Key::space);
+        actions_.bind_key_axis_in_context("gameplay", "move_x", mirakana::Key::left, mirakana::Key::right);
+        actions_.bind_key_in_context("gameplay", "jump", mirakana::Key::space);
+        actions_.bind_key_in_context("hud", "toggle_debug", mirakana::Key::escape);
         input_.press(mirakana::Key::right);
         input_.press(mirakana::Key::space);
 
@@ -70,6 +85,8 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
             .visible = true,
         };
         scene_.set_components(player_, player_components);
+
+        build_gameplay_interaction_plan(camera);
 
         ui_ok_ = build_hud();
         theme_.add(mirakana::UiThemeColor{.token = "hud.panel",
@@ -107,10 +124,34 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
             return false;
         }
 
-        player->transform.position.x += actions_.axis_value("move_x", input_state);
-        if (actions_.action_pressed("jump", input_state)) {
-            jump_voice_ = mixer_.play(
-                mirakana::AudioVoiceDesc{.clip = jump_cue_, .bus = "master", .gain = 1.0F, .looping = false});
+        input_context_plan_ =
+            mirakana::runtime::plan_runtime_input_context_stack(mirakana::runtime::RuntimeInputContextStackRequest{
+                .layers =
+                    {
+                        mirakana::runtime::RuntimeInputContextLayerDesc{
+                            .context = "hud",
+                            .kind = mirakana::runtime::RuntimeInputContextLayerKind::overlay,
+                            .active = true,
+                            .blocks_lower_priority = false,
+                            .consumes_gameplay_input = false,
+                        },
+                        mirakana::runtime::RuntimeInputContextLayerDesc{
+                            .context = "gameplay",
+                            .kind = mirakana::runtime::RuntimeInputContextLayerKind::gameplay,
+                            .active = true,
+                            .blocks_lower_priority = false,
+                            .consumes_gameplay_input = false,
+                        },
+                    },
+            });
+        input_context_plan_ok_ = input_context_plan_ok_ && input_context_plan_.succeeded();
+        input_contexts_planned_ += input_context_plan_.stack.active_contexts.size();
+        gameplay_input_available_seen_ = gameplay_input_available_seen_ || input_context_plan_.gameplay_input_available;
+        hud_overlay_seen_ = hud_overlay_seen_ || input_context_plan_.ui_context_active;
+
+        player->transform.position.x += actions_.axis_value("move_x", input_state, input_context_plan_.stack);
+        if (actions_.action_pressed("jump", input_state, input_context_plan_.stack)) {
+            trigger_jump_audio();
         }
 
         const auto validation = mirakana::validate_playable_2d_scene(scene_);
@@ -145,6 +186,8 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
         audio_commands_ += audio.plan.commands.size();
         audio_underruns_ += audio.plan.underruns.size();
 
+        plan_debug_overlay();
+
         ++frames_;
         input_.begin_frame();
         return frames_ < 3;
@@ -162,7 +205,13 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
                jump_voice_ != mirakana::null_audio_voice && frames_ == 3 && final_x_ == 3.0F && primary_camera_seen_ &&
                scene_sprites_submitted_ == 3 && hud_boxes_submitted_ == 3 && audio_commands_ == 1 &&
                audio_underruns_ == 0 && stats.frames_started == 3 && stats.frames_finished == 3 &&
-               stats.sprites_submitted == 6;
+               stats.sprites_submitted == 6 && input_context_plan_ok_ && input_contexts_planned_ == 6U &&
+               gameplay_input_available_seen_ && hud_overlay_seen_ && gameplay_audio_plan_ok_ &&
+               gameplay_audio_buses_planned_ == 1U && gameplay_audio_commands_planned_ == 1U &&
+               debug_overlay_plan_ok_ && debug_overlay_rows_planned_ == 12U && gameplay_interaction_plan_.succeeded() &&
+               gameplay_interaction_plan_.rows.size() == 3U &&
+               gameplay_interaction_plan_.final_session_state ==
+                   mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won;
     }
 
     [[nodiscard]] int frames() const noexcept {
@@ -173,7 +222,151 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
         return final_x_;
     }
 
+    [[nodiscard]] std::size_t gameplay_interaction_count() const noexcept {
+        return gameplay_interaction_plan_.rows.size();
+    }
+
+    [[nodiscard]] std::size_t input_context_count() const noexcept {
+        return input_contexts_planned_;
+    }
+
+    [[nodiscard]] std::size_t gameplay_audio_count() const noexcept {
+        return gameplay_audio_commands_planned_;
+    }
+
+    [[nodiscard]] std::size_t debug_overlay_row_count() const noexcept {
+        return debug_overlay_rows_planned_;
+    }
+
   private:
+    void trigger_jump_audio() {
+        gameplay_audio_plan_ = mirakana::plan_gameplay_audio_mix(mirakana::AudioGameplayMixRequest{
+            .buses =
+                {
+                    mirakana::AudioGameplayBusMixDesc{.name = "sfx", .gain = 1.0F},
+                },
+            .cues =
+                {
+                    mirakana::AudioGameplayCueDesc{
+                        .id = "jump",
+                        .kind = mirakana::AudioGameplayCueKind::sfx,
+                        .clip = jump_cue_,
+                        .bus = "sfx",
+                        .gain = 1.0F,
+                    },
+                },
+            .triggers =
+                {
+                    mirakana::AudioGameplayCueTrigger{
+                        .cue_id = "jump", .start_frame = static_cast<std::uint64_t>(frames_) * 4U, .gain_scale = 1.0F},
+                },
+        });
+        gameplay_audio_plan_ok_ = gameplay_audio_plan_ok_ && gameplay_audio_plan_.succeeded();
+        if (!gameplay_audio_plan_.succeeded()) {
+            return;
+        }
+
+        for (const auto& bus : gameplay_audio_plan_.buses) {
+            if (bus.name == "master") {
+                mixer_.set_bus_gain(bus.name, bus.gain);
+                mixer_.set_bus_muted(bus.name, bus.muted);
+            } else if (!mixer_.try_add_bus(bus)) {
+                gameplay_audio_plan_ok_ = false;
+                return;
+            }
+            ++gameplay_audio_buses_planned_;
+        }
+        for (const auto& command : gameplay_audio_plan_.commands) {
+            jump_voice_ = mixer_.play(command.voice);
+            ++gameplay_audio_commands_planned_;
+        }
+    }
+
+    void build_gameplay_interaction_plan(mirakana::SceneNodeId camera) {
+        const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayBindingRow> bindings{
+            {
+                .binding_id = "player.actor",
+                .gameplay_system_id = "sample_2d",
+                .slot_id = "actor",
+                .node_name = "Player",
+                .node = player_,
+                .required_component =
+                    mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::sprite_renderer,
+            },
+            {
+                .binding_id = "camera.primary",
+                .gameplay_system_id = "sample_2d",
+                .slot_id = "trigger_target",
+                .node_name = "Main Camera",
+                .node = camera,
+                .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::camera,
+            },
+        };
+        const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayInteractionSourceRow> interactions{
+            {
+                .action_id = "movement.camera_trigger",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::trigger,
+                .source_binding_id = "player.actor",
+                .target_binding_id = "camera.primary",
+            },
+            {
+                .action_id = "score.progress",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::objective_progress,
+                .source_binding_id = "player.actor",
+                .objective_id = "score",
+                .amount = 100,
+            },
+            {
+                .action_id = "level.win",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::win,
+                .source_binding_id = "player.actor",
+            },
+        };
+        gameplay_interaction_plan_ = mirakana::runtime_scene::plan_runtime_scene_gameplay_interactions(
+            bindings, interactions,
+            mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlanRequest{
+                .session_state = mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running,
+            });
+    }
+
+    void plan_debug_overlay() {
+        debug_overlay_plan_ = mirakana::ui::plan_runtime_gameplay_debug_overlay({
+            mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+                .id = "gameplay.interactions",
+                .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::gameplay,
+                .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+                .label = "Gameplay interactions",
+                .value = std::to_string(gameplay_interaction_plan_.rows.size()),
+            },
+            mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+                .id = "input.contexts",
+                .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::input,
+                .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+                .label = "Input contexts",
+                .value = std::to_string(input_context_plan_.stack.active_contexts.size()),
+            },
+            mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+                .id = "audio.cues",
+                .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::audio,
+                .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+                .label = "Audio cues",
+                .value = std::to_string(gameplay_audio_commands_planned_),
+            },
+            mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+                .id = "session.state",
+                .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::session,
+                .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+                .label = "Session",
+                .value = std::string{runtime_scene_gameplay_session_state_name(
+                    gameplay_interaction_plan_.final_session_state)},
+            },
+        });
+        debug_overlay_plan_ok_ = debug_overlay_plan_ok_ && debug_overlay_plan_.succeeded();
+        if (debug_overlay_plan_.succeeded()) {
+            debug_overlay_rows_planned_ += debug_overlay_plan_.rows.size();
+        }
+    }
+
     [[nodiscard]] bool build_hud() {
         mirakana::ui::ElementDesc root;
         root.id = mirakana::ui::ElementId{"hud.root"};
@@ -208,11 +401,15 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     mirakana::VirtualInput& input_;
     mirakana::NullRenderer& renderer_;
     mirakana::runtime::RuntimeInputActionMap actions_;
+    mirakana::runtime::RuntimeInputContextStackPlan input_context_plan_;
     mirakana::Scene scene_{"Sample 2D Playable Foundation"};
     mirakana::SceneNodeId player_;
+    mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlan gameplay_interaction_plan_;
+    mirakana::ui::RuntimeGameplayDebugOverlayPlan debug_overlay_plan_;
     mirakana::ui::UiDocument hud_;
     mirakana::UiRendererTheme theme_;
     mirakana::AudioMixer mixer_;
+    mirakana::AudioGameplayMixPlan gameplay_audio_plan_;
     std::vector<mirakana::AudioClipSampleData> audio_samples_;
     mirakana::AssetId player_sprite_;
     mirakana::AssetId player_material_;
@@ -220,6 +417,10 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     mirakana::AudioVoiceId jump_voice_;
     std::size_t scene_sprites_submitted_{0};
     std::size_t hud_boxes_submitted_{0};
+    std::size_t input_contexts_planned_{0};
+    std::size_t gameplay_audio_buses_planned_{0};
+    std::size_t gameplay_audio_commands_planned_{0};
+    std::size_t debug_overlay_rows_planned_{0};
     std::size_t audio_commands_{0};
     std::size_t audio_underruns_{0};
     int frames_{0};
@@ -228,7 +429,12 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     bool ui_text_updates_ok_{true};
     bool validation_ok_{true};
     bool audio_clip_registered_{false};
+    bool gameplay_audio_plan_ok_{true};
     bool primary_camera_seen_{false};
+    bool input_context_plan_ok_{true};
+    bool gameplay_input_available_seen_{false};
+    bool hud_overlay_seen_{false};
+    bool debug_overlay_plan_ok_{true};
 };
 
 } // namespace
@@ -242,7 +448,10 @@ int main() {
     Sample2DPlayableFoundationGame game(input, renderer);
 
     const auto result = runner.run(game, mirakana::RunConfig{.max_frames = 8, .fixed_delta_seconds = 1.0 / 60.0});
-    std::cout << "sample_2d_playable_foundation frames=" << result.frames_run << " final_x=" << game.final_x() << '\n';
+    std::cout << "sample_2d_playable_foundation frames=" << result.frames_run << " final_x=" << game.final_x()
+              << " gameplay_interactions=" << game.gameplay_interaction_count()
+              << " input_contexts=" << game.input_context_count() << " audio_cues=" << game.gameplay_audio_count()
+              << " debug_overlay_rows=" << game.debug_overlay_row_count() << '\n';
 
     return result.status == mirakana::RunStatus::stopped_by_app && result.frames_run == 3 && game.passed() ? 0 : 1;
 }

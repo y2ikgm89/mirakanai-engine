@@ -75,6 +75,42 @@ class SampleUiAudioAssetsGame final : public mirakana::GameApp {
         material_metadata_ = mirakana::build_material_pipeline_binding_metadata(material);
         runtime_scene_loaded_ = load_runtime_scene_package(material);
 
+        const auto runtime_menu_hud_plan = mirakana::ui::plan_runtime_menu_hud({
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "hud.score",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::counter,
+                .label = "Score",
+                .value = "0",
+            },
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "hud.prompt",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::prompt,
+                .label = "Pause",
+                .value = "Esc",
+            },
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "hud.pause",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+                .label = "Pause",
+                .command_id = "game.pause",
+                .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::pause_game,
+                .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+            },
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "hud.restart",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+                .label = "Restart",
+                .command_id = "game.restart",
+                .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::restart_session,
+                .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+            },
+        });
+        runtime_menu_hud_ok_ =
+            runtime_menu_hud_plan.succeeded() && runtime_menu_hud_plan.display_rows.size() == 4 &&
+            runtime_menu_hud_plan.command_rows.size() == 2 &&
+            runtime_menu_hud_plan.command_rows[0].command_id == "game.pause" &&
+            runtime_menu_hud_plan.command_rows[1].intent == mirakana::ui::RuntimeMenuHudCommandIntent::restart_session;
+
         ui_ok_ = ui_.try_add_element(mirakana::ui::ElementDesc{
                      .id = mirakana::ui::ElementId{"hud.root"},
                      .parent = mirakana::ui::ElementId{},
@@ -159,7 +195,7 @@ class SampleUiAudioAssetsGame final : public mirakana::GameApp {
     [[nodiscard]] bool passed() const noexcept {
         return ui_ok_ && source_round_trip_ok_ && assets_.count() == 5 && ui_.size() == 4 &&
                mirakana::is_valid_material_pipeline_binding_metadata(material_metadata_) &&
-               material_metadata_.requires_alpha_blending && audio_clip_registered_ &&
+               material_metadata_.requires_alpha_blending && runtime_menu_hud_ok_ && audio_clip_registered_ &&
                voice_ != mirakana::null_audio_voice && runtime_scene_loaded_ && runtime_meshes_submitted_ == 1 &&
                ui_text_updates_ok_ && audio_commands_ == 3 && audio_underruns_ == 0 && audio_rendered_samples_ == 3072;
     }
@@ -290,6 +326,7 @@ class SampleUiAudioAssetsGame final : public mirakana::GameApp {
     int frames_{0};
     bool source_round_trip_ok_{false};
     bool ui_ok_{false};
+    bool runtime_menu_hud_ok_{false};
     bool audio_clip_registered_{false};
     bool runtime_scene_loaded_{false};
     bool ui_text_updates_ok_{true};

@@ -96,6 +96,10 @@ function(MK_apply_common_target_options target_name)
 
     if(MSVC)
         target_compile_options(${target_name} PRIVATE /W4 /permissive- /EHsc)
+        set_target_properties(${target_name} PROPERTIES
+            COMPILE_PDB_NAME ${target_name}
+            COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb/${target_name}"
+        )
         get_target_property(MK_TARGET_TYPE ${target_name} TYPE)
         if(MK_TARGET_TYPE STREQUAL "EXECUTABLE" OR
             MK_TARGET_TYPE STREQUAL "SHARED_LIBRARY" OR

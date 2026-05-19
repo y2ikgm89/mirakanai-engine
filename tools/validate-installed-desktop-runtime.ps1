@@ -185,9 +185,10 @@ $requiresPackageUploadStaging = @($SmokeArgs) -contains "--require-package-uploa
 $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
+$requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
-$expectedSmokeFrames = 2
+$expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
 for ($index = 0; $index -lt ($SmokeArgs.Count - 1); ++$index) {
     if ($SmokeArgs[$index] -eq "--max-frames") {
         $parsedMaxFrames = 0
@@ -315,6 +316,9 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
             "sprite_batch_plan_textured_sprites",
             "sprite_batch_plan_draws",
             "sprite_batch_plan_texture_binds",
+            "sprite_batch_plan_atlas_backed_batches",
+            "sprite_batch_plan_repeated_atlas_batches",
+            "sprite_batch_plan_repeated_atlas_sprites",
             "sprite_batch_plan_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
@@ -325,7 +329,10 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
             "sprite_batch_plan_sprites",
             "sprite_batch_plan_textured_sprites",
             "sprite_batch_plan_draws",
-            "sprite_batch_plan_texture_binds"
+            "sprite_batch_plan_texture_binds",
+            "sprite_batch_plan_atlas_backed_batches",
+            "sprite_batch_plan_repeated_atlas_batches",
+            "sprite_batch_plan_repeated_atlas_sprites"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove sprite batch plan count: $field"
@@ -333,6 +340,177 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_batch_plan_diagnostics=0\b") {
         Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean sprite batch planning diagnostics."
+    }
+    if ($requiresGameplaySystems) {
+        foreach ($field in @(
+                "gameplay_systems_status",
+                "gameplay_systems_ready",
+                "gameplay_systems_ticks",
+                "gameplay_systems_physics_ticks",
+                "gameplay_systems_physics_bodies",
+                "gameplay_systems_physics_contacts",
+                "gameplay_systems_physics_trigger_overlaps",
+                "gameplay_systems_navigation_path_points",
+                "gameplay_systems_navigation_reached",
+                "gameplay_systems_navigation_plan_status",
+                "gameplay_systems_navigation_plan_diagnostic",
+                "gameplay_systems_navigation_agent_status",
+                "gameplay_systems_perception_status",
+                "gameplay_systems_perception_targets",
+                "gameplay_systems_perception_has_primary_target",
+                "gameplay_systems_perception_visible_count",
+                "gameplay_systems_blackboard_status",
+                "gameplay_systems_blackboard_has_target",
+                "gameplay_systems_blackboard_needs_move",
+                "gameplay_systems_behavior_status",
+                "gameplay_systems_behavior_nodes",
+                "gameplay_systems_behavior_authoring_ready",
+                "gameplay_systems_behavior_authoring_diagnostics",
+                "gameplay_systems_behavior_authoring_trace_nodes"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+                Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
+            }
+        }
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
+                Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
+            }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_status=ready\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems status."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_ticks=$expectedSmokeFrames\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove frame-exact gameplay tick count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_ticks=$expectedSmokeFrames\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove frame-exact gameplay physics tick count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_bodies=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay physics body count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_contacts=[1-9]\d*\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove non-zero gameplay physics contacts."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_trigger_overlaps=[1-9]\d*\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove non-zero gameplay physics trigger overlaps."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_path_points=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove 2D gameplay navigation path points."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_plan_status=ready\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay navigation plan status."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_plan_diagnostic=none\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean gameplay navigation diagnostics."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_agent_status=reached_destination\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove gameplay navigation destination reached."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_status=ready\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay perception status."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_targets=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay perception target count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_visible_count=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay visible target count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_blackboard_status=ready\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay blackboard status."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_status=success\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove successful gameplay behavior tree."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_nodes=4\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay behavior node visit count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean gameplay behavior authoring diagnostics."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_trace_nodes=4\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay behavior authoring trace nodes."
+        }
+    }
+}
+if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requiresGameplaySystems) {
+    foreach ($field in @(
+            "gameplay_systems_status",
+            "gameplay_systems_ready",
+            "gameplay_systems_diagnostics",
+            "gameplay_systems_navigation_navmesh_status",
+            "gameplay_systems_navigation_navmesh_diagnostic",
+            "gameplay_systems_navigation_navmesh_polygons",
+            "gameplay_systems_navigation_navmesh_dynamic_obstacles",
+            "gameplay_systems_navigation_navmesh_total_cost",
+            "gameplay_systems_local_avoidance_status",
+            "gameplay_systems_local_avoidance_diagnostic",
+            "gameplay_systems_local_avoidance_steps",
+            "gameplay_systems_local_avoidance_applied_neighbors",
+            "gameplay_systems_physics_policy_status",
+            "gameplay_systems_physics_policy_diagnostic",
+            "gameplay_systems_physics_policy_rows",
+            "gameplay_systems_physics_policy_dynamic_pushes",
+            "gameplay_systems_physics_policy_solid_contacts",
+            "gameplay_systems_physics_policy_trigger_overlaps"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not include gameplay systems field: $field"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_status=ready\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready gameplay systems status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_ready=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready gameplay systems."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_diagnostics=0\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay systems diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_status=success\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove successful gameplay navmesh path."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay navmesh diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_polygons=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove 3D gameplay navmesh polygon route count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_dynamic_obstacles=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh dynamic obstacle participation."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_total_cost=[1-9]\d*\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh non-zero cost."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_local_avoidance_status=success\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove successful gameplay local avoidance."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_local_avoidance_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay local avoidance diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_local_avoidance_steps=$expectedSmokeFrames\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove frame-exact gameplay local avoidance steps."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_local_avoidance_applied_neighbors=$expectedSmokeFrames\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove frame-exact gameplay local avoidance applied neighbors."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_policy_status=constrained\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove constrained gameplay physics policy status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_policy_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay physics policy diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_policy_rows=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact gameplay physics policy row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_policy_dynamic_pushes=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay physics dynamic push row."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_policy_solid_contacts=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay physics solid contact row."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_policy_trigger_overlaps=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay physics trigger overlap row."
     }
 }
 if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requiresNativeUiOverlay) {
@@ -492,6 +670,13 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "collision_package_contacts",
             "collision_package_trigger_overlaps",
             "collision_package_world_ready",
+            "collision_query_batch_ready",
+            "collision_query_batch_source_order_ready",
+            "collision_query_batch_rows",
+            "collision_query_batch_hits",
+            "collision_query_batch_no_hits",
+            "collision_query_batch_invalid_requests",
+            "collision_query_batch_budget_rejections",
             "gameplay_systems_collision_package_ready"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
@@ -501,6 +686,8 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     foreach ($field in @(
             "collision_package_ready",
             "collision_package_world_ready",
+            "collision_query_batch_ready",
+            "collision_query_batch_source_order_ready",
             "gameplay_systems_collision_package_ready"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
@@ -524,6 +711,21 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_package_trigger_overlaps=[1-9]\d*\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove non-zero scene collision trigger overlaps."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_rows=6\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_hits=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch hit count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_no_hits=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch no-hit count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_invalid_requests=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch invalid-request count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_budget_rejections=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch budget rejection count."
     }
 }
 if ($requiresNative2dSprites) {
@@ -591,7 +793,12 @@ if ($requiresSpriteAnimation) {
             "sprite_animation_frames_sampled",
             "sprite_animation_frames_applied",
             "sprite_animation_selected_frame_sum",
-            "sprite_animation_diagnostics"
+            "sprite_animation_diagnostics",
+            "sprite_flipbook_ticks",
+            "sprite_flipbook_frames_sampled",
+            "sprite_flipbook_frames_applied",
+            "sprite_flipbook_selected_frame_sum",
+            "sprite_flipbook_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed desktop runtime smoke status line did not include sprite animation field: $field"
@@ -600,14 +807,23 @@ if ($requiresSpriteAnimation) {
     foreach ($field in @(
             "sprite_animation_frames_sampled",
             "sprite_animation_frames_applied",
-            "sprite_animation_selected_frame_sum"
+            "sprite_animation_selected_frame_sum",
+            "sprite_flipbook_frames_sampled",
+            "sprite_flipbook_frames_applied",
+            "sprite_flipbook_selected_frame_sum"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove sprite animation count: $field"
         }
     }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_ticks=$expectedSmokeFrames\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove frame-exact sprite flipbook ticks."
+    }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_animation_diagnostics=0\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove clean sprite animation diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_diagnostics=0\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove clean sprite flipbook diagnostics."
     }
 }
 if ($requiresTilemapRuntimeUx) {

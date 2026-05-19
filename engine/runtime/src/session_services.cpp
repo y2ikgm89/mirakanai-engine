@@ -49,6 +49,107 @@ void validate_session_path(std::string_view path) {
     }
 }
 
+[[nodiscard]] bool is_runtime_profile_path_identifier_character(char character) noexcept {
+    return (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
+           (character >= '0' && character <= '9') || character == '_' || character == '-';
+}
+
+[[nodiscard]] bool is_valid_runtime_profile_path_identifier(std::string_view value) noexcept {
+    return !value.empty() && !contains_control_characters(value) &&
+           std::ranges::all_of(value, is_runtime_profile_path_identifier_character);
+}
+
+[[nodiscard]] bool is_valid_runtime_profile_root_path(std::string_view root_path) noexcept {
+    if (root_path.empty() || contains_control_characters(root_path) || root_path.front() == '/' ||
+        root_path.back() == '/' || root_path.find('\\') != std::string_view::npos ||
+        root_path.find(':') != std::string_view::npos || root_path.find("//") != std::string_view::npos) {
+        return false;
+    }
+
+    std::size_t segment_start = 0;
+    while (segment_start < root_path.size()) {
+        const auto segment_end = root_path.find('/', segment_start);
+        const auto segment =
+            root_path.substr(segment_start, segment_end == std::string_view::npos ? root_path.size() - segment_start
+                                                                                  : segment_end - segment_start);
+        if (!is_valid_runtime_profile_path_identifier(segment)) {
+            return false;
+        }
+        if (segment_end == std::string_view::npos) {
+            break;
+        }
+        segment_start = segment_end + 1U;
+    }
+    return true;
+}
+
+void add_runtime_profile_path_diagnostic(std::vector<RuntimeSessionProfilePathDiagnostic>& diagnostics,
+                                         RuntimeSessionProfilePathDiagnosticCode code, std::string field,
+                                         std::string_view value, std::string message) {
+    diagnostics.push_back(RuntimeSessionProfilePathDiagnostic{
+        .code = code, .field = std::move(field), .value = std::string(value), .message = std::move(message)});
+}
+
+[[nodiscard]] std::string_view
+runtime_session_profile_document_kind_name(RuntimeSessionProfileDocumentKind kind) noexcept {
+    switch (kind) {
+    case RuntimeSessionProfileDocumentKind::save_data:
+        return "save_data";
+    case RuntimeSessionProfileDocumentKind::settings:
+        return "settings";
+    case RuntimeSessionProfileDocumentKind::input_rebinding_profile:
+        return "input_rebinding_profile";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string runtime_session_profile_document_path(const RuntimeSessionProfilePathPlan& paths,
+                                                                RuntimeSessionProfileDocumentKind kind) {
+    switch (kind) {
+    case RuntimeSessionProfileDocumentKind::save_data:
+        return paths.save_data_path;
+    case RuntimeSessionProfileDocumentKind::settings:
+        return paths.settings_path;
+    case RuntimeSessionProfileDocumentKind::input_rebinding_profile:
+        return paths.input_rebinding_profile_path;
+    }
+    return {};
+}
+
+[[nodiscard]] RuntimeSessionProfileDocumentStatus
+runtime_session_profile_document_failure_status(std::string_view diagnostic) noexcept {
+    return diagnostic.find("unsupported") != std::string_view::npos
+               ? RuntimeSessionProfileDocumentStatus::failed_unsupported_version
+               : RuntimeSessionProfileDocumentStatus::failed_corrupt;
+}
+
+[[nodiscard]] bool runtime_session_profile_document_status_blocks(RuntimeSessionProfileDocumentStatus status) noexcept {
+    switch (status) {
+    case RuntimeSessionProfileDocumentStatus::loaded:
+    case RuntimeSessionProfileDocumentStatus::defaulted_missing:
+    case RuntimeSessionProfileDocumentStatus::written:
+        return false;
+    case RuntimeSessionProfileDocumentStatus::failed_invalid_path:
+    case RuntimeSessionProfileDocumentStatus::failed_corrupt:
+    case RuntimeSessionProfileDocumentStatus::failed_unsupported_version:
+    case RuntimeSessionProfileDocumentStatus::failed_invalid_document:
+    case RuntimeSessionProfileDocumentStatus::failed_write:
+        return true;
+    }
+    return true;
+}
+
+void add_runtime_session_profile_document_row(std::vector<RuntimeSessionProfileDocumentRow>& rows,
+                                              RuntimeSessionProfileDocumentKind kind,
+                                              RuntimeSessionProfileDocumentStatus status, std::string path,
+                                              std::string diagnostic, bool defaulted = false) {
+    rows.push_back(RuntimeSessionProfileDocumentRow{.kind = kind,
+                                                    .status = status,
+                                                    .path = std::move(path),
+                                                    .diagnostic = std::move(diagnostic),
+                                                    .defaulted = defaulted});
+}
+
 void validate_entry_key(std::string_view key, std::string_view diagnostic_name) {
     if (key.empty()) {
         throw std::invalid_argument(std::string(diagnostic_name) + " key must not be empty");
@@ -453,6 +554,21 @@ void validate_context_name(std::string_view context) {
     if (context.find('.') != std::string_view::npos || context.find(' ') != std::string_view::npos) {
         throw std::invalid_argument("runtime input action context contains an unsupported character");
     }
+}
+
+void add_context_stack_diagnostic(std::vector<RuntimeInputContextStackDiagnostic>& diagnostics,
+                                  RuntimeInputContextStackDiagnosticCode code, std::string_view context,
+                                  std::string_view message) {
+    diagnostics.push_back(RuntimeInputContextStackDiagnostic{
+        .code = code, .context = std::string(context), .message = std::string(message)});
+}
+
+[[nodiscard]] bool is_ui_context_layer(RuntimeInputContextLayerKind kind) noexcept {
+    return kind != RuntimeInputContextLayerKind::gameplay;
+}
+
+[[nodiscard]] bool is_capture_context_layer(RuntimeInputContextLayerKind kind) noexcept {
+    return kind == RuntimeInputContextLayerKind::rebinding || kind == RuntimeInputContextLayerKind::capture;
 }
 
 void validate_key(Key key) {
@@ -1568,6 +1684,25 @@ bool RuntimeSettingsLoadResult::succeeded() const noexcept {
     return diagnostic.empty();
 }
 
+bool RuntimeSessionProfilePathPlan::succeeded() const noexcept {
+    return diagnostics.empty() && !save_data_path.empty() && !settings_path.empty() &&
+           !input_rebinding_profile_path.empty();
+}
+
+bool RuntimeSessionProfileDocumentLoadResult::succeeded() const noexcept {
+    return paths.succeeded() && !has_blocking_diagnostics &&
+           std::ranges::none_of(rows, [](const RuntimeSessionProfileDocumentRow& row) {
+               return runtime_session_profile_document_status_blocks(row.status);
+           });
+}
+
+bool RuntimeSessionProfileDocumentWriteResult::succeeded() const noexcept {
+    return paths.succeeded() && rows.size() == 3U && documents_written == 3U &&
+           std::ranges::all_of(rows, [](const RuntimeSessionProfileDocumentRow& row) {
+               return row.status == RuntimeSessionProfileDocumentStatus::written;
+           });
+}
+
 void RuntimeLocalizationCatalog::set_text(std::string key, std::string text) {
     set_sorted_entry(entries_, std::move(key), std::move(text), "runtime localization");
 }
@@ -1587,6 +1722,77 @@ const std::vector<RuntimeLocalizationEntry>& RuntimeLocalizationCatalog::entries
 
 bool RuntimeLocalizationCatalogLoadResult::succeeded() const noexcept {
     return diagnostic.empty();
+}
+
+bool RuntimeInputContextStackPlan::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
+RuntimeInputContextStackPlan plan_runtime_input_context_stack(const RuntimeInputContextStackRequest& request) {
+    RuntimeInputContextStackPlan plan;
+    std::vector<std::string_view> seen_contexts;
+    bool has_active_layer = false;
+
+    for (const auto& layer : request.layers) {
+        bool context_valid = true;
+        try {
+            validate_context_name(layer.context);
+        } catch (const std::exception& error) {
+            add_context_stack_diagnostic(plan.diagnostics, RuntimeInputContextStackDiagnosticCode::invalid_context,
+                                         layer.context, error.what());
+            context_valid = false;
+        }
+
+        if (context_valid) {
+            if (std::ranges::find(seen_contexts, std::string_view(layer.context)) != seen_contexts.end()) {
+                add_context_stack_diagnostic(plan.diagnostics,
+                                             RuntimeInputContextStackDiagnosticCode::duplicate_context, layer.context,
+                                             "runtime input context stack layers must have unique contexts");
+            } else {
+                seen_contexts.push_back(layer.context);
+            }
+        }
+
+        has_active_layer = has_active_layer || layer.active;
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    if (!has_active_layer) {
+        if (!request.allow_default_context) {
+            add_context_stack_diagnostic(plan.diagnostics, RuntimeInputContextStackDiagnosticCode::no_active_context,
+                                         "", "runtime input context stack requires at least one active context");
+            return plan;
+        }
+        plan.default_context_active = true;
+        plan.gameplay_input_available = true;
+        return plan;
+    }
+
+    for (const auto& layer : request.layers) {
+        if (!layer.active) {
+            continue;
+        }
+
+        plan.stack.active_contexts.push_back(layer.context);
+        plan.ui_context_active = plan.ui_context_active || is_ui_context_layer(layer.kind);
+        plan.capture_context_active = plan.capture_context_active || is_capture_context_layer(layer.kind);
+        plan.gameplay_input_consumed =
+            plan.gameplay_input_consumed || layer.consumes_gameplay_input || is_capture_context_layer(layer.kind);
+        plan.gameplay_input_available =
+            plan.gameplay_input_available || layer.kind == RuntimeInputContextLayerKind::gameplay;
+
+        if (layer.blocks_lower_priority) {
+            break;
+        }
+    }
+
+    if (plan.gameplay_input_consumed) {
+        plan.gameplay_input_available = false;
+    }
+    return plan;
 }
 
 void RuntimeInputActionMap::bind_key(std::string action, Key key) {
@@ -2463,6 +2669,214 @@ make_runtime_input_rebinding_presentation(const RuntimeInputActionMap& base,
     }
 
     return model;
+}
+
+RuntimeSessionProfilePathPlan plan_runtime_session_profile_paths(const RuntimeSessionProfilePathRequest& request) {
+    RuntimeSessionProfilePathPlan plan;
+
+    if (!is_valid_runtime_profile_path_identifier(request.game_id)) {
+        add_runtime_profile_path_diagnostic(plan.diagnostics, RuntimeSessionProfilePathDiagnosticCode::invalid_game_id,
+                                            "game_id", request.game_id,
+                                            "runtime session profile game id must be a non-empty safe identifier");
+    }
+    if (!is_valid_runtime_profile_path_identifier(request.profile_id)) {
+        add_runtime_profile_path_diagnostic(
+            plan.diagnostics, RuntimeSessionProfilePathDiagnosticCode::invalid_profile_id, "profile_id",
+            request.profile_id, "runtime session profile id must be a non-empty safe identifier");
+    }
+    if (!is_valid_runtime_profile_root_path(request.root_path)) {
+        add_runtime_profile_path_diagnostic(
+            plan.diagnostics, RuntimeSessionProfilePathDiagnosticCode::invalid_root_path, "root_path",
+            request.root_path, "runtime session profile root path must be project relative");
+    }
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    std::string profile_root(request.root_path);
+    profile_root.push_back('/');
+    profile_root.append(request.game_id);
+    profile_root.push_back('/');
+    profile_root.append(request.profile_id);
+
+    plan.save_data_path = profile_root + "/save.gesave";
+    plan.settings_path = profile_root + "/settings.settings";
+    plan.input_rebinding_profile_path = profile_root + "/input.geinputprofile";
+    return plan;
+}
+
+RuntimeSessionProfileDocumentLoadResult
+load_runtime_session_profile_documents(IFileSystem& filesystem,
+                                       const RuntimeSessionProfileDocumentLoadRequest& request) {
+    RuntimeSessionProfileDocumentLoadResult result;
+    result.paths = plan_runtime_session_profile_paths(request.profile);
+    result.save_data = request.defaults.save_data;
+    result.settings = request.defaults.settings;
+    result.input_rebinding_profile = request.defaults.input_rebinding_profile;
+
+    const auto load_path_failed = [&](RuntimeSessionProfileDocumentKind kind) {
+        add_runtime_session_profile_document_row(result.rows, kind,
+                                                 RuntimeSessionProfileDocumentStatus::failed_invalid_path, {},
+                                                 "runtime session profile path plan failed");
+        result.has_blocking_diagnostics = true;
+    };
+
+    if (!result.paths.succeeded()) {
+        load_path_failed(RuntimeSessionProfileDocumentKind::save_data);
+        load_path_failed(RuntimeSessionProfileDocumentKind::settings);
+        load_path_failed(RuntimeSessionProfileDocumentKind::input_rebinding_profile);
+        return result;
+    }
+
+    const auto load_missing = [&](RuntimeSessionProfileDocumentKind kind, const std::string& path) {
+        add_runtime_session_profile_document_row(result.rows, kind,
+                                                 RuntimeSessionProfileDocumentStatus::defaulted_missing, path,
+                                                 "runtime session profile document is missing; using defaults", true);
+        result.used_defaults = true;
+    };
+    const auto load_failed = [&](RuntimeSessionProfileDocumentKind kind, const std::string& path,
+                                 std::string_view diagnostic) {
+        const auto status = runtime_session_profile_document_failure_status(diagnostic);
+        add_runtime_session_profile_document_row(result.rows, kind, status, path, std::string(diagnostic));
+        result.has_blocking_diagnostics = true;
+    };
+
+    const auto save_path =
+        runtime_session_profile_document_path(result.paths, RuntimeSessionProfileDocumentKind::save_data);
+    if (!filesystem.exists(save_path)) {
+        load_missing(RuntimeSessionProfileDocumentKind::save_data, save_path);
+    } else {
+        try {
+            auto loaded = deserialize_runtime_save_data(filesystem.read_text(save_path));
+            if (loaded.succeeded()) {
+                result.save_data = std::move(loaded.data);
+                add_runtime_session_profile_document_row(result.rows, RuntimeSessionProfileDocumentKind::save_data,
+                                                         RuntimeSessionProfileDocumentStatus::loaded, save_path,
+                                                         "runtime session profile save data loaded");
+            } else {
+                load_failed(RuntimeSessionProfileDocumentKind::save_data, save_path, loaded.diagnostic);
+            }
+        } catch (const std::exception& error) {
+            load_failed(RuntimeSessionProfileDocumentKind::save_data, save_path, error.what());
+        }
+    }
+
+    const auto settings_path =
+        runtime_session_profile_document_path(result.paths, RuntimeSessionProfileDocumentKind::settings);
+    if (!filesystem.exists(settings_path)) {
+        load_missing(RuntimeSessionProfileDocumentKind::settings, settings_path);
+    } else {
+        try {
+            auto loaded = deserialize_runtime_settings(filesystem.read_text(settings_path));
+            if (loaded.succeeded()) {
+                result.settings = std::move(loaded.settings);
+                add_runtime_session_profile_document_row(result.rows, RuntimeSessionProfileDocumentKind::settings,
+                                                         RuntimeSessionProfileDocumentStatus::loaded, settings_path,
+                                                         "runtime session profile settings loaded");
+            } else {
+                load_failed(RuntimeSessionProfileDocumentKind::settings, settings_path, loaded.diagnostic);
+            }
+        } catch (const std::exception& error) {
+            load_failed(RuntimeSessionProfileDocumentKind::settings, settings_path, error.what());
+        }
+    }
+
+    const auto input_path =
+        runtime_session_profile_document_path(result.paths, RuntimeSessionProfileDocumentKind::input_rebinding_profile);
+    if (!filesystem.exists(input_path)) {
+        load_missing(RuntimeSessionProfileDocumentKind::input_rebinding_profile, input_path);
+    } else {
+        try {
+            auto loaded = deserialize_runtime_input_rebinding_profile(filesystem.read_text(input_path));
+            if (loaded.succeeded()) {
+                result.input_rebinding_profile = std::move(loaded.profile);
+                add_runtime_session_profile_document_row(result.rows,
+                                                         RuntimeSessionProfileDocumentKind::input_rebinding_profile,
+                                                         RuntimeSessionProfileDocumentStatus::loaded, input_path,
+                                                         "runtime session profile input rebinding profile loaded");
+            } else {
+                load_failed(RuntimeSessionProfileDocumentKind::input_rebinding_profile, input_path, loaded.diagnostic);
+            }
+        } catch (const std::exception& error) {
+            load_failed(RuntimeSessionProfileDocumentKind::input_rebinding_profile, input_path, error.what());
+        }
+    }
+
+    return result;
+}
+
+RuntimeSessionProfileDocumentWriteResult
+write_runtime_session_profile_documents(IFileSystem& filesystem,
+                                        const RuntimeSessionProfileDocumentWriteRequest& request) {
+    RuntimeSessionProfileDocumentWriteResult result;
+    result.paths = plan_runtime_session_profile_paths(request.profile);
+    if (!result.paths.succeeded()) {
+        for (const auto kind :
+             {RuntimeSessionProfileDocumentKind::save_data, RuntimeSessionProfileDocumentKind::settings,
+              RuntimeSessionProfileDocumentKind::input_rebinding_profile}) {
+            add_runtime_session_profile_document_row(result.rows, kind,
+                                                     RuntimeSessionProfileDocumentStatus::failed_invalid_path, {},
+                                                     "runtime session profile path plan failed");
+        }
+        return result;
+    }
+
+    std::string save_text;
+    std::string settings_text;
+    std::string input_text;
+
+    const auto validate_document = [&](RuntimeSessionProfileDocumentKind kind, const std::string& path,
+                                       const auto& make_text, std::string& output) {
+        try {
+            output = make_text();
+            return true;
+        } catch (const std::exception& error) {
+            add_runtime_session_profile_document_row(
+                result.rows, kind, RuntimeSessionProfileDocumentStatus::failed_invalid_document, path, error.what());
+            return false;
+        }
+    };
+
+    const auto save_path =
+        runtime_session_profile_document_path(result.paths, RuntimeSessionProfileDocumentKind::save_data);
+    const auto settings_path =
+        runtime_session_profile_document_path(result.paths, RuntimeSessionProfileDocumentKind::settings);
+    const auto input_path =
+        runtime_session_profile_document_path(result.paths, RuntimeSessionProfileDocumentKind::input_rebinding_profile);
+
+    bool valid_documents = true;
+    valid_documents &= validate_document(
+        RuntimeSessionProfileDocumentKind::save_data, save_path,
+        [&request] { return serialize_runtime_save_data(request.documents.save_data); }, save_text);
+    valid_documents &= validate_document(
+        RuntimeSessionProfileDocumentKind::settings, settings_path,
+        [&request] { return serialize_runtime_settings(request.documents.settings); }, settings_text);
+    valid_documents &= validate_document(
+        RuntimeSessionProfileDocumentKind::input_rebinding_profile, input_path,
+        [&request] { return serialize_runtime_input_rebinding_profile(request.documents.input_rebinding_profile); },
+        input_text);
+    if (!valid_documents) {
+        return result;
+    }
+
+    const auto write_document = [&](RuntimeSessionProfileDocumentKind kind, const std::string& path,
+                                    const std::string& text) {
+        try {
+            filesystem.write_text(path, text);
+            ++result.documents_written;
+            add_runtime_session_profile_document_row(
+                result.rows, kind, RuntimeSessionProfileDocumentStatus::written, path,
+                std::string(runtime_session_profile_document_kind_name(kind)) + " written");
+        } catch (const std::exception& error) {
+            add_runtime_session_profile_document_row(
+                result.rows, kind, RuntimeSessionProfileDocumentStatus::failed_write, path, error.what());
+        }
+    };
+
+    write_document(RuntimeSessionProfileDocumentKind::save_data, save_path, save_text);
+    write_document(RuntimeSessionProfileDocumentKind::settings, settings_path, settings_text);
+    write_document(RuntimeSessionProfileDocumentKind::input_rebinding_profile, input_path, input_text);
+    return result;
 }
 
 std::string serialize_runtime_input_rebinding_profile(const RuntimeInputRebindingProfile& profile) {

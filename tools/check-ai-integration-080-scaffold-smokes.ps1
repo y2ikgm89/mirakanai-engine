@@ -288,7 +288,7 @@ try {
         "runtime/assets/2d/player.sprite_animation",
         "runtime/assets/2d/playable.scene"
     )
-    foreach ($relativePath in @("main.cpp", "README.md", "game.agent.json", "runtime/.gitattributes", "shaders/runtime_2d_sprite.hlsl") + $expectedDesktop2dRuntimeFiles) {
+    foreach ($relativePath in @("main.cpp", "README.md", "game.agent.json", "runtime/.gitattributes", "source/assets/package.geassets", "source/sprites/player_atlas.texture_source", "shaders/runtime_2d_sprite.hlsl") + $expectedDesktop2dRuntimeFiles) {
         $path = Join-Path $desktop2dGameRoot $relativePath
         if (-not (Test-Path -LiteralPath $path)) {
             Write-Error "Desktop runtime 2D package scaffold did not create $relativePath"
@@ -299,7 +299,7 @@ try {
     if ($desktop2dManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
         Write-Error "Desktop runtime 2D package scaffold manifest must select 2d-desktop-runtime-package"
     }
-    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($desktop2dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 2D package scaffold manifest missing engine module: $module"
         }
@@ -314,7 +314,7 @@ try {
             Write-Error "Desktop runtime 2D package scaffold manifest must include $relativePath in runtimePackageFiles"
         }
     }
-    foreach ($sourcePath in @("source/player.png", "source/scene.scene", "source/audio/jump.wav", "shaders/runtime_scene.hlsl", "shaders/runtime_2d_sprite.hlsl")) {
+    foreach ($sourcePath in @("source/assets/package.geassets", "source/sprites/player_atlas.texture_source", "source/player.png", "source/scene.scene", "source/audio/jump.wav", "shaders/runtime_scene.hlsl", "shaders/runtime_2d_sprite.hlsl")) {
         if ($desktop2dManifest.runtimePackageFiles -contains $sourcePath) {
             Write-Error "Desktop runtime 2D package scaffold must not ship source authoring file in runtimePackageFiles: $sourcePath"
         }
@@ -338,7 +338,16 @@ try {
         "runtime/desktop_2d_package_game.geindex" `
         "runtime/assets/2d/level.tilemap" `
         "runtime/assets/2d/player.texture.geasset"
-    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-native-2d-sprite-smoke")) {
+    Assert-SpriteAtlasSourceAuthoringTarget `
+        $desktop2dManifest `
+        "Desktop runtime 2D package scaffold manifest" `
+        "packaged-2d-player-source-atlas" `
+        "source/assets/package.geassets" `
+        "source/sprites/player_atlas.texture_source" `
+        "runtime/assets/2d/player.texture.geasset" `
+        "desktop-2d-package-game/textures/player" `
+        "runtime/desktop_2d_package_game.geindex"
+    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")) {
         if (@($desktop2dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
             Write-Error "Desktop runtime 2D package scaffold manifest validationRecipes missing $recipe"
         }
@@ -352,6 +361,8 @@ try {
     $desktop2dIndex = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/desktop_2d_package_game.geindex") -Raw
     $desktop2dScene = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/assets/2d/playable.scene") -Raw
     $desktop2dSpriteAnimation = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/assets/2d/player.sprite_animation") -Raw
+    $desktop2dSourceRegistry = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "source/assets/package.geassets") -Raw
+    $desktop2dAtlasSource = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "source/sprites/player_atlas.texture_source") -Raw
     foreach ($attributeRule in @(
         "*.geindex text eol=lf",
         "*.geasset text eol=lf",
@@ -369,11 +380,18 @@ try {
     Assert-ContainsText $desktop2dCmake "--require-native-2d-sprites" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-sprite-animation" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-tilemap-runtime-ux" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "--require-gameplay-systems" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "REQUIRES_D3D12_SHADERS" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "MK_configure_desktop_runtime_2d_sprite_shader_artifacts" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "runtime_2d_sprite.hlsl" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "MK_audio" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "MK_ai" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "MK_navigation" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "MK_physics" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "MK_ui_renderer" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dMain "mirakana/ai/behavior_tree.hpp" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "mirakana/navigation/navigation_path_planner.hpp" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "mirakana/physics/physics2d.hpp" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "RuntimeInputActionMap" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "validate_playable_2d_scene" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "submit_ui_renderer_submission" "Desktop 2D scaffold main.cpp"
@@ -385,22 +403,42 @@ try {
     Assert-ContainsText $desktop2dMain "runtime_tilemap_payload" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "sample_runtime_tilemap_visible_cells" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "sample_and_apply_runtime_scene_render_sprite_animation" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "advance_runtime_sprite_flipbook" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "desktop-2d-package-game/textures/player" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "desktop-2d-package-game/animations/player-sprite-animation" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "--require-native-2d-sprites" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "--require-sprite-animation" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "--require-tilemap-runtime-ux" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "--require-gameplay-systems" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "native_2d_sprites_status" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "sprite_batch_plan_atlas_backed_batches" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "sprite_batch_plan_repeated_atlas_batches" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "sprite_batch_plan_repeated_atlas_sprites" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "sprite_animation_frames_sampled" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "sprite_flipbook_ticks" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "sprite_flipbook_frames_sampled" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "sprite_flipbook_frames_applied" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "sprite_flipbook_selected_frame_sum" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "sprite_flipbook_diagnostics" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "tilemap_cells_sampled" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "gameplay_systems_physics_contacts=" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "gameplay_systems_navigation_plan_status=" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "gameplay_systems_behavior_status=" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "gameplay_systems_behavior_authoring_ready=" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "gameplay_systems_behavior_authoring_diagnostics=" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "gameplay_systems_behavior_authoring_trace_nodes=" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dReadme "--require-native-2d-sprites" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "--require-sprite-animation" "Desktop 2D scaffold README"
+    Assert-ContainsText $desktop2dReadme "advance_runtime_sprite_flipbook" "Desktop 2D scaffold README"
+    Assert-ContainsText $desktop2dReadme "sprite_flipbook_frames_sampled" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "--require-tilemap-runtime-ux" "Desktop 2D scaffold README"
+    Assert-ContainsText $desktop2dReadme "--require-gameplay-systems" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "production sprite batching" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dShader "vs_native_sprite_overlay" "Desktop 2D scaffold shader"
     Assert-ContainsText $desktop2dShader "ps_native_sprite_overlay" "Desktop 2D scaffold shader"
     Assert-ContainsText $desktop2dScene "node.1.camera.projection=orthographic" "Desktop 2D scaffold scene"
     Assert-ContainsText $desktop2dScene "node.2.sprite_renderer.visible=true" "Desktop 2D scaffold scene"
+    Assert-ContainsText $desktop2dScene "node.3.sprite_renderer.visible=true" "Desktop 2D scaffold scene"
     Assert-ContainsText $desktop2dIndex "dependency.0.kind=scene_sprite" "Desktop 2D scaffold geindex"
     Assert-ContainsText $desktop2dIndex "entry.3.kind=audio" "Desktop 2D scaffold geindex"
     Assert-ContainsText $desktop2dIndex "entry.4.kind=tilemap" "Desktop 2D scaffold geindex"
@@ -411,6 +449,13 @@ try {
     Assert-ContainsText $desktop2dSpriteAnimation "format=GameEngine.CookedSpriteAnimation.v1" "Desktop 2D scaffold sprite animation"
     Assert-ContainsText $desktop2dSpriteAnimation "asset.kind=sprite_animation" "Desktop 2D scaffold sprite animation"
     Assert-ContainsText $desktop2dSpriteAnimation "target.node=Player" "Desktop 2D scaffold sprite animation"
+    Assert-ContainsText $desktop2dSourceRegistry "format=GameEngine.SourceAssetRegistry.v1" "Desktop 2D scaffold source registry"
+    Assert-ContainsText $desktop2dSourceRegistry "asset.0.key=desktop-2d-package-game/textures/player" "Desktop 2D scaffold source registry"
+    Assert-ContainsText $desktop2dSourceRegistry "asset.0.source=source/sprites/player_atlas.texture_source" "Desktop 2D scaffold source registry"
+    Assert-ContainsText $desktop2dSourceRegistry "asset.0.imported=runtime/assets/2d/player.texture.geasset" "Desktop 2D scaffold source registry"
+    Assert-ContainsText $desktop2dAtlasSource "format=GameEngine.TextureSource.v1" "Desktop 2D scaffold atlas source"
+    Assert-ContainsText $desktop2dAtlasSource "texture.pixel_format=rgba8_unorm" "Desktop 2D scaffold atlas source"
+    Assert-ContainsText $desktop2dAtlasSource "texture.data_hex=33b3ffff" "Desktop 2D scaffold atlas source"
     if ($desktop2dIndex.Contains("kind=source_file")) {
         Write-Error "Desktop runtime 2D package scaffold geindex must not use source_file dependency edges"
     }
@@ -689,8 +734,15 @@ foreach ($docCheck in @(
 }
 foreach ($needle in @(
     "SpriteBatchPlan",
+    "SpriteBatchPlanDesc",
+    "SpriteBatchPlanOptions",
     "SpriteBatchRange",
     "SpriteBatchDiagnosticCode",
+    "atlas_backed_batch_count",
+    "repeated_atlas_batch_count",
+    "repeated_atlas_sprite_count",
+    "unsupported_reordering_policy",
+    "untextured_sprite_disallowed",
     "plan_sprite_batches"
 )) {
     Assert-ContainsText $spriteBatchHeader $needle "2D sprite batch planning header"
@@ -699,6 +751,8 @@ foreach ($needle in @(
     "append_or_extend_batch",
     "missing_texture_atlas",
     "invalid_uv_rect",
+    "allow_sprite_reordering",
+    "require_atlas_backed_sprites",
     "texture_bind_count"
 )) {
     Assert-ContainsText $spriteBatchSource $needle "2D sprite batch planning source"
@@ -923,7 +977,11 @@ Assert-DoesNotContainText $manifestText "generated-game morph package consumptio
 foreach ($needle in @(
     "2d-sprite-batch-planning-contract",
     "2d-sprite-batch-package-telemetry",
+    "Sprite Batching Renderer v1",
     "plan_sprite_batches",
+    "SpriteBatchPlanDesc",
+    "atlas_backed_batch_count",
+    "unsupported_reordering_policy",
     "plan_scene_sprite_batches",
     "production sprite batching readiness",
     "native_sprite_batches_executed"
@@ -1863,6 +1921,12 @@ foreach ($needle in @(
     "gameplay_systems_status=",
     "gameplay_systems_ready=",
     "gameplay_systems_navigation_plan_status=",
+    "gameplay_systems_navigation_navmesh_status=",
+    "gameplay_systems_navigation_navmesh_dynamic_obstacles=",
+    "gameplay_systems_local_avoidance_status=",
+    "gameplay_systems_local_avoidance_applied_neighbors=",
+    "gameplay_systems_physics_policy_status=",
+    "gameplay_systems_physics_policy_dynamic_pushes=",
     "gameplay_systems_blackboard_status=",
     "gameplay_systems_behavior_status=",
     "gameplay_systems_audio_status=",

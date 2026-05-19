@@ -13,10 +13,11 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 
 ## Current Verdict
 
-- 1.0 is not complete until every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` is implemented, host-gated with evidence, or explicitly excluded with evidence.
+- 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: `docs/superpowers/plans/2026-05-19-gameplay-physics-navigation-ai-foundation-v1.md`.
-- Current gap cluster: navigation navmesh/dynamic obstacles, advanced physics dynamics, and 2D/3D gameplay package evidence.
+- Current active plan: `docs/superpowers/plans/2026-05-20-engine-navmesh-crowd-v1.md`.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-navmesh-crowd-v1` as the next developer-owned navigation/gameplay capability, not a reopened Engine 1.0 production gap. `physics-collision-query-v1` is completed for deterministic collision query batches and package-visible `collision_query_batch_*` counters in `sample_generated_desktop_runtime_3d_package` package evidence.
+- Current gap cluster: none selected after the 2026-05-19 gameplay/physics/navigation/AI foundation closeout.
 
 ## Plan map
 

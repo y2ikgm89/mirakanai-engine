@@ -142,6 +142,71 @@ struct BehaviorTreeTickResult {
     BehaviorTreeDiagnostic diagnostic;
 };
 
+enum class BehaviorAuthoringDiagnosticCode : std::uint8_t {
+    none,
+    empty_behavior_id,
+    duplicate_behavior_id,
+    duplicate_node_id,
+    invalid_node_id,
+    cycle_detected,
+    missing_blackboard_key,
+    duplicate_action_binding,
+    missing_action_binding,
+    unsupported_action,
+};
+
+struct BehaviorAuthoringActionBinding {
+    BehaviorTreeNodeId node_id{};
+    std::string action_id;
+
+    [[nodiscard]] bool operator==(const BehaviorAuthoringActionBinding&) const = default;
+};
+
+struct BehaviorAuthoringBehaviorDesc {
+    std::string id;
+    BehaviorTreeDesc tree;
+    std::vector<BehaviorTreeBlackboardCondition> blackboard_conditions;
+    std::vector<BehaviorAuthoringActionBinding> actions;
+};
+
+struct BehaviorAuthoringDocument {
+    std::vector<BehaviorAuthoringBehaviorDesc> behaviors;
+};
+
+struct BehaviorAuthoringValidationContext {
+    std::span<const std::string> blackboard_keys;
+    std::span<const std::string> supported_actions;
+};
+
+struct BehaviorAuthoringTraceRow {
+    std::string behavior_id;
+    BehaviorTreeNodeId node_id{};
+    BehaviorTreeNodeKind node_kind{BehaviorTreeNodeKind::action};
+
+    [[nodiscard]] bool operator==(const BehaviorAuthoringTraceRow&) const = default;
+};
+
+struct BehaviorAuthoringDiagnostic {
+    BehaviorAuthoringDiagnosticCode code{BehaviorAuthoringDiagnosticCode::none};
+    std::string behavior_id;
+    BehaviorTreeNodeId node_id{};
+    BehaviorTreeNodeId referenced_node_id{};
+    std::string key;
+    std::string action_id;
+
+    [[nodiscard]] bool operator==(const BehaviorAuthoringDiagnostic&) const = default;
+};
+
+struct BehaviorAuthoringValidationResult {
+    bool succeeded{true};
+    std::vector<BehaviorAuthoringDiagnostic> diagnostics;
+    std::vector<BehaviorAuthoringTraceRow> trace;
+};
+
+[[nodiscard]] BehaviorAuthoringValidationResult
+validate_behavior_authoring_document(const BehaviorAuthoringDocument& document,
+                                     BehaviorAuthoringValidationContext context);
+
 [[nodiscard]] BehaviorTreeTickResult evaluate_behavior_tree(const BehaviorTreeDesc& tree,
                                                             BehaviorTreeEvaluationContext context);
 

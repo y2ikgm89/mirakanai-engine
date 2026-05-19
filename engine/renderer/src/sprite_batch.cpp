@@ -24,8 +24,14 @@ struct SpriteBatchKey {
 }
 
 [[nodiscard]] SpriteBatchKey classify_sprite(SpriteBatchPlan& plan, const SpriteCommand& sprite,
-                                             std::uint64_t sprite_index) {
+                                             std::uint64_t sprite_index, SpriteBatchPlanOptions options) {
     if (!sprite.texture.enabled) {
+        if (options.require_atlas_backed_sprites) {
+            plan.diagnostics.push_back(SpriteBatchDiagnostic{
+                .code = SpriteBatchDiagnosticCode::untextured_sprite_disallowed,
+                .sprite_index = sprite_index,
+            });
+        }
         return {};
     }
 
@@ -70,12 +76,24 @@ void append_or_extend_batch(SpriteBatchPlan& plan, SpriteBatchKey key, std::uint
 } // namespace
 
 SpriteBatchPlan plan_sprite_batches(std::span<const SpriteCommand> sprites) {
+    return plan_sprite_batches(SpriteBatchPlanDesc{.sprites = sprites});
+}
+
+SpriteBatchPlan plan_sprite_batches(const SpriteBatchPlanDesc& desc) {
     SpriteBatchPlan plan;
-    plan.sprite_count = static_cast<std::uint64_t>(sprites.size());
+    plan.sprite_count = static_cast<std::uint64_t>(desc.sprites.size());
+
+    if (desc.options.allow_sprite_reordering) {
+        plan.diagnostics.push_back(SpriteBatchDiagnostic{
+            .code = SpriteBatchDiagnosticCode::unsupported_reordering_policy,
+            .sprite_index = 0,
+        });
+        return plan;
+    }
 
     std::uint64_t sprite_index = 0;
-    for (const auto& sprite : sprites) {
-        const auto key = classify_sprite(plan, sprite, sprite_index);
+    for (const auto& sprite : desc.sprites) {
+        const auto key = classify_sprite(plan, sprite, sprite_index, desc.options);
         append_or_extend_batch(plan, key, sprite_index);
         ++sprite_index;
     }
@@ -84,6 +102,11 @@ SpriteBatchPlan plan_sprite_batches(std::span<const SpriteCommand> sprites) {
     for (const auto& batch : plan.batches) {
         if (batch.kind == SpriteBatchKind::textured) {
             ++plan.texture_bind_count;
+            ++plan.atlas_backed_batch_count;
+            if (batch.sprite_count > 1) {
+                ++plan.repeated_atlas_batch_count;
+                plan.repeated_atlas_sprite_count += batch.sprite_count;
+            }
         }
     }
 

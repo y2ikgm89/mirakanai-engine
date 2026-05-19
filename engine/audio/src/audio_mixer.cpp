@@ -21,6 +21,10 @@ namespace {
     return std::isfinite(value) && value >= 0.0F && value <= 16.0F;
 }
 
+[[nodiscard]] bool valid_seconds(float value) noexcept {
+    return std::isfinite(value) && value >= 0.0F;
+}
+
 [[nodiscard]] bool finite_point(AudioPoint3 value) noexcept {
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
 }
@@ -56,6 +60,24 @@ namespace {
 
 [[nodiscard]] bool valid_sample_format(AudioSampleFormat value) noexcept {
     return value == AudioSampleFormat::float32 || value == AudioSampleFormat::pcm16;
+}
+
+[[nodiscard]] bool valid_gameplay_bus_fade(const AudioGameplayBusMixDesc& bus) noexcept {
+    return valid_gain(bus.fade_from_gain) && valid_gain(bus.fade_to_gain) && valid_seconds(bus.fade_elapsed_seconds) &&
+           valid_seconds(bus.fade_duration_seconds);
+}
+
+[[nodiscard]] float gameplay_bus_fade_gain(const AudioGameplayBusMixDesc& bus) noexcept {
+    if (bus.fade_duration_seconds <= 0.0F) {
+        return bus.fade_to_gain;
+    }
+    const auto ratio = std::clamp(bus.fade_elapsed_seconds / bus.fade_duration_seconds, 0.0F, 1.0F);
+    return bus.fade_from_gain + ((bus.fade_to_gain - bus.fade_from_gain) * ratio);
+}
+
+[[nodiscard]] bool valid_spatial_range(AudioPoint3 position, float min_distance, float max_distance) noexcept {
+    return finite_point(position) && std::isfinite(min_distance) && std::isfinite(max_distance) &&
+           min_distance >= 0.0F && max_distance > min_distance;
 }
 
 [[nodiscard]] bool valid_resampling_quality(AudioResamplingQuality value) noexcept {
@@ -136,6 +158,23 @@ namespace {
     const auto it = std::ranges::find_if(
         voices, [voice](const AudioSpatialVoiceDesc& candidate) { return candidate.voice == voice; });
     return it == voices.end() ? nullptr : &*it;
+}
+
+[[nodiscard]] bool contains_name(const std::vector<std::string>& names, std::string_view name) noexcept {
+    return std::ranges::find(names, name) != names.end();
+}
+
+[[nodiscard]] const AudioGameplayCueDesc* find_gameplay_cue(std::span<const AudioGameplayCueDesc> cues,
+                                                            std::string_view cue_id) noexcept {
+    const auto it = std::ranges::find_if(cues, [cue_id](const AudioGameplayCueDesc& cue) { return cue.id == cue_id; });
+    return it == cues.end() ? nullptr : &*it;
+}
+
+void append_gameplay_mix_diagnostic(std::vector<AudioGameplayMixDiagnostic>& diagnostics,
+                                    AudioGameplayMixDiagnosticCode code, std::string bus, std::string cue_id,
+                                    std::string message) {
+    diagnostics.push_back(AudioGameplayMixDiagnostic{
+        .code = code, .bus = std::move(bus), .cue_id = std::move(cue_id), .message = std::move(message)});
 }
 
 [[nodiscard]] float clamp_audio_sample(float sample) noexcept {
@@ -234,8 +273,20 @@ bool is_valid_audio_spatial_voice_desc(const AudioSpatialVoiceDesc& voice) noexc
     if (!voice.spatialized) {
         return true;
     }
-    return finite_point(voice.position) && std::isfinite(voice.min_distance) && std::isfinite(voice.max_distance) &&
-           voice.min_distance >= 0.0F && voice.max_distance > voice.min_distance;
+    return valid_spatial_range(voice.position, voice.min_distance, voice.max_distance);
+}
+
+bool is_valid_audio_gameplay_cue_kind(AudioGameplayCueKind kind) noexcept {
+    switch (kind) {
+    case AudioGameplayCueKind::music:
+    case AudioGameplayCueKind::sfx:
+    case AudioGameplayCueKind::ambience:
+    case AudioGameplayCueKind::ui:
+    case AudioGameplayCueKind::voice:
+    case AudioGameplayCueKind::custom:
+        return true;
+    }
+    return false;
 }
 
 bool is_valid_audio_clip_desc(const AudioClipDesc& clip) noexcept {
@@ -277,6 +328,135 @@ bool is_valid_audio_clip_sample_data(const AudioClipSampleData& samples) noexcep
 bool is_valid_audio_device_stream_request(const AudioDeviceStreamRequest& request) noexcept {
     return is_valid_audio_device_format(request.format) && request.target_queued_frames > 0U &&
            request.max_render_frames > 0U && valid_resampling_quality(request.resampling_quality);
+}
+
+bool AudioGameplayMixPlan::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
+AudioGameplayMixPlan plan_gameplay_audio_mix(const AudioGameplayMixRequest& request) {
+    AudioGameplayMixPlan plan;
+    std::vector<std::string> declared_bus_names;
+    std::vector<std::string> known_bus_names;
+    std::vector<std::string> cue_ids;
+    declared_bus_names.reserve(request.buses.size());
+    known_bus_names.reserve(request.buses.size() + 1U);
+    cue_ids.reserve(request.cues.size());
+    known_bus_names.push_back("master");
+
+    for (const auto& bus : request.buses) {
+        const auto bus_name = bus.name;
+        if (!valid_name(bus.name)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::missing_bus_name, bus_name,
+                                           {}, "gameplay audio bus name must be non-empty");
+            continue;
+        }
+        if (contains_name(declared_bus_names, bus.name)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::duplicate_bus, bus_name,
+                                           {}, "gameplay audio bus names must be unique");
+            continue;
+        }
+
+        declared_bus_names.push_back(bus.name);
+        if (!contains_name(known_bus_names, bus.name)) {
+            known_bus_names.push_back(bus.name);
+        }
+        if (!valid_gain(bus.gain)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::invalid_bus_gain, bus_name,
+                                           {}, "gameplay audio bus gain must be finite and non-negative");
+        }
+        if (!valid_gameplay_bus_fade(bus)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::invalid_bus_fade, bus_name,
+                                           {}, "gameplay audio bus fade must be finite and non-negative");
+        }
+    }
+
+    for (const auto& cue : request.cues) {
+        if (cue.id.empty()) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::missing_cue_id, cue.bus,
+                                           {}, "gameplay audio cue id must not be empty");
+        } else if (contains_name(cue_ids, cue.id)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::duplicate_cue_id, cue.bus,
+                                           cue.id, "gameplay audio cue ids must be unique");
+        } else {
+            cue_ids.push_back(cue.id);
+        }
+        if (!is_valid_audio_gameplay_cue_kind(cue.kind)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::unsupported_cue_kind,
+                                           cue.bus, cue.id, "gameplay audio cue kind is not supported");
+        }
+        if (cue.clip.value == 0U) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::missing_clip, cue.bus,
+                                           cue.id, "gameplay audio cue must reference a clip");
+        }
+        if (!valid_name(cue.bus) || !contains_name(known_bus_names, cue.bus)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::unknown_bus, cue.bus,
+                                           cue.id, "gameplay audio cue bus must be master or a declared bus");
+        }
+        if (!valid_gain(cue.gain)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::invalid_cue_gain, cue.bus,
+                                           cue.id, "gameplay audio cue gain must be finite and non-negative");
+        }
+        if (cue.spatialized && !valid_spatial_range(cue.position, cue.min_distance, cue.max_distance)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::invalid_spatial_range,
+                                           cue.bus, cue.id,
+                                           "gameplay audio spatial cue requires finite position and valid distances");
+        }
+    }
+
+    for (const auto& trigger : request.triggers) {
+        if (trigger.cue_id.empty()) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::missing_trigger_cue_id, {},
+                                           {}, "gameplay audio trigger cue id must not be empty");
+        } else if (!contains_name(cue_ids, trigger.cue_id)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::unknown_cue, {},
+                                           trigger.cue_id, "gameplay audio trigger must reference a declared cue");
+        }
+        if (!valid_gain(trigger.gain_scale)) {
+            append_gameplay_mix_diagnostic(plan.diagnostics, AudioGameplayMixDiagnosticCode::invalid_trigger_gain, {},
+                                           trigger.cue_id,
+                                           "gameplay audio trigger gain scale must be finite and non-negative");
+        }
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    plan.buses.reserve(request.buses.size());
+    for (const auto& bus : request.buses) {
+        plan.buses.push_back(AudioBusDesc{
+            .name = bus.name,
+            .gain = bus.gain * gameplay_bus_fade_gain(bus),
+            .muted = bus.muted || bus.paused,
+        });
+    }
+
+    plan.commands.reserve(request.triggers.size());
+    for (const auto& trigger : request.triggers) {
+        const auto* cue = find_gameplay_cue(request.cues, trigger.cue_id);
+        if (cue == nullptr) {
+            continue;
+        }
+        plan.commands.push_back(AudioGameplayMixCommand{
+            .cue_id = cue->id,
+            .kind = cue->kind,
+            .voice =
+                AudioVoiceDesc{
+                    .clip = cue->clip,
+                    .bus = cue->bus,
+                    .gain = cue->gain * trigger.gain_scale,
+                    .looping = cue->looping,
+                    .start_frame = trigger.start_frame,
+                },
+            .spatialized = cue->spatialized,
+            .position = cue->position,
+            .min_distance = cue->min_distance,
+            .max_distance = cue->max_distance,
+        });
+    }
+
+    return plan;
 }
 
 AudioDeviceStreamPlan plan_audio_device_stream(AudioDeviceStreamRequest request) noexcept {

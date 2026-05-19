@@ -86,7 +86,7 @@
 - Use project C++ modules through CMake `FILE_SET CXX_MODULES`; keep public installed headers available until module export/install support is intentionally designed.
 - Use `import std;` only where the active CMake generator/toolchain reports support; keep it gated by the central CMake policy.
 - Do not add C++20 compatibility shims or lower the engine standard without a new architecture decision.
-- `MK_apply_common_target_options` sets `/INCREMENTAL:NO` on MSVC linkable targets to avoid `.ilk` / Debug relink LNK1104.
+- `MK_apply_common_target_options` isolates MSVC PDBs (`COMPILE_PDB_OUTPUT_DIRECTORY`) and uses `/INCREMENTAL:NO`; CMake build wrappers serialize overlap.
 - Follow `docs/cpp-style.md` for naming, source layout, public include paths, CMake target naming, and installable package targets.
 - When changing **aggregate** types used from many tests (for example `mirakana::editor::ScenePrefabInstanceRefreshPolicy` in `editor/core/include/mirakana/editor/scene_authoring.hpp`), update every **designated** braced initializer in the same task so **all members appear in declaration order**, including empty **`std::function`** members (`{}`); see **`docs/cpp-style.md`** (**Unit tests** → **Aggregate literals**) and clang `-Wmissing-field-initializers` / IDE diagnostics.
 - Prefer RAII and value types.

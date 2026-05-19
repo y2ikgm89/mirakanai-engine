@@ -179,6 +179,15 @@ if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEd
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorPrefabInstanceSourceLinks")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorPrefabInstanceSourceLinks"
 }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentAssetPlaceholderGeneration")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentAssetPlaceholderGeneration"
+}
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentSpriteAnimationFlipbook")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentSpriteAnimationFlipbook"
+}
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentGameplayDebugOverlay")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentGameplayDebugOverlay"
+}
 $geUiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_ui" })
 if ($geUiModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_ui module"
@@ -239,8 +248,8 @@ if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-safe-point-control
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") {
     Write-Error "engine/agent/manifest.json MK_runtime publicHeaders must include resource_runtime.hpp"
 }
-if ($geAudioModule[0].status -ne "implemented-device-streaming-baseline") {
-    Write-Error "engine/agent/manifest.json MK_audio status must advertise the audio device streaming baseline honestly"
+if ($geAudioModule[0].status -ne "implemented-gameplay-audio-mix-planner") {
+    Write-Error "engine/agent/manifest.json MK_audio status must advertise the gameplay audio mix planner honestly"
 }
 if (@($geAudioModule[0].publicHeaders) -notcontains "engine/audio/include/mirakana/audio/audio_mixer.hpp") {
     Write-Error "engine/agent/manifest.json MK_audio publicHeaders must include audio_mixer.hpp"
@@ -251,8 +260,14 @@ if ($gePhysicsModule[0].status -ne "implemented-physics-1-0-ready-surface") {
 if (@($gePhysicsModule[0].publicHeaders) -notcontains "engine/physics/include/mirakana/physics/physics3d.hpp") {
     Write-Error "engine/agent/manifest.json MK_physics publicHeaders must include physics3d.hpp"
 }
+if (@($gePhysicsModule[0].publicHeaders) -notcontains "engine/physics/include/mirakana/physics/collision_query.hpp") {
+    Write-Error "engine/agent/manifest.json MK_physics publicHeaders must include collision_query.hpp"
+}
 if (@($geToolsModule[0].publicHeaders) -notcontains "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") {
     Write-Error "engine/agent/manifest.json MK_tools publicHeaders must include gltf_node_animation_import.hpp"
+}
+if (@($geToolsModule[0].publicHeaders) -notcontains "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") {
+    Write-Error "engine/agent/manifest.json MK_tools publicHeaders must include placeholder_asset_tool.hpp"
 }
 if (@($geEditorCoreModule[0].publicHeaders) -notcontains "editor/core/include/mirakana/editor/play_in_editor.hpp") {
     Write-Error "engine/agent/manifest.json MK_editor_core publicHeaders must include play_in_editor.hpp"
@@ -320,6 +335,16 @@ Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "move_physics_characte
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsAuthoredCollisionScene3DDesc" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "build_physics_world_3d_from_authored_collision_scene" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "native backend requests failing closed" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCollisionQueryBatchStatus" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCollisionQueryBatchDiagnostic" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCollisionQueryRowStatus" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCollisionQueryRowDiagnostic" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsRaycastBatch2DDesc" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsWorld2D::raycast_batch" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsWorld3D::shape_sweep_batch" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "source-indexed value-only query rows" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "default-unbounded query counts" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "explicit positive max_queries budgets" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsShape3DDesc::aabb" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsShape3DDesc::sphere" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsShape3DDesc::capsule" "MK_physics module purpose"
@@ -400,6 +425,9 @@ Assert-ContainsText ([string]$geAudioModule[0].purpose) "AudioDeviceStreamReques
 Assert-ContainsText ([string]$geAudioModule[0].purpose) "AudioDeviceStreamPlan" "MK_audio module purpose"
 Assert-ContainsText ([string]$geAudioModule[0].purpose) "plan_audio_device_stream" "MK_audio module purpose"
 Assert-ContainsText ([string]$geAudioModule[0].purpose) "render_audio_device_stream_interleaved_float" "MK_audio module purpose"
+Assert-ContainsText ([string]$geAudioModule[0].purpose) "AudioGameplayMixRequest" "MK_audio module purpose"
+Assert-ContainsText ([string]$geAudioModule[0].purpose) "AudioGameplayMixPlan" "MK_audio module purpose"
+Assert-ContainsText ([string]$geAudioModule[0].purpose) "plan_gameplay_audio_mix" "MK_audio module purpose"
 Assert-ContainsText ([string]$geAudioModule[0].purpose) "does not open OS audio devices" "MK_audio module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "runtime_morph_mesh_cpu_payload" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "runtime_animation_float_clip_payload" "MK_runtime module purpose"
@@ -611,9 +639,79 @@ Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/m
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "apply_material_instance_package_update" "MK_tools material tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "plan_material_graph_package_update" "MK_tools material tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "apply_material_graph_package_update" "MK_tools material tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetBundleRequest" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetBundlePlan" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetChangedFile" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetProvenanceRow" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetDiagnostic" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "plan_placeholder_asset_bundle" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetCookPackageRequest" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetCookPackagePlan" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "plan_placeholder_asset_cook_package" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "SpriteAtlasSourceFrameDesc" "MK_tools sprite atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "SpriteAtlasSourceAuthoringDesc" "MK_tools sprite atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "SpriteAtlasSourceAuthoringPlan" "MK_tools sprite atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "plan_sprite_atlas_source_authoring" "MK_tools sprite atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "source_asset_registry_format_v1" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "serialize_source_asset_registry_document" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "plan_registered_source_asset_cook_package" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "mirakana-placeholder-asset-tool-v1" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "LicenseRef-Proprietary" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "invalid_texture_dimensions" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/sprite_atlas_tool.cpp") "pack_sprite_atlas_rgba8_max_side" "MK_tools sprite atlas tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/sprite_atlas_tool.cpp") "serialize_source_asset_registry_document" "MK_tools sprite atlas tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/sprite_atlas_tool.cpp") "runtime_source_image_decoding" "MK_tools sprite atlas tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/CMakeLists.txt") "placeholder_asset_tool.cpp" "MK_tools asset CMake source list"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/CMakeLists.txt") "sprite_atlas_tool.cpp" "MK_tools asset CMake source list"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "placeholder asset bundle plans deterministic legal source documents and provenance rows" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "placeholder asset bundle fails closed on unsafe duplicate and unsupported rows" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "placeholder asset cook package routes generated source documents through registered package planning" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "unsupported_asset_kind" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "sprite atlas source authoring packs deterministic texture source and registry rows" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "sprite atlas source authoring rejects duplicate and invalid frame ids" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "sprite atlas source authoring rejects unsupported frame format and dimensions" "MK_tools tests"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "plan_scene_package_update" "MK_tools scene tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "apply_scene_package_update" "MK_tools scene tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/assets/include/mirakana/assets/ui_atlas_metadata.hpp") "GameEngine.UiAtlas.v1" "MK_assets ui atlas metadata public header"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "plan_placeholder_asset_bundle" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetBundleRequest" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetBundlePlan" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetChangedFile" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "plan_placeholder_asset_cook_package" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetCookPackageRequest" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "GameEngine.SourceAssetRegistry.v1" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetProvenanceRow" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "must not download external assets" "asset placeholder game guidance"
+foreach ($spriteAtlasSourceAuthoringNeedle in @(
+    "SpriteAtlasSourceFrameDesc",
+    "SpriteAtlasSourceAuthoringDesc",
+    "SpriteAtlasSourceAuthoringPlan",
+    "plan_sprite_atlas_source_authoring",
+    "GameEngine.TextureSource.v1",
+    "GameEngine.SourceAssetRegistry.v1",
+    "SpriteAtlasSourceChangedFile",
+    "SpriteAtlasSourceFrameRow",
+    "registered source cook/package validation",
+    "must not parse PNG/source images",
+    "renderer/RHI residency",
+    "animation semantics"
+)) {
+    Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAtlasSourceAuthoring) $spriteAtlasSourceAuthoringNeedle "sprite atlas source authoring game guidance"
+}
+foreach ($gameplayDebugOverlayGuidanceNeedle in @(
+    "RuntimeGameplayDebugOverlayRowDesc",
+    "RuntimeGameplayDebugOverlayCategory",
+    "RuntimeGameplayDebugOverlayRowKind",
+    "RuntimeGameplayDebugOverlayDiagnosticCode",
+    "RuntimeGameplayDebugOverlayRow",
+    "RuntimeGameplayDebugOverlayDiagnostic",
+    "RuntimeGameplayDebugOverlayPlan",
+    "plan_runtime_gameplay_debug_overlay",
+    "value-only",
+    "does not render UI"
+)) {
+    Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentGameplayDebugOverlay) $gameplayDebugOverlayGuidanceNeedle "gameplay debug overlay game guidance"
+}
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_accessibility_publish" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "publish_accessibility_payload" "runtime UI game guidance"
@@ -671,6 +769,22 @@ foreach ($runtimeUiGuidance in @(
     Assert-ContainsText $runtimeUiText "plan_image_decode_request" $runtimeUiGuidance
     Assert-ContainsText $runtimeUiText "glyph atlas generation" $runtimeUiGuidance
     Assert-ContainsText $runtimeUiText "image decoding" $runtimeUiGuidance
+}
+foreach ($gameplayDebugOverlayGuidance in @(
+    "docs/ui.md",
+    "docs/architecture.md",
+    "docs/roadmap.md",
+    "docs/ai-game-development.md",
+    "docs/current-capabilities.md",
+    "docs/specs/generated-game-validation-scenarios.md",
+    ".agents/skills/gameengine-game-development/SKILL.md",
+    ".claude/skills/gameengine-game-development/SKILL.md",
+    ".cursor/skills/gameengine-game-development/SKILL.md"
+)) {
+    $gameplayDebugOverlayText = Get-AgentSurfaceText $gameplayDebugOverlayGuidance
+    Assert-ContainsText $gameplayDebugOverlayText "debug overlay" $gameplayDebugOverlayGuidance
+    Assert-ContainsText $gameplayDebugOverlayText "RuntimeGameplayDebugOverlayPlan" $gameplayDebugOverlayGuidance
+    Assert-ContainsText $gameplayDebugOverlayText "plan_runtime_gameplay_debug_overlay" $gameplayDebugOverlayGuidance
 }
 foreach ($runtimeUiPngGuidance in @(
     "docs/ui.md",
@@ -753,6 +867,18 @@ Assert-ContainsText $geUiHeaderText "plan_image_decode_request" "MK_ui public he
 Assert-ContainsText $geUiHeaderText "decode_image_request" "MK_ui public header"
 Assert-ContainsText $geUiHeaderText "IImageDecodingAdapter" "MK_ui public header"
 Assert-ContainsText $geUiHeaderText "invalid_image_decode_result" "MK_ui public header"
+foreach ($gameplayDebugOverlayHeaderNeedle in @(
+    "RuntimeGameplayDebugOverlayCategory",
+    "RuntimeGameplayDebugOverlayRowKind",
+    "RuntimeGameplayDebugOverlayDiagnosticCode",
+    "RuntimeGameplayDebugOverlayRowDesc",
+    "RuntimeGameplayDebugOverlayRow",
+    "RuntimeGameplayDebugOverlayDiagnostic",
+    "RuntimeGameplayDebugOverlayPlan",
+    "plan_runtime_gameplay_debug_overlay"
+)) {
+    Assert-ContainsText $geUiHeaderText $gameplayDebugOverlayHeaderNeedle "MK_ui public header"
+}
 Assert-ContainsText $geUiSourceText "utf8_scalar_glyph" "MK_ui source"
 Assert-ContainsText $geUiSourceText "span.glyph" "MK_ui source"
 Assert-ContainsText $geUiSourceText "AccessibilityPublishPlan::ready" "MK_ui source"
@@ -792,6 +918,20 @@ Assert-ContainsText $geUiSourceText "adapter.decode_image" "MK_ui source"
 Assert-ContainsText $geUiSourceText "invalid_image_decode_uri" "MK_ui source"
 Assert-ContainsText $geUiSourceText "empty_image_decode_bytes" "MK_ui source"
 Assert-ContainsText $geUiSourceText "invalid_image_decode_result" "MK_ui source"
+foreach ($gameplayDebugOverlaySourceNeedle in @(
+    "RuntimeGameplayDebugOverlayPlan::succeeded",
+    "is_valid_runtime_gameplay_debug_overlay_category",
+    "is_valid_runtime_gameplay_debug_overlay_row_kind",
+    "append_runtime_gameplay_debug_overlay_diagnostic",
+    "RuntimeGameplayDebugOverlayDiagnosticCode::duplicate_row_id",
+    "RuntimeGameplayDebugOverlayDiagnosticCode::missing_label",
+    "RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_category",
+    "RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_row_kind"
+)) {
+    Assert-ContainsText $geUiSourceText $gameplayDebugOverlaySourceNeedle "MK_ui source"
+}
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/core_tests.cpp") "runtime gameplay debug overlay plan produces deterministic display rows" "tests/unit/core_tests.cpp"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/core_tests.cpp") "runtime gameplay debug overlay plan rejects duplicate and invalid rows" "tests/unit/core_tests.cpp"
 Assert-ContainsText $sourceImageDecodeHeaderText "PngImageDecodingAdapter" "MK_tools source image decode public header"
 Assert-ContainsText $sourceImageDecodeHeaderText "ui::IImageDecodingAdapter" "MK_tools source image decode public header"
 Assert-ContainsText $sourceImageDecodeHeaderText "decode_image" "MK_tools source image decode public header"
@@ -974,6 +1114,9 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "AudioDevi
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "AudioDeviceStreamPlan" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "plan_audio_device_stream" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "render_audio_device_stream_interleaved_float" "audio game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "AudioGameplayMixRequest" "audio game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "AudioGameplayMixPlan" "audio game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "plan_gameplay_audio_mix" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "device_frame + queued_frames" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "device hotplug/selection" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "mixer authoring" "audio game guidance"
@@ -991,6 +1134,8 @@ foreach ($audioGuidance in @(
     Assert-ContainsText $audioText "AudioDeviceStreamPlan" $audioGuidance
     Assert-ContainsText $audioText "plan_audio_device_stream" $audioGuidance
     Assert-ContainsText $audioText "render_audio_device_stream_interleaved_float" $audioGuidance
+    Assert-ContainsText $audioText "AudioGameplayMixRequest" $audioGuidance
+    Assert-ContainsText $audioText "plan_gameplay_audio_mix" $audioGuidance
     Assert-ContainsText $audioText "device hotplug/selection" $audioGuidance
     Assert-ContainsText $audioText "mixer authoring" $audioGuidance
 }
@@ -1014,6 +1159,9 @@ if ($geNavigationModule[0].publicHeaders -notcontains "engine/navigation/include
 if ($geNavigationModule[0].publicHeaders -notcontains "engine/navigation/include/mirakana/navigation/navigation_path_planner.hpp") {
     Write-Error "engine/agent/manifest.json MK_navigation publicHeaders must include navigation_path_planner.hpp"
 }
+if ($geNavigationModule[0].publicHeaders -notcontains "engine/navigation/include/mirakana/navigation/navigation_navmesh.hpp") {
+    Write-Error "engine/agent/manifest.json MK_navigation publicHeaders must include navigation_navmesh.hpp"
+}
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentNavigation")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentNavigation"
 }
@@ -1024,6 +1172,8 @@ Assert-ContainsText ([string]$geNavigationModule[0].purpose) "smooth_navigation_
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "NavigationGridAgentPathRequest" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "NavigationGridAgentPathPlan" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "plan_navigation_grid_agent_path" "MK_navigation module purpose"
+Assert-ContainsText ([string]$geNavigationModule[0].purpose) "NavigationNavmeshPathRequest" "MK_navigation module purpose"
+Assert-ContainsText ([string]$geNavigationModule[0].purpose) "plan_navigation_navmesh_path" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "navmesh" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "crowd" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "scene/physics integration" "MK_navigation module purpose"
@@ -1035,6 +1185,8 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "smoo
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "NavigationGridAgentPathRequest" "navigation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "NavigationGridAgentPathPlan" "navigation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "plan_navigation_grid_agent_path" "navigation game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "NavigationNavmeshPathRequest" "navigation game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "plan_navigation_navmesh_path" "navigation game guidance"
 foreach ($navigationGuidance in @(
     "docs/architecture.md",
     "docs/roadmap.md",
@@ -1053,6 +1205,8 @@ foreach ($navigationGuidance in @(
     Assert-ContainsText $navigationText "NavigationGridAgentPathRequest" $navigationGuidance
     Assert-ContainsText $navigationText "NavigationGridAgentPathPlan" $navigationGuidance
     Assert-ContainsText $navigationText "plan_navigation_grid_agent_path" $navigationGuidance
+    Assert-ContainsText $navigationText "NavigationNavmeshPathRequest" $navigationGuidance
+    Assert-ContainsText $navigationText "plan_navigation_navmesh_path" $navigationGuidance
     Assert-ContainsText $navigationText "navmesh" $navigationGuidance
     Assert-ContainsText $navigationText "crowd" $navigationGuidance
     Assert-ContainsText $navigationText "scene/physics" $navigationGuidance
@@ -1068,6 +1222,17 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "move_ph
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsAuthoredCollisionScene3DDesc" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsAuthoredCollisionScene3DBuildResult" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "build_physics_world_3d_from_authored_collision_scene" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCollisionQueryBatchStatus" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCollisionQueryBatchDiagnostic" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCollisionQueryRowStatus" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCollisionQueryRowDiagnostic" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsRaycastBatch2DDesc" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsWorld2D::raycast_batch" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsWorld3D::shape_sweep_batch" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "source-indexed value-only query rows" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "default-unbounded query counts" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "explicit positive max_queries budgets" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "collision_query_batch_ready" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsShape3DDesc::aabb" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsShape3DDesc::sphere" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsShape3DDesc::capsule" "physics game guidance"
@@ -1109,6 +1274,14 @@ foreach ($physicsGuidance in @(
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $physicsText = Get-AgentSurfaceText $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsCollisionQueryBatchStatus" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsCollisionQueryBatchDiagnostic" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsCollisionQueryRowStatus" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsCollisionQueryRowDiagnostic" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsWorld2D::raycast_batch" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsWorld3D::shape_sweep_batch" $physicsGuidance
+    Assert-ContainsText $physicsText "default-unbounded" $physicsGuidance
+    Assert-ContainsText $physicsText "collision_query_batch_ready" $physicsGuidance
     Assert-ContainsText $physicsText "move_physics_character_controller_3d" $physicsGuidance
     Assert-ContainsText $physicsText "build_physics_world_3d_from_authored_collision_scene" $physicsGuidance
     Assert-ContainsText $physicsText "PhysicsWorld3D::exact_shape_sweep" $physicsGuidance
@@ -1145,8 +1318,8 @@ $geAiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_ai" })
 if ($geAiModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_ai module"
 }
-if ($geAiModule[0].status -ne "implemented-behavior-tree-blackboard-perception-services") {
-    Write-Error "engine/agent/manifest.json MK_ai status must advertise the behavior tree blackboard and perception services slice honestly"
+if ($geAiModule[0].status -ne "implemented-behavior-tree-blackboard-perception-authoring") {
+    Write-Error "engine/agent/manifest.json MK_ai status must advertise the behavior tree blackboard, perception, and behavior authoring slice honestly"
 }
 if ($geAiModule[0].publicHeaders -notcontains "engine/ai/include/mirakana/ai/behavior_tree.hpp") {
     Write-Error "engine/agent/manifest.json MK_ai publicHeaders must include behavior_tree.hpp"
@@ -1164,6 +1337,9 @@ Assert-ContainsText ([string]$geAiModule[0].purpose) "AiPerceptionAgent2D" "MK_a
 Assert-ContainsText ([string]$geAiModule[0].purpose) "AiPerceptionTarget2D" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "build_ai_perception_snapshot_2d" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "write_ai_perception_blackboard" "MK_ai module purpose"
+Assert-ContainsText ([string]$geAiModule[0].purpose) "BehaviorAuthoringDocument" "MK_ai module purpose"
+Assert-ContainsText ([string]$geAiModule[0].purpose) "BehaviorAuthoringValidationContext" "MK_ai module purpose"
+Assert-ContainsText ([string]$geAiModule[0].purpose) "validate_behavior_authoring_document" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "duplicate-blackboard-key" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "blackboard-type-mismatch" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "persistent blackboard services" "MK_ai module purpose"
@@ -1174,6 +1350,9 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "AiPerception
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "AiPerceptionTarget2D" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "build_ai_perception_snapshot_2d" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "write_ai_perception_blackboard" "AI game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "BehaviorAuthoringDocument" "AI game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "BehaviorAuthoringValidationContext" "AI game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "validate_behavior_authoring_document" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "blackboard-type-mismatch" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "persistent blackboard services" "AI game guidance"
 foreach ($aiApiGuidance in @(
@@ -1192,6 +1371,9 @@ foreach ($aiApiGuidance in @(
     Assert-ContainsText $aiApiText "AiPerceptionTarget2D" $aiApiGuidance
     Assert-ContainsText $aiApiText "build_ai_perception_snapshot_2d" $aiApiGuidance
     Assert-ContainsText $aiApiText "write_ai_perception_blackboard" $aiApiGuidance
+    Assert-ContainsText $aiApiText "BehaviorAuthoringDocument" $aiApiGuidance
+    Assert-ContainsText $aiApiText "BehaviorAuthoringValidationContext" $aiApiGuidance
+    Assert-ContainsText $aiApiText "validate_behavior_authoring_document" $aiApiGuidance
     Assert-ContainsText $aiApiText "blackboard" $aiApiGuidance
 }
 foreach ($aiStatusGuidance in @(
@@ -1202,6 +1384,7 @@ foreach ($aiStatusGuidance in @(
     $aiStatusText = Get-AgentSurfaceText $aiStatusGuidance
     Assert-ContainsText $aiStatusText "Behavior Tree Blackboard Conditions v0" $aiStatusGuidance
     Assert-ContainsText $aiStatusText "AI Perception Services v1" $aiStatusGuidance
+    Assert-ContainsText $aiStatusText "AI Behavior Authoring Foundation v1" $aiStatusGuidance
     Assert-ContainsText $aiStatusText "persistent blackboard" $aiStatusGuidance
 }
 foreach ($sampleAiGuidance in @(
@@ -1510,6 +1693,7 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional L
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "build_scene_directional_shadow_light_space_plan" "MK_scene_renderer module purpose"
 Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "sample_and_apply_runtime_scene_render_animation_float_clip" "MK_scene_renderer module purpose"
+Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "advance_runtime_sprite_flipbook" "MK_scene_renderer module purpose"
 Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "sample_runtime_morph_mesh_cpu_animation_float_clip" "MK_scene_renderer module purpose"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRhi) "RHI Depth Attachment Contract v0" "RHI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRhi) "RenderPassDepthAttachment" "RHI game guidance"
@@ -1563,6 +1747,7 @@ $rhiFrameRendererSource = Get-AgentSurfaceText "engine/renderer/src/rhi_frame_re
 $rhiPostprocessSource = Get-AgentSurfaceText "engine/renderer/src/rhi_postprocess_frame_renderer.cpp"
 $rhiDirectionalShadowSource = Get-AgentSurfaceText "engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp"
 $rendererHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp"
+$spriteBatchHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/sprite_batch.hpp"
 $rhiViewportSurfaceSource = Get-AgentSurfaceText "engine/renderer/src/rhi_viewport_surface.cpp"
 Assert-ContainsText $frameGraphHeader "FrameGraphProductionOwnershipCapability" "Frame graph production ownership boundary public API"
 Assert-ContainsText $frameGraphHeader "vulkan_memory_aliasing" "Frame graph production ownership boundary public API"
@@ -1710,6 +1895,17 @@ Assert-ContainsText $rhiFrameRendererSource "execute_frame_graph_rhi_texture_sch
 Assert-ContainsText $rhiFrameRendererSource "primary_color" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "framegraph_passes_executed" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rendererHeaderText "framegraph_render_passes_recorded" "RendererStats render pass envelope evidence"
+foreach ($needle in @(
+    "SpriteBatchPlanDesc",
+    "SpriteBatchPlanOptions",
+    "atlas_backed_batch_count",
+    "repeated_atlas_batch_count",
+    "repeated_atlas_sprite_count",
+    "unsupported_reordering_policy",
+    "untextured_sprite_disallowed"
+)) {
+    Assert-ContainsText $spriteBatchHeaderText $needle "Sprite Batching Renderer v1 Phase 1 public API"
+}
 Assert-ContainsText $rhiFrameRendererSource "framegraph_render_passes_recorded += frame_graph_execution.render_passes_recorded" "RHI frame renderer render pass stats evidence"
 Assert-ContainsText $rhiFrameRendererSource "record_queued_mesh_command(draw.mesh, recorded_primary_stats)" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "FrameGraphRhiRenderPassDesc" "RHI frame renderer primary render pass envelope"
@@ -1833,6 +2029,18 @@ foreach ($postprocessDepthGuidance in @(
     Assert-ContainsText $postprocessDepthText "package-visible" $postprocessDepthGuidance
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Postprocess Depth Input Readback Foundation v0" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Sprite Batching Renderer v1 Phase 1" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "SpriteBatchPlanDesc" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "atlas_backed_batch_count" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "unsupported_reordering_policy" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteFlipbookClipDesc" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteFlipbookState" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteFlipbookSampleResult" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "advance_runtime_sprite_flipbook" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteAnimationFrame" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "sprite_flipbook_frames_sampled" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "sprite_flipbook_frames_applied" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "package-visible flipbook counters" "sprite animation flipbook game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "stable scene color/depth bindings 0/1 and 2/3" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "postprocess_depth_input_ready=1" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "--require-postprocess-depth-input" "runtime game guidance"

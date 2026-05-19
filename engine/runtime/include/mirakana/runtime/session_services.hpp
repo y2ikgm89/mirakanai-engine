@@ -15,6 +15,34 @@
 
 namespace mirakana::runtime {
 
+enum class RuntimeSessionProfilePathDiagnosticCode : std::uint8_t {
+    invalid_game_id,
+    invalid_profile_id,
+    invalid_root_path,
+};
+
+struct RuntimeSessionProfilePathRequest {
+    std::string game_id;
+    std::string profile_id{"default"};
+    std::string root_path{"profiles"};
+};
+
+struct RuntimeSessionProfilePathDiagnostic {
+    RuntimeSessionProfilePathDiagnosticCode code{RuntimeSessionProfilePathDiagnosticCode::invalid_game_id};
+    std::string field;
+    std::string value;
+    std::string message;
+};
+
+struct RuntimeSessionProfilePathPlan {
+    std::string save_data_path;
+    std::string settings_path;
+    std::string input_rebinding_profile_path;
+    std::vector<RuntimeSessionProfilePathDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 struct RuntimeKeyValue {
     std::string key;
     std::string value;
@@ -103,6 +131,52 @@ inline constexpr std::string_view runtime_input_default_context = "default";
 
 struct RuntimeInputContextStack {
     std::vector<std::string> active_contexts;
+};
+
+enum class RuntimeInputContextLayerKind : std::uint8_t {
+    gameplay,
+    menu,
+    dialogue,
+    rebinding,
+    capture,
+    overlay,
+};
+
+struct RuntimeInputContextLayerDesc {
+    std::string context;
+    RuntimeInputContextLayerKind kind{RuntimeInputContextLayerKind::gameplay};
+    bool active{false};
+    bool blocks_lower_priority{false};
+    bool consumes_gameplay_input{false};
+};
+
+struct RuntimeInputContextStackRequest {
+    std::vector<RuntimeInputContextLayerDesc> layers;
+    bool allow_default_context{true};
+};
+
+enum class RuntimeInputContextStackDiagnosticCode : std::uint8_t {
+    invalid_context,
+    duplicate_context,
+    no_active_context,
+};
+
+struct RuntimeInputContextStackDiagnostic {
+    RuntimeInputContextStackDiagnosticCode code{RuntimeInputContextStackDiagnosticCode::invalid_context};
+    std::string context;
+    std::string message;
+};
+
+struct RuntimeInputContextStackPlan {
+    RuntimeInputContextStack stack;
+    std::vector<RuntimeInputContextStackDiagnostic> diagnostics;
+    bool default_context_active{false};
+    bool gameplay_input_available{false};
+    bool gameplay_input_consumed{false};
+    bool ui_context_active{false};
+    bool capture_context_active{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
 };
 
 struct RuntimeInputActionBinding {
@@ -372,6 +446,67 @@ struct RuntimeInputRebindingPresentationModel {
     [[nodiscard]] bool ready() const noexcept;
 };
 
+enum class RuntimeSessionProfileDocumentKind : std::uint8_t {
+    save_data,
+    settings,
+    input_rebinding_profile,
+};
+
+enum class RuntimeSessionProfileDocumentStatus : std::uint8_t {
+    loaded,
+    defaulted_missing,
+    written,
+    failed_invalid_path,
+    failed_corrupt,
+    failed_unsupported_version,
+    failed_invalid_document,
+    failed_write,
+};
+
+struct RuntimeSessionProfileDocuments {
+    RuntimeSaveData save_data;
+    RuntimeSettings settings;
+    RuntimeInputRebindingProfile input_rebinding_profile;
+};
+
+struct RuntimeSessionProfileDocumentRow {
+    RuntimeSessionProfileDocumentKind kind{RuntimeSessionProfileDocumentKind::save_data};
+    RuntimeSessionProfileDocumentStatus status{RuntimeSessionProfileDocumentStatus::failed_invalid_path};
+    std::string path;
+    std::string diagnostic;
+    bool defaulted{false};
+};
+
+struct RuntimeSessionProfileDocumentLoadRequest {
+    RuntimeSessionProfilePathRequest profile;
+    RuntimeSessionProfileDocuments defaults;
+};
+
+struct RuntimeSessionProfileDocumentLoadResult {
+    RuntimeSessionProfilePathPlan paths;
+    RuntimeSaveData save_data;
+    RuntimeSettings settings;
+    RuntimeInputRebindingProfile input_rebinding_profile;
+    std::vector<RuntimeSessionProfileDocumentRow> rows;
+    bool used_defaults{false};
+    bool has_blocking_diagnostics{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+struct RuntimeSessionProfileDocumentWriteRequest {
+    RuntimeSessionProfilePathRequest profile;
+    RuntimeSessionProfileDocuments documents;
+};
+
+struct RuntimeSessionProfileDocumentWriteResult {
+    RuntimeSessionProfilePathPlan paths;
+    std::vector<RuntimeSessionProfileDocumentRow> rows;
+    std::size_t documents_written{0};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 [[nodiscard]] std::string serialize_runtime_save_data(const RuntimeSaveData& data);
 [[nodiscard]] RuntimeSaveDataLoadResult deserialize_runtime_save_data(std::string_view text);
 [[nodiscard]] RuntimeSaveDataLoadResult load_runtime_save_data(IFileSystem& filesystem, std::string_view path);
@@ -389,6 +524,8 @@ void write_runtime_settings(IFileSystem& filesystem, std::string_view path, cons
 void write_runtime_localization_catalog(IFileSystem& filesystem, std::string_view path,
                                         const RuntimeLocalizationCatalog& catalog);
 
+[[nodiscard]] RuntimeInputContextStackPlan
+plan_runtime_input_context_stack(const RuntimeInputContextStackRequest& request);
 [[nodiscard]] std::string serialize_runtime_input_actions(const RuntimeInputActionMap& actions);
 [[nodiscard]] RuntimeInputActionMapLoadResult deserialize_runtime_input_actions(std::string_view text);
 [[nodiscard]] RuntimeInputActionMapLoadResult load_runtime_input_actions(IFileSystem& filesystem,
@@ -417,6 +554,14 @@ present_runtime_input_axis_source(const RuntimeInputAxisSource& source);
 [[nodiscard]] RuntimeInputRebindingPresentationModel
 make_runtime_input_rebinding_presentation(const RuntimeInputActionMap& base,
                                           const RuntimeInputRebindingProfile& profile);
+[[nodiscard]] RuntimeSessionProfilePathPlan
+plan_runtime_session_profile_paths(const RuntimeSessionProfilePathRequest& request);
+[[nodiscard]] RuntimeSessionProfileDocumentLoadResult
+load_runtime_session_profile_documents(IFileSystem& filesystem,
+                                       const RuntimeSessionProfileDocumentLoadRequest& request);
+[[nodiscard]] RuntimeSessionProfileDocumentWriteResult
+write_runtime_session_profile_documents(IFileSystem& filesystem,
+                                        const RuntimeSessionProfileDocumentWriteRequest& request);
 [[nodiscard]] std::string serialize_runtime_input_rebinding_profile(const RuntimeInputRebindingProfile& profile);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult deserialize_runtime_input_rebinding_profile(std::string_view text);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult load_runtime_input_rebinding_profile(IFileSystem& filesystem,

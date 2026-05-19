@@ -1255,6 +1255,92 @@ MK_TEST("scene renderer samples runtime sprite animation frames into render pack
     MK_REQUIRE(std::abs(instance.render_packet.sprites[0].renderer.tint[1] - 0.4F) < 0.0001F);
 }
 
+MK_TEST("scene renderer advances named runtime sprite flipbook clips deterministically") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    auto payload = make_runtime_sprite_animation_payload(sprite, material);
+    std::vector<mirakana::RuntimeSpriteFlipbookClipDesc> clips{mirakana::RuntimeSpriteFlipbookClipDesc{
+        .name = "idle",
+        .first_frame_index = 0,
+        .frame_count = payload.frames.size(),
+        .loop = true,
+    }};
+    mirakana::RuntimeSpriteFlipbookState state{
+        .clip_name = "idle",
+    };
+    const mirakana::RuntimeSpriteFlipbookDesc desc{
+        .frames = std::span<const mirakana::runtime::RuntimeSpriteAnimationFrame>{payload.frames},
+        .clips = std::span<const mirakana::RuntimeSpriteFlipbookClipDesc>{clips},
+    };
+
+    const auto result = mirakana::advance_runtime_sprite_flipbook(state, desc, 0.25F);
+
+    MK_REQUIRE(result.succeeded);
+    MK_REQUIRE(result.diagnostic.empty());
+    MK_REQUIRE(result.clip_name == "idle");
+    MK_REQUIRE(result.sampled_frame_count == 1);
+    MK_REQUIRE(result.selected_frame_index == 1);
+    MK_REQUIRE(!result.clamped_to_end);
+    MK_REQUIRE(std::abs(state.elapsed_seconds - 0.25F) < 0.0001F);
+    MK_REQUIRE(result.frame.sprite == sprite);
+    MK_REQUIRE(result.frame.material == material);
+    MK_REQUIRE(std::abs(result.frame.size[0] - 2.0F) < 0.0001F);
+    MK_REQUIRE(std::abs(result.frame.tint[1] - 0.4F) < 0.0001F);
+}
+
+MK_TEST("scene renderer clamps non looping runtime sprite flipbook clips") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    auto payload = make_runtime_sprite_animation_payload(sprite, material);
+    std::vector<mirakana::RuntimeSpriteFlipbookClipDesc> clips{mirakana::RuntimeSpriteFlipbookClipDesc{
+        .name = "impact",
+        .first_frame_index = 0,
+        .frame_count = payload.frames.size(),
+        .loop = false,
+    }};
+    mirakana::RuntimeSpriteFlipbookState state{
+        .clip_name = "impact",
+    };
+    const mirakana::RuntimeSpriteFlipbookDesc desc{
+        .frames = std::span<const mirakana::runtime::RuntimeSpriteAnimationFrame>{payload.frames},
+        .clips = std::span<const mirakana::RuntimeSpriteFlipbookClipDesc>{clips},
+    };
+
+    const auto result = mirakana::advance_runtime_sprite_flipbook(state, desc, 4.0F);
+
+    MK_REQUIRE(result.succeeded);
+    MK_REQUIRE(result.selected_frame_index == 1);
+    MK_REQUIRE(result.clamped_to_end);
+    MK_REQUIRE(std::abs(state.elapsed_seconds - 0.5F) < 0.0001F);
+}
+
+MK_TEST("scene renderer rejects invalid runtime sprite flipbook clips before sampling") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    auto payload = make_runtime_sprite_animation_payload(sprite, material);
+    payload.frames[1].duration_seconds = 0.0F;
+    std::vector<mirakana::RuntimeSpriteFlipbookClipDesc> clips{mirakana::RuntimeSpriteFlipbookClipDesc{
+        .name = "idle",
+        .first_frame_index = 0,
+        .frame_count = payload.frames.size(),
+        .loop = true,
+    }};
+    mirakana::RuntimeSpriteFlipbookState state{
+        .clip_name = "idle",
+    };
+    const mirakana::RuntimeSpriteFlipbookDesc desc{
+        .frames = std::span<const mirakana::runtime::RuntimeSpriteAnimationFrame>{payload.frames},
+        .clips = std::span<const mirakana::RuntimeSpriteFlipbookClipDesc>{clips},
+    };
+
+    const auto result = mirakana::advance_runtime_sprite_flipbook(state, desc, 0.25F);
+
+    MK_REQUIRE(!result.succeeded);
+    MK_REQUIRE(result.diagnostic.find("duration") != std::string::npos);
+    MK_REQUIRE(result.sampled_frame_count == 0);
+    MK_REQUIRE(result.selected_frame_index == 0);
+}
+
 MK_TEST("scene renderer reports missing scene for animation float clip application") {
     mirakana::RuntimeSceneRenderInstance instance;
 

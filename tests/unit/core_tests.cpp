@@ -1091,6 +1091,240 @@ MK_TEST("ui transitions text bindings and command invocation are deterministic")
     MK_REQUIRE(!commands.execute("menu.missing"));
 }
 
+MK_TEST("runtime menu hud plan produces deterministic display and command rows") {
+    const std::vector<mirakana::ui::RuntimeMenuHudRowDesc> rows{
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "hud.score",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::counter,
+            .label = "Score",
+            .value = "100",
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "hud.prompt",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::prompt,
+            .label = "Press E",
+            .value = "Interact",
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.pause",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Pause",
+            .command_id = "game.pause",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::pause_game,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.restart",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Restart",
+            .command_id = "game.restart",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::restart_session,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+            .enabled = false,
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_menu_hud(rows);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.display_rows.size() == 4);
+    MK_REQUIRE(plan.display_rows[0].id == "hud.score");
+    MK_REQUIRE(plan.display_rows[0].kind == mirakana::ui::RuntimeMenuHudRowKind::counter);
+    MK_REQUIRE(plan.display_rows[0].label == "Score");
+    MK_REQUIRE(plan.display_rows[0].value == "100");
+    MK_REQUIRE(plan.display_rows[2].id == "menu.pause");
+    MK_REQUIRE(plan.command_rows.size() == 2);
+    MK_REQUIRE(plan.command_rows[0].row_id == "menu.pause");
+    MK_REQUIRE(plan.command_rows[0].command_id == "game.pause");
+    MK_REQUIRE(plan.command_rows[0].intent == mirakana::ui::RuntimeMenuHudCommandIntent::pause_game);
+    MK_REQUIRE(plan.command_rows[0].target == mirakana::ui::RuntimeMenuHudCommandTarget::game_session);
+    MK_REQUIRE(plan.command_rows[1].row_id == "menu.restart");
+    MK_REQUIRE(!plan.command_rows[1].enabled);
+}
+
+MK_TEST("runtime menu hud plan rejects duplicate row and command ids") {
+    const std::vector<mirakana::ui::RuntimeMenuHudRowDesc> rows{
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.pause",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Pause",
+            .command_id = "game.pause",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::pause_game,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.pause",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Pause Again",
+            .command_id = "game.restart",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::restart_session,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.resume",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Resume",
+            .command_id = "game.pause",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::resume_game,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_menu_hud(rows);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.display_rows.empty());
+    MK_REQUIRE(plan.command_rows.empty());
+    MK_REQUIRE(plan.diagnostics.size() == 2);
+    MK_REQUIRE(plan.diagnostics[0].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::duplicate_row_id);
+    MK_REQUIRE(plan.diagnostics[0].row_id == "menu.pause");
+    MK_REQUIRE(plan.diagnostics[1].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::duplicate_command_id);
+    MK_REQUIRE(plan.diagnostics[1].command_id == "game.pause");
+}
+
+MK_TEST("runtime menu hud plan rejects missing command ids and invalid command targets") {
+    const std::vector<mirakana::ui::RuntimeMenuHudRowDesc> rows{
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.pause",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Pause",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::pause_game,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.restart",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Restart",
+            .command_id = "game.restart",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::restart_session,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::none,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.bad_intent",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Bad",
+            .command_id = "game.bad",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::none,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_menu_hud(rows);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.display_rows.empty());
+    MK_REQUIRE(plan.command_rows.empty());
+    MK_REQUIRE(plan.diagnostics.size() == 3);
+    MK_REQUIRE(plan.diagnostics[0].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::missing_command_id);
+    MK_REQUIRE(plan.diagnostics[0].row_id == "menu.pause");
+    MK_REQUIRE(plan.diagnostics[1].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::invalid_command_target);
+    MK_REQUIRE(plan.diagnostics[1].row_id == "menu.restart");
+    MK_REQUIRE(plan.diagnostics[2].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::invalid_command_intent);
+    MK_REQUIRE(plan.diagnostics[2].row_id == "menu.bad_intent");
+}
+
+MK_TEST("runtime gameplay debug overlay plan produces deterministic display rows") {
+    const std::vector<mirakana::ui::RuntimeGameplayDebugOverlayRowDesc> rows{
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "gameplay.bindings",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::gameplay,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+            .label = "Gameplay bindings",
+            .value = "2",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "input.context",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::input,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .label = "Input context",
+            .value = "gameplay",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "package.streaming",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::package,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::warning,
+            .label = "Package streaming",
+            .value = "host-gated",
+            .highlighted = true,
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_gameplay_debug_overlay(rows);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.rows.size() == 3);
+    MK_REQUIRE(plan.rows[0].id == "gameplay.bindings");
+    MK_REQUIRE(plan.rows[0].category == mirakana::ui::RuntimeGameplayDebugOverlayCategory::gameplay);
+    MK_REQUIRE(plan.rows[0].kind == mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter);
+    MK_REQUIRE(plan.rows[0].label == "Gameplay bindings");
+    MK_REQUIRE(plan.rows[0].value == "2");
+    MK_REQUIRE(!plan.rows[0].highlighted);
+    MK_REQUIRE(plan.rows[2].id == "package.streaming");
+    MK_REQUIRE(plan.rows[2].highlighted);
+}
+
+MK_TEST("runtime gameplay debug overlay plan rejects duplicate and invalid rows") {
+    const std::vector<mirakana::ui::RuntimeGameplayDebugOverlayRowDesc> rows{
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "gameplay.bindings",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::gameplay,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::counter,
+            .label = "Gameplay bindings",
+            .value = "2",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "gameplay.bindings",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::input,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .label = "Input context",
+            .value = "gameplay",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "bad.kind",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::audio,
+            .kind = static_cast<mirakana::ui::RuntimeGameplayDebugOverlayRowKind>(255),
+            .label = "Audio",
+            .value = "bad",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "bad.category",
+            .category = static_cast<mirakana::ui::RuntimeGameplayDebugOverlayCategory>(255),
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .label = "Package",
+            .value = "bad",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .id = "missing.label",
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::package,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .value = "bad",
+        },
+        mirakana::ui::RuntimeGameplayDebugOverlayRowDesc{
+            .category = mirakana::ui::RuntimeGameplayDebugOverlayCategory::ai,
+            .kind = mirakana::ui::RuntimeGameplayDebugOverlayRowKind::status,
+            .label = "AI",
+            .value = "bad",
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_gameplay_debug_overlay(rows);
+    const auto has_diagnostic = [&plan](mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode code) {
+        return std::ranges::any_of(plan.diagnostics,
+                                   [code](const mirakana::ui::RuntimeGameplayDebugOverlayDiagnostic& diagnostic) {
+                                       return diagnostic.code == code;
+                                   });
+    };
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.empty());
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::duplicate_row_id));
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_row_kind));
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_category));
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::missing_label));
+    MK_REQUIRE(has_diagnostic(mirakana::ui::RuntimeGameplayDebugOverlayDiagnosticCode::missing_row_id));
+}
+
 MK_TEST("virtual input reports pressed down and released states") {
     mirakana::VirtualInput input;
 
@@ -5249,6 +5483,7 @@ MK_TEST("2d physics raycast respects collision masks and disabled bodies") {
         .shape = mirakana::PhysicsShape2DKind::aabb,
         .radius = 0.5F,
         .collision_layer = sensor_layer,
+        .trigger = true,
     });
     const auto terrain = world.create_body(mirakana::PhysicsBody2DDesc{
         .position = mirakana::Vec2{.x = 3.0F, .y = 0.0F},
@@ -5585,6 +5820,202 @@ MK_TEST("2d physics shape sweep reports nearest initial and filtered hits") {
                         terrain_layer,
                     })
                     .has_value());
+}
+
+MK_TEST("2d physics raycast batch preserves source order and per query diagnostics") {
+    mirakana::PhysicsWorld2D world(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}});
+    constexpr std::uint32_t terrain_layer = 1U << 1U;
+    constexpr std::uint32_t sensor_layer = 1U << 2U;
+
+    const auto terrain = world.create_body(mirakana::PhysicsBody2DDesc{
+        .position = mirakana::Vec2{.x = 2.0F, .y = 0.0F},
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape2DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+    });
+    const auto sensor = world.create_body(mirakana::PhysicsBody2DDesc{
+        .position = mirakana::Vec2{.x = 4.0F, .y = 0.0F},
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape2DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = sensor_layer,
+    });
+
+    const auto result = world
+                            .raycast_batch(
+                                mirakana::PhysicsRaycastBatch2DDesc{
+                                    .queries =
+                                        {
+                                            mirakana::PhysicsRaycast2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                            mirakana::PhysicsRaycast2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 3.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                            },
+                                            mirakana::PhysicsRaycast2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = sensor_layer,
+                                            },
+                                            mirakana::PhysicsRaycast2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                        },
+                                    .max_queries = 4U,
+                                });
+
+    MK_REQUIRE(result.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(result.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none);
+    MK_REQUIRE(result.rows.size() == 4U);
+    MK_REQUIRE(result.rows[0].source_index == 0U);
+    MK_REQUIRE(result.rows[0].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[0].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::none);
+    MK_REQUIRE(result.rows[0].hit.has_value());
+    MK_REQUIRE(result.rows[0].hit->body == terrain);
+    MK_REQUIRE(result.rows[1].source_index == 1U);
+    MK_REQUIRE(result.rows[1].status == mirakana::PhysicsCollisionQueryRowStatus::no_hit);
+    MK_REQUIRE(!result.rows[1].hit.has_value());
+    MK_REQUIRE(result.rows[2].source_index == 2U);
+    MK_REQUIRE(result.rows[2].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[2].hit.has_value());
+    MK_REQUIRE(result.rows[2].hit->body == sensor);
+    MK_REQUIRE(result.rows[3].source_index == 3U);
+    MK_REQUIRE(result.rows[3].status == mirakana::PhysicsCollisionQueryRowStatus::invalid_request);
+    MK_REQUIRE(result.rows[3].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::invalid_request);
+    MK_REQUIRE(!result.rows[3].hit.has_value());
+
+    const std::vector<mirakana::PhysicsRaycast2DDesc> default_budget_queries(
+        65U, mirakana::PhysicsRaycast2DDesc{
+                 .origin = mirakana::Vec2{.x = 0.0F, .y = 3.0F},
+                 .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                 .max_distance = 10.0F,
+                 .collision_mask = terrain_layer,
+             });
+    const auto default_budget = world.raycast_batch(mirakana::PhysicsRaycastBatch2DDesc{
+        .queries = default_budget_queries,
+    });
+    MK_REQUIRE(default_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(default_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none);
+    MK_REQUIRE(default_budget.rows.size() == default_budget_queries.size());
+
+    const auto over_budget = world.raycast_batch(mirakana::PhysicsRaycastBatch2DDesc{
+        .queries = {mirakana::PhysicsRaycast2DDesc{}, mirakana::PhysicsRaycast2DDesc{}},
+        .max_queries = 1U,
+    });
+    MK_REQUIRE(over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request);
+    MK_REQUIRE(over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded);
+    MK_REQUIRE(over_budget.rows.empty());
+}
+
+MK_TEST("2d physics shape sweep batch preserves filters and per query diagnostics") {
+    mirakana::PhysicsWorld2D world(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}});
+    constexpr std::uint32_t terrain_layer = 1U << 1U;
+    constexpr std::uint32_t sensor_layer = 1U << 2U;
+
+    const auto sensor = world.create_body(mirakana::PhysicsBody2DDesc{
+        .position = mirakana::Vec2{.x = 2.0F, .y = 0.0F},
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape2DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = sensor_layer,
+        .trigger = true,
+    });
+    const auto terrain = world.create_body(mirakana::PhysicsBody2DDesc{
+        .position = mirakana::Vec2{.x = 4.0F, .y = 0.0F},
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape2DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+    });
+
+    const auto result = world
+                            .shape_sweep_batch(
+                                mirakana::PhysicsShapeSweepBatch2DDesc{
+                                    .queries =
+                                        {
+                                            mirakana::PhysicsShapeSweep2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape2DKind::aabb,
+                                                .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+                                                .radius = 0.5F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                                .include_triggers = false,
+                                            },
+                                            mirakana::PhysicsShapeSweep2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape2DKind::aabb,
+                                                .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+                                                .radius = 0.5F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                                .include_triggers = true,
+                                            },
+                                            mirakana::PhysicsShapeSweep2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape2DKind::aabb,
+                                                .half_extents = mirakana::Vec2{.x = 0.0F, .y = 0.5F},
+                                                .radius = 0.5F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                        },
+                                    .max_queries = 3U,
+                                });
+
+    MK_REQUIRE(result.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(result.rows.size() == 3U);
+    MK_REQUIRE(result.rows[0].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[0].hit.has_value());
+    MK_REQUIRE(result.rows[0].hit->body == terrain);
+    MK_REQUIRE(result.rows[1].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[1].hit.has_value());
+    MK_REQUIRE(result.rows[1].hit->body == sensor);
+    MK_REQUIRE(result.rows[2].source_index == 2U);
+    MK_REQUIRE(result.rows[2].status == mirakana::PhysicsCollisionQueryRowStatus::invalid_request);
+    MK_REQUIRE(result.rows[2].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::invalid_request);
+
+    const auto over_budget = world.shape_sweep_batch(mirakana::PhysicsShapeSweepBatch2DDesc{
+        .queries = {mirakana::PhysicsShapeSweep2DDesc{}, mirakana::PhysicsShapeSweep2DDesc{}},
+        .max_queries = 1U,
+    });
+    MK_REQUIRE(over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request);
+    MK_REQUIRE(over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded);
+    MK_REQUIRE(over_budget.rows.empty());
 }
 
 MK_TEST("2d physics reports circle contacts and resolves dynamic body against static body") {
@@ -7252,6 +7683,96 @@ MK_TEST("3d physics raycast hits nearest collision bounds and reports surface da
     MK_REQUIRE(hit->normal == (mirakana::Vec3{-1.0F, 0.0F, 0.0F}));
 }
 
+MK_TEST("3d physics raycast batch preserves source order and per query diagnostics") {
+    mirakana::PhysicsWorld3D world;
+    constexpr std::uint32_t terrain_layer = 1U << 1U;
+    constexpr std::uint32_t sensor_layer = 1U << 2U;
+
+    const auto terrain = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+    });
+    const auto sensor = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = sensor_layer,
+        .trigger = true,
+    });
+
+    const auto result = world
+                            .raycast_batch(
+                                mirakana::PhysicsRaycastBatch3DDesc{
+                                    .queries =
+                                        {
+                                            mirakana::PhysicsRaycast3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                            mirakana::PhysicsRaycast3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 3.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                            },
+                                            mirakana::PhysicsRaycast3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = sensor_layer,
+                                            },
+                                            mirakana::PhysicsRaycast3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                        },
+                                    .max_queries = 4U,
+                                });
+
+    MK_REQUIRE(result.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(result.rows.size() == 4U);
+    MK_REQUIRE(result.rows[0].source_index == 0U);
+    MK_REQUIRE(result.rows[0].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[0].hit.has_value());
+    MK_REQUIRE(result.rows[0].hit->body == terrain);
+    MK_REQUIRE(result.rows[1].source_index == 1U);
+    MK_REQUIRE(result.rows[1].status == mirakana::PhysicsCollisionQueryRowStatus::no_hit);
+    MK_REQUIRE(!result.rows[1].hit.has_value());
+    MK_REQUIRE(result.rows[2].source_index == 2U);
+    MK_REQUIRE(result.rows[2].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[2].hit.has_value());
+    MK_REQUIRE(result.rows[2].hit->body == sensor);
+    MK_REQUIRE(result.rows[3].source_index == 3U);
+    MK_REQUIRE(result.rows[3].status == mirakana::PhysicsCollisionQueryRowStatus::invalid_request);
+    MK_REQUIRE(result.rows[3].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::invalid_request);
+
+    const auto over_budget = world.raycast_batch(mirakana::PhysicsRaycastBatch3DDesc{
+        .queries = {mirakana::PhysicsRaycast3DDesc{}, mirakana::PhysicsRaycast3DDesc{}},
+        .max_queries = 1U,
+    });
+    MK_REQUIRE(over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request);
+    MK_REQUIRE(over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded);
+    MK_REQUIRE(over_budget.rows.empty());
+}
+
 MK_TEST("3d physics reports trigger overlaps without contact resolution") {
     mirakana::PhysicsWorld3D world;
     constexpr std::uint32_t player_layer = 1U << 0U;
@@ -7577,6 +8098,137 @@ MK_TEST("3d physics shape sweep reports nearest initial and filtered hits") {
                         terrain_layer,
                     })
                     .has_value());
+}
+
+MK_TEST("3d physics shape sweep batch preserves source order filters and diagnostics") {
+    mirakana::PhysicsWorld3D world;
+    constexpr std::uint32_t terrain_layer = 1U << 1U;
+    constexpr std::uint32_t sensor_layer = 1U << 2U;
+
+    const auto sensor = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = sensor_layer,
+        .collision_mask = 0xFFFF'FFFFU,
+        .half_height = 0.5F,
+        .trigger = true,
+    });
+    const auto near = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+        .collision_mask = 0xFFFF'FFFFU,
+    });
+    const auto far = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 6.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+        .collision_mask = 0xFFFF'FFFFU,
+    });
+
+    const auto result = world
+                            .shape_sweep_batch(
+                                mirakana::PhysicsShapeSweepBatch3DDesc{
+                                    .queries =
+                                        {
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.5F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                                .ignored_body = mirakana::null_physics_body_3d,
+                                                .include_triggers = false,
+                                            },
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.5F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                                .ignored_body = mirakana::null_physics_body_3d,
+                                                .include_triggers = true,
+                                            },
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.5F,
+                                                .collision_mask = terrain_layer,
+                                                .ignored_body = near,
+                                                .include_triggers = false,
+                                            },
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::capsule,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                        },
+                                    .max_queries = 4U,
+                                });
+
+    MK_REQUIRE(result.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(result.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none);
+    MK_REQUIRE(result.rows.size() == 4U);
+    MK_REQUIRE(result.rows[0].source_index == 0U);
+    MK_REQUIRE(result.rows[0].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[0].hit.has_value());
+    MK_REQUIRE(result.rows[0].hit->body == near);
+    MK_REQUIRE(result.rows[1].source_index == 1U);
+    MK_REQUIRE(result.rows[1].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[1].hit.has_value());
+    MK_REQUIRE(result.rows[1].hit->body == sensor);
+    MK_REQUIRE(result.rows[2].source_index == 2U);
+    MK_REQUIRE(result.rows[2].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[2].hit.has_value());
+    MK_REQUIRE(result.rows[2].hit->body == far);
+    MK_REQUIRE(result.rows[3].source_index == 3U);
+    MK_REQUIRE(result.rows[3].status == mirakana::PhysicsCollisionQueryRowStatus::invalid_request);
+    MK_REQUIRE(result.rows[3].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::invalid_request);
+    MK_REQUIRE(!result.rows[3].hit.has_value());
+
+    const auto over_budget = world.shape_sweep_batch(mirakana::PhysicsShapeSweepBatch3DDesc{
+        .queries = {mirakana::PhysicsShapeSweep3DDesc{}, mirakana::PhysicsShapeSweep3DDesc{}},
+        .max_queries = 1U,
+    });
+    MK_REQUIRE(over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request);
+    MK_REQUIRE(over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded);
+    MK_REQUIRE(over_budget.rows.empty());
 }
 
 MK_TEST("3d physics exact sphere cast hits sphere surface without bounds inflation") {
@@ -9289,6 +9941,129 @@ MK_TEST("audio mixer builds deterministic gain plan") {
 
     mixer.set_bus_muted("sfx", true);
     MK_REQUIRE(mixer.mix_plan()[0].gain == 0.0F);
+}
+
+MK_TEST("audio gameplay mix planner builds mixer ready bus and cue commands") {
+    const auto theme = mirakana::AssetId::from_name("audio/theme");
+    const auto jump = mirakana::AssetId::from_name("audio/jump");
+
+    const auto
+        plan =
+            mirakana::plan_gameplay_audio_mix(
+                mirakana::AudioGameplayMixRequest{
+                    .buses =
+                        {
+                            mirakana::AudioGameplayBusMixDesc{.name = "music",
+                                                              .gain = 0.8F,
+                                                              .muted = false,
+                                                              .paused = false,
+                                                              .fade_from_gain = 0.5F,
+                                                              .fade_to_gain = 1.0F,
+                                                              .fade_elapsed_seconds = 0.5F,
+                                                              .fade_duration_seconds = 1.0F},
+                            mirakana::AudioGameplayBusMixDesc{.name = "sfx", .gain = 1.0F, .paused = true},
+                        },
+                    .cues =
+                        {
+                            mirakana::AudioGameplayCueDesc{.id = "music.theme",
+                                                           .kind = mirakana::AudioGameplayCueKind::music,
+                                                           .clip = theme,
+                                                           .bus = "music",
+                                                           .gain = 0.7F,
+                                                           .looping = true},
+                            mirakana::AudioGameplayCueDesc{
+                                .id = "sfx.jump",
+                                .kind = mirakana::AudioGameplayCueKind::sfx,
+                                .clip = jump,
+                                .bus = "sfx",
+                                .gain = 0.8F,
+                                .looping = false,
+                                .spatialized = true,
+                                .position = mirakana::AudioPoint3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+                                .min_distance = 1.0F,
+                                .max_distance = 8.0F,
+                            },
+                        },
+                    .triggers =
+                        {
+                            mirakana::AudioGameplayCueTrigger{
+                                .cue_id = "music.theme", .start_frame = 0, .gain_scale = 1.0F},
+                            mirakana::AudioGameplayCueTrigger{
+                                .cue_id = "sfx.jump", .start_frame = 128, .gain_scale = 0.5F},
+                        },
+                });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.buses.size() == 2);
+    MK_REQUIRE(plan.buses[0].name == "music");
+    MK_REQUIRE(std::abs(plan.buses[0].gain - 0.6F) < 0.0001F);
+    MK_REQUIRE(!plan.buses[0].muted);
+    MK_REQUIRE(plan.buses[1].name == "sfx");
+    MK_REQUIRE(plan.buses[1].gain == 1.0F);
+    MK_REQUIRE(plan.buses[1].muted);
+
+    MK_REQUIRE(plan.commands.size() == 2);
+    MK_REQUIRE(plan.commands[0].cue_id == "music.theme");
+    MK_REQUIRE(plan.commands[0].kind == mirakana::AudioGameplayCueKind::music);
+    MK_REQUIRE(plan.commands[0].voice.clip == theme);
+    MK_REQUIRE(plan.commands[0].voice.bus == "music");
+    MK_REQUIRE(plan.commands[0].voice.looping);
+    MK_REQUIRE(plan.commands[0].voice.start_frame == 0);
+    MK_REQUIRE(std::abs(plan.commands[0].voice.gain - 0.7F) < 0.0001F);
+    MK_REQUIRE(!plan.commands[0].spatialized);
+
+    MK_REQUIRE(plan.commands[1].cue_id == "sfx.jump");
+    MK_REQUIRE(plan.commands[1].kind == mirakana::AudioGameplayCueKind::sfx);
+    MK_REQUIRE(plan.commands[1].voice.clip == jump);
+    MK_REQUIRE(plan.commands[1].voice.bus == "sfx");
+    MK_REQUIRE(!plan.commands[1].voice.looping);
+    MK_REQUIRE(plan.commands[1].voice.start_frame == 128);
+    MK_REQUIRE(std::abs(plan.commands[1].voice.gain - 0.4F) < 0.0001F);
+    MK_REQUIRE(plan.commands[1].spatialized);
+    MK_REQUIRE(plan.commands[1].position.x == 2.0F);
+    MK_REQUIRE(plan.commands[1].min_distance == 1.0F);
+    MK_REQUIRE(plan.commands[1].max_distance == 8.0F);
+}
+
+MK_TEST("audio gameplay mix planner fails closed on invalid bus cue and trigger rows") {
+    const auto clip = mirakana::AssetId::from_name("audio/jump");
+    const auto nan = std::numeric_limits<float>::quiet_NaN();
+    const auto plan = mirakana::plan_gameplay_audio_mix(mirakana::AudioGameplayMixRequest{
+        .buses =
+            {
+                mirakana::AudioGameplayBusMixDesc{.name = "sfx", .gain = 1.0F},
+                mirakana::AudioGameplayBusMixDesc{.name = "sfx", .gain = 1.0F},
+                mirakana::AudioGameplayBusMixDesc{.name = "music", .fade_from_gain = 1.0F, .fade_to_gain = nan},
+            },
+        .cues =
+            {
+                mirakana::AudioGameplayCueDesc{.id = {}, .clip = clip, .bus = "sfx"},
+                mirakana::AudioGameplayCueDesc{.id = "jump", .clip = mirakana::AssetId{}, .bus = "missing"},
+                mirakana::AudioGameplayCueDesc{.id = "jump", .clip = clip, .bus = "sfx"},
+            },
+        .triggers =
+            {
+                mirakana::AudioGameplayCueTrigger{.cue_id = "jump", .gain_scale = nan},
+                mirakana::AudioGameplayCueTrigger{.cue_id = "missing", .gain_scale = 1.0F},
+            },
+    });
+    const auto has_diagnostic = [&plan](mirakana::AudioGameplayMixDiagnosticCode code) {
+        return std::ranges::any_of(plan.diagnostics, [code](const mirakana::AudioGameplayMixDiagnostic& diagnostic) {
+            return diagnostic.code == code;
+        });
+    };
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.buses.empty());
+    MK_REQUIRE(plan.commands.empty());
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::duplicate_bus));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::invalid_bus_fade));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::missing_cue_id));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::missing_clip));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::unknown_bus));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::duplicate_cue_id));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::invalid_trigger_gain));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::unknown_cue));
 }
 
 MK_TEST("audio mixer builds deterministic spatial voice plan") {

@@ -30,6 +30,7 @@
 #include "mirakana/tools/material_graph_shader_pipeline.hpp"
 #include "mirakana/tools/material_tool.hpp"
 #include "mirakana/tools/physics_collision_package_tool.hpp"
+#include "mirakana/tools/placeholder_asset_tool.hpp"
 #include "mirakana/tools/registered_source_asset_cook_package_tool.hpp"
 #include "mirakana/tools/runtime_scene_package_validation_tool.hpp"
 #include "mirakana/tools/scene_prefab_authoring_tool.hpp"
@@ -40,6 +41,7 @@
 #include "mirakana/tools/shader_toolchain.hpp"
 #include "mirakana/tools/source_asset_registration_tool.hpp"
 #include "mirakana/tools/source_image_decode.hpp"
+#include "mirakana/tools/sprite_atlas_tool.hpp"
 #include "mirakana/tools/tilemap_tool.hpp"
 #include "mirakana/tools/ui_atlas_tool.hpp"
 #include "mirakana/ui/ui.hpp"
@@ -389,6 +391,37 @@ void append_le_f32(std::string& output, float value) {
         .decoded_image = make_decoded_ui_pixel(std::byte{0x00}, std::byte{0x00}, std::byte{0xFF}, std::byte{0xFF}),
         .color = std::array<float, 4>{0.5F, 0.5F, 1.0F, 1.0F},
     });
+    return desc;
+}
+
+[[nodiscard]] mirakana::TextureSourceDocument make_sprite_atlas_frame(std::uint8_t red, std::uint8_t green,
+                                                                      std::uint8_t blue) {
+    mirakana::TextureSourceDocument frame;
+    frame.width = 1;
+    frame.height = 1;
+    frame.pixel_format = mirakana::TextureSourcePixelFormat::rgba8_unorm;
+    frame.bytes = {red, green, blue, 0xFF};
+    return frame;
+}
+
+[[nodiscard]] mirakana::SpriteAtlasSourceAuthoringDesc make_sprite_atlas_source_authoring_desc() {
+    mirakana::SpriteAtlasSourceAuthoringDesc desc;
+    desc.source_registry_path = "source/assets/game.geassets";
+    desc.atlas_asset_key = mirakana::AssetKeyV2{"assets/sprites/player_atlas"};
+    desc.atlas_source_path = "source/sprites/player_atlas.texture_source";
+    desc.atlas_imported_path = "runtime/assets/2d/player_atlas.texture";
+    desc.frames = {
+        mirakana::SpriteAtlasSourceFrameDesc{
+            .frame_id = "hero/walk",
+            .source_path = "source/sprites/hero_walk.png",
+            .image = make_sprite_atlas_frame(0x00, 0x00, 0xFF),
+        },
+        mirakana::SpriteAtlasSourceFrameDesc{
+            .frame_id = "hero/idle",
+            .source_path = "source/sprites/hero_idle.png",
+            .image = make_sprite_atlas_frame(0xFF, 0x00, 0x00),
+        },
+    };
     return desc;
 }
 
@@ -1371,6 +1404,13 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
 }
 
 [[nodiscard]] bool failures_contain(const std::vector<mirakana::RegisteredSourceAssetCookPackageDiagnostic>& failures,
+                                    std::string_view needle) {
+    return std::ranges::any_of(failures, [needle](const auto& failure) {
+        return failure.message.find(needle) != std::string::npos || failure.code.find(needle) != std::string::npos;
+    });
+}
+
+[[nodiscard]] bool failures_contain(const std::vector<mirakana::SpriteAtlasSourceAuthoringDiagnostic>& failures,
                                     std::string_view needle) {
     return std::ranges::any_of(failures, [needle](const auto& failure) {
         return failure.message.find(needle) != std::string::npos || failure.code.find(needle) != std::string::npos;
@@ -3169,6 +3209,82 @@ MK_TEST("packed runtime UI atlas rejects invalid decoded images and package path
                                 "ui atlas packing must be deterministic-sprite-atlas-rgba8-max-side"));
 }
 
+MK_TEST("sprite atlas source authoring packs deterministic texture source and registry rows") {
+    const auto desc = make_sprite_atlas_source_authoring_desc();
+
+    const auto plan = mirakana::plan_sprite_atlas_source_authoring(desc);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.atlas_texture.width == 2);
+    MK_REQUIRE(plan.atlas_texture.height == 1);
+    MK_REQUIRE(plan.atlas_texture.pixel_format == mirakana::TextureSourcePixelFormat::rgba8_unorm);
+    MK_REQUIRE(plan.atlas_texture.bytes == std::vector<std::uint8_t>({0xFF, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0xFF}));
+    MK_REQUIRE(plan.atlas_texture_content.contains("format=GameEngine.TextureSource.v1\n"));
+    MK_REQUIRE(plan.atlas_texture_content.contains("texture.data_hex=ff0000ff0000ffff\n"));
+
+    MK_REQUIRE(plan.frame_rows.size() == 2);
+    MK_REQUIRE(plan.frame_rows[0].frame_id == "hero/idle");
+    MK_REQUIRE(plan.frame_rows[0].x == 0);
+    MK_REQUIRE(plan.frame_rows[0].u0 == 0.0F);
+    MK_REQUIRE(plan.frame_rows[0].u1 == 0.5F);
+    MK_REQUIRE(plan.frame_rows[1].frame_id == "hero/walk");
+    MK_REQUIRE(plan.frame_rows[1].x == 1);
+    MK_REQUIRE(plan.frame_rows[1].u0 == 0.5F);
+    MK_REQUIRE(plan.frame_rows[1].u1 == 1.0F);
+
+    const auto registry = mirakana::deserialize_source_asset_registry_document(plan.source_registry_content);
+    MK_REQUIRE(registry.assets.size() == 1);
+    MK_REQUIRE(registry.assets[0].key.value == desc.atlas_asset_key.value);
+    MK_REQUIRE(registry.assets[0].kind == mirakana::AssetKind::texture);
+    MK_REQUIRE(registry.assets[0].source_path == desc.atlas_source_path);
+    MK_REQUIRE(registry.assets[0].source_format ==
+               mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture));
+    MK_REQUIRE(registry.assets[0].imported_path == desc.atlas_imported_path);
+
+    MK_REQUIRE(plan.changed_files.size() == 2);
+    MK_REQUIRE(plan.changed_files[0].path == desc.atlas_source_path);
+    MK_REQUIRE(plan.changed_files[0].document_kind == "GameEngine.TextureSource.v1");
+    MK_REQUIRE(plan.changed_files[1].path == desc.source_registry_path);
+    MK_REQUIRE(plan.changed_files[1].document_kind == mirakana::source_asset_registry_format_v1());
+}
+
+MK_TEST("sprite atlas source authoring rejects duplicate and invalid frame ids") {
+    auto duplicate = make_sprite_atlas_source_authoring_desc();
+    duplicate.frames[1].frame_id = duplicate.frames[0].frame_id;
+    const auto duplicate_result = mirakana::plan_sprite_atlas_source_authoring(duplicate);
+    MK_REQUIRE(!duplicate_result.succeeded());
+    MK_REQUIRE(duplicate_result.changed_files.empty());
+    MK_REQUIRE(failures_contain(duplicate_result.diagnostics, "duplicate_frame_id"));
+
+    auto invalid = make_sprite_atlas_source_authoring_desc();
+    invalid.frames[0].frame_id = "bad frame";
+    const auto invalid_result = mirakana::plan_sprite_atlas_source_authoring(invalid);
+    MK_REQUIRE(!invalid_result.succeeded());
+    MK_REQUIRE(failures_contain(invalid_result.diagnostics, "invalid_frame_id"));
+}
+
+MK_TEST("sprite atlas source authoring rejects unsupported frame format and dimensions") {
+    auto unsupported_format = make_sprite_atlas_source_authoring_desc();
+    unsupported_format.frames[0].image.pixel_format = mirakana::TextureSourcePixelFormat::r8_unorm;
+    const auto unsupported_format_result = mirakana::plan_sprite_atlas_source_authoring(unsupported_format);
+    MK_REQUIRE(!unsupported_format_result.succeeded());
+    MK_REQUIRE(failures_contain(unsupported_format_result.diagnostics, "unsupported_pixel_format"));
+
+    auto invalid_dimensions = make_sprite_atlas_source_authoring_desc();
+    invalid_dimensions.frames[0].image.width = 0;
+    const auto invalid_dimensions_result = mirakana::plan_sprite_atlas_source_authoring(invalid_dimensions);
+    MK_REQUIRE(!invalid_dimensions_result.succeeded());
+    MK_REQUIRE(failures_contain(invalid_dimensions_result.diagnostics, "invalid_frame_dimensions"));
+
+    auto too_small = make_sprite_atlas_source_authoring_desc();
+    too_small.max_side = 1;
+    const auto too_small_result = mirakana::plan_sprite_atlas_source_authoring(too_small);
+    MK_REQUIRE(!too_small_result.succeeded());
+    MK_REQUIRE(too_small_result.changed_files.empty());
+    MK_REQUIRE(failures_contain(too_small_result.diagnostics, "atlas_exceeds_max_side"));
+}
+
 MK_TEST("packed runtime UI atlas apply leaves existing files unchanged when validation fails") {
     mirakana::MemoryFileSystem fs;
     fs.write_text("runtime/generated.geindex", empty_package_index_content());
@@ -3952,6 +4068,204 @@ MK_TEST("source asset registration rejects unsafe paths unsupported formats exte
     MK_REQUIRE(failures_contain(package_result.diagnostics, "shader graph is not supported"));
     MK_REQUIRE(failures_contain(package_result.diagnostics, "live shader generation is not supported"));
     MK_REQUIRE(failures_contain(package_result.diagnostics, "editor productization is not supported"));
+}
+
+MK_TEST("placeholder asset bundle plans deterministic legal source documents and provenance rows") {
+    mirakana::PlaceholderAssetBundleRequest request;
+    request.source_registry_path = "source/assets/game.geassets";
+    request.assets = {
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/hero_sprite"},
+            .asset_kind = mirakana::AssetKind::texture,
+            .source_path = "source/placeholders/hero_sprite.texture_source",
+            .imported_path = "intermediate/imported/placeholders/hero_sprite.texture",
+            .seed = 7,
+            .texture_width = 4,
+            .texture_height = 4,
+        },
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/unit_quad"},
+            .asset_kind = mirakana::AssetKind::mesh,
+            .source_path = "source/placeholders/unit_quad.mesh_source",
+            .imported_path = "intermediate/imported/placeholders/unit_quad.mesh",
+        },
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/base_material"},
+            .asset_kind = mirakana::AssetKind::material,
+            .source_path = "source/placeholders/base_material.material",
+            .imported_path = "intermediate/imported/placeholders/base_material.material",
+            .material_base_color = {0.25F, 0.5F, 0.75F, 1.0F},
+        },
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/jump_beep"},
+            .asset_kind = mirakana::AssetKind::audio,
+            .source_path = "source/placeholders/jump_beep.audio_source",
+            .imported_path = "intermediate/imported/placeholders/jump_beep.audio",
+            .seed = 11,
+            .audio_sample_rate = 8000,
+            .audio_frame_count = 16,
+        },
+    };
+
+    const auto plan = mirakana::plan_placeholder_asset_bundle(request);
+    const auto repeat = mirakana::plan_placeholder_asset_bundle(request);
+    const auto find_file = [&plan](std::string_view path) -> const mirakana::PlaceholderAssetChangedFile* {
+        const auto it =
+            std::ranges::find_if(plan.changed_files, [path](const mirakana::PlaceholderAssetChangedFile& file) {
+                return file.path == path;
+            });
+        return it == plan.changed_files.end() ? nullptr : &*it;
+    };
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(repeat.succeeded());
+    MK_REQUIRE(plan.source_registry_content == repeat.source_registry_content);
+    MK_REQUIRE(plan.changed_files.size() == 5);
+    MK_REQUIRE(plan.provenance_rows.size() == 4);
+    MK_REQUIRE(text_contains(plan.source_registry_content, "asset.0.key=assets/placeholders/base_material\n"));
+    MK_REQUIRE(text_contains(plan.source_registry_content, "asset.1.key=assets/placeholders/hero_sprite\n"));
+    MK_REQUIRE(text_contains(plan.source_registry_content, "asset.2.key=assets/placeholders/jump_beep\n"));
+    MK_REQUIRE(text_contains(plan.source_registry_content, "asset.3.key=assets/placeholders/unit_quad\n"));
+
+    const auto* texture_file = find_file("source/placeholders/hero_sprite.texture_source");
+    const auto* mesh_file = find_file("source/placeholders/unit_quad.mesh_source");
+    const auto* material_file = find_file("source/placeholders/base_material.material");
+    const auto* audio_file = find_file("source/placeholders/jump_beep.audio_source");
+    MK_REQUIRE(texture_file != nullptr);
+    MK_REQUIRE(mesh_file != nullptr);
+    MK_REQUIRE(material_file != nullptr);
+    MK_REQUIRE(audio_file != nullptr);
+    MK_REQUIRE(texture_file->document_kind == "GameEngine.TextureSource.v1");
+    MK_REQUIRE(material_file->document_kind == "GameEngine.Material.v1");
+
+    const auto texture = mirakana::deserialize_texture_source_document(texture_file->content);
+    const auto mesh = mirakana::deserialize_mesh_source_document(mesh_file->content);
+    const auto material = mirakana::deserialize_material_definition(material_file->content);
+    const auto audio = mirakana::deserialize_audio_source_document(audio_file->content);
+    MK_REQUIRE(texture.width == 4);
+    MK_REQUIRE(texture.height == 4);
+    MK_REQUIRE(texture.pixel_format == mirakana::TextureSourcePixelFormat::rgba8_unorm);
+    MK_REQUIRE(texture.bytes.size() == 64);
+    MK_REQUIRE(mesh.vertex_count == 4);
+    MK_REQUIRE(mesh.index_count == 6);
+    MK_REQUIRE(mesh.vertex_bytes.size() == 48);
+    MK_REQUIRE(mesh.index_bytes.size() == 24);
+    MK_REQUIRE(material.id ==
+               mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/placeholders/base_material"}));
+    MK_REQUIRE(material.factors.base_color[2] == 0.75F);
+    MK_REQUIRE(audio.sample_rate == 8000);
+    MK_REQUIRE(audio.channel_count == 1);
+    MK_REQUIRE(audio.frame_count == 16);
+    MK_REQUIRE(audio.sample_format == mirakana::AudioSourceSampleFormat::pcm16);
+    MK_REQUIRE(audio.samples.size() == 32);
+    MK_REQUIRE(plan.provenance_rows[0].generator == "mirakana-placeholder-asset-tool-v1");
+    MK_REQUIRE(plan.provenance_rows[0].license == "LicenseRef-Proprietary");
+    MK_REQUIRE(plan.provenance_rows[0].content_hash != 0);
+}
+
+MK_TEST("placeholder asset bundle fails closed on unsafe duplicate and unsupported rows") {
+    mirakana::PlaceholderAssetBundleRequest request;
+    request.source_registry_path = "../game.geassets";
+    request.assets = {
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/hero_sprite"},
+            .asset_kind = mirakana::AssetKind::texture,
+            .source_path = "source/placeholders/hero_sprite.texture_source",
+            .imported_path = "intermediate/imported/placeholders/hero_sprite.texture",
+            .texture_width = 0,
+            .texture_height = 4,
+        },
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/hero_sprite"},
+            .asset_kind = mirakana::AssetKind::script,
+            .source_path = "source/placeholders/hero_script.script",
+            .imported_path = "intermediate/imported/placeholders/hero_script.script",
+        },
+    };
+
+    const auto plan = mirakana::plan_placeholder_asset_bundle(request);
+    const auto has_diagnostic = [&plan](std::string_view code) {
+        return std::ranges::any_of(plan.diagnostics, [code](const mirakana::PlaceholderAssetDiagnostic& diagnostic) {
+            return diagnostic.code == code;
+        });
+    };
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.source_registry_content.empty());
+    MK_REQUIRE(plan.changed_files.empty());
+    MK_REQUIRE(plan.provenance_rows.empty());
+    MK_REQUIRE(has_diagnostic("unsafe_source_registry_path"));
+    MK_REQUIRE(has_diagnostic("invalid_texture_dimensions"));
+    MK_REQUIRE(has_diagnostic("duplicate_asset_key"));
+    MK_REQUIRE(has_diagnostic("unsupported_asset_kind"));
+}
+
+MK_TEST("placeholder asset cook package routes generated source documents through registered package planning") {
+    mirakana::PlaceholderAssetCookPackageRequest request;
+    request.placeholder_assets.source_registry_path = "source/assets/game.geassets";
+    request.placeholder_assets.assets = {
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/debug_texture"},
+            .asset_kind = mirakana::AssetKind::texture,
+            .source_path = "source/placeholders/debug_texture.texture_source",
+            .imported_path = "runtime/assets/placeholders/debug_texture.texture",
+            .seed = 13,
+            .texture_width = 4,
+            .texture_height = 4,
+        },
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/debug_material"},
+            .asset_kind = mirakana::AssetKind::material,
+            .source_path = "source/placeholders/debug_material.material",
+            .imported_path = "runtime/assets/placeholders/debug_material.material",
+            .material_base_color = {0.8F, 0.2F, 0.1F, 1.0F},
+        },
+    };
+    request.package_index_path = "runtime/game.geindex";
+    request.package_index_content = empty_package_index_content();
+    request.source_revision = 43;
+
+    const auto plan = mirakana::plan_placeholder_asset_cook_package(request);
+    const auto find_cooked_file =
+        [&plan](std::string_view path) -> const mirakana::RegisteredSourceAssetCookPackageChangedFile* {
+        const auto it = std::ranges::find_if(
+            plan.package_plan.changed_files,
+            [path](const mirakana::RegisteredSourceAssetCookPackageChangedFile& file) { return file.path == path; });
+        return it == plan.package_plan.changed_files.end() ? nullptr : &*it;
+    };
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.placeholder_plan.succeeded());
+    MK_REQUIRE(plan.package_plan.succeeded());
+    MK_REQUIRE(plan.placeholder_plan.provenance_rows.size() == 2);
+    MK_REQUIRE(plan.package_plan.model_mutations.size() == 2);
+    MK_REQUIRE(plan.package_plan.model_mutations[0].source_registry_path ==
+               request.placeholder_assets.source_registry_path);
+    MK_REQUIRE(plan.package_plan.model_mutations[0].package_index_path == request.package_index_path);
+    MK_REQUIRE(plan.package_plan.model_mutations[0].kind == "cook_registered_source_asset");
+
+    const auto* material_file = find_cooked_file("runtime/assets/placeholders/debug_material.material");
+    const auto* texture_file = find_cooked_file("runtime/assets/placeholders/debug_texture.texture");
+    const auto* package_index_file = find_cooked_file(request.package_index_path);
+    MK_REQUIRE(material_file != nullptr);
+    MK_REQUIRE(texture_file != nullptr);
+    MK_REQUIRE(package_index_file != nullptr);
+    MK_REQUIRE(material_file->document_kind == "GameEngine.Material.v1");
+    MK_REQUIRE(texture_file->document_kind == "GameEngine.CookedTexture.v1");
+    MK_REQUIRE(package_index_file->document_kind == "GameEngine.CookedPackageIndex.v1");
+    MK_REQUIRE(package_index_file->content == plan.package_plan.package_index_content);
+
+    const auto index = mirakana::deserialize_asset_cooked_package_index(plan.package_plan.package_index_content);
+    const auto has_entry = [&index](const mirakana::AssetKeyV2& key, std::string_view path) {
+        const auto asset = mirakana::asset_id_from_key_v2(key);
+        return std::ranges::any_of(index.entries, [asset, path](const mirakana::AssetCookedPackageEntry& entry) {
+            return entry.asset == asset && entry.path == path;
+        });
+    };
+    MK_REQUIRE(has_entry(mirakana::AssetKeyV2{"assets/placeholders/debug_material"},
+                         "runtime/assets/placeholders/debug_material.material"));
+    MK_REQUIRE(has_entry(mirakana::AssetKeyV2{"assets/placeholders/debug_texture"},
+                         "runtime/assets/placeholders/debug_texture.texture"));
 }
 
 MK_TEST("source asset registration validates dependency targets and canonical dry-run rows") {

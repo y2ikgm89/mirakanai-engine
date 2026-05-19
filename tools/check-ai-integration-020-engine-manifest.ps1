@@ -532,9 +532,17 @@ $desktop2dRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "2d-desk
 if ($desktop2dRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one 2d-desktop-runtime-package recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+    foreach ($module in @("MK_core", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_ai", "MK_navigation", "MK_physics", "MK_renderer")) {
         if (@($desktop2dRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe missing required module: $module"
+        }
+    }
+    Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "--require-gameplay-systems" "2d-desktop-runtime-package cooked runtime assumptions"
+    Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "gameplay_systems_*" "2d-desktop-runtime-package cooked runtime assumptions"
+    Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "spriteAtlasSourceAuthoringTargets" "2d-desktop-runtime-package cooked runtime assumptions"
+    foreach ($sourceFormat in @("GameEngine.TextureSource.v1", "GameEngine.SourceAssetRegistry.v1", "first-party-cooked-fixture")) {
+        if (@($desktop2dRecipe[0].importerAssumptions.sourceFormats) -notcontains $sourceFormat) {
+            Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe importerAssumptions.sourceFormats missing $sourceFormat"
         }
     }
     if (@($desktop2dRecipe[0].allowedTemplates) -notcontains "DesktopRuntime2DPackage") {
@@ -1527,6 +1535,365 @@ if (-not ([string]$sceneAuthoringSurface[0].notes).Contains("Contract-only") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("2D/3D vertical slices")) {
     Write-Error "engine/agent/manifest.json scene-component-prefab-schema-v2 authoring surface must keep contract-only follow-up limits explicit"
 }
+$gameplayBindingAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-scene-gameplay-binding-v1" })
+if ($gameplayBindingAuthoringSurface.Count -ne 1 -or $gameplayBindingAuthoringSurface[0].status -ne "ready" -or
+    $gameplayBindingAuthoringSurface[0].owner -ne "MK_runtime_scene") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-scene-gameplay-binding-v1 must be ready as an MK_runtime_scene surface"
+}
+if (-not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayBindingSourceRow") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayBindingComponentKind") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("resolve_runtime_scene_gameplay_bindings") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("duplicate binding ids") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("missing required components") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("gameplay system scheduler") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("package format change")) {
+    Write-Error "engine/agent/manifest.json runtime-scene-gameplay-binding-v1 authoring surface must keep binding contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeSceneGameplayBindingSourceRow",
+        "RuntimeSceneGameplayBindingComponentKind",
+        "RuntimeSceneGameplayBindingResolution",
+        "resolve_runtime_scene_gameplay_bindings"
+    )) {
+    Assert-ContainsText $runtimeSceneHeaderText $needle "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSceneGameplayBindingDiagnosticCode::duplicate_binding_id",
+        "RuntimeSceneGameplayBindingDiagnosticCode::missing_required_component",
+        "node_has_gameplay_binding_component"
+    )) {
+    Assert-ContainsText $runtimeSceneSourceText $needle "engine/runtime_scene/src/runtime_scene.cpp"
+}
+Assert-ContainsText $runtimeSceneTestsText "runtime scene resolves authored gameplay bindings to component-backed nodes" "tests/unit/runtime_scene_tests.cpp"
+Assert-ContainsText $runtimeSceneTestsText "runtime scene gameplay bindings fail closed for invalid ambiguous and missing component rows" "tests/unit/runtime_scene_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "resolve_runtime_scene_gameplay_bindings" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "RuntimeSceneGameplayBindingSourceRow" $docSurface.Label
+}
+$gameplayInteractionAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-scene-gameplay-interaction-framework-v1" })
+if ($gameplayInteractionAuthoringSurface.Count -ne 1 -or $gameplayInteractionAuthoringSurface[0].status -ne "ready" -or
+    $gameplayInteractionAuthoringSurface[0].owner -ne "MK_runtime_scene") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-scene-gameplay-interaction-framework-v1 must be ready as an MK_runtime_scene surface"
+}
+if (-not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayInteractionSourceRow") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayInteractionPlanRequest") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("plan_runtime_scene_gameplay_interactions") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayBindingRow") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("duplicate action ids") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("missing source or target bindings") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("rejected terminal-state transitions") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("gameplay system scheduler") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("physics/event dispatcher") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("package format change")) {
+    Write-Error "engine/agent/manifest.json runtime-scene-gameplay-interaction-framework-v1 authoring surface must keep interaction contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeSceneGameplayInteractionSourceRow",
+        "RuntimeSceneGameplayInteractionPlanRequest",
+        "RuntimeSceneGameplayInteractionPlan",
+        "plan_runtime_scene_gameplay_interactions"
+    )) {
+    Assert-ContainsText $runtimeSceneHeaderText $needle "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSceneGameplayInteractionDiagnosticCode::duplicate_action_id",
+        "RuntimeSceneGameplayInteractionDiagnosticCode::missing_target_binding",
+        "RuntimeSceneGameplayInteractionDiagnosticCode::rejected_transition",
+        "gameplay_interaction_resulting_session_state"
+    )) {
+    Assert-ContainsText $runtimeSceneSourceText $needle "engine/runtime_scene/src/runtime_scene.cpp"
+}
+Assert-ContainsText $runtimeSceneTestsText "runtime scene gameplay interaction plan composes binding rows in authored order" "tests/unit/runtime_scene_tests.cpp"
+Assert-ContainsText $runtimeSceneTestsText "runtime scene gameplay interaction plan rejects invalid targets duplicates and terminal transitions" "tests/unit/runtime_scene_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "plan_runtime_scene_gameplay_interactions" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "RuntimeSceneGameplayInteractionSourceRow" $docSurface.Label
+}
+foreach ($sampleSurface in @(
+        "games/sample_2d_playable_foundation/main.cpp",
+        "games/sample_gameplay_foundation/main.cpp"
+    )) {
+    $sampleSurfaceText = Get-AgentSurfaceText $sampleSurface
+    Assert-ContainsText $sampleSurfaceText "plan_runtime_scene_gameplay_interactions" $sampleSurface
+    Assert-ContainsText $sampleSurfaceText "RuntimeSceneGameplayInteractionSourceRow" $sampleSurface
+    Assert-ContainsText $sampleSurfaceText "gameplay_interactions" $sampleSurface
+}
+$runtimeSessionProfilePathAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-session-profile-path-policy-v1" })
+if ($runtimeSessionProfilePathAuthoringSurface.Count -ne 1 -or
+    $runtimeSessionProfilePathAuthoringSurface[0].status -ne "ready" -or
+    $runtimeSessionProfilePathAuthoringSurface[0].owner -ne "MK_runtime") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-session-profile-path-policy-v1 must be ready as an MK_runtime surface"
+}
+if (-not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("RuntimeSessionProfilePathRequest") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("RuntimeSessionProfilePathPlan") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("plan_runtime_session_profile_paths") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("save.gesave") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("settings.settings") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("input.geinputprofile") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("absolute paths") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("parent traversal") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("platform user-directory resolver") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("cloud save system")) {
+    Write-Error "engine/agent/manifest.json runtime-session-profile-path-policy-v1 authoring surface must keep profile path contract and non-goals explicit"
+}
+$runtimeSessionServicesHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/session_services.hpp"
+$runtimeSessionServicesSourceText = Get-AgentSurfaceText "engine/runtime/src/session_services.cpp"
+$runtimeTestsText = Get-AgentSurfaceText "tests/unit/runtime_tests.cpp"
+foreach ($needle in @(
+        "RuntimeSessionProfilePathRequest",
+        "RuntimeSessionProfilePathPlan",
+        "RuntimeSessionProfilePathDiagnosticCode",
+        "plan_runtime_session_profile_paths"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesHeaderText $needle "engine/runtime/include/mirakana/runtime/session_services.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSessionProfilePathDiagnosticCode::invalid_game_id",
+        "RuntimeSessionProfilePathDiagnosticCode::invalid_profile_id",
+        "RuntimeSessionProfilePathDiagnosticCode::invalid_root_path",
+        "is_valid_runtime_profile_root_path",
+        "save.gesave",
+        "settings.settings",
+        "input.geinputprofile"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesSourceText $needle "engine/runtime/src/session_services.cpp"
+}
+Assert-ContainsText $runtimeTestsText "runtime session profile path plan composes deterministic game local document paths" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime session profile path plan rejects unsafe ids and paths without partial paths" "tests/unit/runtime_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeSessionProfilePathRequest" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_session_profile_paths" $docSurface.Label
+}
+$runtimeSessionProfileDocumentBundleAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-session-profile-document-bundle-v1" })
+if ($runtimeSessionProfileDocumentBundleAuthoringSurface.Count -ne 1 -or
+    $runtimeSessionProfileDocumentBundleAuthoringSurface[0].status -ne "ready" -or
+    $runtimeSessionProfileDocumentBundleAuthoringSurface[0].owner -ne "MK_runtime") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-session-profile-document-bundle-v1 must be ready as an MK_runtime surface"
+}
+if (-not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("RuntimeSessionProfileDocuments") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("RuntimeSessionProfileDocumentRow") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("load_runtime_session_profile_documents") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("write_runtime_session_profile_documents") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("defaulted_missing") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("failed_corrupt") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("failed_unsupported_version") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("unrelated files under the profile root are not deleted") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("game-specific save schema")) {
+    Write-Error "engine/agent/manifest.json runtime-session-profile-document-bundle-v1 authoring surface must keep document bundle contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeSessionProfileDocuments",
+        "RuntimeSessionProfileDocumentRow",
+        "RuntimeSessionProfileDocumentLoadRequest",
+        "RuntimeSessionProfileDocumentWriteRequest",
+        "load_runtime_session_profile_documents",
+        "write_runtime_session_profile_documents"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesHeaderText $needle "engine/runtime/include/mirakana/runtime/session_services.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSessionProfileDocumentStatus::defaulted_missing",
+        "RuntimeSessionProfileDocumentStatus::failed_corrupt",
+        "RuntimeSessionProfileDocumentStatus::failed_unsupported_version",
+        "serialize_runtime_input_rebinding_profile",
+        "runtime_session_profile_document_failure_status"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesSourceText $needle "engine/runtime/src/session_services.cpp"
+}
+Assert-ContainsText $runtimeTestsText "runtime session profile document bundle loads documents and defaults missing optional rows" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime session profile document bundle separates corrupt and unsupported documents" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime session profile document bundle writes reviewed defaults without deleting unrelated files" "tests/unit/runtime_tests.cpp"
+$sampleGameplayFoundationText = Get-AgentSurfaceText "games/sample_gameplay_foundation/main.cpp"
+Assert-ContainsText $sampleGameplayFoundationText "load_runtime_session_profile_documents" "games/sample_gameplay_foundation/main.cpp"
+Assert-ContainsText $sampleGameplayFoundationText "write_runtime_session_profile_documents" "games/sample_gameplay_foundation/main.cpp"
+Assert-ContainsText $sampleGameplayFoundationText "runtime_profile_documents" "games/sample_gameplay_foundation/main.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeSessionProfileDocuments" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "load_runtime_session_profile_documents" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "write_runtime_session_profile_documents" $docSurface.Label
+}
+$runtimeMenuHudIntentAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-menu-hud-intent-model-v1" })
+if ($runtimeMenuHudIntentAuthoringSurface.Count -ne 1 -or
+    $runtimeMenuHudIntentAuthoringSurface[0].status -ne "ready" -or
+    $runtimeMenuHudIntentAuthoringSurface[0].owner -ne "MK_ui") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-menu-hud-intent-model-v1 must be ready as an MK_ui surface"
+}
+if (-not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudRowDesc") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudCommandIntent") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudCommandTarget") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("plan_runtime_menu_hud") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudDisplayRow") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudCommandRow") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("duplicate command ids") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("invalid command targets") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("game-specific menu schema")) {
+    Write-Error "engine/agent/manifest.json runtime-menu-hud-intent-model-v1 authoring surface must keep HUD/menu intent contract and non-goals explicit"
+}
+$uiHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/ui.hpp"
+$uiSourceText = Get-AgentSurfaceText "engine/ui/src/ui.cpp"
+$coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
+$sampleUiAudioAssetsText = Get-AgentSurfaceText "games/sample_ui_audio_assets/main.cpp"
+foreach ($needle in @(
+        "RuntimeMenuHudRowDesc",
+        "RuntimeMenuHudRowKind",
+        "RuntimeMenuHudCommandIntent",
+        "RuntimeMenuHudCommandTarget",
+        "RuntimeMenuHudDiagnosticCode",
+        "RuntimeMenuHudPlan",
+        "plan_runtime_menu_hud"
+    )) {
+    Assert-ContainsText $uiHeaderText $needle "engine/ui/include/mirakana/ui/ui.hpp"
+}
+foreach ($needle in @(
+        "RuntimeMenuHudDiagnosticCode::duplicate_row_id",
+        "RuntimeMenuHudDiagnosticCode::missing_command_id",
+        "RuntimeMenuHudDiagnosticCode::duplicate_command_id",
+        "RuntimeMenuHudDiagnosticCode::invalid_command_target",
+        "is_valid_runtime_menu_hud_command_intent"
+    )) {
+    Assert-ContainsText $uiSourceText $needle "engine/ui/src/ui.cpp"
+}
+Assert-ContainsText $coreTestsText "runtime menu hud plan produces deterministic display and command rows" "tests/unit/core_tests.cpp"
+Assert-ContainsText $coreTestsText "runtime menu hud plan rejects duplicate row and command ids" "tests/unit/core_tests.cpp"
+Assert-ContainsText $coreTestsText "runtime menu hud plan rejects missing command ids and invalid command targets" "tests/unit/core_tests.cpp"
+Assert-ContainsText $sampleUiAudioAssetsText "plan_runtime_menu_hud" "games/sample_ui_audio_assets/main.cpp"
+Assert-ContainsText $sampleUiAudioAssetsText "RuntimeMenuHudCommandIntent::restart_session" "games/sample_ui_audio_assets/main.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeMenuHudRowDesc" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_menu_hud" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "RuntimeMenuHudCommandRow" $docSurface.Label
+}
+$runtimeGameplayDebugOverlayAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-gameplay-debug-overlay-v1" })
+if ($runtimeGameplayDebugOverlayAuthoringSurface.Count -ne 1 -or
+    $runtimeGameplayDebugOverlayAuthoringSurface[0].status -ne "ready" -or
+    $runtimeGameplayDebugOverlayAuthoringSurface[0].owner -ne "MK_ui") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-gameplay-debug-overlay-v1 must be ready as an MK_ui surface"
+}
+foreach ($gameplayDebugOverlaySurfaceNeedle in @(
+        "RuntimeGameplayDebugOverlayRowDesc",
+        "RuntimeGameplayDebugOverlayCategory",
+        "RuntimeGameplayDebugOverlayRowKind",
+        "RuntimeGameplayDebugOverlayDiagnosticCode",
+        "RuntimeGameplayDebugOverlayRow",
+        "RuntimeGameplayDebugOverlayDiagnostic",
+        "RuntimeGameplayDebugOverlayPlan",
+        "plan_runtime_gameplay_debug_overlay",
+        "missing or duplicate row ids",
+        "unsupported categories",
+        "unsupported row kinds",
+        "game-specific debug schema"
+    )) {
+    Assert-ContainsText ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes) $gameplayDebugOverlaySurfaceNeedle "engine/agent/manifest.json runtime-gameplay-debug-overlay-v1 authoring surface"
+}
+foreach ($gameplayDebugOverlayHeaderNeedle in @(
+        "RuntimeGameplayDebugOverlayCategory",
+        "RuntimeGameplayDebugOverlayRowKind",
+        "RuntimeGameplayDebugOverlayDiagnosticCode",
+        "RuntimeGameplayDebugOverlayRowDesc",
+        "RuntimeGameplayDebugOverlayRow",
+        "RuntimeGameplayDebugOverlayDiagnostic",
+        "RuntimeGameplayDebugOverlayPlan",
+        "plan_runtime_gameplay_debug_overlay"
+    )) {
+    Assert-ContainsText $uiHeaderText $gameplayDebugOverlayHeaderNeedle "engine/ui/include/mirakana/ui/ui.hpp"
+}
+foreach ($gameplayDebugOverlaySourceNeedle in @(
+        "is_valid_runtime_gameplay_debug_overlay_category",
+        "is_valid_runtime_gameplay_debug_overlay_row_kind",
+        "append_runtime_gameplay_debug_overlay_diagnostic",
+        "RuntimeGameplayDebugOverlayDiagnosticCode::duplicate_row_id",
+        "RuntimeGameplayDebugOverlayDiagnosticCode::missing_label",
+        "RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_category",
+        "RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_row_kind"
+    )) {
+    Assert-ContainsText $uiSourceText $gameplayDebugOverlaySourceNeedle "engine/ui/src/ui.cpp"
+}
+Assert-ContainsText $coreTestsText "runtime gameplay debug overlay plan produces deterministic display rows" "tests/unit/core_tests.cpp"
+Assert-ContainsText $coreTestsText "runtime gameplay debug overlay plan rejects duplicate and invalid rows" "tests/unit/core_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeGameplayDebugOverlayPlan" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_gameplay_debug_overlay" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "debug overlay" $docSurface.Label
+}
+$runtimeInputContextStackPlannerAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-input-context-stack-planner-v1" })
+if ($runtimeInputContextStackPlannerAuthoringSurface.Count -ne 1 -or
+    $runtimeInputContextStackPlannerAuthoringSurface[0].status -ne "ready" -or
+    $runtimeInputContextStackPlannerAuthoringSurface[0].owner -ne "MK_runtime") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-input-context-stack-planner-v1 must be ready as an MK_runtime surface"
+}
+if (-not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("RuntimeInputContextStackRequest") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("RuntimeInputContextLayerDesc") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("RuntimeInputContextStackPlan") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("plan_runtime_input_context_stack") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("duplicate_context") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("invalid_context") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("full runtime rebinding panel") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("game-specific menu schema")) {
+    Write-Error "engine/agent/manifest.json runtime-input-context-stack-planner-v1 authoring surface must keep input context planner contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeInputContextStackRequest",
+        "RuntimeInputContextLayerDesc",
+        "RuntimeInputContextLayerKind",
+        "RuntimeInputContextStackDiagnostic",
+        "RuntimeInputContextStackPlan",
+        "plan_runtime_input_context_stack"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesHeaderText $needle "engine/runtime/include/mirakana/runtime/session_services.hpp"
+}
+foreach ($needle in @(
+        "RuntimeInputContextStackDiagnosticCode::invalid_context",
+        "RuntimeInputContextStackDiagnosticCode::duplicate_context",
+        "RuntimeInputContextStackDiagnosticCode::no_active_context",
+        "is_capture_context_layer"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesSourceText $needle "engine/runtime/src/session_services.cpp"
+}
+Assert-ContainsText $runtimeTestsText "runtime input context stack plan resolves modal menu before gameplay" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime input context stack plan keeps gameplay under passive overlay" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime input context stack plan uses default context when no layer is active" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime input context stack plan rejects invalid layer descriptions" "tests/unit/runtime_tests.cpp"
+$sample2DPlayableFoundationText = Get-AgentSurfaceText "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "plan_runtime_input_context_stack" "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "plan_gameplay_audio_mix" "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "plan_runtime_gameplay_debug_overlay" "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "RuntimeInputContextLayerKind::overlay" "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "input_contexts=" "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "debug_overlay_rows=" "games/sample_2d_playable_foundation/main.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeInputContextStackRequest" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_input_context_stack" $docSurface.Label
+}
+Assert-ContainsText $manifestRaw "currentInputContextPlanning" "engine/agent/manifest.json"
+Assert-ContainsText $manifestRaw "RuntimeInputContextStackPlan" "engine/agent/manifest.json"
 $assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"
@@ -1561,6 +1928,41 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.CookedTexture.v1") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("renderer texture upload")) {
     Write-Error "engine/agent/manifest.json ui-atlas-metadata-authoring-tooling-v1 authoring surface must keep cooked metadata tooling, decoded atlas bridge, and renderer-upload limits explicit"
+}
+$assetPlaceholderAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-placeholder-generation-v1" })
+if ($assetPlaceholderAuthoringSurface.Count -ne 1 -or $assetPlaceholderAuthoringSurface[0].status -ne "ready") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-placeholder-generation-v1 must be ready as an MK_tools surface"
+}
+if (-not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_placeholder_asset_bundle") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_placeholder_asset_cook_package") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("placeholder_asset_tool.hpp") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetBundleRequest") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetBundlePlan") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetCookPackageRequest") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetCookPackagePlan") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetChangedFile") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetProvenanceRow") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetDiagnostic") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("external asset downloader") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("renderer/RHI residency")) {
+    Write-Error "engine/agent/manifest.json asset-placeholder-generation-v1 authoring surface must keep placeholder contract and non-goals explicit"
+}
+$spriteAtlasAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "sprite-atlas-authoring-v1" })
+if ($spriteAtlasAuthoringSurface.Count -ne 1 -or $spriteAtlasAuthoringSurface[0].status -ne "ready") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface sprite-atlas-authoring-v1 must be ready as an MK_tools surface"
+}
+if (-not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceFrameDesc") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringDesc") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringPlan") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("plan_sprite_atlas_source_authoring") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("sprite_atlas_tool.hpp") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.TextureSource.v1") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("renderer/RHI residency") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("package streaming") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("animation semantics")) {
+    Write-Error "engine/agent/manifest.json sprite-atlas-authoring-v1 authoring surface must keep source atlas contract and non-goals explicit"
 }
 
 $requiredProductionGapIds = @()
@@ -1609,7 +2011,7 @@ $runtimeResourceGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($runtimeResourceGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop runtime-resource-v2 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-$recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+$recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
@@ -1773,6 +2175,28 @@ foreach ($needle in @(
 $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "physics-1-0-collision-system" })
 if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
+}
+foreach ($closedGameplayGapId in @(
+    "navigation-navmesh-and-dynamic-obstacle-follow-up",
+    "physics-advanced-dynamics-follow-up",
+    "gameplay-2d-3d-package-evidence"
+)) {
+    $closedGameplayGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq $closedGameplayGapId })
+    if ($closedGameplayGap.Count -ne 0) {
+        Write-Error "engine/agent/manifest.json aiOperableProductionLoop $closedGameplayGapId gap must leave unsupportedProductionGaps after gameplay physics/navigation closeout"
+    }
+}
+foreach ($needle in @(
+    "gameplay-physics-navigation-ai-foundation-v1",
+    "NavigationNavmeshPathRequest",
+    "plan_navigation_navmesh_path",
+    "evaluate_physics_character_dynamic_policy_3d",
+    "selected generated 2D and 3D package gameplay systems composition smokes",
+    "navigation-navmesh-and-dynamic-obstacle-follow-up",
+    "physics-advanced-dynamics-follow-up",
+    "gameplay-2d-3d-package-evidence"
+)) {
+    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan gameplay closeout evidence"
 }
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Transient Texture Alias Planning v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphTransientTextureAliasPlan" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"

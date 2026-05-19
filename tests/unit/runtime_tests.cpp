@@ -375,6 +375,17 @@ find_rebinding_presentation_row(const std::vector<mirakana::runtime::RuntimeInpu
     return nullptr;
 }
 
+[[nodiscard]] const mirakana::runtime::RuntimeSessionProfileDocumentRow*
+find_session_profile_document_row(const std::vector<mirakana::runtime::RuntimeSessionProfileDocumentRow>& rows,
+                                  mirakana::runtime::RuntimeSessionProfileDocumentKind kind) noexcept {
+    for (const auto& row : rows) {
+        if (row.kind == kind) {
+            return &row;
+        }
+    }
+    return nullptr;
+}
+
 } // namespace
 
 MK_TEST("runtime asset package loads cooked payloads with stable handles") {
@@ -1427,6 +1438,195 @@ MK_TEST("runtime settings loads defaults and rejects malformed documents") {
     MK_REQUIRE(broken.diagnostic.find("duplicate") != std::string::npos);
 }
 
+MK_TEST("runtime session profile path plan composes deterministic game local document paths") {
+    const auto plan =
+        mirakana::runtime::plan_runtime_session_profile_paths(mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"});
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.save_data_path == "profiles/sample_game/slot_1/save.gesave");
+    MK_REQUIRE(plan.settings_path == "profiles/sample_game/slot_1/settings.settings");
+    MK_REQUIRE(plan.input_rebinding_profile_path == "profiles/sample_game/slot_1/input.geinputprofile");
+
+    const auto custom_root =
+        mirakana::runtime::plan_runtime_session_profile_paths(mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "sample_game", .profile_id = "player-one", .root_path = "user/profiles"});
+
+    MK_REQUIRE(custom_root.succeeded());
+    MK_REQUIRE(custom_root.save_data_path == "user/profiles/sample_game/player-one/save.gesave");
+    MK_REQUIRE(custom_root.settings_path == "user/profiles/sample_game/player-one/settings.settings");
+    MK_REQUIRE(custom_root.input_rebinding_profile_path == "user/profiles/sample_game/player-one/input.geinputprofile");
+}
+
+MK_TEST("runtime session profile path plan rejects unsafe ids and paths without partial paths") {
+    using Code = mirakana::runtime::RuntimeSessionProfilePathDiagnosticCode;
+
+    const auto has_diagnostic = [](const auto& diagnostics, Code code, const std::string& field) {
+        return std::ranges::any_of(diagnostics, [code, &field](const auto& diagnostic) {
+            return diagnostic.code == code && diagnostic.field == field;
+        });
+    };
+
+    const auto empty_ids = mirakana::runtime::plan_runtime_session_profile_paths(
+        mirakana::runtime::RuntimeSessionProfilePathRequest{.game_id = "", .profile_id = "", .root_path = "profiles"});
+
+    MK_REQUIRE(!empty_ids.succeeded());
+    MK_REQUIRE(empty_ids.save_data_path.empty());
+    MK_REQUIRE(empty_ids.settings_path.empty());
+    MK_REQUIRE(empty_ids.input_rebinding_profile_path.empty());
+    MK_REQUIRE(has_diagnostic(empty_ids.diagnostics, Code::invalid_game_id, "game_id"));
+    MK_REQUIRE(has_diagnostic(empty_ids.diagnostics, Code::invalid_profile_id, "profile_id"));
+
+    const auto unsafe =
+        mirakana::runtime::plan_runtime_session_profile_paths(mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "../sample", .profile_id = "slot/1", .root_path = "/profiles"});
+
+    MK_REQUIRE(!unsafe.succeeded());
+    MK_REQUIRE(unsafe.save_data_path.empty());
+    MK_REQUIRE(unsafe.settings_path.empty());
+    MK_REQUIRE(unsafe.input_rebinding_profile_path.empty());
+    MK_REQUIRE(has_diagnostic(unsafe.diagnostics, Code::invalid_game_id, "game_id"));
+    MK_REQUIRE(has_diagnostic(unsafe.diagnostics, Code::invalid_profile_id, "profile_id"));
+    MK_REQUIRE(has_diagnostic(unsafe.diagnostics, Code::invalid_root_path, "root_path"));
+
+    const auto control =
+        mirakana::runtime::plan_runtime_session_profile_paths(mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "sample\tgame", .profile_id = "slot_1", .root_path = "profiles"});
+
+    MK_REQUIRE(!control.succeeded());
+    MK_REQUIRE(control.save_data_path.empty());
+    MK_REQUIRE(has_diagnostic(control.diagnostics, Code::invalid_game_id, "game_id"));
+}
+
+MK_TEST("runtime session profile document bundle loads documents and defaults missing optional rows") {
+    using Kind = mirakana::runtime::RuntimeSessionProfileDocumentKind;
+    using Status = mirakana::runtime::RuntimeSessionProfileDocumentStatus;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
+
+    mirakana::runtime::RuntimeSaveData save;
+    save.set_value("checkpoint", "intro");
+    mirakana::runtime::RuntimeSettings settings;
+    settings.set_value("audio.master_volume", "0.75");
+    mirakana::runtime::write_runtime_save_data(fs, paths.save_data_path, save);
+    mirakana::runtime::write_runtime_settings(fs, paths.settings_path, settings);
+
+    mirakana::runtime::RuntimeSessionProfileDocuments defaults;
+    defaults.save_data.set_value("checkpoint", "new_game");
+    defaults.settings.set_value("audio.master_volume", "1.0");
+    defaults.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = defaults});
+
+    MK_REQUIRE(loaded.succeeded());
+    MK_REQUIRE(!loaded.has_blocking_diagnostics);
+    MK_REQUIRE(loaded.used_defaults);
+    MK_REQUIRE(loaded.rows.size() == 3);
+    MK_REQUIRE(loaded.save_data.value_or("checkpoint", "") == "intro");
+    MK_REQUIRE(loaded.settings.value_or("audio.master_volume", "") == "0.75");
+    MK_REQUIRE(loaded.input_rebinding_profile.profile_id == "slot_1");
+
+    const auto* save_row = find_session_profile_document_row(loaded.rows, Kind::save_data);
+    const auto* settings_row = find_session_profile_document_row(loaded.rows, Kind::settings);
+    const auto* input_row = find_session_profile_document_row(loaded.rows, Kind::input_rebinding_profile);
+    MK_REQUIRE(save_row != nullptr);
+    MK_REQUIRE(settings_row != nullptr);
+    MK_REQUIRE(input_row != nullptr);
+    MK_REQUIRE(save_row->status == Status::loaded);
+    MK_REQUIRE(settings_row->status == Status::loaded);
+    MK_REQUIRE(input_row->status == Status::defaulted_missing);
+    MK_REQUIRE(input_row->defaulted);
+    MK_REQUIRE(input_row->path == paths.input_rebinding_profile_path);
+}
+
+MK_TEST("runtime session profile document bundle separates corrupt and unsupported documents") {
+    using Kind = mirakana::runtime::RuntimeSessionProfileDocumentKind;
+    using Status = mirakana::runtime::RuntimeSessionProfileDocumentStatus;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
+    fs.write_text(paths.save_data_path, "format=GameEngine.RuntimeSaveData.v0\nschema.version=1\n");
+    fs.write_text(paths.settings_path, "format=GameEngine.RuntimeSettings.v1\nentry.audio.master_volume=0.75\n");
+    fs.write_text(paths.input_rebinding_profile_path,
+                  "format=GameEngine.RuntimeInputRebindingProfile.v0\nprofile.id=slot_1\n");
+
+    mirakana::runtime::RuntimeSessionProfileDocuments defaults;
+    defaults.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = defaults});
+
+    MK_REQUIRE(!loaded.succeeded());
+    MK_REQUIRE(loaded.has_blocking_diagnostics);
+    MK_REQUIRE(loaded.rows.size() == 3);
+
+    const auto* save_row = find_session_profile_document_row(loaded.rows, Kind::save_data);
+    const auto* settings_row = find_session_profile_document_row(loaded.rows, Kind::settings);
+    const auto* input_row = find_session_profile_document_row(loaded.rows, Kind::input_rebinding_profile);
+    MK_REQUIRE(save_row != nullptr);
+    MK_REQUIRE(settings_row != nullptr);
+    MK_REQUIRE(input_row != nullptr);
+    MK_REQUIRE(save_row->status == Status::failed_unsupported_version);
+    MK_REQUIRE(settings_row->status == Status::failed_corrupt);
+    MK_REQUIRE(input_row->status == Status::failed_unsupported_version);
+}
+
+MK_TEST("runtime session profile document bundle writes reviewed defaults without deleting unrelated files") {
+    using Kind = mirakana::runtime::RuntimeSessionProfileDocumentKind;
+    using Status = mirakana::runtime::RuntimeSessionProfileDocumentStatus;
+
+    mirakana::MemoryFileSystem fs;
+    fs.write_text("profiles/sample_game/slot_1/notes.txt", "keep");
+
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    mirakana::runtime::RuntimeSessionProfileDocuments documents;
+    documents.save_data.set_value("checkpoint", "intro");
+    documents.settings.set_value("audio.master_volume", "0.80");
+    documents.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto written = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+
+    MK_REQUIRE(written.succeeded());
+    MK_REQUIRE(written.documents_written == 3);
+    MK_REQUIRE(written.rows.size() == 3);
+    MK_REQUIRE(find_session_profile_document_row(written.rows, Kind::save_data)->status == Status::written);
+    MK_REQUIRE(find_session_profile_document_row(written.rows, Kind::settings)->status == Status::written);
+    MK_REQUIRE(find_session_profile_document_row(written.rows, Kind::input_rebinding_profile)->status ==
+               Status::written);
+    MK_REQUIRE(fs.exists("profiles/sample_game/slot_1/notes.txt"));
+    MK_REQUIRE(fs.read_text("profiles/sample_game/slot_1/notes.txt") == "keep");
+
+    const auto reloaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+    MK_REQUIRE(reloaded.succeeded());
+    MK_REQUIRE(reloaded.save_data.value_or("checkpoint", "") == "intro");
+    MK_REQUIRE(reloaded.settings.value_or("audio.master_volume", "") == "0.80");
+
+    auto invalid_documents = documents;
+    invalid_documents.input_rebinding_profile.profile_id = "bad profile";
+    const auto invalid_profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_bad", .root_path = "profiles"};
+    const auto rejected = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = invalid_profile,
+                                                                         .documents = invalid_documents});
+
+    MK_REQUIRE(!rejected.succeeded());
+    MK_REQUIRE(rejected.documents_written == 0);
+    MK_REQUIRE(!fs.exists("profiles/sample_game/slot_bad/save.gesave"));
+    const auto* rejected_input = find_session_profile_document_row(rejected.rows, Kind::input_rebinding_profile);
+    MK_REQUIRE(rejected_input != nullptr);
+    MK_REQUIRE(rejected_input->status == Status::failed_invalid_document);
+}
+
 MK_TEST("runtime localization catalog resolves text with key fallback") {
     mirakana::MemoryFileSystem fs;
     mirakana::runtime::RuntimeLocalizationCatalog catalog;
@@ -1719,6 +1919,174 @@ MK_TEST("runtime input action contexts do not fall back to default when stack is
 
     MK_REQUIRE(!actions.action_down("confirm", state, stack));
     MK_REQUIRE(actions.axis_value("move_x", state, stack) == 0.0F);
+}
+
+MK_TEST("runtime input context stack plan resolves modal menu before gameplay") {
+    mirakana::runtime::RuntimeInputContextStackRequest request;
+    request.layers = {
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "menu",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::menu,
+            .active = true,
+            .blocks_lower_priority = true,
+            .consumes_gameplay_input = true,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "gameplay",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::gameplay,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_context_stack(request);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.stack.active_contexts.size() == 1U);
+    MK_REQUIRE(plan.stack.active_contexts[0] == "menu");
+    MK_REQUIRE(plan.ui_context_active);
+    MK_REQUIRE(!plan.capture_context_active);
+    MK_REQUIRE(plan.gameplay_input_consumed);
+    MK_REQUIRE(!plan.gameplay_input_available);
+
+    mirakana::runtime::RuntimeInputActionMap actions;
+    actions.bind_key_in_context("menu", "confirm", mirakana::Key::space);
+    actions.bind_gamepad_button_in_context("gameplay", "confirm", mirakana::GamepadId{1},
+                                           mirakana::GamepadButton::south);
+
+    mirakana::VirtualInput keyboard;
+    mirakana::VirtualGamepadInput gamepad;
+    mirakana::runtime::RuntimeInputStateView state;
+    state.keyboard = &keyboard;
+    state.gamepad = &gamepad;
+
+    gamepad.press(mirakana::GamepadId{1}, mirakana::GamepadButton::south);
+    MK_REQUIRE(!actions.action_down("confirm", state, plan.stack));
+    keyboard.press(mirakana::Key::space);
+    MK_REQUIRE(actions.action_down("confirm", state, plan.stack));
+}
+
+MK_TEST("runtime input context stack plan keeps gameplay under passive overlay") {
+    mirakana::runtime::RuntimeInputContextStackRequest request;
+    request.layers = {
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "debug_overlay",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::overlay,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "gameplay",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::gameplay,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_context_stack(request);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.stack.active_contexts.size() == 2U);
+    MK_REQUIRE(plan.stack.active_contexts[0] == "debug_overlay");
+    MK_REQUIRE(plan.stack.active_contexts[1] == "gameplay");
+    MK_REQUIRE(plan.ui_context_active);
+    MK_REQUIRE(!plan.capture_context_active);
+    MK_REQUIRE(!plan.gameplay_input_consumed);
+    MK_REQUIRE(plan.gameplay_input_available);
+
+    mirakana::runtime::RuntimeInputActionMap actions;
+    actions.bind_key_in_context("debug_overlay", "toggle_debug", mirakana::Key::escape);
+    actions.bind_key_in_context("gameplay", "jump", mirakana::Key::space);
+
+    mirakana::VirtualInput keyboard;
+    mirakana::runtime::RuntimeInputStateView state;
+    state.keyboard = &keyboard;
+
+    keyboard.press(mirakana::Key::escape);
+    keyboard.press(mirakana::Key::space);
+    MK_REQUIRE(actions.action_down("toggle_debug", state, plan.stack));
+    MK_REQUIRE(actions.action_down("jump", state, plan.stack));
+}
+
+MK_TEST("runtime input context stack plan uses default context when no layer is active") {
+    mirakana::runtime::RuntimeInputContextStackRequest request;
+    request.layers = {
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "menu",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::menu,
+            .active = false,
+            .blocks_lower_priority = true,
+            .consumes_gameplay_input = true,
+        },
+    };
+    request.allow_default_context = true;
+
+    const auto plan = mirakana::runtime::plan_runtime_input_context_stack(request);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.stack.active_contexts.empty());
+    MK_REQUIRE(plan.default_context_active);
+    MK_REQUIRE(plan.gameplay_input_available);
+    MK_REQUIRE(!plan.gameplay_input_consumed);
+    MK_REQUIRE(!plan.ui_context_active);
+    MK_REQUIRE(!plan.capture_context_active);
+
+    mirakana::runtime::RuntimeInputActionMap actions;
+    actions.bind_key("confirm", mirakana::Key::space);
+    actions.bind_key_in_context("menu", "confirm", mirakana::Key::escape);
+
+    mirakana::VirtualInput keyboard;
+    mirakana::runtime::RuntimeInputStateView state;
+    state.keyboard = &keyboard;
+
+    keyboard.press(mirakana::Key::escape);
+    MK_REQUIRE(!actions.action_down("confirm", state, plan.stack));
+    keyboard.press(mirakana::Key::space);
+    MK_REQUIRE(actions.action_down("confirm", state, plan.stack));
+}
+
+MK_TEST("runtime input context stack plan rejects invalid layer descriptions") {
+    mirakana::runtime::RuntimeInputContextStackRequest request;
+    request.allow_default_context = false;
+    request.layers = {
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "bad context",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::menu,
+            .active = true,
+            .blocks_lower_priority = true,
+            .consumes_gameplay_input = true,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "menu",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::menu,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "menu",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::dialogue,
+            .active = false,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_context_stack(request);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.stack.active_contexts.empty());
+    MK_REQUIRE(!plan.default_context_active);
+    MK_REQUIRE(!plan.gameplay_input_available);
+    MK_REQUIRE(std::ranges::any_of(plan.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == mirakana::runtime::RuntimeInputContextStackDiagnosticCode::invalid_context;
+    }));
+    MK_REQUIRE(std::ranges::any_of(plan.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == mirakana::runtime::RuntimeInputContextStackDiagnosticCode::duplicate_context;
+    }));
 }
 
 MK_TEST("runtime input action duplicate bind calls are ignored") {

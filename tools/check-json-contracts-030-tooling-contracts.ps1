@@ -846,6 +846,57 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("renderer texture upload")) {
     Write-Error "engine manifest ui-atlas-metadata-authoring-tooling-v1 authoring surface must keep cooked metadata tooling, decoded/glyph atlas bridges, and renderer-upload limits explicit"
 }
+$assetPlaceholderAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-placeholder-generation-v1" })
+if ($assetPlaceholderAuthoringSurface.Count -ne 1 -or $assetPlaceholderAuthoringSurface[0].status -ne "ready") {
+    Write-Error "engine manifest aiOperableProductionLoop authoring surface asset-placeholder-generation-v1 must be ready as an MK_tools surface"
+}
+if (-not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_placeholder_asset_bundle") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_placeholder_asset_cook_package") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("placeholder_asset_tool.hpp") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetBundleRequest") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetBundlePlan") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetCookPackageRequest") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetCookPackagePlan") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetChangedFile") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetProvenanceRow") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetDiagnostic") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("external asset downloader") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("renderer/RHI residency")) {
+    Write-Error "engine manifest asset-placeholder-generation-v1 authoring surface must keep placeholder contract and non-goals explicit"
+}
+$spriteAtlasAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "sprite-atlas-authoring-v1" })
+if ($spriteAtlasAuthoringSurface.Count -ne 1 -or $spriteAtlasAuthoringSurface[0].status -ne "ready") {
+    Write-Error "engine manifest aiOperableProductionLoop authoring surface sprite-atlas-authoring-v1 must be ready as an MK_tools surface"
+}
+if (-not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceFrameDesc") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringDesc") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringPlan") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("plan_sprite_atlas_source_authoring") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("sprite_atlas_tool.hpp") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.TextureSource.v1") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("renderer/RHI residency") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("package streaming") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("animation semantics")) {
+    Write-Error "engine manifest sprite-atlas-authoring-v1 authoring surface must keep source atlas contract and non-goals explicit"
+}
+$runtimeGameplayDebugOverlayAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-gameplay-debug-overlay-v1" })
+if ($runtimeGameplayDebugOverlayAuthoringSurface.Count -ne 1 -or
+    $runtimeGameplayDebugOverlayAuthoringSurface[0].status -ne "ready" -or
+    $runtimeGameplayDebugOverlayAuthoringSurface[0].owner -ne "MK_ui") {
+    Write-Error "engine manifest aiOperableProductionLoop authoring surface runtime-gameplay-debug-overlay-v1 must be ready as an MK_ui surface"
+}
+if (-not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayRowDesc") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayCategory") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayRowKind") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayDiagnosticCode") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("RuntimeGameplayDebugOverlayPlan") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("plan_runtime_gameplay_debug_overlay") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("game-specific debug schema") -or
+    -not ([string]$runtimeGameplayDebugOverlayAuthoringSurface[0].notes).Contains("renderer/RHI execution path")) {
+    Write-Error "engine manifest runtime-gameplay-debug-overlay-v1 authoring surface must keep debug overlay contract and non-goals explicit"
+}
 
 foreach ($packageSurface in $productionLoop.packageSurfaces) {
     Assert-Properties $packageSurface @("id", "status", "targets", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop packageSurfaces"

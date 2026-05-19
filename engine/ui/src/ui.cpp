@@ -64,6 +64,93 @@ namespace {
            direction == NavigationDirection::right;
 }
 
+[[nodiscard]] bool is_valid_runtime_menu_hud_row_kind(RuntimeMenuHudRowKind kind) noexcept {
+    switch (kind) {
+    case RuntimeMenuHudRowKind::label:
+    case RuntimeMenuHudRowKind::counter:
+    case RuntimeMenuHudRowKind::prompt:
+    case RuntimeMenuHudRowKind::command:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool is_valid_runtime_menu_hud_command_intent(RuntimeMenuHudCommandIntent intent) noexcept {
+    switch (intent) {
+    case RuntimeMenuHudCommandIntent::pause_game:
+    case RuntimeMenuHudCommandIntent::resume_game:
+    case RuntimeMenuHudCommandIntent::restart_session:
+    case RuntimeMenuHudCommandIntent::open_menu:
+    case RuntimeMenuHudCommandIntent::close_menu:
+    case RuntimeMenuHudCommandIntent::custom:
+        return true;
+    case RuntimeMenuHudCommandIntent::none:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] bool is_valid_runtime_menu_hud_command_target(RuntimeMenuHudCommandTarget target) noexcept {
+    switch (target) {
+    case RuntimeMenuHudCommandTarget::game_session:
+    case RuntimeMenuHudCommandTarget::menu_overlay:
+    case RuntimeMenuHudCommandTarget::custom:
+        return true;
+    case RuntimeMenuHudCommandTarget::none:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] bool contains_runtime_ui_row_id(const std::vector<std::string>& ids, std::string_view id) noexcept {
+    return std::ranges::find(ids, id) != ids.end();
+}
+
+void append_runtime_menu_hud_diagnostic(std::vector<RuntimeMenuHudDiagnostic>& diagnostics,
+                                        RuntimeMenuHudDiagnosticCode code, std::string row_id, std::string command_id,
+                                        std::string message) {
+    diagnostics.push_back(RuntimeMenuHudDiagnostic{
+        .code = code, .row_id = std::move(row_id), .command_id = std::move(command_id), .message = std::move(message)});
+}
+
+[[nodiscard]] bool
+is_valid_runtime_gameplay_debug_overlay_category(RuntimeGameplayDebugOverlayCategory category) noexcept {
+    switch (category) {
+    case RuntimeGameplayDebugOverlayCategory::gameplay:
+    case RuntimeGameplayDebugOverlayCategory::input:
+    case RuntimeGameplayDebugOverlayCategory::audio:
+    case RuntimeGameplayDebugOverlayCategory::physics:
+    case RuntimeGameplayDebugOverlayCategory::navigation:
+    case RuntimeGameplayDebugOverlayCategory::ai:
+    case RuntimeGameplayDebugOverlayCategory::package:
+    case RuntimeGameplayDebugOverlayCategory::session:
+    case RuntimeGameplayDebugOverlayCategory::custom:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool is_valid_runtime_gameplay_debug_overlay_row_kind(RuntimeGameplayDebugOverlayRowKind kind) noexcept {
+    switch (kind) {
+    case RuntimeGameplayDebugOverlayRowKind::status:
+    case RuntimeGameplayDebugOverlayRowKind::counter:
+    case RuntimeGameplayDebugOverlayRowKind::warning:
+    case RuntimeGameplayDebugOverlayRowKind::error:
+        return true;
+    }
+    return false;
+}
+
+void append_runtime_gameplay_debug_overlay_diagnostic(std::vector<RuntimeGameplayDebugOverlayDiagnostic>& diagnostics,
+                                                      RuntimeGameplayDebugOverlayDiagnosticCode code,
+                                                      std::string row_id, std::string message) {
+    diagnostics.push_back(RuntimeGameplayDebugOverlayDiagnostic{
+        .code = code,
+        .row_id = std::move(row_id),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool is_accessibility_candidate(const Element& element) noexcept {
     if (element.role == SemanticRole::none || element.role == SemanticRole::root) {
         return false;
@@ -2208,6 +2295,142 @@ bool apply_text_binding(UiDocument& document, const TextBinding& binding, const 
     auto text = existing->text;
     text.label = std::string(*value);
     return document.set_text(binding.element, std::move(text));
+}
+
+bool RuntimeMenuHudPlan::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
+RuntimeMenuHudPlan plan_runtime_menu_hud(const std::vector<RuntimeMenuHudRowDesc>& rows) {
+    RuntimeMenuHudPlan plan;
+    std::vector<std::string> row_ids;
+    std::vector<std::string> command_ids;
+    row_ids.reserve(rows.size());
+    command_ids.reserve(rows.size());
+
+    for (const auto& row : rows) {
+        if (row.id.empty()) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::missing_row_id, {},
+                                               row.command_id, "runtime menu hud row id must not be empty");
+        } else if (contains_runtime_ui_row_id(row_ids, row.id)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::duplicate_row_id, row.id,
+                                               row.command_id, "runtime menu hud row id must be unique");
+        } else {
+            row_ids.push_back(row.id);
+        }
+
+        if (!is_valid_runtime_menu_hud_row_kind(row.kind)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::unsupported_row_kind,
+                                               row.id, row.command_id, "runtime menu hud row kind is not supported");
+            continue;
+        }
+
+        if (row.kind != RuntimeMenuHudRowKind::command) {
+            continue;
+        }
+
+        if (row.command_id.empty()) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::missing_command_id,
+                                               row.id, {}, "runtime menu hud command row requires a command id");
+        } else if (contains_runtime_ui_row_id(command_ids, row.command_id)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::duplicate_command_id,
+                                               row.id, row.command_id, "runtime menu hud command id must be unique");
+        } else {
+            command_ids.push_back(row.command_id);
+        }
+
+        if (!is_valid_runtime_menu_hud_command_target(row.command_target)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::invalid_command_target,
+                                               row.id, row.command_id,
+                                               "runtime menu hud command target must be a supported target");
+        }
+
+        if (!is_valid_runtime_menu_hud_command_intent(row.command_intent)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::invalid_command_intent,
+                                               row.id, row.command_id,
+                                               "runtime menu hud command intent must be a supported intent");
+        }
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    plan.display_rows.reserve(rows.size());
+    plan.command_rows.reserve(command_ids.size());
+    for (const auto& row : rows) {
+        plan.display_rows.push_back(RuntimeMenuHudDisplayRow{
+            .id = row.id, .kind = row.kind, .label = row.label, .value = row.value, .enabled = row.enabled});
+        if (row.kind == RuntimeMenuHudRowKind::command) {
+            plan.command_rows.push_back(RuntimeMenuHudCommandRow{.row_id = row.id,
+                                                                 .command_id = row.command_id,
+                                                                 .intent = row.command_intent,
+                                                                 .target = row.command_target,
+                                                                 .enabled = row.enabled});
+        }
+    }
+
+    return plan;
+}
+
+bool RuntimeGameplayDebugOverlayPlan::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
+RuntimeGameplayDebugOverlayPlan
+plan_runtime_gameplay_debug_overlay(const std::vector<RuntimeGameplayDebugOverlayRowDesc>& rows) {
+    RuntimeGameplayDebugOverlayPlan plan;
+    std::vector<std::string> row_ids;
+    row_ids.reserve(rows.size());
+
+    for (const auto& row : rows) {
+        if (row.id.empty()) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::missing_row_id, {},
+                "runtime gameplay debug overlay row id must not be empty");
+        } else if (contains_runtime_ui_row_id(row_ids, row.id)) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::duplicate_row_id, row.id,
+                "runtime gameplay debug overlay row id must be unique");
+        } else {
+            row_ids.push_back(row.id);
+        }
+
+        if (row.label.empty()) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::missing_label, row.id,
+                "runtime gameplay debug overlay row label must not be empty");
+        }
+        if (!is_valid_runtime_gameplay_debug_overlay_category(row.category)) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_category, row.id,
+                "runtime gameplay debug overlay row category is not supported");
+        }
+        if (!is_valid_runtime_gameplay_debug_overlay_row_kind(row.kind)) {
+            append_runtime_gameplay_debug_overlay_diagnostic(
+                plan.diagnostics, RuntimeGameplayDebugOverlayDiagnosticCode::unsupported_row_kind, row.id,
+                "runtime gameplay debug overlay row kind is not supported");
+        }
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    plan.rows.reserve(rows.size());
+    for (const auto& row : rows) {
+        plan.rows.push_back(RuntimeGameplayDebugOverlayRow{
+            .id = row.id,
+            .category = row.category,
+            .kind = row.kind,
+            .label = row.label,
+            .value = row.value,
+            .highlighted = row.highlighted,
+            .visible = row.visible,
+        });
+    }
+
+    return plan;
 }
 
 bool CommandRegistry::try_add(CommandBinding command) {

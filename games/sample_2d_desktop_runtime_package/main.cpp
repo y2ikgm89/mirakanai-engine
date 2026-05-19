@@ -1,9 +1,15 @@
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
+#include "mirakana/ai/behavior_tree.hpp"
+#include "mirakana/ai/perception.hpp"
 #include "mirakana/assets/asset_identity.hpp"
 #include "mirakana/audio/audio_mixer.hpp"
 #include "mirakana/core/application.hpp"
+#include "mirakana/navigation/navigation_agent.hpp"
+#include "mirakana/navigation/navigation_grid.hpp"
+#include "mirakana/navigation/navigation_path_planner.hpp"
+#include "mirakana/physics/physics2d.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
@@ -23,6 +29,7 @@
 
 #include <charconv>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <exception>
@@ -50,6 +57,7 @@ struct DesktopRuntimeOptions {
     bool require_native_2d_sprites{false};
     bool require_sprite_animation{false};
     bool require_tilemap_runtime_ux{false};
+    bool require_gameplay_systems{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -71,6 +79,214 @@ constexpr std::string_view kRuntime2dVulkanNativeSpriteOverlayVertexShaderPath{
 constexpr std::string_view kRuntime2dVulkanNativeSpriteOverlayFragmentShaderPath{
     "shaders/sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv"};
 constexpr mirakana::SceneNodeId kPlayerNode{2};
+constexpr mirakana::BehaviorTreeNodeId kGameplay2dRootNode{1};
+constexpr mirakana::BehaviorTreeNodeId kGameplay2dHasTargetNode{2};
+constexpr mirakana::BehaviorTreeNodeId kGameplay2dNeedsMoveNode{3};
+constexpr mirakana::BehaviorTreeNodeId kGameplay2dMoveActionNode{4};
+constexpr const char* kGameplay2dBehaviorId{"sample_2d_move_to_target"};
+constexpr const char* kGameplay2dMoveActionId{"move_to_target"};
+constexpr const char* kGameplay2dHasTargetKey{"sample2d.has_target"};
+constexpr const char* kGameplay2dNeedsMoveKey{"sample2d.needs_move"};
+constexpr const char* kGameplay2dTargetIdKey{"sample2d.target_id"};
+constexpr const char* kGameplay2dTargetDistanceKey{"sample2d.target_distance"};
+constexpr const char* kGameplay2dVisibleTargetsKey{"sample2d.visible_targets"};
+constexpr const char* kGameplay2dAudibleTargetsKey{"sample2d.audible_targets"};
+constexpr const char* kGameplay2dTargetStateKey{"sample2d.target_state"};
+
+enum class Gameplay2DSystemsStatus : std::uint8_t {
+    not_started,
+    ready,
+    diagnostics,
+};
+
+[[nodiscard]] std::string_view gameplay_2d_systems_status_name(Gameplay2DSystemsStatus status) noexcept {
+    switch (status) {
+    case Gameplay2DSystemsStatus::not_started:
+        return "not_started";
+    case Gameplay2DSystemsStatus::ready:
+        return "ready";
+    case Gameplay2DSystemsStatus::diagnostics:
+        return "diagnostics";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] bool gameplay_2d_near(float value, float expected, float epsilon = 0.001F) noexcept {
+    return std::abs(value - expected) <= epsilon;
+}
+
+[[nodiscard]] std::string_view
+navigation_grid_agent_path_status_name(mirakana::NavigationGridAgentPathStatus status) noexcept {
+    switch (status) {
+    case mirakana::NavigationGridAgentPathStatus::ready:
+        return "ready";
+    case mirakana::NavigationGridAgentPathStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::NavigationGridAgentPathStatus::invalid_mapping:
+        return "invalid_mapping";
+    case mirakana::NavigationGridAgentPathStatus::unsupported_adjacency:
+        return "unsupported_adjacency";
+    case mirakana::NavigationGridAgentPathStatus::invalid_endpoint:
+        return "invalid_endpoint";
+    case mirakana::NavigationGridAgentPathStatus::blocked_endpoint:
+        return "blocked_endpoint";
+    case mirakana::NavigationGridAgentPathStatus::no_path:
+        return "no_path";
+    case mirakana::NavigationGridAgentPathStatus::invalid_source_path:
+        return "invalid_source_path";
+    case mirakana::NavigationGridAgentPathStatus::agent_path_invalid:
+        return "agent_path_invalid";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+navigation_grid_agent_path_diagnostic_name(mirakana::NavigationGridAgentPathDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::NavigationGridAgentPathDiagnostic::none:
+        return "none";
+    case mirakana::NavigationGridAgentPathDiagnostic::invalid_mapping:
+        return "invalid_mapping";
+    case mirakana::NavigationGridAgentPathDiagnostic::unsupported_adjacency:
+        return "unsupported_adjacency";
+    case mirakana::NavigationGridAgentPathDiagnostic::path_invalid_endpoint:
+        return "path_invalid_endpoint";
+    case mirakana::NavigationGridAgentPathDiagnostic::path_blocked_endpoint:
+        return "path_blocked_endpoint";
+    case mirakana::NavigationGridAgentPathDiagnostic::path_not_found:
+        return "path_not_found";
+    case mirakana::NavigationGridAgentPathDiagnostic::smoothing_invalid_source_path:
+        return "smoothing_invalid_source_path";
+    case mirakana::NavigationGridAgentPathDiagnostic::smoothing_unsupported_adjacency:
+        return "smoothing_unsupported_adjacency";
+    case mirakana::NavigationGridAgentPathDiagnostic::point_mapping_failed:
+        return "point_mapping_failed";
+    case mirakana::NavigationGridAgentPathDiagnostic::agent_path_rejected:
+        return "agent_path_rejected";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view navigation_agent_status_name(mirakana::NavigationAgentStatus status) noexcept {
+    switch (status) {
+    case mirakana::NavigationAgentStatus::idle:
+        return "idle";
+    case mirakana::NavigationAgentStatus::moving:
+        return "moving";
+    case mirakana::NavigationAgentStatus::reached_destination:
+        return "reached_destination";
+    case mirakana::NavigationAgentStatus::cancelled:
+        return "cancelled";
+    case mirakana::NavigationAgentStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view ai_perception_status_name(mirakana::AiPerceptionStatus status) noexcept {
+    switch (status) {
+    case mirakana::AiPerceptionStatus::ready:
+        return "ready";
+    case mirakana::AiPerceptionStatus::invalid_agent:
+        return "invalid_agent";
+    case mirakana::AiPerceptionStatus::invalid_target:
+        return "invalid_target";
+    case mirakana::AiPerceptionStatus::duplicate_target_id:
+        return "duplicate_target_id";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+ai_perception_blackboard_status_name(mirakana::AiPerceptionBlackboardStatus status) noexcept {
+    switch (status) {
+    case mirakana::AiPerceptionBlackboardStatus::ready:
+        return "ready";
+    case mirakana::AiPerceptionBlackboardStatus::invalid_snapshot:
+        return "invalid_snapshot";
+    case mirakana::AiPerceptionBlackboardStatus::invalid_key:
+        return "invalid_key";
+    case mirakana::AiPerceptionBlackboardStatus::blackboard_write_failed:
+        return "blackboard_write_failed";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view behavior_tree_status_name(mirakana::BehaviorTreeStatus status) noexcept {
+    switch (status) {
+    case mirakana::BehaviorTreeStatus::success:
+        return "success";
+    case mirakana::BehaviorTreeStatus::failure:
+        return "failure";
+    case mirakana::BehaviorTreeStatus::running:
+        return "running";
+    case mirakana::BehaviorTreeStatus::invalid_tree:
+        return "invalid_tree";
+    case mirakana::BehaviorTreeStatus::missing_leaf_result:
+        return "missing_leaf_result";
+    case mirakana::BehaviorTreeStatus::invalid_leaf_result:
+        return "invalid_leaf_result";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] mirakana::BehaviorTreeDesc gameplay_2d_behavior_tree_desc() {
+    return mirakana::BehaviorTreeDesc{
+        .root_id = kGameplay2dRootNode,
+        .nodes =
+            {
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dRootNode,
+                    .kind = mirakana::BehaviorTreeNodeKind::sequence,
+                    .children = {kGameplay2dHasTargetNode, kGameplay2dNeedsMoveNode, kGameplay2dMoveActionNode}},
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dHasTargetNode, .kind = mirakana::BehaviorTreeNodeKind::condition, .children = {}},
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dNeedsMoveNode, .kind = mirakana::BehaviorTreeNodeKind::condition, .children = {}},
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dMoveActionNode, .kind = mirakana::BehaviorTreeNodeKind::action, .children = {}},
+            },
+    };
+}
+
+[[nodiscard]] std::vector<mirakana::BehaviorTreeBlackboardCondition> gameplay_2d_behavior_conditions() {
+    return std::vector<mirakana::BehaviorTreeBlackboardCondition>{
+        mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplay2dHasTargetNode,
+                                                  .key = kGameplay2dHasTargetKey,
+                                                  .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                                  .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+        mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplay2dNeedsMoveNode,
+                                                  .key = kGameplay2dNeedsMoveKey,
+                                                  .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                                  .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+    };
+}
+
+[[nodiscard]] mirakana::BehaviorAuthoringValidationResult validate_gameplay_2d_behavior_authoring() {
+    const std::vector<std::string> blackboard_keys{kGameplay2dHasTargetKey, kGameplay2dNeedsMoveKey};
+    const std::vector<std::string> supported_actions{kGameplay2dMoveActionId};
+    const auto conditions = gameplay_2d_behavior_conditions();
+    const mirakana::BehaviorAuthoringDocument document{
+        .behaviors =
+            std::vector<mirakana::BehaviorAuthoringBehaviorDesc>{
+                mirakana::BehaviorAuthoringBehaviorDesc{
+                    .id = kGameplay2dBehaviorId,
+                    .tree = gameplay_2d_behavior_tree_desc(),
+                    .blackboard_conditions = conditions,
+                    .actions =
+                        std::vector<mirakana::BehaviorAuthoringActionBinding>{
+                            mirakana::BehaviorAuthoringActionBinding{.node_id = kGameplay2dMoveActionNode,
+                                                                     .action_id = kGameplay2dMoveActionId},
+                        },
+                },
+            },
+    };
+    return mirakana::validate_behavior_authoring_document(
+        document, mirakana::BehaviorAuthoringValidationContext{
+                      .blackboard_keys = std::span<const std::string>{blackboard_keys},
+                      .supported_actions = std::span<const std::string>{supported_actions},
+                  });
+}
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
@@ -96,6 +312,342 @@ constexpr mirakana::SceneNodeId kPlayerNode{2};
     return asset_id_from_game_asset_key("sample/2d-desktop-runtime-package/tilemap");
 }
 
+class Gameplay2DSystemsProbe final {
+  public:
+    Gameplay2DSystemsProbe() : physics_(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}}) {}
+
+    void start() {
+        constexpr std::uint32_t character_layer = 1U << 0U;
+        constexpr std::uint32_t solid_layer = 1U << 1U;
+        constexpr std::uint32_t trigger_layer = 1U << 2U;
+
+        actor_body_ = physics_.create_body(mirakana::PhysicsBody2DDesc{
+            .position = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+            .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape2DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = character_layer,
+            .collision_mask = solid_layer | trigger_layer,
+        });
+        solid_body_ = physics_.create_body(mirakana::PhysicsBody2DDesc{
+            .position = mirakana::Vec2{.x = 0.75F, .y = 0.0F},
+            .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape2DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = solid_layer,
+            .collision_mask = character_layer,
+        });
+        trigger_body_ = physics_.create_body(mirakana::PhysicsBody2DDesc{
+            .position = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+            .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec2{.x = 0.6F, .y = 0.6F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape2DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = trigger_layer,
+            .collision_mask = character_layer,
+            .trigger = true,
+        });
+
+        mirakana::NavigationGrid grid(mirakana::NavigationGridSize{.width = 2, .height = 1});
+        const auto plan =
+            mirakana::plan_navigation_grid_agent_path(grid, mirakana::NavigationGridAgentPathRequest{
+                                                                .start = mirakana::NavigationGridCoord{.x = 0, .y = 0},
+                                                                .goal = mirakana::NavigationGridCoord{.x = 1, .y = 0},
+                                                                .mapping =
+                                                                    mirakana::NavigationGridPointMapping{
+                                                                        .origin = mirakana::NavigationPoint2{},
+                                                                        .cell_size = 1.0F,
+                                                                        .use_cell_centers = true,
+                                                                    },
+                                                                .adjacency = mirakana::NavigationAdjacency::cardinal4,
+                                                                .smooth_path = true,
+                                                            });
+        navigation_plan_status_ = plan.status;
+        navigation_plan_diagnostic_ = plan.diagnostic;
+        navigation_path_point_count_ = plan.planned_grid_point_count;
+        navigation_agent_ = plan.agent_state;
+        if (!navigation_agent_.path.empty()) {
+            navigation_goal_ = navigation_agent_.path.back();
+        }
+
+        const auto behavior_authoring = validate_gameplay_2d_behavior_authoring();
+        behavior_authoring_ready_ = behavior_authoring.succeeded;
+        behavior_authoring_diagnostics_ = behavior_authoring.diagnostics.size();
+        behavior_authoring_trace_nodes_ = behavior_authoring.trace.size();
+
+        started_ = true;
+    }
+
+    void tick() {
+        if (!started_) {
+            return;
+        }
+
+        physics_.apply_force(actor_body_, mirakana::Vec2{.x = 4.0F, .y = 0.0F});
+        physics_.step(0.25F);
+        const auto contacts = physics_.contacts();
+        const auto overlaps = physics_.trigger_overlaps();
+        physics_contact_count_ += contacts.size();
+        physics_trigger_overlap_count_ += overlaps.size();
+        physics_.resolve_contacts();
+        ++physics_ticks_;
+
+        update_ai_navigation_composition();
+        ++ticks_;
+    }
+
+    [[nodiscard]] bool passed(std::uint32_t expected_ticks) const {
+        return started_ && ticks_ == expected_ticks && physics_ticks_ == expected_ticks &&
+               physics_.bodies().size() == 3U && actor_body_ != mirakana::null_physics_body_2d &&
+               solid_body_ != mirakana::null_physics_body_2d && trigger_body_ != mirakana::null_physics_body_2d &&
+               physics_contact_count_ > 0U && physics_trigger_overlap_count_ > 0U &&
+               navigation_plan_status_ == mirakana::NavigationGridAgentPathStatus::ready &&
+               navigation_plan_diagnostic_ == mirakana::NavigationGridAgentPathDiagnostic::none &&
+               navigation_path_point_count_ == 2U &&
+               navigation_agent_.status == mirakana::NavigationAgentStatus::reached_destination &&
+               gameplay_2d_near(navigation_goal_.x, 1.5F) && gameplay_2d_near(navigation_goal_.y, 0.5F) &&
+               gameplay_2d_near(navigation_agent_.position.x, 1.5F) &&
+               gameplay_2d_near(navigation_agent_.position.y, 0.5F) &&
+               last_perception_status_ == mirakana::AiPerceptionStatus::ready && last_perception_has_primary_target_ &&
+               last_perception_target_count_ == 1U && last_perception_visible_count_ == 1U &&
+               last_blackboard_status_ == mirakana::AiPerceptionBlackboardStatus::ready && blackboard_has_target_ &&
+               blackboard_needs_move_ && last_tree_result_.status == mirakana::BehaviorTreeStatus::success &&
+               last_tree_result_.visited_nodes.size() == 4U && behavior_authoring_ready_ &&
+               behavior_authoring_diagnostics_ == 0U && behavior_authoring_trace_nodes_ == 4U;
+    }
+
+    [[nodiscard]] Gameplay2DSystemsStatus status(std::uint32_t expected_ticks) const {
+        if (!started_) {
+            return Gameplay2DSystemsStatus::not_started;
+        }
+        return passed(expected_ticks) ? Gameplay2DSystemsStatus::ready : Gameplay2DSystemsStatus::diagnostics;
+    }
+
+    [[nodiscard]] std::uint32_t ticks() const noexcept {
+        return ticks_;
+    }
+
+    [[nodiscard]] std::uint32_t physics_ticks() const noexcept {
+        return physics_ticks_;
+    }
+
+    [[nodiscard]] std::size_t physics_body_count() const noexcept {
+        return physics_.bodies().size();
+    }
+
+    [[nodiscard]] std::size_t physics_contact_count() const noexcept {
+        return physics_contact_count_;
+    }
+
+    [[nodiscard]] std::size_t physics_trigger_overlap_count() const noexcept {
+        return physics_trigger_overlap_count_;
+    }
+
+    [[nodiscard]] std::size_t navigation_path_point_count() const noexcept {
+        return navigation_path_point_count_;
+    }
+
+    [[nodiscard]] bool navigation_reached_destination() const noexcept {
+        return navigation_agent_.status == mirakana::NavigationAgentStatus::reached_destination;
+    }
+
+    [[nodiscard]] mirakana::NavigationGridAgentPathStatus navigation_plan_status() const noexcept {
+        return navigation_plan_status_;
+    }
+
+    [[nodiscard]] mirakana::NavigationGridAgentPathDiagnostic navigation_plan_diagnostic() const noexcept {
+        return navigation_plan_diagnostic_;
+    }
+
+    [[nodiscard]] mirakana::NavigationAgentStatus navigation_agent_status() const noexcept {
+        return navigation_agent_.status;
+    }
+
+    [[nodiscard]] mirakana::AiPerceptionStatus perception_status() const noexcept {
+        return last_perception_status_;
+    }
+
+    [[nodiscard]] std::size_t perception_target_count() const noexcept {
+        return last_perception_target_count_;
+    }
+
+    [[nodiscard]] bool perception_has_primary_target() const noexcept {
+        return last_perception_has_primary_target_;
+    }
+
+    [[nodiscard]] std::size_t perception_visible_count() const noexcept {
+        return last_perception_visible_count_;
+    }
+
+    [[nodiscard]] mirakana::AiPerceptionBlackboardStatus blackboard_status() const noexcept {
+        return last_blackboard_status_;
+    }
+
+    [[nodiscard]] bool blackboard_has_target() const noexcept {
+        return blackboard_has_target_;
+    }
+
+    [[nodiscard]] bool blackboard_needs_move() const noexcept {
+        return blackboard_needs_move_;
+    }
+
+    [[nodiscard]] mirakana::BehaviorTreeStatus behavior_status() const noexcept {
+        return last_tree_result_.status;
+    }
+
+    [[nodiscard]] std::size_t behavior_visited_node_count() const noexcept {
+        return last_tree_result_.visited_nodes.size();
+    }
+
+    [[nodiscard]] bool behavior_authoring_ready() const noexcept {
+        return behavior_authoring_ready_;
+    }
+
+    [[nodiscard]] std::size_t behavior_authoring_diagnostic_count() const noexcept {
+        return behavior_authoring_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t behavior_authoring_trace_node_count() const noexcept {
+        return behavior_authoring_trace_nodes_;
+    }
+
+  private:
+    void update_ai_navigation_composition() {
+        if (navigation_plan_status_ != mirakana::NavigationGridAgentPathStatus::ready ||
+            navigation_agent_.path.empty()) {
+            return;
+        }
+
+        const std::vector<mirakana::AiPerceptionTarget2D> route_targets{
+            mirakana::AiPerceptionTarget2D{
+                .id = 1U,
+                .position = mirakana::AiPerceptionPoint2{.x = navigation_agent_.path.back().x,
+                                                         .y = navigation_agent_.path.back().y},
+                .radius = 0.0F,
+                .sight_enabled = true,
+                .hearing_enabled = false,
+                .sound_radius = 0.0F,
+            },
+        };
+        const auto perception = mirakana::build_ai_perception_snapshot_2d(mirakana::AiPerceptionRequest2D{
+            .agent = mirakana::AiPerceptionAgent2D{.id = 100U,
+                                                   .position =
+                                                       mirakana::AiPerceptionPoint2{.x = navigation_agent_.position.x,
+                                                                                    .y = navigation_agent_.position.y},
+                                                   .forward = mirakana::AiPerceptionPoint2{.x = 1.0F, .y = 0.0F},
+                                                   .sight_range = 4.0F,
+                                                   .field_of_view_radians = 6.28318530718F,
+                                                   .hearing_range = 0.0F},
+            .targets = std::span<const mirakana::AiPerceptionTarget2D>{route_targets},
+        });
+        last_perception_status_ = perception.status;
+        last_perception_target_count_ = perception.targets.size();
+        last_perception_has_primary_target_ = perception.has_primary_target;
+        last_perception_visible_count_ = perception.visible_count;
+
+        mirakana::BehaviorTreeBlackboard blackboard;
+        const auto blackboard_result =
+            mirakana::write_ai_perception_blackboard(perception,
+                                                     mirakana::AiPerceptionBlackboardKeys{
+                                                         .has_target_key = kGameplay2dHasTargetKey,
+                                                         .target_id_key = kGameplay2dTargetIdKey,
+                                                         .target_distance_key = kGameplay2dTargetDistanceKey,
+                                                         .visible_count_key = kGameplay2dVisibleTargetsKey,
+                                                         .audible_count_key = kGameplay2dAudibleTargetsKey,
+                                                         .target_state_key = kGameplay2dTargetStateKey,
+                                                     },
+                                                     blackboard);
+        last_blackboard_status_ = blackboard_result.status;
+        if (blackboard_result.status != mirakana::AiPerceptionBlackboardStatus::ready ||
+            !blackboard.set(kGameplay2dNeedsMoveKey, mirakana::make_behavior_tree_blackboard_bool(true))) {
+            return;
+        }
+
+        if (const auto* value = blackboard.find(kGameplay2dHasTargetKey);
+            value != nullptr && value->kind == mirakana::BehaviorTreeBlackboardValueKind::boolean) {
+            blackboard_has_target_ = value->bool_value;
+        }
+        if (const auto* value = blackboard.find(kGameplay2dNeedsMoveKey);
+            value != nullptr && value->kind == mirakana::BehaviorTreeBlackboardValueKind::boolean) {
+            blackboard_needs_move_ = value->bool_value;
+        }
+
+        const auto conditions = gameplay_2d_behavior_conditions();
+        const auto supporting_systems_ready =
+            physics_.bodies().size() == 3U && physics_contact_count_ > 0U && physics_trigger_overlap_count_ > 0U;
+        const std::vector<mirakana::BehaviorTreeLeafResult> leaf_results{
+            mirakana::BehaviorTreeLeafResult{.node_id = kGameplay2dMoveActionNode,
+                                             .status = supporting_systems_ready
+                                                           ? mirakana::BehaviorTreeStatus::success
+                                                           : mirakana::BehaviorTreeStatus::failure},
+        };
+
+        last_tree_result_ = mirakana::evaluate_behavior_tree(
+            gameplay_2d_behavior_tree_desc(),
+            mirakana::BehaviorTreeEvaluationContext{
+                .leaf_results = std::span<const mirakana::BehaviorTreeLeafResult>{leaf_results},
+                .blackboard_entries = blackboard.entries(),
+                .blackboard_conditions = std::span<const mirakana::BehaviorTreeBlackboardCondition>{conditions},
+            });
+
+        if (last_tree_result_.status != mirakana::BehaviorTreeStatus::success ||
+            navigation_agent_.status == mirakana::NavigationAgentStatus::reached_destination) {
+            return;
+        }
+
+        const auto update = mirakana::update_navigation_agent(mirakana::NavigationAgentUpdateRequest{
+            .state = navigation_agent_,
+            .config =
+                mirakana::NavigationAgentConfig{.max_speed = 8.0F, .slowing_radius = 1.0F, .arrival_radius = 0.001F},
+            .delta_seconds = 1.0F,
+        });
+        navigation_agent_ = update.state;
+    }
+
+    mirakana::PhysicsWorld2D physics_;
+    mirakana::NavigationAgentState navigation_agent_;
+    mirakana::BehaviorTreeTickResult last_tree_result_;
+    mirakana::PhysicsBody2DId actor_body_{mirakana::null_physics_body_2d};
+    mirakana::PhysicsBody2DId solid_body_{mirakana::null_physics_body_2d};
+    mirakana::PhysicsBody2DId trigger_body_{mirakana::null_physics_body_2d};
+    mirakana::NavigationGridAgentPathStatus navigation_plan_status_{
+        mirakana::NavigationGridAgentPathStatus::invalid_request};
+    mirakana::NavigationGridAgentPathDiagnostic navigation_plan_diagnostic_{
+        mirakana::NavigationGridAgentPathDiagnostic::none};
+    mirakana::NavigationPoint2 navigation_goal_{};
+    mirakana::AiPerceptionStatus last_perception_status_{mirakana::AiPerceptionStatus::invalid_agent};
+    mirakana::AiPerceptionBlackboardStatus last_blackboard_status_{
+        mirakana::AiPerceptionBlackboardStatus::invalid_snapshot};
+    std::size_t physics_contact_count_{0U};
+    std::size_t physics_trigger_overlap_count_{0U};
+    std::size_t navigation_path_point_count_{0U};
+    std::size_t last_perception_target_count_{0U};
+    std::size_t last_perception_visible_count_{0U};
+    std::size_t behavior_authoring_diagnostics_{0U};
+    std::size_t behavior_authoring_trace_nodes_{0U};
+    std::uint32_t ticks_{0U};
+    std::uint32_t physics_ticks_{0U};
+    bool last_perception_has_primary_target_{false};
+    bool blackboard_has_target_{false};
+    bool blackboard_needs_move_{false};
+    bool behavior_authoring_ready_{false};
+    bool started_{false};
+};
+
 class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
   public:
     Sample2DDesktopRuntimePackageGame(mirakana::VirtualInput& input, mirakana::IRenderer& renderer, bool throttle,
@@ -105,13 +657,21 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
                                       mirakana::runtime::RuntimeTilemapPayload tilemap)
         : input_(input), renderer_(renderer), throttle_(throttle), scene_(std::move(scene)),
           audio_samples_(std::move(audio_samples)), sprite_animation_(std::move(sprite_animation)),
-          tilemap_(std::move(tilemap)) {}
+          tilemap_(std::move(tilemap)) {
+        sprite_flipbook_clips_.push_back(
+            mirakana::RuntimeSpriteFlipbookClipDesc{.name = "idle",
+                                                    .first_frame_index = 0,
+                                                    .frame_count = sprite_animation_.frames.size(),
+                                                    .loop = sprite_animation_.loop});
+        sprite_flipbook_state_.clip_name = "idle";
+    }
 
     void on_start(mirakana::EngineContext&) override {
         actions_.bind_key_axis("move_x", mirakana::Key::left, mirakana::Key::right);
         actions_.bind_key("jump", mirakana::Key::space);
         input_.press(mirakana::Key::right);
         input_.press(mirakana::Key::space);
+        gameplay_systems_.start();
 
         if (scene_.scene.has_value()) {
             const auto validation = mirakana::validate_playable_2d_scene(*scene_.scene);
@@ -149,6 +709,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         if (!scene_.scene.has_value()) {
             return false;
         }
+        gameplay_systems_.tick();
 
         const mirakana::runtime::RuntimeInputStateView input_state{
             .keyboard = &input_,
@@ -167,14 +728,40 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
                 mirakana::AudioVoiceDesc{.clip = audio_samples_.clip, .bus = "master", .gain = 1.0F, .looping = false});
         }
 
-        const auto animation_result = mirakana::sample_and_apply_runtime_scene_render_sprite_animation(
-            scene_, sprite_animation_, static_cast<float>(frames_) * 0.25F);
-        sprite_animation_ok_ = sprite_animation_ok_ && animation_result.succeeded;
-        sprite_animation_frames_sampled_ += animation_result.sampled_frame_count;
-        sprite_animation_frames_applied_ += animation_result.applied_frame_count;
-        sprite_animation_selected_frame_sum_ += animation_result.selected_frame_index;
-        if (!animation_result.succeeded) {
+        const mirakana::RuntimeSpriteFlipbookDesc flipbook_desc{
+            .frames = std::span<const mirakana::runtime::RuntimeSpriteAnimationFrame>{sprite_animation_.frames},
+            .clips = std::span<const mirakana::RuntimeSpriteFlipbookClipDesc>{sprite_flipbook_clips_},
+        };
+        const auto flipbook_result =
+            mirakana::advance_runtime_sprite_flipbook(sprite_flipbook_state_, flipbook_desc, 0.25F);
+        ++sprite_flipbook_ticks_;
+        sprite_flipbook_ok_ = sprite_flipbook_ok_ && flipbook_result.succeeded;
+        sprite_flipbook_frames_sampled_ += flipbook_result.sampled_frame_count;
+        sprite_flipbook_selected_frame_sum_ += flipbook_result.selected_frame_index;
+        if (!flipbook_result.succeeded) {
+            sprite_animation_ok_ = false;
+            ++sprite_flipbook_diagnostics_;
             ++sprite_animation_diagnostics_;
+        } else {
+            mirakana::runtime::RuntimeSpriteAnimationPayload sampled_animation;
+            sampled_animation.asset = sprite_animation_.asset;
+            sampled_animation.handle = sprite_animation_.handle;
+            sampled_animation.target_node = sprite_animation_.target_node;
+            sampled_animation.loop = false;
+            sampled_animation.frames.push_back(flipbook_result.frame);
+
+            const auto animation_result =
+                mirakana::sample_and_apply_runtime_scene_render_sprite_animation(scene_, sampled_animation, 0.0F);
+            sprite_animation_ok_ = sprite_animation_ok_ && animation_result.succeeded;
+            sprite_animation_frames_sampled_ += animation_result.sampled_frame_count;
+            sprite_animation_frames_applied_ += animation_result.applied_frame_count;
+            sprite_animation_selected_frame_sum_ += flipbook_result.selected_frame_index;
+            sprite_flipbook_frames_applied_ += animation_result.applied_frame_count;
+            if (!animation_result.succeeded) {
+                sprite_flipbook_ok_ = false;
+                ++sprite_flipbook_diagnostics_;
+                ++sprite_animation_diagnostics_;
+            }
         }
 
         const auto validation = mirakana::validate_playable_2d_scene(*scene_.scene);
@@ -192,6 +779,9 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         sprite_batch_plan_texture_binds_ += batch_plan.texture_bind_count;
         sprite_batch_plan_diagnostics_ += batch_plan.diagnostics.size();
         scene_sprites_submitted_ += scene_submit.sprites_submitted;
+        sprite_batch_plan_atlas_backed_batches_ += batch_plan.atlas_backed_batch_count;
+        sprite_batch_plan_repeated_atlas_batches_ += batch_plan.repeated_atlas_batch_count;
+        sprite_batch_plan_repeated_atlas_sprites_ += batch_plan.repeated_atlas_sprite_count;
         primary_camera_seen_ = primary_camera_seen_ || scene_submit.has_primary_camera;
 
         update_hud_text();
@@ -233,19 +823,28 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     }
 
     [[nodiscard]] bool passed(std::uint32_t expected_frames) const noexcept {
+        const auto expected_sprite_submissions =
+            static_cast<std::uint64_t>(expected_frames) * static_cast<std::uint64_t>(package_scene_sprites_);
         return ui_ok_ && ui_text_updates_ok_ && validation_ok_ && audio_clip_registered_ &&
                jump_voice_ != mirakana::null_audio_voice && frames_ == expected_frames &&
                final_x_ == static_cast<float>(expected_frames) && primary_camera_seen_ &&
-               scene_sprites_submitted_ == expected_frames && hud_boxes_submitted_ == expected_frames &&
-               sprite_batch_plan_ok_ && sprite_batch_plan_sprites_ == expected_frames &&
-               sprite_batch_plan_textured_sprites_ == expected_frames && sprite_batch_plan_draws_ == expected_frames &&
-               sprite_batch_plan_texture_binds_ == expected_frames && sprite_batch_plan_diagnostics_ == 0 &&
-               sprite_animation_ok_ && sprite_animation_frames_sampled_ == expected_frames &&
+               scene_sprites_submitted_ == expected_sprite_submissions && hud_boxes_submitted_ == expected_frames &&
+               sprite_batch_plan_ok_ && sprite_batch_plan_sprites_ == expected_sprite_submissions &&
+               sprite_batch_plan_textured_sprites_ == expected_sprite_submissions &&
+               sprite_batch_plan_draws_ == expected_frames && sprite_batch_plan_texture_binds_ == expected_frames &&
+               sprite_batch_plan_atlas_backed_batches_ == expected_frames &&
+               sprite_batch_plan_repeated_atlas_batches_ == expected_frames &&
+               sprite_batch_plan_repeated_atlas_sprites_ == expected_sprite_submissions &&
+               sprite_batch_plan_diagnostics_ == 0 && sprite_animation_ok_ &&
+               sprite_animation_frames_sampled_ == expected_frames &&
                sprite_animation_frames_applied_ == expected_frames && sprite_animation_diagnostics_ == 0 &&
-               sprite_animation_selected_frame_sum_ > 0 && audio_commands_ == 1 && audio_underruns_ == 0 &&
-               package_scene_sprites_ == 1 && tilemap_runtime_ok_ && tilemap_layers_ == 1 &&
+               sprite_animation_selected_frame_sum_ > 0 && sprite_flipbook_ok_ &&
+               sprite_flipbook_ticks_ == expected_frames && sprite_flipbook_frames_sampled_ == expected_frames &&
+               sprite_flipbook_frames_applied_ == expected_frames && sprite_flipbook_selected_frame_sum_ > 0 &&
+               sprite_flipbook_diagnostics_ == 0 && audio_commands_ == 1 && audio_underruns_ == 0 &&
+               package_scene_sprites_ == 2 && tilemap_runtime_ok_ && tilemap_layers_ == 1 &&
                tilemap_visible_layers_ == 1 && tilemap_tiles_ == 2 && tilemap_non_empty_cells_ == 3 &&
-               tilemap_sampled_cells_ == 3 && tilemap_diagnostics_ == 0;
+               tilemap_sampled_cells_ == 3 && tilemap_diagnostics_ == 0 && gameplay_systems_.passed(expected_frames);
     }
 
     [[nodiscard]] std::uint32_t frames() const noexcept {
@@ -292,6 +891,18 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         return sprite_batch_plan_texture_binds_;
     }
 
+    [[nodiscard]] std::uint64_t sprite_batch_plan_atlas_backed_batches() const noexcept {
+        return sprite_batch_plan_atlas_backed_batches_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_plan_repeated_atlas_batches() const noexcept {
+        return sprite_batch_plan_repeated_atlas_batches_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_plan_repeated_atlas_sprites() const noexcept {
+        return sprite_batch_plan_repeated_atlas_sprites_;
+    }
+
     [[nodiscard]] std::size_t sprite_batch_plan_diagnostics() const noexcept {
         return sprite_batch_plan_diagnostics_;
     }
@@ -310,6 +921,26 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t sprite_animation_diagnostics() const noexcept {
         return sprite_animation_diagnostics_;
+    }
+
+    [[nodiscard]] std::uint32_t sprite_flipbook_ticks() const noexcept {
+        return sprite_flipbook_ticks_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_flipbook_frames_sampled() const noexcept {
+        return sprite_flipbook_frames_sampled_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_flipbook_frames_applied() const noexcept {
+        return sprite_flipbook_frames_applied_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_flipbook_selected_frame_sum() const noexcept {
+        return sprite_flipbook_selected_frame_sum_;
+    }
+
+    [[nodiscard]] std::size_t sprite_flipbook_diagnostics() const noexcept {
+        return sprite_flipbook_diagnostics_;
     }
 
     [[nodiscard]] std::size_t tilemap_layers() const noexcept {
@@ -334,6 +965,103 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t tilemap_diagnostics() const noexcept {
         return tilemap_diagnostics_;
+    }
+
+    [[nodiscard]] bool gameplay_systems_passed(std::uint32_t expected_frames) const {
+        return gameplay_systems_.passed(expected_frames);
+    }
+
+    [[nodiscard]] Gameplay2DSystemsStatus gameplay_systems_status(std::uint32_t expected_frames) const {
+        return gameplay_systems_.status(expected_frames);
+    }
+
+    [[nodiscard]] std::uint32_t gameplay_systems_ticks() const noexcept {
+        return gameplay_systems_.ticks();
+    }
+
+    [[nodiscard]] std::uint32_t gameplay_systems_physics_ticks() const noexcept {
+        return gameplay_systems_.physics_ticks();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_bodies() const noexcept {
+        return gameplay_systems_.physics_body_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_contacts() const noexcept {
+        return gameplay_systems_.physics_contact_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_trigger_overlaps() const noexcept {
+        return gameplay_systems_.physics_trigger_overlap_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_navigation_path_points() const noexcept {
+        return gameplay_systems_.navigation_path_point_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_navigation_reached_destination() const noexcept {
+        return gameplay_systems_.navigation_reached_destination();
+    }
+
+    [[nodiscard]] mirakana::NavigationGridAgentPathStatus gameplay_systems_navigation_plan_status() const noexcept {
+        return gameplay_systems_.navigation_plan_status();
+    }
+
+    [[nodiscard]] mirakana::NavigationGridAgentPathDiagnostic
+    gameplay_systems_navigation_plan_diagnostic() const noexcept {
+        return gameplay_systems_.navigation_plan_diagnostic();
+    }
+
+    [[nodiscard]] mirakana::NavigationAgentStatus gameplay_systems_navigation_agent_status() const noexcept {
+        return gameplay_systems_.navigation_agent_status();
+    }
+
+    [[nodiscard]] mirakana::AiPerceptionStatus gameplay_systems_perception_status() const noexcept {
+        return gameplay_systems_.perception_status();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_perception_targets() const noexcept {
+        return gameplay_systems_.perception_target_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_perception_has_primary_target() const noexcept {
+        return gameplay_systems_.perception_has_primary_target();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_perception_visible_count() const noexcept {
+        return gameplay_systems_.perception_visible_count();
+    }
+
+    [[nodiscard]] mirakana::AiPerceptionBlackboardStatus gameplay_systems_blackboard_status() const noexcept {
+        return gameplay_systems_.blackboard_status();
+    }
+
+    [[nodiscard]] bool gameplay_systems_blackboard_has_target() const noexcept {
+        return gameplay_systems_.blackboard_has_target();
+    }
+
+    [[nodiscard]] bool gameplay_systems_blackboard_needs_move() const noexcept {
+        return gameplay_systems_.blackboard_needs_move();
+    }
+
+    [[nodiscard]] mirakana::BehaviorTreeStatus gameplay_systems_behavior_status() const noexcept {
+        return gameplay_systems_.behavior_status();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_behavior_nodes() const noexcept {
+        return gameplay_systems_.behavior_visited_node_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_behavior_authoring_ready() const noexcept {
+        return gameplay_systems_.behavior_authoring_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_diagnostics() const noexcept {
+        return gameplay_systems_.behavior_authoring_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_trace_nodes() const noexcept {
+        return gameplay_systems_.behavior_authoring_trace_node_count();
     }
 
   private:
@@ -375,8 +1103,11 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     mirakana::ui::UiDocument hud_;
     mirakana::UiRendererTheme theme_;
     mirakana::AudioMixer mixer_;
+    Gameplay2DSystemsProbe gameplay_systems_;
     mirakana::AudioClipSampleData audio_samples_;
     mirakana::runtime::RuntimeSpriteAnimationPayload sprite_animation_;
+    std::vector<mirakana::RuntimeSpriteFlipbookClipDesc> sprite_flipbook_clips_;
+    mirakana::RuntimeSpriteFlipbookState sprite_flipbook_state_;
     mirakana::runtime::RuntimeTilemapPayload tilemap_;
     mirakana::AudioVoiceId jump_voice_;
     std::size_t scene_sprites_submitted_{0};
@@ -388,11 +1119,18 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     std::uint64_t sprite_batch_plan_textured_sprites_{0};
     std::uint64_t sprite_batch_plan_draws_{0};
     std::uint64_t sprite_batch_plan_texture_binds_{0};
+    std::uint64_t sprite_batch_plan_atlas_backed_batches_{0};
+    std::uint64_t sprite_batch_plan_repeated_atlas_batches_{0};
+    std::uint64_t sprite_batch_plan_repeated_atlas_sprites_{0};
     std::size_t sprite_batch_plan_diagnostics_{0};
     std::uint64_t sprite_animation_frames_sampled_{0};
     std::uint64_t sprite_animation_frames_applied_{0};
     std::uint64_t sprite_animation_selected_frame_sum_{0};
     std::size_t sprite_animation_diagnostics_{0};
+    std::uint64_t sprite_flipbook_frames_sampled_{0};
+    std::uint64_t sprite_flipbook_frames_applied_{0};
+    std::uint64_t sprite_flipbook_selected_frame_sum_{0};
+    std::size_t sprite_flipbook_diagnostics_{0};
     std::size_t tilemap_layers_{0};
     std::size_t tilemap_visible_layers_{0};
     std::size_t tilemap_tiles_{0};
@@ -400,6 +1138,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     std::size_t tilemap_sampled_cells_{0};
     std::size_t tilemap_diagnostics_{0};
     std::uint32_t frames_{0};
+    std::uint32_t sprite_flipbook_ticks_{0};
     float final_x_{0.0F};
     bool ui_ok_{false};
     bool ui_text_updates_ok_{true};
@@ -408,6 +1147,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     bool primary_camera_seen_{false};
     bool sprite_batch_plan_ok_{true};
     bool sprite_animation_ok_{true};
+    bool sprite_flipbook_ok_{true};
     bool tilemap_runtime_ok_{false};
     bool throttle_{true};
 };
@@ -429,7 +1169,7 @@ void print_usage() {
                  "[--require-config PATH] --require-scene-package PATH "
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
-                 "[--require-sprite-animation] [--require-tilemap-runtime-ux]\n";
+                 "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -471,6 +1211,10 @@ void print_usage() {
         }
         if (arg == "--require-tilemap-runtime-ux") {
             options.require_tilemap_runtime_ux = true;
+            continue;
+        }
+        if (arg == "--require-gameplay-systems") {
+            options.require_gameplay_systems = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -982,17 +1726,56 @@ int main(int argc, char** argv) {
         << " sprite_batch_plan_textured_sprites=" << game.sprite_batch_plan_textured_sprites()
         << " sprite_batch_plan_draws=" << game.sprite_batch_plan_draws()
         << " sprite_batch_plan_texture_binds=" << game.sprite_batch_plan_texture_binds()
+        << " sprite_batch_plan_atlas_backed_batches=" << game.sprite_batch_plan_atlas_backed_batches()
+        << " sprite_batch_plan_repeated_atlas_batches=" << game.sprite_batch_plan_repeated_atlas_batches()
+        << " sprite_batch_plan_repeated_atlas_sprites=" << game.sprite_batch_plan_repeated_atlas_sprites()
         << " sprite_batch_plan_diagnostics=" << game.sprite_batch_plan_diagnostics()
         << " sprite_animation_frames_sampled=" << game.sprite_animation_frames_sampled()
         << " sprite_animation_frames_applied=" << game.sprite_animation_frames_applied()
         << " sprite_animation_selected_frame_sum=" << game.sprite_animation_selected_frame_sum()
         << " sprite_animation_diagnostics=" << game.sprite_animation_diagnostics()
+        << " sprite_flipbook_ticks=" << game.sprite_flipbook_ticks()
+        << " sprite_flipbook_frames_sampled=" << game.sprite_flipbook_frames_sampled()
+        << " sprite_flipbook_frames_applied=" << game.sprite_flipbook_frames_applied()
+        << " sprite_flipbook_selected_frame_sum=" << game.sprite_flipbook_selected_frame_sum()
+        << " sprite_flipbook_diagnostics=" << game.sprite_flipbook_diagnostics()
         << " tilemap_layers=" << game.tilemap_layers() << " tilemap_visible_layers=" << game.tilemap_visible_layers()
         << " tilemap_tiles=" << game.tilemap_tiles() << " tilemap_non_empty_cells=" << game.tilemap_non_empty_cells()
         << " tilemap_cells_sampled=" << game.tilemap_sampled_cells()
-        << " tilemap_diagnostics=" << game.tilemap_diagnostics() << " hud_boxes=" << game.hud_boxes_submitted()
-        << " audio_commands=" << game.audio_commands() << " audio_underruns=" << game.audio_underruns()
-        << " package_records=" << package_records << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
+        << " tilemap_diagnostics=" << game.tilemap_diagnostics() << " gameplay_systems_status="
+        << gameplay_2d_systems_status_name(game.gameplay_systems_status(options.max_frames))
+        << " gameplay_systems_ready=" << (game.gameplay_systems_passed(options.max_frames) ? 1 : 0)
+        << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
+        << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
+        << " gameplay_systems_physics_bodies=" << game.gameplay_systems_physics_bodies()
+        << " gameplay_systems_physics_contacts=" << game.gameplay_systems_physics_contacts()
+        << " gameplay_systems_physics_trigger_overlaps=" << game.gameplay_systems_physics_trigger_overlaps()
+        << " gameplay_systems_navigation_path_points=" << game.gameplay_systems_navigation_path_points()
+        << " gameplay_systems_navigation_reached=" << (game.gameplay_systems_navigation_reached_destination() ? 1 : 0)
+        << " gameplay_systems_navigation_plan_status="
+        << navigation_grid_agent_path_status_name(game.gameplay_systems_navigation_plan_status())
+        << " gameplay_systems_navigation_plan_diagnostic="
+        << navigation_grid_agent_path_diagnostic_name(game.gameplay_systems_navigation_plan_diagnostic())
+        << " gameplay_systems_navigation_agent_status="
+        << navigation_agent_status_name(game.gameplay_systems_navigation_agent_status())
+        << " gameplay_systems_perception_status="
+        << ai_perception_status_name(game.gameplay_systems_perception_status())
+        << " gameplay_systems_perception_targets=" << game.gameplay_systems_perception_targets()
+        << " gameplay_systems_perception_has_primary_target="
+        << (game.gameplay_systems_perception_has_primary_target() ? 1 : 0)
+        << " gameplay_systems_perception_visible_count=" << game.gameplay_systems_perception_visible_count()
+        << " gameplay_systems_blackboard_status="
+        << ai_perception_blackboard_status_name(game.gameplay_systems_blackboard_status())
+        << " gameplay_systems_blackboard_has_target=" << (game.gameplay_systems_blackboard_has_target() ? 1 : 0)
+        << " gameplay_systems_blackboard_needs_move=" << (game.gameplay_systems_blackboard_needs_move() ? 1 : 0)
+        << " gameplay_systems_behavior_status=" << behavior_tree_status_name(game.gameplay_systems_behavior_status())
+        << " gameplay_systems_behavior_nodes=" << game.gameplay_systems_behavior_nodes()
+        << " gameplay_systems_behavior_authoring_ready=" << (game.gameplay_systems_behavior_authoring_ready() ? 1 : 0)
+        << " gameplay_systems_behavior_authoring_diagnostics=" << game.gameplay_systems_behavior_authoring_diagnostics()
+        << " gameplay_systems_behavior_authoring_trace_nodes=" << game.gameplay_systems_behavior_authoring_trace_nodes()
+        << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
+        << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
+        << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
     print_presentation_report("sample_2d_desktop_runtime_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_2d_desktop_runtime_package presentation_diagnostic="
@@ -1022,11 +1805,18 @@ int main(int argc, char** argv) {
 
     if (options.require_sprite_animation &&
         (game.sprite_animation_frames_sampled() == 0 || game.sprite_animation_frames_applied() == 0 ||
-         game.sprite_animation_selected_frame_sum() == 0 || game.sprite_animation_diagnostics() != 0)) {
+         game.sprite_animation_selected_frame_sum() == 0 || game.sprite_animation_diagnostics() != 0 ||
+         game.sprite_flipbook_ticks() == 0 || game.sprite_flipbook_frames_sampled() == 0 ||
+         game.sprite_flipbook_frames_applied() == 0 || game.sprite_flipbook_selected_frame_sum() == 0 ||
+         game.sprite_flipbook_diagnostics() != 0)) {
         std::cout << "sample_2d_desktop_runtime_package required_sprite_animation_unavailable"
                   << " sprite_animation_frames_sampled=" << game.sprite_animation_frames_sampled()
                   << " sprite_animation_frames_applied=" << game.sprite_animation_frames_applied()
-                  << " sprite_animation_diagnostics=" << game.sprite_animation_diagnostics() << '\n';
+                  << " sprite_animation_diagnostics=" << game.sprite_animation_diagnostics()
+                  << " sprite_flipbook_ticks=" << game.sprite_flipbook_ticks()
+                  << " sprite_flipbook_frames_sampled=" << game.sprite_flipbook_frames_sampled()
+                  << " sprite_flipbook_frames_applied=" << game.sprite_flipbook_frames_applied()
+                  << " sprite_flipbook_diagnostics=" << game.sprite_flipbook_diagnostics() << '\n';
         return 10;
     }
 
@@ -1039,6 +1829,24 @@ int main(int argc, char** argv) {
                   << " tilemap_cells_sampled=" << game.tilemap_sampled_cells()
                   << " tilemap_diagnostics=" << game.tilemap_diagnostics() << '\n';
         return 11;
+    }
+
+    if (options.require_gameplay_systems && !game.gameplay_systems_passed(options.max_frames)) {
+        std::cout << "sample_2d_desktop_runtime_package required_gameplay_systems_unavailable"
+                  << " gameplay_systems_status="
+                  << gameplay_2d_systems_status_name(game.gameplay_systems_status(options.max_frames))
+                  << " gameplay_systems_physics_contacts=" << game.gameplay_systems_physics_contacts()
+                  << " gameplay_systems_navigation_plan_status="
+                  << navigation_grid_agent_path_status_name(game.gameplay_systems_navigation_plan_status())
+                  << " gameplay_systems_behavior_status="
+                  << behavior_tree_status_name(game.gameplay_systems_behavior_status())
+                  << " gameplay_systems_behavior_authoring_ready="
+                  << (game.gameplay_systems_behavior_authoring_ready() ? 1 : 0)
+                  << " gameplay_systems_behavior_authoring_diagnostics="
+                  << game.gameplay_systems_behavior_authoring_diagnostics()
+                  << " gameplay_systems_behavior_authoring_trace_nodes="
+                  << game.gameplay_systems_behavior_authoring_trace_nodes() << '\n';
+        return 12;
     }
 
     if (options.smoke &&

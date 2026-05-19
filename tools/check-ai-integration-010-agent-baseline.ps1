@@ -246,8 +246,12 @@ Assert-ContainsText $buildingContent 'MSBuild a single `Path`' "docs/building.md
 Assert-ContainsText $buildingContent "tools/cmake.ps1 --preset dev" "docs/building.md"
 Assert-ContainsText $buildingContent "tools/ctest.ps1 --preset dev --output-on-failure" "docs/building.md"
 Assert-ContainsText $agentsContent "/INCREMENTAL:NO" "AGENTS.md"
+Assert-ContainsText $agentsContent "COMPILE_PDB_OUTPUT_DIRECTORY" "AGENTS.md"
 Assert-ContainsText $buildingContent "/INCREMENTAL:NO" "docs/building.md"
+Assert-ContainsText $buildingContent "COMPILE_PDB_OUTPUT_DIRECTORY" "docs/building.md"
 $cmakeListsContent = Get-AgentSurfaceText "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_NAME ${target_name}' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_OUTPUT_DIRECTORY' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'get_target_property(MK_TARGET_TYPE ${target_name} TYPE)' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "EXECUTABLE"' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "SHARED_LIBRARY"' "CMakeLists.txt"
@@ -259,6 +263,7 @@ foreach ($cmakeSkillPath in @(
     ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/INCREMENTAL:NO" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "COMPILE_PDB_OUTPUT_DIRECTORY" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) 'Do not repair generated `out/build/<preset>` trees' $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "CMakeCache.txt" $cmakeSkillPath
 }
@@ -271,11 +276,20 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
     Assert-ContainsText $buildFixerAgentText "tools/check-tidy.ps1" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText 'Do not repair generated `out/build/<preset>` trees' $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "CMakeCache.txt" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "C1041" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "COMPILE_PDB_OUTPUT_DIRECTORY" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText 'global `/FS`' $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "LinkIncremental=false" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "gh pr view <pr> --json headRefOid,statusCheckRollup,url" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "billing or account limits" $buildFixerPath
 }
+$cursorCmakeRuleText = Get-AgentSurfaceText ".cursor/rules/mirakana-cmake-vcpkg.mdc"
+Assert-ContainsText $cursorCmakeRuleText "COMPILE_PDB_OUTPUT_DIRECTORY" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
+Assert-ContainsText $cursorCmakeRuleText 'global `/FS`' ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "/INCREMENTAL:NO" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "msvcCompilePdbIsolation" "engine/agent/manifest.json"
+Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'ToolId "cmake-build"' "tools/common.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'Test-CMakeBuildCommand' "tools/common.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-MaxFiles 1" "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/cmake.ps1") 'Invoke-CheckedCommand $tools.CMake @Arguments' "tools/cmake.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/ctest.ps1") 'Invoke-CheckedCommand $tools.CTest @Arguments' "tools/ctest.ps1"
@@ -414,6 +428,10 @@ $cursorGameDevelopmentSkillText = Get-AgentSurfaceText ".cursor/skills/gameengin
 Assert-ContainsText $cursorGameDevelopmentSkillText "runtime/.gitattributes" ".cursor/skills/gameengine-game-development/SKILL.md"
 Assert-ContainsText $cursorGameDevelopmentSkillText "text eol=lf" ".cursor/skills/gameengine-game-development/SKILL.md"
 Assert-ContainsText $cursorGameDevelopmentSkillText "tools/new-game-templates.ps1" ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "plan_placeholder_asset_bundle" ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "PlaceholderAssetBundleRequest" ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "plan_placeholder_asset_cook_package" ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "PlaceholderAssetCookPackageRequest" ".cursor/skills/gameengine-game-development/SKILL.md"
 
 Assert-ContainsText $aiIntegrationContent "normalized-configure-environment" "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "normalized-build-environment" "docs/ai-integration.md"
@@ -579,6 +597,13 @@ Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "atla
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "packageStreamingResidencyTargets" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "prefabScenePackageAuthoringTargets" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "registeredSourceAssetCookTargets" "docs/ai-game-development.md"
+Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "plan_placeholder_asset_bundle" "docs/ai-game-development.md"
+Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "plan_sprite_atlas_source_authoring" "docs/ai-game-development.md"
+Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "SpriteAtlasSourceAuthoringDesc" "docs/ai-game-development.md"
+Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "PlaceholderAssetBundlePlan" "docs/ai-game-development.md"
+Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "plan_placeholder_asset_cook_package" "docs/ai-game-development.md"
+Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "PlaceholderAssetCookPackageRequest" "docs/ai-game-development.md"
+Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "GameEngine.SourceAssetRegistry.v1" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "safe-point package replacement" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "commit_runtime_package_safe_point_unload" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "runtimeSceneValidationTargets" "docs/roadmap.md"
@@ -1322,7 +1347,7 @@ if ($activeChildProductionPlans.Count -eq 0) {
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.id) "next-production-gap-selection" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.id"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.path) "2026-05-03-production-completion-master-plan-v1.md" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.path"
 }
-$recommendedNextPlanText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+$recommendedNextPlanText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
@@ -1418,6 +1443,7 @@ $runtimeUiFontRasterizationRequestPlanText = Get-AgentSurfaceText "docs/superpow
 $runtimeUiPlatformTextInputSessionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-ui-platform-text-input-session-plan-v1.md"
 $runtimeUiImageDecodeRequestPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-ui-image-decode-request-plan-v1.md"
 $runtimeUiPngImageDecodingAdapterPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-ui-png-image-decoding-adapter-v1.md"
+$gameplayDebugOverlayPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-20-engine-gameplay-debug-overlay-v1.md"
 $crashTelemetryTraceOpsPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-crash-telemetry-trace-ops-v1.md"
 $androidReleaseDeviceMatrixPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-android-release-device-matrix-v1.md"
 $appleMetalIosHostEvidencePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-06-apple-metal-ios-host-evidence-v1.md"
@@ -1429,6 +1455,7 @@ $productionReadinessAuditScriptText = Get-AgentSurfaceText "tools/check-producti
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
+$generatedGameValidationScenariosText = Get-AgentSurfaceText "docs/specs/generated-game-validation-scenarios.md"
 $coreDiagnosticsHeaderText = Get-AgentSurfaceText "engine/core/include/mirakana/core/diagnostics.hpp"
 $coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
 $tilemapMetadataSourceText = Get-AgentSurfaceText "engine/assets/src/tilemap_metadata.cpp"
@@ -1443,6 +1470,9 @@ $vulkanRhiHeaderText = Get-AgentSurfaceText "engine/rhi/vulkan/include/mirakana/
 $vulkanRhiSourceText = Get-AgentSurfaceText "engine/rhi/vulkan/src/vulkan_backend.cpp"
 $runtimeRhiHeaderText = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp"
 $runtimeRhiSourceText = Get-AgentSurfaceText "engine/runtime_rhi/src/runtime_upload.cpp"
+$runtimeSceneHeaderText = Get-AgentSurfaceText "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
+$runtimeSceneSourceText = Get-AgentSurfaceText "engine/runtime_scene/src/runtime_scene.cpp"
+$runtimeSceneTestsText = Get-AgentSurfaceText "tests/unit/runtime_scene_tests.cpp"
 $runtimeSceneRhiHeaderText = Get-AgentSurfaceText "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp"
 $runtimeSceneRhiSourceText = Get-AgentSurfaceText "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp"
 $rendererHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp"
@@ -1476,6 +1506,30 @@ $gameDevelopmentSkillText = Get-AgentSurfaceText ".agents/skills/gameengine-game
 $claudeGameDevelopmentSkillText = Get-AgentSurfaceText ".claude/skills/gameengine-game-development/SKILL.md"
 Assert-ContainsText $gameDevelopmentSkillText "tools/new-game-templates.ps1" ".agents/skills/gameengine-game-development/SKILL.md"
 Assert-ContainsText $claudeGameDevelopmentSkillText "tools/new-game-templates.ps1" ".claude/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $gameDevelopmentSkillText "plan_placeholder_asset_bundle" ".agents/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $gameDevelopmentSkillText "PlaceholderAssetBundleRequest" ".agents/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $claudeGameDevelopmentSkillText "plan_placeholder_asset_bundle" ".claude/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $claudeGameDevelopmentSkillText "PlaceholderAssetBundleRequest" ".claude/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $gameDevelopmentSkillText "plan_placeholder_asset_cook_package" ".agents/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $gameDevelopmentSkillText "PlaceholderAssetCookPackageRequest" ".agents/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $claudeGameDevelopmentSkillText "plan_placeholder_asset_cook_package" ".claude/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $claudeGameDevelopmentSkillText "PlaceholderAssetCookPackageRequest" ".claude/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "plan_sprite_atlas_source_authoring" ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "SpriteAtlasSourceAuthoringDesc" ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $gameDevelopmentSkillText "plan_sprite_atlas_source_authoring" ".agents/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $gameDevelopmentSkillText "SpriteAtlasSourceAuthoringDesc" ".agents/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $claudeGameDevelopmentSkillText "plan_sprite_atlas_source_authoring" ".claude/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $claudeGameDevelopmentSkillText "SpriteAtlasSourceAuthoringDesc" ".claude/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "RuntimeGameplayDebugOverlayRowDesc" ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $cursorGameDevelopmentSkillText "plan_runtime_gameplay_debug_overlay" ".cursor/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $gameDevelopmentSkillText "RuntimeGameplayDebugOverlayRowDesc" ".agents/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $gameDevelopmentSkillText "plan_runtime_gameplay_debug_overlay" ".agents/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $claudeGameDevelopmentSkillText "RuntimeGameplayDebugOverlayRowDesc" ".claude/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $claudeGameDevelopmentSkillText "plan_runtime_gameplay_debug_overlay" ".claude/skills/gameengine-game-development/SKILL.md"
+Assert-ContainsText $gameplayDebugOverlayPlanText "Phase 1: Overlay Row Contract" "Engine Gameplay Debug Overlay plan"
+Assert-ContainsText $gameplayDebugOverlayPlanText "RED tests describe overlay row planning" "Engine Gameplay Debug Overlay plan"
+Assert-ContainsText $gameplayDebugOverlayPlanText "RuntimeGameplayDebugOverlayPlan" "Engine Gameplay Debug Overlay plan"
+Assert-ContainsText $gameplayDebugOverlayPlanText "plan_runtime_gameplay_debug_overlay" "Engine Gameplay Debug Overlay plan"
 Assert-ContainsText $planRegistryText "2026-05-06-generated-3d-compute-morph-package-smoke-d3d12-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "2026-05-06-runtime-scene-quaternion-animation-transform-binding-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "2026-05-06-runtime-rhi-compute-morph-normal-tangent-output-d3d12-v1.md" "docs/superpowers/plans/README.md"

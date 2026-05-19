@@ -820,6 +820,147 @@ class BindingContext {
 
 [[nodiscard]] bool apply_text_binding(UiDocument& document, const TextBinding& binding, const BindingContext& context);
 
+enum class RuntimeMenuHudRowKind : std::uint8_t {
+    label,
+    counter,
+    prompt,
+    command,
+};
+
+enum class RuntimeMenuHudCommandIntent : std::uint8_t {
+    none,
+    pause_game,
+    resume_game,
+    restart_session,
+    open_menu,
+    close_menu,
+    custom,
+};
+
+enum class RuntimeMenuHudCommandTarget : std::uint8_t {
+    none,
+    game_session,
+    menu_overlay,
+    custom,
+};
+
+enum class RuntimeMenuHudDiagnosticCode : std::uint8_t {
+    missing_row_id,
+    duplicate_row_id,
+    unsupported_row_kind,
+    missing_command_id,
+    duplicate_command_id,
+    invalid_command_intent,
+    invalid_command_target,
+};
+
+struct RuntimeMenuHudRowDesc {
+    std::string id;
+    RuntimeMenuHudRowKind kind{RuntimeMenuHudRowKind::label};
+    std::string label;
+    std::string value;
+    std::string command_id;
+    RuntimeMenuHudCommandIntent command_intent{RuntimeMenuHudCommandIntent::none};
+    RuntimeMenuHudCommandTarget command_target{RuntimeMenuHudCommandTarget::none};
+    bool enabled{true};
+};
+
+struct RuntimeMenuHudDisplayRow {
+    std::string id;
+    RuntimeMenuHudRowKind kind{RuntimeMenuHudRowKind::label};
+    std::string label;
+    std::string value;
+    bool enabled{true};
+};
+
+struct RuntimeMenuHudCommandRow {
+    std::string row_id;
+    std::string command_id;
+    RuntimeMenuHudCommandIntent intent{RuntimeMenuHudCommandIntent::none};
+    RuntimeMenuHudCommandTarget target{RuntimeMenuHudCommandTarget::none};
+    bool enabled{true};
+};
+
+struct RuntimeMenuHudDiagnostic {
+    RuntimeMenuHudDiagnosticCode code{RuntimeMenuHudDiagnosticCode::missing_row_id};
+    std::string row_id;
+    std::string command_id;
+    std::string message;
+};
+
+struct RuntimeMenuHudPlan {
+    std::vector<RuntimeMenuHudDisplayRow> display_rows;
+    std::vector<RuntimeMenuHudCommandRow> command_rows;
+    std::vector<RuntimeMenuHudDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+[[nodiscard]] RuntimeMenuHudPlan plan_runtime_menu_hud(const std::vector<RuntimeMenuHudRowDesc>& rows);
+
+enum class RuntimeGameplayDebugOverlayCategory : std::uint8_t {
+    gameplay,
+    input,
+    audio,
+    physics,
+    navigation,
+    ai,
+    package,
+    session,
+    custom,
+};
+
+enum class RuntimeGameplayDebugOverlayRowKind : std::uint8_t {
+    status,
+    counter,
+    warning,
+    error,
+};
+
+enum class RuntimeGameplayDebugOverlayDiagnosticCode : std::uint8_t {
+    missing_row_id,
+    duplicate_row_id,
+    missing_label,
+    unsupported_category,
+    unsupported_row_kind,
+};
+
+struct RuntimeGameplayDebugOverlayRowDesc {
+    std::string id;
+    RuntimeGameplayDebugOverlayCategory category{RuntimeGameplayDebugOverlayCategory::gameplay};
+    RuntimeGameplayDebugOverlayRowKind kind{RuntimeGameplayDebugOverlayRowKind::status};
+    std::string label;
+    std::string value;
+    bool highlighted{false};
+    bool visible{true};
+};
+
+struct RuntimeGameplayDebugOverlayRow {
+    std::string id;
+    RuntimeGameplayDebugOverlayCategory category{RuntimeGameplayDebugOverlayCategory::gameplay};
+    RuntimeGameplayDebugOverlayRowKind kind{RuntimeGameplayDebugOverlayRowKind::status};
+    std::string label;
+    std::string value;
+    bool highlighted{false};
+    bool visible{true};
+};
+
+struct RuntimeGameplayDebugOverlayDiagnostic {
+    RuntimeGameplayDebugOverlayDiagnosticCode code{RuntimeGameplayDebugOverlayDiagnosticCode::missing_row_id};
+    std::string row_id;
+    std::string message;
+};
+
+struct RuntimeGameplayDebugOverlayPlan {
+    std::vector<RuntimeGameplayDebugOverlayRow> rows;
+    std::vector<RuntimeGameplayDebugOverlayDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+[[nodiscard]] RuntimeGameplayDebugOverlayPlan
+plan_runtime_gameplay_debug_overlay(const std::vector<RuntimeGameplayDebugOverlayRowDesc>& rows);
+
 struct CommandBinding {
     std::string id;
     std::function<void()> action;
