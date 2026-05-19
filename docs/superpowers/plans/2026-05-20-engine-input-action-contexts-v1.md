@@ -1,8 +1,8 @@
 # Engine Input Action Contexts v1 (2026-05-20)
 
 **Plan ID:** `engine-input-action-contexts-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** This plan is historical evidence. Do not leave `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` pointing here after closeout. Keep `unsupportedProductionGaps = []`; this was a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
