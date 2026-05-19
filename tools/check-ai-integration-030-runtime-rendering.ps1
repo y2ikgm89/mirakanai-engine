@@ -239,8 +239,8 @@ if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-safe-point-control
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") {
     Write-Error "engine/agent/manifest.json MK_runtime publicHeaders must include resource_runtime.hpp"
 }
-if ($geAudioModule[0].status -ne "implemented-device-streaming-baseline") {
-    Write-Error "engine/agent/manifest.json MK_audio status must advertise the audio device streaming baseline honestly"
+if ($geAudioModule[0].status -ne "implemented-gameplay-audio-mix-planner") {
+    Write-Error "engine/agent/manifest.json MK_audio status must advertise the gameplay audio mix planner honestly"
 }
 if (@($geAudioModule[0].publicHeaders) -notcontains "engine/audio/include/mirakana/audio/audio_mixer.hpp") {
     Write-Error "engine/agent/manifest.json MK_audio publicHeaders must include audio_mixer.hpp"
@@ -400,6 +400,9 @@ Assert-ContainsText ([string]$geAudioModule[0].purpose) "AudioDeviceStreamReques
 Assert-ContainsText ([string]$geAudioModule[0].purpose) "AudioDeviceStreamPlan" "MK_audio module purpose"
 Assert-ContainsText ([string]$geAudioModule[0].purpose) "plan_audio_device_stream" "MK_audio module purpose"
 Assert-ContainsText ([string]$geAudioModule[0].purpose) "render_audio_device_stream_interleaved_float" "MK_audio module purpose"
+Assert-ContainsText ([string]$geAudioModule[0].purpose) "AudioGameplayMixRequest" "MK_audio module purpose"
+Assert-ContainsText ([string]$geAudioModule[0].purpose) "AudioGameplayMixPlan" "MK_audio module purpose"
+Assert-ContainsText ([string]$geAudioModule[0].purpose) "plan_gameplay_audio_mix" "MK_audio module purpose"
 Assert-ContainsText ([string]$geAudioModule[0].purpose) "does not open OS audio devices" "MK_audio module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "runtime_morph_mesh_cpu_payload" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "runtime_animation_float_clip_payload" "MK_runtime module purpose"
@@ -974,6 +977,9 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "AudioDevi
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "AudioDeviceStreamPlan" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "plan_audio_device_stream" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "render_audio_device_stream_interleaved_float" "audio game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "AudioGameplayMixRequest" "audio game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "AudioGameplayMixPlan" "audio game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "plan_gameplay_audio_mix" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "device_frame + queued_frames" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "device hotplug/selection" "audio game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAudio) "mixer authoring" "audio game guidance"
@@ -991,6 +997,8 @@ foreach ($audioGuidance in @(
     Assert-ContainsText $audioText "AudioDeviceStreamPlan" $audioGuidance
     Assert-ContainsText $audioText "plan_audio_device_stream" $audioGuidance
     Assert-ContainsText $audioText "render_audio_device_stream_interleaved_float" $audioGuidance
+    Assert-ContainsText $audioText "AudioGameplayMixRequest" $audioGuidance
+    Assert-ContainsText $audioText "plan_gameplay_audio_mix" $audioGuidance
     Assert-ContainsText $audioText "device hotplug/selection" $audioGuidance
     Assert-ContainsText $audioText "mixer authoring" $audioGuidance
 }

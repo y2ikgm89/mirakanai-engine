@@ -392,15 +392,18 @@ if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-safe-point-control
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") {
     Write-Error "engine manifest MK_runtime publicHeaders must include resource_runtime.hpp"
 }
-if ($geAudioModule[0].status -ne "implemented-device-streaming-baseline") {
-    Write-Error "engine manifest MK_audio status must advertise the audio device streaming baseline honestly"
+if ($geAudioModule[0].status -ne "implemented-gameplay-audio-mix-planner") {
+    Write-Error "engine manifest MK_audio status must advertise the gameplay audio mix planner honestly"
 }
-if (-not ([string]$geAudioModule[0].purpose).Contains("AudioDeviceStreamRequest") -or
+if (-not ([string]$geAudioModule[0].purpose).Contains("AudioGameplayMixRequest") -or
+    -not ([string]$geAudioModule[0].purpose).Contains("AudioGameplayMixPlan") -or
+    -not ([string]$geAudioModule[0].purpose).Contains("plan_gameplay_audio_mix") -or
+    -not ([string]$geAudioModule[0].purpose).Contains("AudioDeviceStreamRequest") -or
     -not ([string]$geAudioModule[0].purpose).Contains("AudioDeviceStreamPlan") -or
     -not ([string]$geAudioModule[0].purpose).Contains("plan_audio_device_stream") -or
     -not ([string]$geAudioModule[0].purpose).Contains("render_audio_device_stream_interleaved_float") -or
     -not ([string]$geAudioModule[0].purpose).Contains("does not open OS audio devices")) {
-    Write-Error "engine manifest MK_audio purpose must describe the audio device stream planning APIs and OS-device boundary"
+    Write-Error "engine manifest MK_audio purpose must describe the gameplay audio mix planner, device stream planning APIs, and OS-device boundary"
 }
 if ($gePhysicsModule[0].status -ne "implemented-physics-1-0-ready-surface") {
     Write-Error "engine manifest MK_physics status must advertise the Physics 1.0 ready surface honestly"

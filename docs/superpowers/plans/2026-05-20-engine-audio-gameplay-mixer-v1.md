@@ -1,8 +1,8 @@
 # Engine Audio Gameplay Mixer v1 (2026-05-20)
 
 **Plan ID:** `engine-audio-gameplay-mixer-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** This milestone is closed. Do not leave `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` pointing at this completed plan. Keep `unsupportedProductionGaps = []`; this was a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
@@ -41,7 +41,7 @@ Make the manifest pointers, master-plan ledger, and plan registry agree that `en
 
 ## Phase 1: Gameplay Audio Event Review And First Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -55,7 +55,7 @@ Review existing `MK_audio` mixer/event/streaming APIs and select the smallest mi
 
 ## Phase 2: Generated Game Adoption Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -70,3 +70,8 @@ Apply the selected gameplay audio primitive to one or more generated-game or sam
 ## Validation Evidence
 
 - Phase 0 pointer sync: plan registry, production master-plan index, readiness ledger, manifest fragments, and composed manifest point `currentActivePlan` / `recommendedNextPlan` at this plan while keeping `unsupportedProductionGaps = []`.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed after adding `plan_gameplay_audio_mix` tests because the new public audio gameplay mix API did not exist yet.
+- Phase 1 GREEN: `AudioGameplayMixRequest`, `AudioGameplayMixPlan`, `AudioGameplayBusMixDesc`, `AudioGameplayCueDesc`, `AudioGameplayCueTrigger`, fail-closed diagnostics, and `plan_gameplay_audio_mix` were added to `MK_audio`; focused `MK_core_tests` build and `ctest -R MK_core_tests` passed.
+- Phase 2 RED: `tools/check-ai-integration.ps1` failed after adding the `games/sample_2d_playable_foundation/main.cpp` needle for `plan_gameplay_audio_mix`.
+- Phase 2 GREEN: `sample_2d_playable_foundation` routes jump SFX through `plan_gameplay_audio_mix`, reports `audio_cues=1`, and passes focused build/test plus `tools/check-ai-integration.ps1`.
+- Closeout sync: docs, game manifest, manifest fragments, generated-game guidance, skills, and static guards describe Audio Gameplay Mix Planner v1 while `unsupportedProductionGaps = []` remains unchanged.

@@ -59,14 +59,14 @@
     {
       "name": "MK_audio",
       "path": "engine/audio",
-      "status": "implemented-device-streaming-baseline",
+      "status": "implemented-gameplay-audio-mix-planner",
       "dependencies": [
         "MK_assets"
       ],
       "publicHeaders": [
         "engine/audio/include/mirakana/audio/audio_mixer.hpp"
       ],
-      "purpose": "Device-independent audio foundations. Currently provides an AudioMixer that validates audio buses, voices, spatial listener/source descriptors, clip metadata, device render requests, resampling quality, and interleaved float clip sample data; tracks logical clip asset ids; produces deterministic mix commands; builds spatial voice/listener metadata for distance attenuation and stereo pan; plans sample-frame voice scheduling; records streaming buffer availability, device format conversion intent, and underrun diagnostics; provides AudioStreamingQueue for decoded chunk append/consume/starvation state without codecs; renders deterministic interleaved float PCM buffers with gain, selectable nearest/linear resampling, channel conversion, and clamping; exposes AudioDeviceStreamRequest, AudioDeviceStreamPlan, plan_audio_device_stream, and render_audio_device_stream_interleaved_float so host adapters can fill output queues from AudioMixer PCM using bounded render chunks; and does not open OS audio devices."
+      "purpose": "Device-independent audio foundations. Currently provides an AudioMixer that validates audio buses, voices, spatial listener/source descriptors, clip metadata, device render requests, resampling quality, and interleaved float clip sample data; tracks logical clip asset ids; produces deterministic mix commands; builds spatial voice/listener metadata for distance attenuation and stereo pan; plans sample-frame voice scheduling; records streaming buffer availability, device format conversion intent, and underrun diagnostics; exposes AudioGameplayMixRequest, AudioGameplayMixPlan, and plan_gameplay_audio_mix so generated games can fail closed while converting game-owned cue, bus, fade, pause, loop, trigger, and optional spatial metadata rows into mixer-ready bus and voice commands; provides AudioStreamingQueue for decoded chunk append/consume/starvation state without codecs; renders deterministic interleaved float PCM buffers with gain, selectable nearest/linear resampling, channel conversion, and clamping; exposes AudioDeviceStreamRequest, AudioDeviceStreamPlan, plan_audio_device_stream, and render_audio_device_stream_interleaved_float so host adapters can fill output queues from AudioMixer PCM using bounded render chunks; and does not open OS audio devices."
     },
     {
       "name": "MK_audio_sdl3",

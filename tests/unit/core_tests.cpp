@@ -9424,6 +9424,129 @@ MK_TEST("audio mixer builds deterministic gain plan") {
     MK_REQUIRE(mixer.mix_plan()[0].gain == 0.0F);
 }
 
+MK_TEST("audio gameplay mix planner builds mixer ready bus and cue commands") {
+    const auto theme = mirakana::AssetId::from_name("audio/theme");
+    const auto jump = mirakana::AssetId::from_name("audio/jump");
+
+    const auto
+        plan =
+            mirakana::plan_gameplay_audio_mix(
+                mirakana::AudioGameplayMixRequest{
+                    .buses =
+                        {
+                            mirakana::AudioGameplayBusMixDesc{.name = "music",
+                                                              .gain = 0.8F,
+                                                              .muted = false,
+                                                              .paused = false,
+                                                              .fade_from_gain = 0.5F,
+                                                              .fade_to_gain = 1.0F,
+                                                              .fade_elapsed_seconds = 0.5F,
+                                                              .fade_duration_seconds = 1.0F},
+                            mirakana::AudioGameplayBusMixDesc{.name = "sfx", .gain = 1.0F, .paused = true},
+                        },
+                    .cues =
+                        {
+                            mirakana::AudioGameplayCueDesc{.id = "music.theme",
+                                                           .kind = mirakana::AudioGameplayCueKind::music,
+                                                           .clip = theme,
+                                                           .bus = "music",
+                                                           .gain = 0.7F,
+                                                           .looping = true},
+                            mirakana::AudioGameplayCueDesc{
+                                .id = "sfx.jump",
+                                .kind = mirakana::AudioGameplayCueKind::sfx,
+                                .clip = jump,
+                                .bus = "sfx",
+                                .gain = 0.8F,
+                                .looping = false,
+                                .spatialized = true,
+                                .position = mirakana::AudioPoint3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+                                .min_distance = 1.0F,
+                                .max_distance = 8.0F,
+                            },
+                        },
+                    .triggers =
+                        {
+                            mirakana::AudioGameplayCueTrigger{
+                                .cue_id = "music.theme", .start_frame = 0, .gain_scale = 1.0F},
+                            mirakana::AudioGameplayCueTrigger{
+                                .cue_id = "sfx.jump", .start_frame = 128, .gain_scale = 0.5F},
+                        },
+                });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.buses.size() == 2);
+    MK_REQUIRE(plan.buses[0].name == "music");
+    MK_REQUIRE(std::abs(plan.buses[0].gain - 0.6F) < 0.0001F);
+    MK_REQUIRE(!plan.buses[0].muted);
+    MK_REQUIRE(plan.buses[1].name == "sfx");
+    MK_REQUIRE(plan.buses[1].gain == 1.0F);
+    MK_REQUIRE(plan.buses[1].muted);
+
+    MK_REQUIRE(plan.commands.size() == 2);
+    MK_REQUIRE(plan.commands[0].cue_id == "music.theme");
+    MK_REQUIRE(plan.commands[0].kind == mirakana::AudioGameplayCueKind::music);
+    MK_REQUIRE(plan.commands[0].voice.clip == theme);
+    MK_REQUIRE(plan.commands[0].voice.bus == "music");
+    MK_REQUIRE(plan.commands[0].voice.looping);
+    MK_REQUIRE(plan.commands[0].voice.start_frame == 0);
+    MK_REQUIRE(std::abs(plan.commands[0].voice.gain - 0.7F) < 0.0001F);
+    MK_REQUIRE(!plan.commands[0].spatialized);
+
+    MK_REQUIRE(plan.commands[1].cue_id == "sfx.jump");
+    MK_REQUIRE(plan.commands[1].kind == mirakana::AudioGameplayCueKind::sfx);
+    MK_REQUIRE(plan.commands[1].voice.clip == jump);
+    MK_REQUIRE(plan.commands[1].voice.bus == "sfx");
+    MK_REQUIRE(!plan.commands[1].voice.looping);
+    MK_REQUIRE(plan.commands[1].voice.start_frame == 128);
+    MK_REQUIRE(std::abs(plan.commands[1].voice.gain - 0.4F) < 0.0001F);
+    MK_REQUIRE(plan.commands[1].spatialized);
+    MK_REQUIRE(plan.commands[1].position.x == 2.0F);
+    MK_REQUIRE(plan.commands[1].min_distance == 1.0F);
+    MK_REQUIRE(plan.commands[1].max_distance == 8.0F);
+}
+
+MK_TEST("audio gameplay mix planner fails closed on invalid bus cue and trigger rows") {
+    const auto clip = mirakana::AssetId::from_name("audio/jump");
+    const auto nan = std::numeric_limits<float>::quiet_NaN();
+    const auto plan = mirakana::plan_gameplay_audio_mix(mirakana::AudioGameplayMixRequest{
+        .buses =
+            {
+                mirakana::AudioGameplayBusMixDesc{.name = "sfx", .gain = 1.0F},
+                mirakana::AudioGameplayBusMixDesc{.name = "sfx", .gain = 1.0F},
+                mirakana::AudioGameplayBusMixDesc{.name = "music", .fade_from_gain = 1.0F, .fade_to_gain = nan},
+            },
+        .cues =
+            {
+                mirakana::AudioGameplayCueDesc{.id = {}, .clip = clip, .bus = "sfx"},
+                mirakana::AudioGameplayCueDesc{.id = "jump", .clip = mirakana::AssetId{}, .bus = "missing"},
+                mirakana::AudioGameplayCueDesc{.id = "jump", .clip = clip, .bus = "sfx"},
+            },
+        .triggers =
+            {
+                mirakana::AudioGameplayCueTrigger{.cue_id = "jump", .gain_scale = nan},
+                mirakana::AudioGameplayCueTrigger{.cue_id = "missing", .gain_scale = 1.0F},
+            },
+    });
+    const auto has_diagnostic = [&plan](mirakana::AudioGameplayMixDiagnosticCode code) {
+        return std::ranges::any_of(plan.diagnostics, [code](const mirakana::AudioGameplayMixDiagnostic& diagnostic) {
+            return diagnostic.code == code;
+        });
+    };
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.buses.empty());
+    MK_REQUIRE(plan.commands.empty());
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::duplicate_bus));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::invalid_bus_fade));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::missing_cue_id));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::missing_clip));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::unknown_bus));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::duplicate_cue_id));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::invalid_trigger_gain));
+    MK_REQUIRE(has_diagnostic(mirakana::AudioGameplayMixDiagnosticCode::unknown_cue));
+}
+
 MK_TEST("audio mixer builds deterministic spatial voice plan") {
     mirakana::AudioMixer mixer;
     mixer.add_bus(mirakana::AudioBusDesc{.name = "sfx", .gain = 0.5F, .muted = false});

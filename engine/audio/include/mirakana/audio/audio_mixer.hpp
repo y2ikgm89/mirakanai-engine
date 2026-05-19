@@ -80,6 +80,93 @@ struct AudioSpatialMixCommand {
     bool looping{false};
 };
 
+enum class AudioGameplayCueKind : std::uint8_t {
+    music,
+    sfx,
+    ambience,
+    ui,
+    voice,
+    custom,
+};
+
+struct AudioGameplayBusMixDesc {
+    std::string name{"master"};
+    float gain{1.0F};
+    bool muted{false};
+    bool paused{false};
+    float fade_from_gain{1.0F};
+    float fade_to_gain{1.0F};
+    float fade_elapsed_seconds{0.0F};
+    float fade_duration_seconds{0.0F};
+};
+
+struct AudioGameplayCueDesc {
+    std::string id;
+    AudioGameplayCueKind kind{AudioGameplayCueKind::sfx};
+    AssetId clip;
+    std::string bus{"master"};
+    float gain{1.0F};
+    bool looping{false};
+    bool spatialized{false};
+    AudioPoint3 position{};
+    float min_distance{1.0F};
+    float max_distance{64.0F};
+};
+
+struct AudioGameplayCueTrigger {
+    std::string cue_id;
+    std::uint64_t start_frame{0};
+    float gain_scale{1.0F};
+};
+
+struct AudioGameplayMixRequest {
+    std::vector<AudioGameplayBusMixDesc> buses;
+    std::vector<AudioGameplayCueDesc> cues;
+    std::vector<AudioGameplayCueTrigger> triggers;
+};
+
+enum class AudioGameplayMixDiagnosticCode : std::uint8_t {
+    missing_bus_name,
+    duplicate_bus,
+    invalid_bus_gain,
+    invalid_bus_fade,
+    missing_cue_id,
+    duplicate_cue_id,
+    unsupported_cue_kind,
+    missing_clip,
+    unknown_bus,
+    invalid_cue_gain,
+    invalid_spatial_range,
+    missing_trigger_cue_id,
+    unknown_cue,
+    invalid_trigger_gain,
+};
+
+struct AudioGameplayMixDiagnostic {
+    AudioGameplayMixDiagnosticCode code{AudioGameplayMixDiagnosticCode::missing_cue_id};
+    std::string bus;
+    std::string cue_id;
+    std::string message;
+};
+
+struct AudioGameplayMixCommand {
+    std::string cue_id;
+    AudioGameplayCueKind kind{AudioGameplayCueKind::sfx};
+    AudioVoiceDesc voice;
+    bool spatialized{false};
+    AudioPoint3 position{};
+    float min_distance{1.0F};
+    float max_distance{64.0F};
+};
+
+struct AudioGameplayMixPlan {
+    std::vector<AudioBusDesc> buses;
+    std::vector<AudioGameplayMixCommand> commands;
+    std::vector<AudioGameplayMixDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 enum class AudioSampleFormat : std::uint8_t { unknown, float32, pcm16 };
 
 enum class AudioResamplingQuality : std::uint8_t { nearest, linear };
@@ -230,11 +317,13 @@ class AudioMixer;
 [[nodiscard]] bool is_valid_audio_voice_desc(const AudioVoiceDesc& voice) noexcept;
 [[nodiscard]] bool is_valid_audio_spatial_listener_desc(const AudioSpatialListenerDesc& listener) noexcept;
 [[nodiscard]] bool is_valid_audio_spatial_voice_desc(const AudioSpatialVoiceDesc& voice) noexcept;
+[[nodiscard]] bool is_valid_audio_gameplay_cue_kind(AudioGameplayCueKind kind) noexcept;
 [[nodiscard]] bool is_valid_audio_clip_desc(const AudioClipDesc& clip) noexcept;
 [[nodiscard]] bool is_valid_audio_device_format(const AudioDeviceFormat& format) noexcept;
 [[nodiscard]] bool is_valid_audio_render_request(const AudioRenderRequest& request) noexcept;
 [[nodiscard]] bool is_valid_audio_clip_sample_data(const AudioClipSampleData& samples) noexcept;
 [[nodiscard]] bool is_valid_audio_device_stream_request(const AudioDeviceStreamRequest& request) noexcept;
+[[nodiscard]] AudioGameplayMixPlan plan_gameplay_audio_mix(const AudioGameplayMixRequest& request);
 [[nodiscard]] AudioDeviceStreamPlan plan_audio_device_stream(AudioDeviceStreamRequest request) noexcept;
 [[nodiscard]] AudioDeviceStreamRenderResult
 render_audio_device_stream_interleaved_float(const AudioMixer& mixer, AudioDeviceStreamRequest request,

@@ -26,11 +26,11 @@ Coverage statuses:
 | Sprites / atlas / animation | `developer-backlog` + `advanced-track` | `2D Sprite Production Pipeline Track`; `sprite-atlas-authoring-v1`; `sprite-batching-renderer-v1`; `sprite-animation-flipbook-v1` | Production claim requires atlas rows, deterministic flipbooks, batching counters, and package evidence. |
 | Tilemaps / 2D levels | `covered-foundation` + `developer-backlog` | `tilemap-metadata-authoring-tooling-v1`; `content-rich-2d-adventure-archetype` | Map-based interaction claim requires walkability/interaction/collision layers and transition diagnostics. |
 | 2D camera / bounds / screen-space policy | `developer-backlog` | `engine-scene-gameplay-binding-v1`; `projectile-pattern-action-archetype` | Camera bounds, spawn-safe regions, y/screen sorting, and despawn rules need package counters. |
-| Input / rebinding / UI capture | `developer-backlog` | `engine-input-action-contexts-v1`; `gameplay-simulation-orchestration-v1` | Generated games need action contexts, pause/UI capture, rebinding/profile evidence, and no platform-native handles. |
+| Input / rebinding / UI capture | `covered-foundation` + `developer-backlog` | `engine-input-action-contexts-v1`; `gameplay-simulation-orchestration-v1` | Runtime input context stack planning is implemented; broader package/UI capture/rebinding flows remain follow-up evidence. |
 | 2D collision / hitboxes / triggers | `developer-backlog` | `sprite-collision-hitbox-v1`; `physics-collision-query-v1`; `engine-gameplay-interaction-framework-v1` | Frame/layer hitbox rows, deterministic query ordering, and package counters before broad gameplay-family readiness claims. |
-| HUD / menus / runtime UI | `developer-backlog` | `engine-ui-game-menu-hud-v1`; `sprite-9slice-and-tiled-v1` | Runtime menus/HUD/dialogue boxes must use first-party UI rows, not editor/Dear ImGui. |
-| Audio / music / SFX | `developer-backlog` | `engine-audio-gameplay-mixer-v1` | SDL3/audio device ownership remains behind adapters; package counters prove events/groups/fades. |
-| Save/settings/progression | `developer-backlog` | `engine-save-settings-profile-v1`; `simulation-persistence-v1` | Save slots/profiles need versioning, corruption/migration diagnostics, and package resume evidence. |
+| HUD / menus / runtime UI | `covered-foundation` + `developer-backlog` | `engine-ui-game-menu-hud-v1`; `sprite-9slice-and-tiled-v1` | Runtime menu/HUD intent rows are implemented; richer dialogue/9-slice/package UX remains follow-up evidence. |
+| Audio / music / SFX | `covered-foundation` + `developer-backlog` | `engine-audio-gameplay-mixer-v1` | Audio Gameplay Mix Planner v1 is implemented for cue/bus/trigger planning; SDL3/audio device ownership remains behind adapters and broader package counters remain future evidence. |
+| Save/settings/progression | `covered-foundation` + `developer-backlog` | `engine-save-settings-profile-v1`; `simulation-persistence-v1` | Runtime session profile path/document bundle primitives are implemented; richer save slots/progression/package resume evidence remains follow-up work. |
 | AI-generated game workflow | `advanced-track` | `AI Autonomous Game Creation Track` | AI writes game-owned files only, uses design spec/mutation ledger/remediation recipes, and handoffs missing engine features. |
 
 ### 2D advanced coverage
@@ -55,7 +55,7 @@ Coverage statuses:
 | 3D physics/collision queries | `active-gap` + `developer-backlog` | `physics-advanced-dynamics-follow-up`; `physics-collision-query-v1` | Deterministic sweeps/casts/layers/body interaction before production gameplay claims. |
 | 3D navigation / AI movement | `active-gap` + `advanced-track` | `navigation-navmesh-and-dynamic-obstacle-follow-up`; `navigation-navmesh-v1`; `navigation-crowd-local-avoidance-v1` | Scene-referenced navmesh/dynamic obstacles/local avoidance need 3D package evidence. |
 | Animation / skeletal / morph basics | `covered-foundation` + `advanced-track` | existing animation/gltf/skinning/morph closeout evidence; `renderer-modern-materials-v1`; `gameplay-systems-framework-v1` | Broad animation graph/retarget/cinematics remain future; current claim is package/proof-scoped. |
-| Runtime UI/audio/save | `developer-backlog` | `engine-ui-game-menu-hud-v1`; `engine-audio-gameplay-mixer-v1`; `engine-save-settings-profile-v1` | 3D games need the same game-owned UI/audio/save contracts as 2D, with separate package evidence. |
+| Runtime UI/audio/save | `covered-foundation` + `developer-backlog` | `engine-ui-game-menu-hud-v1`; `engine-audio-gameplay-mixer-v1`; `engine-save-settings-profile-v1` | Shared game-owned UI/audio/save foundations are implemented; richer 3D package-specific evidence remains follow-up work. |
 
 ### 3D advanced coverage
 
@@ -68,7 +68,7 @@ Coverage statuses:
 | Effects / particles / feedback | `advanced-track` | `renderer-postprocess-v1`; `sprite-effects-particles-v1` for 2D-style effects; future 3D VFX rows if selected | Budgeted effect rows and renderer evidence required; no Niagara/VFX Graph parity claim. |
 | Multiplayer/networking | `optional-adapter` | `networking-and-multiplayer-v1`; `engine-networking-foundation-v1` | Separate architecture/security plan, replay/determinism prerequisites, and host/network gates required. |
 
-Coverage verdict: the master plan now covers the expected 2D and 3D **foundations and advanced directions**, but many are not implemented ready capabilities yet. The zero-gap 1.0 path remains blocked only by the active gameplay/physics/navigation/package-evidence rows; broader Unity/Unreal-like 2D/3D functionality is tracked as developer-owned or post-1.0/1.x work so game-creation agents do not mistake planned features for supported engine behavior.
+Coverage verdict: the master plan now covers the expected 2D and 3D **foundations and advanced directions**, and the composed manifest currently keeps `unsupportedProductionGaps = []`. Broader Unity/Unreal-like 2D/3D functionality is tracked as developer-owned or post-1.0/1.x work so game-creation agents do not mistake planned features for supported engine behavior.
 
 When future reviews find a missing 2D/3D capability, first map it to this matrix. If an existing row owns it, update that row's dated plan when selected; if no row owns it, add one developer-owned capability row and one AI-operable evidence gate rather than scattering duplicate archetype-specific requirements.
 
