@@ -246,8 +246,12 @@ Assert-ContainsText $buildingContent 'MSBuild a single `Path`' "docs/building.md
 Assert-ContainsText $buildingContent "tools/cmake.ps1 --preset dev" "docs/building.md"
 Assert-ContainsText $buildingContent "tools/ctest.ps1 --preset dev --output-on-failure" "docs/building.md"
 Assert-ContainsText $agentsContent "/INCREMENTAL:NO" "AGENTS.md"
+Assert-ContainsText $agentsContent "COMPILE_PDB_OUTPUT_DIRECTORY" "AGENTS.md"
 Assert-ContainsText $buildingContent "/INCREMENTAL:NO" "docs/building.md"
+Assert-ContainsText $buildingContent "COMPILE_PDB_OUTPUT_DIRECTORY" "docs/building.md"
 $cmakeListsContent = Get-AgentSurfaceText "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_NAME ${target_name}' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_OUTPUT_DIRECTORY' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'get_target_property(MK_TARGET_TYPE ${target_name} TYPE)' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "EXECUTABLE"' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "SHARED_LIBRARY"' "CMakeLists.txt"
@@ -259,6 +263,7 @@ foreach ($cmakeSkillPath in @(
     ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/INCREMENTAL:NO" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "COMPILE_PDB_OUTPUT_DIRECTORY" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) 'Do not repair generated `out/build/<preset>` trees' $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "CMakeCache.txt" $cmakeSkillPath
 }
@@ -271,11 +276,20 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
     Assert-ContainsText $buildFixerAgentText "tools/check-tidy.ps1" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText 'Do not repair generated `out/build/<preset>` trees' $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "CMakeCache.txt" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "C1041" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "COMPILE_PDB_OUTPUT_DIRECTORY" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText 'global `/FS`' $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "LinkIncremental=false" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "gh pr view <pr> --json headRefOid,statusCheckRollup,url" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "billing or account limits" $buildFixerPath
 }
+$cursorCmakeRuleText = Get-AgentSurfaceText ".cursor/rules/mirakana-cmake-vcpkg.mdc"
+Assert-ContainsText $cursorCmakeRuleText "COMPILE_PDB_OUTPUT_DIRECTORY" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
+Assert-ContainsText $cursorCmakeRuleText 'global `/FS`' ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "/INCREMENTAL:NO" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "msvcCompilePdbIsolation" "engine/agent/manifest.json"
+Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'ToolId "cmake-build"' "tools/common.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'Test-CMakeBuildCommand' "tools/common.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-MaxFiles 1" "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/cmake.ps1") 'Invoke-CheckedCommand $tools.CMake @Arguments' "tools/cmake.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/ctest.ps1") 'Invoke-CheckedCommand $tools.CTest @Arguments' "tools/ctest.ps1"

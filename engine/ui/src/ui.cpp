@@ -64,6 +64,55 @@ namespace {
            direction == NavigationDirection::right;
 }
 
+[[nodiscard]] bool is_valid_runtime_menu_hud_row_kind(RuntimeMenuHudRowKind kind) noexcept {
+    switch (kind) {
+    case RuntimeMenuHudRowKind::label:
+    case RuntimeMenuHudRowKind::counter:
+    case RuntimeMenuHudRowKind::prompt:
+    case RuntimeMenuHudRowKind::command:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool is_valid_runtime_menu_hud_command_intent(RuntimeMenuHudCommandIntent intent) noexcept {
+    switch (intent) {
+    case RuntimeMenuHudCommandIntent::pause_game:
+    case RuntimeMenuHudCommandIntent::resume_game:
+    case RuntimeMenuHudCommandIntent::restart_session:
+    case RuntimeMenuHudCommandIntent::open_menu:
+    case RuntimeMenuHudCommandIntent::close_menu:
+    case RuntimeMenuHudCommandIntent::custom:
+        return true;
+    case RuntimeMenuHudCommandIntent::none:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] bool is_valid_runtime_menu_hud_command_target(RuntimeMenuHudCommandTarget target) noexcept {
+    switch (target) {
+    case RuntimeMenuHudCommandTarget::game_session:
+    case RuntimeMenuHudCommandTarget::menu_overlay:
+    case RuntimeMenuHudCommandTarget::custom:
+        return true;
+    case RuntimeMenuHudCommandTarget::none:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] bool contains_runtime_menu_hud_row_id(const std::vector<std::string>& ids, std::string_view id) noexcept {
+    return std::ranges::find(ids, id) != ids.end();
+}
+
+void append_runtime_menu_hud_diagnostic(std::vector<RuntimeMenuHudDiagnostic>& diagnostics,
+                                        RuntimeMenuHudDiagnosticCode code, std::string row_id, std::string command_id,
+                                        std::string message) {
+    diagnostics.push_back(RuntimeMenuHudDiagnostic{
+        .code = code, .row_id = std::move(row_id), .command_id = std::move(command_id), .message = std::move(message)});
+}
+
 [[nodiscard]] bool is_accessibility_candidate(const Element& element) noexcept {
     if (element.role == SemanticRole::none || element.role == SemanticRole::root) {
         return false;
@@ -2208,6 +2257,82 @@ bool apply_text_binding(UiDocument& document, const TextBinding& binding, const 
     auto text = existing->text;
     text.label = std::string(*value);
     return document.set_text(binding.element, std::move(text));
+}
+
+bool RuntimeMenuHudPlan::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
+RuntimeMenuHudPlan plan_runtime_menu_hud(const std::vector<RuntimeMenuHudRowDesc>& rows) {
+    RuntimeMenuHudPlan plan;
+    std::vector<std::string> row_ids;
+    std::vector<std::string> command_ids;
+    row_ids.reserve(rows.size());
+    command_ids.reserve(rows.size());
+
+    for (const auto& row : rows) {
+        if (row.id.empty()) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::missing_row_id, {},
+                                               row.command_id, "runtime menu hud row id must not be empty");
+        } else if (contains_runtime_menu_hud_row_id(row_ids, row.id)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::duplicate_row_id, row.id,
+                                               row.command_id, "runtime menu hud row id must be unique");
+        } else {
+            row_ids.push_back(row.id);
+        }
+
+        if (!is_valid_runtime_menu_hud_row_kind(row.kind)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::unsupported_row_kind,
+                                               row.id, row.command_id, "runtime menu hud row kind is not supported");
+            continue;
+        }
+
+        if (row.kind != RuntimeMenuHudRowKind::command) {
+            continue;
+        }
+
+        if (row.command_id.empty()) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::missing_command_id,
+                                               row.id, {}, "runtime menu hud command row requires a command id");
+        } else if (contains_runtime_menu_hud_row_id(command_ids, row.command_id)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::duplicate_command_id,
+                                               row.id, row.command_id, "runtime menu hud command id must be unique");
+        } else {
+            command_ids.push_back(row.command_id);
+        }
+
+        if (!is_valid_runtime_menu_hud_command_target(row.command_target)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::invalid_command_target,
+                                               row.id, row.command_id,
+                                               "runtime menu hud command target must be a supported target");
+        }
+
+        if (!is_valid_runtime_menu_hud_command_intent(row.command_intent)) {
+            append_runtime_menu_hud_diagnostic(plan.diagnostics, RuntimeMenuHudDiagnosticCode::invalid_command_intent,
+                                               row.id, row.command_id,
+                                               "runtime menu hud command intent must be a supported intent");
+        }
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    plan.display_rows.reserve(rows.size());
+    plan.command_rows.reserve(command_ids.size());
+    for (const auto& row : rows) {
+        plan.display_rows.push_back(RuntimeMenuHudDisplayRow{
+            .id = row.id, .kind = row.kind, .label = row.label, .value = row.value, .enabled = row.enabled});
+        if (row.kind == RuntimeMenuHudRowKind::command) {
+            plan.command_rows.push_back(RuntimeMenuHudCommandRow{.row_id = row.id,
+                                                                 .command_id = row.command_id,
+                                                                 .intent = row.command_intent,
+                                                                 .target = row.command_target,
+                                                                 .enabled = row.enabled});
+        }
+    }
+
+    return plan;
 }
 
 bool CommandRegistry::try_add(CommandBinding command) {

@@ -1,0 +1,58 @@
+# Engine Input Action Contexts v1 (2026-05-20)
+
+**Plan ID:** `engine-input-action-contexts-v1`
+**Status:** Active.
+**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
+
+## Goal
+
+Strengthen reusable runtime input action/context primitives so AI-generated games can switch between gameplay, menu, dialogue, rebinding, and capture states without platform-native handles or game-specific engine logic.
+
+## Context
+
+- `gameplay-authoring-foundation-v1` completed runtime scene gameplay binding and interaction planning.
+- `engine-save-settings-profile-v1` completed reviewed runtime profile path/document primitives.
+- `engine-ui-game-menu-hud-v1` completed a runtime menu/HUD intent model that needs reliable action contexts for menu/gameplay handoff.
+- The developer-owned backlog lists `engine-input-action-contexts-v1` as a foundational unblocker for keyboard/mouse/gamepad/touch mappings, context switching, UI capture, and rebinding.
+
+## Constraints
+
+- Keep game-specific mappings, labels, and rebinding choices in game-owned code/data.
+- Promote only reusable input context/profile primitives into engine APIs.
+- Keep platform adapters behind `engine/platform`; no native input handles in public runtime contracts.
+- Preserve `unsupportedProductionGaps = []`. If this work requires reopening an Engine 1.0 production gap, stop.
+- Use RED tests before behavior/API changes.
+
+## Phase 0: Pointer Sync
+
+**Status:** Completed.
+
+### Goal
+
+Make the manifest pointers, master-plan ledger, and plan registry agree that `engine-input-action-contexts-v1` is the active developer-owned capability after UI game menu/HUD foundation, while keeping `unsupportedProductionGaps = []`.
+
+### Done When
+
+- `docs/superpowers/plans/README.md` lists this plan as the active `currentActivePlan` slice.
+- The production master plan and readiness ledger name this milestone as developer-owned capability work, not an Engine 1.0 unsupported gap.
+- `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and composed `engine/agent/manifest.json` point `currentActivePlan` and `recommendedNextPlan` at this plan while preserving `unsupportedProductionGaps = []`.
+
+## Phase 1: Runtime Input Context Review And First Contract
+
+**Status:** Pending.
+
+### Goal
+
+Read the existing runtime input action/context/rebinding APIs and select the smallest missing primitive that improves menu/gameplay/capture context switching for generated games.
+
+### Done When
+
+- Existing `MK_runtime` input context APIs and tests are reviewed before implementation.
+- RED runtime tests describe the selected missing behavior.
+- Focused runtime build/test and relevant public/agent static checks pass.
+
+## Validation Evidence
+
+- Phase 0 pointer sync: plan registry, production master-plan index, readiness ledger, manifest fragments, and composed manifest now point `currentActivePlan` / `recommendedNextPlan` at this plan while keeping `unsupportedProductionGaps = []`.
+- Phase 0 static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
+- Phase 0 full gate inherited from the checkpoint: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit` reported `unsupported_gaps=0`.

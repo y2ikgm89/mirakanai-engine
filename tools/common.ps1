@@ -793,6 +793,23 @@ function Assert-CppBuildTools {
     }
 }
 
+function Test-CMakeBuildCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+
+        [Parameter()]
+        [string[]]$Arguments = @()
+    )
+
+    if (-not ($Arguments -contains "--build")) {
+        return $false
+    }
+
+    $leafName = [System.IO.Path]::GetFileNameWithoutExtension($FilePath)
+    return $leafName -ieq "cmake"
+}
+
 function Get-NormalizedProcessEnvironment {
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $entries = [System.Collections.Generic.List[object]]::new()
@@ -838,22 +855,32 @@ function Invoke-CheckedCommand {
         [string[]]$Arguments
     )
 
-    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = $FilePath
-    $startInfo.WorkingDirectory = (Get-Location).Path
-    $startInfo.UseShellExecute = $false
-    foreach ($argument in $Arguments) {
-        $startInfo.ArgumentList.Add($argument) | Out-Null
-    }
-    $startInfo.Environment.Clear()
-    foreach ($entry in Get-NormalizedProcessEnvironment) {
-        $startInfo.Environment[$entry.Key] = $entry.Value
-    }
+    $cmakeBuildMutex = $null
+    try {
+        if (Test-CMakeBuildCommand -FilePath $FilePath -Arguments $Arguments) {
+            $cmakeBuildMutex = Initialize-RepoExclusiveToolMutex -RepositoryRoot (Get-RepoRoot) -ToolId "cmake-build"
+            Write-Information "tools/cmake-build: exclusive repository mutex acquired; running CMake build..." -InformationAction Continue
+        }
 
-    $process = [System.Diagnostics.Process]::Start($startInfo)
-    $process.WaitForExit()
-    if ($process.ExitCode -ne 0) {
-        Write-Error "Command failed with exit code $($process.ExitCode): $FilePath $($Arguments -join ' ')"
+        $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $FilePath
+        $startInfo.WorkingDirectory = (Get-Location).Path
+        $startInfo.UseShellExecute = $false
+        foreach ($argument in $Arguments) {
+            $startInfo.ArgumentList.Add($argument) | Out-Null
+        }
+        $startInfo.Environment.Clear()
+        foreach ($entry in Get-NormalizedProcessEnvironment) {
+            $startInfo.Environment[$entry.Key] = $entry.Value
+        }
+
+        $process = [System.Diagnostics.Process]::Start($startInfo)
+        $process.WaitForExit()
+        if ($process.ExitCode -ne 0) {
+            Write-Error "Command failed with exit code $($process.ExitCode): $FilePath $($Arguments -join ' ')"
+        }
+    } finally {
+        Clear-RepoExclusiveToolMutex -Mutex $cmakeBuildMutex
     }
 }
 

@@ -1,7 +1,7 @@
 # Engine UI Game Menu HUD v1 (2026-05-19)
 
 **Plan ID:** `engine-ui-game-menu-hud-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -26,7 +26,7 @@ Add reusable runtime UI primitives that AI-generated games can use for game-owne
 
 ## Phase 0: Pointer Sync
 
-**Status:** Active.
+**Status:** Completed.
 
 ### Goal
 
@@ -40,6 +40,8 @@ Make the manifest pointers, master-plan ledger, and plan registry agree that `en
 
 ## Phase 1: Runtime Menu HUD Intent Model
 
+**Status:** Completed.
+
 ### Goal
 
 Add a small runtime/game-facing value model for HUD and menu command intent that generated games can populate before handing rows to existing UI layout/rendering layers.
@@ -50,6 +52,13 @@ Add a small runtime/game-facing value model for HUD and menu command intent that
 - A deterministic planning helper that validates duplicate ids, missing command ids, unsupported row states, and pause/restart command intent before game code executes UI commands.
 - A source-tree sample consumer using existing `MK_ui`/runtime gameplay code without editor or renderer-native dependencies.
 
+### Implemented Surface
+
+- `MK_ui` exposes `RuntimeMenuHudRowDesc`, `RuntimeMenuHudRowKind`, `RuntimeMenuHudCommandIntent`, `RuntimeMenuHudCommandTarget`, `RuntimeMenuHudPlan`, and `plan_runtime_menu_hud`.
+- Valid plans return deterministic `RuntimeMenuHudDisplayRow` and `RuntimeMenuHudCommandRow` values for label, counter, prompt, pause, resume, restart, menu, and custom command intent rows.
+- Invalid plans fail closed with diagnostics for missing or duplicate row ids, unsupported row kinds, missing or duplicate command ids, invalid command intents, and invalid command targets; display and command rows remain empty.
+- `sample_ui_audio_assets` demonstrates source-tree HUD/menu intent validation before existing `MK_ui` element construction.
+
 ### Done When
 
 - RED tests prove valid HUD/menu rows produce deterministic display/command rows.
@@ -59,4 +68,9 @@ Add a small runtime/game-facing value model for HUD and menu command intent that
 
 ## Validation Evidence
 
-- Pending.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed before implementation because `RuntimeMenuHudRowDesc`, `RuntimeMenuHudRowKind`, `RuntimeMenuHudCommandIntent`, `RuntimeMenuHudCommandTarget`, `RuntimeMenuHudDiagnosticCode`, and `plan_runtime_menu_hud` were undefined.
+- Phase 1 focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` passed.
+- Phase 1 focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests` passed.
+- Phase 1 focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_ui_audio_assets` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R sample_ui_audio_assets` passed. One parallel `sample_ui_audio_assets` build hit transient MSVC C1041 PDB contention and passed when rerun alone.
+- Phase 1 static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` passed.
+- Phase 1 full phase gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit` reported `unsupported_gaps=0`.

@@ -15,8 +15,8 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: `docs/superpowers/plans/2026-05-19-engine-ui-game-menu-hud-v1.md`.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-ui-game-menu-hud-v1` as the next developer-owned capability, not a reopened Engine 1.0 production gap.
+- Current active plan: `docs/superpowers/plans/2026-05-20-engine-input-action-contexts-v1.md`.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-input-action-contexts-v1` as the next developer-owned capability, not a reopened Engine 1.0 production gap.
 - Current gap cluster: none selected after the 2026-05-19 gameplay/physics/navigation/AI foundation closeout.
 
 ## Plan map

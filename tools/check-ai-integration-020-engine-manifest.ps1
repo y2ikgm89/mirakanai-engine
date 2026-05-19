@@ -1722,6 +1722,61 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "load_runtime_session_profile_documents" $docSurface.Label
     Assert-ContainsText $docSurface.Text "write_runtime_session_profile_documents" $docSurface.Label
 }
+$runtimeMenuHudIntentAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-menu-hud-intent-model-v1" })
+if ($runtimeMenuHudIntentAuthoringSurface.Count -ne 1 -or
+    $runtimeMenuHudIntentAuthoringSurface[0].status -ne "ready" -or
+    $runtimeMenuHudIntentAuthoringSurface[0].owner -ne "MK_ui") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-menu-hud-intent-model-v1 must be ready as an MK_ui surface"
+}
+if (-not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudRowDesc") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudCommandIntent") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudCommandTarget") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("plan_runtime_menu_hud") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudDisplayRow") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudCommandRow") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("duplicate command ids") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("invalid command targets") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("game-specific menu schema")) {
+    Write-Error "engine/agent/manifest.json runtime-menu-hud-intent-model-v1 authoring surface must keep HUD/menu intent contract and non-goals explicit"
+}
+$uiHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/ui.hpp"
+$uiSourceText = Get-AgentSurfaceText "engine/ui/src/ui.cpp"
+$coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
+$sampleUiAudioAssetsText = Get-AgentSurfaceText "games/sample_ui_audio_assets/main.cpp"
+foreach ($needle in @(
+        "RuntimeMenuHudRowDesc",
+        "RuntimeMenuHudRowKind",
+        "RuntimeMenuHudCommandIntent",
+        "RuntimeMenuHudCommandTarget",
+        "RuntimeMenuHudDiagnosticCode",
+        "RuntimeMenuHudPlan",
+        "plan_runtime_menu_hud"
+    )) {
+    Assert-ContainsText $uiHeaderText $needle "engine/ui/include/mirakana/ui/ui.hpp"
+}
+foreach ($needle in @(
+        "RuntimeMenuHudDiagnosticCode::duplicate_row_id",
+        "RuntimeMenuHudDiagnosticCode::missing_command_id",
+        "RuntimeMenuHudDiagnosticCode::duplicate_command_id",
+        "RuntimeMenuHudDiagnosticCode::invalid_command_target",
+        "is_valid_runtime_menu_hud_command_intent"
+    )) {
+    Assert-ContainsText $uiSourceText $needle "engine/ui/src/ui.cpp"
+}
+Assert-ContainsText $coreTestsText "runtime menu hud plan produces deterministic display and command rows" "tests/unit/core_tests.cpp"
+Assert-ContainsText $coreTestsText "runtime menu hud plan rejects duplicate row and command ids" "tests/unit/core_tests.cpp"
+Assert-ContainsText $coreTestsText "runtime menu hud plan rejects missing command ids and invalid command targets" "tests/unit/core_tests.cpp"
+Assert-ContainsText $sampleUiAudioAssetsText "plan_runtime_menu_hud" "games/sample_ui_audio_assets/main.cpp"
+Assert-ContainsText $sampleUiAudioAssetsText "RuntimeMenuHudCommandIntent::restart_session" "games/sample_ui_audio_assets/main.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeMenuHudRowDesc" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_menu_hud" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "RuntimeMenuHudCommandRow" $docSurface.Label
+}
 $assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"

@@ -1091,6 +1091,139 @@ MK_TEST("ui transitions text bindings and command invocation are deterministic")
     MK_REQUIRE(!commands.execute("menu.missing"));
 }
 
+MK_TEST("runtime menu hud plan produces deterministic display and command rows") {
+    const std::vector<mirakana::ui::RuntimeMenuHudRowDesc> rows{
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "hud.score",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::counter,
+            .label = "Score",
+            .value = "100",
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "hud.prompt",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::prompt,
+            .label = "Press E",
+            .value = "Interact",
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.pause",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Pause",
+            .command_id = "game.pause",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::pause_game,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.restart",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Restart",
+            .command_id = "game.restart",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::restart_session,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+            .enabled = false,
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_menu_hud(rows);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.display_rows.size() == 4);
+    MK_REQUIRE(plan.display_rows[0].id == "hud.score");
+    MK_REQUIRE(plan.display_rows[0].kind == mirakana::ui::RuntimeMenuHudRowKind::counter);
+    MK_REQUIRE(plan.display_rows[0].label == "Score");
+    MK_REQUIRE(plan.display_rows[0].value == "100");
+    MK_REQUIRE(plan.display_rows[2].id == "menu.pause");
+    MK_REQUIRE(plan.command_rows.size() == 2);
+    MK_REQUIRE(plan.command_rows[0].row_id == "menu.pause");
+    MK_REQUIRE(plan.command_rows[0].command_id == "game.pause");
+    MK_REQUIRE(plan.command_rows[0].intent == mirakana::ui::RuntimeMenuHudCommandIntent::pause_game);
+    MK_REQUIRE(plan.command_rows[0].target == mirakana::ui::RuntimeMenuHudCommandTarget::game_session);
+    MK_REQUIRE(plan.command_rows[1].row_id == "menu.restart");
+    MK_REQUIRE(!plan.command_rows[1].enabled);
+}
+
+MK_TEST("runtime menu hud plan rejects duplicate row and command ids") {
+    const std::vector<mirakana::ui::RuntimeMenuHudRowDesc> rows{
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.pause",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Pause",
+            .command_id = "game.pause",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::pause_game,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.pause",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Pause Again",
+            .command_id = "game.restart",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::restart_session,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.resume",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Resume",
+            .command_id = "game.pause",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::resume_game,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_menu_hud(rows);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.display_rows.empty());
+    MK_REQUIRE(plan.command_rows.empty());
+    MK_REQUIRE(plan.diagnostics.size() == 2);
+    MK_REQUIRE(plan.diagnostics[0].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::duplicate_row_id);
+    MK_REQUIRE(plan.diagnostics[0].row_id == "menu.pause");
+    MK_REQUIRE(plan.diagnostics[1].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::duplicate_command_id);
+    MK_REQUIRE(plan.diagnostics[1].command_id == "game.pause");
+}
+
+MK_TEST("runtime menu hud plan rejects missing command ids and invalid command targets") {
+    const std::vector<mirakana::ui::RuntimeMenuHudRowDesc> rows{
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.pause",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Pause",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::pause_game,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.restart",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Restart",
+            .command_id = "game.restart",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::restart_session,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::none,
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.bad_intent",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Bad",
+            .command_id = "game.bad",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::none,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_menu_hud(rows);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.display_rows.empty());
+    MK_REQUIRE(plan.command_rows.empty());
+    MK_REQUIRE(plan.diagnostics.size() == 3);
+    MK_REQUIRE(plan.diagnostics[0].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::missing_command_id);
+    MK_REQUIRE(plan.diagnostics[0].row_id == "menu.pause");
+    MK_REQUIRE(plan.diagnostics[1].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::invalid_command_target);
+    MK_REQUIRE(plan.diagnostics[1].row_id == "menu.restart");
+    MK_REQUIRE(plan.diagnostics[2].code == mirakana::ui::RuntimeMenuHudDiagnosticCode::invalid_command_intent);
+    MK_REQUIRE(plan.diagnostics[2].row_id == "menu.bad_intent");
+}
+
 MK_TEST("virtual input reports pressed down and released states") {
     mirakana::VirtualInput input;
 
