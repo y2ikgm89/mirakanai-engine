@@ -258,6 +258,153 @@
         }
       }
     },
+    "spriteAtlasSourceAuthoringTargets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "mode",
+          "planner",
+          "sourceRegistryPath",
+          "atlasSourcePath",
+          "atlasImportedPath",
+          "atlasAssetKey",
+          "packageIndexPath",
+          "maxSide",
+          "sourceDecoding",
+          "atlasPacking",
+          "runtimeSourceImageDecoding",
+          "rendererRhiResidency",
+          "packageStreaming",
+          "animationSemantics",
+          "editorProductization",
+          "freeFormEdit",
+          "frameRows",
+          "preflightRecipeIds"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "mode": {
+            "type": "string",
+            "const": "reviewed-rgba8-source-frames"
+          },
+          "planner": {
+            "type": "string",
+            "const": "plan_sprite_atlas_source_authoring"
+          },
+          "sourceRegistryPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geassets$"
+          },
+          "atlasSourcePath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.texture_source$"
+          },
+          "atlasImportedPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geasset$"
+          },
+          "atlasAssetKey": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+          },
+          "packageIndexPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+          },
+          "maxSide": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16384
+          },
+          "sourceDecoding": {
+            "type": "string",
+            "const": "provided-rgba8-texture-source"
+          },
+          "atlasPacking": {
+            "type": "string",
+            "const": "deterministic-sprite-atlas-rgba8-max-side"
+          },
+          "runtimeSourceImageDecoding": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "rendererRhiResidency": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "packageStreaming": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "animationSemantics": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "editorProductization": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "freeFormEdit": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "frameRows": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "required": ["id", "sourcePath", "width", "height", "pixelFormat"],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_/-]*$"
+                },
+                "sourcePath": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "pixelFormat": {
+                  "type": "string",
+                  "const": "rgba8_unorm"
+                }
+              }
+            }
+          },
+          "preflightRecipeIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        }
+      }
+    },
     "prefabScenePackageAuthoringTargets": {
       "type": "array",
       "uniqueItems": true,

@@ -4341,6 +4341,26 @@ frame.1.tint=1,0.4,0.2,1
 "@
     $spriteAnimation = ConvertTo-LfText -Text $spriteAnimation
 
+    $sourceAtlasTexture = @"
+format=GameEngine.TextureSource.v1
+texture.width=1
+texture.height=1
+texture.pixel_format=rgba8_unorm
+texture.data_hex=33b3ffff
+"@
+    $sourceAtlasTexture = ConvertTo-LfText -Text $sourceAtlasTexture
+
+    $sourceRegistry = @"
+format=GameEngine.SourceAssetRegistry.v1
+asset.0.key=$textureName
+asset.0.id=$textureId
+asset.0.kind=texture
+asset.0.source=source/sprites/player_atlas.texture_source
+asset.0.source_format=GameEngine.TextureSource.v1
+asset.0.imported=runtime/assets/2d/player.texture.geasset
+"@
+    $sourceRegistry = ConvertTo-LfText -Text $sourceRegistry
+
     $spriteShader = @"
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
@@ -4506,6 +4526,8 @@ dependency.5.path=runtime/assets/2d/player.sprite_animation
             "runtime/assets/2d/player.sprite_animation" = $spriteAnimation
             "runtime/assets/2d/playable.scene" = $scene
             "runtime/$GameName.geindex" = $index
+            "source/assets/package.geassets" = $sourceRegistry
+            "source/sprites/player_atlas.texture_source" = $sourceAtlasTexture
             "shaders/runtime_2d_sprite.hlsl" = $spriteShader
         }
     }
@@ -5428,11 +5450,11 @@ function New-DesktopRuntime2DManifest {
             navigation = "mirakana::plan_navigation_grid_agent_path plus mirakana::update_navigation_agent"
             ai = "mirakana::build_ai_perception_snapshot_2d, mirakana::write_ai_perception_blackboard, and mirakana::evaluate_behavior_tree"
             renderer = "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback or host-owned RHI-backed native 2D sprite overlay when packaged shader artifacts are present"
-            currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-native-2d-sprites so cooked scene sprite texture/material identity and HUD submission flow through the host-owned native RHI sprite overlay path with native_2d_sprite_batches_executed counters. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic frame sampling and sprite frame application emit sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming production atlas packing or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, and behavior tree counters emit gameplay_systems_* fields. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
+            currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-native-2d-sprites so cooked scene sprite texture/material identity and HUD submission flow through the host-owned native RHI sprite overlay path with native_2d_sprite_batches_executed counters. The sprite atlas source authoring target records reviewed RGBA8 frame rows for plan_sprite_atlas_source_authoring, emits GameEngine.TextureSource.v1 plus GameEngine.SourceAssetRegistry.v1 authoring files, and keeps those source files outside runtimePackageFiles before cooked runtime consumption. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic frame sampling and sprite frame application emit sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming runtime image decoding, production atlas packing, or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, and behavior tree counters emit gameplay_systems_* fields. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
         }
         backendReadiness = [ordered]@{
             platform = "sdl3-desktop-host-gated"
-            graphics = "NullRenderer fallback plus host-gated D3D12 native 2D sprite batch execution counters through generated shader artifacts. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
+            graphics = "NullRenderer fallback plus host-gated D3D12 native 2D sprite batch execution counters through generated shader artifacts. Sprite atlas source authoring remains a reviewed tooling/source contract only; runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness, and general production renderer quality remain unsupported."
             audio = "device-independent cooked audio payload mixed through MK_audio"
             ui = "MK_ui-headless renderer submission"
             physics = "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems"
@@ -5440,7 +5462,11 @@ function New-DesktopRuntime2DManifest {
             ai = "MK_ai perception-blackboard-behavior-tree proof through --require-gameplay-systems"
         }
         importerRequirements = [ordered]@{
-            sourceFormats = @("first-party-cooked-fixture")
+            sourceFormats = @(
+                "GameEngine.TextureSource.v1",
+                "GameEngine.SourceAssetRegistry.v1",
+                "first-party-cooked-fixture"
+            )
             cookedOnlyRuntime = $true
             externalImportersRequired = @()
         }
@@ -5454,6 +5480,37 @@ function New-DesktopRuntime2DManifest {
             "runtime/assets/2d/level.tilemap",
             "runtime/assets/2d/player.sprite_animation",
             "runtime/assets/2d/playable.scene"
+        )
+        spriteAtlasSourceAuthoringTargets = @(
+            [ordered]@{
+                id = "packaged-2d-player-source-atlas"
+                mode = "reviewed-rgba8-source-frames"
+                planner = "plan_sprite_atlas_source_authoring"
+                sourceRegistryPath = "source/assets/package.geassets"
+                atlasSourcePath = "source/sprites/player_atlas.texture_source"
+                atlasImportedPath = "runtime/assets/2d/player.texture.geasset"
+                atlasAssetKey = "$assetKeyPrefix/textures/player"
+                packageIndexPath = "runtime/$GameName.geindex"
+                maxSide = 1024
+                sourceDecoding = "provided-rgba8-texture-source"
+                atlasPacking = "deterministic-sprite-atlas-rgba8-max-side"
+                runtimeSourceImageDecoding = "unsupported"
+                rendererRhiResidency = "unsupported"
+                packageStreaming = "unsupported"
+                animationSemantics = "unsupported"
+                editorProductization = "unsupported"
+                freeFormEdit = "unsupported"
+                frameRows = @(
+                    [ordered]@{
+                        id = "player/idle"
+                        sourcePath = "source/sprites/player_idle.reviewed-rgba8"
+                        width = 1
+                        height = 1
+                        pixelFormat = "rgba8_unorm"
+                    }
+                )
+                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")
+            }
         )
         atlasTilemapAuthoringTargets = @(
             [ordered]@{

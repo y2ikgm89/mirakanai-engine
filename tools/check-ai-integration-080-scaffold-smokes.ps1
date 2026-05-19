@@ -288,7 +288,7 @@ try {
         "runtime/assets/2d/player.sprite_animation",
         "runtime/assets/2d/playable.scene"
     )
-    foreach ($relativePath in @("main.cpp", "README.md", "game.agent.json", "runtime/.gitattributes", "shaders/runtime_2d_sprite.hlsl") + $expectedDesktop2dRuntimeFiles) {
+    foreach ($relativePath in @("main.cpp", "README.md", "game.agent.json", "runtime/.gitattributes", "source/assets/package.geassets", "source/sprites/player_atlas.texture_source", "shaders/runtime_2d_sprite.hlsl") + $expectedDesktop2dRuntimeFiles) {
         $path = Join-Path $desktop2dGameRoot $relativePath
         if (-not (Test-Path -LiteralPath $path)) {
             Write-Error "Desktop runtime 2D package scaffold did not create $relativePath"
@@ -314,7 +314,7 @@ try {
             Write-Error "Desktop runtime 2D package scaffold manifest must include $relativePath in runtimePackageFiles"
         }
     }
-    foreach ($sourcePath in @("source/player.png", "source/scene.scene", "source/audio/jump.wav", "shaders/runtime_scene.hlsl", "shaders/runtime_2d_sprite.hlsl")) {
+    foreach ($sourcePath in @("source/assets/package.geassets", "source/sprites/player_atlas.texture_source", "source/player.png", "source/scene.scene", "source/audio/jump.wav", "shaders/runtime_scene.hlsl", "shaders/runtime_2d_sprite.hlsl")) {
         if ($desktop2dManifest.runtimePackageFiles -contains $sourcePath) {
             Write-Error "Desktop runtime 2D package scaffold must not ship source authoring file in runtimePackageFiles: $sourcePath"
         }
@@ -338,6 +338,15 @@ try {
         "runtime/desktop_2d_package_game.geindex" `
         "runtime/assets/2d/level.tilemap" `
         "runtime/assets/2d/player.texture.geasset"
+    Assert-SpriteAtlasSourceAuthoringTarget `
+        $desktop2dManifest `
+        "Desktop runtime 2D package scaffold manifest" `
+        "packaged-2d-player-source-atlas" `
+        "source/assets/package.geassets" `
+        "source/sprites/player_atlas.texture_source" `
+        "runtime/assets/2d/player.texture.geasset" `
+        "desktop-2d-package-game/textures/player" `
+        "runtime/desktop_2d_package_game.geindex"
     foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")) {
         if (@($desktop2dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
             Write-Error "Desktop runtime 2D package scaffold manifest validationRecipes missing $recipe"
@@ -352,6 +361,8 @@ try {
     $desktop2dIndex = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/desktop_2d_package_game.geindex") -Raw
     $desktop2dScene = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/assets/2d/playable.scene") -Raw
     $desktop2dSpriteAnimation = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "runtime/assets/2d/player.sprite_animation") -Raw
+    $desktop2dSourceRegistry = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "source/assets/package.geassets") -Raw
+    $desktop2dAtlasSource = Get-Content -LiteralPath (Join-Path $desktop2dGameRoot "source/sprites/player_atlas.texture_source") -Raw
     foreach ($attributeRule in @(
         "*.geindex text eol=lf",
         "*.geasset text eol=lf",
@@ -423,6 +434,13 @@ try {
     Assert-ContainsText $desktop2dSpriteAnimation "format=GameEngine.CookedSpriteAnimation.v1" "Desktop 2D scaffold sprite animation"
     Assert-ContainsText $desktop2dSpriteAnimation "asset.kind=sprite_animation" "Desktop 2D scaffold sprite animation"
     Assert-ContainsText $desktop2dSpriteAnimation "target.node=Player" "Desktop 2D scaffold sprite animation"
+    Assert-ContainsText $desktop2dSourceRegistry "format=GameEngine.SourceAssetRegistry.v1" "Desktop 2D scaffold source registry"
+    Assert-ContainsText $desktop2dSourceRegistry "asset.0.key=desktop-2d-package-game/textures/player" "Desktop 2D scaffold source registry"
+    Assert-ContainsText $desktop2dSourceRegistry "asset.0.source=source/sprites/player_atlas.texture_source" "Desktop 2D scaffold source registry"
+    Assert-ContainsText $desktop2dSourceRegistry "asset.0.imported=runtime/assets/2d/player.texture.geasset" "Desktop 2D scaffold source registry"
+    Assert-ContainsText $desktop2dAtlasSource "format=GameEngine.TextureSource.v1" "Desktop 2D scaffold atlas source"
+    Assert-ContainsText $desktop2dAtlasSource "texture.pixel_format=rgba8_unorm" "Desktop 2D scaffold atlas source"
+    Assert-ContainsText $desktop2dAtlasSource "texture.data_hex=33b3ffff" "Desktop 2D scaffold atlas source"
     if ($desktop2dIndex.Contains("kind=source_file")) {
         Write-Error "Desktop runtime 2D package scaffold geindex must not use source_file dependency edges"
     }

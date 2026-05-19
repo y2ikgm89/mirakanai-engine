@@ -340,6 +340,97 @@ function Assert-AtlasTilemapAuthoringTarget($manifest, [string]$label, [string]$
     }
 }
 
+function Assert-SpriteAtlasSourceAuthoringTarget($manifest, [string]$label, [string]$id, [string]$sourceRegistryPath, [string]$atlasSourcePath, [string]$atlasImportedPath, [string]$atlasAssetKey, [string]$packageIndexPath) {
+    if (-not $manifest.PSObject.Properties.Name.Contains("spriteAtlasSourceAuthoringTargets")) {
+        Write-Error "$label must declare spriteAtlasSourceAuthoringTargets"
+    }
+    $targets = @($manifest.spriteAtlasSourceAuthoringTargets | Where-Object { $_.id -eq $id })
+    if ($targets.Count -ne 1) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets must contain exactly one '$id' row"
+    }
+    $target = $targets[0]
+    Assert-JsonProperty $target @("id", "mode", "planner", "sourceRegistryPath", "atlasSourcePath", "atlasImportedPath", "atlasAssetKey", "packageIndexPath", "maxSide", "sourceDecoding", "atlasPacking", "runtimeSourceImageDecoding", "rendererRhiResidency", "packageStreaming", "animationSemantics", "editorProductization", "freeFormEdit", "frameRows", "preflightRecipeIds") "$label spriteAtlasSourceAuthoringTargets '$id'"
+    if ($target.mode -ne "reviewed-rgba8-source-frames") {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' mode must be reviewed-rgba8-source-frames"
+    }
+    if ($target.planner -ne "plan_sprite_atlas_source_authoring") {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' planner must be plan_sprite_atlas_source_authoring"
+    }
+    if ($target.sourceRegistryPath -ne $sourceRegistryPath) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' sourceRegistryPath must be $sourceRegistryPath"
+    }
+    if ($target.atlasSourcePath -ne $atlasSourcePath) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' atlasSourcePath must be $atlasSourcePath"
+    }
+    if ($target.atlasImportedPath -ne $atlasImportedPath) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' atlasImportedPath must be $atlasImportedPath"
+    }
+    if ($target.atlasAssetKey -ne $atlasAssetKey) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' atlasAssetKey must be $atlasAssetKey"
+    }
+    if ($target.packageIndexPath -ne $packageIndexPath) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' packageIndexPath must be $packageIndexPath"
+    }
+    if (@($manifest.runtimePackageFiles) -notcontains $atlasImportedPath) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' atlasImportedPath must be in runtimePackageFiles: $atlasImportedPath"
+    }
+    if (@($manifest.runtimePackageFiles) -notcontains $packageIndexPath) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' packageIndexPath must be in runtimePackageFiles: $packageIndexPath"
+    }
+    foreach ($authoringPath in @($sourceRegistryPath, $atlasSourcePath)) {
+        if (@($manifest.runtimePackageFiles) -contains $authoringPath) {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' authoring file must not be in runtimePackageFiles: $authoringPath"
+        }
+    }
+    if ($target.maxSide -ne 1024) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' maxSide must be 1024"
+    }
+    if ($target.sourceDecoding -ne "provided-rgba8-texture-source") {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' sourceDecoding must be provided-rgba8-texture-source"
+    }
+    if ($target.atlasPacking -ne "deterministic-sprite-atlas-rgba8-max-side") {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' atlasPacking must be deterministic-sprite-atlas-rgba8-max-side"
+    }
+    foreach ($field in @("runtimeSourceImageDecoding", "rendererRhiResidency", "packageStreaming", "animationSemantics", "editorProductization", "freeFormEdit")) {
+        if ($target.$field -ne "unsupported") {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' $field must remain unsupported"
+        }
+    }
+    if ($target.frameRows -isnot [System.Array] -or @($target.frameRows).Count -lt 1) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows must be a non-empty array"
+    }
+    foreach ($frameRow in @($target.frameRows)) {
+        Assert-JsonProperty $frameRow @("id", "sourcePath", "width", "height", "pixelFormat") "$label spriteAtlasSourceAuthoringTargets '$id' frameRows"
+        if ($frameRow.id -notmatch "^[a-z][a-z0-9_/-]*$") {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows id must be a safe slash-separated id: $($frameRow.id)"
+        }
+        if ($frameRow.sourcePath -match "(^/|^[A-Za-z]:|(^|[\\/])\.\.($|[\\/])|;)" -or [string]::IsNullOrWhiteSpace([string]$frameRow.sourcePath)) {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows sourcePath must be safe and game-relative: $($frameRow.sourcePath)"
+        }
+        if ($frameRow.pixelFormat -ne "rgba8_unorm") {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows pixelFormat must be rgba8_unorm"
+        }
+        if ($frameRow.width -lt 1 -or $frameRow.height -lt 1 -or $frameRow.width -gt $target.maxSide -or $frameRow.height -gt $target.maxSide) {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows dimensions must be within maxSide"
+        }
+    }
+    foreach ($recipeId in @($target.preflightRecipeIds)) {
+        if (@($manifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipeId) {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' preflightRecipeIds must reference validationRecipes: $recipeId"
+        }
+    }
+    foreach ($sourceFormat in @("GameEngine.TextureSource.v1", "GameEngine.SourceAssetRegistry.v1")) {
+        if (@($manifest.importerRequirements.sourceFormats) -notcontains $sourceFormat) {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' importerRequirements.sourceFormats missing $sourceFormat"
+        }
+    }
+    foreach ($forbiddenField in @("command", "shell", "argv", "pngDecoder", "sourceImagePath", "rendererBackend", "nativeHandle", "rhiHandle", "metalDevice", "runtimeImageDecodingReady", "productionAtlasPackingReady", "animationSemanticReady", "editorProductReady", "packageStreamingReady")) {
+        if ($target.PSObject.Properties.Name.Contains($forbiddenField)) {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' must not expose unsupported field: $forbiddenField"
+        }
+    }
+}
+
 function Assert-PackageStreamingResidencyTarget($manifest, [string]$label, [string]$id, [string]$packageIndexPath, [string]$runtimeSceneValidationTargetId) {
     if (-not $manifest.PSObject.Properties.Name.Contains("packageStreamingResidencyTargets")) {
         Write-Error "$label must declare packageStreamingResidencyTargets"

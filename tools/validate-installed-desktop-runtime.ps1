@@ -188,7 +188,7 @@ $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-u
 $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
-$expectedSmokeFrames = 2
+$expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
 for ($index = 0; $index -lt ($SmokeArgs.Count - 1); ++$index) {
     if ($SmokeArgs[$index] -eq "--max-frames") {
         $parsedMaxFrames = 0

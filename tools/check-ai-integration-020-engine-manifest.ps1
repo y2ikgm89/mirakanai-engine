@@ -539,6 +539,12 @@ if ($desktop2dRecipe.Count -ne 1) {
     }
     Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "--require-gameplay-systems" "2d-desktop-runtime-package cooked runtime assumptions"
     Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "gameplay_systems_*" "2d-desktop-runtime-package cooked runtime assumptions"
+    Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "spriteAtlasSourceAuthoringTargets" "2d-desktop-runtime-package cooked runtime assumptions"
+    foreach ($sourceFormat in @("GameEngine.TextureSource.v1", "GameEngine.SourceAssetRegistry.v1", "first-party-cooked-fixture")) {
+        if (@($desktop2dRecipe[0].importerAssumptions.sourceFormats) -notcontains $sourceFormat) {
+            Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe importerAssumptions.sourceFormats missing $sourceFormat"
+        }
+    }
     if (@($desktop2dRecipe[0].allowedTemplates) -notcontains "DesktopRuntime2DPackage") {
         Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe must allow DesktopRuntime2DPackage"
     }

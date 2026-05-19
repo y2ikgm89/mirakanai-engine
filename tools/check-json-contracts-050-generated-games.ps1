@@ -328,6 +328,7 @@ Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json"
     Assert-MaterialShaderAuthoringTargets $game $relative $requiresMaterialShaderTargets
     $requiresAtlasTilemapTargets = $game.gameplayContract.productionRecipe -eq "2d-desktop-runtime-package"
     Assert-AtlasTilemapAuthoringTargets $game $relative $requiresAtlasTilemapTargets
+    Assert-SpriteAtlasSourceAuthoringTargets $game $relative $requiresAtlasTilemapTargets
     $requiresPrefabScene3dTargets = $game.gameplayContract.productionRecipe -eq "3d-playable-desktop-package"
     Assert-PrefabScenePackageAuthoringTargets $game $relative $requiresPrefabScene3dTargets
     Assert-RegisteredSourceAssetCookTargets $game $relative $requiresPrefabScene3dTargets
