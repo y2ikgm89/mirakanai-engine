@@ -1,8 +1,8 @@
 # Editor Scene Nested Prefab Propagation Fail-Closed Edge Coverage v1 (2026-05-12)
 
-**Plan ID:** `editor-scene-nested-prefab-propagation-fail-closed-edge-coverage-v1`  
-**Status:** Completed  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `editor-scene-nested-prefab-propagation-fail-closed-edge-coverage-v1`
+**Status:** Completed
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Gap:** `editor-productization`
 
 ## Goal

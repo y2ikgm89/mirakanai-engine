@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-game-module-driver-contract-metadata-review-v1.md`.
 - The current editor driver path validates load/reload review models and function tables, and the visible shell owns `mirakana::DynamicLibrary` lifetime, but there is no focused test that loads an actual game-module DLL exporting the reviewed factory symbol and then runs the resulting driver through `EditorPlaySession`.
@@ -55,7 +55,7 @@
   - Add sentinels for the new probe target, exported factory symbol, test name, docs, skills, manifest, and plan.
 - Modify: `docs/superpowers/plans/README.md`
   - Track this plan as the active slice.
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update the current selected-gap pointer and verdict.
 
 ## Done When
@@ -118,7 +118,7 @@ Expected before implementation: CMake target or compile-definition/probe symbol 
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Record real DLL probe evidence under `editor-productization`.
 - [x] Keep unsupported hot reload, active-session reload, stable third-party ABI, `DesktopGameRunner` embedding, package scripts, renderer/RHI handles, native handles, package streaming, and broad editor productization explicit.

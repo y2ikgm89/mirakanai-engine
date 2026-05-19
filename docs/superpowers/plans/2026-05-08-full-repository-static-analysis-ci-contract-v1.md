@@ -31,7 +31,7 @@
 
 ## Done When
 
-- `tools/check-ci-matrix.ps1` fails before the workflow job exists, requiring a `static-analysis` job with `ubuntu-latest`, clang-tidy installation, `./tools/check-tidy.ps1 -Strict`, `actions/upload-artifact@v4`, and `static-analysis-tidy-logs`.
+- `tools/check-ci-matrix.ps1` fails before the workflow job exists, requiring a `static-analysis` job with `ubuntu-latest`, preinstalled runner tool verification plus fallback `ccache` install, SHA-pinned first-party GitHub Actions, `./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0`, and `static-analysis-tidy-logs`.
 - `.github/workflows/validate.yml` has a focused `static-analysis` job using the existing tidy wrapper.
 - `tools/check-ai-integration.ps1` and `tools/check-json-contracts.ps1` guard the workflow, docs, manifest notes, and completed plan status.
 - Docs, manifest notes, plan registry, and master plan mention Full Repository Static Analysis CI Contract v1 while preserving remaining unsupported claims.
@@ -49,13 +49,13 @@
 ### Task 1: RED Static Check
 
 - [x] Add `static-analysis` job assertions to `tools/check-ci-matrix.ps1`.
-- [x] Require `name: Full Repository Static Analysis`, `runs-on: ubuntu-latest`, `actions/checkout@v4`, `sudo apt-get update && sudo apt-get install -y clang-tidy`, `./tools/check-tidy.ps1 -Strict`, `actions/upload-artifact@v4`, `name: static-analysis-tidy-logs`, `out/build/dev/compile_commands.json`, and `if-no-files-found: warn`.
+- [x] Require `name: Full Repository Static Analysis`, `runs-on: ubuntu-latest`, SHA-pinned `actions/checkout`, `Verify preinstalled toolchain and install ccache`, `./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0`, SHA-pinned `actions/upload-artifact`, `name: static-analysis-tidy-logs`, `out/build/ci-linux-tidy/compile_commands.json`, and `if-no-files-found: warn`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` and record the expected failure because `.github/workflows/validate.yml` has no `static-analysis` job yet.
 
 ### Task 2: Workflow Implementation
 
 - [x] Add a `static-analysis` job to `.github/workflows/validate.yml` after the sanitizer lane.
-- [x] Checkout the repository, install `clang-tidy`, run `./tools/check-tidy.ps1 -Strict` with `shell: pwsh`, and upload the compile database / CMake File API reply data under `static-analysis-tidy-logs` with `if: always()`.
+- [x] Checkout the repository, verify the preinstalled Ubuntu runner toolchain (`clang`, `clang-tidy`, `ninja`), install `ccache` only when missing, run `./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0` with `shell: pwsh`, and upload the compile database / CMake File API reply data under `static-analysis-tidy-logs` with `if: always()`.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` and confirm it passes.
 
 ### Task 3: Docs, Manifest, And Static Contract

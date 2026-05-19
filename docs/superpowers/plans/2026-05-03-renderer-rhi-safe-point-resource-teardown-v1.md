@@ -17,7 +17,7 @@
 
 ## Context
 
-- 親: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 2。
+- 親: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 2。
 - 先行: [2026-05-02-renderer-resource-residency-upload-execution-v1.md](2026-05-02-renderer-resource-residency-upload-execution-v1.md)（アップロード実行）、[2026-05-02-safe-point-package-unload-replacement-execution-v1.md](2026-05-02-safe-point-package-unload-replacement-execution-v1.md)（ランタイム safe-point パッケージ置換）。
 
 ## Constraints

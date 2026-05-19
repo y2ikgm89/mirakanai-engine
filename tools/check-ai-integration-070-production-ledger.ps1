@@ -146,7 +146,7 @@ $editorProjectNativeDialogChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor Project Native Dialog v1",
             "EditorProjectFileDialogModel",
@@ -452,7 +452,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor Prefab Variant Conflict Review v1",
             "Editor Prefab Variant Reviewed Resolution v1",

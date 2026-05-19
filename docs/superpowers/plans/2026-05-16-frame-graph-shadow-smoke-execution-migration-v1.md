@@ -37,7 +37,7 @@
 - Modify: `engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp`
 - Modify: `engine/renderer/include/mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp` only if helper declarations become necessary.
 - Test: `tests/unit/renderer_rhi_tests.cpp`
-- Docs/sync as needed: `docs/superpowers/plans/README.md`, `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/superpowers/plans/2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md`, `docs/rhi.md`, `docs/current-capabilities.md`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `engine/agent/manifest.json`, and scoped static guards.
+- Docs/sync as needed: `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/superpowers/plans/2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md`, `docs/rhi.md`, `docs/current-capabilities.md`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `engine/agent/manifest.json`, and scoped static guards.
 
 ## Tasks
 

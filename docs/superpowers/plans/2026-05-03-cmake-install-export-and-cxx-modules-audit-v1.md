@@ -2,7 +2,7 @@
 
 > **For agentic workers:** `cmake-build-system` を必ず参照。`import std` / CXX モジュールスキャンはツールチェーン依存が強いため、変更は **根拠とゲート**をセットで残す。
 
-**Goal:** `cmake --install` / `export()` / `install(EXPORT …)`（またはプロジェクトが採用する同等の消費者向け CMake パッケージ）と **C++20/23 モジュール**（`MK_ENABLE_CXX_MODULE_SCANNING`、`MK_ENABLE_IMPORT_STD` 等）の設定を監査し、**公式 CMake / コンパイラドキュメント**に沿って一貫した推奨状態にする。Phase 1 の「後続 Phase がビルド上で迷子にならない」下地を整える。
+**Goal:** `cmake --install` / `()` / `install(EXPORT …)`（またはプロジェクトが採用する同等の消費者向け CMake パッケージ）と **C++20/23 モジュール**（`MK_ENABLE_CXX_MODULE_SCANNING`、`MK_ENABLE_IMPORT_STD` 等）の設定を監査し、**公式 CMake / コンパイラドキュメント**に沿って一貫した推奨状態にする。Phase 1 の「後続 Phase がビルド上で迷子にならない」下地を整える。
 
 **Architecture:** 現状 Windows VS プリセットでは `import std` がジェネレータにより無効化されるメッセージがある（既知）。本スライスでは **インストールツリー、Imported ターゲット、モジュール単位のビルド境界**を整理し、不要な二重定義や非推奨パターンを除去する。
 
@@ -17,7 +17,7 @@
 
 ## Context
 
-- [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 1。
+- [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 1。
 - [2026-05-02-strict-clang-tidy-compile-database-enforcement-v1.md](2026-05-02-strict-clang-tidy-compile-database-enforcement-v1.md) の File API 合成と整合する。
 - `engine/agent/manifest.json` の `currentActivePlan` は本ファイルを指す（2026-05-03、`full-clang-tidy-warning-cleanup-v1` 完了後の次ランク）。
 
@@ -28,9 +28,9 @@
 
 ## Implementation Steps
 
-- **Step 1:** 現行の `install()` / `export()` / `CMakePackageConfigHelpers` の有無を監査し、Evidence に一覧化する。
+- **Step 1:** 現行の `()` / `()` / `CMakePackageConfigHelpers` の有無を監査し、Evidence に一覧化する。
 - **Step 2:** 消費者（内部ツール / 将来の editor / package）が必要とする **最小の Exported ターゲット集合**を定義する。
-- **Step 3:** `MK_ENABLE_CXX_MODULE_SCANNING` / `MK_ENABLE_IMPORT_STD` とジェネレータ・コンパイラの組み合わせを表形式で整理し、非対応時の `message()` 方針を統一する。
+- **Step 3:** `MK_ENABLE_CXX_MODULE_SCANNING` / `MK_ENABLE_IMPORT_STD` とジェネレータ・コンパイラの組み合わせを表形式で整理し、非対応時の `()` 方針を統一する。
 - **Step 4:** `AGENTS.md` / `docs/building.md`（存在すれば）にインストール手順とモジュール前提を追記する。
 
 ## Audit Evidence (Step 1)
@@ -45,7 +45,7 @@
 
 | `games/CMakeLists.txt` | 生成ゲームごとの `install(FILES …)`（テンプレート／設定の選別インストール）。エンジンの EXPORT とは別レイヤー |
 
-| `export()` 単体 | 未使用。公式推奨に沿い `**install(EXPORT …)` のみ**でエクスポート設定を生成 |
+| `()` 単体 | 未使用。公式推奨に沿い `**install(EXPORT …)` のみ**でエクスポート設定を生成 |
 
 ## Minimal exported target set (Step 2)
 

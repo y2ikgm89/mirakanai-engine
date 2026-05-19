@@ -1,7 +1,7 @@
 # Animation IK Pose Application v1 (2026-05-05)
 
-**Plan ID:** `animation-ik-pose-application-v1`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
+**Plan ID:** `animation-ik-pose-application-v1`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)
 **Status:** Completed on 2026-05-05.
 
 ## Goal

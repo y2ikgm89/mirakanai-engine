@@ -1,8 +1,8 @@
 # GPU Morph D3D12 Proof v1 (2026-05-05)
 
-**Plan ID:** `gpu-morph-d3d12-proof-v1`  
-**Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Plan ID:** `gpu-morph-d3d12-proof-v1`
+**Status:** Completed
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 

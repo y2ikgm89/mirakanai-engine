@@ -50,7 +50,7 @@
 - Modify `engine/ui_renderer/include/mirakana/ui_renderer/ui_renderer.hpp` and `engine/ui_renderer/src/ui_renderer.cpp`: add glyph palette build result/failure and runtime package palette builder.
 - Modify `engine/tools/include/mirakana/tools/ui_atlas_tool.hpp` and `engine/tools/src/ui_atlas_tool.cpp`: add packed rasterized glyph atlas authoring/package update/apply contracts.
 - Modify `tests/unit/asset_identity_runtime_resource_tests.cpp`, `tests/unit/runtime_tests.cpp`, `tests/unit/ui_renderer_tests.cpp`, and `tests/unit/tools_tests.cpp`: add RED tests for glyph metadata, runtime payload, palette builder, and package bridge behavior.
-- Modify `docs/ui.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/ai-game-development.md`, `docs/testing.md`, `docs/specs/2026-04-27-engine-essential-gap-analysis.md`, `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/superpowers/plans/README.md`, `engine/agent/manifest.json`, `tools/check-ai-integration.ps1`, and `tools/check-json-contracts.ps1` after behavior is green.
+- Modify `docs/ui.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/ai-game-development.md`, `docs/testing.md`, `docs/specs/2026-04-27-engine-essential-gap-analysis.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/superpowers/plans/README.md`, `engine/agent/manifest.json`, `tools/check-ai-integration.ps1`, and `tools/check-json-contracts.ps1` after behavior is green.
 
 ## Tasks
 

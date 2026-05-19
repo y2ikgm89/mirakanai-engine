@@ -4,7 +4,7 @@
 
 **Goal:** Move `RhiFrameRenderer` primary color pass timing into the Frame Graph RHI executor so the simple renderer path participates in production pass ownership without native handle exposure.
 
-**Architecture:** Keep swapchain acquisition/presentation and command-list submission renderer-owned, but change `RhiFrameRenderer::begin_frame()` to prepare frame state only. `draw_sprite()` and `draw_mesh()` validate and queue ordered draw work. `end_frame()` builds a one-pass `FrameGraphV1Desc` and executes the primary pass through `execute_frame_graph_rhi_texture_schedule`, whose callback begins the existing render pass, records queued draw and native overlay work in order, and ends the render pass. This does not implement native transient heap allocation, native aliasing barriers, multi-queue scheduling, package streaming, Metal parity, or broad renderer quality.
+**Architecture:** Keep swapchain acquisition/presentation and command-list submission renderer-owned, but change `()` to prepare frame state only. `()` and `()` validate and queue ordered draw work. `()` builds a one-pass `FrameGraphV1Desc` and executes the primary pass through `execute_frame_graph_rhi_texture_schedule`, whose callback begins the existing render pass, records queued draw and native overlay work in order, and ends the render pass. This does not implement native transient heap allocation, native aliasing barriers, multi-queue scheduling, package streaming, Metal parity, or broad renderer quality.
 
 **Tech Stack:** C++23, `MK_renderer`, `MK_rhi`, Frame Graph v1 RHI executor, PowerShell 7 validation tools.
 
@@ -22,23 +22,23 @@
 
 ## Context
 
-`RhiPostprocessFrameRenderer`, `RhiDirectionalShadowSmokeFrameRenderer`, and `RhiViewportSurface` already route their completed frame-graph texture scheduling slices through `execute_frame_graph_rhi_texture_schedule`. `RhiFrameRenderer` is now the smallest remaining primary renderer path whose pass still starts directly in `begin_frame()`. Moving it to an executor pass callback is a focused production pass ownership step and avoids the broader native transient allocation or multi-queue design space.
+`RhiPostprocessFrameRenderer`, `RhiDirectionalShadowSmokeFrameRenderer`, and `RhiViewportSurface` already route their completed frame-graph texture scheduling slices through `execute_frame_graph_rhi_texture_schedule`. `RhiFrameRenderer` is now the smallest remaining primary renderer path whose pass still starts directly in `()`. Moving it to an executor pass callback is a focused production pass ownership step and avoids the broader native transient allocation or multi-queue design space.
 
 ## Constraints
 
 - Preserve the public `IRenderer` / `RhiFrameRenderer` API.
-- Preserve validation timing for `draw_mesh()` GPU binding ownership and incompatible gpu skinning/morphing requests.
+- Preserve validation timing for `()` GPU binding ownership and incompatible gpu skinning/morphing requests.
 - Preserve visible draw order for sprite, mesh, skinned mesh, morph mesh, and native UI overlay submissions.
 - Preserve failure cleanup so a failed submission leaves `frames_finished == 0`, clears active frame state, and allows a later frame to begin and finish with the same swapchain.
 - Do not expose native handles, command lists, or frame graph internals to game/editor callers.
-- Do not add compatibility paths that keep the primary pass recording directly in `begin_frame()`.
+- Do not add compatibility paths that keep the primary pass recording directly in `()`.
 - Do not claim native transient allocation, alias execution, multi-queue scheduling, renderer-wide graph ownership, package streaming, or Metal readiness.
 - Before completion, run an agent-surface drift check and update docs, manifest fragments, static guards, skills, or subagents if durable guidance changed.
 
 ## Done When
 
-- `RhiFrameRenderer::begin_frame()` no longer begins a render pass or binds the primary pipeline directly.
-- `RhiFrameRenderer::end_frame()` invokes `execute_frame_graph_rhi_texture_schedule` for a scheduled `primary_color` pass and increments `RendererStats::framegraph_passes_executed` from the executor result.
+- `()` no longer begins a render pass or binds the primary pipeline directly.
+- `()` invokes `execute_frame_graph_rhi_texture_schedule` for a scheduled `primary_color` pass and increments `RendererStats::framegraph_passes_executed` from the executor result.
 - Existing raw `RhiFrameRenderer` sprite/mesh/native-overlay tests still report the same RHI render-pass and draw stats, with `framegraph_passes_executed == 1` for completed frames.
 - Failure-path tests prove submit failure still clears active frame state, does not finish the frame, and does not report a completed frame graph pass before a later retry succeeds.
 - Docs, manifest fragments, registry pointers, and agent/static guards distinguish this narrow primary pass ownership slice from native transient allocation, alias execution, and multi-queue scheduling.
@@ -53,7 +53,7 @@
 - Modify: `tests/unit/renderer_rhi_tests.cpp`
 - Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
 
-- [x] Update raw `RhiFrameRenderer` texture-frame and native-overlay tests to require `renderer.stats().framegraph_passes_executed == 1` after one completed frame.
+- [x] Update raw `RhiFrameRenderer` texture-frame and native-overlay tests to require `renderer.().framegraph_passes_executed == 1` after one completed frame.
 - [x] Add or update a failure-path assertion proving a submit failure still leaves `frames_finished == 0`, clears active frame state, and does not report a completed frame graph pass before a later retry succeeds.
 - [x] Add a static guard that requires `rhi_frame_renderer.cpp` to contain `execute_frame_graph_rhi_texture_schedule`, `primary_color`, and `framegraph_passes_executed`, and rejects `begin_render_pass` in `RhiFrameRenderer::begin_frame`.
 - [x] Run:
@@ -70,11 +70,11 @@ Expected: fail on the new `framegraph_passes_executed == 1` expectations before 
 - Modify: `engine/renderer/src/rhi_frame_renderer.cpp`
 
 - [x] Add a small private queued-command representation for raw sprite draws and mesh draws, keeping full `MeshCommand` rows where needed for validated GPU binding data.
-- [x] Move primary render-pass construction into a private helper used from `end_frame()`.
-- [x] Change `begin_frame()` to acquire the swapchain frame, begin the graphics command list, reset queued work, and mark the frame active without beginning a render pass or binding the pipeline.
-- [x] Change non-overlay `draw_sprite()` to queue a draw command and keep existing stats increments.
-- [x] Change `draw_mesh()` to validate exactly as it does today, then queue the draw command and keep existing stats increments, GPU skinning/morph counters, and descriptor-bind counters aligned with actual callback recording.
-- [x] In `end_frame()`, prepare native overlay data before the executor callback as today, build a one-pass schedule for `primary_color`, and invoke `execute_frame_graph_rhi_texture_schedule` with one callback that begins the render pass, binds the primary pipeline, records queued work in submission order, records overlay draw, and ends the render pass.
+- [x] Move primary render-pass construction into a private helper used from `()`.
+- [x] Change `()` to acquire the swapchain frame, begin the graphics command list, reset queued work, and mark the frame active without beginning a render pass or binding the pipeline.
+- [x] Change non-overlay `()` to queue a draw command and keep existing stats increments.
+- [x] Change `()` to validate exactly as it does today, then queue the draw command and keep existing stats increments, GPU skinning/morph counters, and descriptor-bind counters aligned with actual callback recording.
+- [x] In `()`, prepare native overlay data before the executor callback as today, build a one-pass schedule for `primary_color`, and invoke `execute_frame_graph_rhi_texture_schedule` with one callback that begins the render pass, binds the primary pipeline, records queued work in submission order, records overlay draw, and ends the render pass.
 - [x] After executor success, add `frame_graph_execution.pass_callbacks_invoked` to `stats_.framegraph_passes_executed`.
 - [x] Preserve present/close/submit/wait cleanup and failure cleanup semantics.
 - [x] Run the focused renderer command from Task 1.
@@ -90,7 +90,7 @@ Expected: `MK_renderer_tests` passes.
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.fragments/004-modules.json`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json` only if generated-game guidance needs the new primary-pass note

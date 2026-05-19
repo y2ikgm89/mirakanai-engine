@@ -7,7 +7,7 @@ schedule and invokes caller-provided barrier/pass callbacks in deterministic ord
 
 **Plan ID:** `frame-graph-pass-callback-execution-v1`
 
-**Parent plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)
+**Parent plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Context
 

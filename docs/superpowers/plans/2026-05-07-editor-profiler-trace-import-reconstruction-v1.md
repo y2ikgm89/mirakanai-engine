@@ -12,7 +12,7 @@
 
 ## Context
 
-- Parent roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Parent roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Recent completed slices added Profiler Trace JSON review, project-relative file import, native open dialog, and native save dialog.
 - The current gap text still excludes capture reconstruction. This slice narrows that unsupported claim only for first-party exported Trace Event JSON.
 

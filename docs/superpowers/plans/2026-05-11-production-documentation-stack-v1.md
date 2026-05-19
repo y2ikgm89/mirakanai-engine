@@ -13,7 +13,7 @@ Define a **clean-break, no-backward-compatibility** documentation authority stac
 ## Authority stack (read order)
 
 1. **`engine/agent/manifest.json`** — `aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, `unsupportedProductionGaps`, readiness recipes.
-2. **`docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`** — production completion definition, gap burn-down strategy, current verdict pointers (must stay consistent with manifest for *active gap* and *ready claims*).
+2. **`docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`** — production completion definition, gap burn-down strategy, current verdict pointers (must stay consistent with manifest for *active gap* and *ready claims*).
 3. **`docs/superpowers/plans/README.md`** — registry: what is active vs completed; links to latest slices.
 4. **Dated child plans** (`docs/superpowers/plans/2026-*-*.md`) — scoped Goal / Done when / validation tables; **do not rewrite** completed files to “fix” old path strings; add a short note in the registry or this stack doc instead.
 5. **Specs and ADRs** — durable layout and invariant truth (example: [directory layout target v1](../../specs/2026-05-11-directory-layout-target-v1.md), [ADR 0003](../../adr/0003-directory-layout-clean-break.md)).

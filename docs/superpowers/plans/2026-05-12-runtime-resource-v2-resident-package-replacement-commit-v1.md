@@ -2,7 +2,7 @@
 
 **Status:** Completed
 **Gap:** `runtime-resource-v2` foundation follow-up
-**Parent:** [Production Completion Master Plan v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 

@@ -1,9 +1,9 @@
 # Editor Productization Nested Prefab Propagation Stream v1 (2026-05-11)
 
-**Plan ID:** `editor-productization-nested-prefab-propagation-stream-v1`  
-**Gap:** `editor-productization` (primary) / `scene-component-prefab-schema-v2` (follow-on authoring)  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
-**Status:** Active program stream (planning ledger; not a single implementation slice)  
+**Plan ID:** `editor-productization-nested-prefab-propagation-stream-v1`
+**Gap:** `editor-productization` (primary) / `scene-component-prefab-schema-v2` (follow-on authoring)
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Status:** Active program stream (planning ledger; not a single implementation slice)
 
 ## Goal
 
@@ -37,7 +37,7 @@ Sequence work toward **nested prefab propagation and merge-style UX** under revi
 8. **Completed (undo/redo on single-root propagation action):** [2026-05-11-editor-scene-nested-prefab-propagation-undo-redo-test-v1.md](2026-05-11-editor-scene-nested-prefab-propagation-undo-redo-test-v1.md) — `MK_editor_core_tests` exercises `UndoStack::undo` / `redo` after `make_scene_prefab_instance_refresh_action` with `apply_reviewed_nested_prefab_propagation` (Shield + Grip appear, undo removes both, redo restores); does not change manifest `requiredBeforeReadyClaim`.
 9. **Completed (undo/redo on single-target batch propagation action):** [2026-05-11-editor-scene-nested-prefab-propagation-batch-undo-redo-test-v1.md](2026-05-11-editor-scene-nested-prefab-propagation-batch-undo-redo-test-v1.md) — same scenario through `make_scene_prefab_instance_refresh_batch_action` with one `ScenePrefabInstanceRefreshBatchTargetInput`.
 10. **Completed (multi-target batch propagation apply + undo/redo):** [2026-05-12-editor-scene-nested-prefab-propagation-batch-multi-target-apply-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-batch-multi-target-apply-v1.md) — two disjoint player roots with nested weapon; `plan_scene_prefab_instance_refresh_batch` `can_apply` with `apply_reviewed_nested_prefab_propagation`; `MK_editor_core_tests` batch action Shield + Grip counts under both hierarchies with undo/redo.
-11. **Completed (triple-disjoint batch propagation apply + undo/redo):** [2026-05-12-editor-scene-nested-prefab-propagation-batch-triple-disjoint-apply-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-batch-triple-disjoint-apply-v1.md) — three disjoint player roots with nested weapon; `ordered_targets.size() == 3`; `MK_editor_core_tests` `editor scene prefab instance refresh batch triple disjoint can apply nested prefab propagation` with undo/redo.
+11. **Completed (triple-disjoint batch propagation apply + undo/redo):** [2026-05-12-editor-scene-nested-prefab-propagation-batch-triple-disjoint-apply-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-batch-triple-disjoint-apply-v1.md) — three disjoint player roots with nested weapon; `ordered_targets.() == 3`; `MK_editor_core_tests` `editor scene prefab instance refresh batch triple disjoint can apply nested prefab propagation` with undo/redo.
 12. **Completed (blocked batch policy label):** [2026-05-12-editor-scene-nested-prefab-propagation-batch-blocked-policy-label-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-batch-blocked-policy-label-v1.md) — blocked batch plans still mirror `apply_reviewed_nested_prefab_propagation` in retained UI rows while empty, duplicate, and ancestor/descendant target sets remain fail-closed.
 13. **Completed (fail-closed loader edge coverage):** [2026-05-12-editor-scene-nested-prefab-propagation-fail-closed-edge-coverage-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-fail-closed-edge-coverage-v1.md) — missing, unresolved, and mismatched nested prefab loaders keep reviewed nested propagation batch apply blocked and leave the live scene unchanged.
 14. **Completed (two-level batch propagation):** [2026-05-12-editor-scene-nested-prefab-propagation-two-level-batch-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-two-level-batch-v1.md) — disjoint batch roots with `player -> weapon -> gem` nested prefab chains add Shield / Grip / Sparkle through reviewed propagation, preserve the logically selected nested `gem.prefab` root, and retain undo/redo expectations.

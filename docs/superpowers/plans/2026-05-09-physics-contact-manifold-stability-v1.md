@@ -4,23 +4,23 @@
 
 **Goal:** Improve 3D narrowphase contact rows and solver inputs so accepted first-party primitives produce deterministic, persistent, warm-start-safe contact data for stable stacking/sliding.
 
-**Architecture:** Keep the work inside dependency-free `MK_physics` value types and `PhysicsWorld3D`. Add explicit manifold/contact-point rows beside the existing broadphase/query APIs, derive legacy `contacts()` rows from the same deterministic manifold path, and make `resolve_contacts` consume the shared manifold ordering without adding middleware, native handles, or a new backend.
+**Architecture:** Keep the work inside dependency-free `MK_physics` value types and `PhysicsWorld3D`. Add explicit manifold/contact-point rows beside the existing broadphase/query APIs, derive legacy `()` rows from the same deterministic manifold path, and make `resolve_contacts` consume the shared manifold ordering without adding middleware, native handles, or a new backend.
 
 **Tech Stack:** C++23, `MK_physics`, `MK_core_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`.
 
 ---
 
-**Plan ID:** `physics-contact-manifold-stability-v1`  
-**Status:** Completed.  
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `physics-contact-manifold-stability-v1`
+**Status:** Completed.
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Previous Slice:** [2026-05-09-physics-broader-exact-casts-and-sweeps-v1.md](2026-05-09-physics-broader-exact-casts-and-sweeps-v1.md)
 
 ## Context
 
 - `physics-broader-exact-casts-and-sweeps-v1` completed exact 3D AABB/sphere/vertical-capsule query shapes through `PhysicsWorld3D::exact_shape_sweep`.
 - Current 3D contacts expose one `PhysicsContact3D` row with `first`, `second`, `normal`, and `penetration_depth`.
-- `PhysicsWorld3D::contacts()` is deterministic but narrow: it does not expose contact point rows, persistent feature keys, or solver-ready ordering.
-- `PhysicsWorld3D::resolve_contacts` currently loops over `contacts()` each iteration and applies a single normal impulse/correction per contact row.
+- `()` is deterministic but narrow: it does not expose contact point rows, persistent feature keys, or solver-ready ordering.
+- `PhysicsWorld3D::resolve_contacts` currently loops over `()` each iteration and applies a single normal impulse/correction per contact row.
 - This slice should improve the first-party solver surface, not add Jolt, CCD, joints, dynamic character push policy, oriented boxes, mesh/convex casts, or performance benchmarks.
 
 ## Constraints
@@ -30,7 +30,7 @@
 - Keep supported 3D shapes limited to AABB, sphere, and vertical/Y-axis capsule.
 - Do not change `PhysicsWorld3D::shape_sweep`, `PhysicsWorld3D::exact_shape_sweep`, or `move_physics_character_controller_3d` semantics in this slice.
 - Do not claim full warm starting. Add deterministic, stable row keys and `warm_start_eligible` metadata that a later solver can safely consume.
-- It is acceptable to change public C++ API shape because the project has no backward-compatibility requirement, but keep `contacts()` as a first-class flattened view if it remains useful and tested.
+- It is acceptable to change public C++ API shape because the project has no backward-compatibility requirement, but keep `()` as a first-class flattened view if it remains useful and tested.
 
 ## Done When
 
@@ -45,7 +45,7 @@
 ## File Structure
 
 - Modify `engine/physics/include/mirakana/physics/physics3d.hpp`: add `PhysicsContactPoint3D`, `PhysicsContactManifold3D`, and `PhysicsWorld3D::contact_manifolds`.
-- Modify `engine/physics/src/physics3d.cpp`: replace private single-contact generation with deterministic manifold generation and make `contacts()` flatten the same rows.
+- Modify `engine/physics/src/physics3d.cpp`: replace private single-contact generation with deterministic manifold generation and make `()` flatten the same rows.
 - Modify `tests/unit/core_tests.cpp`: add RED/GREEN coverage beside the existing 3D contact and iterative solver tests.
 - Modify docs and guidance after behavior is green: `docs/architecture.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/ai-game-development.md`, `docs/testing.md`, `docs/superpowers/plans/README.md`, this master plan, `engine/agent/manifest.json`, `.agents/skills/gameengine-game-development/SKILL.md`, and `.claude/skills/gameengine-game-development/SKILL.md`.
 
@@ -79,13 +79,13 @@ MK_TEST("3d physics contact manifolds expose deterministic solver rows") {
         mirakana::Vec3{1.0F, 1.0F, 1.0F},
     });
 
-    const auto manifolds = world.contact_manifolds();
+    const auto manifolds = world.();
 
-    MK_REQUIRE(manifolds.size() == 1);
+    MK_REQUIRE(manifolds.() == 1);
     MK_REQUIRE(manifolds[0].first == first);
     MK_REQUIRE(manifolds[0].second == second);
     MK_REQUIRE(manifolds[0].normal == (mirakana::Vec3{1.0F, 0.0F, 0.0F}));
-    MK_REQUIRE(manifolds[0].points.size() == 1);
+    MK_REQUIRE(manifolds[0].points.() == 1);
     MK_REQUIRE(std::abs(manifolds[0].points[0].penetration_depth - 0.5F) < 0.0001F);
     MK_REQUIRE(manifolds[0].points[0].warm_start_eligible);
     MK_REQUIRE(manifolds[0].points[0].feature_id != 0U);
@@ -125,12 +125,12 @@ struct PhysicsContactManifold3D {
 Add this member:
 
 ```cpp
-[[nodiscard]] std::vector<PhysicsContactManifold3D> contact_manifolds() const;
+[[nodiscard]] std::vector<PhysicsContactManifold3D> () const;
 ```
 
 - [x] **Step 4: Build with a minimal stub and confirm runtime RED**
 
-Implement `PhysicsWorld3D::contact_manifolds()` as an empty vector, then run:
+Implement `()` as an empty vector, then run:
 
 ```powershell
 cmake --build --preset dev --target MK_core_tests --config Debug
@@ -179,7 +179,7 @@ Derive `point` from the current closest/contact point used by each shape helper.
 
 - [x] **Step 2: Sort manifolds and points deterministically**
 
-Before returning from `contact_manifolds()`:
+Before returning from `()`:
 
 ```cpp
 std::ranges::sort(result, [](const auto& lhs, const auto& rhs) {
@@ -195,14 +195,14 @@ for (auto& manifold : result) {
 }
 ```
 
-- [x] **Step 3: Make `contacts()` flatten manifolds**
+- [x] **Step 3: Make `()` flatten manifolds**
 
-Implement `contacts()` from `contact_manifolds()`:
+Implement `()` from `()`:
 
 ```cpp
-std::vector<PhysicsContact3D> PhysicsWorld3D::contacts() const {
+std::vector<PhysicsContact3D> () const {
     std::vector<PhysicsContact3D> result;
-    for (const auto& manifold : contact_manifolds()) {
+    for (const auto& manifold : ()) {
         for (const auto& point : manifold.points) {
             result.push_back(PhysicsContact3D{manifold.first, manifold.second, manifold.normal,
                                               point.penetration_depth});
@@ -244,8 +244,8 @@ MK_REQUIRE(after[0].points[0].warm_start_eligible);
 Use one trigger and one disabled body overlapping a dynamic body, then require:
 
 ```cpp
-MK_REQUIRE(world.contact_manifolds().empty());
-MK_REQUIRE(world.contacts().empty());
+MK_REQUIRE(world.().());
+MK_REQUIRE(world.().());
 ```
 
 - [x] **Step 3: Run focused validation**
@@ -267,7 +267,7 @@ Expected: PASS after manifold generation keeps feature ids stable and continues 
 
 - [x] **Step 1: Make `resolve_contacts` consume manifolds**
 
-Replace `const auto pending_contacts = contacts();` with `const auto pending_manifolds = contact_manifolds();` and apply the existing inverse-mass correction/impulse logic per `PhysicsContactPoint3D` while using the manifold normal.
+Replace `const auto pending_contacts = ();` with `const auto pending_manifolds = ();` and apply the existing inverse-mass correction/impulse logic per `PhysicsContactPoint3D` while using the manifold normal.
 
 - [x] **Step 2: Preserve sliding tangent velocity**
 
@@ -282,7 +282,7 @@ after `resolve_contacts(mirakana::PhysicsContactSolver3DConfig{0.0F, 8U, 0.85F, 
 
 - [x] **Step 3: Prove deterministic stacked replay**
 
-Extend the current stacked-body replay test to compare `contact_manifolds()` counts, body ids, normals, feature ids, and `warm_start_eligible` flags across two identical worlds before and after solving.
+Extend the current stacked-body replay test to compare `()` counts, body ids, normals, feature ids, and `warm_start_eligible` flags across two identical worlds before and after solving.
 
 - [x] **Step 4: Run focused validation**
 
@@ -304,7 +304,7 @@ Expected: PASS for existing solver tests and new manifold replay/sliding tests.
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`

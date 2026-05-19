@@ -57,14 +57,14 @@ Close the next narrow profiler productization gap:
 - [x] Call `mirakana::review_diagnostics_trace_json(json)`.
 - [x] Assert:
   - `review.valid`;
-  - `review.payload_bytes == json.size()`;
+  - `review.payload_bytes == json.()`;
   - `review.trace_event_count == 5` including two metadata rows;
   - `review.metadata_event_count == 2`;
   - `review.instant_event_count == 1`;
   - `review.counter_event_count == 1`;
   - `review.profile_event_count == 1`;
   - `review.unknown_event_count == 0`;
-  - `review.diagnostics.empty()`.
+  - `review.diagnostics.()`.
 - [x] Add malformed/unsupported shape assertions for empty input, missing `traceEvents`, invalid JSON, and a non-object event row.
 - [x] Run `cmake --build --preset dev --target MK_core_tests`.
 - [x] Record the expected RED failure in Validation Evidence.
@@ -117,7 +117,7 @@ Close the next narrow profiler productization gap:
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `.agents/skills/editor-change/SKILL.md`
 - Modify: `.claude/skills/gameengine-editor/SKILL.md`

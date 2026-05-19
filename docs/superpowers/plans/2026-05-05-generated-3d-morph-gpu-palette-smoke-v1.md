@@ -1,8 +1,8 @@
 # Generated 3D Morph GPU Palette Smoke v1 (2026-05-05)
 
-**Plan ID:** `generated-3d-morph-gpu-palette-smoke-v1`  
-**Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Plan ID:** `generated-3d-morph-gpu-palette-smoke-v1`
+**Status:** Completed
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -50,7 +50,7 @@ Expose the runtime-scene RHI morph GPU palette bridge through the SDL desktop sc
 ## Validation Evidence
 
 - RED: `cmake --build --preset desktop-runtime --target mirakana_runtime_host_sdl3_tests` failed while the tests referenced missing `SdlDesktopPresentationSceneGpuBindingStats::morph_mesh_bindings`, `morph_mesh_uploads`, `uploaded_morph_bytes`, and missing D3D12/Vulkan scene renderer desc `morph_mesh_assets`.
-- RED: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` failed while the generated `DesktopRuntime3DPackage` main did not contain `.morph_mesh_assets = {packaged_morph_mesh_asset_id()}`.
+- RED: `powershell -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` failed while the generated `DesktopRuntime3DPackage` main did not contain `.morph_mesh_assets = {()}`.
 - GREEN: `cmake --build --preset desktop-runtime --target mirakana_runtime_host_sdl3_tests` passed.
 - GREEN: `out/build/desktop-runtime/Debug/mirakana_runtime_host_sdl3_tests.exe` passed, including `sdl scene gpu binding renderer reports retained morph palette upload counters` and `sdl desktop scene renderer descs carry selected morph mesh assets`.
 - GREEN: `cmake --build --preset desktop-runtime --target mirakana_runtime_host_sdl3_public_api_compile` passed.

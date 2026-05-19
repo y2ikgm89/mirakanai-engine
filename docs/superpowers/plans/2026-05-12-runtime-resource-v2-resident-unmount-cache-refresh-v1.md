@@ -10,7 +10,7 @@ Add a host-independent Runtime Resource v2 helper that removes an explicit resid
 
 ## Context
 
-- Parent: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
+- Parent: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
 - Previous slices added explicit resident mount ids, cached resident catalogs, and package-streaming resident mount commit.
 - Current callers can manually call `RuntimeResidentPackageMountSetV2::unmount` followed by `RuntimeResidentCatalogCacheV2::refresh`; this leaves atomicity and diagnostic rows to each caller.
 

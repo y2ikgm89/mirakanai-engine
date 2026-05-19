@@ -1,7 +1,7 @@
 # Animation Root Motion Foundation v1 Implementation Plan (2026-05-04)
 
 **Plan ID:** `animation-root-motion-foundation-v1`
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6
 **Status:** Completed on 2026-05-04. This slice is limited to deterministic `mirakana_animation` root-joint translation delta sampling.
 
 ## Goal

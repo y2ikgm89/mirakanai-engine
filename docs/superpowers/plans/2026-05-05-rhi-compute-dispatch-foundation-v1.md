@@ -1,8 +1,8 @@
 # RHI Compute Dispatch Foundation v1 (2026-05-05)
 
-**Plan ID:** `rhi-compute-dispatch-foundation-v1`  
-**Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Plan ID:** `rhi-compute-dispatch-foundation-v1`
+**Status:** Completed
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 

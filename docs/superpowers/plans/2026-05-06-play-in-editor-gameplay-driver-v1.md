@@ -46,7 +46,7 @@
 - Modify: `tests/unit/editor_core_tests.cpp`
 
 - [x] Add a `RecordingEditorPlaySessionDriver` test helper that records begin/tick/end counts, captures `EditorPlaySessionTickContext`, and mutates the provided simulation `Scene`.
-- [x] Add a test that starts `EditorPlaySession` with the driver, ticks with an explicit positive delta, verifies the driver mutates only the simulation scene, verifies the source document node count is unchanged, and verifies `stop()` calls driver end before discard.
+- [x] Add a test that starts `EditorPlaySession` with the driver, ticks with an explicit positive delta, verifies the driver mutates only the simulation scene, verifies the source document node count is unchanged, and verifies `()` calls driver end before discard.
 - [x] Add a test that rejects driver tick while paused, rejects non-positive/non-finite deltas, reports the attached driver while active, and reports no driver after stop.
 - [x] Run focused build/test and confirm failure because the driver types and tick overloads do not exist yet.
 
@@ -60,9 +60,9 @@
 - [x] Add `IEditorPlaySessionDriver` with `on_play_begin(Scene&)`, `on_play_tick(Scene&, const EditorPlaySessionTickContext&)`, and `on_play_end(Scene&)`.
 - [x] Extend `EditorPlaySessionActionStatus` with `rejected_invalid_delta` and update labels.
 - [x] Add a driver-aware `begin(const SceneAuthoringDocument&, IEditorPlaySessionDriver&)` overload while keeping the existing driverless begin path.
-- [x] Add `gameplay_driver_attached()`, `last_delta_seconds()`, and report fields.
+- [x] Add `()`, `()`, and report fields.
 - [x] Update `tick(double delta_seconds)` to validate finite positive deltas, dispatch driver ticks against the isolated simulation scene, then increment the frame count.
-- [x] Update `stop()` to call `on_play_end` before discarding the simulation scene and detaching the driver.
+- [x] Update `()` to call `on_play_end` before discarding the simulation scene and detaching the driver.
 
 ### Task 3: Documentation And Manifest
 
@@ -71,7 +71,7 @@
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`

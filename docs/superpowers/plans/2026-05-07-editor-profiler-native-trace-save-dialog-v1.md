@@ -54,7 +54,7 @@ Close the next narrow Profiler observability UX gap:
 - Modify: `tests/unit/editor_core_tests.cpp`
 
 - [x] Add `MK_TEST("editor profiler native trace save dialog reviews selection")`.
-- [x] Assert `make_editor_profiler_trace_save_dialog_request()` returns a save-file request titled `Save Trace JSON`, with a `json` filter, default `diagnostics/editor-profiler-trace.json`, and `allow_many == false`.
+- [x] Assert `()` returns a save-file request titled `Save Trace JSON`, with a `json` filter, default `diagnostics/editor-profiler-trace.json`, and `allow_many == false`.
 - [x] Assert accepted one-file `.json` results produce accepted status, selected path, and retained rows.
 - [x] Assert canceled and failed results produce deterministic status/diagnostics.
 - [x] Assert accepted zero-file, multi-file, and non-`.json` results are blocked before saving.
@@ -90,7 +90,7 @@ Close the next narrow Profiler observability UX gap:
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `.agents/skills/editor-change/SKILL.md`
 - Modify: `.claude/skills/gameengine-editor/SKILL.md`

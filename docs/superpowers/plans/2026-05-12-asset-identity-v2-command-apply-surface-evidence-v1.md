@@ -1,8 +1,8 @@
 # Asset Identity v2 Command Apply Surface Evidence v1 (2026-05-12)
 
-**Plan ID:** `asset-identity-v2-command-apply-surface-evidence-v1`  
-**Status:** Completed  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `asset-identity-v2-command-apply-surface-evidence-v1`
+**Status:** Completed
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Gap:** `asset-identity-v2`
 
 ## Goal

@@ -17,7 +17,7 @@
 
 ## Context
 
-- 親: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 2。
+- 親: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 2。
 - 先行: [2026-05-03-broad-dependency-cook-plan-v1.md](2026-05-03-broad-dependency-cook-plan-v1.md)（レジストリ閉包クック）、[2026-05-01-registered-source-asset-cook-package-command-tooling-v1.md](2026-05-01-registered-source-asset-cook-package-command-tooling-v1.md)（C++ cook 面）。
 
 ## Constraints

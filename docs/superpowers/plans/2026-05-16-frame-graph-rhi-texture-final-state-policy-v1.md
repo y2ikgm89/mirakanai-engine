@@ -39,7 +39,7 @@
 - Modify: `engine/renderer/src/rhi_postprocess_frame_renderer.cpp`
 - Modify: `engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp`
 - Test: `tests/unit/renderer_rhi_tests.cpp`
-- Docs/sync as needed: `docs/rhi.md`, `docs/current-capabilities.md`, `docs/architecture.md`, `docs/roadmap.md`, `docs/superpowers/plans/README.md`, `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/superpowers/plans/2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md`, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `engine/agent/manifest.json`, scoped static guards, and rendering/auditor agent surfaces if durable guidance changes.
+- Docs/sync as needed: `docs/rhi.md`, `docs/current-capabilities.md`, `docs/architecture.md`, `docs/roadmap.md`, `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/superpowers/plans/2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md`, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `engine/agent/manifest.json`, scoped static guards, and rendering/auditor agent surfaces if durable guidance changes.
 
 ## Tasks
 

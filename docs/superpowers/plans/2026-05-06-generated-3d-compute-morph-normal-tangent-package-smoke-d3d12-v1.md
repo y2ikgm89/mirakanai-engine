@@ -1,8 +1,8 @@
 # Generated 3D Compute Morph Normal Tangent Package Smoke D3D12 v1 (2026-05-06)
 
-**Plan ID:** `generated-3d-compute-morph-normal-tangent-package-smoke-d3d12-v1`  
-**Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Plan ID:** `generated-3d-compute-morph-normal-tangent-package-smoke-d3d12-v1`
+**Status:** Completed
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 

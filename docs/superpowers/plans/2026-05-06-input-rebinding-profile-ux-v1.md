@@ -114,7 +114,7 @@ axis.gameplay.move_x=keys:left:right,gamepad:1:left_x:1:0.25
 - Modify: `.claude/skills/gameengine-game-development/SKILL.md`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/2026-05-06-input-rebinding-profile-ux-v1.md`
 
 - [x] Mark this plan as the active slice in the plan registry and manifest before implementation.

@@ -1,8 +1,8 @@
 # Runtime RHI Compute Morph Normal Tangent Output D3D12 v1 (2026-05-06)
 
-**Plan ID:** `runtime-rhi-compute-morph-normal-tangent-output-d3d12-v1`  
-**Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Plan ID:** `runtime-rhi-compute-morph-normal-tangent-output-d3d12-v1`
+**Status:** Completed
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 

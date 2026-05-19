@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-game-module-driver-safe-reload-review-v1.md`.
 - Dynamic driver load and stopped-state reload are implemented, but the contract details are currently spread across constants, load/reload rows, docs, and validation checks.
@@ -55,7 +55,7 @@
   - Add sentinels for the new contract metadata symbols, retained ids, docs, skills, manifest, and plan.
 - Modify: `docs/superpowers/plans/README.md`
   - Track this plan as the active slice.
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update the current selected-gap pointer and verdict.
 
 ## Done When
@@ -123,7 +123,7 @@ Expected before implementation: compile failure for the new contract metadata mo
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Document contract metadata as reviewed evidence.
 - [x] Keep unsupported claims explicit.

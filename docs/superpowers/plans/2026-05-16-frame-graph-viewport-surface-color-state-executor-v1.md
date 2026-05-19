@@ -44,7 +44,7 @@
 - Modify: `tests/unit/renderer_rhi_tests.cpp`
 - Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
 
-- [x] Add a failing unit test named `rhi viewport surface reports frame graph color transition failure` using `ThrowingTransitionRhiDevice` with `throw_on_submit = false` and `throw_on_transition = 1`. The test should construct `RhiViewportSurface`, call `render_clear_frame()`, and require a `std::runtime_error` message of `rhi viewport surface frame graph color state execution failed` plus `frames_rendered() == 0`.
+- [x] Add a failing unit test named `rhi viewport surface reports frame graph color transition failure` using `ThrowingTransitionRhiDevice` with `throw_on_submit = false` and `throw_on_transition = 1`. The test should construct `RhiViewportSurface`, call `()`, and require a `std::runtime_error` message of `rhi viewport surface frame graph color state execution failed` plus `() == 0`.
 - [x] Add a static guard that asserts `engine/renderer/src/rhi_viewport_surface.cpp` contains `execute_frame_graph_rhi_texture_schedule` and does not contain `transition_texture(`.
 - [x] Run:
 
@@ -63,9 +63,9 @@ Expected: fail on the new viewport surface direct-transition guard before implem
 
 - [x] Include `mirakana/renderer/frame_graph_rhi.hpp`.
 - [x] Add a small file-local helper that builds one `FrameGraphTextureBinding{.resource = "viewport_color", .texture = color_texture, .current_state = current_state}` and one `FrameGraphTextureFinalState{.resource = "viewport_color", .state = target_state}`, calls `execute_frame_graph_rhi_texture_schedule`, and returns the updated binding state or throws `std::runtime_error("rhi viewport surface frame graph color state execution failed")` when execution diagnostics are present.
-- [x] Replace the direct transition in `render_clear_frame()` before the render pass with the helper and adopt the updated `color_state_` only after executor success.
-- [x] Replace the direct render-target-to-copy-source transition in `render_clear_frame()` with the helper.
-- [x] Replace `transition_color_state()` internals with the helper while preserving the early return when `color_state_ == state`, command submission, optional wait, and state adoption after executor success.
+- [x] Replace the direct transition in `()` before the render pass with the helper and adopt the updated `color_state_` only after executor success.
+- [x] Replace the direct render-target-to-copy-source transition in `()` with the helper.
+- [x] Replace `()` internals with the helper while preserving the early return when `color_state_ == state`, command submission, optional wait, and state adoption after executor success.
 - [x] Run the focused renderer command from Task 1.
 
 Expected: `MK_renderer_tests` passes.
@@ -79,7 +79,7 @@ Expected: `MK_renderer_tests` passes.
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.fragments/004-modules.json`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `engine/agent/manifest.json` via compose only

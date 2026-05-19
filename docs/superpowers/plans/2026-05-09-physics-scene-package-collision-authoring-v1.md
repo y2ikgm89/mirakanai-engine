@@ -10,9 +10,9 @@
 
 ---
 
-**Plan ID:** `physics-scene-package-collision-authoring-v1`  
-**Status:** Completed.  
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `physics-scene-package-collision-authoring-v1`
+**Status:** Completed.
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Previous Slice:** [2026-05-09-generated-3d-visible-production-game-proof-v1.md](2026-05-09-generated-3d-visible-production-game-proof-v1.md)
 
 ## Context
@@ -81,7 +81,7 @@ The updated master plan keeps this child as the active Physics 1.0 entry point. 
 - Runtime bridge is implemented through `engine/runtime/include/mirakana/runtime/physics_collision_runtime.hpp` and `engine/runtime/src/physics_collision_runtime.cpp` as `build_physics_world_3d_from_runtime_collision_scene`. RED: `cmake --build --preset dev --target MK_runtime_tests --config Debug` failed on missing `mirakana/runtime/physics_collision_runtime.hpp`. GREEN: `MK_runtime_tests` passed with 3 bodies, non-trigger contact evidence, and one trigger-overlap row.
 
 **Plan corrections:**
-- Use a 3-body generated package proof: static floor, non-trigger collision probe, and trigger pickup. `PhysicsWorld3D::contacts()` intentionally excludes trigger pairs, so a 2-body proof with one trigger cannot honestly produce `collision_package_contacts>=1`.
+- Use a 3-body generated package proof: static floor, non-trigger collision probe, and trigger pickup. `()` intentionally excludes trigger pairs, so a 2-body proof with one trigger cannot honestly produce `collision_package_contacts>=1`.
 - Add `collision_package_trigger_overlaps>=1` as a distinct smoke field. Do not count trigger overlaps as contacts.
 - Add an explicit package payload backend claim row, `backend.native=unsupported`, and reject any native/backend-required value in the runtime decoder and package authoring tool. This satisfies the unsupported native-backend request gate without adding middleware or native handles.
 - Keep future work ordered after this slice as the master plan states: broader exact casts/sweeps, contact manifold stability, CCD, character/dynamic policy, joints, benchmark/determinism gates, then optional Jolt gate.
@@ -157,9 +157,9 @@ MK_TEST("runtime physics collision scene payload decodes deterministic body rows
 
     const auto result = mirakana::runtime::runtime_physics_collision_scene_3d_payload(record);
 
-    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.());
     MK_REQUIRE(result.payload.asset == collision_scene);
-    MK_REQUIRE(result.payload.bodies.size() == 2);
+    MK_REQUIRE(result.payload.bodies.() == 2);
     MK_REQUIRE(result.payload.bodies[0].name == "floor");
     MK_REQUIRE(result.payload.bodies[0].material == "stone");
     MK_REQUIRE(result.payload.bodies[0].body.shape == mirakana::PhysicsShape3DKind::aabb);
@@ -332,10 +332,10 @@ Add a test that builds a `RuntimePhysicsCollisionScene3DPayload`, calls `build_p
 ```cpp
 MK_REQUIRE(result.status == mirakana::PhysicsAuthoredCollision3DBuildStatus::success);
 MK_REQUIRE(result.diagnostic == mirakana::PhysicsAuthoredCollision3DDiagnostic::none);
-MK_REQUIRE(result.bodies.size() == 3);
-MK_REQUIRE(result.world.bodies().size() == 3);
-MK_REQUIRE(!result.world.contacts().empty());
-MK_REQUIRE(result.world.trigger_overlaps().size() == 1);
+MK_REQUIRE(result.bodies.() == 3);
+MK_REQUIRE(result.world.().() == 3);
+MK_REQUIRE(!result.world.().());
+MK_REQUIRE(result.world.().() == 1);
 ```
 
 Add a second test with duplicate `name` rows and verify:
@@ -369,7 +369,7 @@ Implementation shape:
 ```cpp
 PhysicsAuthoredCollisionScene3DDesc desc;
 desc.world_config = payload.world_config;
-desc.bodies.reserve(payload.bodies.size());
+desc.bodies.reserve(payload.bodies.());
 for (const auto& row : payload.bodies) {
     desc.bodies.push_back(PhysicsAuthoredCollisionBody3DDesc{row.name, row.body});
 }
@@ -463,7 +463,7 @@ struct PhysicsCollisionPackageUpdateDesc {
 struct PhysicsCollisionPackageUpdateResult {
     std::vector<PhysicsCollisionPackageChangedFile> changed_files;
     std::vector<PhysicsCollisionPackageDiagnostic> diagnostics;
-    [[nodiscard]] bool succeeded() const noexcept { return diagnostics.empty(); }
+    [[nodiscard]] bool () const noexcept { return diagnostics.(); }
 };
 
 [[nodiscard]] PhysicsCollisionPackageUpdateResult
@@ -552,7 +552,7 @@ Expected: PASS and validator output includes the exact `collision_package_*` fie
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `.agents/skills/gameengine-game-development/SKILL.md`
 - Modify: `.claude/skills/gameengine-game-development/SKILL.md`
 - Modify: `tools/check-json-contracts.ps1`

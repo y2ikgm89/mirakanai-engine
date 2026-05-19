@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `generated-3d-compute-morph-async-telemetry-package-smoke-d3d12-v1`  
-**Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Plan ID:** `generated-3d-compute-morph-async-telemetry-package-smoke-d3d12-v1`
+**Status:** Completed
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -67,7 +67,7 @@ D3D12 focused runtime-host/package tests, static docs checks.
 - RED: `cmd.exe /d /c "set Path=%Path%&& set PATH=&& cmake --build --preset desktop-runtime --target mirakana_runtime_host_sdl3_public_api_compile"` failed with missing `SdlDesktopPresentationSceneGpuBindingStats` async telemetry members after the public API compile probe referenced them.
 - RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` failed because the generated `DesktopRuntime3DPackage` installed D3D12 recipe lacked `--require-compute-morph-async-telemetry`.
 - GREEN: `cmd.exe /d /c "set Path=%Path%&& set PATH=&& cmake --build --preset desktop-runtime --target mirakana_runtime_host_sdl3_public_api_compile"` passed after adding package-visible first-party async telemetry fields.
-- GREEN: `cmd.exe /d /c "set Path=%Path%&& set PATH=&& cmake --build --preset desktop-runtime --target mirakana_runtime_host_sdl3_tests"` passed after wiring runtime-host stats to `IRhiDevice::stats()`.
+- GREEN: `cmd.exe /d /c "set Path=%Path%&& set PATH=&& cmake --build --preset desktop-runtime --target mirakana_runtime_host_sdl3_tests"` passed after wiring runtime-host stats to `()`.
 - GREEN: `cmd.exe /d /c "set Path=%Path%&& set PATH=&& ctest --preset desktop-runtime -R mirakana_runtime_host_sdl3_tests --output-on-failure"` passed.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after the generated scaffold emitted `--require-compute-morph-async-telemetry` and `scene_gpu_compute_morph_async_*` output fields.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` passed after running `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1` to apply clang-format to `scene_gpu_binding_injecting_renderer.hpp`.

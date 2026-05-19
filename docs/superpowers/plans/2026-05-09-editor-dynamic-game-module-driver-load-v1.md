@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
 - Previous completed slice: `docs/superpowers/plans/2026-05-09-editor-runtime-scene-package-validation-execution-v1.md`.
 - Existing editor work already supports `IEditorPlaySessionDriver`, isolated `EditorPlaySession`, external runtime-host process review, and linked-driver in-process runtime-host review.
@@ -71,7 +71,7 @@
   - Add sentinel checks for new types, retained ids, docs, manifest, plan, and safe dynamic-library wording.
 - Modify: `docs/superpowers/plans/README.md`
   - Track this plan as the active slice.
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update the current verdict and selected-gap evidence.
 
 ## Done When
@@ -93,7 +93,7 @@
 **Files:**
 - Create: this plan file.
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 
 - [x] Create this dated plan with Goal, Context, Constraints, Done When, tasks, and validation evidence.
@@ -158,7 +158,7 @@
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Document the reviewed dynamic game-module driver load path and official DLL security policy.
 - [x] Keep hot reload, stable third-party ABI, `DesktopGameRunner` embedding, package scripts, validation recipes, renderer/RHI uploads or handles, package streaming, Metal readiness, and broad editor productization unsupported.
@@ -169,7 +169,7 @@
 **Files:**
 - Modify: this plan file.
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 
 - [x] Run focused platform/editor builds and tests.

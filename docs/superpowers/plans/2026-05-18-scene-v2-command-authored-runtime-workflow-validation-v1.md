@@ -53,7 +53,7 @@
 - Modify: `docs/specs/game-prompt-pack.md`
 - Modify: `docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Generate: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration-070-production-ledger.ps1`

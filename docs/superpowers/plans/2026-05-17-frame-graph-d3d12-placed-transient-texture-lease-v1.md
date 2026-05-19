@@ -81,7 +81,7 @@ The completed Frame Graph transient texture slices added conservative alias plan
 - Modify: `docs/rhi.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
 

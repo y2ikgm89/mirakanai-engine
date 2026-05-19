@@ -60,7 +60,7 @@
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - No change needed: `tools/check-production-readiness-audit.ps1` already allows the existing `partly-ready` status vocabulary.

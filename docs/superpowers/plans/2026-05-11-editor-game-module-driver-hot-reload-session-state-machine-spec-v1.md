@@ -1,9 +1,9 @@
 # Editor Game Module Driver Hot Reload Session State Machine Spec v1 (2026-05-11)
 
-**Plan ID:** `editor-game-module-driver-hot-reload-session-state-machine-spec-v1`  
-**Gap:** `editor-productization`  
-**Parent:** [`2026-05-03-production-completion-master-plan-v1.md`](2026-05-03-production-completion-master-plan-v1.md)  
-**Spec:** [`docs/specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md`](../specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md)  
+**Plan ID:** `editor-game-module-driver-hot-reload-session-state-machine-spec-v1`
+**Gap:** `editor-productization`
+**Parent:** [`../master-plans/2026-05-03-production-completion-master-plan-v1.md`](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Spec:** [`docs/specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md`](../specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md)
 **Status:** Completed (spec + API + MK_ui + tests + manifest needles)
 
 ## Goal

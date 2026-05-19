@@ -43,7 +43,7 @@ Close the current input rebinding loophole after Input Rebinding Profile UX v1 a
 - Modify: `tests/unit/runtime_tests.cpp`
 - Modify: `engine/agent/manifest.json`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/architecture.md`
@@ -65,7 +65,7 @@ Close the current input rebinding loophole after Input Rebinding Profile UX v1 a
 
 - [x] Add `RuntimeInputRebindingCaptureStatus` with `waiting`, `captured`, and `blocked`.
 - [x] Add `RuntimeInputRebindingCaptureRequest` with `context`, `action`, `RuntimeInputStateView state`, and booleans for keyboard, pointer, and gamepad-button capture.
-- [x] Add `RuntimeInputRebindingCaptureResult` with status, optional trigger, action override, candidate profile, diagnostics, and `captured()` / `waiting()` helpers.
+- [x] Add `RuntimeInputRebindingCaptureResult` with status, optional trigger, action override, candidate profile, diagnostics, and `()` / `()` helpers.
 - [x] Declare `capture_runtime_input_rebinding_action`.
 
 ### Task 3: Implementation

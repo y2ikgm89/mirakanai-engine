@@ -38,7 +38,7 @@
 - Modify: `engine/renderer/src/frame_graph_rhi.cpp`
 - Modify: `engine/renderer/src/rhi_postprocess_frame_renderer.cpp`
 - Test: `tests/unit/renderer_rhi_tests.cpp`
-- Docs/sync as needed: `docs/superpowers/plans/README.md`, `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `engine/agent/manifest.json`, and scoped static guards.
+- Docs/sync as needed: `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `engine/agent/manifest.json`, and scoped static guards.
 
 ## Tasks
 

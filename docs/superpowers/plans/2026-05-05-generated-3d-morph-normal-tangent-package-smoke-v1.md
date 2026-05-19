@@ -1,8 +1,8 @@
 # Generated 3D Morph Normal Tangent Package Smoke v1 (2026-05-05)
 
-**Plan ID:** `generated-3d-morph-normal-tangent-package-smoke-v1`  
-**Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Plan ID:** `generated-3d-morph-normal-tangent-package-smoke-v1`
+**Status:** Completed
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 

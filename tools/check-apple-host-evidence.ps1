@@ -58,10 +58,10 @@ Assert-FileContainsText ".github/workflows/ios-validate.yml" @(
 Assert-FileContainsText ".github/workflows/validate.yml" @(
     "name: macOS Metal CMake",
     "runs-on: macos-latest",
-    "name: Ensure Ninja is available",
-    "command -v ninja",
+    "name: Ensure build tools are available",
+    'command -v ninja >/dev/null 2>&1 || { echo "ninja is required on macos-latest runner images"; exit 1; }',
     "ninja --version",
-    "brew install ninja",
+    "brew install ccache",
     "cmake --preset ci-macos-appleclang",
     "cmake --build --preset ci-macos-appleclang",
     "ctest --preset ci-macos-appleclang --output-on-failure"

@@ -5061,9 +5061,10 @@ class EditorState {
     }
 
     void unload_game_module_driver() {
-        if (play_session_.active()) {
-            game_module_driver_status_ = "active";
-            game_module_driver_diagnostic_ = "cannot unload a game module driver while Play-In-Editor is active";
+        const auto unload_model = make_game_module_driver_unload_model();
+        if (!unload_model.can_unload) {
+            game_module_driver_status_ = unload_model.status_label;
+            game_module_driver_diagnostic_ = join_display_values(unload_model.diagnostics);
             log_.log(mirakana::LogLevel::warn, "editor", game_module_driver_diagnostic_);
             return;
         }

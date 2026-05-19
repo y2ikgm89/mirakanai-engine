@@ -10,9 +10,9 @@
 
 ---
 
-**Plan ID:** `physics-ccd-foundation-v1`  
-**Status:** Completed.  
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `physics-ccd-foundation-v1`
+**Status:** Completed.
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Previous Slice:** [2026-05-09-physics-contact-manifold-stability-v1.md](2026-05-09-physics-contact-manifold-stability-v1.md)
 
 ## Context
@@ -86,11 +86,11 @@ MK_TEST("3d physics continuous step reports fast body hit rows") {
 
     MK_REQUIRE(result.status == mirakana::PhysicsContinuousStep3DStatus::stepped);
     MK_REQUIRE(result.diagnostic == mirakana::PhysicsContinuousStep3DDiagnostic::none);
-    MK_REQUIRE(result.rows.size() == 1);
+    MK_REQUIRE(result.rows.() == 1);
     MK_REQUIRE(result.rows[0].body == bullet);
     MK_REQUIRE(result.rows[0].hit_body == wall);
     MK_REQUIRE(result.rows[0].ccd_applied);
-    MK_REQUIRE(result.rows[0].hit.has_value());
+    MK_REQUIRE(result.rows[0].hit.());
     MK_REQUIRE(result.rows[0].hit->body == wall);
     MK_REQUIRE(result.rows[0].hit->normal == (mirakana::Vec3{-1.0F, 0.0F, 0.0F}));
     MK_REQUIRE(world.find_body(bullet)->position.x < 5.0F);
@@ -266,8 +266,8 @@ Expected: PASS for no-hit equivalence, trigger/mask behavior, and invalid diagno
 Create two worlds with the same three dynamic bodies inserted in the same order. Call `step_continuous(0.25F)` and compare:
 
 ```cpp
-MK_REQUIRE(first.rows.size() == second.rows.size());
-for (std::size_t index = 0; index < first.rows.size(); ++index) {
+MK_REQUIRE(first.rows.() == second.rows.());
+for (std::size_t index = 0; index < first.rows.(); ++index) {
     MK_REQUIRE(first.rows[index].body == second.rows[index].body);
     MK_REQUIRE(first.rows[index].hit_body == second.rows[index].hit_body);
     MK_REQUIRE(first.rows[index].ccd_applied == second.rows[index].ccd_applied);
@@ -299,7 +299,7 @@ Expected: PASS for deterministic rows and default-step scope tests.
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`

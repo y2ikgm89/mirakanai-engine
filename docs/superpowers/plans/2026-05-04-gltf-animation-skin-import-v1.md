@@ -2,7 +2,7 @@
 
 **計画 ID:** `gltf-animation-skin-import-v1`
 **ステータス:** **完了**（ツール層の観測・拒否・`mirakana_animation` 型への決定的インポート API まで。クック済み JSON 行の正典化とランタイムマウントは `gpu-skinning-upload-and-rendering-v1` 側で継続。）
-**親:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6
+**親:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6
 **方針:** [Khronos glTF 2.0 仕様](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html) に沿った読み取り契約。オプションの `fastgltf` 経路のみ。後方互換の shim は置かない（未対応は明示的に拒否または診断）。
 
 ## ゴール

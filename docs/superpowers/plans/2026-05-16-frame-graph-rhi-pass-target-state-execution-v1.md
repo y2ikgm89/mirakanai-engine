@@ -107,7 +107,7 @@ Expected: compile fails because the new types/fields do not exist yet, or render
 **Files:**
 
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/rhi.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`

@@ -46,7 +46,7 @@
 - Modify `tools/validate.ps1`: run the new check during default validation before heavier local tool checks.
 - Modify `engine/agent/manifest.json`: point active work at this plan, record the selected gap, and expose `commands.ciMatrixCheck` for `tools/check-ci-matrix.ps1`.
 - Modify `docs/superpowers/plans/README.md`: set this plan as the active slice.
-- Modify `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`: record the selected next child slice.
+- Modify `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`: record the selected next child slice.
 - Modify `docs/current-capabilities.md`, `docs/roadmap.md`, and `docs/testing.md`: describe the new contract check after implementation.
 - Modify `tools/check-ai-integration.ps1` and `tools/check-json-contracts.ps1`: require the new plan/script/docs/manifest evidence.
 

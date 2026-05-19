@@ -1,7 +1,7 @@
 # GPU スキニングのアップロードと描画 v1 (2026-05-04)
 
 **計画 ID:** `gpu-skinning-upload-and-rendering-v1`
-**親:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6
+**親:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6
 **ステータス:** **完了**（2026-05-04）。D3D12 の可視証跡は `RhiFrameRenderer` offscreen readback と `sample_desktop_runtime_game --require-gpu-skinning` package smoke に限定。Vulkan/Metal の GPU skinning 可視証跡や広い skeletal animation production は未主張。
 **前提:** [2026-05-04-gltf-animation-skin-import-v1.md](2026-05-04-gltf-animation-skin-import-v1.md) で `MK_animation` 向けの glTF スキン／アニメ取り込み API（メモリ上の `AnimationSkeletonDesc` / `AnimationSkinPayloadDesc` / `AnimationJointTrackDesc`）が利用可能であること。
 

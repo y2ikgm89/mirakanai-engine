@@ -1,6 +1,6 @@
 # Unsupported Production Gaps Orchestration Program v1 (2026-05-10)
 
-**Plan ID:** `unsupported-production-gaps-orchestration-program-v1`  
+**Plan ID:** `unsupported-production-gaps-orchestration-program-v1`
 **Status:** Active program index. This file is the machine-readable execution index for all eleven `engine/agent/manifest.json.unsupportedProductionGaps` rows; it does not replace gap-by-gap validation or dated implementation child plans.
 
 ## Goal
@@ -9,7 +9,7 @@ Provide a single repository-owned orchestration ledger that aligns the productio
 
 ## Context
 
-- Master plan: [`2026-05-03-production-completion-master-plan-v1.md`](2026-05-03-production-completion-master-plan-v1.md)
+- Master plan: [`../master-plans/2026-05-03-production-completion-master-plan-v1.md`](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 - Roadmap: [`docs/roadmap.md`](../../roadmap.md)
 - Manifest gaps: `unsupportedProductionGaps` in [`engine/agent/manifest.json`](../../../engine/agent/manifest.json)
 
@@ -39,7 +39,7 @@ Provide a single repository-owned orchestration ledger that aligns the productio
 | Check | Result |
 | --- | --- |
 | Plan registered in [`README.md`](./README.md) Current Active Work | **PASS** — Active slice row references the master plan and links [2026-05-11-production-completion-gap-stream-plans-index-v1.md](./2026-05-11-production-completion-gap-stream-plans-index-v1.md) as the Phase 0–4 stream index; latest completed slice records nested prefab propagation dry-run counters ([2026-05-11-editor-nested-prefab-propagation-candidate-dry-run-v1.md](./2026-05-11-editor-nested-prefab-propagation-candidate-dry-run-v1.md)); the next `editor-productization` child remains `recommendedNextPlan.id=next-production-gap-selection`. |
-| Manifest `recommendedNextPlan.path` / `currentActivePlan` | **PASS** — both paths reference `2026-05-03-production-completion-master-plan-v1.md` per `tools/check-json-contracts.ps1` / `tools/check-ai-integration.ps1`; `completedContext` references this orchestration file |
+| Manifest `recommendedNextPlan.path` / `currentActivePlan` | **PASS** — both paths reference `../master-plans/2026-05-03-production-completion-master-plan-v1.md` per `tools/check-json-contracts.ps1` / `tools/check-ai-integration.ps1`; `completedContext` references this orchestration file |
 
 ## Phase execution ledger (orchestration only)
 

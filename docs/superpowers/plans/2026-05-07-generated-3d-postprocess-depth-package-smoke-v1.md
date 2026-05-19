@@ -12,7 +12,7 @@
 
 ## Context
 
-- Master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Previous generated 3D package slices added committed/generated package files, transform/morph/quaternion package smokes, D3D12/Vulkan compute morph package smokes, selected safe-point package streaming, renderer quality over scene GPU + postprocess + framegraph=2, and `playable_3d_*` aggregate counters.
 - `tools/validate-installed-desktop-runtime.ps1` already recognizes `--require-postprocess-depth-input` and expects `postprocess_depth_input_ready=1` plus `renderer_quality_postprocess_depth_input_ready=1`, but `sample_generated_desktop_runtime_3d_package` does not currently accept the flag or emit the direct depth-input field.
 - This slice is the smallest host-feasible generated 3D renderer-quality advancement before directional shadow work.

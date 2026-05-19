@@ -2,8 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `generated-3d-gameplay-systems-package-smoke-v1`  
-**Status:** Completed.  
+**Plan ID:** `generated-3d-gameplay-systems-package-smoke-v1`
+**Status:** Completed.
 **Goal:** Promote the existing headless runtime gameplay systems composition proof into the committed generated `DesktopRuntime3DPackage` smoke so a generated 3D package reports validated physics, navigation, AI, audio, animation, package, and renderer evidence in one host-gated loop.
 
 **Architecture:** Keep the proof inside `games/sample_generated_desktop_runtime_3d_package` as deterministic public-API gameplay code. The sample owns explicit in-memory physics collision rows, navigation grid rows, AI perception/blackboard rows, and audio PCM rows; it does not add hidden scene/physics/AI coupling or any native handles.
@@ -45,7 +45,7 @@
 - Modify: `docs/roadmap.md`
 - Modify: `docs/specs/generated-game-validation-scenarios.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`

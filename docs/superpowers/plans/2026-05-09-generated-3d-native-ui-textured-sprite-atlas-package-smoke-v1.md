@@ -10,10 +10,10 @@
 
 ---
 
-**Plan ID:** `generated-3d-native-ui-textured-sprite-atlas-package-smoke-v1`  
-**Status:** Completed.  
-**Completed:** 2026-05-09.  
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `generated-3d-native-ui-textured-sprite-atlas-package-smoke-v1`
+**Status:** Completed.
+**Completed:** 2026-05-09.
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Previous Slice:** [2026-05-09-generated-3d-native-ui-overlay-package-smoke-v1.md](2026-05-09-generated-3d-native-ui-overlay-package-smoke-v1.md)
 
 ## Context
@@ -156,7 +156,7 @@ struct UiAtlasMetadataRuntimeState {
 Load with:
 
 ```cpp
-auto result = mirakana::build_ui_renderer_image_palette_from_runtime_ui_atlas(*package, packaged_ui_atlas_metadata_asset_id());
+auto result = mirakana::build_ui_renderer_image_palette_from_runtime_ui_atlas(*package, ());
 ```
 
 Classify missing package, malformed metadata, invalid texture dependency, and unsupported source-decoding/packing diagnostics without falling back silently.
@@ -251,7 +251,7 @@ Keep `hud_boxes` and `ui_overlay_*` output unchanged.
 When `--require-native-ui-textured-sprite-atlas` is selected, fail unless:
 
 ```cpp
-game.hud_images_submitted() == options.max_frames
+game.() == options.max_frames
 ui_atlas_metadata.status == UiAtlasMetadataStatus::ready
 ui_atlas_metadata.pages == 1
 ui_atlas_metadata.bindings == 1
@@ -322,7 +322,7 @@ Generated CMake registration must include `--require-native-ui-textured-sprite-a
 - Modify: `.agents/skills/gameengine-game-development/SKILL.md`
 - Modify: `.claude/skills/gameengine-game-development/SKILL.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] **Step 1: Enforce installed package fields**
 

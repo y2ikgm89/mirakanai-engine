@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Target unsupported gap: `production-ui-importer-platform-adapters`, currently `planned`.
 - Existing `MK_ui` provides `PlatformTextInputSessionPlan`, `PlatformTextInputSessionResult`, `PlatformTextInputEndPlan`, `PlatformTextInputEndResult`, `plan_platform_text_input_session`, `begin_platform_text_input`, `plan_platform_text_input_end`, and `end_platform_text_input`.
 - Existing `MK_platform_sdl3` owns SDL runtime/window/input/clipboard/cursor/file-dialog adapters and already keeps `SDL_Window*` behind `SdlWindow`.
@@ -40,7 +40,7 @@
 - Modify after green: `docs/current-capabilities.md`
 - Modify after green: `docs/roadmap.md`
 - Modify after green: `docs/ui.md`
-- Modify after green: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify after green: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify after green: `engine/agent/manifest.json`
 
 ## Tasks
@@ -75,8 +75,8 @@ MK_TEST("sdl3 platform integration adapter begins text input with a window text 
 
     const auto result = mirakana::ui::begin_platform_text_input(adapter, request);
 
-    MK_REQUIRE(result.succeeded());
-    auto* native = reinterpret_cast<SDL_Window*>(window.native_window().value);
+    MK_REQUIRE(result.());
+    auto* native = reinterpret_cast<SDL_Window*>(window.().value);
     MK_REQUIRE(SDL_TextInputActive(native));
 
     SDL_Rect area{};
@@ -89,7 +89,7 @@ MK_TEST("sdl3 platform integration adapter begins text input with a window text 
     MK_REQUIRE(cursor == 0);
 
     const auto end_result = mirakana::ui::end_platform_text_input(adapter, request.target);
-    MK_REQUIRE(end_result.succeeded());
+    MK_REQUIRE(end_result.());
     MK_REQUIRE(!SDL_TextInputActive(native));
 }
 
@@ -105,11 +105,11 @@ MK_TEST("sdl3 platform integration adapter rejects invalid direct requests befor
             mirakana::ui::Rect{0.0F, 0.0F, 10.0F, 10.0F},
         });
     } catch (const std::invalid_argument& error) {
-        threw = std::string{error.what()} == "platform text input target must not be empty";
+        threw = std::string{error.()} == "platform text input target must not be empty";
     }
 
     MK_REQUIRE(threw);
-    auto* native = reinterpret_cast<SDL_Window*>(window.native_window().value);
+    auto* native = reinterpret_cast<SDL_Window*>(window.().value);
     MK_REQUIRE(!SDL_TextInputActive(native));
 }
 ```
@@ -211,7 +211,7 @@ Expected: PASS.
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/ui.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 
 - [x] **Step 1: Update capability truth**
@@ -259,7 +259,7 @@ Run:
 
 ```powershell
 git status --short
-git add docs/current-capabilities.md docs/roadmap.md docs/ui.md docs/superpowers/plans/README.md docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md docs/superpowers/plans/2026-05-08-runtime-ui-sdl3-platform-text-input-adapter-v1.md engine/agent/manifest.json engine/platform/sdl3/CMakeLists.txt engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_ui_platform_integration.hpp engine/platform/sdl3/src/sdl_ui_platform_integration.cpp tests/unit/sdl3_platform_tests.cpp
+git add docs/current-capabilities.md docs/roadmap.md docs/ui.md docs/superpowers/plans/README.md docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md docs/superpowers/plans/2026-05-08-runtime-ui-sdl3-platform-text-input-adapter-v1.md engine/agent/manifest.json engine/platform/sdl3/CMakeLists.txt engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_ui_platform_integration.hpp engine/platform/sdl3/src/sdl_ui_platform_integration.cpp tests/unit/sdl3_platform_tests.cpp
 git diff --cached --check
 git commit -m "feat: add sdl3 platform text input adapter"
 ```

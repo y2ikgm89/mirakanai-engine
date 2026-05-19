@@ -12,7 +12,7 @@
 
 ## Context
 
-- Master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Current gap: `engine/agent/manifest.json.aiOperableProductionLoop.unsupportedProductionGaps[3d-playable-vertical-slice]` still lists `broad dependency cooking and package streaming` as a required-before-ready claim.
 - Existing package streaming API: `engine/runtime/include/mirakana/runtime/package_streaming.hpp`.
 - Existing generated 3D sample: `games/sample_generated_desktop_runtime_3d_package`.

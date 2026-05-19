@@ -1,10 +1,10 @@
 # Editor Scene Prefab Instance Refresh Nested Summary Counters v1 (2026-05-11)
 
-**Plan ID:** `editor-scene-prefab-instance-refresh-nested-summary-counters-v1`  
-**Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
-**Orchestration:** [2026-05-10-unsupported-production-gaps-orchestration-program-v1.md](2026-05-10-unsupported-production-gaps-orchestration-program-v1.md)  
-**Status:** Completed  
+**Plan ID:** `editor-scene-prefab-instance-refresh-nested-summary-counters-v1`
+**Gap:** `editor-productization`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Orchestration:** [2026-05-10-unsupported-production-gaps-orchestration-program-v1.md](2026-05-10-unsupported-production-gaps-orchestration-program-v1.md)
+**Status:** Completed
 
 ## Goal
 

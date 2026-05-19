@@ -9,7 +9,7 @@ Add a deterministic `MK_runtime` resident package mount set for Runtime Resource
 
 ## Context
 
-- Parent: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
+- Parent: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
 - Existing foundation: `RuntimeResourceCatalogV2`, `build_runtime_resource_catalog_v2_from_resident_mounts`, residency budget execution, residency hints execution, and safe-point package replacement/unload.
 - Official C++ resource-management guidance favors explicit ownership and RAII/value ownership boundaries. This slice keeps package ownership inside first-party runtime value types and does not expose native, RHI, or raw owning handles.
 

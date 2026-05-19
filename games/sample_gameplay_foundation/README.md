@@ -10,6 +10,7 @@ This headless sample demonstrates gameplay-facing engine foundations that AI age
 - `mirakana::build_ai_perception_snapshot_2d`, `mirakana::write_ai_perception_blackboard`, and `mirakana::evaluate_behavior_tree` for explicit perception target facts and blackboard-driven movement decisions.
 - `mirakana::AudioMixer` and `mirakana::render_audio_device_stream_interleaved_float` for a bounded device-independent audio stream pump.
 - `mirakana::AnimationStateMachine` for clip/state/trigger/blend animation flow.
+- deterministic gameplay-tick order trace (`physics.apply_force`, `physics.step`, `physics.resolve_contacts`, `animation.update`, `navigation_and_ai.update`) surfaced in output and return-gate checks.
 - `mirakana::HeadlessRunner` and `mirakana::Registry` for testable game lifecycle and entity state.
 
 The sample exits with status 0 only when the simulated actor lands on the static floor, moves forward deterministically, transitions from `idle` to `walk`, builds two authored collision rows, grounds a controller, reaches the navigation destination through an AI behavior-tree decision, renders two audio stream frames, and cleans up its entity on stop.

@@ -10,7 +10,7 @@ Add a deterministic Runtime Resource v2 resident catalog cache in `MK_runtime` s
 
 ## Context
 
-- Parent: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
+- Parent: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
 - Previous slice: [2026-05-12-runtime-resource-v2-resident-package-mount-set-v1.md](2026-05-12-runtime-resource-v2-resident-package-mount-set-v1.md) added explicit loaded-package mount ids and deterministic catalog rebuilds from mount sets.
 - Existing foundation: `RuntimeResourceCatalogV2`, `RuntimeResidentPackageMountSetV2`, `RuntimeResourceResidencyBudgetV2`, and budgeted catalog rebuilds from anonymous mount vectors.
 

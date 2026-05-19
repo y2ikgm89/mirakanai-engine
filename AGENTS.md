@@ -145,7 +145,7 @@
 
 ## Production Completion Execution
 
-- When executing `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`, use `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps` as the current execution index.
+- When executing `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, use `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps` as the current execution index.
 - Keep each `unsupportedProductionGaps` row honest, including `oneDotZeroCloseoutTier`, in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` plus composed output; do not hand-edit `engine/agent/manifest.json`.
 - Re-read the master plan, registry, and manifest after user edits or resumes. Finish one selected gap as implemented, host-gated, blocked with evidence, or excluded before switching.
 - Prefer official documentation, Context7, project skills, and clean breaking greenfield designs over compatibility shims, broad ready claims, or shortcuts.
@@ -183,7 +183,7 @@
 ## AI-Driven Game Development
 
 - Games, manifests, scaffolding, desktop runtime, and Android lanes live in [docs/agent-operational-reference.md](docs/agent-operational-reference.md#ai-driven-game-development-expanded).
-- Games live under `games/<game_name>/`; `game_name` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-game.ps1 -Name <game_name>` values match `^[a-z][a-z0-9_]*$`. Source-tree game directories and `runtimePackageFiles` path segments stay lowercase snake_case; JSON manifest IDs, display names, and external package identifiers may use ecosystem formats such as kebab-case.
+- Games live under `games/<game_name>/`; `game_name` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-game.ps1 -Name <game_name>` values match `^[a-z][a-z0-9_]*$`. Source-tree game directories and `runtimePackageFiles` path segments stay lowercase snake_case; JSON manifest IDs, display names, and package ids may use kebab-case.
 - Every game has `game.agent.json` with backend readiness, importer requirements, packaging targets, runtime package files, runtime scene validation targets, and validation recipes.
 - Most sample games are headless validation executables. Only `sample_desktop_runtime_shell` and `sample_desktop_runtime_game` are optional windowed SDL3 desktop runtime samples; use `mirakana_editor` for broader visible desktop/editor smoke.
 - Use `tools/new-game.ps1` plus `tools/new-game-helpers.ps1` and `tools/new-game-templates.ps1` for scaffolding, and register games with `MK_add_game` or `MK_add_desktop_runtime_game` in `games/CMakeLists.txt`.

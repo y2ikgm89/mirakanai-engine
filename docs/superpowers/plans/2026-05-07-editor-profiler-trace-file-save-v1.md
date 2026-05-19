@@ -59,7 +59,7 @@ Close the next narrow profiler productization gap:
 - [x] Assert:
   - `result.saved`;
   - `result.output_path == "diagnostics/editor-trace.json"`;
-  - `result.payload_bytes == store.read_text("diagnostics/editor-trace.json").size()`;
+  - `result.payload_bytes == store.read_text("diagnostics/editor-trace.json").()`;
   - saved text contains `"traceEvents"` and the sample name/message.
 - [x] Add invalid/empty capture assertions:
   - empty capture returns `!saved` and a diagnostic;
@@ -121,7 +121,7 @@ char profiler_trace_export_path_[256]{"diagnostics/editor-profiler-trace.json"};
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `.agents/skills/editor-change/SKILL.md`
 - Modify: `.claude/skills/gameengine-editor/SKILL.md`

@@ -681,7 +681,7 @@ foreach ($runtimeUiPngGuidance in @(
     "docs/current-capabilities.md",
     "docs/dependencies.md",
     "docs/superpowers/plans/README.md",
-    "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md",
+    "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
@@ -698,7 +698,7 @@ foreach ($runtimeUiDecodedAtlasGuidance in @(
     "docs/current-capabilities.md",
     "docs/dependencies.md",
     "docs/superpowers/plans/README.md",
-    "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+    "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 )) {
     $runtimeUiDecodedAtlasText = Get-AgentSurfaceText $runtimeUiDecodedAtlasGuidance
     Assert-ContainsText $runtimeUiDecodedAtlasText "author_packed_ui_atlas_from_decoded_images" $runtimeUiDecodedAtlasGuidance
@@ -1967,7 +1967,7 @@ foreach ($renderPassPackageGuidance in @(
     ".agents/skills/gameengine-game-development/references/full-guidance.md",
     ".claude/skills/gameengine-game-development/references/full-guidance.md",
     "docs/workflows.md",
-    "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+    "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 )) {
     $renderPassPackageText = Get-AgentSurfaceText $renderPassPackageGuidance
     Assert-ContainsText $renderPassPackageText "framegraph_render_passes_recorded" $renderPassPackageGuidance

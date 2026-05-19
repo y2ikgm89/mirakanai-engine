@@ -100,10 +100,12 @@ function Assert-ValidationTierSelection {
         [string[]]$ChangedPath = @(),
         [switch]$RunAll,
         [Parameter(Mandatory = $true)][bool]$ExpectedWindows,
-        [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
-        [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
-        [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
-        [Parameter(Mandatory = $true)][bool]$ExpectedMacos
+    [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
+    [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
+    [bool]$ExpectedLinuxCoverage = $false,
+    [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
+    [bool]$ExpectedWindowsCpp23 = $false,
+    [Parameter(Mandatory = $true)][bool]$ExpectedMacos
     )
 
     $classifierPath = Join-Path $repoRoot "tools/classify-pr-validation-tier.ps1"
@@ -136,8 +138,10 @@ function Assert-ValidationTierSelection {
         windows = $ExpectedWindows
         linux = $ExpectedLinux
         linux_sanitizers = $ExpectedLinuxSanitizers
+        linux_coverage = $ExpectedLinuxCoverage
         static_analysis = $ExpectedStaticAnalysis
         macos = $ExpectedMacos
+        windows_cpp23 = $ExpectedWindowsCpp23
     }
 
     foreach ($expectation in $expectations.GetEnumerator()) {
@@ -169,7 +173,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindows $false `
     -ExpectedLinux $false `
     -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
     -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $false `
     -ExpectedMacos $false
 
 Assert-ValidationTierSelection `
@@ -178,7 +184,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindows $false `
     -ExpectedLinux $false `
     -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
     -ExpectedStaticAnalysis $true `
+    -ExpectedWindowsCpp23 $false `
     -ExpectedMacos $false
 
 Assert-ValidationTierSelection `
@@ -187,7 +195,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindows $true `
     -ExpectedLinux $true `
     -ExpectedLinuxSanitizers $true `
+    -ExpectedLinuxCoverage $false `
     -ExpectedStaticAnalysis $true `
+    -ExpectedWindowsCpp23 $false `
     -ExpectedMacos $true
 
 Assert-ValidationTierSelection `
@@ -195,18 +205,66 @@ Assert-ValidationTierSelection `
     -ChangedPath @(".github/workflows/validate.yml") `
     -ExpectedWindows $true `
     -ExpectedLinux $true `
-    -ExpectedLinuxSanitizers $true `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
     -ExpectedStaticAnalysis $true `
+    -ExpectedWindowsCpp23 $true `
     -ExpectedMacos $true
 
 Assert-ValidationTierSelection `
     -Label "classifier policy PR" `
     -ChangedPath @("tools/classify-pr-validation-tier.ps1") `
-    -ExpectedWindows $true `
-    -ExpectedLinux $true `
-    -ExpectedLinuxSanitizers $true `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedMacos $true
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $true `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "ci matrix policy PR" `
+    -ChangedPath @("tools/check-ci-matrix.ps1") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $true `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "cpp23 policy infra PR" `
+    -ChangedPath @("tools/check-cpp-standard-policy.ps1") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $true `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "coverage infra PR" `
+    -ChangedPath @("tools/check-coverage.ps1") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $true `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $false `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "cpp23 evaluate infra PR" `
+    -ChangedPath @("tools/evaluate-cpp23.ps1") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $true `
+    -ExpectedMacos $false
 
 Assert-ValidationTierSelection `
     -Label "non-PR run" `
@@ -214,18 +272,40 @@ Assert-ValidationTierSelection `
     -ExpectedWindows $true `
     -ExpectedLinux $true `
     -ExpectedLinuxSanitizers $true `
+    -ExpectedLinuxCoverage $true `
     -ExpectedStaticAnalysis $true `
+    -ExpectedWindowsCpp23 $true `
     -ExpectedMacos $true
 
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
+$checkoutActionRef = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
+$cacheActionRef = "actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae"
+$uploadArtifactActionRef = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+Assert-ContainsText -Text $validateWorkflow -Needle $cacheActionRef -Label ".github/workflows/validate.yml cache action pin"
 Assert-DoesNotContainAny $validateWorkflow @(
+    "uses: actions/cache@v5",
+    "uses: actions/checkout@v6",
+    "uses: actions/upload-artifact@v7",
     "actions/checkout@v4",
+    "actions/cache@v4",
     "actions/upload-artifact@v4",
     "if: always()",
     "runs-on: windows-latest",
     "FORCE_JAVASCRIPT_ACTIONS_TO_NODE24",
     "ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION"
 ) ".github/workflows/validate.yml Node 24 and VS2026 CI contract"
+Assert-DoesNotContainAny $validateWorkflow @(
+    "hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1', 'tools/common.ps1')",
+    "hashFiles('CMakePresets.json', '**/CMakeLists.txt', 'tools/build.ps1', 'tools/test.ps1', 'tools/common.ps1')",
+    "hashFiles('CMakePresets.json', '**/CMakeLists.txt', 'tools/evaluate-cpp23.ps1', 'tools/common.ps1', 'tools/release-package-artifacts.ps1', 'tools/build.ps1', 'tools/test.ps1')",
+    "hashFiles('CMakePresets.json', 'tools/build.ps1', 'tools/test.ps1', 'tools/common.ps1')",
+    "hashFiles('CMakePresets.json', 'tools/check-coverage.ps1', 'tools/common.ps1')",
+    "hashFiles('CMakePresets.json', '**/CMakeLists.txt', 'tools/check-coverage.ps1', 'tools/common.ps1')",
+    "hashFiles('CMakePresets.json', 'tools/test.ps1', 'tools/common.ps1')",
+    "hashFiles('CMakePresets.json', '**/CMakeLists.txt', 'tools/test.ps1', 'tools/common.ps1')",
+    "hashFiles('CMakePresets.json', 'tools/check-tidy.ps1', 'tools/common.ps1')",
+    "hashFiles('CMakePresets.json', '**/CMakeLists.txt', 'tools/check-tidy.ps1', 'tools/common.ps1')"
+) ".github/workflows/validate.yml cache invalidation drift"
 Assert-ContainsAll $validateWorkflow @(
     "name: Validate",
     "push:",
@@ -245,10 +325,15 @@ $changesJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "chan
 Assert-ContainsAll $changesJob @(
     "name: Select PR validation tier",
     "runs-on: ubuntu-latest",
+    "timeout-minutes: 10",
     "windows: `${{ steps.classify.outputs.windows }}",
+    "linux: `${{ steps.classify.outputs.linux }}",
     "linux_sanitizers: `${{ steps.classify.outputs.linux_sanitizers }}",
+    "linux_coverage: `${{ steps.classify.outputs.linux_coverage }}",
     "static_analysis: `${{ steps.classify.outputs.static_analysis }}",
+    "windows_cpp23: `${{ steps.classify.outputs.windows_cpp23 }}",
     "fetch-depth: 0",
+    "persist-credentials: false",
     "name: Classify touched surfaces",
     'github.event_name',
     'git diff --name-only $base $head',
@@ -262,24 +347,76 @@ Assert-ContainsAll $windowsJob @(
     "needs: changes",
     "if: needs.changes.outputs.windows == 'true'",
     "runs-on: windows-2025-vs2026",
-    "actions/checkout@v6",
-    "git clone --filter=blob:none https://github.com/microsoft/vcpkg.git external/vcpkg",
-    "git -C external/vcpkg checkout `$manifest.'builtin-baseline'",
+    "timeout-minutes: 120",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Restore vcpkg tool checkout cache",
+    "path: external/vcpkg",
+    "steps.restore-vcpkg-tool.outputs.cache-hit",
+    "Update vcpkg tool baseline",
+    "git -C external/vcpkg fetch --depth 1 origin",
+    "git -C external/vcpkg checkout --force",
+    "Restore vcpkg installed cache",
+    "Restore vcpkg package cache",
+    "path: out/vcpkg",
+    "path: vcpkg_installed",
+    "Restore Windows dev build cache",
+    "path: out/build/dev",
+    "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1",
+    'if: ${{ always() && !cancelled() }}',
+    $uploadArtifactActionRef,
+    "name: windows-test-logs",
+    "retention-days: 14",
+    "include-hidden-files: false",
+    "out/build/dev/Testing/**/*.log",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml windows job"
+
+$windowsCpp23Job = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows-cpp23" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $windowsCpp23Job @(
+    "name: Windows C++23 Release Evaluation",
+    "needs: changes",
+    "if: needs.changes.outputs.windows_cpp23 == 'true'",
+    "runs-on: windows-2025-vs2026",
+    "timeout-minutes: 150",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "Restore vcpkg tool checkout cache",
+    "path: external/vcpkg",
+    "steps.restore-vcpkg-tool.outputs.cache-hit",
+    "Update vcpkg tool baseline",
+    "git -C external/vcpkg fetch --depth 1 origin",
+    "git -C external/vcpkg checkout --force",
+    "Restore vcpkg installed cache",
+    "Restore vcpkg package cache",
+    "path: out/vcpkg",
+    "path: vcpkg_installed",
+    "Restore Windows C++23 build cache",
+    "out/build/cpp23-eval",
+    "out/build/cpp23-release-preset-eval",
+    "out/build/installed-consumer-cpp23-release-eval",
+    "out/install/cpp23-release-eval",
+    "restore-cpp23-build",
+    "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/evaluate-cpp23.ps1 -Release",
     'if: ${{ always() && !cancelled() }}',
-    'if: ${{ success() && !cancelled() }}',
-    "actions/upload-artifact@v7",
-    "name: windows-test-logs",
-    "out/build/dev/Testing/**/*.log",
+    $uploadArtifactActionRef,
+    "name: windows-cpp23-test-logs",
+    "retention-days: 14",
+    "include-hidden-files: false",
     "out/build/cpp23-eval/Testing/**/*.log",
     "out/build/cpp23-release-preset-eval/Testing/**/*.log",
+    "if-no-files-found: warn",
     "name: windows-packages",
+    "retention-days: 14",
+    "include-hidden-files: false",
     "out/build/cpp23-release-preset-eval/*.zip",
     "out/build/cpp23-release-preset-eval/*.zip.sha256",
-    "if-no-files-found: error"
-) ".github/workflows/validate.yml windows job"
+    "if-no-files-found: error",
+    'if: ${{ success() && !cancelled() }}'
+) ".github/workflows/validate.yml windows-cpp23 job"
 
 $agentStaticJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "agent-static" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $agentStaticJob @(
@@ -287,7 +424,9 @@ Assert-ContainsAll $agentStaticJob @(
     "needs: changes",
     "if: github.event_name == 'pull_request'",
     "runs-on: ubuntu-latest",
-    "actions/checkout@v6",
+    "timeout-minutes: 20",
+    $checkoutActionRef,
+    "persist-credentials: false",
     "fetch-depth: 0",
     'git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}',
     "run: ./tools/check-agents.ps1",
@@ -302,21 +441,88 @@ Assert-ContainsAll $linuxJob @(
     "needs: changes",
     "if: needs.changes.outputs.linux == 'true'",
     "runs-on: ubuntu-latest",
-    "actions/checkout@v6",
-    "sudo apt-get update && sudo apt-get install -y clang g++ lcov ninja-build",
+    "timeout-minutes: 60",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "CCACHE_DIR: `${{ github.workspace }}/.ccache",
+    "CCACHE_BASEDIR: `${{ github.workspace }}",
+    "CCACHE_COMPRESS: true",
+    "CCACHE_COMPRESSLEVEL: 6",
+    "CCACHE_MAXSIZE: 2G",
+    "CMAKE_CXX_COMPILER_LAUNCHER: ccache",
+    "CMAKE_C_COMPILER_LAUNCHER: ccache",
+    "Restore Linux ccache",
+    "path: .ccache",
+    "restore-linux-ccache",
+    "Restore Linux CMake build cache",
+    "path: out/build/ci-linux-clang",
+    "restore-linux-build",
+    "Verify preinstalled toolchain and install ccache",
+    'command -v clang >/dev/null 2>&1 || { echo "clang is required on ubuntu-latest runner images"; exit 1; }',
+    'command -v g++ >/dev/null 2>&1 || { echo "g++ is required on ubuntu-latest runner images"; exit 1; }',
+    'command -v ninja >/dev/null 2>&1 || { echo "ninja is required on ubuntu-latest runner images"; exit 1; }',
+    'if ! command -v ccache >/dev/null 2>&1; then',
+    "sudo apt-get install -y --no-install-recommends --no-install-suggests ccache",
+    "Prepare ccache",
+    "ccache --zero-stats",
     "cmake --preset ci-linux-clang",
     "cmake --build --preset ci-linux-clang",
     "ctest --preset ci-linux-clang --output-on-failure",
-    "./tools/check-coverage.ps1 -Strict",
+    "Show ccache stats",
+    "ccache --show-stats",
     'if: ${{ always() && !cancelled() }}',
-    "actions/upload-artifact@v7",
+    $uploadArtifactActionRef,
     "name: linux-test-logs",
+    "retention-days: 14",
+    "include-hidden-files: false",
     "out/build/ci-linux-clang/Testing/**/*.log",
-    "out/build/coverage/Testing/**/*.log",
-    "name: linux-coverage",
-    "out/build/coverage/coverage*.info",
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml linux job"
+
+$linuxCoverageJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux-coverage" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $linuxCoverageJob @(
+    "name: Linux Coverage",
+    "needs: changes",
+    "if: needs.changes.outputs.linux_coverage == 'true'",
+    "runs-on: ubuntu-latest",
+    "timeout-minutes: 60",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "CCACHE_DIR: `${{ github.workspace }}/.ccache",
+    "CCACHE_BASEDIR: `${{ github.workspace }}",
+    "CCACHE_COMPRESS: true",
+    "CCACHE_COMPRESSLEVEL: 6",
+    "CCACHE_MAXSIZE: 2G",
+    "CMAKE_CXX_COMPILER_LAUNCHER: ccache",
+    "CMAKE_C_COMPILER_LAUNCHER: ccache",
+    "Restore Linux coverage ccache",
+    "path: .ccache",
+    "restore-linux-coverage-ccache",
+    "Restore Linux coverage build cache",
+    "path: out/build/coverage",
+    "restore-linux-coverage-build",
+    "Verify preinstalled toolchain and install coverage extras",
+    'command -v clang >/dev/null 2>&1 || { echo "clang is required on ubuntu-latest runner images"; exit 1; }',
+    'command -v ninja >/dev/null 2>&1 || { echo "ninja is required on ubuntu-latest runner images"; exit 1; }',
+    "missing_packages=()",
+    'command -v ccache >/dev/null 2>&1 || missing_packages+=("ccache")',
+    'command -v lcov >/dev/null 2>&1 || missing_packages+=("lcov")',
+    'if [ "${#missing_packages[@]}" -gt 0 ]; then',
+    'sudo apt-get install -y --no-install-recommends --no-install-suggests "${missing_packages[@]}"',
+    "Prepare ccache",
+    "ccache --zero-stats",
+    "run: ./tools/check-coverage.ps1 -Strict",
+    "Show ccache stats",
+    "ccache --show-stats",
+    'if: ${{ always() && !cancelled() }}',
+    $uploadArtifactActionRef,
+    "name: linux-coverage",
+    "retention-days: 14",
+    "include-hidden-files: false",
+    "out/build/coverage/Testing/**",
+    "out/build/coverage/coverage*.info",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml linux-coverage job"
 
 $sanitizerJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux-sanitizers" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $sanitizerJob @(
@@ -324,15 +530,40 @@ Assert-ContainsAll $sanitizerJob @(
     "needs: changes",
     "if: needs.changes.outputs.linux_sanitizers == 'true'",
     "runs-on: ubuntu-latest",
-    "actions/checkout@v6",
-    "sudo apt-get update && sudo apt-get install -y clang ninja-build",
+    "timeout-minutes: 60",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "CCACHE_DIR: `${{ github.workspace }}/.ccache",
+    "CCACHE_BASEDIR: `${{ github.workspace }}",
+    "CCACHE_COMPRESS: true",
+    "CCACHE_COMPRESSLEVEL: 6",
+    "CCACHE_MAXSIZE: 2G",
+    "CMAKE_CXX_COMPILER_LAUNCHER: ccache",
+    "CMAKE_C_COMPILER_LAUNCHER: ccache",
+    "Restore Linux sanitizer ccache",
+    "path: .ccache",
+    "restore-linux-sanitizer-ccache",
+    "Restore Linux sanitizer build cache",
+    "path: out/build/clang-asan-ubsan",
+    "restore-linux-sanitizer-build",
+    "Verify preinstalled toolchain and install ccache",
+    'command -v clang >/dev/null 2>&1 || { echo "clang is required on ubuntu-latest runner images"; exit 1; }',
+    'command -v ninja >/dev/null 2>&1 || { echo "ninja is required on ubuntu-latest runner images"; exit 1; }',
+    'if ! command -v ccache >/dev/null 2>&1; then',
+    "sudo apt-get install -y --no-install-recommends --no-install-suggests ccache",
+    "Prepare ccache",
+    "ccache --zero-stats",
     "cmake --preset clang-asan-ubsan",
     "cmake --build --preset clang-asan-ubsan",
     "UBSAN_OPTIONS: print_stacktrace=1",
     "ctest --preset clang-asan-ubsan --output-on-failure",
+    "Show ccache stats",
+    "ccache --show-stats",
     'if: ${{ always() && !cancelled() }}',
-    "actions/upload-artifact@v7",
+    $uploadArtifactActionRef,
     "name: linux-sanitizer-test-logs",
+    "retention-days: 14",
+    "include-hidden-files: false",
     "out/build/clang-asan-ubsan/Testing/**/*.log",
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml linux-sanitizers job"
@@ -343,21 +574,42 @@ Assert-ContainsAll $macosJob @(
     "needs: changes",
     "if: needs.changes.outputs.macos == 'true'",
     "runs-on: macos-latest",
-    "actions/checkout@v6",
-    "name: Ensure Ninja is available",
-    "command -v ninja",
+    "timeout-minutes: 90",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "CCACHE_DIR: `${{ github.workspace }}/.ccache",
+    "CCACHE_BASEDIR: `${{ github.workspace }}",
+    "CCACHE_COMPRESS: true",
+    "CCACHE_COMPRESSLEVEL: 6",
+    "CCACHE_MAXSIZE: 2G",
+    "CMAKE_CXX_COMPILER_LAUNCHER: ccache",
+    "CMAKE_C_COMPILER_LAUNCHER: ccache",
+    "Restore macOS ccache",
+    "path: .ccache",
+    "restore-macos-ccache",
+    "Restore macOS build cache",
+    "path: out/build/ci-macos-appleclang",
+    "restore-macos-build",
+    "name: Ensure build tools are available",
+    'command -v ninja >/dev/null 2>&1 || { echo "ninja is required on macos-latest runner images"; exit 1; }',
     "ninja --version",
-    "brew install ninja",
+    "ccache --version",
+    "brew install ccache",
+    "Prepare ccache",
+    "ccache --zero-stats",
     "cmake --preset ci-macos-appleclang",
     "cmake --build --preset ci-macos-appleclang",
     "ctest --preset ci-macos-appleclang --output-on-failure",
+    "Show ccache stats",
+    "ccache --show-stats",
     'if: ${{ always() && !cancelled() }}',
-    "actions/upload-artifact@v7",
+    $uploadArtifactActionRef,
     "name: macos-test-logs",
+    "retention-days: 14",
+    "include-hidden-files: false",
     "out/build/ci-macos-appleclang/Testing/**/*.log",
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml macos job"
-Assert-DoesNotContainText $macosJob "run: brew install ninja" ".github/workflows/validate.yml macos job"
 
 $staticAnalysisJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "static-analysis" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $staticAnalysisJob @(
@@ -365,13 +617,39 @@ Assert-ContainsAll $staticAnalysisJob @(
     "needs: changes",
     "if: needs.changes.outputs.static_analysis == 'true'",
     "runs-on: ubuntu-latest",
-    "actions/checkout@v6",
-    "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
+    "timeout-minutes: 90",
+    $checkoutActionRef,
+    "persist-credentials: false",
+    "CCACHE_DIR: `${{ github.workspace }}/.ccache",
+    "CCACHE_BASEDIR: `${{ github.workspace }}",
+    "CCACHE_COMPRESS: true",
+    "CCACHE_COMPRESSLEVEL: 6",
+    "CCACHE_MAXSIZE: 2G",
+    "CMAKE_CXX_COMPILER_LAUNCHER: ccache",
+    "CMAKE_C_COMPILER_LAUNCHER: ccache",
+    "Restore Linux tidy ccache",
+    "path: .ccache",
+    "restore-linux-tidy-ccache",
+    "Restore Linux tidy build cache",
+    "path: out/build/ci-linux-tidy",
+    "restore-linux-tidy-build",
+    "Verify preinstalled toolchain and install ccache",
+    'command -v clang >/dev/null 2>&1 || { echo "clang is required on ubuntu-latest runner images"; exit 1; }',
+    'command -v clang-tidy >/dev/null 2>&1 || { echo "clang-tidy is required on ubuntu-latest runner images"; exit 1; }',
+    'command -v ninja >/dev/null 2>&1 || { echo "ninja is required on ubuntu-latest runner images"; exit 1; }',
+    'if ! command -v ccache >/dev/null 2>&1; then',
+    "sudo apt-get install -y --no-install-recommends --no-install-suggests ccache",
+    "Prepare ccache",
+    "ccache --zero-stats",
     "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
     "-Jobs 0",
+    "Show ccache stats",
+    "ccache --show-stats",
     'if: ${{ always() && !cancelled() }}',
-    "actions/upload-artifact@v7",
+    $uploadArtifactActionRef,
     "name: static-analysis-tidy-logs",
+    "retention-days: 14",
+    "include-hidden-files: false",
     "out/build/ci-linux-tidy/compile_commands.json",
     "out/build/ci-linux-tidy/.cmake/api/v1/reply/*.json",
     "if-no-files-found: warn"
@@ -384,10 +662,13 @@ Assert-ContainsAll $prGateJob @(
     "- agent-static",
     "- windows",
     "- linux",
+    "- windows-cpp23",
+    "- linux-coverage",
     "- linux-sanitizers",
     "- static-analysis",
     "- macos",
     'if: ${{ always() && !cancelled() }}',
+    "timeout-minutes: 10",
     'toJson(needs)',
     'failure',
     'cancelled',
@@ -396,6 +677,8 @@ Assert-ContainsAll $prGateJob @(
 
 $iosWorkflow = Read-RequiredText ".github/workflows/ios-validate.yml"
 Assert-DoesNotContainAny $iosWorkflow @(
+    "uses: actions/checkout@v6",
+    "uses: actions/upload-artifact@v7",
     "actions/checkout@v4",
     "actions/upload-artifact@v4",
     "if: always()",
@@ -427,7 +710,8 @@ Assert-ContainsAll $iosJob @(
     "name: iOS Simulator smoke",
     "runs-on: macos-26",
     "timeout-minutes: 30",
-    "actions/checkout@v6",
+    $checkoutActionRef,
+    "persist-credentials: false",
     "xcodebuild -version",
     "xcode-select -p",
     "xcrun --sdk iphonesimulator --show-sdk-path",
@@ -435,17 +719,23 @@ Assert-ContainsAll $iosJob @(
     "./tools/check-mobile-packaging.ps1 -RequireApple",
     "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2",
     'if: ${{ always() && !cancelled() }}',
-    "actions/upload-artifact@v7",
+    $uploadArtifactActionRef,
     "name: ios-simulator-build",
+    "retention-days: 14",
+    "include-hidden-files: false",
     "out/build/ios-Simulator-sample_headless-Debug/**/*.app",
     "out/build/ios-Simulator-sample_headless-Debug/**/*.log",
     "if-no-files-found: warn"
 ) ".github/workflows/ios-validate.yml simulator-smoke job"
 
 Assert-MatchesText $validateWorkflow "^  windows:\s*$" ".github/workflows/validate.yml windows job id"
+Assert-MatchesText $validateWorkflow "^  windows-cpp23:\s*$" ".github/workflows/validate.yml windows-cpp23 job id"
 Assert-MatchesText $validateWorkflow "^  agent-static:\s*$" ".github/workflows/validate.yml agent-static job id"
 Assert-MatchesText $validateWorkflow "^  linux:\s*$" ".github/workflows/validate.yml linux job id"
+Assert-MatchesText $validateWorkflow "^  linux-coverage:\s*$" ".github/workflows/validate.yml linux-coverage job id"
 Assert-MatchesText $validateWorkflow "^  linux-sanitizers:\s*$" ".github/workflows/validate.yml linux-sanitizers job id"
+Assert-DoesNotContainText $validateWorkflow "command -v ninja-build" ".github/workflows/validate.yml command probes"
+Assert-DoesNotContainText $validateWorkflow "brew install ninja ccache" ".github/workflows/validate.yml macOS bootstrap"
 Assert-MatchesText $validateWorkflow "^  static-analysis:\s*$" ".github/workflows/validate.yml static-analysis job id"
 Assert-MatchesText $validateWorkflow "^  macos:\s*$" ".github/workflows/validate.yml macos job id"
 Assert-MatchesText $validateWorkflow "^  pr-gate:\s*$" ".github/workflows/validate.yml pr-gate job id"

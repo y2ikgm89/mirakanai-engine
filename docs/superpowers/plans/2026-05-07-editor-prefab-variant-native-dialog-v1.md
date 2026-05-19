@@ -12,7 +12,7 @@
 
 ## Context
 
-- Parent roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Parent roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - The Profiler now has native Trace JSON open/save dialogs, but broader editor native save/open dialogs remain unsupported.
 - Prefab Variant authoring already has visible `Variant Path`, `Load Variant`, and `Save Variant` controls over first-party `.prefabvariant` text-store IO.
 

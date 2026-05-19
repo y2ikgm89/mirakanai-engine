@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-nested-prefab-refresh-resolution-v1.md`.
 - `Editor Dynamic Game Module Driver Load v1` added reviewed module load, safe symbol/function-table validation, and visible load/unload controls.
@@ -50,7 +50,7 @@
   - Add sentinels for safe reload review model, UI rows, docs, skills, and manifest text.
 - Modify: `docs/superpowers/plans/README.md`
   - Track this plan as the active slice.
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update current verdict and selected-gap evidence.
 
 ## Done When
@@ -126,7 +126,7 @@ Expected before implementation: compile failure for the new reload desc/model/fu
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Document safe stopped reload as explicit reviewed reload only.
 - [x] Keep unsupported claims explicit: no active-session hot reload, stable third-party ABI, `DesktopGameRunner` embedding, package/validation execution, renderer/RHI handles, native handles, or package streaming.

@@ -47,7 +47,7 @@ Close the next narrow editor-productization gap:
   - `.png` -> `AssetImportActionKind::texture` -> `imported/<stem>.texture`,
   - `.gltf` / `.glb` -> `AssetImportActionKind::mesh` -> `imported/<stem>.mesh`,
   - `.wav` / `.mp3` / `.flac` -> `AssetImportActionKind::audio` -> `imported/<stem>.audio`.
-- Visible `MK_editor` calls `execute_asset_import_plan` with `mirakana::ExternalAssetImportAdapters::options()` for import and recook plan execution.
+- Visible `MK_editor` calls `execute_asset_import_plan` with `()` for import and recook plan execution.
 - Docs, master plan, registry, manifest, skills, and static checks record the narrow reviewed codec adapter path while arbitrary importer adapters and broad importer readiness remain unsupported.
 - Focused editor-core tests, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` when local dependencies are available, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` pass or record exact host/dependency blockers.
 
@@ -91,7 +91,7 @@ Close the next narrow editor-productization gap:
 - [x] Keep `.ogg` and unsupported extensions mapped to `AssetImportActionKind::unknown`.
 - [x] Reuse the existing deterministic output path helper so codec sources write first-party cooked artifacts under `imported/`.
 - [x] Keep external codec selections staged through `Copy External Sources` before import-plan rebuild.
-- [x] Construct `mirakana::ExternalAssetImportAdapters` in the visible shell import and recook execution paths and pass `adapters.options()` into `execute_asset_import_plan`.
+- [x] Construct `mirakana::ExternalAssetImportAdapters` in the visible shell import and recook execution paths and pass `adapters.()` into `execute_asset_import_plan`.
 - [x] Preserve existing first-party source document behavior.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`.
 
@@ -102,7 +102,7 @@ Close the next narrow editor-productization gap:
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
@@ -134,7 +134,7 @@ Close the next narrow editor-productization gap:
 
 | Command | Result | Notes |
 | --- | --- | --- |
-| RED focused build/test | PASS | `cmake --build --preset dev --target MK_editor_core_tests` built the new test, then `ctest --preset dev --output-on-failure -R MK_editor_core_tests` failed as expected on `request.filters.size() == 8U` before implementation. |
+| RED focused build/test | PASS | `cmake --build --preset dev --target MK_editor_core_tests` built the new test, then `ctest --preset dev --output-on-failure -R MK_editor_core_tests` failed as expected on `request.filters.() == 8U` before implementation. |
 | Focused `MK_editor_core_tests` | PASS | `cmake --build --preset dev --target MK_editor_core_tests; ctest --preset dev --output-on-failure -R MK_editor_core_tests` reported `100% tests passed, 0 tests failed out of 1`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1` | PASS | Built `MK_editor` and reported `100% tests passed, 0 tests failed out of 46`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | PASS | Fixed current fastgltf API/test fixture drift, then asset-importers CTest reported `100% tests passed, 0 tests failed out of 29`; installed asset-importers consumer reported `100% tests passed, 0 tests failed out of 1`. |

@@ -1,6 +1,6 @@
 # Editor Game Module Driver CTest Probe Evidence UI v1 (2026-05-10)
 
-**Plan ID:** `editor-game-module-driver-ctest-probe-evidence-ui-v1`  
+**Plan ID:** `editor-game-module-driver-ctest-probe-evidence-ui-v1`
 **Status:** Completed.
 
 ## Goal
@@ -9,7 +9,7 @@ Expose deterministic editor-core UI rows that tie the visible Play-In-Editor gam
 
 ## Context
 
-- Master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-game-module-driver-dynamic-probe-v1.md`.
 

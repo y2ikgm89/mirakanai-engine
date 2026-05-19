@@ -3,7 +3,7 @@
 **Plan ID:** `frame-graph-package-streaming-texture-binding-handoff-v1`
 **Status:** Completed.
 **Owner:** Runtime RHI / Frame Graph
-**Parent:** `frame-graph-v1` foundation follow-up in `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+**Parent:** `frame-graph-v1` foundation follow-up in `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 ## Goal
 

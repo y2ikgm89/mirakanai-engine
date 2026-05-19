@@ -67,7 +67,7 @@
 - Modify: `docs/roadmap.md`
 - Modify: `docs/workflows.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Record the committed sample proof and update `unsupportedProductionGaps.3d-playable-vertical-slice` without making it `ready`.
 - [x] Update docs to explain the committed sample as generated-package evidence, not a broad 3D production closeout.

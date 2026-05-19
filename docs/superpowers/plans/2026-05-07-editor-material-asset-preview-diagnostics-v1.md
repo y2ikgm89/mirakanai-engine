@@ -55,7 +55,7 @@ Expose selected material preview readiness as a first-party editor-core contract
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`

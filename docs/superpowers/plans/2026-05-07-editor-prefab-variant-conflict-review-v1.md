@@ -55,7 +55,7 @@ Implement `nested-prefab-conflict-ux-v1` as a narrow conflict review surface:
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`
@@ -84,7 +84,7 @@ Implement `nested-prefab-conflict-ux-v1` as a narrow conflict review surface:
 
 - [x] Include the conflict model in the existing Prefab Variant Authoring section.
 - [x] Render status, row counts, conflict/warning table, and diagnostics without calling save/load/instantiate or mutating the variant.
-- [x] Keep `composed_prefab()` calls guarded by the conflict model so invalid variants cannot throw during rendering.
+- [x] Keep `()` calls guarded by the conflict model so invalid variants cannot throw during rendering.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`.
 
 ### Task 4: Docs, Manifest, Static Checks

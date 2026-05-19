@@ -2,8 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `navigation-production-path-v1`  
-**Status:** Complete.  
+**Plan ID:** `navigation-production-path-v1`
+**Status:** Complete.
 **Goal:** Add a first-party navigation production path planner that composes validated grid pathfinding, optional smoothing, point-path mapping, and `NavigationAgentState` creation for generated games without claiming navmesh, crowd simulation, scene/physics integration, or middleware.
 
 **Architecture:** Keep the planner in `mirakana_navigation` because it is a dependency-free value contract over existing grid/path/agent APIs. Generated games and headless samples consume the planner through public `mirakana::` headers only.
@@ -14,7 +14,7 @@
 
 ## Context
 
-- Master plan row: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md` lists `navigation-production-path-v1` under runtime-system minimums.
+- Master plan row: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` lists `navigation-production-path-v1` under runtime-system minimums.
 - `mirakana_navigation` already has deterministic cardinal grid pathfinding, path validation/replan, conservative line-of-sight smoothing, grid-to-point path mapping, path following, arrive steering, local avoidance, and value-type navigation agent movement.
 - `sample_ai_navigation` currently composes those APIs manually; the production path slice should give generated games a smaller reviewed surface for the common "grid coord to moving agent" route setup.
 
@@ -48,7 +48,7 @@
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`

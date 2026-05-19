@@ -12,7 +12,7 @@
 
 ## Context
 
-- Parent roadmap: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md).
+- Parent roadmap: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md).
 - Registry state before this slice: `runtime-resource-v2` is closed and the next selected Phase 1 gap is `renderer-rhi-resource-foundation`.
 - Implementation evidence already landed in:
   - [2026-05-01-renderer-rhi-resource-foundation-v1.md](2026-05-01-renderer-rhi-resource-foundation-v1.md)
@@ -50,7 +50,7 @@
 
 **Files:**
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md`
 - Modify: `docs/superpowers/plans/2026-05-11-production-completion-gap-stream-plans-index-v1.md`
 - Modify: `docs/roadmap.md`

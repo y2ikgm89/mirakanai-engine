@@ -14,7 +14,7 @@
 
 ## Context
 
-- Parent roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Parent roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Current machine-readable pointer: `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points back to the master plan and `recommendedNextPlan.id` is `next-production-gap-selection`.
 - Latest completed related slice: `docs/superpowers/plans/2026-05-08-runtime-ui-sdl3-committed-text-edit-apply-v1.md`.
 - Existing public API already has `TextEditState`, `CommittedTextInput`, `TextEditCommitPlan`, `TextEditCommitResult`, `plan_committed_text_input`, and `apply_committed_text_input`.
@@ -44,7 +44,7 @@
   - Add focused tests for movement, backward/forward deletion, selection deletion, UTF-8 scalar boundaries, and invalid rows.
 - Modify: `docs/superpowers/plans/README.md`
   - Add this active/completed slice entry.
-- Modify: `docs/roadmap.md`, `docs/current-capabilities.md`, and `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/roadmap.md`, `docs/current-capabilities.md`, and `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update runtime UI/input capability notes to include command apply and to keep broader text-editing claims unsupported.
 - Modify: `engine/agent/manifest.json`
   - Update the `MK_ui`/runtime UI purpose text and current production notes so agents can see the new command surface without promoting the broad gap to ready.
@@ -87,24 +87,24 @@ MK_TEST("ui text edit command moves cursor by utf8 scalar boundaries") {
 
     const auto forward = mirakana::ui::apply_text_edit_command(
         state, mirakana::ui::TextEditCommand{state.target, mirakana::ui::TextEditCommandKind::move_cursor_forward});
-    MK_REQUIRE(forward.succeeded());
+    MK_REQUIRE(forward.());
     MK_REQUIRE(forward.applied);
     MK_REQUIRE(forward.state.cursor_byte_offset == 4U);
     MK_REQUIRE(forward.state.selection_byte_length == 0U);
 
     const auto end = mirakana::ui::apply_text_edit_command(
         forward.state, mirakana::ui::TextEditCommand{state.target, mirakana::ui::TextEditCommandKind::move_cursor_to_end});
-    MK_REQUIRE(end.succeeded());
+    MK_REQUIRE(end.());
     MK_REQUIRE(end.state.cursor_byte_offset == 5U);
 
     const auto backward = mirakana::ui::apply_text_edit_command(
         end.state, mirakana::ui::TextEditCommand{state.target, mirakana::ui::TextEditCommandKind::move_cursor_backward});
-    MK_REQUIRE(backward.succeeded());
+    MK_REQUIRE(backward.());
     MK_REQUIRE(backward.state.cursor_byte_offset == 4U);
 
     const auto start = mirakana::ui::apply_text_edit_command(
         backward.state, mirakana::ui::TextEditCommand{state.target, mirakana::ui::TextEditCommandKind::move_cursor_to_start});
-    MK_REQUIRE(start.succeeded());
+    MK_REQUIRE(start.());
     MK_REQUIRE(start.state.cursor_byte_offset == 0U);
 }
 ```
@@ -156,7 +156,7 @@ Expected: pass.
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/current-capabilities.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 
 - [x] **Step 1: Update current slice references**
@@ -214,7 +214,7 @@ Run:
 
 ```powershell
 git status --short
-git add engine/ui/include/mirakana/ui/ui.hpp engine/ui/src/ui.cpp tests/unit/ui_renderer_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-text-edit-command-apply-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json
+git add engine/ui/include/mirakana/ui/ui.hpp engine/ui/src/ui.cpp tests/unit/ui_renderer_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-text-edit-command-apply-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json
 git commit -m "feat: apply text edit commands"
 ```
 

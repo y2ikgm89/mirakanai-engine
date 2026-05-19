@@ -49,7 +49,7 @@ Extended validation, editor-shell, plan lifecycle, production-completion, and ga
 
 ## Production Completion Prompt
 
-When executing [Production Completion Master Plan v1](superpowers/plans/2026-05-03-production-completion-master-plan-v1.md), keep the operating prompt short and evidence-driven:
+When executing [Production Completion Master Plan v1](superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md), keep the operating prompt short and evidence-driven:
 
 - Use `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps` as the execution index.
 - Each `unsupportedProductionGaps` row includes `oneDotZeroCloseoutTier` (`foundation-follow-up`, `package-evidence`, or `closeout-wedge`) for 1.0 closeout grouping; change it through `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` plus `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, not by editing `engine/agent/manifest.json` directly.
@@ -63,10 +63,20 @@ When executing [Production Completion Master Plan v1](superpowers/plans/2026-05-
 
 ## Static Analysis And API Boundaries
 
-- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` for clang-tidy. The default validation path verifies `.clang-tidy`, uses CMake File API codemodel data to synthesize `compile_commands.json` for the Windows Visual Studio `dev` preset when the generator does not emit one, runs a `-MaxFiles 1` smoke analysis in `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and reports explicit CMake/clang-tidy tool blockers instead of silently skipping analysis. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/physics/src/physics3d.cpp` for wrapper-owned changed-file analysis when a full repository run is too broad for the current slice. `-Strict` passes `--warnings-as-errors=*`, `-Jobs` parallelizes independent translation units, and `-Jobs 0` is the default automatic CPU-count throttle. `.clang-tidy` keeps `HeaderFilterRegex` absolute-path aware so CI and Visual Studio File API compile databases analyze first-party headers under `engine`, `editor`, `examples`, `games`, and `tests`. The wrapper preserves actionable diagnostics and exit codes while suppressing clang frontend summary lines like `NN warnings generated.`. GitHub Actions has a reviewed `static-analysis` lane that runs `tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0` on `ubuntu-latest`, and reviewed workflows use `permissions: contents: read` plus pull-request concurrency cancellation for least-privilege and stale-run control; local `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` verifies that lane exists but does not execute CI locally.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` for clang-tidy. The default validation path verifies `.clang-tidy`, uses CMake File API codemodel data to synthesize `compile_commands.json` for the Windows Visual Studio `dev` preset when the generator does not emit one, runs a `-MaxFiles 1` smoke analysis in `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and reports explicit CMake/clang-tidy tool blockers instead of silently skipping analysis. Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/physics/src/physics3d.cpp` for wrapper-owned changed-file analysis when a full repository run is too broad for the current slice. `-Strict` passes `--warnings-as-errors=*`, `-Jobs` parallelizes independent translation units, and `-Jobs 0` is the default automatic CPU-count throttle. `.clang-tidy` keeps `HeaderFilterRegex` absolute-path aware so CI and Visual Studio File API compile databases analyze first-party headers under `engine`, `editor`, `examples`, `games`, and `tests`. The wrapper preserves actionable diagnostics and exit codes while suppressing clang frontend summary lines like `NN warnings generated.`. GitHub Actions has a reviewed `static-analysis` lane that runs `tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0` on `ubuntu-latest`, and reviewed workflows use full-length SHA-pinned first-party actions, `actions/checkout` with `persist-credentials: false`, `permissions: contents: read`, plus pull-request concurrency cancellation for least-privilege and stale-run control; local `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` verifies that lane exists but does not execute CI locally.
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1` for coverage. Coverage is currently enforced only on Linux GCC/Clang CI where gcov coverage is stable; other hosts report an explicit blocker instead of producing partial data.
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` after touching public headers or backend interop. Public engine/editor headers must not expose native D3D12/DXGI/Win32 symbols, COM pointers, or native graphics headers.
 - Use backend PIMPL types or first-party opaque handles for native OS/GPU interop until a written interop design accepts a narrower exception.
+
+## GitHub Actions Repository Settings
+
+These settings are operator-applied in GitHub and are not fully enforceable from the repository alone. Keep the reviewed workflows and repository settings aligned:
+
+- Under `Settings -> Actions -> General -> Actions permissions`, prefer `Allow OWNER, and select non-OWNER, actions and reusable workflows`, then allow GitHub-authored actions. This repository currently relies on first-party `actions/*` workflows only; introducing non-GitHub actions should be an explicit reviewed change.
+- Enable `Require actions to be pinned to a full-length commit SHA`. Reviewed workflows already pin `actions/checkout`, `actions/cache`, and `actions/upload-artifact`, and `tools/check-ci-matrix.ps1` guards against regression to floating major tags.
+- Under `Workflow permissions`, keep the default `GITHUB_TOKEN` at the restricted read-only setting for `contents` and `packages`. Workflows in this repository also set `permissions: contents: read` explicitly and keep `actions/checkout` on `persist-credentials: false`.
+- Keep `Allow GitHub Actions to create and approve pull requests` disabled. This repository uses human-initiated PR publishing and guarded merge automation outside workflow writes.
+- If the repository is public and accepts fork pull requests, keep workflow approval requirements enabled for outside contributors at least at GitHub's default baseline. Raise that bar if runner abuse or workflow churn becomes a problem.
 
 ## Toolchain Preflight
 
@@ -347,8 +357,10 @@ See [testing.md](testing.md) for the **CI validation matrix** (job ids, runners,
 
 GitHub Actions runs:
 
-- Windows: `tools/validate.ps1` and `tools/evaluate-cpp23.ps1 -Release`
-- Linux: `cmake --preset ci-linux-clang`, build/CTest, plus `tools/check-coverage.ps1 -Strict`
+- Windows: `tools/validate.ps1`
+- Windows C++23 release: `tools/evaluate-cpp23.ps1 -Release`
+- Linux: `cmake --preset ci-linux-clang`, build/CTest
+- Linux coverage: `tools/check-coverage.ps1 -Strict`
 - Linux sanitizers: `cmake --preset clang-asan-ubsan`, build, and CTest
 - macOS: `cmake --preset ci-macos-appleclang`, build/CTest, including Apple-only Metal Objective-C++ sources
 - iOS Validate: `tools/smoke-ios-package.ps1` on a pinned macOS hosted runner, building the iOS Simulator bundle and running `xcrun simctl install`, `get_app_container`, `launch`, and cleanup for `sample_headless`

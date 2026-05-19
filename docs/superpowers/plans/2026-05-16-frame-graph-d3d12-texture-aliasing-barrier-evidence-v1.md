@@ -75,7 +75,7 @@ The previous texture aliasing barrier command slice added `IRhiCommandList::text
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/2026-05-16-frame-graph-texture-aliasing-barrier-command-v1.md`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`

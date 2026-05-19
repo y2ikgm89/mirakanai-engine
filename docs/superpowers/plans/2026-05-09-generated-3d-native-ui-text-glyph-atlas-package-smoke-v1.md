@@ -10,10 +10,10 @@
 
 ---
 
-**Plan ID:** `generated-3d-native-ui-text-glyph-atlas-package-smoke-v1`  
-**Status:** Completed.  
-**Completed:** 2026-05-09.  
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `generated-3d-native-ui-text-glyph-atlas-package-smoke-v1`
+**Status:** Completed.
+**Completed:** 2026-05-09.
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Previous Slice:** [2026-05-09-generated-3d-native-ui-textured-sprite-atlas-package-smoke-v1.md](2026-05-09-generated-3d-native-ui-textured-sprite-atlas-package-smoke-v1.md)
 
 ## Context
@@ -162,7 +162,7 @@ struct UiGlyphAtlasMetadataRuntimeState {
 [[nodiscard]] UiGlyphAtlasMetadataRuntimeState
 load_required_ui_text_glyph_atlas_metadata(const mirakana::runtime::RuntimeAssetPackage* package) {
     UiGlyphAtlasMetadataRuntimeState state;
-    const auto metadata_asset = packaged_ui_text_glyph_atlas_metadata_asset_id();
+    const auto metadata_asset = ();
     if (package == nullptr) {
         state.status = UiAtlasMetadataStatus::missing;
         state.diagnostics.push_back("ui text glyph atlas metadata requires a loaded runtime package");
@@ -170,7 +170,7 @@ load_required_ui_text_glyph_atlas_metadata(const mirakana::runtime::RuntimeAsset
     }
 
     auto result = mirakana::build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas(*package, metadata_asset);
-    if (!result.succeeded()) {
+    if (!result.()) {
         state.status = UiAtlasMetadataStatus::malformed;
         for (const auto& failure : result.failures) {
             state.diagnostics.push_back(failure.diagnostic);
@@ -180,10 +180,10 @@ load_required_ui_text_glyph_atlas_metadata(const mirakana::runtime::RuntimeAsset
 
     state.status = UiAtlasMetadataStatus::ready;
     state.glyph_atlas = std::move(result.palette);
-    state.pages = result.atlas_page_assets.size();
-    state.glyphs = state.glyph_atlas.count();
-    if (!result.atlas_page_assets.empty()) {
-        state.atlas_page = result.atlas_page_assets.front();
+    state.pages = result.atlas_page_assets.();
+    state.glyphs = state.glyph_atlas.();
+    if (!result.atlas_page_assets.()) {
+        state.atlas_page = result.atlas_page_assets.();
     }
     return state;
 }
@@ -215,7 +215,7 @@ Before constructing the game, load glyph metadata when selected and pass its `at
 
 - [x] **Step 4: Submit one deterministic proof glyph per frame**
 
-Extend the game constructor to accept `bool text_glyph_ui_atlas_mode` and `mirakana::UiRendererGlyphAtlasPalette glyph_atlas`. In `build_hud()`, add a fixed one-character label only in text glyph mode:
+Extend the game constructor to accept `bool text_glyph_ui_atlas_mode` and `mirakana::UiRendererGlyphAtlasPalette glyph_atlas`. In `()`, add a fixed one-character label only in text glyph mode:
 
 ```cpp
 if (text_glyph_ui_atlas_mode_) {
@@ -232,7 +232,7 @@ if (text_glyph_ui_atlas_mode_) {
 }
 ```
 
-In `on_update()`, set the glyph atlas and deterministic monospace policy:
+In `()`, set the glyph atlas and deterministic monospace policy:
 
 ```cpp
 if (text_glyph_ui_atlas_mode_) {
@@ -250,7 +250,7 @@ Keep the existing dynamic `hud.status` text unchanged. Its glyphs remain unresol
 
 - [x] **Step 5: Fail closed on exact glyph and overlay counters**
 
-Add getters and `hud_passed()` checks so text glyph mode requires exactly one glyph sprite per frame:
+Add getters and `()` checks so text glyph mode requires exactly one glyph sprite per frame:
 
 ```cpp
 const bool text_glyph_rows_ok = !text_glyph_ui_atlas_mode_ ||
@@ -357,7 +357,7 @@ Document the selected D3D12 command, exact expected fields, and non-claims:
 - Modify: `.agents/skills/gameengine-game-development/SKILL.md`
 - Modify: `.claude/skills/gameengine-game-development/SKILL.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] **Step 1: Add machine-readable production recipe evidence**
 
@@ -439,7 +439,7 @@ After `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 && pwsh 
 
 ```powershell
 git status --short
-git add games/sample_generated_desktop_runtime_3d_package/main.cpp games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex games/sample_generated_desktop_runtime_3d_package/runtime/.gitattributes games/sample_generated_desktop_runtime_3d_package/game.agent.json games/sample_generated_desktop_runtime_3d_package/README.md tools/new-game.ps1 tools/validate-installed-desktop-runtime.ps1 tools/check-ai-integration.ps1 tools/check-json-contracts.ps1 engine/agent/manifest.json docs/current-capabilities.md docs/roadmap.md docs/specs/generated-game-validation-scenarios.md .agents/skills/gameengine-game-development/SKILL.md .claude/skills/gameengine-game-development/SKILL.md docs/superpowers/plans/README.md docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md docs/superpowers/plans/2026-05-09-generated-3d-native-ui-text-glyph-atlas-package-smoke-v1.md
+git add games/sample_generated_desktop_runtime_3d_package/main.cpp games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex games/sample_generated_desktop_runtime_3d_package/runtime/.gitattributes games/sample_generated_desktop_runtime_3d_package/game.agent.json games/sample_generated_desktop_runtime_3d_package/README.md tools/new-game.ps1 tools/validate-installed-desktop-runtime.ps1 tools/check-ai-integration.ps1 tools/check-json-contracts.ps1 engine/agent/manifest.json docs/current-capabilities.md docs/roadmap.md docs/specs/generated-game-validation-scenarios.md .agents/skills/gameengine-game-development/SKILL.md .claude/skills/gameengine-game-development/SKILL.md docs/superpowers/plans/README.md docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md docs/superpowers/plans/2026-05-09-generated-3d-native-ui-text-glyph-atlas-package-smoke-v1.md
 git commit -m "feat: prove generated 3d native ui text glyph atlas smoke"
 ```
 

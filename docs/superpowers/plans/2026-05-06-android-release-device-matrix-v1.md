@@ -71,7 +71,7 @@
 - Modify: `docs/workflows.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 
@@ -97,7 +97,7 @@
 
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` reported `android=ready`, `android-emulator=ready`, `android-avd=ready (Mirakanai_API36)`, `android-release-signing=not-configured`, `android-device-smoke=not-connected`, and Apple blockers for missing macOS/Xcode tools.
 - RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-android.ps1 -Game sample_headless -Configuration Debug` initially failed because Android NDK 28 libc++ does not provide floating-point `std::from_chars`; failures were in `engine/assets/src/tilemap_metadata.cpp` and `engine/assets/src/ui_atlas_metadata.cpp`.
-- FIXED: Replaced first-party floating-point `std::from_chars` metadata/session parsing with portable `std::istringstream` parsing using `std::locale::classic()` in `tilemap_metadata.cpp`, `ui_atlas_metadata.cpp`, and `session_services.cpp`.
+- FIXED: Replaced first-party floating-point `std::from_chars` metadata/session parsing with portable `std::istringstream` parsing using `()` in `tilemap_metadata.cpp`, `ui_atlas_metadata.cpp`, and `session_services.cpp`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-android.ps1 -Game sample_headless -Configuration Debug` produced the Debug APK.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1 -Game sample_headless -UseLocalValidationKey` generated `C:\Users\y2ikg\AppData\Local\GameEngine\android\keys\gameengine-local-upload-20260506-212447.p12`, built `platform/android/app/build/outputs/apk/release/app-release.apk`, verified v2 APK signing with `apksigner`, and exported `out/mobile/android/release/upload_certificate.pem`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-android-package.ps1 -Game sample_headless -Configuration Release -SkipBuild -StartEmulator -AvdName Mirakanai_API36` installed and launched the Release APK on `emulator-5584`, reporting `android-smoke: ok`.
@@ -105,4 +105,4 @@
 - FIXED: Added the missing static markers to the master plan and `docs/current-capabilities.md`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with `validate: ok`; it rebuilt the dev preset, ran `ctest` with 29/29 tests passing, kept shader Metal tooling and Apple packaging as diagnostic-only host blockers, and reported Android packaging ready with `android-avd=ready (Mirakanai_API36)`.
-- PASS: `engine/agent/manifest.json` now returns `currentActivePlan` to `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md` and `recommendedNextPlan.id` to `next-production-gap-selection`.
+- PASS: `engine/agent/manifest.json` now returns `currentActivePlan` to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` and `recommendedNextPlan.id` to `next-production-gap-selection`.

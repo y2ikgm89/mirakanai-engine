@@ -12,7 +12,7 @@
 
 ## Context
 
-- Master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Previous generated 3D package slices added committed/generated package files, transform/morph/quaternion package smokes, D3D12/Vulkan compute morph package smokes, selected safe-point package streaming, scene GPU + postprocess + depth-aware renderer quality counters, and `playable_3d_*` aggregate counters.
 - `sample_desktop_runtime_game` already proves package-visible directional shadow filtering with `directional_shadow_status=ready`, `directional_shadow_ready=1`, `directional_shadow_filter_mode=fixed_pcf_3x3`, `directional_shadow_filter_taps=9`, `directional_shadow_filter_radius_texels=1`, and `framegraph_passes=3`.
 - `SdlDesktopPresentation*SceneRendererDesc` intentionally rejects directional shadow smoke when morph or compute-morph mesh bindings are simultaneously selected. This slice must keep the existing generated 3D compute/playable default package smoke intact and add a separate selected shadow smoke recipe over the same installed package artifacts.

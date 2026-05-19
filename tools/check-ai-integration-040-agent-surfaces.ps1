@@ -325,7 +325,7 @@ $editorRuntimeHostPlaytestLaunchChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor Runtime Host Playtest Launch v1",
             "EditorRuntimeHostPlaytestLaunchModel",
@@ -1550,7 +1550,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Profiler trace JSON copy export",
             "project-relative Profiler trace JSON file save",
@@ -1871,7 +1871,7 @@ $editorResourceCaptureRequestChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor Resource Capture Request v1",
             "reviewed Resources capture request handoff rows",

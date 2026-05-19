@@ -24,7 +24,7 @@ function Assert-DoesNotContainText($text, $needle, $label) {
 }
 
 function Get-ActiveChildProductionPlans {
-    $masterPlanPath = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+    $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
     $plansRoot = Join-Path $root "docs/superpowers/plans"
     if (-not (Test-Path -LiteralPath $plansRoot -PathType Container)) {
         Write-Error "Missing production plan directory: docs/superpowers/plans"
@@ -56,7 +56,7 @@ function Get-ActiveChildProductionPlans {
 }
 
 function Assert-ActiveProductionPlanDrift($productionLoop) {
-    $masterPlanPath = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+    $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
     $planRegistryPath = "docs/superpowers/plans/README.md"
     $planRegistryText = Get-Content -LiteralPath (Join-Path $root $planRegistryPath) -Raw
     $activeSliceRow = [regex]::Match($planRegistryText, '(?m)^\| Active slice \(`currentActivePlan`\) \|.*$')

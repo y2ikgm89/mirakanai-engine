@@ -1,9 +1,9 @@
 # Production Completion Gap Stream Plans Index 2026-05-11 v1 (2026-05-11)
 
-**Plan ID:** `production-completion-gap-stream-plans-index-2026-05-11-v1`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
-**Orchestration:** [2026-05-10-unsupported-production-gaps-orchestration-program-v1.md](2026-05-10-unsupported-production-gaps-orchestration-program-v1.md)  
-**Status:** Reference index  
+**Plan ID:** `production-completion-gap-stream-plans-index-2026-05-11-v1`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Orchestration:** [2026-05-10-unsupported-production-gaps-orchestration-program-v1.md](2026-05-10-unsupported-production-gaps-orchestration-program-v1.md)
+**Status:** Reference index
 
 ## Purpose
 

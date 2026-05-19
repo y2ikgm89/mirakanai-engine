@@ -60,13 +60,13 @@ Close the next narrow AI Commands productization gap:
   - `blocked-recipe`: blocked row with reviewed-looking argv.
 - [x] Call `make_editor_ai_reviewed_validation_execution_batch` with `acknowledged_host_gate_recipe_ids = {"desktop-runtime-sample-game-scene-gpu-package"}`.
 - [x] Assert:
-  - `plans.size() == 4`,
+  - `plans.() == 4`,
   - `ready_count == 2`,
   - `host_gated_count == 1`,
   - `blocked_count == 1`,
   - `can_execute_any == true`,
   - `executable_plan_indexes == {0, 1}`,
-  - `commands.size() == 2`,
+  - `commands.() == 2`,
   - the second command contains `-HostGateAcknowledgements d3d12-windows-primary`.
 - [x] Assert retained UI ids exist:
   - `ai_commands.execution.batch.ready_count`,
@@ -144,7 +144,7 @@ make_ai_reviewed_validation_execution_batch_ui_model(const EditorAiReviewedValid
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`
