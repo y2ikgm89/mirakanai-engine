@@ -15,8 +15,8 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: `docs/superpowers/plans/2026-05-20-engine-ai-behavior-authoring-v1.md`.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-ai-behavior-authoring-v1` as the next developer-owned gameplay/AI capability, not a reopened Engine 1.0 production gap. `sprite-animation-flipbook-v1` is completed for package-visible `sprite_flipbook_*` counters in `DesktopRuntime2DPackage` and `sample_2d_desktop_runtime_package` package evidence.
+- Current active plan: `docs/superpowers/plans/2026-05-20-physics-collision-query-v1.md`.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `physics-collision-query-v1` as the next developer-owned gameplay/physics capability, not a reopened Engine 1.0 production gap. `engine-ai-behavior-authoring-v1` is completed for reusable behavior document validation and package-visible `gameplay_systems_behavior_authoring_*` counters in `DesktopRuntime2DPackage` and `sample_2d_desktop_runtime_package` package evidence.
 - Current gap cluster: none selected after the 2026-05-19 gameplay/physics/navigation/AI foundation closeout.
 
 ## Plan map

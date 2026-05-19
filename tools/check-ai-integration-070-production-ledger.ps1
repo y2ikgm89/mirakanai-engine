@@ -858,6 +858,10 @@ foreach ($needle in @(
     "sprite_flipbook_diagnostics",
     "tilemap_cells_sampled",
     "tilemap_diagnostics",
+    "validate_behavior_authoring_document",
+    "gameplay_systems_behavior_authoring_ready",
+    "gameplay_systems_behavior_authoring_diagnostics",
+    "gameplay_systems_behavior_authoring_trace_nodes",
     "required_native_2d_sprites_unavailable",
     "required_sprite_animation_unavailable",
     "required_tilemap_runtime_ux_unavailable"
@@ -882,7 +886,10 @@ foreach ($needle in @(
     "sprite_flipbook_selected_frame_sum",
     "sprite_flipbook_diagnostics",
     "tilemap_cells_sampled",
-    "tilemap_diagnostics"
+    "tilemap_diagnostics",
+    "gameplay_systems_behavior_authoring_ready",
+    "gameplay_systems_behavior_authoring_diagnostics",
+    "gameplay_systems_behavior_authoring_trace_nodes"
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }

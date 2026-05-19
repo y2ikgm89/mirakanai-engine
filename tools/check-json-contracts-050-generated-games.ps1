@@ -469,6 +469,9 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "gameplay_systems_physics_contacts=",
         "gameplay_systems_navigation_plan_status=",
         "gameplay_systems_behavior_status=",
+        "gameplay_systems_behavior_authoring_ready=",
+        "gameplay_systems_behavior_authoring_diagnostics=",
+        "gameplay_systems_behavior_authoring_trace_nodes=",
         "required_gameplay_systems_unavailable",
         "required_native_2d_sprites_unavailable",
         "required_d3d12_renderer_unavailable",
@@ -521,7 +524,10 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "gameplay_systems_status",
         "gameplay_systems_physics_contacts",
         "gameplay_systems_navigation_plan_status",
-        "gameplay_systems_behavior_status"
+        "gameplay_systems_behavior_status",
+        "gameplay_systems_behavior_authoring_ready",
+        "gameplay_systems_behavior_authoring_diagnostics",
+        "gameplay_systems_behavior_authoring_trace_nodes"
     )) {
         if (-not $installedDesktopRuntimeValidationText.Contains($needle)) {
             Write-Error "tools/validate-installed-desktop-runtime.ps1 missing 2D native sprite package validation field: $needle"

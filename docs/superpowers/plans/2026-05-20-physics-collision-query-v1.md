@@ -1,0 +1,68 @@
+# Physics Collision Query v1 (2026-05-20)
+
+**Plan ID:** `physics-collision-query-v1`
+**Status:** Active.
+**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is developer-owned gameplay/physics capability work, not a reopened Engine 1.0 production gap.
+
+## Goal
+
+Expand first-party physics collision query primitives so generated games can ask deterministic scene-query questions with explicit filters, diagnostics, replayable query rows, and selected package-visible counters without exposing middleware/native physics handles.
+
+## Context
+
+- Engine AI Behavior Authoring v1 completed reusable behavior document validation and package-visible behavior authoring counters in `sample_2d_desktop_runtime_package`.
+- Existing physics work already covers baseline 2D/3D contacts, exact 3D shape sweeps/casts, contact manifolds, CCD rows, character/dynamic policy rows, distance joints, determinism gates, and selected generated package evidence.
+- The production completion advanced track lists `physics-collision-query-v1` as the next developer-owned gameplay/physics capability for deterministic query ordering, layer/filter tests, invalid-shape diagnostics, package-visible query counters, and first-party API contracts.
+
+## Constraints
+
+- Preserve `unsupportedProductionGaps = []`. If this becomes an Engine 1.0 blocker, stop.
+- Keep native physics middleware, public native handles, editor visualization parity, and broad automatic collision authoring out of scope.
+- Reuse existing `MK_physics` world/query primitives where possible; do not add compatibility shims.
+- Query contracts must be deterministic, value-oriented, budgeted, and testable without renderer, editor, platform, or middleware dependencies.
+- Start behavior/API/regression-risk changes with a RED test or static guard.
+
+## Phase 0: Pointer Sync
+
+**Status:** Completed.
+
+### Goal
+
+Select this plan as the next active developer-owned gameplay/physics capability after `engine-ai-behavior-authoring-v1` closeout.
+
+### Done When
+
+- `docs/superpowers/plans/README.md`, the readiness ledger, and the production master-plan index list this plan as the active developer-owned milestone.
+- `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and composed `engine/agent/manifest.json` point `currentActivePlan` and `recommendedNextPlan` at this plan while preserving `unsupportedProductionGaps = []`.
+
+## Phase 1: Deterministic Query Batch Contract
+
+**Status:** Pending.
+
+### Goal
+
+Define the smallest reusable collision query batch contract over existing physics world/query concepts, with deterministic ordering, filter/layer semantics, invalid-query diagnostics, and no middleware/native-handle exposure.
+
+### Done When
+
+- RED tests or static guards fail first for missing query batch validation/execution behavior.
+- `MK_physics` exposes value-only request/result/diagnostic rows for reusable generated-game collision query authoring.
+- Focused tests prove deterministic ordering, layer/mask filtering, trigger inclusion/exclusion, invalid shape/query diagnostics, and budgeted result counts.
+
+## Phase 2: Package Query Evidence
+
+**Status:** Pending.
+
+### Goal
+
+Adopt the collision query contract in selected generated gameplay package paths so package smokes can report deterministic query counters.
+
+### Done When
+
+- A committed sample or generated package path reports package-visible collision query counters through existing validation recipes.
+- Docs, manifest fragments, schemas/static checks, and agent surfaces are updated for durable workflow or AI-operable contract changes.
+- Full `tools/validate.ps1` passes at the coherent phase gate, with only explicit host-gated diagnostics where applicable.
+
+## Validation Evidence
+
+- Phase 0 pointer sync: this plan was selected after `engine-ai-behavior-authoring-v1` completed package-visible behavior authoring counters, while `unsupportedProductionGaps = []` stayed empty.

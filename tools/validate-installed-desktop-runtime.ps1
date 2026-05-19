@@ -363,13 +363,16 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "gameplay_systems_blackboard_has_target",
                 "gameplay_systems_blackboard_needs_move",
                 "gameplay_systems_behavior_status",
-                "gameplay_systems_behavior_nodes"
+                "gameplay_systems_behavior_nodes",
+                "gameplay_systems_behavior_authoring_ready",
+                "gameplay_systems_behavior_authoring_diagnostics",
+                "gameplay_systems_behavior_authoring_trace_nodes"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
             }
         }
-        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move")) {
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
@@ -421,6 +424,12 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_nodes=4\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay behavior node visit count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean gameplay behavior authoring diagnostics."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_trace_nodes=4\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay behavior authoring trace nodes."
         }
     }
 }

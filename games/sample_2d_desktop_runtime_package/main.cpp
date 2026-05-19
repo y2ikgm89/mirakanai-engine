@@ -83,6 +83,8 @@ constexpr mirakana::BehaviorTreeNodeId kGameplay2dRootNode{1};
 constexpr mirakana::BehaviorTreeNodeId kGameplay2dHasTargetNode{2};
 constexpr mirakana::BehaviorTreeNodeId kGameplay2dNeedsMoveNode{3};
 constexpr mirakana::BehaviorTreeNodeId kGameplay2dMoveActionNode{4};
+constexpr const char* kGameplay2dBehaviorId{"sample_2d_move_to_target"};
+constexpr const char* kGameplay2dMoveActionId{"move_to_target"};
 constexpr const char* kGameplay2dHasTargetKey{"sample2d.has_target"};
 constexpr const char* kGameplay2dNeedsMoveKey{"sample2d.needs_move"};
 constexpr const char* kGameplay2dTargetIdKey{"sample2d.target_id"};
@@ -228,6 +230,64 @@ ai_perception_blackboard_status_name(mirakana::AiPerceptionBlackboardStatus stat
     return "unknown";
 }
 
+[[nodiscard]] mirakana::BehaviorTreeDesc gameplay_2d_behavior_tree_desc() {
+    return mirakana::BehaviorTreeDesc{
+        .root_id = kGameplay2dRootNode,
+        .nodes =
+            {
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dRootNode,
+                    .kind = mirakana::BehaviorTreeNodeKind::sequence,
+                    .children = {kGameplay2dHasTargetNode, kGameplay2dNeedsMoveNode, kGameplay2dMoveActionNode}},
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dHasTargetNode, .kind = mirakana::BehaviorTreeNodeKind::condition, .children = {}},
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dNeedsMoveNode, .kind = mirakana::BehaviorTreeNodeKind::condition, .children = {}},
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dMoveActionNode, .kind = mirakana::BehaviorTreeNodeKind::action, .children = {}},
+            },
+    };
+}
+
+[[nodiscard]] std::vector<mirakana::BehaviorTreeBlackboardCondition> gameplay_2d_behavior_conditions() {
+    return std::vector<mirakana::BehaviorTreeBlackboardCondition>{
+        mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplay2dHasTargetNode,
+                                                  .key = kGameplay2dHasTargetKey,
+                                                  .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                                  .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+        mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplay2dNeedsMoveNode,
+                                                  .key = kGameplay2dNeedsMoveKey,
+                                                  .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                                  .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+    };
+}
+
+[[nodiscard]] mirakana::BehaviorAuthoringValidationResult validate_gameplay_2d_behavior_authoring() {
+    const std::vector<std::string> blackboard_keys{kGameplay2dHasTargetKey, kGameplay2dNeedsMoveKey};
+    const std::vector<std::string> supported_actions{kGameplay2dMoveActionId};
+    const auto conditions = gameplay_2d_behavior_conditions();
+    const mirakana::BehaviorAuthoringDocument document{
+        .behaviors =
+            std::vector<mirakana::BehaviorAuthoringBehaviorDesc>{
+                mirakana::BehaviorAuthoringBehaviorDesc{
+                    .id = kGameplay2dBehaviorId,
+                    .tree = gameplay_2d_behavior_tree_desc(),
+                    .blackboard_conditions = conditions,
+                    .actions =
+                        std::vector<mirakana::BehaviorAuthoringActionBinding>{
+                            mirakana::BehaviorAuthoringActionBinding{.node_id = kGameplay2dMoveActionNode,
+                                                                     .action_id = kGameplay2dMoveActionId},
+                        },
+                },
+            },
+    };
+    return mirakana::validate_behavior_authoring_document(
+        document, mirakana::BehaviorAuthoringValidationContext{
+                      .blackboard_keys = std::span<const std::string>{blackboard_keys},
+                      .supported_actions = std::span<const std::string>{supported_actions},
+                  });
+}
+
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
@@ -324,6 +384,11 @@ class Gameplay2DSystemsProbe final {
             navigation_goal_ = navigation_agent_.path.back();
         }
 
+        const auto behavior_authoring = validate_gameplay_2d_behavior_authoring();
+        behavior_authoring_ready_ = behavior_authoring.succeeded;
+        behavior_authoring_diagnostics_ = behavior_authoring.diagnostics.size();
+        behavior_authoring_trace_nodes_ = behavior_authoring.trace.size();
+
         started_ = true;
     }
 
@@ -361,7 +426,8 @@ class Gameplay2DSystemsProbe final {
                last_perception_target_count_ == 1U && last_perception_visible_count_ == 1U &&
                last_blackboard_status_ == mirakana::AiPerceptionBlackboardStatus::ready && blackboard_has_target_ &&
                blackboard_needs_move_ && last_tree_result_.status == mirakana::BehaviorTreeStatus::success &&
-               last_tree_result_.visited_nodes.size() == 4U;
+               last_tree_result_.visited_nodes.size() == 4U && behavior_authoring_ready_ &&
+               behavior_authoring_diagnostics_ == 0U && behavior_authoring_trace_nodes_ == 4U;
     }
 
     [[nodiscard]] Gameplay2DSystemsStatus status(std::uint32_t expected_ticks) const {
@@ -447,6 +513,18 @@ class Gameplay2DSystemsProbe final {
         return last_tree_result_.visited_nodes.size();
     }
 
+    [[nodiscard]] bool behavior_authoring_ready() const noexcept {
+        return behavior_authoring_ready_;
+    }
+
+    [[nodiscard]] std::size_t behavior_authoring_diagnostic_count() const noexcept {
+        return behavior_authoring_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t behavior_authoring_trace_node_count() const noexcept {
+        return behavior_authoring_trace_nodes_;
+    }
+
   private:
     void update_ai_navigation_composition() {
         if (navigation_plan_status_ != mirakana::NavigationGridAgentPathStatus::ready ||
@@ -508,16 +586,7 @@ class Gameplay2DSystemsProbe final {
             blackboard_needs_move_ = value->bool_value;
         }
 
-        const std::vector<mirakana::BehaviorTreeBlackboardCondition> conditions{
-            mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplay2dHasTargetNode,
-                                                      .key = kGameplay2dHasTargetKey,
-                                                      .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
-                                                      .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
-            mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplay2dNeedsMoveNode,
-                                                      .key = kGameplay2dNeedsMoveKey,
-                                                      .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
-                                                      .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
-        };
+        const auto conditions = gameplay_2d_behavior_conditions();
         const auto supporting_systems_ready =
             physics_.bodies().size() == 3U && physics_contact_count_ > 0U && physics_trigger_overlap_count_ > 0U;
         const std::vector<mirakana::BehaviorTreeLeafResult> leaf_results{
@@ -528,25 +597,7 @@ class Gameplay2DSystemsProbe final {
         };
 
         last_tree_result_ = mirakana::evaluate_behavior_tree(
-            mirakana::BehaviorTreeDesc{
-                .root_id = kGameplay2dRootNode,
-                .nodes =
-                    {
-                        mirakana::BehaviorTreeNodeDesc{.id = kGameplay2dRootNode,
-                                                       .kind = mirakana::BehaviorTreeNodeKind::sequence,
-                                                       .children = {kGameplay2dHasTargetNode, kGameplay2dNeedsMoveNode,
-                                                                    kGameplay2dMoveActionNode}},
-                        mirakana::BehaviorTreeNodeDesc{.id = kGameplay2dHasTargetNode,
-                                                       .kind = mirakana::BehaviorTreeNodeKind::condition,
-                                                       .children = {}},
-                        mirakana::BehaviorTreeNodeDesc{.id = kGameplay2dNeedsMoveNode,
-                                                       .kind = mirakana::BehaviorTreeNodeKind::condition,
-                                                       .children = {}},
-                        mirakana::BehaviorTreeNodeDesc{.id = kGameplay2dMoveActionNode,
-                                                       .kind = mirakana::BehaviorTreeNodeKind::action,
-                                                       .children = {}},
-                    },
-            },
+            gameplay_2d_behavior_tree_desc(),
             mirakana::BehaviorTreeEvaluationContext{
                 .leaf_results = std::span<const mirakana::BehaviorTreeLeafResult>{leaf_results},
                 .blackboard_entries = blackboard.entries(),
@@ -586,11 +637,14 @@ class Gameplay2DSystemsProbe final {
     std::size_t navigation_path_point_count_{0U};
     std::size_t last_perception_target_count_{0U};
     std::size_t last_perception_visible_count_{0U};
+    std::size_t behavior_authoring_diagnostics_{0U};
+    std::size_t behavior_authoring_trace_nodes_{0U};
     std::uint32_t ticks_{0U};
     std::uint32_t physics_ticks_{0U};
     bool last_perception_has_primary_target_{false};
     bool blackboard_has_target_{false};
     bool blackboard_needs_move_{false};
+    bool behavior_authoring_ready_{false};
     bool started_{false};
 };
 
@@ -996,6 +1050,18 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t gameplay_systems_behavior_nodes() const noexcept {
         return gameplay_systems_.behavior_visited_node_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_behavior_authoring_ready() const noexcept {
+        return gameplay_systems_.behavior_authoring_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_diagnostics() const noexcept {
+        return gameplay_systems_.behavior_authoring_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_trace_nodes() const noexcept {
+        return gameplay_systems_.behavior_authoring_trace_node_count();
     }
 
   private:
@@ -1704,6 +1770,9 @@ int main(int argc, char** argv) {
         << " gameplay_systems_blackboard_needs_move=" << (game.gameplay_systems_blackboard_needs_move() ? 1 : 0)
         << " gameplay_systems_behavior_status=" << behavior_tree_status_name(game.gameplay_systems_behavior_status())
         << " gameplay_systems_behavior_nodes=" << game.gameplay_systems_behavior_nodes()
+        << " gameplay_systems_behavior_authoring_ready=" << (game.gameplay_systems_behavior_authoring_ready() ? 1 : 0)
+        << " gameplay_systems_behavior_authoring_diagnostics=" << game.gameplay_systems_behavior_authoring_diagnostics()
+        << " gameplay_systems_behavior_authoring_trace_nodes=" << game.gameplay_systems_behavior_authoring_trace_nodes()
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -1770,7 +1839,13 @@ int main(int argc, char** argv) {
                   << " gameplay_systems_navigation_plan_status="
                   << navigation_grid_agent_path_status_name(game.gameplay_systems_navigation_plan_status())
                   << " gameplay_systems_behavior_status="
-                  << behavior_tree_status_name(game.gameplay_systems_behavior_status()) << '\n';
+                  << behavior_tree_status_name(game.gameplay_systems_behavior_status())
+                  << " gameplay_systems_behavior_authoring_ready="
+                  << (game.gameplay_systems_behavior_authoring_ready() ? 1 : 0)
+                  << " gameplay_systems_behavior_authoring_diagnostics="
+                  << game.gameplay_systems_behavior_authoring_diagnostics()
+                  << " gameplay_systems_behavior_authoring_trace_nodes="
+                  << game.gameplay_systems_behavior_authoring_trace_nodes() << '\n';
         return 12;
     }
 

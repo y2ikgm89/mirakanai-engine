@@ -1,7 +1,7 @@
 # Engine AI Behavior Authoring v1 (2026-05-20)
 
 **Plan ID:** `engine-ai-behavior-authoring-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is developer-owned gameplay/AI capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -51,7 +51,7 @@ Define the smallest reusable behavior-authoring document contract over existing 
 
 ## Phase 2: Package Trace Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -71,3 +71,9 @@ Adopt the behavior authoring contract in selected generated gameplay package pat
 - Phase 1 focused tests: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_ai_tests` passed.
 - Phase 1 static checks: `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed.
 - Phase 1 full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed.
+- Phase 2 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` failed first after the DesktopRuntime2DPackage scaffold guard required `gameplay_systems_behavior_authoring_diagnostics=` and `gameplay_systems_behavior_authoring_trace_nodes=`.
+- Phase 2 package adoption: `sample_2d_desktop_runtime_package` and generated `DesktopRuntime2DPackage` gameplay systems smokes now validate a reusable `BehaviorAuthoringDocument` through `validate_behavior_authoring_document` and report package-visible `gameplay_systems_behavior_authoring_ready`, `gameplay_systems_behavior_authoring_diagnostics`, and `gameplay_systems_behavior_authoring_trace_nodes` counters.
+- Phase 2 focused build/smoke: `tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package`, `tools/ctest.ps1 --preset dev --output-on-failure -R "sample_2d_desktop_runtime_package_smoke"`, and a direct source-tree smoke with `--require-gameplay-systems` passed; the status line reported `gameplay_systems_behavior_authoring_ready=1`, `gameplay_systems_behavior_authoring_diagnostics=0`, and `gameplay_systems_behavior_authoring_trace_nodes=4`.
+- Phase 2 static checks: `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed.
+- Phase 2 package evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed; the installed D3D12 smoke reported `gameplay_systems_behavior_authoring_ready=1`, `gameplay_systems_behavior_authoring_diagnostics=0`, and `gameplay_systems_behavior_authoring_trace_nodes=4`.
+- Phase 2 full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after selecting `physics-collision-query-v1` as the next active plan.
