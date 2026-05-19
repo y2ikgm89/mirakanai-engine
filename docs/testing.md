@@ -241,7 +241,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 
 The generated material/shader scaffold package target installs and validates manifest-derived config plus cooked scene files, target-specific D3D12 scene/postprocess DXIL artifacts, scene GPU bindings, and `postprocess_status=ready` / `framegraph_passes=2` on a ready Windows/DXC host. The source-tree `desktop-game-runtime` lane also adds a DXC-available `sample_generated_desktop_runtime_material_shader_package_shader_artifacts_smoke` CTest so the generated source material/HLSL scaffold has a non-installed shader-artifact proof without requiring a real native window.
 
-The generated 3D package collision proof installs the committed `GameEngine.PhysicsCollisionScene3D.v1` payload and validates `--require-scene-collision-package`, including `collision_package_status=ready`, three body rows, one trigger row, nonzero contact and trigger-overlap evidence, and `gameplay_systems_collision_package_ready=1`. This is selected package evidence inside the first-party Physics 1.0 ready surface, not broad physics beyond that surface.
+The generated 3D package collision proof installs the committed `GameEngine.PhysicsCollisionScene3D.v1` payload and validates `--require-scene-collision-package`, including `collision_package_status=ready`, three body rows, one trigger row, nonzero contact and trigger-overlap evidence, `collision_query_batch_ready=1`, source-ordered batch rows, deterministic hit/no-hit/invalid-request counters, query-budget rejection counters, and `gameplay_systems_collision_package_ready=1`. This is selected package evidence inside the first-party Physics 1.0 ready surface, not broad physics beyond that surface.
 
 ## Test Policy
 

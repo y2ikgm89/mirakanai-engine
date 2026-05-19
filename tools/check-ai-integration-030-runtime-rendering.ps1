@@ -1232,6 +1232,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "Physics
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "source-indexed value-only query rows" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "default-unbounded query counts" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "explicit positive max_queries budgets" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "collision_query_batch_ready" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsShape3DDesc::aabb" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsShape3DDesc::sphere" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsShape3DDesc::capsule" "physics game guidance"
@@ -1280,6 +1281,7 @@ foreach ($physicsGuidance in @(
     Assert-ContainsText $physicsText "PhysicsWorld2D::raycast_batch" $physicsGuidance
     Assert-ContainsText $physicsText "PhysicsWorld3D::shape_sweep_batch" $physicsGuidance
     Assert-ContainsText $physicsText "default-unbounded" $physicsGuidance
+    Assert-ContainsText $physicsText "collision_query_batch_ready" $physicsGuidance
     Assert-ContainsText $physicsText "move_physics_character_controller_3d" $physicsGuidance
     Assert-ContainsText $physicsText "build_physics_world_3d_from_authored_collision_scene" $physicsGuidance
     Assert-ContainsText $physicsText "PhysicsWorld3D::exact_shape_sweep" $physicsGuidance

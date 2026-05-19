@@ -670,6 +670,13 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "collision_package_contacts",
             "collision_package_trigger_overlaps",
             "collision_package_world_ready",
+            "collision_query_batch_ready",
+            "collision_query_batch_source_order_ready",
+            "collision_query_batch_rows",
+            "collision_query_batch_hits",
+            "collision_query_batch_no_hits",
+            "collision_query_batch_invalid_requests",
+            "collision_query_batch_budget_rejections",
             "gameplay_systems_collision_package_ready"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
@@ -679,6 +686,8 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     foreach ($field in @(
             "collision_package_ready",
             "collision_package_world_ready",
+            "collision_query_batch_ready",
+            "collision_query_batch_source_order_ready",
             "gameplay_systems_collision_package_ready"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
@@ -702,6 +711,21 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_package_trigger_overlaps=[1-9]\d*\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove non-zero scene collision trigger overlaps."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_rows=6\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_hits=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch hit count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_no_hits=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch no-hit count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_invalid_requests=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch invalid-request count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_batch_budget_rejections=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision query batch budget rejection count."
     }
 }
 if ($requiresNative2dSprites) {

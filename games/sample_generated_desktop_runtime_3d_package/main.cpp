@@ -33,6 +33,7 @@
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <chrono>
 #include <cmath>
@@ -2850,7 +2851,41 @@ struct CollisionPackageReport {
     std::size_t contact_count{0};
     std::size_t trigger_overlap_count{0};
     bool world_ready{false};
+    bool query_batch_ready{false};
+    bool query_batch_source_order_ready{false};
+    std::size_t query_batch_rows{0};
+    std::size_t query_batch_hits{0};
+    std::size_t query_batch_no_hits{0};
+    std::size_t query_batch_invalid_requests{0};
+    std::size_t query_batch_budget_rejections{0};
 };
+
+template <typename Row> [[nodiscard]] bool collision_query_source_order_ready(const std::vector<Row>& rows) noexcept {
+    for (std::size_t index = 0; index < rows.size(); ++index) {
+        if (rows[index].source_index != index) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <typename Row>
+void accumulate_collision_query_rows(const std::vector<Row>& rows, CollisionPackageReport& report) noexcept {
+    report.query_batch_rows += rows.size();
+    for (const auto& row : rows) {
+        switch (row.status) {
+        case mirakana::PhysicsCollisionQueryRowStatus::hit:
+            ++report.query_batch_hits;
+            break;
+        case mirakana::PhysicsCollisionQueryRowStatus::no_hit:
+            ++report.query_batch_no_hits;
+            break;
+        case mirakana::PhysicsCollisionQueryRowStatus::invalid_request:
+            ++report.query_batch_invalid_requests;
+            break;
+        }
+    }
+}
 
 [[nodiscard]] bool
 package_streaming_smoke_ready(const mirakana::runtime::RuntimePackageStreamingExecutionResult& package_streaming_result,
@@ -2908,10 +2943,126 @@ evaluate_scene_collision_package(const DesktopRuntimeOptions& options,
     report.trigger_overlap_count = build.world.trigger_overlaps().size();
     report.world_ready = build.bodies.size() == 3U && build.world.bodies().size() == 3U && report.body_count == 3U &&
                          report.trigger_count == 1U && report.contact_count >= 1U && report.trigger_overlap_count >= 1U;
-    report.ready = report.world_ready;
+
+    constexpr std::uint32_t floor_layer = 1U << 0U;
+    constexpr std::uint32_t trigger_layer = 1U << 1U;
+    constexpr std::uint32_t probe_layer = 1U << 2U;
+    const auto raycast_batch = build.world
+                                   .raycast_batch(
+                                       mirakana::PhysicsRaycastBatch3DDesc{
+                                           .queries =
+                                               {
+                                                   mirakana::PhysicsRaycast3DDesc{
+                                                       .origin = mirakana::Vec3{.x = -2.0F, .y = 0.25F, .z = 0.0F},
+                                                       .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                       .max_distance = 4.0F,
+                                                       .collision_mask = probe_layer,
+                                                   },
+                                                   mirakana::PhysicsRaycast3DDesc{
+                                                       .origin = mirakana::Vec3{.x = -2.0F, .y = 2.0F, .z = 0.0F},
+                                                       .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                       .max_distance = 4.0F,
+                                                       .collision_mask = floor_layer,
+                                                   },
+                                                   mirakana::PhysicsRaycast3DDesc{
+                                                       .origin = mirakana::Vec3{.x = -2.0F, .y = 0.25F, .z = 0.0F},
+                                                       .direction = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                       .max_distance = 4.0F,
+                                                       .collision_mask = trigger_layer,
+                                                   },
+                                               },
+                                           .max_queries = 3U,
+                                       });
+    const auto sweep_batch = build.world
+                                 .shape_sweep_batch(
+                                     mirakana::PhysicsShapeSweepBatch3DDesc{
+                                         .queries =
+                                             {
+                                                 mirakana::PhysicsShapeSweep3DDesc{
+                                                     .origin = mirakana::Vec3{.x = 0.0F, .y = 0.25F, .z = 0.0F},
+                                                     .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                     .max_distance = 4.0F,
+                                                     .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                     .half_extents = mirakana::Vec3{.x = 0.25F, .y = 0.25F, .z = 0.25F},
+                                                     .radius = 0.25F,
+                                                     .half_height = 0.25F,
+                                                     .collision_mask = trigger_layer,
+                                                     .ignored_body = mirakana::null_physics_body_3d,
+                                                     .include_triggers = true,
+                                                 },
+                                                 mirakana::PhysicsShapeSweep3DDesc{
+                                                     .origin = mirakana::Vec3{.x = 0.0F, .y = 0.25F, .z = 0.0F},
+                                                     .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                     .max_distance = 4.0F,
+                                                     .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                     .half_extents = mirakana::Vec3{.x = 0.25F, .y = 0.25F, .z = 0.25F},
+                                                     .radius = 0.25F,
+                                                     .half_height = 0.25F,
+                                                     .collision_mask = trigger_layer,
+                                                     .ignored_body = mirakana::null_physics_body_3d,
+                                                     .include_triggers = false,
+                                                 },
+                                                 mirakana::PhysicsShapeSweep3DDesc{
+                                                     .origin = mirakana::Vec3{.x = 0.0F, .y = 0.25F, .z = 0.0F},
+                                                     .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                     .max_distance = 4.0F,
+                                                     .shape = mirakana::PhysicsShape3DKind::capsule,
+                                                     .half_extents = mirakana::Vec3{.x = 0.25F, .y = 0.25F, .z = 0.25F},
+                                                     .radius = 0.25F,
+                                                     .half_height = 0.0F,
+                                                     .collision_mask = trigger_layer,
+                                                     .ignored_body = mirakana::null_physics_body_3d,
+                                                     .include_triggers = true,
+                                                 },
+                                             },
+                                         .max_queries = 3U,
+                                     });
+    const auto raycast_over_budget = build.world.raycast_batch(mirakana::PhysicsRaycastBatch3DDesc{
+        .queries = {mirakana::PhysicsRaycast3DDesc{}, mirakana::PhysicsRaycast3DDesc{}},
+        .max_queries = 1U,
+    });
+    const auto sweep_over_budget = build.world.shape_sweep_batch(mirakana::PhysicsShapeSweepBatch3DDesc{
+        .queries = {mirakana::PhysicsShapeSweep3DDesc{}, mirakana::PhysicsShapeSweep3DDesc{}},
+        .max_queries = 1U,
+    });
+    accumulate_collision_query_rows(raycast_batch.rows, report);
+    accumulate_collision_query_rows(sweep_batch.rows, report);
+    if (raycast_over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request &&
+        raycast_over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded &&
+        raycast_over_budget.rows.empty()) {
+        ++report.query_batch_budget_rejections;
+    }
+    if (sweep_over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request &&
+        sweep_over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded &&
+        sweep_over_budget.rows.empty()) {
+        ++report.query_batch_budget_rejections;
+    }
+
+    report.query_batch_source_order_ready =
+        collision_query_source_order_ready(raycast_batch.rows) && collision_query_source_order_ready(sweep_batch.rows);
+    report.query_batch_ready = raycast_batch.status == mirakana::PhysicsCollisionQueryBatchStatus::completed &&
+                               sweep_batch.status == mirakana::PhysicsCollisionQueryBatchStatus::completed &&
+                               raycast_batch.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none &&
+                               sweep_batch.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none &&
+                               report.query_batch_source_order_ready && report.query_batch_rows == 6U &&
+                               report.query_batch_hits == 2U && report.query_batch_no_hits == 2U &&
+                               report.query_batch_invalid_requests == 2U && report.query_batch_budget_rejections == 2U;
+    report.ready = report.world_ready && report.query_batch_ready;
     report.status = report.ready ? CollisionPackageStatus::ready : CollisionPackageStatus::diagnostics;
     report.diagnostics_count = report.ready ? 0U : 1U;
     return report;
+}
+
+void print_collision_package_diagnostics(const CollisionPackageReport& report) {
+    std::cerr << "sample_generated_desktop_runtime_3d_package scene_collision_package_diagnostic="
+              << "status=" << collision_package_status_name(report.status) << " ready=" << (report.ready ? 1 : 0)
+              << " world_ready=" << (report.world_ready ? 1 : 0)
+              << " query_batch_ready=" << (report.query_batch_ready ? 1 : 0)
+              << " query_batch_source_order_ready=" << (report.query_batch_source_order_ready ? 1 : 0)
+              << " query_batch_rows=" << report.query_batch_rows << " query_batch_hits=" << report.query_batch_hits
+              << " query_batch_no_hits=" << report.query_batch_no_hits
+              << " query_batch_invalid_requests=" << report.query_batch_invalid_requests
+              << " query_batch_budget_rejections=" << report.query_batch_budget_rejections << '\n';
 }
 
 [[nodiscard]] bool scene_mesh_plan_ready(const GeneratedDesktopRuntime3DPackageGame& game,
@@ -3681,6 +3832,7 @@ int main(int argc, char** argv) {
     const auto collision_package =
         evaluate_scene_collision_package(options, runtime_package ? &*runtime_package : nullptr);
     if (options.require_scene_collision_package && !collision_package.ready) {
+        print_collision_package_diagnostics(collision_package);
         std::cerr << "required scene collision package was not ready\n";
         return 4;
     }
@@ -4457,6 +4609,13 @@ int main(int argc, char** argv) {
         << " collision_package_contacts=" << collision_package.contact_count
         << " collision_package_trigger_overlaps=" << collision_package.trigger_overlap_count
         << " collision_package_world_ready=" << (collision_package.world_ready ? 1 : 0)
+        << " collision_query_batch_ready=" << (collision_package.query_batch_ready ? 1 : 0)
+        << " collision_query_batch_source_order_ready=" << (collision_package.query_batch_source_order_ready ? 1 : 0)
+        << " collision_query_batch_rows=" << collision_package.query_batch_rows
+        << " collision_query_batch_hits=" << collision_package.query_batch_hits
+        << " collision_query_batch_no_hits=" << collision_package.query_batch_no_hits
+        << " collision_query_batch_invalid_requests=" << collision_package.query_batch_invalid_requests
+        << " collision_query_batch_budget_rejections=" << collision_package.query_batch_budget_rejections
         << " framegraph_passes=" << report.framegraph_passes
         << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
         << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
