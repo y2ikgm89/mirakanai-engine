@@ -5187,6 +5187,77 @@ MK_TEST("sprite batch planner preserves order and coalesces adjacent compatible 
     MK_REQUIRE(plan.batches[3].sprite_count == 1);
 }
 
+MK_TEST("sprite batch planner reports atlas backed repeated batch evidence") {
+    const auto atlas_a = mirakana::AssetId::from_name("textures/atlas_a");
+    const auto atlas_b = mirakana::AssetId::from_name("textures/atlas_b");
+    const auto textured_a = mirakana::SpriteTextureRegion{
+        .enabled = true,
+        .atlas_page = atlas_a,
+        .uv_rect = mirakana::SpriteUvRect{.u0 = 0.0F, .v0 = 0.0F, .u1 = 0.5F, .v1 = 1.0F},
+    };
+    const auto textured_b = mirakana::SpriteTextureRegion{
+        .enabled = true,
+        .atlas_page = atlas_b,
+        .uv_rect = mirakana::SpriteUvRect{.u0 = 0.5F, .v0 = 0.0F, .u1 = 1.0F, .v1 = 1.0F},
+    };
+
+    const std::vector<mirakana::SpriteCommand> sprites{
+        mirakana::SpriteCommand{
+            .transform = mirakana::Transform2D{}, .color = mirakana::Color{}, .texture = textured_a},
+        mirakana::SpriteCommand{
+            .transform = mirakana::Transform2D{}, .color = mirakana::Color{}, .texture = textured_a},
+        mirakana::SpriteCommand{
+            .transform = mirakana::Transform2D{}, .color = mirakana::Color{}, .texture = textured_b},
+    };
+
+    const auto plan = mirakana::plan_sprite_batches(sprites);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.atlas_backed_batch_count == 2);
+    MK_REQUIRE(plan.repeated_atlas_batch_count == 1);
+    MK_REQUIRE(plan.repeated_atlas_sprite_count == 2);
+}
+
+MK_TEST("sprite batch planner rejects unsupported atlas batching policies") {
+    const auto atlas = mirakana::AssetId::from_name("textures/atlas");
+    const std::vector<mirakana::SpriteCommand> sprites{
+        mirakana::SpriteCommand{
+            .transform = mirakana::Transform2D{},
+            .color = mirakana::Color{},
+            .texture =
+                mirakana::SpriteTextureRegion{
+                    .enabled = true,
+                    .atlas_page = atlas,
+                    .uv_rect = mirakana::SpriteUvRect{.u0 = 0.0F, .v0 = 0.0F, .u1 = 1.0F, .v1 = 1.0F}},
+        },
+        mirakana::SpriteCommand{},
+    };
+
+    const auto no_reorder = mirakana::plan_sprite_batches(mirakana::SpriteBatchPlanDesc{
+        .sprites = sprites,
+        .options = mirakana::SpriteBatchPlanOptions{.allow_sprite_reordering = true},
+    });
+
+    MK_REQUIRE(!no_reorder.succeeded());
+    MK_REQUIRE(no_reorder.batches.empty());
+    MK_REQUIRE(no_reorder.draw_count == 0);
+    MK_REQUIRE(no_reorder.diagnostics.size() == 1);
+    MK_REQUIRE(no_reorder.diagnostics[0].code == mirakana::SpriteBatchDiagnosticCode::unsupported_reordering_policy);
+    MK_REQUIRE(no_reorder.diagnostics[0].sprite_index == 0);
+
+    const auto require_atlas = mirakana::plan_sprite_batches(mirakana::SpriteBatchPlanDesc{
+        .sprites = sprites,
+        .options = mirakana::SpriteBatchPlanOptions{.require_atlas_backed_sprites = true},
+    });
+
+    MK_REQUIRE(!require_atlas.succeeded());
+    MK_REQUIRE(require_atlas.sprite_count == 2);
+    MK_REQUIRE(require_atlas.textured_sprite_count == 1);
+    MK_REQUIRE(require_atlas.diagnostics.size() == 1);
+    MK_REQUIRE(require_atlas.diagnostics[0].code == mirakana::SpriteBatchDiagnosticCode::untextured_sprite_disallowed);
+    MK_REQUIRE(require_atlas.diagnostics[0].sprite_index == 1);
+}
+
 MK_TEST("sprite batch planner diagnoses invalid texture metadata as untextured fallback") {
     const auto atlas = mirakana::AssetId::from_name("textures/atlas");
     const std::vector<mirakana::SpriteCommand> sprites{

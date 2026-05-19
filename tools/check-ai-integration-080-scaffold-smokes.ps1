@@ -719,8 +719,15 @@ foreach ($docCheck in @(
 }
 foreach ($needle in @(
     "SpriteBatchPlan",
+    "SpriteBatchPlanDesc",
+    "SpriteBatchPlanOptions",
     "SpriteBatchRange",
     "SpriteBatchDiagnosticCode",
+    "atlas_backed_batch_count",
+    "repeated_atlas_batch_count",
+    "repeated_atlas_sprite_count",
+    "unsupported_reordering_policy",
+    "untextured_sprite_disallowed",
     "plan_sprite_batches"
 )) {
     Assert-ContainsText $spriteBatchHeader $needle "2D sprite batch planning header"
@@ -729,6 +736,8 @@ foreach ($needle in @(
     "append_or_extend_batch",
     "missing_texture_atlas",
     "invalid_uv_rect",
+    "allow_sprite_reordering",
+    "require_atlas_backed_sprites",
     "texture_bind_count"
 )) {
     Assert-ContainsText $spriteBatchSource $needle "2D sprite batch planning source"
@@ -953,7 +962,11 @@ Assert-DoesNotContainText $manifestText "generated-game morph package consumptio
 foreach ($needle in @(
     "2d-sprite-batch-planning-contract",
     "2d-sprite-batch-package-telemetry",
+    "Sprite Batching Renderer v1",
     "plan_sprite_batches",
+    "SpriteBatchPlanDesc",
+    "atlas_backed_batch_count",
+    "unsupported_reordering_policy",
     "plan_scene_sprite_batches",
     "production sprite batching readiness",
     "native_sprite_batches_executed"

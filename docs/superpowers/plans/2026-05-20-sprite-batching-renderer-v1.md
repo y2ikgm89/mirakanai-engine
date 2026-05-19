@@ -39,7 +39,7 @@ Select this plan as the next active developer-owned 2D capability after `sprite-
 
 ## Phase 1: Atlas-Backed Batch Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -69,3 +69,7 @@ Adopt the contract in a generated 2D package path so package smokes can verify d
 
 - Phase 0 pointer sync: plan registry, readiness ledger, production master-plan index, manifest fragments, and composed manifest select this plan as the next active developer-owned capability while keeping `unsupportedProductionGaps = []`.
 - Phase 0 static/full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and `tools/validate.ps1` passed after selecting this plan; `production-readiness-audit` reported `unsupported_gaps=0` and 65/65 CTest tests passed.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` failed as expected while tests referenced missing `SpriteBatchPlanDesc`, `SpriteBatchPlanOptions`, `atlas_backed_batch_count`, `repeated_atlas_batch_count`, `repeated_atlas_sprite_count`, `unsupported_reordering_policy`, and `untextured_sprite_disallowed`.
+- Phase 1 implementation: `MK_renderer` now exposes `SpriteBatchPlanDesc` and `SpriteBatchPlanOptions` so atlas-backed repeated sprite batch planning can remain order-preserving by default, fail closed on unsupported reorder requests, optionally reject untextured rows when an atlas-backed-only policy is requested, and report `atlas_backed_batch_count`, `repeated_atlas_batch_count`, and `repeated_atlas_sprite_count` without exposing native/RHI handles.
+- Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_renderer_tests` passed for the new sprite batching renderer tests.
+- Phase 1 surface/full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/validate.ps1` passed; `production-readiness-audit` reported `unsupported_gaps=0` and 65/65 CTest tests passed.

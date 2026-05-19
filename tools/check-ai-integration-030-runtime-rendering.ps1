@@ -1701,6 +1701,7 @@ $rhiFrameRendererSource = Get-AgentSurfaceText "engine/renderer/src/rhi_frame_re
 $rhiPostprocessSource = Get-AgentSurfaceText "engine/renderer/src/rhi_postprocess_frame_renderer.cpp"
 $rhiDirectionalShadowSource = Get-AgentSurfaceText "engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp"
 $rendererHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp"
+$spriteBatchHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/sprite_batch.hpp"
 $rhiViewportSurfaceSource = Get-AgentSurfaceText "engine/renderer/src/rhi_viewport_surface.cpp"
 Assert-ContainsText $frameGraphHeader "FrameGraphProductionOwnershipCapability" "Frame graph production ownership boundary public API"
 Assert-ContainsText $frameGraphHeader "vulkan_memory_aliasing" "Frame graph production ownership boundary public API"
@@ -1848,6 +1849,17 @@ Assert-ContainsText $rhiFrameRendererSource "execute_frame_graph_rhi_texture_sch
 Assert-ContainsText $rhiFrameRendererSource "primary_color" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "framegraph_passes_executed" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rendererHeaderText "framegraph_render_passes_recorded" "RendererStats render pass envelope evidence"
+foreach ($needle in @(
+    "SpriteBatchPlanDesc",
+    "SpriteBatchPlanOptions",
+    "atlas_backed_batch_count",
+    "repeated_atlas_batch_count",
+    "repeated_atlas_sprite_count",
+    "unsupported_reordering_policy",
+    "untextured_sprite_disallowed"
+)) {
+    Assert-ContainsText $spriteBatchHeaderText $needle "Sprite Batching Renderer v1 Phase 1 public API"
+}
 Assert-ContainsText $rhiFrameRendererSource "framegraph_render_passes_recorded += frame_graph_execution.render_passes_recorded" "RHI frame renderer render pass stats evidence"
 Assert-ContainsText $rhiFrameRendererSource "record_queued_mesh_command(draw.mesh, recorded_primary_stats)" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "FrameGraphRhiRenderPassDesc" "RHI frame renderer primary render pass envelope"
@@ -1971,6 +1983,10 @@ foreach ($postprocessDepthGuidance in @(
     Assert-ContainsText $postprocessDepthText "package-visible" $postprocessDepthGuidance
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Postprocess Depth Input Readback Foundation v0" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Sprite Batching Renderer v1 Phase 1" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "SpriteBatchPlanDesc" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "atlas_backed_batch_count" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "unsupported_reordering_policy" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "stable scene color/depth bindings 0/1 and 2/3" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "postprocess_depth_input_ready=1" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "--require-postprocess-depth-input" "runtime game guidance"

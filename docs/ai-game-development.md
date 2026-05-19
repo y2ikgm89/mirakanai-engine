@@ -272,6 +272,7 @@ The supported path is:
 - 2D scene validation through `mirakana::validate_playable_2d_scene`
 - SDL3 desktop execution through `mirakana::SdlDesktopGameHost`
 - renderer intent through public `mirakana::IRenderer`, `mirakana::submit_scene_render_packet`, `mirakana::submit_ui_renderer_submission`, and deterministic `NullRenderer` fallback
+- sprite batch preflight through `mirakana::plan_scene_sprite_batches` and `mirakana::SpriteBatchPlanDesc` so atlas-backed repeated runs can report deterministic batch counters while unsupported reordering and required-atlas mismatches fail closed before native/RHI-specific code
 - device-independent cooked audio playback through `mirakana::AudioMixer`
 - package files declared by `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`
 - package validation inputs declared by `game.agent.json.runtimeSceneValidationTargets`
