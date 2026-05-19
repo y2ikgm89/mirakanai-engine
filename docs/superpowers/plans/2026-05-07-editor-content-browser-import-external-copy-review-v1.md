@@ -105,7 +105,7 @@ Close the next narrow editor-productization gap:
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
@@ -142,3 +142,7 @@ Close the next narrow editor-productization gap:
 | `git diff --check` | PASS | Whitespace check passed after trimming the manifest EOF. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed, including agent/json/production audit, toolchain, tidy, build, and 29/29 default CTest tests. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Default `dev` build completed after validation. |
+
+
+
+

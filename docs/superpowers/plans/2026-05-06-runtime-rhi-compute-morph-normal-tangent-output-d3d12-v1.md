@@ -2,7 +2,7 @@
 
 **Plan ID:** `runtime-rhi-compute-morph-normal-tangent-output-d3d12-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -67,3 +67,5 @@ compute output buffers so tangent-frame morph data can be validated without movi
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (29/29 CTest tests passed; shader-toolchain Metal and Apple packaging entries remained diagnostic-only host gates on Windows).
+
+

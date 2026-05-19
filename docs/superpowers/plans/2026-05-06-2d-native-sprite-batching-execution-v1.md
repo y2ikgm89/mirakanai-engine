@@ -4,7 +4,7 @@
 
 **Plan ID:** `2d-native-sprite-batching-execution-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -108,3 +108,5 @@ This slice completes a narrow renderer-owned native RHI sprite batch execution p
 execution, public native/RHI handle exposure, broad production sprite batching readiness, or broad renderer quality.
 The next active slice is `2d-sprite-animation-package-v1`, which addresses the remaining generated 2D sprite animation
 package workflow gap.
+
+

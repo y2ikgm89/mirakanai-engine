@@ -90,7 +90,7 @@ Close a narrow 3D production gap:
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/gameengine-game-development/SKILL.md`
@@ -126,3 +126,7 @@ Close a narrow 3D production gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation completed with `validate: ok`; Windows host-gated Metal/Apple diagnostics were reported as diagnostic-only/host-gated. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Dev preset configure/build completed successfully. |
 | Slice-closing commit | Passed | Stage only this slice's implementation, docs, manifest, sample, generator, test, and guidance files; leave unrelated pre-existing dirty files unstaged. |
+
+
+
+

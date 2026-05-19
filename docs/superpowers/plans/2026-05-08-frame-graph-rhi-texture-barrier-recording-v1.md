@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Target unsupported gap: `frame-graph-v1`, currently `implemented-foundation-only`.
 - Existing v1 implementation emits `FrameGraphBarrier` rows and `FrameGraphExecutionStep` schedules, but renderer hosts still manually translate resource transitions.
 - This slice closes only the host-independent adapter between schedule rows and public RHI command-list recording.
@@ -65,7 +65,7 @@ MK_TEST("frame graph v1 maps texture barrier accesses to rhi resource states") {
                mirakana::rhi::ResourceState::copy_destination);
     MK_REQUIRE(mirakana::frame_graph_texture_state_for_access(mirakana::FrameGraphAccess::present) ==
                mirakana::rhi::ResourceState::present);
-    MK_REQUIRE(!mirakana::frame_graph_texture_state_for_access(mirakana::FrameGraphAccess::unknown).has_value());
+    MK_REQUIRE(!mirakana::frame_graph_texture_state_for_access(mirakana::FrameGraphAccess::unknown).());
 }
 
 MK_TEST("frame graph v1 records scheduled texture barriers through rhi command lists") {
@@ -83,7 +83,7 @@ MK_TEST("frame graph v1 records scheduled texture barriers through rhi command l
     });
 
     const auto plan = mirakana::compile_frame_graph_v1(desc);
-    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.());
     const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
@@ -102,10 +102,10 @@ MK_TEST("frame graph v1 records scheduled texture barriers through rhi command l
     }};
     const auto result = mirakana::record_frame_graph_texture_barriers(*commands, schedule, bindings);
 
-    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.());
     MK_REQUIRE(result.barriers_recorded == 1);
     MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::shader_read);
-    MK_REQUIRE(device.stats().resource_transitions == 2);
+    MK_REQUIRE(device.().resource_transitions == 2);
 }
 
 MK_TEST("frame graph v1 texture barrier recording diagnoses missing and stale bindings") {
@@ -124,8 +124,8 @@ MK_TEST("frame graph v1 texture barrier recording diagnoses missing and stale bi
 
     std::vector<mirakana::FrameGraphTextureBinding> no_bindings;
     const auto missing = mirakana::record_frame_graph_texture_barriers(*commands, schedule, no_bindings);
-    MK_REQUIRE(!missing.succeeded());
-    MK_REQUIRE(missing.diagnostics.size() == 1);
+    MK_REQUIRE(!missing.());
+    MK_REQUIRE(missing.diagnostics.() == 1);
     MK_REQUIRE(missing.diagnostics[0].resource == "scene-color");
 
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -139,8 +139,8 @@ MK_TEST("frame graph v1 texture barrier recording diagnoses missing and stale bi
         mirakana::rhi::ResourceState::undefined,
     }};
     const auto stale_result = mirakana::record_frame_graph_texture_barriers(*commands, schedule, stale);
-    MK_REQUIRE(!stale_result.succeeded());
-    MK_REQUIRE(stale_result.diagnostics.size() == 1);
+    MK_REQUIRE(!stale_result.());
+    MK_REQUIRE(stale_result.diagnostics.() == 1);
     MK_REQUIRE(stale_result.diagnostics[0].resource == "scene-color");
     MK_REQUIRE(stale[0].current_state == mirakana::rhi::ResourceState::undefined);
 }
@@ -179,7 +179,7 @@ struct FrameGraphTextureBinding {
 struct FrameGraphTextureBarrierRecordResult {
     std::size_t barriers_recorded{0};
     std::vector<FrameGraphDiagnostic> diagnostics;
-    [[nodiscard]] bool succeeded() const noexcept;
+    [[nodiscard]] bool () const noexcept;
 };
 
 [[nodiscard]] std::optional<rhi::ResourceState>
@@ -294,3 +294,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | PASS | 2026-05-08 |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | 2026-05-08 |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | 2026-05-08 |
+
+
+
+
+
+

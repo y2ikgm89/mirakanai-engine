@@ -12,7 +12,7 @@
 
 **Plan ID:** `generated-3d-native-ui-overlay-package-smoke-v1`
 **Status:** Completed.
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Context
 
@@ -239,7 +239,7 @@ This proves selected D3D12 generated 3D HUD box overlay output only; texture UI 
 - Modify: `.agents/skills/gameengine-game-development/SKILL.md`
 - Modify: `.claude/skills/gameengine-game-development/SKILL.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [ ] **Step 1: Enforce installed package fields**
 
@@ -337,3 +337,7 @@ Expected: PASS or record concrete host/tool blockers.
 - Spec coverage: covers generated 3D sample behavior, generated scaffold parity, package validation, manifest/docs/skills, static checks, and validation gates.
 - Placeholder scan: no placeholder tasks; all commands and expected fields are explicit.
 - Scope check: excludes texture UI atlas, font/text production, Metal, native handles, and broad generated 3D readiness; these require later child plans.
+
+
+
+

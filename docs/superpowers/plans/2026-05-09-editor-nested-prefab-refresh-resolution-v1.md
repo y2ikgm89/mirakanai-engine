@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-dynamic-game-module-driver-load-v1.md`.
 - Selected-root scene prefab refresh can preserve generic local child subtrees and stale source-node subtrees through explicit policies, but nested linked prefab instances are still treated as generic local/differently linked children.
@@ -49,7 +49,7 @@
   - Add sentinel checks for nested prefab refresh review.
 - Modify: `docs/superpowers/plans/README.md`
   - Track this plan as the active slice, then latest completed evidence at closeout.
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update current verdict and selected-gap evidence after validation.
 
 ## Done When
@@ -131,7 +131,7 @@ Expected before implementation: compile failure for the new policy flag, row kin
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Document nested prefab preservation as an explicit reviewed refresh policy.
 - [x] Keep unsupported claims explicit: no automatic nested refresh, fuzzy matching, automatic merge/rebase, package/validation execution, renderer/RHI uploads, native handles, or package streaming.
@@ -165,3 +165,7 @@ Expected before implementation: compile failure for the new policy flag, row kin
 ## Status
 
 Completed.
+
+
+
+

@@ -1,7 +1,7 @@
 # GPU スキニングのアップロードと描画 v1 (2026-05-04)
 
 **計画 ID:** `gpu-skinning-upload-and-rendering-v1`
-**親:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6
+**親:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6
 **ステータス:** **完了**（2026-05-04）。D3D12 の可視証跡は `RhiFrameRenderer` offscreen readback と `sample_desktop_runtime_game --require-gpu-skinning` package smoke に限定。Vulkan/Metal の GPU skinning 可視証跡や広い skeletal animation production は未主張。
 **前提:** [2026-05-04-gltf-animation-skin-import-v1.md](2026-05-04-gltf-animation-skin-import-v1.md) で `MK_animation` 向けの glTF スキン／アニメ取り込み API（メモリ上の `AnimationSkeletonDesc` / `AnimationSkinPayloadDesc` / `AnimationJointTrackDesc`）が利用可能であること。
 
@@ -56,3 +56,5 @@
 | 2026-05-04 | 起票: `gltf-animation-skin-import-v1` 完了に伴い `currentActivePlan` を本スライスへ移行。 |
 | 2026-05-04 | 実装: joint/shadow descriptor 順序、`shadow_receiver_skinned` PS バリアント、`runtime_scene_rhi` joint 先頭マージ、`MK_runtime_scene_rhi_tests` 追加。`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` / `api-boundary-check` / `shader-toolchain-check` / `ctest -C Debug -R MK_runtime_scene_rhi_tests` をホストで実行し証跡表を更新。 |
 | 2026-05-04 | 完了: D3D12 offscreen readback テストと `sample_desktop_runtime_game --require-gpu-skinning` package smoke を確認。`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1` PASS（29/29）、`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` PASS、`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1` PASS（16/16）、`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS。 |
+
+

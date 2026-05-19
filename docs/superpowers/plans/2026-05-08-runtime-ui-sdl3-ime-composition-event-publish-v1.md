@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Target unsupported gap: `production-ui-importer-platform-adapters`, currently `planned`.
 - Runtime UI IME Composition Publish Plan v1 already provides host-independent `ImeCompositionPublishPlan`, `ImeCompositionPublishResult`, `plan_ime_composition_update`, and `publish_ime_composition`.
 - Runtime UI SDL3 Text Input Event Translation v1 already copies `SDL_EVENT_TEXT_EDITING` text and range metadata into `SdlWindowEvent`.
@@ -42,7 +42,7 @@
 - Modify after green: `docs/current-capabilities.md`
 - Modify after green: `docs/roadmap.md`
 - Modify after green: `docs/ui.md`
-- Modify after green: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify after green: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify after green: `engine/agent/manifest.json`
 
 ## Tasks
@@ -53,7 +53,7 @@
 - [x] Add a test proving `sdl3_ime_composition_from_window_event` converts an `SDL_EVENT_TEXT_EDITING` row with UTF-8 text and `start=1` into `ImeComposition::cursor_index == 3`.
 - [x] Add a test proving `publish_sdl3_ime_composition_event` dispatches a valid text editing row through `mirakana::ui::publish_ime_composition`.
 - [x] Add a test proving non-editing rows are ignored without adapter dispatch.
-- [x] Add a test proving unset negative cursor rows clamp to `0` and oversized cursor rows clamp to `composition_text.size()`.
+- [x] Add a test proving unset negative cursor rows clamp to `0` and oversized cursor rows clamp to `composition_text.()`.
 - [x] Run `cmake --build --preset desktop-runtime --target mirakana_sdl3_platform_tests` and confirm failure because the new bridge functions do not exist yet.
 
 ### Task 2: Minimal SDL3 IME composition bridge
@@ -97,3 +97,9 @@
 - The bridge converts SDL UTF-8 character cursor positions into byte offsets before UI validation. Negative cursor rows clamp to `0`; oversized cursor rows clamp to the copied composition byte length.
 - Non-`text_editing` rows are ignored without diagnostics or adapter dispatch. Invalid UI targets are rejected by the existing `mirakana_ui` publication helper.
 - This slice intentionally does not implement committed text insertion, text model mutation, candidate UI, native IME parity, virtual keyboard policy, accessibility bridge publication, cross-platform text services, production shaping, font rasterization, renderer texture upload, or third-party adapters.
+
+
+
+
+
+

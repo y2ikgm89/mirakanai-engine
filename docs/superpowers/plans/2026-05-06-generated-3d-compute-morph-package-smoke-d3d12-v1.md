@@ -2,7 +2,7 @@
 
 **Plan ID:** `generated-3d-compute-morph-package-smoke-d3d12-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -77,3 +77,5 @@ computed into a POSITION output buffer and rendered through the existing package
   scoped tidy lane above proves the tidy setup is functional for this slice.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (29/29 CTest tests passed; shader-toolchain Metal and Apple packaging entries remained
   diagnostic-only host gates on Windows).
+
+

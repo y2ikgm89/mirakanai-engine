@@ -14,7 +14,7 @@
 
 **Status:** Completed.
 
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 **Gap:** `runtime-resource-v2`
 
@@ -72,3 +72,5 @@
 ## Next Candidate After Validation
 
 - Continue the Phase 1 foundation order with `renderer-rhi-resource-foundation`.
+
+

@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-scene-nested-prefab-propagation-fail-closed-edge-coverage-v1`  
 **Status:** Completed  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Gap:** `editor-productization`
 
 ## Goal
@@ -40,3 +40,5 @@ Prove that reviewed nested prefab propagation batch apply fails closed when nest
 
 - Completed follow-up: `editor-scene-nested-prefab-propagation-two-level-batch-v1`.
 - Next selection returns to `recommendedNextPlan.id=next-production-gap-selection`.
+
+

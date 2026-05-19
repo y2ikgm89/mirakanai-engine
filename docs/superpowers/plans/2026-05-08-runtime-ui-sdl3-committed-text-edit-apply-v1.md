@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Target unsupported gap: `production-ui-importer-platform-adapters`, currently `planned`.
 - Runtime UI SDL3 Text Input Event Translation v1 already copies `SDL_EVENT_TEXT_INPUT` text into first-party `SdlWindowEvent::text`.
 - Runtime UI SDL3 IME Composition Event Publish v1 publishes copied `SDL_EVENT_TEXT_EDITING` rows through `IImeAdapter`.
@@ -46,7 +46,7 @@
 - Modify after green: `docs/current-capabilities.md`
 - Modify after green: `docs/roadmap.md`
 - Modify after green: `docs/ui.md`
-- Modify after green: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify after green: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify after green: `engine/agent/manifest.json`
 
 ## Tasks
@@ -111,3 +111,7 @@
 - Added strict UTF-8 committed text validation plus byte-offset cursor and selection boundary validation before mutation.
 - Added SDL3 bridge helpers `sdl3_committed_text_from_window_event` and `apply_sdl3_committed_text_event` over copied `SdlWindowEventKind::text_input` rows.
 - Updated current-truth docs, the master plan ledger, and `engine/agent/manifest.json` while keeping full text editing widget behavior, deletion/backspace/navigation key handling, selection UI, candidate UI, virtual keyboard policy, OS accessibility bridge publication, production shaping/font/rasterization/upload, and cross-platform native IME parity unsupported.
+
+
+
+

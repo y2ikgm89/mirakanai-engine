@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-game-module-driver-mk-editor-visible-dll-mutation-order-guidance-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md](2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md)
 
 ## Goal
@@ -29,3 +29,5 @@ Expose **`EditorGameModuleDriverHostSessionSnapshot::policy_dll_mutation_order_g
 ## Validation evidence
 
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` — exit code 0 (includes `check-ai-integration.ps1`, `build.ps1`, `ctest --preset dev`; 47/47 tests passed including `MK_editor_core_tests` and `MK_editor_game_module_driver_load_tests`).
+
+

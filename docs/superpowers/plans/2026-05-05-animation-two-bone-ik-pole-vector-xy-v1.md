@@ -2,7 +2,7 @@
 
 **Plan ID:** `animation-two-bone-ik-pole-vector-xy-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -71,3 +71,5 @@ choose the elbow side from an authored guide vector instead of exposing the solv
   including `mirakana/math/vec.hpp`.
 - Full repository validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. It included `tidy-check: ok (1 files)`, full build, and CTest
   `29/29` passing; Metal and Apple packaging remained diagnostic-only host blockers on this Windows host.
+
+

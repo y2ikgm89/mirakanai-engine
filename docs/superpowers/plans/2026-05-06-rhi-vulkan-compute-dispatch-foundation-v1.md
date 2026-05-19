@@ -4,7 +4,7 @@
 
 **Plan ID:** `rhi-vulkan-compute-dispatch-foundation-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -125,3 +125,5 @@ tests.
   `cmd /c "set PATH=& cmake --build --preset dev"`, `cmd /c "set PATH=& ctest --preset dev --output-on-failure"`,
   and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1` reported Vulkan SPIR-V readiness and Metal toolchain
   blockers as diagnostic-only on this Windows host.
+
+

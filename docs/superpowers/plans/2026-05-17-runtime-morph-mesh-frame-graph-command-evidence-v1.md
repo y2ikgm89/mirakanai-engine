@@ -1,7 +1,7 @@
 # Runtime Morph Mesh Frame Graph Command Evidence v1 (2026-05-17)
 
 **Status:** Completed
-**Parent:** [Production Completion Master Plan v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Gap:** `frame-graph-v1`
 
 ## Goal
@@ -68,3 +68,5 @@ Move byte-backed `upload_runtime_morph_mesh_cpu` POSITION, optional NORMAL, opti
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files 'tests/unit/runtime_rhi_tests.cpp'` | PASS | Focused tidy for the post-review test changes passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | Agent-facing docs/current capability wording remains consistent with the narrow morph upload command-evidence scope. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Fresh post-review full slice gate passed in the linked worktree; diagnostic-only host gates remain Metal/Apple host evidence on this Windows host. |
+
+

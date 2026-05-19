@@ -90,7 +90,7 @@ Expected: focused tests pass.
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.fragments/004-modules.json`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `engine/agent/manifest.json` via compose only
@@ -128,3 +128,7 @@ Expected: focused tests pass.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`; CTest reported 65/65 tests passed. Metal/Apple diagnostics remain host-gated as expected on this Windows host.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`.
+
+
+
+

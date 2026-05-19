@@ -3,7 +3,7 @@
 **Plan ID:** `editor-scene-prefab-source-node-variant-alignment-v1`  
 **Date:** 2026-05-11  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md](2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md)  
 
 ## Goal
@@ -36,3 +36,5 @@ Extend **scene prefab instance refresh** review tooling so **preserve**, **add**
 | --- | --- | --- |
 | Unit tests | `ctest --preset dev --output-on-failure -R MK_editor_core_tests` | Record exit code |
 | Repository validate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Record exit code |
+
+

@@ -12,7 +12,7 @@
 
 **Plan ID:** `editor-prefab-variant-base-refresh-merge-review-v1`  
 **Status:** Completed.  
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Gap:** `editor-productization` focused child slice.  
 **Previous Slice:** [2026-05-09-physics-1-0-collision-system-closeout-v1.md](2026-05-09-physics-1-0-collision-system-closeout-v1.md)
 
@@ -65,7 +65,7 @@
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `.agents/skills/editor-change/SKILL.md`
 - Modify: `.claude/skills/gameengine-editor/SKILL.md`
 - Modify: `engine/agent/manifest.json`
@@ -103,3 +103,7 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | `json-contract-check: ok`. |
 | `git diff --check -- ...` | PASS | Targeted touched-file whitespace check exited 0; Git reported only line-ending normalization warnings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; production-readiness audit reports 11 remaining unsupported gaps with `editor-productization` still `partly-ready`; full CTest passed 29/29, 0 failures. |
+
+
+
+

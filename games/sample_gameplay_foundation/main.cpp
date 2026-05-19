@@ -9,11 +9,13 @@
 #include "mirakana/core/application.hpp"
 #include "mirakana/core/log.hpp"
 #include "mirakana/core/registry.hpp"
+#include "mirakana/navigation/local_avoidance.hpp"
 #include "mirakana/navigation/navigation_agent.hpp"
 #include "mirakana/navigation/navigation_grid.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
 #include "mirakana/physics/physics3d.hpp"
 
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <span>
@@ -38,13 +40,159 @@ constexpr const char* k_target_distance_key{"composition.target_distance"};
 constexpr const char* k_visible_targets_key{"composition.visible_targets"};
 constexpr const char* k_audible_targets_key{"composition.audible_targets"};
 constexpr const char* k_target_state_key{"composition.target_state"};
+enum class GameplayRuntimeStep {
+    physics_apply_force,
+    physics_step,
+    physics_resolve_contacts,
+    animation_update,
+    navigation_replan,
+    navigation_ai_update,
+    count,
+};
+
+constexpr std::size_t k_gameplay_runtime_step_count{static_cast<std::size_t>(GameplayRuntimeStep::count)};
+
+[[nodiscard]] constexpr std::string_view gameplay_runtime_step_name(GameplayRuntimeStep step) noexcept {
+    switch (step) {
+    case GameplayRuntimeStep::physics_apply_force:
+        return "physics.apply_force";
+    case GameplayRuntimeStep::physics_step:
+        return "physics.step";
+    case GameplayRuntimeStep::physics_resolve_contacts:
+        return "physics.resolve_contacts";
+    case GameplayRuntimeStep::animation_update:
+        return "animation.update";
+    case GameplayRuntimeStep::navigation_replan:
+        return "navigation.replan";
+    case GameplayRuntimeStep::navigation_ai_update:
+        return "navigation_and_ai.update";
+    case GameplayRuntimeStep::count:
+        return "unknown";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view
+navigation_grid_replan_status_name(mirakana::NavigationGridReplanStatus status) noexcept {
+    switch (status) {
+    case mirakana::NavigationGridReplanStatus::reused_existing_path:
+        return "reused_existing_path";
+    case mirakana::NavigationGridReplanStatus::replanned:
+        return "replanned";
+    case mirakana::NavigationGridReplanStatus::unsupported_adjacency:
+        return "unsupported_adjacency";
+    case mirakana::NavigationGridReplanStatus::invalid_endpoint:
+        return "invalid_endpoint";
+    case mirakana::NavigationGridReplanStatus::blocked_endpoint:
+        return "blocked_endpoint";
+    case mirakana::NavigationGridReplanStatus::no_path:
+        return "no_path";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view
+navigation_local_avoidance_status_name(mirakana::NavigationLocalAvoidanceStatus status) noexcept {
+    switch (status) {
+    case mirakana::NavigationLocalAvoidanceStatus::success:
+        return "success";
+    case mirakana::NavigationLocalAvoidanceStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view
+navigation_local_avoidance_diagnostic_name(mirakana::NavigationLocalAvoidanceDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::NavigationLocalAvoidanceDiagnostic::none:
+        return "none";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_agent_id:
+        return "invalid_agent_id";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_position:
+        return "invalid_position";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_desired_velocity:
+        return "invalid_desired_velocity";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_radius:
+        return "invalid_radius";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_max_speed:
+        return "invalid_max_speed";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_neighbor_id:
+        return "invalid_neighbor_id";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_neighbor_position:
+        return "invalid_neighbor_position";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_neighbor_velocity:
+        return "invalid_neighbor_velocity";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_neighbor_radius:
+        return "invalid_neighbor_radius";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::duplicate_neighbor_id:
+        return "duplicate_neighbor_id";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_separation_weight:
+        return "invalid_separation_weight";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_prediction_time_seconds:
+        return "invalid_prediction_time_seconds";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::invalid_epsilon:
+        return "invalid_epsilon";
+    case mirakana::NavigationLocalAvoidanceDiagnostic::calculation_overflow:
+        return "calculation_overflow";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr mirakana::NavigationGridPointMapping navigation_mapping() noexcept {
+    return mirakana::NavigationGridPointMapping{
+        .origin = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+        .cell_size = 1.0F,
+        .use_cell_centers = true,
+    };
+}
+
+[[nodiscard]] constexpr std::size_t expected_navigation_goal_count() noexcept {
+    return 2U;
+}
+
+[[nodiscard]] mirakana::NavigationGrid make_navigation_grid() {
+    mirakana::NavigationGrid grid(mirakana::NavigationGridSize{.width = 4, .height = 4});
+    grid.set_walkable(mirakana::NavigationGridCoord{.x = 1, .y = 1}, false);
+    return grid;
+}
+
+[[nodiscard]] std::vector<mirakana::NavigationGridCoord>
+to_navigation_grid_path(std::span<const mirakana::NavigationPoint2> path) {
+    std::vector<mirakana::NavigationGridCoord> grid_path;
+    grid_path.reserve(path.size());
+    for (const auto point : path) {
+        grid_path.push_back(to_navigation_grid_coord(point));
+    }
+    return grid_path;
+}
+
+[[nodiscard]] mirakana::NavigationGridCoord to_navigation_grid_coord(mirakana::NavigationPoint2 point) noexcept {
+    const auto mapping = navigation_mapping();
+    const float inverse_offset = mapping.use_cell_centers ? 0.5F : 0.0F;
+    return mirakana::NavigationGridCoord{
+        .x = static_cast<int>(std::lround((point.x - mapping.origin.x) / mapping.cell_size - inverse_offset)),
+        .y = static_cast<int>(std::lround((point.y - mapping.origin.y) / mapping.cell_size - inverse_offset)),
+    };
+}
+
+[[nodiscard]] mirakana::NavigationPoint2 to_navigation_grid_cell_center(mirakana::NavigationGridCoord coord) noexcept {
+    const auto mapping = navigation_mapping();
+    return mirakana::NavigationPoint2{
+        .x = mapping.origin.x +
+             (static_cast<float>(coord.x) + (mapping.use_cell_centers ? 0.5F : 0.0F)) * mapping.cell_size,
+        .y = mapping.origin.y +
+             (static_cast<float>(coord.y) + (mapping.use_cell_centers ? 0.5F : 0.0F)) * mapping.cell_size,
+    };
+}
 
 struct ActorTag {};
 
 class SampleGameplayFoundationGame final : public mirakana::GameApp {
   public:
     SampleGameplayFoundationGame()
-        : physics_(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}}),
+        : navigation_grid_(make_navigation_grid()),
+          physics_(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}}),
           animation_(mirakana::AnimationStateMachineDesc{
               .states =
                   {
@@ -96,11 +244,53 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
     }
 
     bool on_update(mirakana::EngineContext& /*context*/, double /*delta_seconds*/) override {
+        std::array<GameplayRuntimeStep, k_gameplay_runtime_step_count> step_trace{};
+        std::size_t step_count{0U};
+
+        const auto record_step = [&](const GameplayRuntimeStep step) {
+            if (step_count < step_trace.size()) {
+                step_trace[step_count] = step;
+                ++step_count;
+            }
+        };
+
+        record_step(GameplayRuntimeStep::physics_apply_force);
         physics_.apply_force(actor_body_, mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F});
+        record_step(GameplayRuntimeStep::physics_step);
         physics_.step(0.25F);
+        record_step(GameplayRuntimeStep::physics_resolve_contacts);
         physics_.resolve_contacts();
+        record_step(GameplayRuntimeStep::animation_update);
+        animation_.update(0.25F);
+        record_step(GameplayRuntimeStep::navigation_replan);
+        update_navigation_replan_layer();
+        record_step(GameplayRuntimeStep::navigation_ai_update);
         animation_.update(0.25F);
         update_ai_navigation_composition();
+
+        static constexpr std::array expected_steps{
+            GameplayRuntimeStep::physics_apply_force,      GameplayRuntimeStep::physics_step,
+            GameplayRuntimeStep::physics_resolve_contacts, GameplayRuntimeStep::animation_update,
+            GameplayRuntimeStep::navigation_replan,        GameplayRuntimeStep::navigation_ai_update,
+        };
+        bool step_order_ok{true};
+        if (step_count != expected_steps.size()) {
+            step_order_ok = false;
+        } else {
+            for (std::size_t i = 0U; i < expected_steps.size(); ++i) {
+                if (step_trace[i] != expected_steps[i]) {
+                    step_order_ok = false;
+                    break;
+                }
+            }
+        }
+        if (!step_order_ok) {
+            ++tick_order_violations_;
+        }
+
+        last_tick_step_count_ = step_count;
+        last_tick_steps_ = step_trace;
+
         ++frames_;
         return frames_ < 4;
     }
@@ -169,6 +359,69 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         return audio_stream_sample_count_;
     }
 
+    [[nodiscard]] bool gameplay_tick_order_stable() const noexcept {
+        return tick_order_violations_ == 0U;
+    }
+
+    [[nodiscard]] std::size_t gameplay_tick_order_violations() const noexcept {
+        return tick_order_violations_;
+    }
+
+    [[nodiscard]] std::size_t last_tick_step_count() const noexcept {
+        return last_tick_step_count_;
+    }
+
+    [[nodiscard]] std::size_t navigation_replan_attempt_count() const noexcept {
+        return navigation_replan_attempt_count_;
+    }
+
+    [[nodiscard]] std::size_t navigation_replan_replanned_count() const noexcept {
+        return navigation_replan_replanned_count_;
+    }
+
+    [[nodiscard]] std::size_t local_avoidance_applied_neighbor_count() const noexcept {
+        return local_avoidance_applied_neighbor_count_;
+    }
+
+    [[nodiscard]] std::size_t navigation_dynamic_obstacle_count() const noexcept {
+        return navigation_dynamic_obstacle_count_;
+    }
+
+    [[nodiscard]] std::uint32_t navigation_replan_last_total_cost() const noexcept {
+        return navigation_replan_last_total_cost_;
+    }
+
+    [[nodiscard]] std::size_t local_avoidance_step_count() const noexcept {
+        return local_avoidance_step_count_;
+    }
+
+    [[nodiscard]] std::size_t navigation_replan_last_path_point_count() const noexcept {
+        return navigation_replan_last_path_point_count_;
+    }
+
+    [[nodiscard]] mirakana::NavigationGridReplanStatus navigation_replan_last_status() const noexcept {
+        return navigation_replan_last_status_;
+    }
+
+    [[nodiscard]] mirakana::NavigationLocalAvoidanceStatus local_avoidance_last_status() const noexcept {
+        return local_avoidance_last_status_;
+    }
+
+    [[nodiscard]] mirakana::NavigationLocalAvoidanceDiagnostic local_avoidance_last_diagnostic() const noexcept {
+        return local_avoidance_last_diagnostic_;
+    }
+
+    [[nodiscard]] std::string gameplay_tick_order_trace() const {
+        std::string trace;
+        for (std::size_t i = 0U; i < last_tick_step_count_; ++i) {
+            if (i != 0U) {
+                trace += " > ";
+            }
+            trace += gameplay_runtime_step_name(last_tick_steps_[i]);
+        }
+        return trace;
+    }
+
   private:
     void build_authored_collision_probe() {
         mirakana::PhysicsAuthoredCollisionScene3DDesc scene;
@@ -213,27 +466,79 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
     }
 
     void build_navigation_agent() {
-        mirakana::NavigationGrid grid(mirakana::NavigationGridSize{.width = 4, .height = 4});
-        grid.set_walkable(mirakana::NavigationGridCoord{.x = 1, .y = 0}, false);
-        grid.set_walkable(mirakana::NavigationGridCoord{.x = 1, .y = 1}, false);
-        grid.set_walkable(mirakana::NavigationGridCoord{.x = 1, .y = 2}, false);
-
-        const auto plan =
-            mirakana::plan_navigation_grid_agent_path(grid, mirakana::NavigationGridAgentPathRequest{
-                                                                .start = mirakana::NavigationGridCoord{.x = 0, .y = 0},
-                                                                .goal = mirakana::NavigationGridCoord{.x = 3, .y = 3},
-                                                                .mapping =
-                                                                    mirakana::NavigationGridPointMapping{
-                                                                        .origin = mirakana::NavigationPoint2{},
-                                                                        .cell_size = 1.0F,
-                                                                        .use_cell_centers = true,
-                                                                    },
-                                                                .adjacency = mirakana::NavigationAdjacency::cardinal4,
-                                                                .smooth_path = true,
-                                                            });
+        const auto plan = mirakana::plan_navigation_grid_agent_path(
+            navigation_grid_, mirakana::NavigationGridAgentPathRequest{
+                                  .start = mirakana::NavigationGridCoord{.x = 0, .y = 0},
+                                  .goal = mirakana::NavigationGridCoord{.x = 3, .y = 3},
+                                  .mapping =
+                                      mirakana::NavigationGridPointMapping{
+                                          .origin = mirakana::NavigationPoint2{},
+                                          .cell_size = 1.0F,
+                                          .use_cell_centers = true,
+                                      },
+                                  .adjacency = mirakana::NavigationAdjacency::cardinal4,
+                                  .smooth_path = true,
+                              });
         navigation_plan_status_ = plan.status;
         navigation_path_point_count_ = plan.planned_grid_point_count;
         navigation_agent_ = plan.agent_state;
+    }
+
+    void seed_navigation_dynamic_obstacle() {
+        if (navigation_dynamic_obstacle_injected_) {
+            return;
+        }
+
+        constexpr mirakana::NavigationGridCoord obstacle_coord{.x = 2, .y = 0};
+        if (!navigation_grid_.in_bounds(obstacle_coord) || !navigation_grid_.cell(obstacle_coord).walkable) {
+            return;
+        }
+
+        navigation_grid_.set_walkable(obstacle_coord, false);
+        navigation_dynamic_obstacle_injected_ = true;
+        ++navigation_dynamic_obstacle_count_;
+    }
+
+    void update_navigation_replan_layer() {
+        if (navigation_plan_status_ != mirakana::NavigationGridAgentPathStatus::ready ||
+            navigation_agent_.path.empty()) {
+            ++navigation_replan_attempt_count_;
+            navigation_replan_last_status_ = mirakana::NavigationGridReplanStatus::invalid_endpoint;
+            return;
+        }
+
+        seed_navigation_dynamic_obstacle();
+
+        const auto current_coord = to_navigation_grid_coord(navigation_agent_.position);
+        const auto goal_coord = to_navigation_grid_coord(navigation_agent_.path.back());
+        const auto remaining_grid_path =
+            to_navigation_grid_path(std::span<const mirakana::NavigationPoint2>{navigation_agent_.path});
+        const auto replan = mirakana::replan_navigation_grid_path(
+            navigation_grid_, mirakana::NavigationGridReplanRequest{
+                                  .current = current_coord,
+                                  .goal = goal_coord,
+                                  .remaining_path = std::span<const mirakana::NavigationGridCoord>{remaining_grid_path},
+                              });
+
+        ++navigation_replan_attempt_count_;
+        navigation_replan_last_status_ = replan.status;
+        navigation_replan_last_total_cost_ = replan.total_cost;
+        navigation_replan_last_path_point_count_ = replan.path.size();
+
+        if (replan.status == mirakana::NavigationGridReplanStatus::reused_existing_path) {
+            ++navigation_replan_reused_count_;
+            return;
+        }
+        if (replan.status == mirakana::NavigationGridReplanStatus::replanned) {
+            const auto replanned_path_points = mirakana::build_navigation_point_path(
+                std::span<const mirakana::NavigationGridCoord>{replan.path}, navigation_mapping());
+            navigation_agent_ = mirakana::replace_navigation_agent_path(navigation_agent_, replanned_path_points);
+            ++navigation_replan_replanned_count_;
+            return;
+        }
+        if (replan.status == mirakana::NavigationGridReplanStatus::no_path) {
+            navigation_agent_ = mirakana::cancel_navigation_agent_move(navigation_agent_);
+        }
     }
 
     void render_audio_stream_probe() {
@@ -396,6 +701,9 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
     std::size_t last_perception_target_count_{0U};
     std::uint32_t audio_stream_frames_{0U};
     std::size_t audio_stream_sample_count_{0U};
+    std::size_t tick_order_violations_{0U};
+    std::size_t last_tick_step_count_{0U};
+    std::array<GameplayRuntimeStep, k_gameplay_runtime_step_count> last_tick_steps_{};
     int frames_{0};
 };
 
@@ -420,7 +728,10 @@ int main() {
               << " controller_grounded=" << game.controller_grounded()
               << " nav_points=" << game.navigation_path_point_count()
               << " behavior_nodes=" << behavior.visited_nodes.size() << " audio_frames=" << game.audio_stream_frames()
-              << '\n';
+              << " gameplay_tick_steps=" << game.last_tick_step_count()
+              << " gameplay_tick_order_ok=" << (game.gameplay_tick_order_stable() ? 1 : 0)
+              << " gameplay_tick_order_violations=" << game.gameplay_tick_order_violations()
+              << " gameplay_tick_order_trace=" << game.gameplay_tick_order_trace() << '\n';
 
     return result.status == mirakana::RunStatus::stopped_by_app && result.frames_run == 4 && game.frames() == 4 &&
                    game.initialized() && registry.living_count() == 0 && std::abs(position.x - 1.25F) < 0.0001F &&
@@ -430,7 +741,7 @@ int main() {
                    navigation.status == mirakana::NavigationAgentStatus::reached_destination &&
                    behavior.status == mirakana::BehaviorTreeStatus::success && behavior.visited_nodes.size() == 4U &&
                    game.perception_target_count() == 1U && game.audio_stream_frames() == 2U &&
-                   game.audio_stream_sample_count() == 2U
+                   game.audio_stream_sample_count() == 2U && game.gameplay_tick_order_stable()
                ? 0
                : 1;
 }

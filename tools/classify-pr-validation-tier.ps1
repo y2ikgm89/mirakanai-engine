@@ -25,8 +25,7 @@ function Test-CiWorkflowPath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
     return (
-        $Path -match "^\.github/workflows/" -or
-        $Path -eq "tools/classify-pr-validation-tier.ps1"
+        $Path -match "^\.github/workflows/"
     )
 }
 
@@ -39,7 +38,50 @@ function Test-RuntimeOrBuildPath {
         $Path -eq "CMakePresets.json" -or
         $Path -match "^(cmake|engine|editor|games|platform|runtime|shaders|examples|tests)/" -or
         $Path -eq "vcpkg.json" -or
-        $Path -match "^tools/(validate|build|test|bootstrap-deps|check-toolchain|check-tidy|check-format|check-text-format|check-text-format-contract|format|format-text|text-format-core|check-coverage|check-dependency-policy|check-cpp-standard-policy|evaluate-cpp23|package|package-desktop-runtime|check-public-api-boundaries|check-shader-toolchain|run-validation-recipe|common)\.ps1$"
+        $Path -match "^tools/(validate|build|test|bootstrap-deps|check-toolchain|check-tidy|check-format|check-text-format|check-text-format-contract|format|format-text|text-format-core|check-dependency-policy|package|package-desktop-runtime|check-public-api-boundaries|check-shader-toolchain|run-validation-recipe|common)\.ps1$"
+    )
+}
+
+function Test-SourceCodePath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -match "^(engine|editor|platform|runtime|shaders|examples|tests|games)/" -and
+        $Path -match "\.(c|cc|cpp|cxx|c|h|hpp|hxx|ixx|ipp|inl|txx)$"
+    )
+}
+
+function Test-SanitizerRelevantPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -match "^(engine|tests)/" -and
+        $Path -match "\.(c|cc|cpp|cxx|c|h|hpp|hxx|ixx|ipp|inl|txx)$"
+    )
+}
+
+function Test-CoverageRelevantPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "tools/check-coverage.ps1" -or
+        $Path -eq "tools/coverage-thresholds.json" -or
+        $Path -eq "CMakePresets.json" -or
+        ($Path -match "^(tests)/" -and
+            $Path -match "\.(c|cc|cpp|cxx|c|h|hpp|hxx|ixx|ipp|inl|txx)$")
+    )
+}
+
+function Test-Cpp23RelevantPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "CMakePresets.json" -or
+        $Path -eq "tools/evaluate-cpp23.ps1" -or
+        $Path -eq "tools/check-ci-matrix.ps1" -or
+        $Path -eq "tools/classify-pr-validation-tier.ps1" -or
+        $Path -eq "tools/check-cpp-standard-policy.ps1" -or
+        $Path -match "^tools/check-cpp-standard-(policy|flags)\.ps1$"
     )
 }
 
@@ -64,14 +106,20 @@ function New-ValidationTierSelection {
             windows = $true
             linux = $true
             linux_sanitizers = $true
+            linux_coverage = $true
             static_analysis = $true
             macos = $true
+            windows_cpp23 = $true
         }
     }
 
     $ciOrWorkflow = $false
     $runtimeOrBuild = $false
     $staticPolicy = $false
+    $sourceCode = $false
+    $sanitizerRelevant = $false
+    $coverageRelevant = $false
+    $cpp23Relevant = $false
 
     $expandedInputPath = foreach ($rawPath in $InputPath) {
         if ($rawPath.Contains(",")) {
@@ -90,6 +138,18 @@ function New-ValidationTierSelection {
         if (Test-RuntimeOrBuildPath -Path $path) {
             $runtimeOrBuild = $true
         }
+        if (Test-SourceCodePath -Path $path) {
+            $sourceCode = $true
+        }
+        if (Test-SanitizerRelevantPath -Path $path) {
+            $sanitizerRelevant = $true
+        }
+        if (Test-CoverageRelevantPath -Path $path) {
+            $coverageRelevant = $true
+        }
+        if (Test-Cpp23RelevantPath -Path $path) {
+            $cpp23Relevant = $true
+        }
         if (Test-StaticPolicyPath -Path $path) {
             $staticPolicy = $true
         }
@@ -100,9 +160,11 @@ function New-ValidationTierSelection {
     return [pscustomobject][ordered]@{
         windows = $heavyBuildLane
         linux = $heavyBuildLane
-        linux_sanitizers = $heavyBuildLane
-        static_analysis = ($heavyBuildLane -or $staticPolicy)
+        linux_sanitizers = $sanitizerRelevant
+        linux_coverage = $coverageRelevant
+        static_analysis = ($heavyBuildLane -or $staticPolicy -or $sourceCode)
         macos = $heavyBuildLane
+        windows_cpp23 = ($ciOrWorkflow -or $cpp23Relevant)
     }
 }
 
@@ -116,8 +178,10 @@ function Write-GitHubActionsOutput {
         "windows=$($Selection.windows.ToString().ToLowerInvariant())",
         "linux=$($Selection.linux.ToString().ToLowerInvariant())",
         "linux_sanitizers=$($Selection.linux_sanitizers.ToString().ToLowerInvariant())",
+        "linux_coverage=$($Selection.linux_coverage.ToString().ToLowerInvariant())",
         "static_analysis=$($Selection.static_analysis.ToString().ToLowerInvariant())",
-        "macos=$($Selection.macos.ToString().ToLowerInvariant())"
+        "macos=$($Selection.macos.ToString().ToLowerInvariant())",
+        "windows_cpp23=$($Selection.windows_cpp23.ToString().ToLowerInvariant())"
     )
 
     Add-Content -LiteralPath $OutputPath -Value $lines -Encoding utf8

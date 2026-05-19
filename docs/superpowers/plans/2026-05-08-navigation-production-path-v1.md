@@ -14,7 +14,7 @@
 
 ## Context
 
-- Master plan row: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md` lists `navigation-production-path-v1` under runtime-system minimums.
+- Master plan row: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` lists `navigation-production-path-v1` under runtime-system minimums.
 - `mirakana_navigation` already has deterministic cardinal grid pathfinding, path validation/replan, conservative line-of-sight smoothing, grid-to-point path mapping, path following, arrive steering, local avoidance, and value-type navigation agent movement.
 - `sample_ai_navigation` currently composes those APIs manually; the production path slice should give generated games a smaller reviewed surface for the common "grid coord to moving agent" route setup.
 
@@ -48,7 +48,7 @@
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
@@ -101,3 +101,7 @@
 ## Status
 
 **Status:** Complete.
+
+
+
+

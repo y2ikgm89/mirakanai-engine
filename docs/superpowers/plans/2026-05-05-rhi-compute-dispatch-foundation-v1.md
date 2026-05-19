@@ -2,7 +2,7 @@
 
 **Plan ID:** `rhi-compute-dispatch-foundation-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -60,3 +60,5 @@ on first-party RHI contracts instead of special-casing native D3D12 handles.
 - GREEN after shared C++ implementation changes: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1` passed.
 - GREEN after AI guidance/static check sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
 - GREEN final repository gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including build plus 29/29 CTest tests.
+
+

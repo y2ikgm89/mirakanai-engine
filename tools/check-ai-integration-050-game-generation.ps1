@@ -110,7 +110,7 @@ $editorResourceCaptureExecutionChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor Resource Capture Execution Evidence v1",
             "host-owned Resources capture execution evidence rows",
@@ -277,7 +277,7 @@ $editorAiCommandPanelChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor AI Command Diagnostics Panel v1",
             "EditorAiCommandPanelModel",
@@ -429,7 +429,7 @@ $editorAiEvidenceImportReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor AI Evidence Import Review v1",
             "EditorAiPlaytestEvidenceImportModel",
@@ -617,7 +617,7 @@ $editorAiReviewedValidationExecutionChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor AI Reviewed Validation Execution v1",
             "Host-Gated Validation Execution Ack v1",
@@ -797,7 +797,7 @@ $editorAiReviewedValidationBatchExecutionChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor AI Reviewed Validation Batch Execution v1",
             "EditorAiReviewedValidationExecutionBatchModel",
@@ -1016,7 +1016,7 @@ $editorContentBrowserImportPanelChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "2026-05-12-editor-source-registry-visible-content-browser-v1.md",
             "Reload Source Registry",
@@ -1167,7 +1167,7 @@ $editorContentBrowserImportNativeDialogChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor Content Browser Import Native Dialog v1",
             "EditorContentBrowserImportOpenDialogModel",
@@ -1323,7 +1323,7 @@ $editorContentBrowserImportExternalCopyReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "2026-05-07-editor-content-browser-import-external-copy-review-v1.md",
             "Editor Content Browser Import External Copy Review v1",
@@ -1400,7 +1400,7 @@ $editorContentBrowserImportCodecAdapterCompletedPlanChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "2026-05-07-editor-content-browser-import-codec-adapter-review-v1.md",
             "editor-content-browser-import-codec-adapter-review-v1",
@@ -1579,7 +1579,7 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "2026-05-07-ci-matrix-contract-check-v1.md",
             "tools/check-ci-matrix.ps1",
@@ -1683,7 +1683,7 @@ $cpp23ReleasePackageArtifactCiEvidenceChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "2026-05-08-cpp23-release-package-artifact-ci-evidence-v1.md",
             "C++23 Release Package Artifact CI Evidence v1",
@@ -1865,7 +1865,7 @@ $editorMaterialAssetPreviewPanelChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+        Path = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
         Needles = @(
             "Editor Material Asset Preview Diagnostics v1",
             "Editor Material GPU Preview Execution Evidence v1",
@@ -1946,3 +1946,5 @@ foreach ($check in $editorMaterialAssetPreviewPanelChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor material asset preview diagnostics contract: $($missingNeedles -join ', ')"
     }
 }
+
+

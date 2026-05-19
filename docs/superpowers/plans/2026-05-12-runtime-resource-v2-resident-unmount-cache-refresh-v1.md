@@ -10,7 +10,7 @@ Add a host-independent Runtime Resource v2 helper that removes an explicit resid
 
 ## Context
 
-- Parent: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
+- Parent: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
 - Previous slices added explicit resident mount ids, cached resident catalogs, and package-streaming resident mount commit.
 - Current callers can manually call `RuntimeResidentPackageMountSetV2::unmount` followed by `RuntimeResidentCatalogCacheV2::refresh`; this leaves atomicity and diagnostic rows to each caller.
 
@@ -50,3 +50,5 @@ Add a host-independent Runtime Resource v2 helper that removes an explicit resid
 | JSON contracts / AI integration / production readiness audit | PASS | `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-production-readiness-audit.ps1`, and `tools/check-agents.ps1` reported ok; `Invoke-ScriptAnalyzer -Severity Error` on edited static-check scripts emitted no errors. |
 | Full validation | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` reported `validate: ok`; CTest passed 50/50 tests. Diagnostic-only Metal/Apple host gates remained blocked on this Windows host as expected. |
 | Build | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` completed the `dev` configure/build. |
+
+

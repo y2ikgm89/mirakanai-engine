@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-scene-nested-prefab-propagation-batch-blocked-policy-label-v1`  
 **Status:** Completed  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Gap:** `editor-productization`
 
 ## Goal
@@ -42,3 +42,5 @@ Keep `ScenePrefabInstanceRefreshBatchPlan::apply_reviewed_nested_prefab_propagat
 - Completed follow-up: `editor-scene-nested-prefab-propagation-fail-closed-edge-coverage-v1`.
 - Completed follow-up: `editor-scene-nested-prefab-propagation-two-level-batch-v1`.
 - Next selection returns to `recommendedNextPlan.id=next-production-gap-selection`.
+
+

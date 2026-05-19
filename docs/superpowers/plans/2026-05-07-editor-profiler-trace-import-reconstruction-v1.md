@@ -12,7 +12,7 @@
 
 ## Context
 
-- Parent roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Parent roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Recent completed slices added Profiler Trace JSON review, project-relative file import, native open dialog, and native save dialog.
 - The current gap text still excludes capture reconstruction. This slice narrows that unsupported claim only for first-party exported Trace Event JSON.
 
@@ -55,3 +55,7 @@
 | `git diff --check` | Passed | Line-ending warnings only; no whitespace errors. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation passed; CTest reported 29/29 tests passed. Metal/Apple host lanes remained diagnostic/host-gated on Windows as expected. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit gate build completed successfully. |
+
+
+
+

@@ -1,6 +1,6 @@
 # glTF メッシュエディタ UX v1 実装計画 (2026-05-06)
 
-> **エージェント向け:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6 子計画 `gltf-mesh-editor-ux-v1`（**Phase A+B 完了**）。`engine/agent/manifest.json` の `currentActivePlan` は完了後スライス（現状: [2026-05-04-gpu-skinning-upload-and-rendering-v1.md](2026-05-04-gpu-skinning-upload-and-rendering-v1.md)）を指す。本ファイルは実装証跡の正典。
+> **エージェント向け:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 子計画 `gltf-mesh-editor-ux-v1`（**Phase A+B 完了**）。`engine/agent/manifest.json` の `currentActivePlan` は完了後スライス（現状: [2026-05-04-gpu-skinning-upload-and-rendering-v1.md](2026-05-04-gpu-skinning-upload-and-rendering-v1.md)）を指す。本ファイルは実装証跡の正典。
 
 ## ゴール
 
@@ -56,3 +56,5 @@
 ---
 
 *計画起票: 2026-05-06。スライス id: `gltf-mesh-editor-ux-v1`（Phase 6）。*
+
+

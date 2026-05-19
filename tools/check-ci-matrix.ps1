@@ -100,10 +100,12 @@ function Assert-ValidationTierSelection {
         [string[]]$ChangedPath = @(),
         [switch]$RunAll,
         [Parameter(Mandatory = $true)][bool]$ExpectedWindows,
-        [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
-        [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
-        [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
-        [Parameter(Mandatory = $true)][bool]$ExpectedMacos
+    [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
+    [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
+    [bool]$ExpectedLinuxCoverage = $false,
+    [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
+    [bool]$ExpectedWindowsCpp23 = $false,
+    [Parameter(Mandatory = $true)][bool]$ExpectedMacos
     )
 
     $classifierPath = Join-Path $repoRoot "tools/classify-pr-validation-tier.ps1"
@@ -136,8 +138,10 @@ function Assert-ValidationTierSelection {
         windows = $ExpectedWindows
         linux = $ExpectedLinux
         linux_sanitizers = $ExpectedLinuxSanitizers
+        linux_coverage = $ExpectedLinuxCoverage
         static_analysis = $ExpectedStaticAnalysis
         macos = $ExpectedMacos
+        windows_cpp23 = $ExpectedWindowsCpp23
     }
 
     foreach ($expectation in $expectations.GetEnumerator()) {
@@ -169,7 +173,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindows $false `
     -ExpectedLinux $false `
     -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
     -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $false `
     -ExpectedMacos $false
 
 Assert-ValidationTierSelection `
@@ -178,7 +184,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindows $false `
     -ExpectedLinux $false `
     -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
     -ExpectedStaticAnalysis $true `
+    -ExpectedWindowsCpp23 $false `
     -ExpectedMacos $false
 
 Assert-ValidationTierSelection `
@@ -187,7 +195,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindows $true `
     -ExpectedLinux $true `
     -ExpectedLinuxSanitizers $true `
+    -ExpectedLinuxCoverage $false `
     -ExpectedStaticAnalysis $true `
+    -ExpectedWindowsCpp23 $false `
     -ExpectedMacos $true
 
 Assert-ValidationTierSelection `
@@ -195,18 +205,66 @@ Assert-ValidationTierSelection `
     -ChangedPath @(".github/workflows/validate.yml") `
     -ExpectedWindows $true `
     -ExpectedLinux $true `
-    -ExpectedLinuxSanitizers $true `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
     -ExpectedStaticAnalysis $true `
+    -ExpectedWindowsCpp23 $true `
     -ExpectedMacos $true
 
 Assert-ValidationTierSelection `
     -Label "classifier policy PR" `
     -ChangedPath @("tools/classify-pr-validation-tier.ps1") `
-    -ExpectedWindows $true `
-    -ExpectedLinux $true `
-    -ExpectedLinuxSanitizers $true `
-    -ExpectedStaticAnalysis $true `
-    -ExpectedMacos $true
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $true `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "ci matrix policy PR" `
+    -ChangedPath @("tools/check-ci-matrix.ps1") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $true `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "cpp23 policy infra PR" `
+    -ChangedPath @("tools/check-cpp-standard-policy.ps1") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $true `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "coverage infra PR" `
+    -ChangedPath @("tools/check-coverage.ps1") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $true `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $false `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
+    -Label "cpp23 evaluate infra PR" `
+    -ChangedPath @("tools/evaluate-cpp23.ps1") `
+    -ExpectedWindows $false `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $true `
+    -ExpectedMacos $false
 
 Assert-ValidationTierSelection `
     -Label "non-PR run" `
@@ -214,7 +272,9 @@ Assert-ValidationTierSelection `
     -ExpectedWindows $true `
     -ExpectedLinux $true `
     -ExpectedLinuxSanitizers $true `
+    -ExpectedLinuxCoverage $true `
     -ExpectedStaticAnalysis $true `
+    -ExpectedWindowsCpp23 $true `
     -ExpectedMacos $true
 
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
@@ -246,8 +306,11 @@ Assert-ContainsAll $changesJob @(
     "name: Select PR validation tier",
     "runs-on: ubuntu-latest",
     "windows: `${{ steps.classify.outputs.windows }}",
+    "linux: `${{ steps.classify.outputs.linux }}",
     "linux_sanitizers: `${{ steps.classify.outputs.linux_sanitizers }}",
+    "linux_coverage: `${{ steps.classify.outputs.linux_coverage }}",
     "static_analysis: `${{ steps.classify.outputs.static_analysis }}",
+    "windows_cpp23: `${{ steps.classify.outputs.windows_cpp23 }}",
     "fetch-depth: 0",
     "name: Classify touched surfaces",
     'github.event_name',
@@ -267,19 +330,36 @@ Assert-ContainsAll $windowsJob @(
     "git -C external/vcpkg checkout `$manifest.'builtin-baseline'",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1",
-    "run: ./tools/evaluate-cpp23.ps1 -Release",
     'if: ${{ always() && !cancelled() }}',
-    'if: ${{ success() && !cancelled() }}',
     "actions/upload-artifact@v7",
     "name: windows-test-logs",
     "out/build/dev/Testing/**/*.log",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml windows job"
+
+$windowsCpp23Job = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows-cpp23" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $windowsCpp23Job @(
+    "name: Windows C++23 Release Evaluation",
+    "needs: changes",
+    "if: needs.changes.outputs.windows_cpp23 == 'true'",
+    "runs-on: windows-2025-vs2026",
+    "actions/checkout@v6",
+    "git clone --filter=blob:none https://github.com/microsoft/vcpkg.git external/vcpkg",
+    "git -C external/vcpkg checkout `$manifest.'builtin-baseline'",
+    "run: ./tools/bootstrap-deps.ps1",
+    "run: ./tools/evaluate-cpp23.ps1 -Release",
+    'if: ${{ always() && !cancelled() }}',
+    "actions/upload-artifact@v7",
+    "name: windows-cpp23-test-logs",
     "out/build/cpp23-eval/Testing/**/*.log",
     "out/build/cpp23-release-preset-eval/Testing/**/*.log",
+    "if-no-files-found: warn",
     "name: windows-packages",
     "out/build/cpp23-release-preset-eval/*.zip",
     "out/build/cpp23-release-preset-eval/*.zip.sha256",
-    "if-no-files-found: error"
-) ".github/workflows/validate.yml windows job"
+    "if-no-files-found: error",
+    'if: ${{ success() && !cancelled() }}'
+) ".github/workflows/validate.yml windows-cpp23 job"
 
 $agentStaticJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "agent-static" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $agentStaticJob @(
@@ -303,20 +383,33 @@ Assert-ContainsAll $linuxJob @(
     "if: needs.changes.outputs.linux == 'true'",
     "runs-on: ubuntu-latest",
     "actions/checkout@v6",
-    "sudo apt-get update && sudo apt-get install -y clang g++ lcov ninja-build",
+    "sudo apt-get update && sudo apt-get install -y clang g++ ninja-build",
     "cmake --preset ci-linux-clang",
     "cmake --build --preset ci-linux-clang",
     "ctest --preset ci-linux-clang --output-on-failure",
-    "./tools/check-coverage.ps1 -Strict",
     'if: ${{ always() && !cancelled() }}',
     "actions/upload-artifact@v7",
     "name: linux-test-logs",
     "out/build/ci-linux-clang/Testing/**/*.log",
-    "out/build/coverage/Testing/**/*.log",
-    "name: linux-coverage",
-    "out/build/coverage/coverage*.info",
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml linux job"
+
+$linuxCoverageJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux-coverage" -Label ".github/workflows/validate.yml"
+Assert-ContainsAll $linuxCoverageJob @(
+    "name: Linux Coverage",
+    "needs: changes",
+    "if: needs.changes.outputs.linux_coverage == 'true'",
+    "runs-on: ubuntu-latest",
+    "actions/checkout@v6",
+    "sudo apt-get update && sudo apt-get install -y clang g++ lcov ninja-build",
+    "run: ./tools/check-coverage.ps1 -Strict",
+    'if: ${{ always() && !cancelled() }}',
+    "actions/upload-artifact@v7",
+    "name: linux-coverage",
+    "out/build/coverage/Testing/**",
+    "out/build/coverage/coverage*.info",
+    "if-no-files-found: warn"
+) ".github/workflows/validate.yml linux-coverage job"
 
 $sanitizerJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux-sanitizers" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $sanitizerJob @(
@@ -384,6 +477,8 @@ Assert-ContainsAll $prGateJob @(
     "- agent-static",
     "- windows",
     "- linux",
+    "- windows-cpp23",
+    "- linux-coverage",
     "- linux-sanitizers",
     "- static-analysis",
     "- macos",
@@ -443,8 +538,10 @@ Assert-ContainsAll $iosJob @(
 ) ".github/workflows/ios-validate.yml simulator-smoke job"
 
 Assert-MatchesText $validateWorkflow "^  windows:\s*$" ".github/workflows/validate.yml windows job id"
+Assert-MatchesText $validateWorkflow "^  windows-cpp23:\s*$" ".github/workflows/validate.yml windows-cpp23 job id"
 Assert-MatchesText $validateWorkflow "^  agent-static:\s*$" ".github/workflows/validate.yml agent-static job id"
 Assert-MatchesText $validateWorkflow "^  linux:\s*$" ".github/workflows/validate.yml linux job id"
+Assert-MatchesText $validateWorkflow "^  linux-coverage:\s*$" ".github/workflows/validate.yml linux-coverage job id"
 Assert-MatchesText $validateWorkflow "^  linux-sanitizers:\s*$" ".github/workflows/validate.yml linux-sanitizers job id"
 Assert-MatchesText $validateWorkflow "^  static-analysis:\s*$" ".github/workflows/validate.yml static-analysis job id"
 Assert-MatchesText $validateWorkflow "^  macos:\s*$" ".github/workflows/validate.yml macos job id"

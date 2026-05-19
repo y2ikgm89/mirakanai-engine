@@ -4,7 +4,7 @@
 
 **Plan ID:** `runtime-rhi-compute-morph-normal-tangent-output-vulkan-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -90,3 +90,5 @@ and DXC/SPIR-V shader artifacts produced outside CMake configure.
 - Focused Vulkan compute-morph gate: `cmd /c "set PATH=& set MK_VULKAN_TEST_COMPUTE_MORPH_SPV=G:\workspace\development\GameEngine\out\vulkan-compute-morph-test-artifacts\vulkan_compute_morph_position.cs.spv& set MK_VULKAN_TEST_COMPUTE_MORPH_RENDER_VERTEX_SPV=G:\workspace\development\GameEngine\out\vulkan-compute-morph-test-artifacts\vulkan_compute_morph_renderer_position.vs.spv& set MK_VULKAN_TEST_COMPUTE_MORPH_RENDER_FRAGMENT_SPV=G:\workspace\development\GameEngine\out\vulkan-compute-morph-test-artifacts\vulkan_compute_morph_renderer_position.ps.spv& set MK_VULKAN_TEST_COMPUTE_MORPH_TANGENT_FRAME_SPV=G:\workspace\development\GameEngine\out\vulkan-compute-morph-test-artifacts\vulkan_compute_morph_tangent_frame.cs.spv& ctest --preset dev -R MK_backend_scaffold_tests --output-on-failure"` passed.
 - Boundary/whitespace gates: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` passed; `git diff --check` exited 0 with LF/CRLF warnings only.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including `agent-check`, `shader-toolchain-check` diagnostic-only Vulkan SPIR-V readiness, configure/build, and 29/29 CTest tests.
+
+

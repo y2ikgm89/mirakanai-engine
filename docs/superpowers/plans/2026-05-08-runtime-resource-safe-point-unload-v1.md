@@ -48,7 +48,7 @@ Narrow the `runtime-resource-v2` gap by implementing the missing explicit safe-p
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 ## Tasks
 
@@ -68,7 +68,7 @@ Narrow the `runtime-resource-v2` gap by implementing the missing explicit safe-p
 
 ### Task 2: Runtime API And Implementation
 
-- [x] Add `RuntimeAssetPackageStore::unload_safe_point() noexcept -> bool`.
+- [x] Add `() noexcept -> bool`.
 - [x] Add `RuntimePackageSafePointUnloadStatus`, `RuntimePackageSafePointUnloadResult`, and `commit_runtime_package_safe_point_unload` to `resource_runtime.hpp`.
 - [x] Implement unload by:
   - returning `no_active_package` without mutation when no active package exists;
@@ -112,3 +112,9 @@ Narrow the `runtime-resource-v2` gap by implementing the missing explicit safe-p
 ## Status
 
 **Status:** Completed.
+
+
+
+
+
+

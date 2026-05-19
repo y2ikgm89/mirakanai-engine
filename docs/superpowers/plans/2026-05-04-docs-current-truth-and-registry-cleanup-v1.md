@@ -4,7 +4,7 @@
 
 **Goal:** Make `docs/` easier to navigate by separating current truth from historical plan evidence without moving historical plan files.
 
-**Architecture:** Keep `docs/README.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, and `docs/superpowers/plans/README.md` as the human entrypoints. Treat `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` and `recommendedNextPlan` as the authoritative narrow-slice pointers, with `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md` as the active production roadmap. Keep dated plan files as immutable evidence records unless a focused follow-up explicitly edits them.
+**Architecture:** Keep `docs/README.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, and `docs/superpowers/plans/README.md` as the human entrypoints. Treat `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` and `recommendedNextPlan` as the authoritative narrow-slice pointers, with `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` as the active production roadmap. Keep dated plan files as immutable evidence records unless a focused follow-up explicitly edits them.
 
 **Tech Stack:** Markdown docs, `engine/agent/manifest.json`, PowerShell validation scripts, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 
@@ -52,3 +52,7 @@ Record command results here while implementing this plan.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: PASS.
   - Local Markdown link check over `docs/**/*.md`: PASS after skipping fenced code blocks.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: PASS. `validate: ok`; CTest 29/29 passed. Diagnostic-only blockers remain unchanged for missing Metal tools and Apple packaging on this Windows host.
+
+
+
+

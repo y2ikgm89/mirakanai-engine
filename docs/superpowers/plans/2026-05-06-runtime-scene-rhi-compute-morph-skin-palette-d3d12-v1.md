@@ -4,7 +4,7 @@
 
 **Plan ID:** `runtime-scene-rhi-compute-morph-skin-palette-d3d12-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -86,3 +86,5 @@ docs checks.
 - Final validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. Diagnostic-only host gates remain unchanged: Metal shader tooling is
   missing `metal` / `metallib` on Windows, Apple packaging requires macOS/Xcode tools, Android release signing is not
   configured, and no Android device-smoke target is connected.
+
+

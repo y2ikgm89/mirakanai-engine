@@ -86,7 +86,7 @@ Close a narrow editor-productization gap:
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`
@@ -120,3 +120,7 @@ Close a narrow editor-productization gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full repository validation passed, including 29/29 CTest tests. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Full dev build passed after validation. |
 | Slice-closing commit | Passed | Staged only Editor Project Native Dialog v1 files and created `feat: add project native dialogs`. |
+
+
+
+

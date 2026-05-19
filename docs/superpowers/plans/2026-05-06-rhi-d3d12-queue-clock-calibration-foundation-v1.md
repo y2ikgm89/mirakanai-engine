@@ -4,7 +4,7 @@
 
 **Plan ID:** `rhi-d3d12-queue-clock-calibration-foundation-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -109,3 +109,5 @@ C++23, `mirakana_rhi_d3d12`, D3D12 `GetClockCalibration`, per-queue timestamp fr
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1` passed.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. Full CTest completed 29/29, including `mirakana_d3d12_rhi_tests`; Metal shader tools
   and Apple packaging remain diagnostic-only host blockers on this Windows machine.
+
+

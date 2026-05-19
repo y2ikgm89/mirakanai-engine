@@ -2,7 +2,7 @@
 
 **Plan ID:** `generated-3d-morph-normal-tangent-package-smoke-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -66,3 +66,5 @@ vertex shader.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` passed.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after final evidence updates; CTest reported `29/29` tests passed and
   `validate: ok`.
+
+

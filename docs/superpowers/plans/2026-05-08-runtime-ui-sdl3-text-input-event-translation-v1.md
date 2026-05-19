@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Target unsupported gap: `production-ui-importer-platform-adapters`, currently `planned`.
 - Runtime UI SDL3 Platform Text Input Adapter v1 can start and stop SDL text input for a caller-owned `SdlWindow`.
 - Context7 and local SDL3 headers confirm `SDL_StartTextInput(SDL_Window*)` enables `SDL_EVENT_TEXT_INPUT` and `SDL_EVENT_TEXT_EDITING`; SDL owns event text memory, so retained text must be copied.
@@ -39,7 +39,7 @@
 - Modify after green: `docs/current-capabilities.md`
 - Modify after green: `docs/roadmap.md`
 - Modify after green: `docs/ui.md`
-- Modify after green: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify after green: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify after green: `engine/agent/manifest.json`
 
 ## Tasks
@@ -90,3 +90,7 @@
 - Added copied first-party text rows to `mirakana::SdlWindowEvent` for SDL3 committed text and editing composition events.
 - Kept `mirakana_ui` free of SDL3 headers and native handles.
 - Did not mark the broad `production-ui-importer-platform-adapters` gap ready; native IME services, UI-side composition publication, virtual keyboard behavior, text editing model mutation, text shaping, font rasterization, OS accessibility, and broader platform adapters remain follow-up work.
+
+
+
+

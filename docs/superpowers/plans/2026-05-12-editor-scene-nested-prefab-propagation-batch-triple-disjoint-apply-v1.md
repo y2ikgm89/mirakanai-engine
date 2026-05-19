@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-scene-nested-prefab-propagation-batch-triple-disjoint-apply-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md](2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md)
 
 ## Goal
@@ -30,3 +30,5 @@ Extend `MK_editor_core_tests` so `plan_scene_prefab_instance_refresh_batch` / `m
 | --- | --- | --- | --- |
 | Editor core | `ctest --preset dev -R MK_editor_core_tests --output-on-failure` | Pass | Pass |
 | Repository | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Pass |
+
+

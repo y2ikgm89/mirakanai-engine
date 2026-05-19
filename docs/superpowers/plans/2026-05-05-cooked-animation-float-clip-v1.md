@@ -1,7 +1,7 @@
 # Cooked Animation Float Clip v1 (2026-05-05)
 
 **Plan ID:** `cooked-animation-float-clip-v1`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
 **Status:** Completed on 2026-05-05.
 
 ## Goal
@@ -39,3 +39,5 @@ Introduce a **first-party cooked scalar float animation clip** asset: `GameEngin
 
 - glTF translation/rotation/scale channel import into this clip format.
 - GPU animation curves, sampler reduction, or `mirakana_animation` runtime coupling in `mirakana_runtime`.
+
+

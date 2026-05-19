@@ -4,7 +4,7 @@
 
 **Plan ID:** `runtime-rhi-compute-morph-async-telemetry-d3d12-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -75,3 +75,5 @@ focused tests, static docs checks.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1`
 - Final validation passed:
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+

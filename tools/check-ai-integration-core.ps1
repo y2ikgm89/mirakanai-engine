@@ -119,7 +119,7 @@ function Assert-NoGameSourceRawAssetIdFromName {
 }
 
 function Get-ActiveChildProductionPlan {
-    $masterPlanPath = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+    $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
     $plansRoot = Resolve-RequiredAgentPath "docs/superpowers/plans"
     $activePlans = @()
 
@@ -148,7 +148,7 @@ function Get-ActiveChildProductionPlan {
 }
 
 function Assert-ActiveProductionPlanDrift($productionLoop) {
-    $masterPlanPath = "docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md"
+    $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
     $planRegistryPath = "docs/superpowers/plans/README.md"
     $planRegistryText = Get-AgentSurfaceText $planRegistryPath
     $activeSliceRow = [regex]::Match($planRegistryText, '(?m)^\| Active slice \(`currentActivePlan`\) \|.*$')
@@ -574,3 +574,5 @@ function Invoke-CheckAiIntegrationSections {
         . (Join-Path $PSScriptRoot $sectionFile)
     }
 }
+
+

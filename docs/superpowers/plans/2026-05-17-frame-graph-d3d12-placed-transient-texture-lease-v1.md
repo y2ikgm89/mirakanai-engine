@@ -81,7 +81,7 @@ The completed Frame Graph transient texture slices added conservative alias plan
 - Modify: `docs/rhi.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
 
@@ -114,3 +114,7 @@ The completed Frame Graph transient texture slices added conservative alias plan
 - BUILD: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed with existing MSBuild shared-intermediate warnings.
 - PUBLICATION: committed as `6d7820b`, pushed `codex/frame-graph-d3d12-placed-transient-texture-lease`, created PR #75, preflighted it as open/non-draft/mergeable with pending-only checks, and merged it into `main` as merge commit `03da3cd`.
 - OFFICIAL DOCS: Context7 `/websites/learn_microsoft_en-us_windows_win32_direct3d12` was used to re-check Microsoft Learn Direct3D 12 `CreatePlacedResource`, resource heap, placed resource, and aliasing-barrier guidance before publication.
+
+
+
+

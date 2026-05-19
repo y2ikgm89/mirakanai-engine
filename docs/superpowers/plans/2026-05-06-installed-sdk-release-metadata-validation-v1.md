@@ -80,7 +80,7 @@
 - Modify: `docs/roadmap.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 
@@ -114,3 +114,7 @@
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1` completed Release configure/build, 29/29 CTest tests, install, installed consumer configure/build/test, `installed-sdk-validation: ok`, and CPack ZIP/SHA256 generation.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed after the plan record was updated.
 - `engine/agent/manifest.json` keeps `currentActivePlan` on the master plan and returns `recommendedNextPlan.id` to `next-production-gap-selection`.
+
+
+
+

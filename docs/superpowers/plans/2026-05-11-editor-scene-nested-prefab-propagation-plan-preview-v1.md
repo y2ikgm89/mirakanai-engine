@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-scene-nested-prefab-propagation-plan-preview-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md](2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md)  
 
 ## Goal
@@ -30,3 +30,5 @@ Expose a **deterministic, preview-only** ordering of descendant linked prefab in
 ## Validation evidence
 
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+

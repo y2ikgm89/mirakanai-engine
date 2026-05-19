@@ -46,7 +46,7 @@
 - Modify `.github/workflows/validate.yml`: upload `*.zip.sha256` with Windows C++23 release artifacts.
 - Modify `tools/check-ci-matrix.ps1`: assert the script-level artifact check and workflow sidecar upload.
 - Modify `tools/check-ai-integration.ps1`: require this CI evidence contract in the repository governance check.
-- Modify `docs/superpowers/plans/README.md`, `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/testing.md`, and `engine/agent/manifest.json`: document the narrowed ready surface and remaining gaps.
+- Modify `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/testing.md`, and `engine/agent/manifest.json`: document the narrowed ready surface and remaining gaps.
 
 ## Tasks
 
@@ -95,3 +95,7 @@
 | `git diff --check` | PASS | No whitespace errors after removing trailing blank lines; Git reported LF-to-CRLF working-copy warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; 29/29 CTest tests passed. Diagnostic-only host gates remain Metal tools and Apple packaging on this Windows host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configure/build completed successfully. |
+
+
+
+

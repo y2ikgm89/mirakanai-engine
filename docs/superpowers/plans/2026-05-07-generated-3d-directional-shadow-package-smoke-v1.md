@@ -12,7 +12,7 @@
 
 ## Context
 
-- Master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Previous generated 3D package slices added committed/generated package files, transform/morph/quaternion package smokes, D3D12/Vulkan compute morph package smokes, selected safe-point package streaming, scene GPU + postprocess + depth-aware renderer quality counters, and `playable_3d_*` aggregate counters.
 - `sample_desktop_runtime_game` already proves package-visible directional shadow filtering with `directional_shadow_status=ready`, `directional_shadow_ready=1`, `directional_shadow_filter_mode=fixed_pcf_3x3`, `directional_shadow_filter_taps=9`, `directional_shadow_filter_radius_texels=1`, and `framegraph_passes=3`.
 - `SdlDesktopPresentation*SceneRendererDesc` intentionally rejects directional shadow smoke when morph or compute-morph mesh bindings are simultaneously selected. This slice must keep the existing generated 3D compute/playable default package smoke intact and add a separate selected shadow smoke recipe over the same installed package artifacts.
@@ -105,3 +105,7 @@
 | `git diff --check` | PASS | No whitespace errors; Git reported only line-ending conversion warnings for modified text files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; CTest reported `100% tests passed, 0 tests failed out of 29`. Metal/Apple checks remained diagnostic/host-gated on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configured and built successfully with MSBuild. |
+
+
+
+

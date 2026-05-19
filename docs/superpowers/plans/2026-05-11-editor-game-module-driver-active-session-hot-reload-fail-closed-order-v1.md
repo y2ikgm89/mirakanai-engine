@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-game-module-driver-active-session-hot-reload-fail-closed-order-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md](2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md)
 
 ## Goal
@@ -35,3 +35,5 @@ Ship the first **verifiable, fail-closed** vertical toward the active-session ho
 
 - Microsoft Learn: [FreeLibrary function (libloaderapi.h)](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-freelibrary) — decrements the module reference count; unload occurs when the count reaches zero; `DllMain` receives `DLL_PROCESS_DETACH` before unload.
 - Microsoft Learn: [FreeLibrary and AfxFreeLibrary (C++ build)](https://learn.microsoft.com/en-us/cpp/build/freelibrary-and-afxfreelibrary?view=msvc-170) — paired `LoadLibrary`/`FreeLibrary` usage expectations.
+
+

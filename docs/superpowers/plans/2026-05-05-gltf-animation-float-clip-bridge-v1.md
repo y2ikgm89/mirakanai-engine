@@ -1,7 +1,7 @@
 # glTF Animation Float Clip Bridge v1 (2026-05-05)
 
 **Plan ID:** `gltf-animation-float-clip-bridge-v1`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
 **Status:** Completed on 2026-05-05.
 
 ## Goal
@@ -52,3 +52,5 @@ Bridge existing glTF morph-weight animation import into the first-party cooked s
 - STEP or CUBICSPLINE animation sampler support.
 - Animation graph authoring, retargeted graph playback, GPU morph execution, or generated 3D production-ready animation.
 - Broad package dependency cooking or automatic asset dependency traversal beyond the selected cooked clip source path.
+
+

@@ -1,7 +1,7 @@
 # Animation IK Pose Application v1 (2026-05-05)
 
 **Plan ID:** `animation-ik-pose-application-v1`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
 **Status:** Completed on 2026-05-05.
 
 ## Goal
@@ -46,3 +46,5 @@ Add a deterministic `mirakana_animation` helper that writes planar FABRIK chain 
 ## Non-Goals
 
 - Joint limits, pole vectors, CCD, full 3D joint orientation, quaternion interpolation, twist extraction, skeletal retargeting, IK assets, glTF IK import, animation graph authoring, GPU morph, renderer/RHI integration, package cook/runtime changes, or generated-game production readiness.
+
+

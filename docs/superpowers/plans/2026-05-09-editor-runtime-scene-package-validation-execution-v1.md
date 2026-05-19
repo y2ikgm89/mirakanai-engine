@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-in-process-runtime-host-review-v1.md`.
 - Existing editor package review orders `review-editor-package-candidates -> apply-reviewed-runtime-package-files -> select-runtime-scene-validation-target -> validate-runtime-scene-package -> run-host-gated-desktop-smoke`, but the visible editor does not yet produce first-party runtime scene package validation execution evidence directly from that review step.
@@ -44,7 +44,7 @@
   - Add sentinel checks for the reviewed validation execution contract.
 - Modify: `docs/superpowers/plans/README.md`
   - Track this plan as the active slice, then latest completed evidence at closeout.
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update current verdict and selected-gap evidence after validation.
 
 ## Done When
@@ -128,7 +128,7 @@ Expected before implementation: compile failure for the new runtime scene packag
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Document this slice as reviewed non-mutating runtime scene package validation execution evidence.
 - [x] Keep host-gated desktop smoke, broad package scripts, arbitrary shell, raw manifest commands, package cooking, renderer/RHI residency, package streaming, Metal readiness, and broad editor productization unsupported.
@@ -159,3 +159,7 @@ Expected before implementation: compile failure for the new runtime scene packag
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. It included `production-readiness-audit-check: ok` with `unsupported_gaps=11`, `editor-productization status=partly-ready`, full `ctest --preset dev` at 29/29 passing, `public-api-boundary-check: ok`, `tidy-check: ok (1 files)`, and diagnostic-only host gates for Metal/Apple tooling on this Windows host.
 
 Discovered clean contract fix: current sample `.geindex` entries already use runtime-relative paths, so `contentRoot: "runtime"` would duplicate the runtime prefix during actual validation. This slice removes the duplicated manifest/template `contentRoot` values and adds static guards so future generated manifests omit `contentRoot` when cooked package entries already include the runtime-relative directory.
+
+
+
+

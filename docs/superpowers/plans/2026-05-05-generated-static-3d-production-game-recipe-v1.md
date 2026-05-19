@@ -1,6 +1,6 @@
 # 生成静的 3D デスクトップゲーム運用レシピ v1 実装計画 (2026-05-05)
 
-> **エージェント向け:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6 の子計画 `generated-static-3d-production-game-recipe-v1` に対応する。`production-gap-selection-v1` は **`currentActivePlan` に置かない**。本スライス完了後の狭い実装スライスは `engine/agent/manifest.json` の `currentActivePlan` を参照する。
+> **エージェント向け:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 の子計画 `generated-static-3d-production-game-recipe-v1` に対応する。`production-gap-selection-v1` は **`currentActivePlan` に置かない**。本スライス完了後の狭い実装スライスは `engine/agent/manifest.json` の `currentActivePlan` を参照する。
 
 ## ゴール
 
@@ -76,3 +76,5 @@
 ---
 
 *計画作成: 2026-05-05。スライス id: `generated-static-3d-production-game-recipe-v1`（Phase 6 / 運用正典化）。*
+
+

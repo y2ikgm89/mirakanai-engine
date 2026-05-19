@@ -4,7 +4,7 @@
 
 **Plan ID:** `runtime-rhi-compute-morph-queue-synchronization-d3d12-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -73,3 +73,5 @@ C++23, `mirakana_rhi`, `mirakana_rhi_d3d12`, `mirakana_runtime_rhi`, D3D12 nativ
 - GREEN: `cmd.exe /d /c "set Path=%Path%&& set PATH=&& ctest --preset dev -R mirakana_renderer_tests --output-on-failure"` passed.
 - GREEN: `cmd.exe /d /c "set Path=%Path%&& set PATH=&& ctest --preset dev -R mirakana_runtime_host_tests --output-on-failure"` passed.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after selecting `generated-3d-compute-morph-queue-sync-package-smoke-d3d12-v1` as the next active plan.
+
+

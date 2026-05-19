@@ -17,7 +17,7 @@
 
 ## Context
 
-- 親: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 2。
+- 親: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 2。
 - 先行: [2026-05-02-package-streaming-residency-budget-contract-v1.md](2026-05-02-package-streaming-residency-budget-contract-v1.md)（記述のみ）、[2026-05-03-package-mount-and-resident-cache-v1.md](2026-05-03-package-mount-and-resident-cache-v1.md)（マウント結合 API）。
 
 ## Constraints
@@ -58,3 +58,5 @@
 ---
 
 *Plan completed: 2026-05-03.*
+
+

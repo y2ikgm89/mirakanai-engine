@@ -42,7 +42,7 @@ Close the current UI image pipeline loophole after Runtime UI PNG Image Decoding
 - Modify: `tests/unit/tools_tests.cpp`
 - Modify: `engine/agent/manifest.json`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/ui.md`
@@ -110,3 +110,7 @@ Close the current UI image pipeline loophole after Runtime UI PNG Image Decoding
 ## Status
 
 **Status:** Completed.
+
+
+
+

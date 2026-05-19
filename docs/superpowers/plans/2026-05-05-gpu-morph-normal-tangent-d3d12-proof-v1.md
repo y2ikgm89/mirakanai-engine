@@ -2,7 +2,7 @@
 
 **Plan ID:** `gpu-morph-normal-tangent-d3d12-proof-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -61,3 +61,5 @@ renderer-visible lighting through `RhiFrameRenderer`.
 - D3D12 tangent-read strengthening passed: `cmd.exe /d /c 'set Path=%Path%&& set PATH=&& cmake --build --preset dev --target mirakana_d3d12_rhi_tests'` and `out\build\dev\Debug\mirakana_d3d12_rhi_tests.exe`.
 - Static checks passed before the final gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`.
 - Final validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after the completion record update; CTest reported 29/29 tests passed and `validate: ok`.
+
+

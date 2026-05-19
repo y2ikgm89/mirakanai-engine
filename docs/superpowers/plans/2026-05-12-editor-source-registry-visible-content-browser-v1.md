@@ -34,7 +34,7 @@
 - Modify `editor/CMakeLists.txt`: add the new editor-core source.
 - Modify `editor/src/main.cpp`: include the helper, display project/Assets status, explicit reload, and source-registry-preserving refresh behavior.
 - Modify `tests/unit/editor_core_tests.cpp`: RED/GREEN coverage for project serialization/migration/validation, wizard default, helper loaded/missing/invalid behavior.
-- Modify `docs/editor.md`, `docs/current-capabilities.md`, `docs/ai-game-development.md`, `docs/roadmap.md`, `docs/superpowers/plans/README.md`, `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`, and `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`: align the ready surface and active plan truth.
+- Modify `docs/editor.md`, `docs/current-capabilities.md`, `docs/ai-game-development.md`, `docs/roadmap.md`, `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, and `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`: align the ready surface and active plan truth.
 - Modify `tools/check-ai-integration.ps1` and `tools/check-json-contracts.ps1` only if new literals need static needles.
 
 ## Tasks
@@ -123,3 +123,7 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed | `agent-config-check: ok`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed | Passed after targeted clang-format on touched C++ files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full repository gate passed; shader Metal and Apple host checks remained diagnostic/host-gated on Windows. |
+
+
+
+

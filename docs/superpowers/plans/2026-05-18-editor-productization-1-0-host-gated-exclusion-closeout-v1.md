@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-productization-1-0-host-gated-exclusion-closeout-v1`
 **Status:** Completed
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Gap:** `editor-productization`
 
 ## Goal
@@ -44,3 +44,5 @@ Close the remaining `editor-productization` unsupported production gap for the E
 ## Next Candidate After Validation
 
 - Continue the remaining closeout wedges with `production-ui-importer-platform-adapters`, then `full-repository-quality-gate`.
+
+

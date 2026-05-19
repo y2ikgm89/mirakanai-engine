@@ -2,7 +2,7 @@
 
 **Plan ID:** `gpu-morph-d3d12-proof-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -70,3 +70,5 @@ through `RhiFrameRenderer` as a visibly morphed indexed mesh using RHI-neutral p
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: passed; 29/29 CTest tests passed. Metal and Apple checks remained diagnostic-only host gates
   on this Windows host.
+
+

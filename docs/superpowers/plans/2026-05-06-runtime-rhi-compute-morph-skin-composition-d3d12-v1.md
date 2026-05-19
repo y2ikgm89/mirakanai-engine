@@ -4,7 +4,7 @@
 
 **Plan ID:** `runtime-rhi-compute-morph-skin-composition-d3d12-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -80,3 +80,5 @@ C++23, `mirakana_renderer`, `mirakana_runtime_rhi`, `mirakana_runtime_scene_rhi`
   focused `mirakana_runtime_rhi_tests`, `mirakana_d3d12_rhi_tests`, `mirakana_renderer_tests`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`. The final
   validate run reports Metal shader tools and Apple packaging/signing as diagnostic-only host blockers on this Windows
   host.
+
+

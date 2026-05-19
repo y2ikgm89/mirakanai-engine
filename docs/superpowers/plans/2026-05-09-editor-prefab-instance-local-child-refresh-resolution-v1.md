@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-scene-prefab-instance-refresh-review-v1.md`.
 - Current refresh blocks unlinked or differently linked children because applying the refreshed source subtree would delete them without a reviewed merge decision.
@@ -51,7 +51,7 @@
   - Add sentinel checks for the new reviewed local-child refresh policy.
 - Modify: `docs/superpowers/plans/README.md`
   - Track this plan as the active slice while work is in progress, then as latest completed evidence at closeout.
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update the current verdict and selected-gap evidence after validation.
 
 ## Done When
@@ -119,7 +119,7 @@ Expected before implementation: compile failure for the new refresh policy and r
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Document local-child preservation as explicit reviewed refresh policy.
 - [x] Keep unsupported claims explicit: no automatic nested propagation, no fuzzy merge/rebase, no package/validation execution, no renderer/RHI/native handles.
@@ -150,3 +150,7 @@ Expected before implementation: compile failure for the new refresh policy and r
 ## Status
 
 Completed.
+
+
+
+

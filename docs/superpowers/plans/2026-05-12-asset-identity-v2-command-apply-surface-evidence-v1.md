@@ -2,7 +2,7 @@
 
 **Plan ID:** `asset-identity-v2-command-apply-surface-evidence-v1`  
 **Status:** Completed  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Gap:** `asset-identity-v2`
 
 ## Goal
@@ -52,3 +52,5 @@ Close the `asset command apply surfaces` blocker for Asset Identity v2 by record
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - PASS: final `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (47/47 tests; Metal and Apple lanes remain diagnostic-only host-gated on this Windows host).
+
+

@@ -14,7 +14,7 @@
 
 ## Context
 
-- Master plan row: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md` lists `audio-device-streaming-baseline-v1` under runtime-system minimums.
+- Master plan row: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` lists `audio-device-streaming-baseline-v1` under runtime-system minimums.
 - Current `mirakana_audio` already validates buses, voices, clip metadata, streaming queue append/consume state, render requests, underrun diagnostics, nearest/linear resampling, channel conversion, and deterministic interleaved float PCM.
 - Current `mirakana_audio_sdl3` already owns SDL3 runtime/device lifetime, queued-frame reporting, silence queuing, float PCM queuing, pause/resume, and clear.
 
@@ -46,7 +46,7 @@
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
@@ -100,3 +100,7 @@
 ## Status
 
 **Status:** Completed.
+
+
+
+

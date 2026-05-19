@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-input-rebinding-axis-capture-gamepad-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Status:** Completed  
 
 ## Goal
@@ -31,3 +31,5 @@ Action rebinding capture already exists end-to-end; axis presentation and profil
 | Step | Command | Result |
 | --- | --- | --- |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
+
+

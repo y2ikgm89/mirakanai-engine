@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-productization-1-0-scope-closeout-v1`  
 **Status:** Completed  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Gap:** `editor-productization`
 
 **Superseded boundary:** [2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md](2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md) later removes `editor-productization` from `unsupportedProductionGaps` for the Windows-default Engine 1.0 ready surface by making Vulkan/Metal material-preview display parity an explicit future host-gated exclusion.
@@ -43,3 +43,5 @@ Reclassify the remaining `editor-productization` 1.0 scope after the recent Wind
 ## Next Candidate After Validation
 
 - Start the Phase 1 foundation order with `asset-identity-v2`.
+
+

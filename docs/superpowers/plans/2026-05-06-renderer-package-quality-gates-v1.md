@@ -78,7 +78,7 @@
 - Modify: `docs/rhi.md`
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `.agents/skills/rendering-change/SKILL.md`
 - Modify: `.claude/skills/gameengine-rendering/SKILL.md`
@@ -114,3 +114,7 @@
 - Package GREEN: the strict build-output D3D12 smoke passed with `--require-renderer-quality-gates`, `--require-gpu-skinning`, and `--require-quaternion-animation`, reporting `renderer_quality_status=ready`, `renderer_quality_ready=1`, `renderer_quality_diagnostics=0`, `renderer_quality_framegraph_execution_budget_ok=1`, positive skinned GPU upload/resolve counters, and positive GPU skinning draw/descriptor counters.
 - Package GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game` passed with `installed-desktop-runtime-validation: ok (sample_desktop_runtime_game)` and `desktop-runtime-package: ok (sample_desktop_runtime_game)`.
 - Final repository gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed.
+
+
+
+

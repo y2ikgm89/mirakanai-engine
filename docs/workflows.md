@@ -49,7 +49,7 @@ Extended validation, editor-shell, plan lifecycle, production-completion, and ga
 
 ## Production Completion Prompt
 
-When executing [Production Completion Master Plan v1](superpowers/plans/2026-05-03-production-completion-master-plan-v1.md), keep the operating prompt short and evidence-driven:
+When executing [Production Completion Master Plan v1](superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md), keep the operating prompt short and evidence-driven:
 
 - Use `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps` as the execution index.
 - Each `unsupportedProductionGaps` row includes `oneDotZeroCloseoutTier` (`foundation-follow-up`, `package-evidence`, or `closeout-wedge`) for 1.0 closeout grouping; change it through `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` plus `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, not by editing `engine/agent/manifest.json` directly.
@@ -347,8 +347,10 @@ See [testing.md](testing.md) for the **CI validation matrix** (job ids, runners,
 
 GitHub Actions runs:
 
-- Windows: `tools/validate.ps1` and `tools/evaluate-cpp23.ps1 -Release`
-- Linux: `cmake --preset ci-linux-clang`, build/CTest, plus `tools/check-coverage.ps1 -Strict`
+- Windows: `tools/validate.ps1`
+- Windows C++23 release: `tools/evaluate-cpp23.ps1 -Release`
+- Linux: `cmake --preset ci-linux-clang`, build/CTest
+- Linux coverage: `tools/check-coverage.ps1 -Strict`
 - Linux sanitizers: `cmake --preset clang-asan-ubsan`, build, and CTest
 - macOS: `cmake --preset ci-macos-appleclang`, build/CTest, including Apple-only Metal Objective-C++ sources
 - iOS Validate: `tools/smoke-ios-package.ps1` on a pinned macOS hosted runner, building the iOS Simulator bundle and running `xcrun simctl install`, `get_app_container`, `launch`, and cleanup for `sample_headless`
@@ -384,3 +386,6 @@ Android Release Device Matrix v1 current evidence uses `sample_headless` on the 
 Apple package attempts use `tools/build-mobile-apple.ps1` and the `platform/ios` CMake/Xcode bundle template. The template packages `games/<game_name>/game.agent.json` into bundle resources, creates a Metal-backed UIKit view, maps Application Support/Caches/Documents into first-party save/cache/shared storage roots, supports `-Platform Simulator|Device`, disables simulator signing when no team is supplied, and accepts `MK_IOS_BUNDLE_IDENTIFIER`, `MK_IOS_DEVELOPMENT_TEAM`, and `MK_IOS_CODE_SIGN_IDENTITY` or the matching script parameters for Xcode signing. The Apple package script configures the package tree with `BUILD_TESTING=OFF` and builds only the `MirakanaiIOS` bundle target, keeping iOS smoke focused on the app package instead of Xcode `ALL_BUILD` unit-test targets. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug` builds the Simulator bundle, selects an available iPhone Simulator, boots it when needed, installs the app, verifies the app container, launches the bundle, terminates it, and shuts down only the simulator booted by the script. These scripts validate `games/<game_name>/game.agent.json` before building.
 
 Apple Metal iOS Host Evidence v1 current Windows evidence is host-gated: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1` reports `host=windows`, `xcode=blocked`, `ios-simulator=blocked`, `metal-library=blocked`, missing `xcodebuild`, missing `xcrun`, missing iOS SDK/runtime access, missing `metal`, missing `metallib`, and present iOS Simulator/macOS Metal workflow coverage. Run `tools/check-apple-host-evidence.ps1 -RequireReady` only on a macOS/full-Xcode host when the task requires hard Apple-ready evidence.
+
+
+

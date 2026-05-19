@@ -2,7 +2,7 @@
 
 **Plan ID:** `animation-quaternion-local-pose-foundation-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -69,3 +69,5 @@ platform, editor, glTF importer, or native handles.
   `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -MaxFiles 1`.
 - Full validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (CTest 29/29 passed; diagnostic-only blockers remained Metal tools
   and Apple packaging host tools).
+
+

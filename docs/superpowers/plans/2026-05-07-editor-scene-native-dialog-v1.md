@@ -12,7 +12,7 @@
 
 ## Context
 
-- Parent roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Parent roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Existing scene authoring already uses `save_scene_authoring_document` and `load_scene_authoring_document` over safe project-store paths.
 - Profiler and Prefab Variant now have native document dialogs; broader editor native save/open remains incomplete for Scene files.
 
@@ -53,3 +53,7 @@
 | `git diff --check` | PASS | Whitespace gate passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Slice-closing gate passed; default CTest passed 29/29. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Commit gate passed after `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`. |
+
+
+
+

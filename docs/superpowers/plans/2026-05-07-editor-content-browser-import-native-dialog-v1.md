@@ -113,7 +113,7 @@ Close the next narrow editor-productization gap:
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
@@ -150,3 +150,7 @@ Close the next narrow editor-productization gap:
 | `git diff --check` | PASS | Whitespace check passed; Git emitted only existing LF-to-CRLF working-copy warnings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed, including JSON contracts, AI integration, production-readiness audit, toolchain checks, tidy-check, full dev build, and 29/29 CTest tests. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Commit gate build passed for the `dev` preset after `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`. |
+
+
+
+

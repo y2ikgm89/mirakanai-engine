@@ -87,7 +87,7 @@
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`
@@ -125,3 +125,7 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Full validation passed, including agent/static checks, production readiness audit, toolchain checks, tidy smoke, dev build, and 29/29 dev CTest tests. Metal/Apple diagnostics remain host-gated on this Windows host as expected. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Default dev configure/build completed after validation. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Editor AI Command Diagnostics Panel v1 files; leave unrelated pre-existing guidance changes unstaged. |
+
+
+
+

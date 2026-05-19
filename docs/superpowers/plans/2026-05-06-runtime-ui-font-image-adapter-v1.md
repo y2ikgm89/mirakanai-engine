@@ -89,7 +89,7 @@
 - Modify: `.claude/skills/gameengine-game-development/SKILL.md`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/2026-05-06-runtime-ui-font-image-adapter-v1.md`
 
 - [x] Mark this plan as the active slice in the plan registry and manifest before implementation.
@@ -130,3 +130,7 @@
 - Direct `cmake --build --preset dev --target mirakana_ui_renderer_tests` is blocked in this shell by the host `Path` / `PATH` duplicate MSBuild environment issue; the same build passed through a sanitized environment with a single `Path`.
 - `ctest --preset dev -R "mirakana_ui_renderer_tests" --output-on-failure`: passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: passed. Diagnostic-only host gates remain unchanged: Metal shader tools and Apple packaging are unavailable on this Windows host.
+
+
+
+

@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-resource-capture-pix-host-handoff-evidence-v1`  
 **Gap:** `editor-productization` (shared diagnostics with `renderer-rhi-resource-foundation`)  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-resource-management-execution-stream-v1.md](2026-05-11-editor-productization-resource-management-execution-stream-v1.md) (stream item 3)
 
 ## Goal
@@ -47,3 +47,5 @@ GPU capture and RHI lifetime evidence must stay aligned with native backend tear
 - Launching PIX UI by default from the editor button (operators may run the script manually with launch enabled).
 - Clearing Vulkan/Metal material-preview `requiredBeforeReadyClaim` rows.
 - Marking `editor-productization` gap ready or removing `resource management/capture execution` follow-ups beyond this reviewed helper evidence slice.
+
+

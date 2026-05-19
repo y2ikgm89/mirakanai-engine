@@ -96,7 +96,7 @@ Close the next narrow profiler productization gap:
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `.agents/skills/editor-change/SKILL.md`
 - Modify: `.claude/skills/gameengine-editor/SKILL.md`
@@ -134,3 +134,7 @@ Close the next narrow profiler productization gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Full default build passed. |
 | Final `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 && pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Commit-prep gate passed after docs, manifest, static checks, and plan evidence were settled. |
 | Slice-closing commit | PASS | Stage only this slice's files and leave unrelated dirty guidance files unstaged. |
+
+
+
+

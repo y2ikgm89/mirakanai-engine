@@ -38,7 +38,7 @@
 - Modify: `engine/renderer/src/frame_graph_rhi.cpp`
 - Modify: `engine/renderer/src/rhi_postprocess_frame_renderer.cpp`
 - Test: `tests/unit/renderer_rhi_tests.cpp`
-- Docs/sync as needed: `docs/superpowers/plans/README.md`, `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `engine/agent/manifest.json`, and scoped static guards.
+- Docs/sync as needed: `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `engine/agent/manifest.json`, and scoped static guards.
 
 ## Tasks
 
@@ -86,3 +86,7 @@
 - `RhiPostprocessFrameRenderer` uses the Frame Graph RHI texture executor for scheduled inter-pass texture transitions.
 - The manifest/docs still describe `frame-graph-v1` as an active foundation follow-up unless the unsupported gap row is explicitly narrowed with evidence.
 - Focused renderer tests, agent/static checks, `validate.ps1`, and `build.ps1` pass or record concrete host blockers.
+
+
+
+

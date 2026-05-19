@@ -1,6 +1,6 @@
 # ソース画像デコードとアトラスパッキング v1 実装計画 (2026-05-04)
 
-> **エージェント向け:** 実装着手前に [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 4 および [2026-05-03-production-gap-selection-v1.md](2026-05-03-production-gap-selection-v1.md) の方針を確認する。`production-gap-selection-v1` は **`currentActivePlan` に置かない**（文書同期専用）。本ファイルが **実装中の狭いスライス**として `engine/agent/manifest.json` の `currentActivePlan` を指す。
+> **エージェント向け:** 実装着手前に [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 4 および [2026-05-03-production-gap-selection-v1.md](2026-05-03-production-gap-selection-v1.md) の方針を確認する。`production-gap-selection-v1` は **`currentActivePlan` に置かない**（文書同期専用）。本ファイルが **実装中の狭いスライス**として `engine/agent/manifest.json` の `currentActivePlan` を指す。
 
 ## ゴール
 
@@ -53,3 +53,5 @@
 ---
 
 *計画作成: 2026-05-04。スライス id: `source-image-decode-and-atlas-packing-v1`（Phase 4 / バックログ実装）。*
+
+

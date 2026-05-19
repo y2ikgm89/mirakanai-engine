@@ -10,7 +10,7 @@ Connect selected package streaming safe-point execution to the Runtime Resource 
 
 ## Context
 
-- Parent: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
+- Parent: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
 - Previous slices: [2026-05-12-runtime-resource-v2-resident-package-mount-set-v1.md](2026-05-12-runtime-resource-v2-resident-package-mount-set-v1.md) and [2026-05-12-runtime-resource-v2-resident-catalog-cache-v1.md](2026-05-12-runtime-resource-v2-resident-catalog-cache-v1.md).
 - Existing selected package streaming safe-point execution validates host-gated descriptors, runtime scene validation evidence, residency hints, and budget intent, but the current path commits through `RuntimeAssetPackageStore` single-package replacement instead of `RuntimeResidentPackageMountSetV2`.
 
@@ -54,3 +54,5 @@ Connect selected package streaming safe-point execution to the Runtime Resource 
 | PowerShell analyzer smoke | WARN | `Invoke-ScriptAnalyzer` ran on `tools/check-ai-integration.ps1` and `tools/check-json-contracts.ps1`; it returned exit 0 while reporting the repository's existing `Write-Host`, `ShouldProcess`, singular-noun, and positional-parameter warning baseline. |
 | Full validation | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` reported `validate: ok`; CTest passed 49/49 tests, while Metal/Apple lanes remained diagnostic-only or host-gated on this Windows host. |
 | Build | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` completed successfully after full validation. |
+
+

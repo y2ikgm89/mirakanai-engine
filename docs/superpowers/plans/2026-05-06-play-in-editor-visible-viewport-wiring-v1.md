@@ -31,7 +31,7 @@
 - `mirakana_editor_core` exposes a deterministic `EditorPlaySessionControlsModel` with Play/Pause/Resume/Stop command rows, enabled flags, session report, and `viewport_uses_simulation_scene`.
 - Tests prove controls are correct in edit, play, paused, stopped, and empty-source states.
 - `mirakana_editor` Run menu and Viewport toolbar query the controls model, start/pause/resume/stop `EditorPlaySession`, tick it once per viewport frame while in play mode, and render the simulation scene while active.
-- `mirakana_editor` source-scene authoring actions and undo/redo are rejected while `EditorPlaySession::source_scene_edits_blocked()` is true.
+- `mirakana_editor` source-scene authoring actions and undo/redo are rejected while `()` is true.
 - Docs, registry, master plan, manifest, and static checks describe visible viewport wiring without claiming dynamic game-module/runtime-host Play-In-Editor execution.
 - Relevant validation passes, including focused `mirakana_editor_core_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`.
 - The slice closes with a validated commit checkpoint after `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 && pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passes, staging only files owned by this slice.
@@ -79,12 +79,12 @@
 - Modify: `editor/src/main.cpp`
 
 - [x] Add an `EditorPlaySession` member to the desktop editor shell.
-- [x] Keep `active_scene()` as the source scene and add a separate viewport scene accessor that returns the simulation scene while the session is active.
+- [x] Keep `()` as the source scene and add a separate viewport scene accessor that returns the simulation scene while the session is active.
 - [x] Use `make_editor_play_session_controls_model` for the Run menu and Viewport toolbar enabled state.
 - [x] Start, pause, resume, and stop the play session from existing Run commands, then mirror the accepted state into `ViewportState`.
 - [x] Tick the play session once per viewport frame while the session is in play mode and mirror accepted ticks into `ViewportState::mark_simulation_tick`.
-- [x] Render `viewport_scene()` instead of `active_scene()` in the viewport surface and overlay.
-- [x] Reject source-scene undo/redo and `execute_scene_authoring_action` while `source_scene_edits_blocked()` is true.
+- [x] Render `()` instead of `()` in the viewport surface and overlay.
+- [x] Reject source-scene undo/redo and `execute_scene_authoring_action` while `()` is true.
 
 ### Task 4: Docs, Manifest, Static Checks
 
@@ -93,7 +93,7 @@
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`
@@ -131,3 +131,9 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Exit 0. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Dev preset configured and built. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Play-In-Editor Visible Viewport Wiring v1 files; leave unrelated pre-existing guidance changes unstaged. |
+
+
+
+
+
+

@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-prefab-instance-local-child-refresh-resolution-v1.md`.
 - Current selected-root refresh can preserve local child subtrees through `keep_local_children`, but stale source nodes removed from the refreshed source prefab are still only reviewed removal rows.
@@ -49,7 +49,7 @@
   - Add sentinel checks for the reviewed stale keep-as-local policy.
 - Modify: `docs/superpowers/plans/README.md`
   - Track this plan as the active slice, then latest completed evidence at closeout.
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update current verdict and selected-gap evidence after validation.
 
 ## Done When
@@ -132,7 +132,7 @@ Expected before implementation: compile failure for the new policy flag, row kin
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Document stale source-node preservation as an explicit reviewed refresh policy.
 - [x] Keep unsupported claims explicit: no automatic nested propagation, fuzzy matching, automatic merge/rebase, package/validation execution, renderer/RHI uploads, native handles, or package streaming.
@@ -163,3 +163,7 @@ Expected before implementation: compile failure for the new policy flag, row kin
 ## Status
 
 Completed.
+
+
+
+

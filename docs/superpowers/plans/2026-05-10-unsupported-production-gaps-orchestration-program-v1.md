@@ -9,7 +9,7 @@ Provide a single repository-owned orchestration ledger that aligns the productio
 
 ## Context
 
-- Master plan: [`2026-05-03-production-completion-master-plan-v1.md`](2026-05-03-production-completion-master-plan-v1.md)
+- Master plan: [`../master-plans/2026-05-03-production-completion-master-plan-v1.md`](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 - Roadmap: [`docs/roadmap.md`](../../roadmap.md)
 - Manifest gaps: `unsupportedProductionGaps` in [`engine/agent/manifest.json`](../../../engine/agent/manifest.json)
 
@@ -39,7 +39,7 @@ Provide a single repository-owned orchestration ledger that aligns the productio
 | Check | Result |
 | --- | --- |
 | Plan registered in [`README.md`](./README.md) Current Active Work | **PASS** — Active slice row references the master plan and links [2026-05-11-production-completion-gap-stream-plans-index-v1.md](./2026-05-11-production-completion-gap-stream-plans-index-v1.md) as the Phase 0–4 stream index; latest completed slice records nested prefab propagation dry-run counters ([2026-05-11-editor-nested-prefab-propagation-candidate-dry-run-v1.md](./2026-05-11-editor-nested-prefab-propagation-candidate-dry-run-v1.md)); the next `editor-productization` child remains `recommendedNextPlan.id=next-production-gap-selection`. |
-| Manifest `recommendedNextPlan.path` / `currentActivePlan` | **PASS** — both paths reference `2026-05-03-production-completion-master-plan-v1.md` per `tools/check-json-contracts.ps1` / `tools/check-ai-integration.ps1`; `completedContext` references this orchestration file |
+| Manifest `recommendedNextPlan.path` / `currentActivePlan` | **PASS** — both paths reference `../master-plans/2026-05-03-production-completion-master-plan-v1.md` per `tools/check-json-contracts.ps1` / `tools/check-ai-integration.ps1`; `completedContext` references this orchestration file |
 
 ## Phase execution ledger (orchestration only)
 
@@ -52,3 +52,5 @@ This program file sequences gap IDs (Phase 0–4); it does **not** remove `unsup
 | Phase 2 | `2d-playable-vertical-slice`, `3d-playable-vertical-slice` | Tracked — vertical-slice proofs respect `hostGates`; no Metal/Vulkan parity claims without evidence. |
 | Phase 3 | `production-ui-importer-platform-adapters` | Tracked — adapters require dependency/legal/vcpkg alignment per `AGENTS.md`. |
 | Phase 4 | `full-repository-quality-gate` | Tracked — tidy/coverage/sanitizer/CI evidence expands only with manifest-aligned ready claims. |
+
+

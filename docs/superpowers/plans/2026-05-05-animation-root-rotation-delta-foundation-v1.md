@@ -1,7 +1,7 @@
 # Animation Root Rotation Delta Foundation v1 Implementation Plan (2026-05-05)
 
 **Plan ID:** `animation-root-rotation-delta-foundation-v1`
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6
 **Status:** Completed on 2026-05-05. This slice is limited to deterministic `mirakana_animation` root-joint Z-rotation delta sampling over the existing root-motion contract.
 
 ## Goal
@@ -60,3 +60,5 @@ Extend the existing root-motion sampling contract so gameplay and later animatio
 ## Non-Goals
 
 - Full 3D joint orientation, quaternion APIs, angular wrap normalization, loop accumulation, motion warping, IK, broader morph production, animation graph authoring, cooked animation asset schema, glTF-specific API changes, renderer/RHI integration, GPU skinning changes, runtime host wiring, editor UI, package streaming, or broad skeletal animation production readiness.
+
+

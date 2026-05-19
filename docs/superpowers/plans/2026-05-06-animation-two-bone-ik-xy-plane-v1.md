@@ -1,7 +1,7 @@
 # Animation Two-Bone IK XY Plane v1 (2026-05-06)
 
 **Plan ID:** `animation-two-bone-ik-xy-plane-v1`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
 **Status:** Completed on 2026-05-06.
 
 ## Goal
@@ -33,3 +33,5 @@ Provide a **minimal analytic two-bone IK** solver in the **parent XY plane** (co
 ## Non-Goals
 
 - Full FABRIK/C CD chains, twist extraction, joint limits beyond reachability, integration with `AnimationSkeletonDesc` sampling, IK in glTF assets.
+
+

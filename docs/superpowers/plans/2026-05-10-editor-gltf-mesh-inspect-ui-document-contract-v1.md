@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-gltf-mesh-inspect-ui-document-contract-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Status:** Completed  
 
 ## Goal
@@ -33,3 +33,5 @@ Expose read-only glTF mesh primitive inspect results as a retained-mode `mirakan
 | --- | --- | --- |
 | Focused tests | `ctest --preset dev -R MK_editor_core_tests --output-on-failure` | PASS |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS (Windows dev preset, 2026-05-10) |
+
+

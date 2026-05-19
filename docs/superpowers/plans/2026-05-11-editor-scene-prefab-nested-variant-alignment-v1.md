@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-scene-prefab-nested-variant-alignment-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md](2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md)  
 
 ## Goal
@@ -35,3 +35,5 @@ Align **nested prefab instance refresh** review tooling with **Prefab Variant co
 | --- | --- | --- |
 | Unit tests | `ctest --preset dev --output-on-failure -R MK_editor_core_tests` | Record exit code |
 | Repository validate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Record exit code |
+
+

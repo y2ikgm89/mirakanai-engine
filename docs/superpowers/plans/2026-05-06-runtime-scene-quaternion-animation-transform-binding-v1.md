@@ -2,7 +2,7 @@
 
 **Plan ID:** `runtime-scene-quaternion-animation-transform-binding-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -65,3 +65,5 @@ first-party binding rows and refresh scene render packets without exposing rende
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`: `public-api-boundary-check: ok`.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1`: `tidy-check: ok (1 files)`.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: `validate: ok` with 29/29 CTest tests passed.
+
+

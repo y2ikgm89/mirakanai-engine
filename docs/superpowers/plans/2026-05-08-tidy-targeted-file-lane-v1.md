@@ -45,7 +45,7 @@ Reduce the `full-repository-quality-gate` developer-efficiency loophole found du
 - Modify: `docs/workflows.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 
 ## Tasks
@@ -60,7 +60,7 @@ Reduce the `full-repository-quality-gate` developer-efficiency loophole found du
 
 ### Task 2: Tidy Wrapper
 
-- [x] Add `[string[]]$Files = @()` to `tools/check-tidy.ps1`.
+- [x] Add `[string[]]$Files = @(../master-plans/)` to `tools/check-tidy.ps1`.
 - [x] Normalize comma-separated and repeated `-Files` values to full repository paths.
 - [x] Reject missing paths, paths outside the repository, and non-`.cc`/`.cpp`/`.cxx` source paths with explicit `Write-Error` messages.
 - [x] Filter the compile database file list to requested files, and reject requested files absent from the compile database before applying `-MaxFiles`.
@@ -105,3 +105,8 @@ Reduce the `full-repository-quality-gate` developer-efficiency loophole found du
 ## Status
 
 **Status:** Completed.
+
+
+
+
+

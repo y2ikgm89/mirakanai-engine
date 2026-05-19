@@ -14,7 +14,7 @@
 
 ## Context
 
-- Parent roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Parent roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Latest related slice: `docs/superpowers/plans/2026-05-08-runtime-ui-text-edit-command-apply-v1.md`.
 - Existing `mirakana_ui` command contract has `TextEditCommandKind`, `TextEditCommand`, `plan_text_edit_command`, and `apply_text_edit_command`.
 - Existing `mirakana_platform_sdl3` text bridge already translates SDL text input, text editing, candidate events, IME composition publication, and committed text application.
@@ -51,7 +51,7 @@
   - `docs/roadmap.md`
   - `docs/current-capabilities.md`
   - `docs/ui.md`
-  - `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+  - `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - `engine/agent/manifest.json`
 
 ## Done When
@@ -184,7 +184,7 @@ Run:
 
 ```powershell
 git status --short
-git add engine/platform/include/mirakana/platform/input.hpp engine/platform/sdl3/src/sdl_input.cpp engine/platform/sdl3/src/sdl_window.cpp engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_ui_platform_integration.hpp engine/platform/sdl3/src/sdl_ui_platform_integration.cpp engine/runtime/src/session_services.cpp tests/unit/runtime_tests.cpp tests/unit/sdl3_platform_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-sdl3-text-edit-command-key-events-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/ui.md docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json
+git add engine/platform/include/mirakana/platform/input.hpp engine/platform/sdl3/src/sdl_input.cpp engine/platform/sdl3/src/sdl_window.cpp engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_ui_platform_integration.hpp engine/platform/sdl3/src/sdl_ui_platform_integration.cpp engine/runtime/src/session_services.cpp tests/unit/runtime_tests.cpp tests/unit/sdl3_platform_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-sdl3-text-edit-command-key-events-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/ui.md docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json
 git commit -m "feat: map sdl text edit commands"
 ```
 
@@ -207,3 +207,7 @@ Expected: commit succeeds only after validation is green.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | Passed | Audit passed and still reports `unsupported_gaps=11`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Final default gate passed on 2026-05-08; host-gated Apple/Metal diagnostics remain diagnostic-only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit gate build passed on 2026-05-08. |
+
+
+
+

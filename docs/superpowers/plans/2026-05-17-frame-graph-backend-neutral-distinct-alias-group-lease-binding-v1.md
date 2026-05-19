@@ -89,7 +89,7 @@ The completed Frame Graph lease-binding slice binds one transient texture lease 
 - Modify: `tests/unit/renderer_rhi_tests.cpp`
 
 - [x] Change `FrameGraphTransientTextureLease` to retain the alias-group `rhi::TransientTextureAliasGroup`.
-- [x] Make `acquire_frame_graph_transient_texture_lease_bindings` call `device.acquire_transient_texture_alias_group(group.desc, group.resources.size())` once per alias group.
+- [x] Make `acquire_frame_graph_transient_texture_lease_bindings` call `device.acquire_transient_texture_alias_group(group.desc, group.resources.())` once per alias group.
 - [x] Emit `FrameGraphTextureBinding` rows in group resource order, mapping each resource to the matching distinct handle from the returned alias group and `ResourceState::undefined`.
 - [x] Reject malformed empty resource names before acquisition, preserve plan diagnostics without acquisition, and release already acquired alias-group leases after later acquisition failure.
 - [x] If a backend returns the wrong number of texture handles, release all acquired leases and report an `invalid_resource` diagnostic instead of emitting partial bindings.
@@ -103,7 +103,7 @@ The completed Frame Graph lease-binding slice binds one transient texture lease 
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.fragments/004-modules.json`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `engine/agent/manifest.json` via compose only
@@ -143,3 +143,9 @@ The completed Frame Graph lease-binding slice binds one transient texture lease 
 - STATIC: `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed after durable guidance and manifest synchronization.
 - SLICE GATE: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed; diagnostic-only host gates still report missing Apple/Metal tools on this Windows host as expected.
 - PUBLICATION PREFLIGHT: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed after validation.
+
+
+
+
+
+

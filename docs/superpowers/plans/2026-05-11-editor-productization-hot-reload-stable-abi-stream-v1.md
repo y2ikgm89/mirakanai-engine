@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-productization-hot-reload-stable-abi-stream-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Status:** Completed (hot reload track exit; stable ABI exclusion path complete; mid-play DLL replacement remains unsupported)  
 
 ## Goal
@@ -34,3 +34,5 @@ Separate **same-engine-build editor game module driver** evidence (already lande
 6. **Completed (fail-closed DLL mutation order guidance):** [2026-05-11-editor-game-module-driver-active-session-hot-reload-fail-closed-order-v1.md](2026-05-11-editor-game-module-driver-active-session-hot-reload-fail-closed-order-v1.md) — `EditorGameModuleDriverHostSessionSnapshot::policy_dll_mutation_order_guidance`, retained `play_in_editor.game_module_driver.session.policy.dll_mutation_order_guidance`, phase-keyed stable strings, `MK_editor_core_tests` play-active load/reload/unload barrier matrix; does not implement mid-play DLL replacement.
 7. **Completed (MK_editor visible DLL mutation order guidance):** [2026-05-11-editor-game-module-driver-mk-editor-visible-dll-mutation-order-guidance-v1.md](2026-05-11-editor-game-module-driver-mk-editor-visible-dll-mutation-order-guidance-v1.md) — `mirakana_editor` `draw_game_module_driver_controls` renders `DLL mutation order guidance:` from `session_snapshot.policy_dll_mutation_order_guidance` next to other host-session policy lines; `check-ai-integration` `editor/src/main.cpp` needle; does not implement mid-play DLL replacement.
 8. **Completed (MK_editor visible reload transaction recipe evidence):** [2026-05-11-editor-game-module-driver-mk-editor-visible-reload-transaction-recipe-evidence-v1.md](2026-05-11-editor-game-module-driver-mk-editor-visible-reload-transaction-recipe-evidence-v1.md) — retained `play_in_editor.game_module_driver.reload_transaction_recipe_evidence` rows with `ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence.v1` contract label plus visible `mirakana_editor` reviewed `run-validation-recipe` DryRun/Execute argv lines for `dev-windows-editor-game-module-driver-load-tests` and `windows-msvc-dev-editor-game-module-driver-ctest`; `MK_editor_core_tests`; does not execute recipes from the editor shell or implement mid-play DLL replacement.
+
+

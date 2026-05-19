@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-resources-capture-operator-validated-launch-workflow-v1`  
 **Gap:** `editor-productization` (resource management execution stream)  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-resource-management-execution-stream-v1.md](2026-05-11-editor-productization-resource-management-execution-stream-v1.md)  
 **Gap index:** [2026-05-11-production-completion-gap-stream-plans-index-v1.md](2026-05-11-production-completion-gap-stream-plans-index-v1.md)
 
@@ -55,3 +55,5 @@ Close the resource execution stream toward **operator-validated external tool in
 
 - Extend operator workflow docs with screenshots or a short **Recommended workflow** subsection tying PIX session dir → attach capture for AI analysis (`docs/ai-integration.md` cross-link only if needed).
 - Stream exit: reconcile `requiredBeforeReadyClaim` wording after broader operator evidence is recorded (separate manifest slice if narrowing claims).
+
+

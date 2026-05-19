@@ -2,7 +2,7 @@
 
 **Plan ID:** `animation-two-bone-ik-3d-orientation-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -63,3 +63,5 @@ editor, glTF, or native handles.
   while scanning broad existing warning surfaces; the validate-scoped
   `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -MaxFiles 1` passed.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after completion metadata update; CTest reported 29/29 tests passed.
+
+

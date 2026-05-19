@@ -4,7 +4,7 @@
 
 **Plan ID:** `generated-3d-compute-morph-skin-package-smoke-d3d12-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -81,3 +81,5 @@ C++23, `mirakana_runtime_host_sdl3_presentation`, `mirakana_runtime_scene_rhi`, 
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1`
 - Final validation passed:
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+

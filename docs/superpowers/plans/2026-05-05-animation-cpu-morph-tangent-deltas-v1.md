@@ -1,7 +1,7 @@
 # Animation CPU Morph Tangent Deltas v1 Implementation Plan (2026-05-05)
 
 **Plan ID:** `animation-cpu-morph-tangent-deltas-v1`
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6
 **Status:** Completed on 2026-05-05. This slice documents CPU-only glTF 2.0-style **additive TANGENT (xyz)** morph targets alongside existing POSITION and NORMAL morph paths in `mirakana_animation`.
 
 ## Goal
@@ -44,3 +44,5 @@ Expose deterministic CPU morph evaluation for **tangent deltas** per vertex: sam
 ## Next-Step Decision
 
 Keep `aiOperableProductionLoop.currentActivePlan` on the production-completion master plan until the next narrow Phase 6 child is filed in `manifest.json`. Prefer the next dated slice from the umbrella: loop accumulation, IK, morph weight curves + glTF morph cook/import, or `3d-camera-controller-and-gameplay-template-v1`.
+
+

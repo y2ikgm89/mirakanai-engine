@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-scene-nested-prefab-propagation-batch-multi-target-apply-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md](2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md)
 
 ## Goal
@@ -23,7 +23,7 @@ Allow `plan_scene_prefab_instance_refresh_batch` / `apply_scene_prefab_instance_
 
 ## Done when
 
-- The artificial `ordered_targets.size() > 1` + propagation diagnostic is removed from `plan_scene_prefab_instance_refresh_batch`.
+- The artificial `ordered_targets.() > 1` + propagation diagnostic is removed from `plan_scene_prefab_instance_refresh_batch`.
 - `MK_editor_core_tests` covers two disjoint player instance roots, each with nested weapon, batch plan `can_apply` with propagation, and `make_scene_prefab_instance_refresh_batch_action` applies Shield + Grip under both hierarchies.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passes on the implementation host.
 
@@ -33,3 +33,7 @@ Allow `plan_scene_prefab_instance_refresh_batch` / `apply_scene_prefab_instance_
 | --- | --- | --- | --- |
 | Editor core | `ctest --preset dev -R MK_editor_core_tests --output-on-failure` | Pass | Pass |
 | Repository | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Pass |
+
+
+
+

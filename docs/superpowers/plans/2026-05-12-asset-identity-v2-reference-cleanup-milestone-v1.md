@@ -190,7 +190,7 @@ Expected: no production game/template matches. If historical tests or non-game e
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Generated: `engine/agent/manifest.json`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/ai-game-development.md`
@@ -284,7 +284,7 @@ Expected: both pass or an exact blocker is recorded before any ready claim.
 Stage the files touched by this plan only, verify staged diff, and commit:
 
 ```powershell
-git add engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp engine/runtime_scene/src/runtime_scene.cpp tests/unit/runtime_scene_tests.cpp games/sample_ui_audio_assets/main.cpp games/sample_gameplay_foundation/main.cpp games/sample_2d_playable_foundation/main.cpp games/sample_desktop_runtime_game/main.cpp games/sample_2d_desktop_runtime_package/main.cpp games/sample_generated_desktop_runtime_cooked_scene_package/main.cpp games/sample_generated_desktop_runtime_material_shader_package/main.cpp games/sample_generated_desktop_runtime_3d_package/main.cpp tools/new-game.ps1 tools/check-ai-integration.ps1 tools/check-json-contracts.ps1 engine/agent/manifest.fragments/010-aiOperableProductionLoop.json engine/agent/manifest.json docs/superpowers/plans/README.md docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md docs/current-capabilities.md docs/roadmap.md docs/ai-game-development.md docs/specs/generated-game-validation-scenarios.md docs/superpowers/plans/2026-05-12-asset-identity-v2-reference-cleanup-milestone-v1.md
+git add engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp engine/runtime_scene/src/runtime_scene.cpp tests/unit/runtime_scene_tests.cpp games/sample_ui_audio_assets/main.cpp games/sample_gameplay_foundation/main.cpp games/sample_2d_playable_foundation/main.cpp games/sample_desktop_runtime_game/main.cpp games/sample_2d_desktop_runtime_package/main.cpp games/sample_generated_desktop_runtime_cooked_scene_package/main.cpp games/sample_generated_desktop_runtime_material_shader_package/main.cpp games/sample_generated_desktop_runtime_3d_package/main.cpp tools/new-game.ps1 tools/check-ai-integration.ps1 tools/check-json-contracts.ps1 engine/agent/manifest.fragments/010-aiOperableProductionLoop.json engine/agent/manifest.json docs/superpowers/plans/README.md docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md docs/current-capabilities.md docs/roadmap.md docs/ai-game-development.md docs/specs/generated-game-validation-scenarios.md docs/superpowers/plans/2026-05-12-asset-identity-v2-reference-cleanup-milestone-v1.md
 git diff --cached --check
 git commit -m "Close asset identity reference cleanup gap"
 ```
@@ -308,3 +308,7 @@ Expected: commit succeeds and unrelated dirty worktree files remain unstaged.
 | `Invoke-ScriptAnalyzer -Severity Error` on `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, `tools/new-game.ps1` | Passed | Error severity returned no diagnostics. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation passed; `production-readiness-audit` reports `unsupported_gaps=10`; CTest passed 47/47. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Explicit commit-prep build gate passed after validation. |
+
+
+
+

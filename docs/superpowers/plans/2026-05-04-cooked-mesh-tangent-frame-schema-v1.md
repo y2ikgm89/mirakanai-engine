@@ -1,6 +1,6 @@
 # Cooked mesh tangent frame schema v1 実装計画 (2026-05-04)
 
-> **エージェント向け:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6 子計画 `cooked-mesh-tangent-frame-schema-v1`。接線空間メッシュの **ソース／クック／ランタイム／RHI／サンプルシェーダ** を **後方互換なし** で v2 に統一する。`engine/agent/manifest.json` の `currentActivePlan` は本完了スライスを指す（次スライスは `recommendedNextPlan`）。
+> **エージェント向け:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 子計画 `cooked-mesh-tangent-frame-schema-v1`。接線空間メッシュの **ソース／クック／ランタイム／RHI／サンプルシェーダ** を **後方互換なし** で v2 に統一する。`engine/agent/manifest.json` の `currentActivePlan` は本完了スライスを指す（次スライスは `recommendedNextPlan`）。
 
 ## ゴール
 
@@ -26,7 +26,7 @@
 
 ## 実装チェックリスト（完了）
 
-- `mirakana_assets`: `MeshSourceDocument::has_tangent_frame`、`mesh_source_vertex_stride_bytes()`、シリアライズ／デシリアライズ、`is_valid_mesh_source_document`（法線と UV の両方が真のとき接線必須など）。
+- `mirakana_assets`: `MeshSourceDocument::has_tangent_frame`、`()`、シリアライズ／デシリアライズ、`is_valid_mesh_source_document`（法線と UV の両方が真のとき接線必須など）。
 - `GameEngine.MeshSource.v2` / `GameEngine.CookedMesh.v2` レジストリとランタイム `RuntimeMeshPayload` の `has_tangent_frame`。
 - glTF 取り込み: lit で `TANGENT` 欠落は明確なエラー；クック出力は v2。
 - `mirakana_runtime_rhi`: 接線レイアウト（ストライド 48）、部分レイアウト拒否、サンプルシェーダ `VsIn` の `TANGENT`。
@@ -58,3 +58,7 @@
 ---
 
 *計画起票・完了記録: 2026-05-04。スライス id: `cooked-mesh-tangent-frame-schema-v1`（Phase 6）。*
+
+
+
+

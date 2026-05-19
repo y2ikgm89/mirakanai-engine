@@ -53,7 +53,7 @@
 - Modify: `docs/specs/game-prompt-pack.md`
 - Modify: `docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Generate: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration-070-production-ledger.ps1`
@@ -76,3 +76,7 @@
 - Static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
 - Static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/tools/scene/scene_v2_runtime_package_migration_tool.cpp,tests/unit/tools_tests.cpp` passed.
 - Gate: full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed.
+
+
+
+

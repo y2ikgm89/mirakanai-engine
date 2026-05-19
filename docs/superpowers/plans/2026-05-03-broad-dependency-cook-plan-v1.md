@@ -17,7 +17,7 @@
 
 ## Context
 
-- 親: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 2 の子計画 `broad-dependency-cook-plan-v1`。
+- 親: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 2 の子計画 `broad-dependency-cook-plan-v1`。
 - 前提: [2026-05-01-registered-source-asset-cook-package-command-tooling-v1.md](2026-05-01-registered-source-asset-cook-package-command-tooling-v1.md) の narrow cook 実装。
 
 ## Constraints
@@ -67,3 +67,5 @@
 ---
 
 *Plan completed: 2026-05-03. Evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` green after `RegisteredSourceAssetCookDependencyExpansion` + registry BFS closure in `registered_source_asset_cook_package_tool.cpp`.*
+
+

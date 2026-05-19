@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Target unsupported gap: `production-ui-importer-platform-adapters`, currently `planned`.
 - Runtime UI SDL3 Text Input Event Translation v1 already copies `SDL_EVENT_TEXT_INPUT` and `SDL_EVENT_TEXT_EDITING` text rows into `SdlWindowEvent`.
 - Context7 confirms SDL3 event-owned text memory must be copied when retained. Local SDL3 3.2 headers define `SDL_TextEditingCandidatesEvent` as `event.edit_candidates.*` with `windowID`, `const char * const *candidates`, `num_candidates`, `selected_candidate`, and `horizontal`.
@@ -39,7 +39,7 @@
 - Modify after green: `docs/current-capabilities.md`
 - Modify after green: `docs/roadmap.md`
 - Modify after green: `docs/ui.md`
-- Modify after green: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify after green: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify after green: `engine/agent/manifest.json`
 
 ## Tasks
@@ -89,3 +89,7 @@
 - Added copied first-party SDL3 IME candidate rows to `mirakana::SdlWindowEvent`.
 - Kept `mirakana_ui` free of SDL3 headers and native handles.
 - Did not mark the broad `production-ui-importer-platform-adapters` gap ready; native IME services, UI-side composition/candidate publication, virtual keyboard behavior, text editing model mutation, text shaping, font rasterization, OS accessibility, and broader platform adapters remain follow-up work.
+
+
+
+

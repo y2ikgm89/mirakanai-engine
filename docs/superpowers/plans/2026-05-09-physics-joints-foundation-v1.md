@@ -12,7 +12,7 @@
 
 **Plan ID:** `physics-joints-foundation-v1`  
 **Status:** Completed.  
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Gap:** `physics-1-0-collision-system` Phase P1.  
 **Previous Slice:** [2026-05-09-physics-character-dynamic-interaction-policy-v1.md](2026-05-09-physics-character-dynamic-interaction-policy-v1.md)
 
@@ -88,7 +88,7 @@
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
@@ -122,3 +122,7 @@
 | `git diff --check` | PASS | No whitespace errors in the working-tree diff. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Coherent slice validation passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed. |
+
+
+
+

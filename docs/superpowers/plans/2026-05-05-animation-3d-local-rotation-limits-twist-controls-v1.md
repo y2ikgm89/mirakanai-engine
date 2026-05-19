@@ -2,7 +2,7 @@
 
 **Plan ID:** `animation-3d-local-rotation-limits-twist-controls-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -54,3 +54,5 @@ Add host-independent 3D local rotation limit and twist-control contracts for qua
 - Tidy smoke: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1` passed.
 - Agent/static guidance check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including `ctest --preset dev` with 29/29 tests passing.
+
+

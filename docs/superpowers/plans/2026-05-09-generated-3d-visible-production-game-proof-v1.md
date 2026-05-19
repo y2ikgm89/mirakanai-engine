@@ -12,7 +12,7 @@
 
 **Plan ID:** `generated-3d-visible-production-game-proof-v1`  
 **Status:** Completed.  
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Previous Slice:** [2026-05-09-generated-3d-native-ui-text-glyph-atlas-package-smoke-v1.md](2026-05-09-generated-3d-native-ui-text-glyph-atlas-package-smoke-v1.md)
 
 ## Context
@@ -124,7 +124,7 @@ Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps
 - Modify: `.agents/skills/gameengine-game-development/SKILL.md`
 - Modify: `.claude/skills/gameengine-game-development/SKILL.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Add the new validation recipe and production-loop guidance.
 - [x] Update `3d-playable-vertical-slice` notes to include this visible proof while keeping the gap non-ready unless all remaining required-before-ready claims are resolved or explicitly excluded.
@@ -164,3 +164,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 
 - This slice intentionally narrows the `3d-playable-vertical-slice` gap but does not mark it ready. Remaining broad claims such as Vulkan/Metal parity, source import execution, editor productization, public native/RHI handles, and broad generated 3D production readiness stay unsupported or host-gated.
 - The working tree includes unrelated pre-existing changes, so no coherent slice commit was created from this mixed worktree.
+
+
+
+

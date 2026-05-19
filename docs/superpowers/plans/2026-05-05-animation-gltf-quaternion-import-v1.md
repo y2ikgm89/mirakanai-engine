@@ -2,7 +2,7 @@
 
 **Plan ID:** `animation-gltf-quaternion-import-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -70,3 +70,5 @@ Import glTF 2.0 node rotation animation channels as first-party normalized quate
   `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -MaxFiles 1` exited 0.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` exited 0; CTest reported 29/29 passing. Metal shader tools and Apple packaging
   remain diagnostic-only host blockers on this Windows host.
+
+

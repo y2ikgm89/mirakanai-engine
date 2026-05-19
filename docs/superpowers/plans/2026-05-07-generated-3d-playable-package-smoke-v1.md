@@ -12,7 +12,7 @@
 
 ## Context
 
-- Master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Previous generated 3D package slices added committed/generated package files, transform/morph/quaternion package smokes, D3D12/Vulkan compute morph package smokes, selected safe-point package streaming, and selected scene GPU + postprocess + framegraph=2 renderer quality.
 - `engine/agent/manifest.json.aiOperableProductionLoop.unsupportedProductionGaps[3d-playable-vertical-slice]` is still `implemented-generated-desktop-3d-package-proof`.
 - The next host-feasible advancement is a single package-visible playable-slice gate over the already validated generated 3D runtime pieces.
@@ -101,3 +101,7 @@
 | `git diff --check` | PASS | No whitespace errors; Git reported CRLF conversion warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; CTest passed 29/29, with host-gated Metal/Apple diagnostics reported as expected non-fatal blockers. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | `tools/build.ps1` completed the `dev` preset build successfully. |
+
+
+
+

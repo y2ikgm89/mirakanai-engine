@@ -2,7 +2,7 @@
 
 **Plan ID:** `animation-fabrik-3d-chain-ik-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -70,3 +70,5 @@ native handles.
   (`tidy-check: ok (1 files)`; broad existing warning output remains outside this slice).
 - Final validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after closing the docs/manifest ledger; CTest reported
   `100% tests passed, 0 tests failed out of 29`.
+
+

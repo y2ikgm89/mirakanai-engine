@@ -45,7 +45,7 @@
 - Modify: `docs/roadmap.md`
 - Modify: `docs/specs/generated-game-validation-scenarios.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
@@ -105,3 +105,7 @@
 | `git diff --check` | Passed | Exit 0; Git reported only CRLF normalization warnings for touched text files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Exit 0. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Exit 0 through `tools/build.ps1` and the `dev` preset. |
+
+
+
+

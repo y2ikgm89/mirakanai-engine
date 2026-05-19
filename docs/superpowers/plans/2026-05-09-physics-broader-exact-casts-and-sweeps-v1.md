@@ -12,7 +12,7 @@
 
 **Plan ID:** `physics-broader-exact-casts-and-sweeps-v1`  
 **Status:** Completed.  
-**Master Plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Previous Slice:** [2026-05-09-physics-scene-package-collision-authoring-v1.md](2026-05-09-physics-scene-package-collision-authoring-v1.md)
 
 ## Context
@@ -86,7 +86,7 @@ MK_TEST("3d physics exact shape sweep sphere matches exact sphere cast") {
 
     MK_REQUIRE(sphere.status == mirakana::PhysicsExactSphereCast3DStatus::hit);
     MK_REQUIRE(generic.status == mirakana::PhysicsExactShapeSweep3DStatus::hit);
-    MK_REQUIRE(generic.hit.has_value());
+    MK_REQUIRE(generic.hit.());
     MK_REQUIRE(generic.hit->body == target);
     MK_REQUIRE(std::abs(generic.hit->distance - sphere.hit->distance) < 0.0001F);
     MK_REQUIRE(generic.hit->normal == sphere.hit->normal);
@@ -110,14 +110,14 @@ Add declarations in `physics3d.hpp` near the current sweep/query rows:
 ```cpp
 class PhysicsShape3DDesc {
   public:
-    constexpr PhysicsShape3DDesc() noexcept = default;
+    constexpr () noexcept = default;
     [[nodiscard]] static constexpr PhysicsShape3DDesc aabb(Vec3 half_extents) noexcept;
     [[nodiscard]] static constexpr PhysicsShape3DDesc sphere(float radius) noexcept;
     [[nodiscard]] static constexpr PhysicsShape3DDesc capsule(float radius, float half_height) noexcept;
-    [[nodiscard]] constexpr PhysicsShape3DKind kind() const noexcept;
-    [[nodiscard]] constexpr Vec3 half_extents() const noexcept;
-    [[nodiscard]] constexpr float radius() const noexcept;
-    [[nodiscard]] constexpr float half_height() const noexcept;
+    [[nodiscard]] constexpr PhysicsShape3DKind () const noexcept;
+    [[nodiscard]] constexpr Vec3 () const noexcept;
+    [[nodiscard]] constexpr float () const noexcept;
+    [[nodiscard]] constexpr float () const noexcept;
 };
 
 struct PhysicsQueryFilter3D {
@@ -182,10 +182,10 @@ Implement `PhysicsWorld3D::exact_shape_sweep` for `PhysicsShape3DKind::sphere` b
 
 ```cpp
 // Pseudocode shape, keep local helper names consistent with existing file style.
-if (desc.shape.kind() == PhysicsShape3DKind::sphere) {
-    // validate desc.shape.radius(), direction, max_distance, and finite origin
+if (desc.shape.() == PhysicsShape3DKind::sphere) {
+    // validate desc.shape.(), direction, max_distance, and finite origin
     // iterate bodies with the same filters as exact_sphere_cast
-    // call exact_sphere_cast_body(body, desc.origin, normalized_direction, desc.max_distance, desc.shape.radius())
+    // call exact_sphere_cast_body(body, desc.origin, normalized_direction, desc.max_distance, desc.shape.())
     // return hit/no_hit/invalid_request with the shared result type
 }
 ```
@@ -326,7 +326,7 @@ Expected: existing conservative `shape_sweep` tests still pass unchanged, provin
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `.agents/skills/gameengine-game-development/SKILL.md`
 - Modify: `.claude/skills/gameengine-game-development/SKILL.md`
@@ -420,3 +420,9 @@ Append a validation evidence table with command, result, and relevant test names
 - Exclusions: conservative sweep behavior, controller policy, joints, CCD, benchmark gates, editor UX, Jolt/native backends, oriented primitives, mesh/convex casts, and broad physics readiness are intentionally deferred.
 - Placeholder scan: no task contains deferred placeholder markers; every behavior task names the target files and expected verification commands.
 - Type consistency: public names use `PhysicsShape3DDesc`, `PhysicsQueryFilter3D`, `PhysicsExactShapeSweep3D*`, and `PhysicsWorld3D::exact_shape_sweep` consistently.
+
+
+
+
+
+

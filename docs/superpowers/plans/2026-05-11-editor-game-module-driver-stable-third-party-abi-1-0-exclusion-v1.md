@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-game-module-driver-stable-third-party-abi-1-0-exclusion-v1`  
 **Gap:** `editor-productization` (hot reload + stable ABI stream — stable ABI track exit via exclusion)  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md](2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md)
 
 ## Goal
@@ -35,3 +35,5 @@ Record an explicit **1.0 product decision**: the engine does **not** ship or sup
 | --- | --- | --- |
 | Compose manifest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Pass |
 | Repo gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass |
+
+

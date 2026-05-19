@@ -17,7 +17,7 @@
 
 ## Context
 
-- [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 1 の子計画。
+- [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 1 の子計画。
 - [2026-05-03-full-clang-tidy-warning-cleanup-v1.md](2026-05-03-full-clang-tidy-warning-cleanup-v1.md) と独立して進められるが、Phase 1 の「品質ゲート」完了の証跡として並列に扱う。
 - 実施完了後、`engine/agent/manifest.json` の `currentActivePlan` は **マスター計画**へ戻す（下記 Evidence）。
 
@@ -80,3 +80,5 @@
 ---
 
 *Plan authored: 2026-05-03. Slice completed: coverage-thresholds.json, check-coverage.ps1 lcov gate, validate.yml lcov install + artifact paths.*
+
+

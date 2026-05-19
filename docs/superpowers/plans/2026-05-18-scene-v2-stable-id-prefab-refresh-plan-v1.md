@@ -2,7 +2,7 @@
 
 **Plan ID:** `scene-v2-stable-id-prefab-refresh-plan-v1`
 **Status:** Completed
-**Parent:** [Production Completion Master Plan v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Gap:** `scene-component-prefab-schema-v2`
 
 ## Goal
@@ -41,3 +41,5 @@ Add a non-mutating Scene/Prefab v2 prefab instance refresh planning contract tha
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/scene/src/schema_v2.cpp,tests/unit/scene_schema_v2_tests.cpp` | PASS |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS; 65 tests passed; Metal/Apple host checks remained diagnostic-only/host-gated on Windows |
+
+

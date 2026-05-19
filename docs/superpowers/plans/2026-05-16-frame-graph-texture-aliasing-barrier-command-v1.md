@@ -110,7 +110,7 @@ Expected: focused renderer tests pass.
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.fragments/004-modules.json`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `.agents/skills/rendering-change/references/full-guidance.md`
@@ -159,3 +159,7 @@ Expected: focused renderer tests pass.
 - Hosted static-analysis failure evidence: PR head `705204b52016e0791aee1e33892e8ee7573339e6` failed `Full Repository Static Analysis` in `tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0` because `engine/renderer/include/mirakana/renderer/rhi_frame_renderer.hpp` used the default `int` underlying type for the two-value private enum `QueuedPrimaryDrawKind`.
 - Hosted static-analysis fix evidence: `QueuedPrimaryDrawKind` now uses `std::uint8_t`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Strict -Preset dev -Jobs 0 -Files engine/renderer/src/rhi_frame_renderer.cpp,tests/unit/renderer_rhi_tests.cpp,tests/unit/backend_scaffold_tests.cpp,tests/unit/runtime_scene_rhi_tests.cpp,tests/unit/runtime_host_tests.cpp,tests/unit/scene_renderer_tests.cpp,engine/renderer/src/rhi_viewport_surface.cpp` passed. The exact `ci-linux-tidy` preset is disabled on this Windows host, so this is the narrowest local equivalent.
 - Post-fix validation evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`, focused `MK_renderer_tests`/`MK_backend_scaffold_tests` build and CTest, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` all exited 0. `validate.ps1` reported 65/65 tests passed; existing MSB8028 shared-intermediate-directory warnings were emitted by MSBuild.
+
+
+
+

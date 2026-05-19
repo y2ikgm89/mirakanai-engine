@@ -2,7 +2,7 @@
 
 **Plan ID:** `asset-identity-v2-placement-resolution-v1`  
 **Status:** Completed  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Gap:** `asset-identity-v2`
 
 ## Goal
@@ -47,3 +47,5 @@ Add a host-independent `MK_assets` placement-resolution planner that turns revie
 ## Next Candidate After Validation
 
 - Continue `asset-identity-v2` with scene/render/UI/gameplay reference cleanup or a reviewed asset command apply surface.
+
+

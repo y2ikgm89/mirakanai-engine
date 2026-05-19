@@ -75,7 +75,7 @@ The previous texture aliasing barrier command slice added `IRhiCommandList::text
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/2026-05-16-frame-graph-texture-aliasing-barrier-command-v1.md`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
@@ -109,3 +109,7 @@ The previous texture aliasing barrier command slice added `IRhiCommandList::text
 - Drift review: Codex/Claude rendering skills and rendering-auditor subagents were searched for aliasing guidance and already distinguished backend-private D3D12 null-resource evidence from unsupported public wildcard/null barriers, native allocation, and placed-resource alias execution, so no skill/subagent text change was needed.
 - Slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `65/65` CTest tests passing; host diagnostics continued to report existing Metal/Apple host gates as diagnostic-only or host-gated.
 - Commit gate: standalone `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed.
+
+
+
+

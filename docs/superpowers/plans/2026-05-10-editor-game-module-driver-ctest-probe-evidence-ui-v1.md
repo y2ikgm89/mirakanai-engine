@@ -9,7 +9,7 @@ Expose deterministic editor-core UI rows that tie the visible Play-In-Editor gam
 
 ## Context
 
-- Master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-game-module-driver-dynamic-probe-v1.md`.
 
@@ -33,3 +33,7 @@ Expose deterministic editor-core UI rows that tie the visible Play-In-Editor gam
 | --- | --- |
 | `MK_editor_core` tests | `MK_editor_core_tests` covers new UI ids |
 | validate.ps1 | Run at slice close |
+
+
+
+

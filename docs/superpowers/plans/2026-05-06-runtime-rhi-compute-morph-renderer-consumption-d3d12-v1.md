@@ -2,7 +2,7 @@
 
 **Plan ID:** `runtime-rhi-compute-morph-renderer-consumption-d3d12-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -63,3 +63,5 @@ without promoting generated-package compute morph readiness.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1` passed the validate-scoped tidy lane with `tidy-check: ok (1 files)`.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after syncing docs, manifest, plan registry, static checks, and AI guidance.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok` and 29/29 CTest tests passing. The Metal shader tools and Apple packaging diagnostics remained host-lane blockers only, as expected on this Windows host.
+
+

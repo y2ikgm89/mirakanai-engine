@@ -14,7 +14,7 @@
 
 - `editor-productization` still lists resource/profiler panels and shared AI command diagnostics as missing before broad editor readiness can be claimed.
 - Profiler panel models already exist in `mirakana_editor_core`, and `mirakana_editor` already displays a Profiler panel using `DiagnosticsRecorder`.
-- RHI devices already expose backend-neutral `stats()`, `memory_diagnostics()`, and an optional `resource_lifetime_registry()`; these are diagnostics only and must not become gameplay/editor-core native handle contracts.
+- RHI devices already expose backend-neutral `()`, `()`, and an optional `()`; these are diagnostics only and must not become gameplay/editor-core native handle contracts.
 - `mirakana_editor` owns the active viewport RHI device and can safely adapt those diagnostics inside the optional GUI target.
 
 ## Constraints
@@ -76,7 +76,7 @@
 
 - [x] Add `PanelId::resources`, token `resources`, and hidden-by-default workspace state.
 - [x] Register `view.resources`, add it to the View menu, and draw the Resources panel when visible.
-- [x] Convert `viewport_device_->stats()`, `viewport_device_->memory_diagnostics()`, and optional `resource_lifetime_registry()->records()` into the resource panel input in `mirakana_editor`.
+- [x] Convert `viewport_device_->()`, `viewport_device_->()`, and optional `()->()` into the resource panel input in `mirakana_editor`.
 - [x] Display status, counters, memory rows, and lifetime summary rows with Dear ImGui tables.
 - [x] Keep all native/RHI access inside `mirakana_editor`; editor-core receives only plain values.
 
@@ -87,7 +87,7 @@
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`
@@ -125,3 +125,9 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Exit 0; all 29 default CTest entries passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Dev preset configured and built. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Editor Resource Panel Diagnostics v1 files; leave unrelated pre-existing guidance changes unstaged. |
+
+
+
+
+
+

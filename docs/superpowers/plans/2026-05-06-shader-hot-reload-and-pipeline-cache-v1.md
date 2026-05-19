@@ -77,7 +77,7 @@
 - Modify: `docs/architecture.md`
 - Modify: `docs/rhi.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `.agents/skills/gameengine-game-development/SKILL.md`
 - Modify: `.claude/skills/gameengine-game-development/SKILL.md`
@@ -114,3 +114,7 @@
 - GREEN focused CTest: `ctest --preset dev -R "mirakana_tools_tests" --output-on-failure` passed, 1/1 selected test target.
 - Formatting/static checks: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including license/config/schema/dependency/toolchain checks, public API boundary check, dev configure/build, and 29/29 CTest targets. Diagnostic-only host gates remain honest: Metal shader/library tools are missing on this host, and Apple packaging is blocked without macOS/Xcode.
+
+
+
+

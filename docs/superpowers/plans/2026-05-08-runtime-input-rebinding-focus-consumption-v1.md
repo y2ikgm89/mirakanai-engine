@@ -49,7 +49,7 @@
 - Modify: `docs/specs/2026-04-27-engine-essential-gap-analysis.md`
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
@@ -105,3 +105,7 @@
 | Focused `MK_runtime_tests` after formatting | Passed | Re-ran focused build/test after formatting the touched C++ files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation passed, including all 29 CTest tests. Metal/Apple checks reported expected diagnostic/host-gated blockers on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Full dev preset build passed after validation. |
+
+
+
+

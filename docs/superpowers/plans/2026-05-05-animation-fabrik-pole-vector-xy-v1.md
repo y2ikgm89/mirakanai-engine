@@ -2,7 +2,7 @@
 
 **Plan ID:** `animation-fabrik-pole-vector-xy-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -82,3 +82,5 @@ pole vector guide, without expanding the solver into full 3D orientation IK.
   `mirakana/animation/skeleton.hpp` and `mirakana/math/vec.hpp`; `tools\check-tidy.ps1 -MaxFiles 1` then passed.
 - Full repository validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. It included `tidy-check: ok (1 files)`, full build, and CTest
   `29/29` passing; Metal and Apple packaging remained diagnostic-only host blockers on this Windows host.
+
+

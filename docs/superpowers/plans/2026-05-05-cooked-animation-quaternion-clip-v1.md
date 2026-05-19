@@ -2,7 +2,7 @@
 
 **Plan ID:** `cooked-animation-quaternion-clip-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -76,3 +76,5 @@ joint TRS tracks into runtime/gameplay code without reparsing glTF.
   `Operation not permitted` before repository validation executed.
 - Static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -MaxFiles 1`.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
+
+

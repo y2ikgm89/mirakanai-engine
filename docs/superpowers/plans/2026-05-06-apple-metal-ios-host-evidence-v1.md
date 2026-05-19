@@ -60,7 +60,7 @@
 - Modify: `docs/workflows.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 
 - [x] Document the new Apple host evidence command and this Windows host's expected host-gated result.
@@ -94,3 +94,7 @@
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with `validate: ok`; it ran `apple-host-evidence-check` as part of validation, kept Metal shader tools and Apple packaging diagnostic-only on this Windows host, rebuilt the dev preset, and ran `ctest` with 29/29 tests passing.
 - SOURCES: Apple Xcode command-line tool documentation confirms full Xcode is required for tools such as `xcodebuild`/`simctl`; Apple Metal documentation describes command-line `metal`/`metallib` shader library builds through `xcrun`; GitHub Actions documentation is the source for macOS hosted runner labels and hosted-runner behavior.
+
+
+
+

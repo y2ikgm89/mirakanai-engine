@@ -2,7 +2,7 @@
 
 **Plan ID:** `generated-3d-morph-visible-deformation-v1`  
 **Status:** Completed  
-**Parent:** [production-completion-master-plan-v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -78,3 +78,5 @@ through the host-owned RHI path, without adding scene schema morph semantics or 
 - DIAGNOSTIC, 2026-05-05: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1` reported D3D12 DXIL, Vulkan SPIR-V, DXC SPIR-V CodeGen, `dxc`, and `spirv-val` ready; Metal `metal`/`metallib` were missing on this Windows host and reported as diagnostic-only blockers.
 - GREEN, 2026-05-05: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1` completed; desktop-runtime CTest reported 16/16 tests passed. The build emitted the existing Vulkan C4819 warning.
 - GREEN, 2026-05-05: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with `validate: ok`; dev CTest reported 29/29 tests passed, and diagnostic-only host gates remained Metal/Apple packaging on this Windows host.
+
+

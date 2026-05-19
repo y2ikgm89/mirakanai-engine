@@ -30,7 +30,7 @@
     "audio": "mirakana::AudioMixer plus render_audio_device_stream_interleaved_float",
     "navigation": "mirakana::NavigationGrid -> mirakana::plan_navigation_grid_agent_path -> mirakana::update_navigation_agent",
     "ai": "mirakana::build_ai_perception_snapshot_2d -> mirakana::write_ai_perception_blackboard -> mirakana::evaluate_behavior_tree",
-    "currentRuntime": "headless runtime systems composition proof"
+    "currentRuntime": "headless runtime systems composition proof with deterministic gameplay tick-order trace"
   },
   "backendReadiness": {
     "platform": "headless",

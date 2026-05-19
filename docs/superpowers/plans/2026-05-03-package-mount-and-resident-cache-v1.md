@@ -17,7 +17,7 @@
 
 ## Context
 
-- 親: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 2。
+- 親: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 2。
 - 前提: 単一 `RuntimeAssetPackageStore` の safe-point 置換は既存。本スライスは **複数パッケージの同時常駐ビュー**を追加し、既存ストア契約を壊さない。
 
 ## Constraints
@@ -56,3 +56,5 @@
 ---
 
 *Plan completed: 2026-05-03.*
+
+

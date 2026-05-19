@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-material-preview-metal-visible-refresh-evidence-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Depends on:** [2026-05-10-editor-material-preview-vulkan-visible-refresh-evidence-v1.md](2026-05-10-editor-material-preview-vulkan-visible-refresh-evidence-v1.md), [2026-05-10-editor-material-preview-display-path-contract-alignment-v1.md](2026-05-10-editor-material-preview-display-path-contract-alignment-v1.md)  
 **Status:** Completed  
 
@@ -48,3 +48,5 @@ When `MK_editor` uses the **Metal** RHI backend for the viewport/material previe
 
 - Existing: `ge.editor.material_gpu_preview_execution.v1` (unchanged).
 - Proposed retained row: `material_asset_preview.gpu.execution.metal_visible_refresh` with text values `complete` \| `pending` \| `not-applicable`.
+
+

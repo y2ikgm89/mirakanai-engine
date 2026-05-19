@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-resources-capture-execution-contract-label-v1`  
 **Gap:** `editor-productization` (resource management execution stream follow-up after items 1–3)  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Stream:** [2026-05-11-editor-productization-resource-management-execution-stream-v1.md](2026-05-11-editor-productization-resource-management-execution-stream-v1.md)
 
 ## Goal
@@ -34,3 +34,5 @@ Capture execution rows, phase codes, PIX host-helper wiring, and `MK_editor_core
 | Compose manifest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Pass (fragment `010-aiOperableProductionLoop.json` updated + composed) |
 | Focused tests | `ctest --preset dev -R MK_editor_core_tests --output-on-failure` | Pass |
 | Repo gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass (includes `tools/build.ps1` + full `ctest --preset dev`) |
+
+

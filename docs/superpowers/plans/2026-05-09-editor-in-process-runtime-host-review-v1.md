@@ -16,7 +16,7 @@
 
 ## Context
 
-- Active master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
 - Previous slice: `docs/superpowers/plans/2026-05-09-editor-prefab-instance-stale-node-refresh-resolution-v1.md`.
 - Existing editor work supports isolated Play-In-Editor sessions through `EditorPlaySession` and caller-supplied `IEditorPlaySessionDriver`, plus reviewed external runtime-host process launch through `EditorRuntimeHostPlaytestLaunchModel`.
@@ -43,7 +43,7 @@
   - Add sentinel checks for the reviewed in-process runtime-host contract.
 - Modify: `docs/superpowers/plans/README.md`
   - Track this plan as the active slice, then latest completed evidence at closeout.
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - Update current verdict and selected-gap evidence after validation.
 
 ## Done When
@@ -117,7 +117,7 @@ Expected before implementation: compile failure for the new in-process runtime-h
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `tools/check-json-contracts.ps1`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 
 - [x] Document in-process runtime-host review as an explicit linked-driver handoff.
 - [x] Keep unsupported claims explicit: no dynamic game-module loading, hot reload, in-process desktop runtime embedding, package/validation execution, renderer/RHI uploads, renderer/RHI handles, native handles, or package streaming.
@@ -148,3 +148,7 @@ Expected before implementation: compile failure for the new in-process runtime-h
 ## Status
 
 Completed.
+
+
+
+

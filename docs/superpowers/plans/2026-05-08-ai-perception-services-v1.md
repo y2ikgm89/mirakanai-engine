@@ -14,7 +14,7 @@
 
 ## Context
 
-- Master plan row: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md` selected AI perception/services as a runtime-system minimum follow-up before this slice.
+- Master plan row: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` selected AI perception/services as a runtime-system minimum follow-up before this slice.
 - `mirakana_ai` currently has memoryless behavior-tree evaluation and typed blackboard conditions only.
 - `sample_ai_navigation` already proves blackboard-driven behavior tree plus navigation, but the game still authors perception-style facts by hand.
 
@@ -49,7 +49,7 @@
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/specs/2026-04-27-engine-essential-gap-analysis.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
@@ -105,3 +105,7 @@
 ## Status
 
 **Status:** Complete.
+
+
+
+

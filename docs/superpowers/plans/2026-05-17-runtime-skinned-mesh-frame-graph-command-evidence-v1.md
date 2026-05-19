@@ -1,7 +1,7 @@
 # Runtime Skinned Mesh Frame Graph Command Evidence v1 (2026-05-17)
 
 **Status:** Completed
-**Parent:** [Production Completion Master Plan v1](2026-05-03-production-completion-master-plan-v1.md)
+**Parent:** [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Gap:** `frame-graph-v1`
 
 ## Goal
@@ -58,3 +58,5 @@ Move byte-backed `upload_runtime_skinned_mesh` vertex, index, and joint-palette 
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS | Agent instruction budgets and skill parity remain valid. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files 'engine/runtime_rhi/src/runtime_upload.cpp,tests/unit/runtime_rhi_tests.cpp'` | PASS | Focused tidy for the changed runtime RHI implementation and test passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Fresh full slice gate passed in the linked worktree; diagnostic-only host gates remain Metal/Apple host evidence on this Windows host. |
+
+

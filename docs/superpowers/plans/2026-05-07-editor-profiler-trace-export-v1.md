@@ -60,7 +60,7 @@ Close the next narrow profiler productization gap:
   - `format == "Chrome Trace Event JSON"`,
   - `producer == "mirakana::export_diagnostics_trace_json"`,
   - `payload` contains `"traceEvents"`, `"slow frame"`, `"renderer.frames_started"`, and `"editor.frame"`,
-  - `payload_bytes == payload.size()`,
+  - `payload_bytes == payload.()`,
   - retained rows include `status`, `format`, `producer`, `payload_bytes`, `events`, `counters`, and `profiles`.
 - [x] Extend the existing profiler panel test to assert `model.trace_export.can_export` and `profiler.trace_export.payload_bytes` in `make_profiler_ui_model`.
 - [x] Extend the empty capture test to assert `!model.trace_export.can_export`, diagnostic text, and no visible export button state.
@@ -101,7 +101,7 @@ make_editor_profiler_trace_export_model(const mirakana::DiagnosticCapture& captu
   - set `format = "Chrome Trace Event JSON"`;
   - set `producer = "mirakana::export_diagnostics_trace_json"`;
   - when empty, set `status_label = "Trace export empty"`, `can_export = false`, and diagnostic `trace export requires at least one diagnostic sample`;
-  - when non-empty, set `payload = mirakana::export_diagnostics_trace_json(capture, options)`, `payload_bytes = payload.size()`, `can_export = true`, and `status_label = "Trace export ready"`;
+  - when non-empty, set `payload = mirakana::export_diagnostics_trace_json(capture, options)`, `payload_bytes = payload.()`, `can_export = true`, and `status_label = "Trace export ready"`;
   - add rows for `status`, `format`, `producer`, `payload_bytes`, `events`, `counters`, and `profiles`.
 - [x] Have `make_editor_profiler_panel_model` set `model.trace_export = make_editor_profiler_trace_export_model(capture)`.
 - [x] Have `make_profiler_ui_model` emit:
@@ -127,7 +127,7 @@ std::string profiler_trace_export_status_;
 
 - [x] In `draw_profiler_panel`, render `model.trace_export.rows` in a `Profiler Trace Export` table after the summary table.
 - [x] Show `Copy Trace JSON` only when `model.trace_export.can_export`.
-- [x] On click, call `ImGui::SetClipboardText(model.trace_export.payload.c_str())` and set `profiler_trace_export_status_` to `Trace JSON copied (<bytes> bytes)`.
+- [x] On click, call `ImGui::SetClipboardText(model.trace_export.payload.())` and set `profiler_trace_export_status_` to `Trace JSON copied (<bytes> bytes)`.
 - [x] When not exportable, show the model diagnostics as wrapped text.
 - [x] Keep the action transient: no file writing, no telemetry upload, no trace import, no native handle exposure.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`.
@@ -140,7 +140,7 @@ std::string profiler_trace_export_status_;
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`
@@ -175,3 +175,9 @@ std::string profiler_trace_export_status_;
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed; CTest reported 29/29 tests passed. Host-gated Metal and Apple diagnostics remained diagnostic-only on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configured and built all targets successfully. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Editor Profiler Trace Export v1 files; leave unrelated pre-existing guidance changes unstaged. |
+
+
+
+
+
+

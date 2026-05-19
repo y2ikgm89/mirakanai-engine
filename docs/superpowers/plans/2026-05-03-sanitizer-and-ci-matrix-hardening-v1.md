@@ -17,7 +17,7 @@
 
 ## Context
 
-- [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 1。
+- [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 1。
 - `full-clang-tidy-warning-cleanup-v1` と独立可能だが、品質ゲートとして同位に扱う。
 - 実施後、`engine/agent/manifest.json` の `currentActivePlan` は **coverage-threshold-policy-v1** に移す（ランキング上位 3 つと別列でチャーター済みの Linux カバレッジポリシー）。
 
@@ -75,3 +75,5 @@
 ---
 
 *Plan authored: 2026-05-03. Slice completed: Ninja+preset hardening, CI env `UBSAN_OPTIONS`, configure STATUS messages, docs/testing.md matrix, policy script assertion.*
+
+

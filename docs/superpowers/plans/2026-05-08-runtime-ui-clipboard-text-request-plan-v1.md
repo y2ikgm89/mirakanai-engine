@@ -14,7 +14,7 @@
 
 ## Context
 
-- Parent roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Parent roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Current machine-readable pointer: `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points back to the master plan and `recommendedNextPlan.id` is `next-production-gap-selection` after this child slice.
 - Latest related slice: `docs/superpowers/plans/2026-05-08-runtime-ui-sdl3-text-edit-command-key-events-v1.md`.
 - `engine/platform` already exposes `mirakana::IClipboard`, `mirakana::MemoryClipboard`, and optional `mirakana::SdlClipboard`.
@@ -56,7 +56,7 @@
   - `docs/roadmap.md`
   - `docs/current-capabilities.md`
   - `docs/ui.md`
-  - `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+  - `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - `engine/agent/manifest.json`
 
 ## Done When
@@ -86,14 +86,14 @@ MK_TEST("ui clipboard text write request dispatches valid text and clear rows") 
 
     const auto write = mirakana::ui::write_clipboard_text(
         adapter, mirakana::ui::ClipboardTextWriteRequest{mirakana::ui::ElementId{"chat.input"}, "copy me"});
-    MK_REQUIRE(write.succeeded());
+    MK_REQUIRE(write.());
     MK_REQUIRE(write.written);
     MK_REQUIRE(adapter.text == "copy me");
 
     const auto clear = mirakana::ui::write_clipboard_text(
         adapter, mirakana::ui::ClipboardTextWriteRequest{mirakana::ui::ElementId{"chat.input"}, ""});
-    MK_REQUIRE(clear.succeeded());
-    MK_REQUIRE(adapter.text.empty());
+    MK_REQUIRE(clear.());
+    MK_REQUIRE(adapter.text.());
 }
 ```
 
@@ -121,7 +121,7 @@ Add `IClipboardTextAdapter`, `ClipboardTextWriteRequest`, `ClipboardTextReadRequ
 
 - [x] **Step 2: Add validation and dispatch**
 
-Implement write validation for non-empty target and strict UTF-8 text. Implement read validation for non-empty target. For read dispatch, call `has_clipboard_text()` first; when false, return success with `has_text=false` and empty text. When true, call `clipboard_text()` and diagnose invalid UTF-8 with `invalid_clipboard_text_result`.
+Implement write validation for non-empty target and strict UTF-8 text. Implement read validation for non-empty target. For read dispatch, call `()` first; when false, return success with `has_text=false` and empty text. When true, call `()` and diagnose invalid UTF-8 with `invalid_clipboard_text_result`.
 
 - [x] **Step 3: Verify GREEN**
 
@@ -231,7 +231,7 @@ Run:
 
 ```powershell
 git status --short
-git add engine/ui/include/mirakana/ui/ui.hpp engine/ui/src/ui.cpp engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_clipboard.hpp engine/platform/sdl3/src/sdl_clipboard.cpp tests/unit/ui_renderer_tests.cpp tests/unit/sdl3_platform_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-clipboard-text-request-plan-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/ui.md docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json
+git add engine/ui/include/mirakana/ui/ui.hpp engine/ui/src/ui.cpp engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_clipboard.hpp engine/platform/sdl3/src/sdl_clipboard.cpp tests/unit/ui_renderer_tests.cpp tests/unit/sdl3_platform_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-clipboard-text-request-plan-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/ui.md docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json
 git commit -m "feat: add ui clipboard text requests"
 ```
 
@@ -255,3 +255,9 @@ Expected: commit succeeds only after validation is green.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | Passed | Audit still honestly reports `unsupported_gaps=11`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Final default gate passed after updating the core adapter-contract test expectation. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit gate passed. |
+
+
+
+
+
+

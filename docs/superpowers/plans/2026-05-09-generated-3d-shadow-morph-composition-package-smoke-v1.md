@@ -14,7 +14,7 @@
 
 ## Context
 
-- Master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Generated 3D package lanes already prove CPU morph package rows, graphics morph scene GPU counters, compute morph D3D12/Vulkan package smokes, playable package aggregation, renderer quality gates, postprocess depth input, and selected directional shadow filtering.
 - The current selected directional-shadow run intentionally rejects `--require-morph-package`, `--require-compute-morph`, and `--require-playable-3d-slice`. This slice narrows only the graphics morph + directional shadow receiver case behind a new explicit smoke flag.
 - Existing broad shadow quality, morph-deformed shadow-caster silhouettes, compute morph + shadow, skin + morph + shadow, Metal parity, backend-native stats, GPU timestamps, and production renderer quality remain out of scope.
@@ -101,3 +101,7 @@
 | `git diff --check` | PASS | Exit 0; only line-ending normalization warnings were printed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed: schema/agent/static checks, production-readiness audit, toolchain checks, tidy check, dev configure/build, and 29/29 dev CTest tests. Metal/Apple diagnostics remain host-gated as expected on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configured and built successfully. |
+
+
+
+

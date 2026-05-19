@@ -14,7 +14,7 @@
 
 ## Context
 
-- Parent roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Parent roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Active gap row: `production-ui-importer-platform-adapters`.
 - Prerequisite slices:
   - `docs/superpowers/plans/2026-05-08-runtime-ui-clipboard-text-request-plan-v1.md`
@@ -53,7 +53,7 @@
   - `docs/current-capabilities.md`
   - `docs/ui.md`
   - `docs/testing.md`
-  - `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+  - `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - `engine/agent/manifest.json`
 - Modify validation wrapper after full validation exposed a generator-target hang:
   - `tools/test.ps1`
@@ -108,7 +108,7 @@ MK_TEST("sdl3 platform integration maps shortcut rows to text edit clipboard com
     auto command =
         mirakana::sdl3_text_edit_clipboard_command_from_window_event(mirakana::ui::ElementId{"chat.input"}, translated);
 
-    MK_REQUIRE(command.has_value());
+    MK_REQUIRE(command.());
     MK_REQUIRE(command->target == mirakana::ui::ElementId{"chat.input"});
     MK_REQUIRE(command->kind == mirakana::ui::TextEditClipboardCommandKind::copy_selection);
 
@@ -117,7 +117,7 @@ MK_TEST("sdl3 platform integration maps shortcut rows to text edit clipboard com
     translated =
         mirakana::sdl3_translate_window_event(mirakana::SdlRawEventHandle{&event}, mirakana::WindowExtent{.width = 320, .height = 240});
     command = mirakana::sdl3_text_edit_clipboard_command_from_window_event(mirakana::ui::ElementId{"chat.input"}, translated);
-    MK_REQUIRE(command.has_value());
+    MK_REQUIRE(command.());
     MK_REQUIRE(command->kind == mirakana::ui::TextEditClipboardCommandKind::cut_selection);
 
     event.key.key = SDLK_V;
@@ -125,7 +125,7 @@ MK_TEST("sdl3 platform integration maps shortcut rows to text edit clipboard com
     translated =
         mirakana::sdl3_translate_window_event(mirakana::SdlRawEventHandle{&event}, mirakana::WindowExtent{.width = 320, .height = 240});
     command = mirakana::sdl3_text_edit_clipboard_command_from_window_event(mirakana::ui::ElementId{"chat.input"}, translated);
-    MK_REQUIRE(command.has_value());
+    MK_REQUIRE(command.());
     MK_REQUIRE(command->kind == mirakana::ui::TextEditClipboardCommandKind::paste_text);
 }
 
@@ -138,7 +138,7 @@ MK_TEST("sdl3 platform integration ignores non clipboard shortcut rows") {
     auto translated =
         mirakana::sdl3_translate_window_event(mirakana::SdlRawEventHandle{&event}, mirakana::WindowExtent{.width = 320, .height = 240});
     MK_REQUIRE(!mirakana::sdl3_text_edit_clipboard_command_from_window_event(mirakana::ui::ElementId{"chat.input"}, translated)
-                    .has_value());
+                    .());
 
     event = SDL_Event{};
     event.type = SDL_EVENT_KEY_DOWN;
@@ -146,20 +146,20 @@ MK_TEST("sdl3 platform integration ignores non clipboard shortcut rows") {
     translated =
         mirakana::sdl3_translate_window_event(mirakana::SdlRawEventHandle{&event}, mirakana::WindowExtent{.width = 320, .height = 240});
     MK_REQUIRE(!mirakana::sdl3_text_edit_clipboard_command_from_window_event(mirakana::ui::ElementId{"chat.input"}, translated)
-                    .has_value());
+                    .());
 
     event.key.mod = SDL_KMOD_CTRL | SDL_KMOD_ALT;
     translated =
         mirakana::sdl3_translate_window_event(mirakana::SdlRawEventHandle{&event}, mirakana::WindowExtent{.width = 320, .height = 240});
     MK_REQUIRE(!mirakana::sdl3_text_edit_clipboard_command_from_window_event(mirakana::ui::ElementId{"chat.input"}, translated)
-                    .has_value());
+                    .());
 }
 
 MK_TEST("sdl3 platform integration applies clipboard shortcuts through ge ui state") {
     mirakana::SdlRuntime runtime(mirakana::SdlRuntimeDesc{.video_driver_hint = "dummy"});
     mirakana::SdlClipboard clipboard;
     mirakana::SdlClipboardTextAdapter adapter{clipboard};
-    clipboard.clear();
+    clipboard.();
 
     SDL_Event event{};
     event.type = SDL_EVENT_KEY_DOWN;
@@ -178,10 +178,10 @@ MK_TEST("sdl3 platform integration applies clipboard shortcuts through ge ui sta
     const auto cut = mirakana::apply_sdl3_text_edit_clipboard_command_event(
         adapter, cut_state, mirakana::ui::ElementId{"chat.input"}, cut_event);
 
-    MK_REQUIRE(cut.succeeded());
+    MK_REQUIRE(cut.());
     MK_REQUIRE(cut.applied);
     MK_REQUIRE(cut.state.text == "hello ");
-    MK_REQUIRE(clipboard.text() == "world");
+    MK_REQUIRE(clipboard.() == "world");
 
     event.key.key = SDLK_V;
     const auto paste_event =
@@ -196,7 +196,7 @@ MK_TEST("sdl3 platform integration applies clipboard shortcuts through ge ui sta
     const auto paste = mirakana::apply_sdl3_text_edit_clipboard_command_event(
         adapter, paste_state, mirakana::ui::ElementId{"chat.input"}, paste_event);
 
-    MK_REQUIRE(paste.succeeded());
+    MK_REQUIRE(paste.());
     MK_REQUIRE(paste.applied);
     MK_REQUIRE(paste.state.text == "say world");
     MK_REQUIRE(paste.state.cursor_byte_offset == 9U);
@@ -315,7 +315,7 @@ Expected: pass.
 - Modify: `docs/roadmap.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/ui.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 
 - [x] **Step 1: Update active/completed records**
@@ -373,7 +373,7 @@ Run:
 
 ```powershell
 git status --short
-git add engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_window.hpp engine/platform/sdl3/src/sdl_window.cpp engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_ui_platform_integration.hpp engine/platform/sdl3/src/sdl_ui_platform_integration.cpp tests/unit/sdl3_platform_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-sdl3-text-edit-clipboard-shortcuts-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/ui.md docs/testing.md docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json tools/test.ps1
+git add engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_window.hpp engine/platform/sdl3/src/sdl_window.cpp engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_ui_platform_integration.hpp engine/platform/sdl3/src/sdl_ui_platform_integration.cpp tests/unit/sdl3_platform_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-sdl3-text-edit-clipboard-shortcuts-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/ui.md docs/testing.md docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json tools/test.ps1
 git commit -m "feat: map sdl3 text edit clipboard shortcuts"
 ```
 
@@ -402,3 +402,9 @@ Expected: commit succeeds only after validation is green.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` initially timed out, then failed in the default `dev` test lane because the Visual Studio-generated `RUN_TESTS` target held `MK_platform_process_tests` until CTest's 1500 second timeout while direct CTest preset execution passed.
 - `ctest --preset dev --output-on-failure -R "^MK_platform_process_tests$" --timeout 60` passed, and `ctest --preset dev --output-on-failure --timeout 300` passed 29/29.
 - `tools/test.ps1` now builds `dev` through the resolved CMake tool and then invokes the resolved CTest tool directly with `--preset dev --output-on-failure --timeout 300`, matching the documented CTest preset lane and avoiding the generator-specific `RUN_TESTS` wrapper hang.
+
+
+
+
+
+

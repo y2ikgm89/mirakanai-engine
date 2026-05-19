@@ -7,7 +7,7 @@ schedule and invokes caller-provided barrier/pass callbacks in deterministic ord
 
 **Plan ID:** `frame-graph-pass-callback-execution-v1`
 
-**Parent plan:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)
+**Parent plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Context
 
@@ -60,3 +60,5 @@ schedule and invokes caller-provided barrier/pass callbacks in deterministic ord
 | `git diff --check` | PASS | CRLF conversion warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | CTest 29/29 passed; Apple/Metal lanes remain host-gated/diagnostic-only on this Windows host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Required before commit. |
+
+

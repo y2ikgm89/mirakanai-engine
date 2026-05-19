@@ -14,7 +14,7 @@
 
 ## Context
 
-- Parent roadmap: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Parent roadmap: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Current machine-readable pointer: `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` returned to the production completion master plan after this slice completed.
 - Latest prerequisite slice: `docs/superpowers/plans/2026-05-08-runtime-ui-clipboard-text-request-plan-v1.md`.
 - `MK_ui` already has `TextEditState`, `CommittedTextInput`, `TextEditCommand`, `IClipboardTextAdapter`, `write_clipboard_text`, and `read_clipboard_text`.
@@ -49,7 +49,7 @@
   - `docs/roadmap.md`
   - `docs/current-capabilities.md`
   - `docs/ui.md`
-  - `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+  - `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
   - `engine/agent/manifest.json`
 
 ## Done When
@@ -90,7 +90,7 @@ MK_TEST("ui text edit clipboard command copies selected text without mutating st
         mirakana::ui::TextEditClipboardCommand{.target = state.target,
                                          .kind = mirakana::ui::TextEditClipboardCommandKind::copy_selection});
 
-    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.());
     MK_REQUIRE(result.state.text == state.text);
     MK_REQUIRE(result.state.cursor_byte_offset == 6U);
     MK_REQUIRE(result.state.selection_byte_length == 5U);
@@ -221,7 +221,7 @@ Run:
 
 ```powershell
 git status --short
-git add engine/ui/include/mirakana/ui/ui.hpp engine/ui/src/ui.cpp tests/unit/ui_renderer_tests.cpp tests/unit/sdl3_platform_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-text-edit-clipboard-command-apply-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/ui.md docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json
+git add engine/ui/include/mirakana/ui/ui.hpp engine/ui/src/ui.cpp tests/unit/ui_renderer_tests.cpp tests/unit/sdl3_platform_tests.cpp docs/superpowers/plans/2026-05-08-runtime-ui-text-edit-clipboard-command-apply-v1.md docs/superpowers/plans/README.md docs/roadmap.md docs/current-capabilities.md docs/ui.md docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md engine/agent/manifest.json
 git commit -m "feat: apply ui text edit clipboard commands"
 ```
 
@@ -246,3 +246,9 @@ Expected: commit succeeds only after validation is green.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | Passed | Reports `unsupported_gaps=11`; broad unsupported gaps remain honest. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Final default gate before `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`; diagnostic-only Apple/Metal host gates remain. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit gate. |
+
+
+
+
+
+

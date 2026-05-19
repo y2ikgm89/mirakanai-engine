@@ -10,7 +10,7 @@ Add a deterministic Runtime Resource v2 resident catalog cache in `MK_runtime` s
 
 ## Context
 
-- Parent: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
+- Parent: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md), selected gap `runtime-resource-v2`.
 - Previous slice: [2026-05-12-runtime-resource-v2-resident-package-mount-set-v1.md](2026-05-12-runtime-resource-v2-resident-package-mount-set-v1.md) added explicit loaded-package mount ids and deterministic catalog rebuilds from mount sets.
 - Existing foundation: `RuntimeResourceCatalogV2`, `RuntimeResidentPackageMountSetV2`, `RuntimeResourceResidencyBudgetV2`, and budgeted catalog rebuilds from anonymous mount vectors.
 
@@ -50,3 +50,5 @@ Add a deterministic Runtime Resource v2 resident catalog cache in `MK_runtime` s
 | JSON contracts / AI integration / production readiness audit | PASS | `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-production-readiness-audit.ps1`, and `tools/check-agents.ps1` passed. Production readiness audit still reports 10 known unsupported gap rows. |
 | Full validation | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` reported `validate: ok`; CTest passed 48/48 tests. Host-gated Apple/mobile diagnostic evidence remains explicitly unavailable on this Windows host. |
 | Build | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` configured `dev` and built all dev targets including `MK_runtime_resource_resident_cache_tests.exe`. |
+
+

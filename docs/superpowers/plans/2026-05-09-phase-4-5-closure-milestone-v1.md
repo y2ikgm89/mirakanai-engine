@@ -2,7 +2,7 @@
 
 **Plan ID:** `phase-4-5-closure-milestone-v1`  
 **Status:** Completed (closure evidence: [2026-05-09-phase-4-5-milestone-closure-evidence-index-v1.md](2026-05-09-phase-4-5-milestone-closure-evidence-index-v1.md)). Does **not** replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` unless maintainers explicitly pivot the active slice to this milestone.  
-**Parent roadmap:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)
+**Parent roadmap:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal
 
@@ -19,7 +19,7 @@ Close **Phase 4** (renderer / material / shader / quality) and **Phase 5** (sour
 
 ## Context
 
-- On the master plan, Phases 4–5 are **partially complete**. Do **not** redo completed slices (for example `material-graph-package-binding-v1`, bounded PBR/shadow/postprocess work, registered-source cook, UI atlas bridges, static generated 3D recipe slices); see the [Completed Implementation Evidence Index](2026-05-03-production-completion-master-plan-v1.md).
+- On the master plan, Phases 4–5 are **partially complete**. Do **not** redo completed slices (for example `material-graph-package-binding-v1`, bounded PBR/shadow/postprocess work, registered-source cook, UI atlas bridges, static generated 3D recipe slices); see the [Completed Implementation Evidence Index](../master-plans/2026-05-03-production-completion-master-plan-v1.md).
 - In `engine/agent/manifest.json` `unsupportedProductionGaps`, rows such as **`renderer-rhi-resource-foundation`**, **`frame-graph-v1`**, **`upload-staging-v1`**, **`editor-productization`**, **`production-ui-importer-platform-adapters`**, and **2D/3D vertical-slice** entries can conflict with naïve “Phase 4–5 done” statements. Child slices **narrow** those rows; **bulk ready promotion** is **out of scope** for this milestone.
 
 ## Constraints
@@ -34,7 +34,7 @@ Close **Phase 4** (renderer / material / shader / quality) and **Phase 5** (sour
 Phase 4 is **complete for this milestone** when all of the following hold (this is **not** “general renderer parity vs Unity/Unreal”).
 
 1. **Quality and diagnostics consistency**  
-   - New quality statements stay tied to the existing first-step path (`SdlDesktopPresentationReport`, `IRenderer::stats()`, etc.) consistent with **Renderer Package Quality Gates v1**. General GPU timestamps and public backend-native stats are **another milestone**.
+   - New quality statements stay tied to the existing first-step path (`SdlDesktopPresentationReport`, `()`, etc.) consistent with **Renderer Package Quality Gates v1**. General GPU timestamps and public backend-native stats are **another milestone**.
 
 2. **Material / shader cook path**  
    - The explicit **`GameEngine.MaterialGraph.v1` → runtime `GameEngine.Material.v1` package binding** (existing `plan_material_graph_package_update` surface) remains **re-validatable** through **at least one** host-gated desktop package smoke (D3D12 primary lane plus documented Vulkan gates).
@@ -104,3 +104,7 @@ Each row must become its own **`docs/superpowers/plans/2026-__-__-*.md`** focuse
 - Production package streaming, arbitrary eviction, enforced GPU allocator budgets.
 - **General** live shader generation and **full** automatic graph codegen.
 - Unity/UE-class editor UX, dynamic game modules, fully automatic import pipelines.
+
+
+
+

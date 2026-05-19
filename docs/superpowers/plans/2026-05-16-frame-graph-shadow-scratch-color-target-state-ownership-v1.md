@@ -27,7 +27,7 @@ Sources:
 
 ## Context
 
-`frame-graph-postprocess-scene-pass-ownership-v1` moved postprocess scene pass command recording into the executor `scene_color` callback and proved postprocess-depth barrier budgets after the scene target preparation became executor-owned. The directional-shadow smoke path still prepares `shadow_color` directly in `begin_frame()` before the frame graph schedule records the `shadow_depth`, `scene_color`, and `postprocess` callbacks.
+`frame-graph-postprocess-scene-pass-ownership-v1` moved postprocess scene pass command recording into the executor `scene_color` callback and proved postprocess-depth barrier budgets after the scene target preparation became executor-owned. The directional-shadow smoke path still prepares `shadow_color` directly in `()` before the frame graph schedule records the `shadow_depth`, `scene_color`, and `postprocess` callbacks.
 
 ## Constraints
 
@@ -39,11 +39,11 @@ Sources:
 
 ## Done When
 
-- `RhiDirectionalShadowSmokeFrameRenderer::begin_frame()` no longer transitions `shadow_color` to `render_target`.
+- `()` no longer transitions `shadow_color` to `render_target`.
 - The shadow smoke `FrameGraphV1Desc` declares `shadow_color` as a transient or imported scratch resource written by the `shadow_depth` pass.
-- `end_frame()` supplies a writer-access-backed `FrameGraphTexturePassTargetState` for `shadow_color -> render_target`.
+- `()` supplies a writer-access-backed `FrameGraphTexturePassTargetState` for `shadow_color -> render_target`.
 - Directional-shadow barrier counters prove `shadow_color` target preparation is executor-owned without changing visible shadow output expectations.
-- Failure tests prove executor-owned `shadow_color` target preparation failures are reported from `end_frame()` and release acquired swapchain frames.
+- Failure tests prove executor-owned `shadow_color` target preparation failures are reported from `()` and release acquired swapchain frames.
 - Docs, plan registry, manifest fragments/composed manifest, skills/subagents if needed, and static guards reflect the new ownership boundary and remaining non-goals.
 - Focused renderer/runtime tests, package smoke, agent/static checks, `tools/validate.ps1`, and `tools/build.ps1` pass or record a concrete environment blocker.
 
@@ -60,7 +60,7 @@ Sources:
 - Modify: `games/sample_generated_desktop_runtime_3d_package/main.cpp`
 
 - [x] Update directional-shadow tests so two frames expect one additional executor-recorded barrier for `shadow_color` target preparation.
-- [x] Add or update a failure test so a `shadow_color` target preparation transition exception is reported from `end_frame()`, leaves `frames_finished == 0`, and releases the acquired swapchain frame.
+- [x] Add or update a failure test so a `shadow_color` target preparation transition exception is reported from `()`, leaves `frames_finished == 0`, and releases the acquired swapchain frame.
 - [x] Update package quality expectations for directional shadow from the previous two-frame `14` barrier budget to the new executor-owned scratch color target-state budget.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. .\tools\common.ps1; $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_renderer_tests; Invoke-CheckedCommand $tools.CTest --preset dev --output-on-failure -R "MK_(renderer|runtime_host_sdl3)_tests"'` and record the expected failure before implementation.
 
@@ -71,7 +71,7 @@ Sources:
 - Modify: `engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp`
 
 - [x] Add the `shadow_color` scratch texture to the directional-shadow frame graph resource declarations with writer access owned by the `shadow_depth` pass.
-- [x] Remove the direct `begin_frame()` transition from `shadow_color_state_` to `render_target`.
+- [x] Remove the direct `()` transition from `shadow_color_state_` to `render_target`.
 - [x] Add a `FrameGraphTexturePassTargetState` row for `shadow_color -> render_target`, backed by the generated pass target access rows.
 - [x] Keep shadow-depth, scene receiver, postprocess, native UI overlay, swapchain acquire/present, reusable final states, and native resource ownership inside their existing scope.
 
@@ -90,7 +90,7 @@ Sources:
 **Files:**
 
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/rhi.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
@@ -121,7 +121,7 @@ Sources:
 
 ## Validation Evidence
 
-- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. .\tools\common.ps1; $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_renderer_tests MK_runtime_host_sdl3_tests; Invoke-CheckedCommand $tools.CTest --preset dev --output-on-failure -R "MK_(renderer|runtime_host_sdl3)_tests"'` built, then failed as expected before implementation: directional-shadow renderer counters still reported `8` instead of `9`, the executor-failure test failed because `begin_frame()` still owned the `shadow_color` transition, and runtime-host quality gates still expected the old `14` budget.
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. .\tools\common.ps1; $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_renderer_tests MK_runtime_host_sdl3_tests; Invoke-CheckedCommand $tools.CTest --preset dev --output-on-failure -R "MK_(renderer|runtime_host_sdl3)_tests"'` built, then failed as expected before implementation: directional-shadow renderer counters still reported `8` instead of `9`, the executor-failure test failed because `()` still owned the `shadow_color` transition, and runtime-host quality gates still expected the old `14` budget.
 - GREEN: the same focused build/ctest command passed after moving `shadow_color` target preparation into `execute_frame_graph_rhi_texture_schedule` and updating package quality formulas.
 - Review RED: `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. .\tools\common.ps1; $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_renderer_tests; Invoke-CheckedCommand $tools.CTest --preset dev --output-on-failure -R "MK_renderer_tests"'` failed on the new submit-failure regression before recovery was complete, first exposing the abandoned-present cleanup mismatch and then the second-frame stale texture-state mismatch.
 - Review GREEN: the same focused renderer command passed after submit-success-only state adoption plus lazy internal texture/descriptor recreation for unsubmitted failed recordings.
@@ -131,3 +131,9 @@ Sources:
 - Slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed 65/65 tests; Metal and Apple evidence remained host-gated diagnostic-only on this Windows host.
 - Build gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed after `validate.ps1`.
 - Publication: committed and pushed `codex/frame-graph-shadow-scratch-color-target-state-ownership`, then opened PR [#64](https://github.com/y2ikgm89/mirakanai-engine/pull/64).
+
+
+
+
+
+

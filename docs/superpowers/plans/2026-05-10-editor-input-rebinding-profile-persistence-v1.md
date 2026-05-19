@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-input-rebinding-profile-persistence-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Status:** Completed  
 
 ## Goal
@@ -33,3 +33,5 @@ Add **explicit, reviewed** Save and Load of in-memory `RuntimeInputRebindingProf
 | Step | Command | Result |
 | --- | --- | --- |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
+
+

@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-game-module-driver-hot-reload-session-state-machine-spec-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [`2026-05-03-production-completion-master-plan-v1.md`](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [`../master-plans/2026-05-03-production-completion-master-plan-v1.md`](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Spec:** [`docs/specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md`](../specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md)  
 **Status:** Completed (spec + API + MK_ui + tests + manifest needles)
 
@@ -36,3 +36,5 @@ Land the **hot reload stream item 1** deliverable: a formal session **state mach
 | Build | `cmake --build --preset dev --target MK_editor_core_tests` |
 | Test | `ctest --preset dev --output-on-failure -R MK_editor_core_tests` |
 | Repo | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` |
+
+

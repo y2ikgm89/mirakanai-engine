@@ -59,7 +59,7 @@ Implement `editor-prefab-variant-missing-node-cleanup-v1` as the next narrow edi
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/testing.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`
@@ -133,3 +133,7 @@ Implement `editor-prefab-variant-missing-node-cleanup-v1` as the next narrow edi
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Repository validation completed with `validate: ok`; CTest reported 29/29 tests passed, host-gated Apple/Metal diagnostics remained non-blocking, and production-readiness unsupported gap count remained 11. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configure and MSBuild build completed successfully after the missing-node cleanup implementation and docs/static updates. |
 | Slice-closing commit | PASS | Slice changes are ready for a focused commit after final `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`, with unrelated dirty files left unstaged. |
+
+
+
+

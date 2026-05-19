@@ -18,7 +18,7 @@
 
 ## Context
 
-- Master plan Phase 4 entry: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 4.
+- Master plan Phase 4 entry: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 4.
 - Prior factor/texture authoring remains on `GameEngine.Material.v1` / `MaterialAuthoringDocument`; graphs are **additive** until cook tooling consumes `.materialgraph` directly (Non-Goals).
 
 ## Constraints
@@ -67,3 +67,5 @@
 ---
 
 *Plan authored: 2026-05-04. Slice: material-graph-authoring-v1 (Phase 4 / child 1).*
+
+

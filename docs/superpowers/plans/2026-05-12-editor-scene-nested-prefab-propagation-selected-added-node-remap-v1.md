@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-scene-nested-prefab-propagation-selected-added-node-remap-v1`  
 **Status:** Completed  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Gap:** `editor-productization`
 
 ## Goal
@@ -42,3 +42,5 @@ Prove that reviewed nested prefab propagation keeps editor selection on a logica
 ## Next Candidate After Validation
 
 - Local-child policy coverage during nested propagation is complete in [2026-05-12-editor-scene-nested-prefab-propagation-local-child-policy-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-local-child-policy-v1.md). Return to `recommendedNextPlan.id=next-production-gap-selection`; the next Windows-default candidate is loader drift atomicity unless the manifest-selected order changes.
+
+

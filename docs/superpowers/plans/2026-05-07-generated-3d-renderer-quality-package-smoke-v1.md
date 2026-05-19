@@ -12,7 +12,7 @@
 
 ## Context
 
-- Master plan: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`.
+- Master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Existing renderer quality gate API: `mirakana::evaluate_sdl_desktop_presentation_quality_gate`.
 - Existing generated 3D sample: `games/sample_generated_desktop_runtime_3d_package`.
 - Existing `sample_desktop_runtime_game` quality gate covers scene GPU + postprocess + depth input + directional shadow with `framegraph_passes=3`.
@@ -94,3 +94,7 @@
 | `git diff --check` | PASS | No whitespace errors; Git reported only CRLF conversion warnings for touched and pre-existing dirty files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; CTest reported `100% tests passed, 0 tests failed out of 29`. Metal/iOS diagnostics remain host-gated on this Windows machine. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | `tools/build.ps1` completed the `dev` preset build with exit 0. |
+
+
+
+

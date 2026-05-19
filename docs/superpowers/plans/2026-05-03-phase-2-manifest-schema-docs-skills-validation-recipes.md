@@ -17,7 +17,7 @@
 
 ## Context
 
-- 親: [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 2 チェックリスト。
+- 親: [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 2 チェックリスト。
 - 先行: [2026-05-03-ai-cook-package-command-surface-v1.md](2026-05-03-ai-cook-package-command-surface-v1.md)（`registeredSourceAssetCookTargets` 本実装）。
 
 ## Constraints
@@ -55,3 +55,5 @@
 ---
 
 *Plan completed: 2026-05-03.*
+
+

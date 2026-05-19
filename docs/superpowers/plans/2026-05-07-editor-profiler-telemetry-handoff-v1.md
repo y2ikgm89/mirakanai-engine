@@ -65,7 +65,7 @@ Close the next narrow profiler productization gap:
   - `ready_model.ready`;
   - `ready_model.status_label == "ready"`;
   - `ready_model.producer == "caller-provided telemetry backend"`;
-  - `ready_model.diagnostics.empty()`.
+  - `ready_model.diagnostics.()`.
 - [x] Extend the profiler retained UI test to assert `profiler.telemetry.status.value`.
 - [x] Run `cmake --build --preset dev --target MK_editor_core_tests`.
 - [x] Record the expected RED failure in Validation Evidence.
@@ -103,7 +103,7 @@ Close the next narrow profiler productization gap:
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/testing.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `.agents/skills/editor-change/SKILL.md`
 - Modify: `.claude/skills/gameengine-editor/SKILL.md`
@@ -141,3 +141,9 @@ Close the next narrow profiler productization gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configured and built all targets successfully. |
 | Final `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 && pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Commit-prep gate passed; `validate` reported 29/29 CTest tests and `build` completed the dev preset. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Editor Profiler Telemetry Handoff v1 files and leave unrelated dirty guidance files unstaged. |
+
+
+
+
+
+

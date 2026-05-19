@@ -12,7 +12,7 @@
 
 ## Context
 
-- The active master plan is [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md).
+- The active master plan is [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md).
 - The selected gap remains `frame-graph-v1`.
 - The immediately preceding slice, [2026-05-17-frame-graph-backend-neutral-distinct-alias-group-lease-binding-v1.md](2026-05-17-frame-graph-backend-neutral-distinct-alias-group-lease-binding-v1.md), made alias-group lease binding return one distinct first-party `TextureHandle` per resource.
 - This slice is narrower than production graph ownership, package streaming, multi-queue scheduling, Vulkan/Metal alias-memory allocation, data inheritance/content preservation, or public wildcard/null aliasing barriers.
@@ -37,7 +37,7 @@
 - Modify: `engine/renderer/include/mirakana/renderer/frame_graph_rhi.hpp`
 - Modify: `engine/renderer/src/frame_graph_rhi.cpp`
 - Modify: `tests/unit/renderer_rhi_tests.cpp`
-- Modify after green: `docs/rhi.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/superpowers/plans/README.md`, `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify after green: `docs/rhi.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify after green: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, composed `engine/agent/manifest.json`, relevant static guard scripts, and rendering skill/subagent guidance when stale.
 
 ## Task Checklist
@@ -89,3 +89,7 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit preflight build passed after the review fixes; MSBuild emitted existing shared-intermediate `MSB8028` warnings. |
 | `gh pr create --base main --head codex/frame-graph-automatic-aliasing-barriers` | Passed | Created PR #83 for the automatic aliasing-barrier insertion slice. |
 | `gh pr merge 83 --repo y2ikgm89/mirakanai-engine --auto --merge --delete-branch --match-head-commit 45c8e9f8fb37181516bb6770241c4d4165926199` | Passed | PR #83 merged into `main`; the first local invocation was blocked by an unrelated checked-out `main` worktree, so the repository-scoped retry avoided local checkout state. |
+
+
+
+

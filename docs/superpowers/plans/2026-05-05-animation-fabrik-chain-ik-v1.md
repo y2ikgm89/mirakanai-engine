@@ -1,7 +1,7 @@
 # Animation FABRIK Chain IK v1 (2026-05-05)
 
 **Plan ID:** `animation-fabrik-chain-ik-v1`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
 **Status:** Completed on 2026-05-05.
 
 ## Goal
@@ -45,3 +45,5 @@ Add a deterministic multi-segment XY-plane FABRIK IK helper in `mirakana_animati
 ## Non-Goals
 
 - Full 3D joint orientation, quaternion interpolation, twist extraction, pole vectors, angular limits, CCD, skeletal pose write-back, IK assets, glTF IK import, animation graph authoring, GPU morph, renderer/RHI integration, or generated-game production readiness.
+
+

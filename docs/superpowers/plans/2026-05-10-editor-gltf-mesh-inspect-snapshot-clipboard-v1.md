@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-gltf-mesh-inspect-snapshot-clipboard-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Depends on:** [2026-05-10-editor-gltf-mesh-inspect-retained-document-inspector-wiring-v1.md](2026-05-10-editor-gltf-mesh-inspect-retained-document-inspector-wiring-v1.md)  
 **Status:** Completed  
 
@@ -26,3 +26,5 @@ Let operators and agents copy the serialized retained `MK_ui` glTF mesh inspect 
 | Step | Command | Result |
 | --- | --- | --- |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
+
+

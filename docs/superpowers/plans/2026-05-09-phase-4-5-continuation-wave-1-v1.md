@@ -2,7 +2,7 @@
 
 **Plan ID:** `phase-4-5-continuation-wave-1-v1`  
 **Status:** Completed (child plans dated 2026-05-09; see table below).  
-**Parent roadmap:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
+**Parent roadmap:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
 **Prior milestone (closed):** [2026-05-09-phase-4-5-closure-milestone-v1.md](2026-05-09-phase-4-5-closure-milestone-v1.md) — do **not** reopen or extend its ledger.
 
 ## Goal
@@ -46,3 +46,5 @@ Further waves (Wave 2+) should use **new dated milestone files** rather than app
 - Each row in **Wave 1 scope** has a **Completed** child plan (or documented blocker + unchanged gap promotion rules).
 - `docs/superpowers/plans/README.md` lists this wave as a **Completed milestone** row until superseded.
 - No contradictory uplift of unsupported-gap `status` without cited validation logs.
+
+

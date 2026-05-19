@@ -90,7 +90,7 @@ Provide a narrow editor-productization improvement over the existing prefab vari
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/superpowers/plans/README.md`
-- Modify: `docs/superpowers/plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
 - Modify: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration.ps1`
 - Modify: `.agents/skills/editor-change/SKILL.md`
@@ -125,3 +125,7 @@ Provide a narrow editor-productization improvement over the existing prefab vari
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Passed full validation; Metal/Apple lanes remain diagnostic/host-gated as expected on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Built the `dev` preset successfully. |
 | Slice-closing commit | Pending |  |
+
+
+
+
