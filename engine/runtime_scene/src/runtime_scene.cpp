@@ -9,6 +9,7 @@
 #include <ranges>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace mirakana::runtime_scene {
@@ -293,6 +294,59 @@ void append_animation_binding_diagnostic(std::vector<RuntimeSceneAnimationTransf
     });
 }
 
+[[nodiscard]] std::string gameplay_binding_component_kind_name(RuntimeSceneGameplayBindingComponentKind kind) {
+    switch (kind) {
+    case RuntimeSceneGameplayBindingComponentKind::none:
+        return "none";
+    case RuntimeSceneGameplayBindingComponentKind::any_renderable:
+        return "any_renderable";
+    case RuntimeSceneGameplayBindingComponentKind::camera:
+        return "camera";
+    case RuntimeSceneGameplayBindingComponentKind::light:
+        return "light";
+    case RuntimeSceneGameplayBindingComponentKind::mesh_renderer:
+        return "mesh_renderer";
+    case RuntimeSceneGameplayBindingComponentKind::sprite_renderer:
+        return "sprite_renderer";
+    }
+    return "unknown";
+}
+
+void append_gameplay_binding_diagnostic(std::vector<RuntimeSceneGameplayBindingDiagnostic>& diagnostics,
+                                        RuntimeSceneGameplayBindingDiagnosticCode code,
+                                        const RuntimeSceneGameplayBindingSourceRow& source_row, SceneNodeId node,
+                                        std::string message) {
+    diagnostics.push_back(RuntimeSceneGameplayBindingDiagnostic{
+        .code = code,
+        .binding_id = source_row.binding_id,
+        .gameplay_system_id = source_row.gameplay_system_id,
+        .slot_id = source_row.slot_id,
+        .node_name = source_row.node_name,
+        .node = node,
+        .required_component = source_row.required_component,
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] bool node_has_gameplay_binding_component(const SceneNode& node,
+                                                       RuntimeSceneGameplayBindingComponentKind required_component) {
+    switch (required_component) {
+    case RuntimeSceneGameplayBindingComponentKind::none:
+        return true;
+    case RuntimeSceneGameplayBindingComponentKind::any_renderable:
+        return node.components.mesh_renderer.has_value() || node.components.sprite_renderer.has_value();
+    case RuntimeSceneGameplayBindingComponentKind::camera:
+        return node.components.camera.has_value();
+    case RuntimeSceneGameplayBindingComponentKind::light:
+        return node.components.light.has_value();
+    case RuntimeSceneGameplayBindingComponentKind::mesh_renderer:
+        return node.components.mesh_renderer.has_value();
+    case RuntimeSceneGameplayBindingComponentKind::sprite_renderer:
+        return node.components.sprite_renderer.has_value();
+    }
+    return false;
+}
+
 [[nodiscard]] std::size_t transform_index_for_node(const RuntimeSceneInstance& instance, SceneNodeId node) {
     if (node == null_scene_node || node.value == 0U ||
         node.value > static_cast<std::uint32_t>(instance.scene.nodes().size())) {
@@ -325,6 +379,10 @@ bool RuntimeSceneLoadResult::succeeded() const noexcept {
 }
 
 bool RuntimeSceneAnimationTransformBindingResolution::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
+bool RuntimeSceneGameplayBindingResolution::succeeded() const noexcept {
     return diagnostics.empty();
 }
 
@@ -455,6 +513,91 @@ resolve_runtime_scene_animation_transform_bindings(const RuntimeSceneInstance& i
             .target = source_binding.target,
             .transform_index = transform_index_for_node(instance, matches.front()),
             .component = to_animation_transform_component(source_binding.component),
+        });
+    }
+
+    if (!result.diagnostics.empty()) {
+        result.bindings.clear();
+    }
+    return result;
+}
+
+RuntimeSceneGameplayBindingResolution
+resolve_runtime_scene_gameplay_bindings(const RuntimeSceneInstance& instance,
+                                        std::span<const RuntimeSceneGameplayBindingSourceRow> source_rows) {
+    RuntimeSceneGameplayBindingResolution result;
+    result.bindings.reserve(source_rows.size());
+
+    std::unordered_set<std::string> binding_ids;
+    binding_ids.reserve(source_rows.size());
+
+    for (const auto& source_row : source_rows) {
+        bool source_row_valid = true;
+        if (source_row.binding_id.empty()) {
+            append_gameplay_binding_diagnostic(
+                result.diagnostics, RuntimeSceneGameplayBindingDiagnosticCode::invalid_binding_id, source_row,
+                null_scene_node, "runtime scene gameplay binding id is empty");
+            source_row_valid = false;
+        } else if (!binding_ids.insert(source_row.binding_id).second) {
+            append_gameplay_binding_diagnostic(
+                result.diagnostics, RuntimeSceneGameplayBindingDiagnosticCode::duplicate_binding_id, source_row,
+                null_scene_node, "runtime scene gameplay binding id is duplicated: " + source_row.binding_id);
+            source_row_valid = false;
+        }
+        if (source_row.gameplay_system_id.empty()) {
+            append_gameplay_binding_diagnostic(
+                result.diagnostics, RuntimeSceneGameplayBindingDiagnosticCode::invalid_gameplay_system_id, source_row,
+                null_scene_node, "runtime scene gameplay system id is empty");
+            source_row_valid = false;
+        }
+        if (source_row.slot_id.empty()) {
+            append_gameplay_binding_diagnostic(result.diagnostics,
+                                               RuntimeSceneGameplayBindingDiagnosticCode::invalid_slot_id, source_row,
+                                               null_scene_node, "runtime scene gameplay binding slot id is empty");
+            source_row_valid = false;
+        }
+        if (source_row.node_name.empty()) {
+            append_gameplay_binding_diagnostic(result.diagnostics,
+                                               RuntimeSceneGameplayBindingDiagnosticCode::invalid_node_name, source_row,
+                                               null_scene_node, "runtime scene gameplay binding node name is empty");
+            source_row_valid = false;
+        }
+        if (!source_row_valid) {
+            continue;
+        }
+
+        const auto matches = find_runtime_scene_nodes_by_name(instance, source_row.node_name);
+        if (matches.empty()) {
+            append_gameplay_binding_diagnostic(
+                result.diagnostics, RuntimeSceneGameplayBindingDiagnosticCode::missing_node, source_row,
+                null_scene_node, "runtime scene gameplay binding node is missing: " + source_row.node_name);
+            continue;
+        }
+        if (matches.size() > 1U) {
+            append_gameplay_binding_diagnostic(
+                result.diagnostics, RuntimeSceneGameplayBindingDiagnosticCode::duplicate_node_name, source_row,
+                matches.front(), "runtime scene gameplay binding node name is ambiguous: " + source_row.node_name);
+            continue;
+        }
+
+        const auto resolved_node = matches.front();
+        const auto* node = instance.scene.find_node(resolved_node);
+        if (node == nullptr || !node_has_gameplay_binding_component(*node, source_row.required_component)) {
+            append_gameplay_binding_diagnostic(result.diagnostics,
+                                               RuntimeSceneGameplayBindingDiagnosticCode::missing_required_component,
+                                               source_row, resolved_node,
+                                               "runtime scene gameplay binding node lacks required component: " +
+                                                   gameplay_binding_component_kind_name(source_row.required_component));
+            continue;
+        }
+
+        result.bindings.push_back(RuntimeSceneGameplayBindingRow{
+            .binding_id = source_row.binding_id,
+            .gameplay_system_id = source_row.gameplay_system_id,
+            .slot_id = source_row.slot_id,
+            .node_name = source_row.node_name,
+            .node = resolved_node,
+            .required_component = source_row.required_component,
         });
     }
 

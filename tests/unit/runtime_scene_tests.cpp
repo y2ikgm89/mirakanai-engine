@@ -73,6 +73,18 @@ find_identity_reference(const mirakana::runtime_scene::RuntimeSceneAssetIdentity
     return nullptr;
 }
 
+[[nodiscard]] const mirakana::runtime_scene::RuntimeSceneGameplayBindingDiagnostic*
+find_gameplay_binding_diagnostic(const mirakana::runtime_scene::RuntimeSceneGameplayBindingResolution& resolution,
+                                 mirakana::runtime_scene::RuntimeSceneGameplayBindingDiagnosticCode code,
+                                 std::string_view binding_id) {
+    for (const auto& diagnostic : resolution.diagnostics) {
+        if (diagnostic.code == code && diagnostic.binding_id == binding_id) {
+            return &diagnostic;
+        }
+    }
+    return nullptr;
+}
+
 [[nodiscard]] mirakana::runtime::RuntimeAssetPackage
 make_scene_package(mirakana::AssetId scene_asset, const mirakana::Scene& scene,
                    std::vector<mirakana::runtime::RuntimeAssetRecord> records) {
@@ -435,6 +447,186 @@ MK_TEST("runtime scene node-name lookup returns duplicates in scene order") {
     MK_REQUIRE(result.diagnostics[0].code == mirakana::runtime_scene::RuntimeSceneDiagnosticCode::duplicate_node_name);
     MK_REQUIRE(result.diagnostics[0].asset == scene_asset);
     MK_REQUIRE(result.diagnostics[0].node == second);
+}
+
+MK_TEST("runtime scene resolves authored gameplay bindings to component-backed nodes") {
+    const auto scene_asset = mirakana::AssetId::from_name("scenes/gameplay_bindings");
+    const auto mesh = mirakana::AssetId::from_name("meshes/player");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    const auto sprite = mirakana::AssetId::from_name("textures/nameplate");
+    auto source_scene = make_mesh_and_sprite_scene(mesh, material, sprite);
+    const auto camera = source_scene.create_node("MainCamera");
+    mirakana::SceneNodeComponents camera_components;
+    camera_components.camera = mirakana::CameraComponent{.primary = true};
+    source_scene.set_components(camera, camera_components);
+    const auto package =
+        make_scene_package(scene_asset, source_scene,
+                           {
+                               make_record(mirakana::runtime::RuntimeAssetHandle{1}, mesh, mirakana::AssetKind::mesh,
+                                           "assets/meshes/player.mesh", {}),
+                               make_record(mirakana::runtime::RuntimeAssetHandle{2}, material,
+                                           mirakana::AssetKind::material, "assets/materials/player.material", {}),
+                               make_record(mirakana::runtime::RuntimeAssetHandle{3}, sprite,
+                                           mirakana::AssetKind::texture, "assets/textures/nameplate.texture", {}),
+                           });
+
+    auto result = mirakana::runtime_scene::instantiate_runtime_scene(package, scene_asset);
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.instance.has_value());
+
+    const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayBindingSourceRow> rows{
+        {
+            .binding_id = "player.actor",
+            .gameplay_system_id = "player_controller",
+            .slot_id = "actor",
+            .node_name = "Player",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::mesh_renderer,
+        },
+        {
+            .binding_id = "nameplate.ui",
+            .gameplay_system_id = "nameplate_follow",
+            .slot_id = "target",
+            .node_name = "Nameplate",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::sprite_renderer,
+        },
+        {
+            .binding_id = "camera.primary",
+            .gameplay_system_id = "camera_follow",
+            .slot_id = "camera",
+            .node_name = "MainCamera",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::camera,
+        },
+        {
+            .binding_id = "player.renderable",
+            .gameplay_system_id = "visibility_gate",
+            .slot_id = "renderable",
+            .node_name = "Player",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::any_renderable,
+        },
+    };
+
+    const auto resolution = mirakana::runtime_scene::resolve_runtime_scene_gameplay_bindings(*result.instance, rows);
+
+    MK_REQUIRE(resolution.succeeded());
+    MK_REQUIRE(resolution.diagnostics.empty());
+    MK_REQUIRE(resolution.bindings.size() == 4);
+    MK_REQUIRE(resolution.bindings[0].binding_id == "player.actor");
+    MK_REQUIRE(resolution.bindings[0].gameplay_system_id == "player_controller");
+    MK_REQUIRE(resolution.bindings[0].slot_id == "actor");
+    MK_REQUIRE(resolution.bindings[0].node_name == "Player");
+    MK_REQUIRE(resolution.bindings[0].node == mirakana::SceneNodeId{1});
+    MK_REQUIRE(resolution.bindings[0].required_component ==
+               mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::mesh_renderer);
+    MK_REQUIRE(resolution.bindings[1].binding_id == "nameplate.ui");
+    MK_REQUIRE(resolution.bindings[1].node == mirakana::SceneNodeId{2});
+    MK_REQUIRE(resolution.bindings[2].binding_id == "camera.primary");
+    MK_REQUIRE(resolution.bindings[2].node == camera);
+    MK_REQUIRE(resolution.bindings[3].binding_id == "player.renderable");
+    MK_REQUIRE(resolution.bindings[3].required_component ==
+               mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::any_renderable);
+}
+
+MK_TEST("runtime scene gameplay bindings fail closed for invalid ambiguous and missing component rows") {
+    const auto scene_asset = mirakana::AssetId::from_name("scenes/gameplay_binding_diagnostics");
+    mirakana::Scene scene("GameplayBindingDiagnostics");
+    const auto door = scene.create_node("Door");
+    const auto first_pickup = scene.create_node("Pickup");
+    mirakana::SceneNodeComponents pickup_components;
+    pickup_components.mesh_renderer =
+        mirakana::MeshRendererComponent{.mesh = mirakana::AssetId::from_name("meshes/pickup"),
+                                        .material = mirakana::AssetId::from_name("materials/pickup"),
+                                        .visible = true};
+    scene.set_components(first_pickup, pickup_components);
+    (void)scene.create_node("Pickup");
+    const auto package = make_scene_package(scene_asset, scene, {});
+
+    auto result = mirakana::runtime_scene::instantiate_runtime_scene(
+        package, scene_asset,
+        mirakana::runtime_scene::RuntimeSceneLoadOptions{.validate_asset_references = false,
+                                                         .require_unique_node_names = false});
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.instance.has_value());
+
+    const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayBindingSourceRow> rows{
+        {
+            .binding_id = "",
+            .gameplay_system_id = "interaction",
+            .slot_id = "target",
+            .node_name = "Door",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::none,
+        },
+        {
+            .binding_id = "invalid.system",
+            .gameplay_system_id = "",
+            .slot_id = "target",
+            .node_name = "Door",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::none,
+        },
+        {
+            .binding_id = "invalid.slot",
+            .gameplay_system_id = "interaction",
+            .slot_id = "",
+            .node_name = "Door",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::none,
+        },
+        {
+            .binding_id = "duplicate.pickup",
+            .gameplay_system_id = "interaction",
+            .slot_id = "candidate",
+            .node_name = "Pickup",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::mesh_renderer,
+        },
+        {
+            .binding_id = "duplicate.pickup",
+            .gameplay_system_id = "interaction",
+            .slot_id = "candidate-copy",
+            .node_name = "Door",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::none,
+        },
+        {
+            .binding_id = "missing.node",
+            .gameplay_system_id = "interaction",
+            .slot_id = "target",
+            .node_name = "Missing",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::none,
+        },
+        {
+            .binding_id = "door.mesh",
+            .gameplay_system_id = "interaction",
+            .slot_id = "door",
+            .node_name = "Door",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::mesh_renderer,
+        },
+    };
+
+    const auto resolution = mirakana::runtime_scene::resolve_runtime_scene_gameplay_bindings(*result.instance, rows);
+
+    MK_REQUIRE(!resolution.succeeded());
+    MK_REQUIRE(resolution.bindings.empty());
+    MK_REQUIRE(find_gameplay_binding_diagnostic(
+                   resolution, mirakana::runtime_scene::RuntimeSceneGameplayBindingDiagnosticCode::invalid_binding_id,
+                   "") != nullptr);
+    MK_REQUIRE(find_gameplay_binding_diagnostic(
+                   resolution,
+                   mirakana::runtime_scene::RuntimeSceneGameplayBindingDiagnosticCode::invalid_gameplay_system_id,
+                   "invalid.system") != nullptr);
+    MK_REQUIRE(find_gameplay_binding_diagnostic(
+                   resolution, mirakana::runtime_scene::RuntimeSceneGameplayBindingDiagnosticCode::invalid_slot_id,
+                   "invalid.slot") != nullptr);
+    MK_REQUIRE(find_gameplay_binding_diagnostic(
+                   resolution, mirakana::runtime_scene::RuntimeSceneGameplayBindingDiagnosticCode::duplicate_binding_id,
+                   "duplicate.pickup") != nullptr);
+    MK_REQUIRE(find_gameplay_binding_diagnostic(
+                   resolution, mirakana::runtime_scene::RuntimeSceneGameplayBindingDiagnosticCode::duplicate_node_name,
+                   "duplicate.pickup") != nullptr);
+    MK_REQUIRE(find_gameplay_binding_diagnostic(
+                   resolution, mirakana::runtime_scene::RuntimeSceneGameplayBindingDiagnosticCode::missing_node,
+                   "missing.node") != nullptr);
+    const auto* missing_component = find_gameplay_binding_diagnostic(
+        resolution, mirakana::runtime_scene::RuntimeSceneGameplayBindingDiagnosticCode::missing_required_component,
+        "door.mesh");
+    MK_REQUIRE(missing_component != nullptr);
+    MK_REQUIRE(missing_component->node == door);
 }
 
 MK_TEST("runtime scene resolves authored animation transform bindings and applies samples") {

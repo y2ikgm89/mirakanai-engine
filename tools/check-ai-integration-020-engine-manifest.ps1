@@ -1529,6 +1529,45 @@ if (-not ([string]$sceneAuthoringSurface[0].notes).Contains("Contract-only") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("2D/3D vertical slices")) {
     Write-Error "engine/agent/manifest.json scene-component-prefab-schema-v2 authoring surface must keep contract-only follow-up limits explicit"
 }
+$gameplayBindingAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-scene-gameplay-binding-v1" })
+if ($gameplayBindingAuthoringSurface.Count -ne 1 -or $gameplayBindingAuthoringSurface[0].status -ne "ready" -or
+    $gameplayBindingAuthoringSurface[0].owner -ne "MK_runtime_scene") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-scene-gameplay-binding-v1 must be ready as an MK_runtime_scene surface"
+}
+if (-not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayBindingSourceRow") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayBindingComponentKind") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("resolve_runtime_scene_gameplay_bindings") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("duplicate binding ids") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("missing required components") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("gameplay system scheduler") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("package format change")) {
+    Write-Error "engine/agent/manifest.json runtime-scene-gameplay-binding-v1 authoring surface must keep binding contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeSceneGameplayBindingSourceRow",
+        "RuntimeSceneGameplayBindingComponentKind",
+        "RuntimeSceneGameplayBindingResolution",
+        "resolve_runtime_scene_gameplay_bindings"
+    )) {
+    Assert-ContainsText $runtimeSceneHeaderText $needle "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSceneGameplayBindingDiagnosticCode::duplicate_binding_id",
+        "RuntimeSceneGameplayBindingDiagnosticCode::missing_required_component",
+        "node_has_gameplay_binding_component"
+    )) {
+    Assert-ContainsText $runtimeSceneSourceText $needle "engine/runtime_scene/src/runtime_scene.cpp"
+}
+Assert-ContainsText $runtimeSceneTestsText "runtime scene resolves authored gameplay bindings to component-backed nodes" "tests/unit/runtime_scene_tests.cpp"
+Assert-ContainsText $runtimeSceneTestsText "runtime scene gameplay bindings fail closed for invalid ambiguous and missing component rows" "tests/unit/runtime_scene_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "resolve_runtime_scene_gameplay_bindings" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "RuntimeSceneGameplayBindingSourceRow" $docSurface.Label
+}
 $assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"
