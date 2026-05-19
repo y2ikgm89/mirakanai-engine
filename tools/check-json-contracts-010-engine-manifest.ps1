@@ -358,6 +358,16 @@ if (@($geSceneModule[0].publicHeaders) -notcontains "engine/scene/include/miraka
 }
 if (-not ([string]$geSceneModule[0].purpose).Contains("contract-only") -or
     -not ([string]$geSceneModule[0].purpose).Contains("GameEngine.Scene.v2") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("ScenePrefabInstanceRefreshPlanV2") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("plan_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("ScenePrefabInstanceRefreshResultV2") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("apply_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("duplicate_prefab_source_identity") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("unsupported_nested_prefab_instance") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("unsupported_local_prefab_child") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("unsupported_local_prefab_component") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("source_node_id") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("source_component_id") -or
     -not ([string]$geSceneModule[0].purpose).Contains("nested prefab propagation/merge resolution UX")) {
     Write-Error "engine manifest MK_scene purpose must describe Schema v2 as contract-only and keep follow-up limits explicit"
 }
@@ -466,6 +476,11 @@ if (-not ([string]$geToolsModule[0].purpose).Contains("PngImageDecodingAdapter")
     -not ([string]$geToolsModule[0].purpose).Contains("IImageDecodingAdapter") -or
     -not ([string]$geToolsModule[0].purpose).Contains("decode_audited_png_rgba8")) {
     Write-Error "engine manifest MK_tools purpose must describe Runtime UI PNG image decoding adapter boundary explicitly"
+}
+if (-not ([string]$geToolsModule[0].purpose).Contains("refresh-prefab-instance") -or
+    -not ([string]$geToolsModule[0].purpose).Contains("plan_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$geToolsModule[0].purpose).Contains("apply_scene_prefab_instance_refresh_v2")) {
+    Write-Error "engine manifest MK_tools purpose must describe reviewed Scene/Prefab v2 prefab refresh authoring surface explicitly"
 }
 if (-not ([string]$geToolsModule[0].purpose).Contains("PackedUiAtlasAuthoringDesc") -or
     -not ([string]$geToolsModule[0].purpose).Contains("author_packed_ui_atlas_from_decoded_images") -or

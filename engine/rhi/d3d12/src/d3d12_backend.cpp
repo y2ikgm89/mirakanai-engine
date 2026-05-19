@@ -2699,9 +2699,6 @@ bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, N
         (after.value != 0 && after_resource == nullptr)) {
         return false;
     }
-    if (command_record->queue != QueueKind::graphics) {
-        return false;
-    }
 
     if (before_resource != nullptr && before_resource->GetDesc().Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;

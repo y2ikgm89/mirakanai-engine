@@ -10,8 +10,13 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
+
+namespace mirakana::rhi {
+class RhiUploadRing;
+}
 
 namespace mirakana::runtime_rhi {
 
@@ -46,17 +51,21 @@ enum class RuntimeMeshVertexLayout : std::uint8_t {
 struct RuntimeTextureUploadOptions {
     rhi::TextureUsage usage{rhi::TextureUsage::shader_resource | rhi::TextureUsage::copy_destination};
     rhi::QueueKind queue{rhi::QueueKind::graphics};
+    rhi::RhiUploadRing* upload_ring{nullptr};
     bool wait_for_completion{true};
 };
 
 struct RuntimeTextureUploadResult {
     rhi::TextureHandle texture;
     rhi::BufferHandle upload_buffer;
+    bool upload_buffer_caller_owned{false};
     rhi::TextureDesc texture_desc;
     rhi::BufferTextureCopyRegion copy_region;
     std::uint64_t uploaded_bytes{0};
     const rhi::IRhiDevice* owner_device{nullptr};
     bool copy_recorded{false};
+    std::size_t frame_graph_command_lists_submitted{0};
+    std::size_t frame_graph_queue_waits_recorded{0};
     std::size_t frame_graph_barriers_recorded{0};
     std::size_t frame_graph_pass_target_state_barriers_recorded{0};
     std::size_t frame_graph_final_state_barriers_recorded{0};
@@ -73,6 +82,7 @@ struct RuntimeMeshUploadOptions {
     rhi::BufferUsage vertex_usage{rhi::BufferUsage::vertex | rhi::BufferUsage::copy_destination};
     rhi::BufferUsage index_usage{rhi::BufferUsage::index | rhi::BufferUsage::copy_destination};
     rhi::QueueKind queue{rhi::QueueKind::graphics};
+    rhi::RhiUploadRing* upload_ring{nullptr};
     std::uint32_t vertex_stride{runtime_mesh_position_vertex_stride_bytes};
     rhi::IndexFormat index_format{rhi::IndexFormat::uint32};
     bool derive_vertex_layout_from_payload{true};
@@ -96,6 +106,7 @@ struct RuntimeMeshUploadResult {
     rhi::BufferHandle index_buffer;
     rhi::BufferHandle vertex_upload_buffer;
     rhi::BufferHandle index_upload_buffer;
+    bool upload_buffers_caller_owned{false};
     rhi::BufferDesc vertex_buffer_desc;
     rhi::BufferDesc index_buffer_desc;
     rhi::BufferCopyRegion vertex_copy_region;
@@ -125,6 +136,7 @@ struct RuntimeSkinnedMeshUploadOptions {
     rhi::BufferUsage index_usage{rhi::BufferUsage::index | rhi::BufferUsage::copy_destination};
     rhi::BufferUsage palette_usage{rhi::BufferUsage::uniform | rhi::BufferUsage::copy_destination};
     rhi::QueueKind queue{rhi::QueueKind::graphics};
+    rhi::RhiUploadRing* upload_ring{nullptr};
     std::uint32_t vertex_stride{runtime_skinned_mesh_vertex_stride_bytes};
     rhi::IndexFormat index_format{rhi::IndexFormat::uint32};
     bool wait_for_completion{true};
@@ -137,6 +149,7 @@ struct RuntimeSkinnedMeshUploadResult {
     rhi::BufferHandle vertex_upload_buffer;
     rhi::BufferHandle index_upload_buffer;
     rhi::BufferHandle joint_palette_upload_buffer;
+    bool upload_buffers_caller_owned{false};
     rhi::BufferDesc vertex_buffer_desc;
     rhi::BufferDesc index_buffer_desc;
     rhi::BufferDesc joint_palette_buffer_desc;
@@ -172,6 +185,7 @@ struct RuntimeMorphMeshUploadOptions {
     rhi::BufferUsage tangent_delta_usage{rhi::BufferUsage::storage | rhi::BufferUsage::copy_destination};
     rhi::BufferUsage weight_usage{rhi::BufferUsage::uniform | rhi::BufferUsage::copy_destination};
     rhi::QueueKind queue{rhi::QueueKind::graphics};
+    rhi::RhiUploadRing* upload_ring{nullptr};
     bool wait_for_completion{true};
 };
 
@@ -184,6 +198,7 @@ struct RuntimeMorphMeshUploadResult {
     rhi::BufferHandle normal_delta_upload_buffer;
     rhi::BufferHandle tangent_delta_upload_buffer;
     rhi::BufferHandle morph_weight_upload_buffer;
+    bool upload_buffers_caller_owned{false};
     rhi::BufferDesc position_delta_buffer_desc;
     rhi::BufferDesc normal_delta_buffer_desc;
     rhi::BufferDesc tangent_delta_buffer_desc;
@@ -301,6 +316,27 @@ struct RuntimeMaterialGpuBindingOptions {
     bool create_descriptor_set_layout{true};
     rhi::BufferHandle shared_scene_pbr_frame_uniform{};
 };
+
+struct RuntimeUploadQueueWaitDiagnostic {
+    std::string code;
+    std::string message;
+    rhi::FenceValue fence{};
+};
+
+struct RuntimeUploadQueueWaitResult {
+    std::vector<RuntimeUploadQueueWaitDiagnostic> diagnostics;
+    rhi::QueueKind consumer_queue{rhi::QueueKind::graphics};
+    std::size_t queue_waits_recorded{0};
+    rhi::FenceValue last_waited_fence{};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
+[[nodiscard]] RuntimeUploadQueueWaitResult
+wait_for_runtime_uploads_on_queue(rhi::IRhiDevice& device, rhi::QueueKind consumer_queue,
+                                  std::span<const rhi::FenceValue> upload_fences);
 
 [[nodiscard]] RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
                                                                 const runtime::RuntimeTexturePayload& payload,

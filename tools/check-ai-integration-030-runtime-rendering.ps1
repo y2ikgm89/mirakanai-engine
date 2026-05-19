@@ -3,342 +3,79 @@
 
 # Chapter 3 for check-ai-integration.ps1 static contracts.
 
-if (-not ([string]$editorProductizationGap[0].notes).Contains("EditorPlaySession") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("IEditorPlaySessionDriver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorPlaySessionTickContext") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorPlaySessionControlsModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorResourcePanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiCommandPanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiPlaytestEvidenceImportModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiPlaytestEvidenceImportReviewRow") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiReviewedValidationExecutionModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiReviewedValidationExecutionDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorAiReviewedValidationExecutionBatchModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Host-Gated Validation Execution Ack v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor AI Reviewed Validation Batch Execution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("-HostGateAcknowledgements") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorContentBrowserImportPanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorContentBrowserImportOpenDialogModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorContentBrowserImportExternalSourceCopyModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Content Browser Import Codec Adapter Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ExternalAssetImportAdapters") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorMaterialAssetPreviewPanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorMaterialGpuPreviewExecutionSnapshot") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("material_asset_preview.gpu.execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("material_asset_preview.gpu.execution.parity_checklist") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorMaterialGpuPreviewDisplayParityChecklistRow") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.material_gpu_preview_display_parity_checklist.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInputRebindingProfilePanelModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantConflictReviewModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantConflictRow") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_content_browser_import_panel_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_content_browser_import_open_dialog_request") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_content_browser_import_external_source_copy_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("content_browser_import.open_dialog") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("content_browser_import.external_copy") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Browse Import Sources") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Copy External Sources") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains(".png/.gltf/.glb/.wav/.mp3/.flac") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_material_asset_preview_panel_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_input_rebinding_profile_panel_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_ai_playtest_evidence_import_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_ai_playtest_evidence_import_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_ai_reviewed_validation_execution_plan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_ai_reviewed_validation_execution_batch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_ai_reviewed_validation_execution_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_prefab_variant_conflict_review_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_prefab_variant_conflict_review_ui_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("deserialize_prefab_variant_definition_for_review") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Remove missing-node override") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabNodeOverride::source_node_name") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("override.N.source_node_name") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("source_node_mismatch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("accept_current_node") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Accept current node N") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("updates only source_node_name") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("strict MK_scene composition index-based") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Retarget override to node N") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("resolution kind/target") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_prefab_variant_conflict_resolution_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantConflictBatchResolutionPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("resolve_prefab_variant_conflicts") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_prefab_variant_conflict_batch_resolution_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_conflicts.batch_resolution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Apply All Reviewed") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ai_evidence_import") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ai_commands.execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ai_commands.execution.batch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Execute Ready") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_conflicts") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("simulation-scene viewport rendering") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("source-scene authoring plus undo/redo blocking") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorRuntimeHostPlaytestLaunchDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorRuntimeHostPlaytestLaunchModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_runtime_host_playtest_launch_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.runtime_host") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Win32ProcessRunner") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Resources diagnostics") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("AI Commands diagnostics") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Assets diagnostics") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Input Rebinding diagnostics") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInputRebindingCaptureModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("input_rebinding.capture") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("in-memory profile candidate application") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Prefab Variant Authoring conflict review") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("hot-reload summaries") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("residency enforcement") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("allocator policy") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Variant Base Refresh Merge Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantBaseRefreshPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("apply_prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Source-Link Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabSourceLink") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabInstantiateDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("SceneNode::prefab_source") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceSourceLinkModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_scene_prefab_instance_source_link_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_source_links") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Scene Prefab Instance Refresh Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Local Child Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceRefreshPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceRefreshPolicy") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_scene_prefab_instance_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_scene_prefab_instance_refresh_batch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_scene_prefab_instance_refresh_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_scene_prefab_instance_refresh_batch_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_instance_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_instance_refresh_batch") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Refresh Prefab Instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Local Children") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_local_child") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Stale Node Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_stale_source_node_as_local") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Stale Source Nodes") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Nested Prefab Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_nested_prefab_instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("unsupported_nested_prefab_instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Nested Prefab Instances") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_prefab_nested_variant_alignment.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_prefab_local_child_variant_alignment.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_prefab_stale_source_variant_alignment.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_prefab_source_node_variant_alignment.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.scene_nested_prefab_propagation_preview.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_conflict_resolution_kind_label") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("unsupported local children") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("reviewed missing-node/source-mismatch retarget, accept-current hint repair, batch cleanup, explicit base-refresh apply, source-link diagnostics, explicit scene prefab instance refresh, reviewed local child refresh preservation, and reviewed stale source-node keep-as-local preservation") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("isolated simulation scene") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor In-Process Runtime Host Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInProcessRuntimeHostDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("begin_editor_in_process_runtime_host_session") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.in_process_runtime_host") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("IEditorPlaySessionDriver handoff") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Dynamic Game Module Driver Load v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Safe Reload Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Contract Metadata Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("DynamicLibrary") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("LoadLibraryExW") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverApi") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverContractMetadataModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_game_module_driver_contract_metadata_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("GameEngine.EditorGameModuleDriver.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("mirakana_create_editor_game_module_driver_v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverReloadModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_game_module_driver_reload_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.reload") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.contract") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.session") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverHostSessionPhase") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.editor_game_module_driver_host_session.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ge.editor.editor_game_module_driver_host_session_dll_barriers.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Load Game Module Driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Reload Game Module Driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Productization 1.0 Scope Closeout v1 reclassifies") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("active-session hot reload and broader dynamic game-module loading and in-process runtime-host embedding beyond reviewed external runtime-host launch, linked-driver handoff, and explicit editor game-module driver load evidence") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("package script execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("automatic host-gated validation recipe execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("arbitrary shell") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("raw manifest command evaluation") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("free-form manifest edits") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("renderer/RHI handle exposure") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("arbitrary importer adapters") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("automatic import execution") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("hot reload readiness beyond reviewed recook/apply state") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("shader compiler execution from editor core") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("axis input rebinding capture") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("runtime UI focus/consumption") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("input glyph generation") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("multiplayer device assignment") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Vulkan/Metal material-preview display parity beyond D3D12 host-owned execution evidence") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("automatic host-gated AI command execution workflows") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("vendor-stable third-party editor DLL ABI and unacknowledged or automatic host-gated AI command execution are explicit Engine 1.0 exclusions rather than required-before-ready claims") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Vulkan display parity") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("nested prefab propagation/merge resolution UX")) {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must keep Play-In-Editor, resource diagnostics, AI command diagnostics, AI evidence import review, reviewed validation execution, content browser/material/input/prefab diagnostics, and remaining unsupported claims explicit"
+$editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
+if ($editorProductizationGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 host-gated exclusion closeout"
+}
+$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md"
+foreach ($needle in @(
+    "Editor Productization 1.0 Host-Gated Exclusion Closeout",
+    "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
+    "Vulkan/Metal material-preview display parity",
+    "explicit 1.0 host-gated exclusion",
+    "EditorPlaySession",
+    "EditorAiReviewedValidationExecutionModel",
+    "EditorMaterialGpuPreviewExecutionSnapshot",
+    "ScenePrefabInstanceRefreshPlan",
+    "PrefabVariantBaseRefreshPlan",
+    "production-ui-importer-platform-adapters",
+    "full-repository-quality-gate"
+)) {
+    Assert-ContainsText $editorProductizationCloseoutText $needle "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md editor-productization closeout evidence"
 }
 $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
-if ($productionUiImporterPlatformGap.Count -ne 1 -or $productionUiImporterPlatformGap[0].status -ne "planned") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must remain planned until OS/platform adapter work is complete"
+if ($productionUiImporterPlatformGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
+$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md"
 foreach ($needle in @(
-    "Runtime UI Accessibility Publish Plan v1",
+    "Production UI Importer Platform Adapters 1.0 Closeout",
+    "reviewed adapter-boundary and package evidence",
     "AccessibilityPublishPlan",
-    "AccessibilityPublishResult",
-    "plan_accessibility_publish",
-    "publish_accessibility_payload",
-    "AccessibilityPayload",
-    "IAccessibilityAdapter",
-    "OS accessibility bridge publication",
-    "native accessibility objects",
-    "platform SDK calls",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI IME Composition Publish Plan v1",
     "ImeCompositionPublishPlan",
-    "ImeCompositionPublishResult",
-    "plan_ime_composition_update",
-    "publish_ime_composition",
-    "ImeComposition",
-    "IImeAdapter",
-    "native IME/text-input sessions",
-    "platform SDK calls",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Platform Text Input Session Plan v1",
     "PlatformTextInputSessionPlan",
-    "PlatformTextInputSessionResult",
-    "PlatformTextInputEndPlan",
-    "PlatformTextInputEndResult",
-    "plan_platform_text_input_session",
-    "begin_platform_text_input",
-    "plan_platform_text_input_end",
-    "end_platform_text_input",
-    "PlatformTextInputRequest",
-    "IPlatformIntegrationAdapter",
-    "native text-input object/session ownership",
-    "virtual keyboard behavior",
-    "platform SDK calls",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Text Shaping Request Plan v1",
     "TextShapingRequestPlan",
-    "TextShapingResult",
-    "plan_text_shaping_request",
-    "shape_text_run",
-    "TextLayoutRequest",
-    "TextLayoutRun",
-    "ITextShapingAdapter",
-    "production text shaping implementation",
-    "bidirectional reordering",
-    "production line breaking",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Font Rasterization Request Plan v1",
     "FontRasterizationRequestPlan",
-    "FontRasterizationResult",
-    "plan_font_rasterization_request",
-    "rasterize_font_glyph",
-    "FontRasterizationRequest",
-    "GlyphAtlasAllocation",
-    "IFontRasterizerAdapter",
-    "real font loading/rasterization",
-    "renderer texture upload",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Image Decode Request Plan v1",
     "ImageDecodeRequestPlan",
-    "ImageDecodeDispatchResult",
-    "ImageDecodePixelFormat",
-    "plan_image_decode_request",
-    "decode_image_request",
-    "ImageDecodeRequest",
-    "ImageDecodeResult",
-    "IImageDecodingAdapter",
-    "runtime image decoding",
-    "source image codecs",
-    "SVG/vector decoding",
-    "renderer texture upload",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI PNG Image Decoding Adapter v1",
     "PngImageDecodingAdapter",
-    "IImageDecodingAdapter",
-    "decode_audited_png_rgba8",
-    "libspng",
-    "asset-importers",
-    "without new dependency, legal, vcpkg, or notice records",
-    "runtime image decoding beyond the reviewed PNG adapter",
-    "broader source image codecs"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Decoded Image Atlas Package Bridge v1",
-    "PackedUiAtlasAuthoringDesc",
     "author_packed_ui_atlas_from_decoded_images",
-    "plan_packed_ui_atlas_package_update",
-    "apply_packed_ui_atlas_package_update",
-    "pack_sprite_atlas_rgba8_max_side",
-    "GameEngine.CookedTexture.v1",
-    "GameEngine.UiAtlas.v1",
-    "without new dependency, legal, vcpkg, or notice records",
-    "renderer texture upload"
-)) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
-}
-foreach ($needle in @(
-    "Runtime UI Glyph Atlas Package Bridge v1",
-    "UiAtlasMetadataGlyph",
-    "RuntimeUiAtlasGlyph",
-    "PackedUiGlyphAtlasAuthoringDesc",
     "author_packed_ui_glyph_atlas_from_rasterized_glyphs",
-    "plan_packed_ui_glyph_atlas_package_update",
-    "apply_packed_ui_glyph_atlas_package_update",
-    "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas",
-    "source.decoding=rasterized-glyph-adapter",
-    "atlas.packing=deterministic-glyph-atlas-rgba8-max-side",
-    "GameEngine.CookedTexture.v1",
-    "GameEngine.UiAtlas.v1",
-    "without new dependency, legal, vcpkg, or notice records",
+    "selected SDL3 platform bridges",
+    "package-visible native UI overlay/atlas smokes",
+    "production text shaping implementation",
     "real font loading/rasterization",
-    "renderer texture upload"
+    "OS accessibility publication",
+    "broad native IME/text services",
+    "broader source codecs",
+    "SVG/vector parsing",
+    "renderer texture-upload APIs",
+    "arbitrary importer adapters",
+    "UI middleware",
+    "full-repository-quality-gate"
 )) {
-    Assert-ContainsText ([string]$productionUiImporterPlatformGap[0].notes) $needle "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap"
+    Assert-ContainsText $productionUiCloseoutText $needle "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md production-ui closeout evidence"
 }
 $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "full-repository-quality-gate" })
-if ($fullRepoQualityGap.Count -ne 1 -or $fullRepoQualityGap[0].status -ne "partly-ready") {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop full-repository-quality-gate gap must be partly-ready until Phase 1 quality gates complete"
+if ($fullRepoQualityGap.Count -ne 0) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-if (-not ([string]$fullRepoQualityGap[0].notes).Contains("clang-tidy") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("coverage") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("sanitizer") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("targeted changed-file clang-tidy") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("Full Repository Static Analysis CI Contract v1") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("static-analysis") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("tools/check-tidy.ps1 -Strict") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("Phase 1")) {
-    Write-Error "engine/agent/manifest.json aiOperableProductionLoop full-repository-quality-gate gap must name tidy, coverage, sanitizer, and Phase 1 charter limits explicitly"
+$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md"
+foreach ($needle in @(
+    "Full Repository Quality Gate 1.0 Closeout",
+    "local full validate",
+    "CI Matrix Contract Check v1",
+    "Full Repository Static Analysis CI Contract v1",
+    "Linux coverage threshold policy",
+    "sanitizer lane documentation",
+    "Windows release package artifact evidence",
+    "broader analyzer profile expansion",
+    "full cross-platform package execution evidence",
+    "signing",
+    "notarization",
+    "release distribution",
+    "unsupported_gaps=0"
+)) {
+    Assert-ContainsText $fullRepoQualityCloseoutText $needle "docs/superpowers/plans/2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md full repository quality closeout evidence"
 }
 $vulkanGate = @($productionLoop.hostGates | Where-Object { $_.id -eq "vulkan-strict" })
 if ($vulkanGate.Count -ne 1 -or $vulkanGate[0].status -ne "host-gated") {
@@ -560,6 +297,17 @@ Assert-ContainsText ([string]$geUiRendererModule[0].purpose) "text glyph sprite 
 Assert-ContainsText ([string]$geUiRendererModule[0].purpose) "image sprite submission" "MK_ui_renderer module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "contract-only" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "GameEngine.Scene.v2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshPlanV2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshRowV2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "plan_scene_prefab_instance_refresh_v2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshResultV2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "apply_scene_prefab_instance_refresh_v2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "duplicate_prefab_source_identity" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "unsupported_nested_prefab_instance" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "unsupported_local_prefab_child" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "unsupported_local_prefab_component" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "source_node_id" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "source_component_id" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "nested prefab propagation/merge resolution UX" "MK_scene module purpose"
 Assert-ContainsText ([string]$geAssetsModule[0].purpose) "Asset Identity v2" "MK_assets module purpose"
 Assert-ContainsText ([string]$geAssetsModule[0].purpose) "GameEngine.AssetIdentity.v2" "MK_assets module purpose"
@@ -613,6 +361,8 @@ Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transf
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transform_animation_tracks_3d" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transform_animation_float_clip" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transform_animation_binding_source" "MK_tools module purpose"
+Assert-ContainsText ([string]$geToolsModule[0].purpose) "refresh-prefab-instance" "MK_tools module purpose"
+Assert-ContainsText ([string]$geToolsModule[0].purpose) "apply_scene_prefab_instance_refresh_v2" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "PngImageDecodingAdapter" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "IImageDecodingAdapter" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "decode_audited_png_rgba8" "MK_tools module purpose"
@@ -1621,9 +1371,17 @@ if (@($geRhiModule[0].publicHeaders) -notcontains "engine/rhi/include/mirakana/r
 }
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiResourceLifetimeRegistry" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiUploadStagingPlan" "MK_rhi module purpose"
+Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiStagingBufferLease" "MK_rhi module purpose"
+Assert-ContainsText ([string]$geRhiModule[0].purpose) "RhiUploadRingDesc::buffer" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "FenceValue" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "foundation-only" "MK_rhi module purpose"
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "GPU allocator" "MK_rhi module purpose"
+$geRhiRecentEvidenceText = @($geRhiModule[0].recentEvidence | ForEach-Object { [string]$_ }) -join " "
+Assert-ContainsText $geRhiRecentEvidenceText "RHI Native Async Upload Execution v1" "MK_rhi module recentEvidence"
+Assert-ContainsText $geRhiRecentEvidenceText "execute_upload_gpu_batch_async" "MK_rhi module recentEvidence"
+Assert-ContainsText $geRhiRecentEvidenceText "RhiUploadGpuBatchExecutionResult" "MK_rhi module recentEvidence"
+Assert-ContainsText $geRhiRecentEvidenceText "Staging Pool Lease Adoption v1" "MK_rhi module recentEvidence"
+Assert-ContainsText $geRhiRecentEvidenceText "RhiStagingBufferLease" "MK_rhi module recentEvidence"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph v1 foundation-only" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphV1Desc" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "barrier intent" "MK_renderer module purpose"
@@ -1661,11 +1419,30 @@ Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "make_runtime_packa
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingFrameGraphTextureBindingSource" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "upload_runtime_package_streaming_frame_graph_texture_bindings" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingFrameGraphTextureUploadSource" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "upload_runtime_package_streaming_mesh_gpu_bindings" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingMeshUploadSource" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimePackageStreamingMeshUploadBindingResult" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeUploadQueueWaitResult" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "wait_for_runtime_uploads_on_queue" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "upload_queue_waits_recorded" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "MeshGpuBinding rows" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeTextureUploadOptions::upload_ring" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeMeshUploadOptions::upload_ring" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeSkinnedMeshUploadOptions::upload_ring" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeMorphMeshUploadOptions::upload_ring" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RhiUploadRing/RhiUploadStagingPlan" "MK_runtime_rhi module purpose"
+Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeTextureUploadResult command-list/queue-wait/pass-target/final-state/barrier/callback counters" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "RuntimeMaterialGpuBinding command-list/queue-wait/barrier/callback counters" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "material-factor uploads" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$geRuntimeRhiModule[0].purpose) "broad/background package streaming" "MK_runtime_rhi module purpose"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "make_runtime_package_streaming_frame_graph_texture_bindings" "desktop runtime 3d package streaming guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "upload_runtime_package_streaming_frame_graph_texture_bindings" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "upload_runtime_package_streaming_mesh_gpu_bindings" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "wait_for_runtime_uploads_on_queue" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "upload_queue_waits_recorded" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "RuntimeMeshUploadOptions::upload_ring" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "RhiStagingBufferLease" "desktop runtime 3d package streaming guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dPackageStreamingSafePointSmoke) "RhiUploadRingDesc::buffer" "desktop runtime 3d package streaming guidance"
 foreach ($packageStreamingFrameGraphGuidance in @(
         "docs/rhi.md",
         "docs/current-capabilities.md",
@@ -1677,6 +1454,13 @@ foreach ($packageStreamingFrameGraphGuidance in @(
     $packageStreamingFrameGraphText = Get-AgentSurfaceText $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "make_runtime_package_streaming_frame_graph_texture_bindings" $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "upload_runtime_package_streaming_frame_graph_texture_bindings" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "upload_runtime_package_streaming_mesh_gpu_bindings" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "wait_for_runtime_uploads_on_queue" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "upload_queue_waits_recorded" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "RuntimeTextureUploadOptions::upload_ring" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "RuntimeMeshUploadOptions::upload_ring" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "RhiStagingBufferLease" $packageStreamingFrameGraphGuidance
+    Assert-ContainsText $packageStreamingFrameGraphText "RhiUploadRingDesc::buffer" $packageStreamingFrameGraphGuidance
     Assert-ContainsText $packageStreamingFrameGraphText "broad" $packageStreamingFrameGraphGuidance
 }
 Assert-ContainsText ([string]$geRhiModule[0].purpose) "IRhiCommandList::texture_aliasing_barrier" "MK_rhi module purpose"
@@ -1694,8 +1478,14 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "IRhiDevice::wait_for
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph RHI Multi-Queue Executor v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_rhi_multi_queue_schedule" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionDesc::texture_bindings" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionDesc::final_states" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueueExecutionResult::final_state_barriers_recorded" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "consumer-pass texture barriers recorded before callbacks" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "alias-induced cross-queue waits" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiMultiQueuePackageEvidence" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "aliasing-barrier, submitted-fence" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "final-state transitions recorded on the last scheduled resource pass command list" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Production Ownership Boundary Selection v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphProductionOwnershipPlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_production_ownership_boundary" "MK_renderer module purpose"
@@ -1709,10 +1499,12 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Material Factor Frame Graph Command Evidence v1" "recommended next plan completed context"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RuntimeMaterialGpuBinding" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "primary pass texture-binding/target-state evidence is complete" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "backend-neutral RHI queue dependency wait planning/recording is complete" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "multi-queue pass command submission and opt-in texture barrier recording envelope" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "runtime mesh, skinned mesh, morph mesh, and material-factor upload Frame Graph command evidence are complete" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "recommended next plan completed context"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "recommended next plan reason"
+Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "recommended next plan reason"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
@@ -1773,9 +1565,12 @@ $rhiDirectionalShadowSource = Get-AgentSurfaceText "engine/renderer/src/rhi_dire
 $rendererHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp"
 $rhiViewportSurfaceSource = Get-AgentSurfaceText "engine/renderer/src/rhi_viewport_surface.cpp"
 Assert-ContainsText $frameGraphHeader "FrameGraphProductionOwnershipCapability" "Frame graph production ownership boundary public API"
+Assert-ContainsText $frameGraphHeader "vulkan_memory_aliasing" "Frame graph production ownership boundary public API"
+Assert-ContainsText $frameGraphHeader "metal_memory_aliasing" "Frame graph production ownership boundary public API"
 Assert-ContainsText $frameGraphHeader "FrameGraphProductionOwnershipPlan" "Frame graph production ownership boundary public API"
 Assert-ContainsText $frameGraphHeader "plan_frame_graph_production_ownership_boundary" "Frame graph production ownership boundary public API"
 Assert-ContainsText $frameGraphSource "frame graph production ownership boundary request disagrees with supported boundary" "Frame graph production ownership boundary fail-closed diagnostics"
+Assert-DoesNotContainText $frameGraphHeader "vulkan_metal_memory_aliasing" "Frame graph production ownership boundary public API"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphTexturePassTargetAccess" "Frame graph RHI pass target access public API"
 Assert-ContainsText $frameGraphRhiHeader "build_frame_graph_texture_pass_target_accesses" "Frame graph RHI pass target access public API"
 Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses" "Frame graph RHI pass target access public API"
@@ -1790,7 +1585,11 @@ Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiPassCommandBinding" "Fram
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiMultiQueueExecutionDesc" "Frame graph RHI multi-queue executor public API"
 Assert-ContainsText $frameGraphRhiHeader "FrameGraphRhiMultiQueueExecutionResult" "Frame graph RHI multi-queue executor public API"
 Assert-ContainsText $frameGraphRhiHeader "std::span<FrameGraphTextureBinding> texture_bindings" "Frame graph RHI multi-queue texture barrier public API"
+Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTextureFinalState> final_states" "Frame graph RHI multi-queue final-state public API"
+Assert-ContainsText $frameGraphRhiHeader "std::span<const FrameGraphTransientTextureLifetime> transient_texture_lifetimes" "Frame graph RHI multi-queue automatic aliasing barrier public API"
 Assert-ContainsText $frameGraphRhiHeader "std::size_t barriers_recorded" "Frame graph RHI multi-queue texture barrier public API"
+Assert-ContainsText $frameGraphRhiHeader "std::size_t aliasing_barriers_recorded" "Frame graph RHI multi-queue automatic aliasing barrier public API"
+Assert-ContainsText $frameGraphRhiHeader "std::size_t final_state_barriers_recorded" "Frame graph RHI multi-queue final-state public API"
 Assert-ContainsText $frameGraphRhiHeader "execute_frame_graph_rhi_multi_queue_schedule" "Frame graph RHI multi-queue executor public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barriers" "RHI texture aliasing barrier command public API"
 Assert-ContainsText $rhiPublicHeaderText "texture_aliasing_barrier(TextureHandle before, TextureHandle after)" "RHI texture aliasing barrier command public API"
@@ -1828,7 +1627,9 @@ Assert-ContainsText $d3d12RhiSourceText "pResourceBefore = before_resource" "D3D
 Assert-ContainsText $d3d12RhiSourceText "pResourceAfter = after_resource" "D3D12 placed alias group non-null barrier evidence"
 Assert-ContainsText $d3d12RhiSourceText "placed_resource_state_updates" "D3D12 placed alias group submit-time state evidence"
 Assert-ContainsText $vulkanRhiSourceText "record_runtime_texture_aliasing_barrier" "Vulkan texture aliasing barrier command"
-Assert-ContainsText $vulkanRhiSourceText "acquire_transient_texture_alias_group" "Vulkan transient texture alias-group fallback"
+Assert-ContainsText $vulkanRhiSourceText "vulkan_image_create_alias_bit" "Vulkan transient texture alias memory allocation"
+Assert-ContainsText $vulkanRhiSourceText "create_transient_texture_alias_images" "Vulkan transient texture alias memory allocation"
+Assert-ContainsText $vulkanRhiSourceText "VulkanRuntimeTexture::Impl::MemoryAllocation" "Vulkan transient texture alias memory allocation"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group acquisition failed" "Frame graph transient texture lease binding failure cleanup"
 Assert-ContainsText $frameGraphRhiSource "device.acquire_transient_texture_alias_group(group.desc, group.resources.size())" "Frame graph transient texture distinct alias-group lease binding"
 Assert-ContainsText $frameGraphRhiSource "frame graph transient texture alias group has no resources" "Frame graph transient texture lease binding malformed-plan validation"
@@ -1851,6 +1652,9 @@ Assert-ContainsText $frameGraphRhiSource "begin_planned_render_pass" "Frame grap
 Assert-ContainsText $frameGraphRhiSource "attachment references an unknown resource" "Frame graph render pass envelope validation"
 Assert-ContainsText $frameGraphRhiSource "execute_frame_graph_rhi_multi_queue_schedule" "Frame graph RHI multi-queue executor"
 Assert-ContainsText $frameGraphRhiSource "record_frame_graph_rhi_queue_waits(*desc.device, waits->second, result.submitted_pass_fences)" "Frame graph RHI multi-queue executor"
+Assert-ContainsText $frameGraphRhiSource "desc.texture_bindings, desc.transient_texture_lifetimes" "Frame graph RHI multi-queue automatic aliasing barrier executor"
+Assert-ContainsText $frameGraphRhiSource "validate_transient_render_pass_content_initialization(result, scheduled_pass_order, desc.render_passes" "Frame graph RHI multi-queue transient content initialization validation"
+Assert-ContainsText $frameGraphRhiSource "record_planned_texture_aliasing_barrier(result, *commands, desc.texture_bindings" "Frame graph RHI multi-queue automatic aliasing barrier executor"
 Assert-ContainsText $frameGraphRhiSource "texture_barriers_by_pass" "Frame graph RHI multi-queue texture barrier executor"
 Assert-ContainsText $frameGraphRhiSource "record_planned_texture_barrier(result, *commands, desc.texture_bindings" "Frame graph RHI multi-queue texture barrier executor"
 Assert-ContainsText $frameGraphRhiSource "frame graph rhi pass command callback failed" "Frame graph RHI multi-queue executor diagnostics"
@@ -1876,6 +1680,8 @@ Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule executio
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution rejects invalid render pass envelopes before callbacks" "Frame graph render pass envelope tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor submits declared pass queues and waits for producer fences" "Frame graph RHI multi-queue executor tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor records texture barriers before consumer callbacks" "Frame graph RHI multi-queue texture barrier tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor inserts aliasing barriers before later alias callbacks" "Frame graph RHI multi-queue automatic aliasing barrier tests"
+Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor rejects transient alias first render pass load" "Frame graph RHI multi-queue transient content initialization tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor validates texture barriers before command recording" "Frame graph RHI multi-queue texture barrier tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi multi queue executor preserves submitted producer evidence on callback failure" "Frame graph RHI multi-queue executor tests"
 Assert-ContainsText $rendererRhiTests "framegraph_render_passes_recorded == 1" "Frame graph render pass stats evidence tests"
@@ -1899,6 +1705,7 @@ Assert-ContainsText $d3d12RhiTestsText "transient_texture_heap_allocations" "D3D
 Assert-ContainsText $d3d12RhiTestsText "transient_texture_placed_allocations" "D3D12 placed transient texture lease tests"
 Assert-ContainsText $d3d12RhiTestsText "transient_texture_placed_resources_alive" "D3D12 placed transient texture release tests"
 Assert-ContainsText $backendScaffoldTestsText "vulkan rhi device bridge records texture aliasing barrier" "Vulkan texture aliasing barrier command tests"
+Assert-ContainsText $backendScaffoldTestsText "vulkan rhi device transient texture alias group shares one memory allocation" "Vulkan transient texture alias memory allocation tests"
 Assert-ContainsText $rhiFrameRendererSource "execute_frame_graph_rhi_texture_schedule" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "primary_color" "RHI frame renderer primary pass ownership"
 Assert-ContainsText $rhiFrameRendererSource "framegraph_passes_executed" "RHI frame renderer primary pass ownership"
@@ -1993,6 +1800,7 @@ foreach ($renderingGuidancePath in @(
     Assert-ContainsText $renderingGuidanceText "after ``ExecuteCommandLists`` submits work rather than after fence completion" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "automatic aliasing barrier before the first pass" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "aliasing_barriers_recorded" $renderingGuidancePath
+    Assert-ContainsText $renderingGuidanceText 'resource-backed transient first render-pass `LoadAction::load` rows' $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "Frame Graph RHI queue dependency and multi-queue pass-command work" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "plan_frame_graph_rhi_queue_waits" $renderingGuidancePath
     Assert-ContainsText $renderingGuidanceText "IRhiDevice::wait_for_queue" $renderingGuidancePath
@@ -2122,6 +1930,34 @@ foreach ($rendererQualityPackageGuidance in @(
     Assert-ContainsText $rendererQualityPackageText "renderer_quality_framegraph_barrier_steps_ok" $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "framegraph_render_passes_recorded" $rendererQualityPackageGuidance
     Assert-ContainsText $rendererQualityPackageText "framegraph_barrier_steps_executed" $rendererQualityPackageGuidance
+}
+foreach ($multiQueuePackageGuidance in @(
+    "engine/agent/manifest.json",
+    "games/sample_desktop_runtime_game/game.agent.json",
+    "games/sample_desktop_runtime_game/README.md",
+    "docs/ai-game-development.md",
+    "docs/roadmap.md",
+    ".agents/skills/rendering-change/references/full-guidance.md",
+    ".claude/skills/gameengine-rendering/references/full-guidance.md"
+)) {
+    $multiQueuePackageText = Get-AgentSurfaceText $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "--require-framegraph-multiqueue-evidence" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_command_lists_submitted=4" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_queue_waits_recorded=3" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_barriers_recorded=4" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_aliasing_barriers_recorded=1" $multiQueuePackageGuidance
+    Assert-ContainsText $multiQueuePackageText "framegraph_multiqueue_submitted_pass_fences=4" $multiQueuePackageGuidance
+}
+$installedMultiQueuePackageValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
+foreach ($installedMultiQueueExpectedField in @(
+    '"framegraph_multiqueue_command_lists_submitted" = "4"',
+    '"framegraph_multiqueue_queue_waits_recorded" = "3"',
+    '"framegraph_multiqueue_barriers_recorded" = "4"',
+    '"framegraph_multiqueue_aliasing_barriers_recorded" = "1"',
+    '"framegraph_multiqueue_pass_callbacks_invoked" = "4"',
+    '"framegraph_multiqueue_submitted_pass_fences" = "4"'
+)) {
+    Assert-ContainsText $installedMultiQueuePackageValidationText $installedMultiQueueExpectedField "tools/validate-installed-desktop-runtime.ps1"
 }
 foreach ($renderPassPackageGuidance in @(
     ".agents/skills/rendering-change/references/full-guidance.md",

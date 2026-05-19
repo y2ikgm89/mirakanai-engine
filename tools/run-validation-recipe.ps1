@@ -199,10 +199,6 @@ Write-RunnerResult -Result ([ordered]@{
         hostGates = @($plan.hostGates)
         diagnostics = @($diagnostics)
         validationRecipes = @($Recipe)
-        unsupportedGapIds = @(
-            "editor-productization",
-            "production-ui-importer-platform-adapters",
-            "3d-playable-vertical-slice"
-        )
+        unsupportedGapIds = @()
         undoToken = New-UndoToken
     }) -ExitCode $execution.exitCode

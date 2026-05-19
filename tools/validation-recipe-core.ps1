@@ -53,11 +53,7 @@ function New-ValidationRecipeRejectedResult {
         diagnostics = @($Diagnostic)
         blockedBy = @()
         validationRecipes = @()
-        unsupportedGapIds = @(
-            "editor-productization",
-            "production-ui-importer-platform-adapters",
-            "3d-playable-vertical-slice"
-        )
+        unsupportedGapIds = @()
         undoToken = New-UndoToken
     }
 }
@@ -307,11 +303,7 @@ function New-ValidationRecipeDryRunResult {
         diagnostics = @($Plan.diagnostics)
         blockedBy = @()
         validationRecipes = @($Plan.recipe)
-        unsupportedGapIds = @(
-            "editor-productization",
-            "production-ui-importer-platform-adapters",
-            "3d-playable-vertical-slice"
-        )
+        unsupportedGapIds = @()
         undoToken = New-UndoToken
     }
 }

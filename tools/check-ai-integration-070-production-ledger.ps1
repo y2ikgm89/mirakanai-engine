@@ -1254,6 +1254,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/prepare-worktree.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/remove-merged-worktree.ps1" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "tools/ready-task-pr.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/check-toolchain.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/check-toolchain.ps1 -RequireDirectCMake" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "normalized-configure-environment" $agentIntegrationSkill
@@ -1344,6 +1345,7 @@ Assert-ContainsText $codexRuleText "git checkout" ".codex/rules/gameengine.rules
 Assert-ContainsText $codexRuleText "git worktree remove" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "git worktree prune" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "tools/remove-merged-worktree.ps1" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "tools/ready-task-pr.ps1" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Git worktree porcelain records" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText 'decision = "allow"' ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr view" ".codex/rules/gameengine.rules"
@@ -1370,7 +1372,7 @@ if (-not $claudeSettings.PSObject.Properties.Name.Contains("permissions")) {
 if (-not $claudeSettings.PSObject.Properties.Name.Contains("worktree") -or $claudeSettings.worktree.baseRef -ne "head") {
     Write-Error ".claude/settings.json must set worktree.baseRef to head for project subagent worktree isolation"
 }
-foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)")) {
+foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
     if (@($claudeSettings.permissions.allow) -notcontains $allowRule) {
         Write-Error ".claude/settings.json permissions.allow missing $allowRule"
     }
@@ -1383,7 +1385,7 @@ foreach ($askRule in @("Bash(git push --force:*)", "Bash(git push --force-with-l
         Write-Error ".claude/settings.json permissions.ask missing $askRule"
     }
 }
-foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)")) {
+foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
     if (@($claudeSettings.permissions.ask) -contains $automaticGitRule) {
         Write-Error ".claude/settings.json permissions.ask should not prompt routine automatic checkpoint command $automaticGitRule"
     }
@@ -1392,6 +1394,35 @@ foreach ($denyRule in @("Bash(git push origin main:*)", "Bash(git push origin ma
     if (@($claudeSettings.permissions.deny) -notcontains $denyRule) {
         Write-Error ".claude/settings.json permissions.deny missing $denyRule"
     }
+}
+
+$readyTaskPrScriptText = Get-AgentSurfaceText "tools/ready-task-pr.ps1"
+foreach ($readyTaskPrNeedle in @(
+    "[CmdletBinding(SupportsShouldProcess = `$true)]",
+    "gh pr view",
+    "gh pr ready",
+    "state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url",
+    "mergeStateStatus",
+    "PR Gate",
+    "statusCheckRollup",
+    "CHANGES_REQUESTED",
+    "codex/",
+    "codex-",
+    "Refusing to mark PR ready"
+)) {
+    Assert-ContainsText $readyTaskPrScriptText $readyTaskPrNeedle "tools/ready-task-pr.ps1"
+}
+
+foreach ($readyTaskPrSurface in @(
+    "AGENTS.md",
+    "docs/workflows.md",
+    "docs/ai-integration.md",
+    ".cursor/skills/gameengine-agent-integration/SKILL.md",
+    ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+)) {
+    $readyTaskPrSurfaceText = Get-AgentSurfaceText $readyTaskPrSurface
+    Assert-ContainsText $readyTaskPrSurfaceText "tools/ready-task-pr.ps1" $readyTaskPrSurface
+    Assert-ContainsText $readyTaskPrSurfaceText 'raw `gh pr ready`' $readyTaskPrSurface
 }
 
 foreach ($ruleFile in @(
@@ -1426,6 +1457,7 @@ Assert-ContainsText $aiAgentRuleText "Codex app Worktree/Handoff" ".claude/rules
 Assert-ContainsText $aiAgentRuleText "isolation: worktree" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText 'fast-forward it to `-BaseRef`' ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Windows long-path fallback" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText 'worktree-local `external/vcpkg`' ".claude/rules/ai-agent-integration.md"
@@ -1671,7 +1703,7 @@ $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $rhiText = Get-AgentSurfaceText "docs/rhi.md"
 $authoredRuntimeWorkflowRequiredText = @(
     "validated authored-to-runtime workflow",
-    "register-source-asset -> cook-registered-source-assets -> migrate-scene-v2-runtime-package -> mirakana::runtime::load_runtime_asset_package -> mirakana::runtime_scene::instantiate_runtime_scene"
+    "register-source-asset -> cook-registered-source-assets -> migrate-scene-v2-runtime-package -> validate-runtime-scene-package"
 )
 foreach ($workflowDoc in @(
     @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
@@ -1789,6 +1821,25 @@ foreach ($forbiddenValidationRunnerClaim in @(
             Write-Error "$($doc.Label) contains forbidden validation runner claim: $forbiddenValidationRunnerClaim"
         }
     }
+}
+foreach ($sceneSchemaDoc in @(
+    @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+    @{ Text = $aiIntegrationText; Label = "docs/ai-integration.md" },
+    @{ Text = $generatedScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" },
+    @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
+    @{ Text = $promptPackText; Label = "docs/specs/game-prompt-pack.md" },
+    @{ Text = $handoffPromptText; Label = "docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md" },
+    @{ Text = $roadmapText; Label = "docs/roadmap.md" }
+)) {
+    Assert-ContainsText $sceneSchemaDoc.Text "plan_scene_prefab_instance_refresh_v2" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "ScenePrefabInstanceRefreshResultV2" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "apply_scene_prefab_instance_refresh_v2" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "duplicate_prefab_source_identity" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "unsupported_nested_prefab_instance" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "unsupported_local_prefab_child" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "unsupported_local_prefab_component" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "contract-only" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "nested prefab" $sceneSchemaDoc.Label
 }
 foreach ($forbiddenScenePrefabAuthoringClaim in @(
     "Scene/Prefab v2 authoring makes Scene v2 runtime package migration ready",
@@ -2010,3 +2061,4 @@ foreach ($staleScenarioClaim in @(
 }
 
 $headlessScaffoldRoot = New-ScaffoldCheckRoot
+$null = $headlessScaffoldRoot

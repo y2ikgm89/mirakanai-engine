@@ -5,6 +5,8 @@
 **Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
 **Gap:** `editor-productization`
 
+**Superseded boundary:** [2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md](2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md) later removes `editor-productization` from `unsupportedProductionGaps` for the Windows-default Engine 1.0 ready surface by making Vulkan/Metal material-preview display parity an explicit future host-gated exclusion.
+
 ## Goal
 
 Reclassify the remaining `editor-productization` 1.0 scope after the recent Windows-tractable streams: implemented reviewed editor contracts stay recorded, Metal material-preview parity stays host-gated, and broad Unity/UE parity, mid-play DLL replacement, automatic fuzzy nested prefab merge/rebase, automatic capture execution, and unacknowledged host-gated AI execution stay explicit 1.0 exclusions.
@@ -19,13 +21,13 @@ Reclassify the remaining `editor-productization` 1.0 scope after the recent Wind
 ## Constraints
 
 - Do not broaden ready claims beyond reviewed rows and validation evidence.
-- Keep `editor-productization` in `unsupportedProductionGaps` while Metal material-preview parity remains host-gated.
+- Historical constraint at this plan's completion: keep `editor-productization` in `unsupportedProductionGaps` while Metal material-preview parity remains host-gated. This is superseded by the 2026-05-18 host-gated exclusion closeout.
 - Move Windows-default next selection to the Phase 1 `asset-identity-v2` order only after manifest, master plan, registry, and static checks agree.
 - Do not change editor runtime behavior in this slice.
 
 ## Done When
 
-- `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` keeps only the material-preview parity host-gated claim under `editor-productization.requiredBeforeReadyClaim`.
+- Historical done condition at this plan's completion: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` keeps only the material-preview parity host-gated claim under `editor-productization.requiredBeforeReadyClaim`. This is superseded by the 2026-05-18 host-gated exclusion closeout.
 - The manifest notes explicitly record the implemented streams and 1.0 exclusions.
 - The next Windows-default gap selection points to `asset-identity-v2` per [2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md](2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md).
 - Master plan, registry, roadmap, and static checks agree with that scope.

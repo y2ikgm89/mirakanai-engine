@@ -64,8 +64,9 @@ struct ResolvedAssetReference {
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
     return {
-        "scene-component-prefab-schema-v2",         "runtime-resource-v2",   "renderer-rhi-resource-foundation",
-        "production-ui-importer-platform-adapters", "editor-productization", "3d-playable-vertical-slice",
+        "scene-component-prefab-schema-v2", "runtime-resource-v2",
+        "renderer-rhi-resource-foundation", "editor-productization",
+        "3d-playable-vertical-slice",
     };
 }
 
@@ -221,8 +222,7 @@ void validate_unsupported_claims(std::vector<SceneV2RuntimePackageMigrationDiagn
                    "dependent asset cooking is not supported by Scene v2 runtime package migration",
                    "runtime-resource-v2");
     validate_claim(diagnostics, request.external_importer_execution, "unsupported_external_importer_execution",
-                   "external importer execution is not supported by Scene v2 runtime package migration",
-                   "production-ui-importer-platform-adapters");
+                   "external importer execution is not supported by Scene v2 runtime package migration", {});
     validate_claim(diagnostics, request.renderer_rhi_residency, "unsupported_renderer_rhi_residency",
                    "renderer/RHI residency is not supported by Scene v2 runtime package migration",
                    "renderer-rhi-resource-foundation");
@@ -534,7 +534,7 @@ parse_rgba_value(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnost
     }
     if (type == "light") {
         return property == "type" || property == "color" || property == "intensity" || property == "range" ||
-               property == "casts_shadows";
+               property == "inner_cone_radians" || property == "outer_cone_radians" || property == "casts_shadows";
     }
     if (type == "mesh_renderer") {
         return property == "mesh" || property == "material" || property == "visible";
@@ -843,6 +843,20 @@ void assign_light_component(std::vector<SceneV2RuntimePackageMigrationDiagnostic
                 parse_float_value(diagnostics, property_value(component, "range"), component, "range", scene_path);
             value.has_value()) {
             light.range = *value;
+        }
+    }
+    if (has_property(component, "inner_cone_radians")) {
+        if (const auto value = parse_float_value(diagnostics, property_value(component, "inner_cone_radians"),
+                                                 component, "inner_cone_radians", scene_path);
+            value.has_value()) {
+            light.inner_cone_radians = *value;
+        }
+    }
+    if (has_property(component, "outer_cone_radians")) {
+        if (const auto value = parse_float_value(diagnostics, property_value(component, "outer_cone_radians"),
+                                                 component, "outer_cone_radians", scene_path);
+            value.has_value()) {
+            light.outer_cone_radians = *value;
         }
     }
     if (has_property(component, "casts_shadows")) {

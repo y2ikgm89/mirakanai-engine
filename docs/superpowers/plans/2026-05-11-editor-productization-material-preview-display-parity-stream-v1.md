@@ -3,26 +3,27 @@
 **Plan ID:** `editor-productization-material-preview-display-parity-stream-v1`  
 **Gap:** `editor-productization`  
 **Parent:** [2026-05-03-production-completion-master-plan-v1.md](2026-05-03-production-completion-master-plan-v1.md)  
-**Status:** Active program stream (planning ledger)  
+**Status:** Future host-gated program stream (outside Windows-default 1.0 blocker set)
 
 ## Goal
 
-Close **Vulkan/Metal material-preview display parity** claims relative to the D3D12 host-owned execution path, respecting `hostGates` (`vulkan-strict`, `metal-apple`) and existing `material_asset_preview.gpu.execution.*` contract rows.
+Track future **Vulkan/Metal material-preview display parity** claims relative to the D3D12 host-owned execution path, respecting `hostGates` (`vulkan-strict`, `metal-apple`) and existing `material_asset_preview.gpu.execution.*` contract rows.
 
 ## Context
 
 - Completed: Vulkan and Metal **visible refresh snapshot** evidence slices; display-path contract alignment; viewport Vulkan RHI bootstrap for editor.
-- `requiredBeforeReadyClaim` still blocks full parity until reviewed cross-backend display equivalence is proven.
+- [2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md](2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md) removes `editor-productization` from `unsupportedProductionGaps` for the Windows-default Engine 1.0 ready surface. This stream remains future host-gated work, not a current required-before-ready claim.
 
 ## Constraints
 
 - No public gameplay API exposure of RHI/native handles; editor shell remains host-owned for GPU execution evidence.
 - Parity evidence must distinguish **cpu-readback** vs **shared-texture** display paths without overstating ready claims on Windows-only hosts.
+- Do not re-add `editor-productization` to `unsupportedProductionGaps` unless a new dated acceptance plan explicitly makes cross-backend material-preview parity part of the supported 1.0 surface.
 
 ## Done when (stream exit)
 
 - `material_asset_preview.gpu.execution` retained rows report pass/fail parity against a documented reference frame set per backend, with CI or documented host recipes where applicable.
-- Manifest `editor-productization` notes and `check-ai-integration` needles stay aligned with new row ids.
+- Manifest host gates, future notes, and `check-ai-integration` needles stay aligned with new row ids without reopening the closed Windows-default `editor-productization` gap.
 
 ## Next suggested child slices
 
@@ -32,4 +33,4 @@ Close **Vulkan/Metal material-preview display parity** claims relative to the D3
 
 ## Host-only execution cycle (`metal-apple`)
 
-Treat **stream item 3** as a **separate dated plan + validation cycle** from Windows-default `editor-productization` work. Author the implementation plan only when the operator host satisfies `metal-apple` (`engine/agent/manifest.json` `aiOperableProductionLoop.hostGates`), run `tools/check-shader-toolchain.ps1` / Apple toolchain probes as required by the slice, attach host evidence (logs, screenshots, or recipe output paths) to the plan validation table, and update manifest `recommendedNextPlan` / gap notes in the same merge so `check-ai-integration` stays aligned. Windows-only agents should not claim this slice complete without that host evidence.
+Treat **stream item 3** as a **separate dated plan + validation cycle** from Windows-default `editor-productization` work. Author the implementation plan only when the operator host satisfies `metal-apple` (`engine/agent/manifest.json` `aiOperableProductionLoop.hostGates`), run `tools/check-shader-toolchain.ps1` / Apple toolchain probes as required by the slice, attach host evidence (logs, screenshots, or recipe output paths) to the plan validation table, and update manifest future/host-gated notes in the same merge so `check-ai-integration` stays aligned. Windows-only agents should not claim this slice complete without that host evidence.

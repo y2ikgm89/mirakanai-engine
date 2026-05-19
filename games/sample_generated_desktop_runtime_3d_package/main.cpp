@@ -25,6 +25,7 @@
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
+#include "mirakana/runtime_rhi/package_streaming_frame_graph.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 #include "mirakana/ui/ui.hpp"
@@ -77,6 +78,7 @@ struct DesktopRuntimeOptions {
     bool require_compute_morph_async_telemetry{false};
     bool require_quaternion_animation{false};
     bool require_package_streaming_safe_point{false};
+    bool require_package_upload_staging{false};
     bool require_gameplay_systems{false};
     bool require_scene_collision_package{false};
     std::uint32_t max_frames{0};
@@ -235,6 +237,28 @@ package_streaming_status_name(mirakana::runtime::RuntimePackageStreamingExecutio
         return "committed";
     }
     return "unknown";
+}
+
+[[nodiscard]] std::string_view package_upload_staging_status_name(
+    bool requested, const mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence& evidence) noexcept {
+    if (!requested) {
+        return "not_requested";
+    }
+    return evidence.ready ? "ready" : "blocked";
+}
+
+[[nodiscard]] mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence
+run_package_upload_staging_evidence(mirakana::SdlDesktopPresentation& presentation) {
+    if (auto* device = presentation.scene_pbr_frame_rhi_device(); device != nullptr) {
+        return mirakana::runtime_rhi::execute_runtime_package_upload_staging_evidence(*device);
+    }
+
+    mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence evidence;
+    evidence.diagnostics.push_back(mirakana::runtime_rhi::RuntimePackageUploadStagingEvidenceDiagnostic{
+        .code = "rhi-device-unavailable",
+        .message = "runtime package upload staging evidence requires a native RHI device",
+    });
+    return evidence;
 }
 
 [[nodiscard]] mirakana::AnimationSkeleton3dDesc packaged_quaternion_animation_skeleton() {
@@ -1989,6 +2013,7 @@ void print_usage() {
                  "[--require-transform-animation] [--require-morph-package] [--require-compute-morph] "
                  "[--require-compute-morph-skin] [--require-compute-morph-async-telemetry] "
                  "[--require-quaternion-animation] [--require-package-streaming-safe-point] "
+                 "[--require-package-upload-staging] "
                  "[--require-gameplay-systems] [--require-scene-collision-package]\n";
 }
 
@@ -2173,6 +2198,10 @@ void print_usage() {
         }
         if (arg == "--require-package-streaming-safe-point") {
             options.require_package_streaming_safe_point = true;
+            continue;
+        }
+        if (arg == "--require-package-upload-staging") {
+            options.require_package_upload_staging = true;
             continue;
         }
         if (arg == "--require-gameplay-systems") {
@@ -3844,6 +3873,9 @@ int main(int argc, char** argv) {
     const auto gameplay_systems_diagnostics = game.gameplay_systems_diagnostics_count(options.max_frames);
     const auto visible_3d = evaluate_visible_3d_production_proof(options, result, report, renderer_quality, playable_3d,
                                                                  gameplay_systems_ready);
+    const auto package_upload_staging = options.require_package_upload_staging
+                                            ? run_package_upload_staging_evidence(host.presentation())
+                                            : mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence{};
 
     std::cout
         << "sample_generated_desktop_runtime_3d_package status=" << status_name(result.status)
@@ -3941,6 +3973,40 @@ int main(int argc, char** argv) {
         << " package_streaming_resident_resource_kinds=" << package_streaming_result.resident_resource_kind_count
         << " package_streaming_resident_packages=" << package_streaming_result.resident_package_count
         << " package_streaming_diagnostics=" << package_streaming_result.diagnostics.size()
+        << " package_upload_staging_status="
+        << package_upload_staging_status_name(options.require_package_upload_staging, package_upload_staging)
+        << " package_upload_staging_ready=" << (package_upload_staging.ready ? 1 : 0)
+        << " package_upload_staging_diagnostics=" << package_upload_staging.diagnostics.size()
+        << " package_upload_staging_package_transactions=" << package_upload_staging.package_transactions
+        << " package_upload_staging_texture_uploads=" << package_upload_staging.texture_uploads
+        << " package_upload_staging_mesh_uploads=" << package_upload_staging.mesh_uploads
+        << " package_upload_staging_skinned_mesh_uploads=" << package_upload_staging.skinned_mesh_uploads
+        << " package_upload_staging_morph_mesh_uploads=" << package_upload_staging.morph_mesh_uploads
+        << " package_upload_staging_texture_bindings=" << package_upload_staging.texture_bindings
+        << " package_upload_staging_mesh_bindings=" << package_upload_staging.mesh_bindings
+        << " package_upload_staging_skinned_mesh_bindings=" << package_upload_staging.skinned_mesh_bindings
+        << " package_upload_staging_morph_mesh_bindings=" << package_upload_staging.morph_mesh_bindings
+        << " package_upload_staging_staging_pool_leases=" << package_upload_staging.staging_pool_leases
+        << " package_upload_staging_ring_backed_uploads=" << package_upload_staging.ring_backed_uploads
+        << " package_upload_staging_resource_updates_ready=" << (package_upload_staging.resource_updates_ready ? 1 : 0)
+        << " package_upload_staging_resource_updates=" << package_upload_staging.resource_updates
+        << " package_upload_staging_resource_update_submitted_fences="
+        << package_upload_staging.resource_update_submitted_fences
+        << " package_upload_staging_resource_update_graphics_ready_updates="
+        << package_upload_staging.resource_update_graphics_ready_updates
+        << " package_upload_staging_resource_update_graphics_queue_waits_recorded="
+        << package_upload_staging.resource_update_graphics_queue_waits_recorded
+        << " package_upload_staging_resource_update_same_queue_graphics_updates="
+        << package_upload_staging.resource_update_same_queue_graphics_updates
+        << " package_upload_staging_uploaded_bytes=" << package_upload_staging.uploaded_bytes
+        << " package_upload_staging_submitted_fences=" << package_upload_staging.submitted_fences
+        << " package_upload_staging_upload_queue_waits_recorded=" << package_upload_staging.upload_queue_waits_recorded
+        << " package_upload_staging_copy_queue_submits=" << package_upload_staging.copy_queue_submits
+        << " package_upload_staging_graphics_queue_submits=" << package_upload_staging.graphics_queue_submits
+        << " package_upload_staging_queue_waits=" << package_upload_staging.queue_waits
+        << " package_upload_staging_fence_waits=" << package_upload_staging.fence_waits
+        << " package_upload_staging_graphics_waited_for_copy="
+        << (package_upload_staging.graphics_waited_for_copy ? 1 : 0)
         << " collision_package_status=" << collision_package_status_name(collision_package.status)
         << " collision_package_ready=" << (collision_package.ready ? 1 : 0)
         << " collision_package_diagnostics=" << collision_package.diagnostics_count
@@ -4116,6 +4182,10 @@ int main(int argc, char** argv) {
                   << diagnostic.message << '\n';
     }
     print_package_streaming_diagnostics(package_streaming_result);
+    for (const auto& diagnostic : package_upload_staging.diagnostics) {
+        std::cout << "sample_generated_desktop_runtime_3d_package package_upload_staging_diagnostic=" << diagnostic.code
+                  << ": " << diagnostic.message << '\n';
+    }
     print_ui_atlas_metadata_diagnostics("sample_generated_desktop_runtime_3d_package", ui_atlas_metadata);
     print_ui_atlas_metadata_diagnostics("sample_generated_desktop_runtime_3d_package", ui_text_glyph_atlas_metadata);
 
@@ -4153,6 +4223,9 @@ int main(int argc, char** argv) {
              package_streaming_result.required_preload_asset_count != 1 ||
              package_streaming_result.resident_resource_kind_count != 10 ||
              package_streaming_result.resident_package_count != 1 || !package_streaming_result.diagnostics.empty())) {
+            return 3;
+        }
+        if (options.require_package_upload_staging && !package_upload_staging.ready) {
             return 3;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {

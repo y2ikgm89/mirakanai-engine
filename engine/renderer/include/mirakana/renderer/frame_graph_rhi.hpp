@@ -184,13 +184,17 @@ struct FrameGraphRhiMultiQueueExecutionDesc {
     std::span<const FrameGraphTexturePassTargetAccess> pass_target_accesses;
     std::span<const FrameGraphTexturePassTargetState> pass_target_states;
     std::span<const FrameGraphRhiRenderPassDesc> render_passes;
+    std::span<const FrameGraphTextureFinalState> final_states;
+    std::span<const FrameGraphTransientTextureLifetime> transient_texture_lifetimes;
 };
 
 struct FrameGraphRhiMultiQueueExecutionResult {
     std::size_t command_lists_submitted{0};
     std::size_t queue_waits_recorded{0};
     std::size_t barriers_recorded{0};
+    std::size_t aliasing_barriers_recorded{0};
     std::size_t pass_target_state_barriers_recorded{0};
+    std::size_t final_state_barriers_recorded{0};
     std::size_t render_passes_recorded{0};
     std::size_t pass_callbacks_invoked{0};
     std::vector<FrameGraphRhiSubmittedPassFence> submitted_pass_fences;
@@ -206,6 +210,7 @@ struct FrameGraphRhiMultiQueuePackageEvidence {
     std::size_t command_lists_submitted{0};
     std::size_t queue_waits_recorded{0};
     std::size_t barriers_recorded{0};
+    std::size_t aliasing_barriers_recorded{0};
     std::size_t pass_callbacks_invoked{0};
     std::size_t submitted_pass_fences{0};
     std::uint64_t graphics_queue_submits{0};

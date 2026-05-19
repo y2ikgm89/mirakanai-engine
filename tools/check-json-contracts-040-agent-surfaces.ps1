@@ -380,112 +380,59 @@ foreach ($check in @(
     }
 }
 $frameGraphGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "frame-graph-v1" })
-if ($frameGraphGap.Count -ne 1 -or $frameGraphGap[0].status -ne "implemented-foundation-only") {
-    Write-Error "engine manifest aiOperableProductionLoop frame-graph-v1 gap must be implemented-foundation-only"
+if ($frameGraphGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop frame-graph-v1 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-if (-not ([string]$frameGraphGap[0].notes).Contains("foundation-only") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphV1Desc") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("barrier intent") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_v1_schedule") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_texture_schedule") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTexturePassTargetAccess") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("build_frame_graph_texture_pass_target_accesses") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("writer-access-validated pass target-state preparation") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTextureFinalState") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureAliasPlan") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_transient_texture_aliases") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphTransientTextureLeaseBindingResult") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("acquire_frame_graph_transient_texture_lease_bindings") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::acquire_transient_texture_alias_group") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("distinct resource-name FrameGraphTextureBinding rows") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Shared Texture State Handoff v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("sharing one backend-neutral TextureHandle") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("conflicting initial shared-handle states") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph Texture Aliasing Barrier Command v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("texture_aliasing_barrier") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("null_resource_aliasing_barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("D3D12_RESOURCE_BARRIER_TYPE_ALIASING") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("record_frame_graph_texture_aliasing_barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("one CreatePlacedResource texture per lease") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("first command-list use") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("placed_resource_activation_barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("transient_texture_placed_resources_alive") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("backend-private alias-group texture leases") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("placed_resource_aliasing_barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("zero/duplicate/wrong-count backend-return validation") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("data inheritance/content preservation") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("automatic aliasing-barrier insertion") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("FrameGraphRhiRenderPassDesc") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("render_passes_recorded") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Queue Dependency Plan v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("plan_frame_graph_rhi_queue_waits") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("IRhiDevice::wait_for_queue") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("Frame Graph RHI Multi-Queue Executor v1") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("execute_frame_graph_rhi_multi_queue_schedule") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("production multi-queue graph adoption") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("final_state_barriers_recorded") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("RhiPostprocessFrameRenderer") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("RhiDirectionalShadowSmokeFrameRenderer") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("RhiViewportSurface") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("viewport_color") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("viewport color-state executor") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("executor-recorded barriers") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("final-state policy") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("writer-access-backed pass-target-state policy") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("production render graph") -or
-    -not ([string]$frameGraphGap[0].notes).Contains("2D/3D playable vertical slices")) {
-    Write-Error "engine manifest aiOperableProductionLoop frame-graph-v1 gap must keep foundation-only follow-up limits explicit"
-}
-$uploadStagingGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "upload-staging-v1" })
-if ($uploadStagingGap.Count -ne 1 -or $uploadStagingGap[0].status -ne "implemented-foundation-only") {
-    Write-Error "engine manifest aiOperableProductionLoop upload-staging-v1 gap must be implemented-foundation-only"
-}
-if (-not ([string]$uploadStagingGap[0].notes).Contains("foundation-only") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RhiUploadStagingPlan") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("FenceValue") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("Runtime RHI Upload Submission Fence Rows v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("submitted_upload_fences") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("submitted_upload_fence_count") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("RHI Upload Stale Generation Diagnostics v1") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("stale_generation") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("native GPU upload") -or
-    -not ([string]$uploadStagingGap[0].notes).Contains("2D/3D playable vertical slices")) {
-    Write-Error "engine manifest aiOperableProductionLoop upload-staging-v1 gap must keep foundation-only follow-up limits explicit"
-}
-$playable3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" })
-if ($playable3dGap.Count -ne 1 -or $playable3dGap[0].status -ne "implemented-generated-desktop-3d-package-proof") {
-    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must be implemented-generated-desktop-3d-package-proof"
-}
-if (@($playable3dGap[0].requiredBeforeReadyClaim) -contains "AI-created visible 3D game") {
-    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must not keep AI-created visible 3D game as an unmet claim after the committed generated package proof"
-}
-foreach ($claim in @(
-    "broader generated 3D production readiness",
-    "broad dependency cooking and package streaming",
-    "production material/shader graph and live shader generation",
-    "Metal readiness and broad backend parity",
-    "editor productization and general renderer quality"
+foreach ($check in @(
+    @{
+        Path = "docs/superpowers/plans/2026-05-18-frame-graph-v1-1-0-scope-closeout-v1.md"
+        Needles = @(
+            "Frame Graph v1 1.0 Scope Closeout",
+            "upload-staging-v1",
+            "FrameGraphRhiMultiQueuePackageEvidence",
+            "broad production render graph scheduling",
+            "Metal memory alias allocation"
+        )
+    }
 )) {
-    if (@($playable3dGap[0].requiredBeforeReadyClaim) -notcontains $claim) {
-        Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap requiredBeforeReadyClaim missing: $claim"
+    $fileText = Get-Content -LiteralPath (Join-Path $root $check.Path) -Raw
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $fileText $needle "$($check.Path) frame-graph-v1 closeout evidence"
     }
 }
-if (-not ([string]$playable3dGap[0].notes).Contains("sample_generated_desktop_runtime_3d_package") -or
-    -not ([string]$playable3dGap[0].notes).Contains("committed generated") -or
-    -not ([string]$playable3dGap[0].notes).Contains("camera/controller") -or
-    -not ([string]$playable3dGap[0].notes).Contains("compute morph") -or
-    -not ([string]$playable3dGap[0].notes).Contains("selected generated directional shadow package smoke") -or
-    -not ([string]$playable3dGap[0].notes).Contains("directional_shadow_status=ready") -or
-    -not ([string]$playable3dGap[0].notes).Contains("selected generated gameplay systems package smoke") -or
-    -not ([string]$playable3dGap[0].notes).Contains("gameplay_systems_status=ready") -or
-    -not ([string]$playable3dGap[0].notes).Contains("production directional shadow quality") -or
-    -not ([string]$playable3dGap[0].notes).Contains("broad shadow+morph composition beyond the selected receiver smoke") -or
-    -not ([string]$playable3dGap[0].notes).Contains("broad generated 3D production readiness") -or
-    -not ([string]$playable3dGap[0].notes).Contains("Metal readiness")) {
-    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must describe the committed generated 3D package proof and remaining unsupported limits"
+$uploadStagingGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "upload-staging-v1" })
+if ($uploadStagingGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop upload-staging-v1 gap must leave unsupportedProductionGaps after async-ready resource update closeout"
 }
-if (([string]$playable3dGap[0].notes).Contains("directional shadows and shadow filtering for generated packages")) {
-    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must not keep stale generated directional shadow unsupported text"
+foreach ($check in @(
+    @{
+        Path = "docs/superpowers/plans/2026-05-18-upload-staging-v1-async-ready-resource-updates-v1.md"
+        Needles = @(
+            "Upload Staging v1 Async-Ready Resource Updates",
+            "make_runtime_package_resource_update_readiness",
+            "RuntimePackageResourceUpdateReadinessResult",
+            "package_upload_staging_resource_updates_ready",
+            "broad/background streaming"
+        )
+    }
+)) {
+    $fileText = Get-Content -LiteralPath (Join-Path $root $check.Path) -Raw
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $fileText $needle "$($check.Path) upload-staging-v1 closeout evidence"
+    }
+}
+$playable3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" })
+if ($playable3dGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+foreach ($needle in @(
+    "3d-playable-vertical-slice",
+    "generated desktop 3D package proof",
+    "host-gated D3D12/Vulkan package smokes",
+    "visible 3D aggregate counters",
+    "native UI overlay/atlas package counters"
+)) {
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "engine manifest aiOperableProductionLoop recommendedNextPlan 3d closeout"
 }
 $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "physics-1-0-collision-system" })
 if ($physicsCollisionGap.Count -ne 0) {
@@ -515,11 +462,16 @@ foreach ($needle in @(
     "Frame Graph D3D12 Texture Aliasing Barrier Evidence v1",
     "null_resource_aliasing_barriers",
     "record_frame_graph_texture_aliasing_barriers",
-    "automatic aliasing-barrier insertion",
+    "Frame Graph Automatic Aliasing Barrier Insertion v1",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
     "Runtime Package Streaming RHI Upload Binding Transaction v1",
     "upload_runtime_package_streaming_frame_graph_texture_bindings",
+    "Package Static Mesh Upload Binding Transaction v1",
+    "upload_runtime_package_streaming_mesh_gpu_bindings",
+    "Runtime Upload Queue Wait v1",
+    "wait_for_runtime_uploads_on_queue",
+    "upload_queue_waits_recorded",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
     "Frame Graph RHI Queue Dependency Plan v1",
@@ -529,289 +481,92 @@ foreach ($needle in @(
     "execute_frame_graph_rhi_multi_queue_schedule",
     "Frame Graph RHI Multi-Queue Texture Barrier Execution v1",
     "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded",
-    "multi-queue pass command submission and opt-in texture barrier recording envelope",
     "Frame Graph Remaining Render Pass Envelopes v1",
-    "remaining raw-primary/viewport-clear render pass envelopes are complete",
-    "frame-graph-v1"
+    "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
+    "upload-staging-v1",
+    "scene-component-prefab-schema-v2",
+    "refresh-prefab-instance",
+    "2d-playable-vertical-slice",
+    "3d-playable-vertical-slice"
 )) {
     if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph transient alias planning and next gap: $needle"
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
     }
 }
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
-if ($editorProductizationGap.Count -ne 1 -or $editorProductizationGap[0].status -ne "partly-ready") {
-    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must be partly-ready until full editor productization closes"
+if ($editorProductizationGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-foreach ($claim in @(
-    "Vulkan/Metal material-preview display parity beyond D3D12 host-owned execution evidence"
+$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md"
+foreach ($needle in @(
+    "Editor Productization 1.0 Host-Gated Exclusion Closeout",
+    "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
+    "Vulkan/Metal material-preview display parity",
+    "explicit 1.0 exclusion",
+    "production-ui-importer-platform-adapters",
+    "full-repository-quality-gate"
 )) {
-    if (@($editorProductizationGap[0].requiredBeforeReadyClaim) -notcontains $claim) {
-        Write-Error "engine manifest aiOperableProductionLoop editor-productization gap requiredBeforeReadyClaim missing: $claim"
+    if (-not $editorProductizationCloseoutText.Contains($needle)) {
+        Write-Error "editor-productization closeout evidence missing: $needle"
     }
-}
-foreach ($excludedClaim in @(
-    "Unity/UE-like editor UX",
-    "active-session hot reload and broader in-process runtime-host embedding beyond reviewed external runtime-host launch, linked-driver handoff, and explicit editor game-module driver load evidence",
-    "nested prefab propagation/merge resolution UX",
-    "resource management/capture execution beyond host-owned evidence rows",
-    "stable third-party ABI",
-    "unacknowledged/automatic host-gated AI command execution workflows"
-)) {
-    if (@($editorProductizationGap[0].requiredBeforeReadyClaim) -contains $excludedClaim) {
-        Write-Error "engine manifest aiOperableProductionLoop editor-productization gap requiredBeforeReadyClaim must not require Engine 1.0 exclusions: $excludedClaim"
-    }
-}
-if (-not ([string]$editorProductizationGap[0].notes).Contains("EditorRuntimeHostPlaytestLaunchDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorRuntimeHostPlaytestLaunchModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_runtime_host_playtest_launch_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.runtime_host") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Win32ProcessRunner") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor In-Process Runtime Host Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInProcessRuntimeHostDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorInProcessRuntimeHostModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("begin_editor_in_process_runtime_host_session") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.in_process_runtime_host") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("IEditorPlaySessionDriver handoff") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Dynamic Game Module Driver Load v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Safe Reload Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Contract Metadata Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Game Module Driver Dynamic Probe v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("DynamicLibrary") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("LoadLibraryExW") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverApi") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverContractMetadataModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_game_module_driver_contract_metadata_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("MK_editor_game_module_driver_probe") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("MK_editor_game_module_driver_load_tests") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("GameEngine.EditorGameModuleDriver.v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("mirakana_create_editor_game_module_driver_v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("EditorGameModuleDriverReloadModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_editor_game_module_driver_reload_model") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.reload") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("play_in_editor.game_module_driver.contract") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Load Game Module Driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Reload Game Module Driver") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Productization 1.0 Scope Closeout v1 reclassifies") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("vendor-stable third-party editor DLL ABI and unacknowledged or automatic host-gated AI command execution are explicit Engine 1.0 exclusions rather than required-before-ready claims")) {
-    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must describe reviewed external runtime-host launch, in-process linked-driver handoff, dynamic game-module driver load evidence, and remaining unsupported limits"
-}
-if (-not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Variant Base Refresh Merge Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabVariantBaseRefreshPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("apply_prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("prefab_variant_base_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Source-Link Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabSourceLink") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("PrefabInstantiateDesc") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceSourceLinkModel") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_source_links") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Scene Prefab Instance Refresh Review v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Local Child Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceRefreshPlan") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("ScenePrefabInstanceRefreshPolicy") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("plan_scene_prefab_instance_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("make_scene_prefab_instance_refresh_action") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("scene_prefab_instance_refresh") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_local_child") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Local Children") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Prefab Instance Stale Node Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_stale_source_node_as_local") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Stale Source Nodes") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Editor Nested Prefab Refresh Resolution v1") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("keep_nested_prefab_instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("unsupported_nested_prefab_instance") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("Keep Nested Prefab Instances") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("unsupported local children") -or
-    -not ([string]$editorProductizationGap[0].notes).Contains("explicit base-refresh apply")) {
-    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must describe reviewed prefab variant base-refresh/source-link/scene-refresh evidence and remaining unsupported limits"
-}
-if (([string]$editorProductizationGap[0].notes).Contains("Full editor productization, dynamic game-module/runtime-host Play-In-Editor execution")) {
-    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must not keep stale no-runtime-host-launch unsupported wording"
 }
 $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
-if ($productionUiImporterPlatformGap.Count -ne 1 -or $productionUiImporterPlatformGap[0].status -ne "planned") {
-    Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap must remain planned until OS/platform adapter work is complete"
+if ($productionUiImporterPlatformGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
+$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md"
 foreach ($needle in @(
-    "Runtime UI Accessibility Publish Plan v1",
+    "Production UI Importer Platform Adapters 1.0 Closeout",
+    "reviewed adapter-boundary and package evidence",
     "AccessibilityPublishPlan",
-    "AccessibilityPublishResult",
-    "plan_accessibility_publish",
-    "publish_accessibility_payload",
-    "AccessibilityPayload",
-    "IAccessibilityAdapter",
-    "OS accessibility bridge publication",
-    "native accessibility objects",
-    "platform SDK calls",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    if (-not ([string]$productionUiImporterPlatformGap[0].notes).Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap missing accessibility publish boundary text: $needle"
-    }
-}
-foreach ($needle in @(
-    "Runtime UI IME Composition Publish Plan v1",
     "ImeCompositionPublishPlan",
-    "ImeCompositionPublishResult",
-    "plan_ime_composition_update",
-    "publish_ime_composition",
-    "ImeComposition",
-    "IImeAdapter",
-    "native IME/text-input sessions",
-    "platform SDK calls",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    if (-not ([string]$productionUiImporterPlatformGap[0].notes).Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap missing IME composition publish boundary text: $needle"
-    }
-}
-foreach ($needle in @(
-    "Runtime UI Platform Text Input Session Plan v1",
     "PlatformTextInputSessionPlan",
-    "PlatformTextInputSessionResult",
-    "PlatformTextInputEndPlan",
-    "PlatformTextInputEndResult",
-    "plan_platform_text_input_session",
-    "begin_platform_text_input",
-    "plan_platform_text_input_end",
-    "end_platform_text_input",
-    "PlatformTextInputRequest",
-    "IPlatformIntegrationAdapter",
-    "native text-input object/session ownership",
-    "virtual keyboard behavior",
-    "platform SDK calls",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    if (-not ([string]$productionUiImporterPlatformGap[0].notes).Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap missing platform text input boundary text: $needle"
-    }
-}
-foreach ($needle in @(
-    "Runtime UI Text Shaping Request Plan v1",
     "TextShapingRequestPlan",
-    "TextShapingResult",
-    "plan_text_shaping_request",
-    "shape_text_run",
-    "TextLayoutRequest",
-    "TextLayoutRun",
-    "ITextShapingAdapter",
-    "production text shaping implementation",
-    "bidirectional reordering",
-    "production line breaking",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    if (-not ([string]$productionUiImporterPlatformGap[0].notes).Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap missing text shaping request boundary text: $needle"
-    }
-}
-foreach ($needle in @(
-    "Runtime UI Font Rasterization Request Plan v1",
     "FontRasterizationRequestPlan",
-    "FontRasterizationResult",
-    "plan_font_rasterization_request",
-    "rasterize_font_glyph",
-    "FontRasterizationRequest",
-    "GlyphAtlasAllocation",
-    "IFontRasterizerAdapter",
-    "real font loading/rasterization",
-    "renderer texture upload",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    if (-not ([string]$productionUiImporterPlatformGap[0].notes).Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap missing font rasterization request boundary text: $needle"
-    }
-}
-foreach ($needle in @(
-    "Runtime UI Image Decode Request Plan v1",
     "ImageDecodeRequestPlan",
-    "ImageDecodeDispatchResult",
-    "ImageDecodePixelFormat",
-    "plan_image_decode_request",
-    "decode_image_request",
-    "ImageDecodeRequest",
-    "ImageDecodeResult",
-    "IImageDecodingAdapter",
-    "runtime image decoding",
-    "source image codecs",
-    "SVG/vector decoding",
-    "renderer texture upload",
-    "dependency, legal, vcpkg, and notice records"
-)) {
-    if (-not ([string]$productionUiImporterPlatformGap[0].notes).Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap missing image decode request boundary text: $needle"
-    }
-}
-foreach ($needle in @(
-    "Runtime UI PNG Image Decoding Adapter v1",
     "PngImageDecodingAdapter",
-    "IImageDecodingAdapter",
-    "decode_audited_png_rgba8",
-    "libspng",
-    "asset-importers",
-    "without new dependency, legal, vcpkg, or notice records",
-    "runtime image decoding beyond the reviewed PNG adapter",
-    "broader source image codecs"
-)) {
-    if (-not ([string]$productionUiImporterPlatformGap[0].notes).Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap missing PNG image decoding adapter boundary text: $needle"
-    }
-}
-foreach ($needle in @(
-    "Runtime UI Decoded Image Atlas Package Bridge v1",
-    "PackedUiAtlasAuthoringDesc",
     "author_packed_ui_atlas_from_decoded_images",
-    "plan_packed_ui_atlas_package_update",
-    "apply_packed_ui_atlas_package_update",
-    "pack_sprite_atlas_rgba8_max_side",
-    "GameEngine.CookedTexture.v1",
-    "GameEngine.UiAtlas.v1",
-    "without new dependency, legal, vcpkg, or notice records",
-    "renderer texture upload"
-)) {
-    if (-not ([string]$productionUiImporterPlatformGap[0].notes).Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap missing decoded image atlas package bridge text: $needle"
-    }
-}
-foreach ($needle in @(
-    "Runtime UI Glyph Atlas Package Bridge v1",
-    "UiAtlasMetadataGlyph",
-    "RuntimeUiAtlasGlyph",
-    "PackedUiGlyphAtlasAuthoringDesc",
     "author_packed_ui_glyph_atlas_from_rasterized_glyphs",
-    "plan_packed_ui_glyph_atlas_package_update",
-    "apply_packed_ui_glyph_atlas_package_update",
-    "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas",
-    "source.decoding=rasterized-glyph-adapter",
-    "atlas.packing=deterministic-glyph-atlas-rgba8-max-side",
-    "GameEngine.CookedTexture.v1",
-    "GameEngine.UiAtlas.v1",
-    "without new dependency, legal, vcpkg, or notice records",
+    "selected SDL3 platform bridges",
+    "package-visible native UI overlay/atlas smokes",
+    "production text shaping implementation",
     "real font loading/rasterization",
-    "renderer texture upload"
+    "OS accessibility publication",
+    "broad native IME/text services",
+    "broader source codecs",
+    "SVG/vector parsing",
+    "renderer texture-upload APIs",
+    "arbitrary importer adapters",
+    "UI middleware",
+    "full-repository-quality-gate"
 )) {
-    if (-not ([string]$productionUiImporterPlatformGap[0].notes).Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap missing glyph atlas package bridge text: $needle"
+    if (-not $productionUiCloseoutText.Contains($needle)) {
+        Write-Error "production-ui closeout evidence missing: $needle"
     }
 }
 $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "full-repository-quality-gate" })
-if ($fullRepoQualityGap.Count -ne 1 -or $fullRepoQualityGap[0].status -ne "partly-ready") {
-    Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must be partly-ready until Phase 1 quality gates complete"
+if ($fullRepoQualityGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-if (-not ([string]$fullRepoQualityGap[0].notes).Contains("clang-tidy") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("coverage") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("sanitizer") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("Phase 1") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("CI Matrix Contract Check v1") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("ci-matrix-check") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("Windows/Linux/sanitizer/macOS/iOS") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("targeted changed-file clang-tidy") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("Full Repository Static Analysis CI Contract v1") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("static-analysis") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("tools/check-tidy.ps1 -Strict") -or
-    -not ([string]$fullRepoQualityGap[0].notes).Contains("broader static analyzer profile")) {
-    Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must name tidy, coverage, sanitizer, CI matrix contract, and remaining analyzer limits explicitly"
+$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md"
+foreach ($needle in @(
+    "Full Repository Quality Gate 1.0 Closeout",
+    "local full validate",
+    "CI Matrix Contract Check v1",
+    "Full Repository Static Analysis CI Contract v1",
+    "Linux coverage threshold policy",
+    "sanitizer lane documentation",
+    "Windows release package artifact evidence",
+    "broader analyzer profile expansion",
+    "full cross-platform package execution evidence",
+    "signing",
+    "notarization",
+    "release distribution",
+    "unsupported_gaps=0"
+)) {
+    if (-not $fullRepoQualityCloseoutText.Contains($needle)) {
+        Write-Error "full repository quality closeout evidence missing: $needle"
+    }
 }
 
 $tidyWrapperContent = Get-Content -LiteralPath (Join-Path $root "tools/check-tidy.ps1") -Raw

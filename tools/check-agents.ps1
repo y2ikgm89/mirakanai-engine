@@ -232,7 +232,8 @@ if (Test-Path $codexRuleRoot) {
             'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]',
             'pattern\s*=\s*\["gh",\s*"pr",\s*"create"\]',
             'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--delete-branch",\s*"--match-head-commit"\]',
-            'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/remove-merged-worktree\.ps1"\]'
+            'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/remove-merged-worktree\.ps1"\]',
+            'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/ready-task-pr\.ps1"\]'
         )
         foreach ($allowRuleBlock in $allowRuleBlocks) {
             $approvedAllow = $false

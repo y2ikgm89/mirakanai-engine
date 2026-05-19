@@ -438,6 +438,9 @@ $rhiUploadStagingSource = Get-AgentSurfaceText "engine/rhi/src/upload_staging.cp
 $rhiUploadStagingTests = Get-AgentSurfaceText "tests/unit/rhi_upload_staging_tests.cpp"
 $runtimeRhiUploadHeader = Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp"
 $runtimeRhiUploadSource = Get-AgentSurfaceText "engine/runtime_rhi/src/runtime_upload.cpp"
+$runtimeRhiPackageStreamingHeader =
+    Get-AgentSurfaceText "engine/runtime_rhi/include/mirakana/runtime_rhi/package_streaming_frame_graph.hpp"
+$runtimeRhiPackageStreamingSource = Get-AgentSurfaceText "engine/runtime_rhi/src/package_streaming_frame_graph.cpp"
 $runtimeSceneRhiHeader = Get-AgentSurfaceText "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp"
 $runtimeSceneRhiSource = Get-AgentSurfaceText "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp"
 $runtimeRhiTests = Get-AgentSurfaceText "tests/unit/runtime_rhi_tests.cpp"
@@ -447,6 +450,8 @@ $frameGraphRhiTextureSchedulePlan =
     Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md"
 $rhiUploadStaleGenerationPlan =
     Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md"
+$runtimeUploadQueueWaitPlan =
+    Get-AgentSurfaceText "docs/superpowers/plans/2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md"
 $rendererCmake = Get-AgentSurfaceText "engine/renderer/CMakeLists.txt"
 foreach ($needle in @(
     "FrameGraphPassExecutionBinding",
@@ -600,6 +605,70 @@ foreach ($needle in @(
     "!ring.owns_allocation(stale)"
 )) {
     Assert-ContainsText $rhiUploadStagingTests $needle "MK_rhi_upload_staging_tests stale-generation coverage"
+}
+foreach ($needle in @(
+    "RhiUploadGpuBatchExecutionResult",
+    "execute_upload_gpu_batch_async"
+)) {
+    Assert-ContainsText $rhiUploadStagingHeader $needle "RHI upload staging async execution header"
+}
+foreach ($needle in @(
+    "RuntimeUploadQueueWaitResult",
+    "wait_for_runtime_uploads_on_queue"
+)) {
+    Assert-ContainsText $runtimeRhiUploadHeader $needle "runtime RHI upload queue-wait header"
+}
+foreach ($needle in @(
+    "valid_runtime_upload_queue_kind",
+    "device.wait_for_queue(consumer_queue, fence)",
+    "queue_waits_recorded"
+)) {
+    Assert-ContainsText $runtimeRhiUploadSource $needle "runtime RHI upload queue-wait source"
+}
+foreach ($needle in @(
+    "upload_queue_waits_recorded",
+    "RuntimePackageStreamingMeshUploadBindingResult"
+)) {
+    Assert-ContainsText $runtimeRhiPackageStreamingHeader $needle "runtime RHI package upload queue-wait header"
+}
+foreach ($needle in @(
+    "async_upload_fences",
+    "wait_for_runtime_uploads_on_queue(device, rhi::QueueKind::graphics",
+    "mesh-upload-queue-wait-failed"
+)) {
+    Assert-ContainsText $runtimeRhiPackageStreamingSource $needle "runtime RHI package upload queue-wait source"
+}
+foreach ($needle in @(
+    "runtime package streaming mesh upload transaction waits graphics queue for async copy upload",
+    "transaction.upload_queue_waits_recorded == 1",
+    "device.stats().fence_waits == 0",
+    "device.stats().last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy"
+)) {
+    Assert-ContainsText $runtimeRhiTests $needle "MK_runtime_rhi_tests runtime upload queue-wait coverage"
+}
+foreach ($needle in @(
+    "**Status:** Completed.",
+    "Runtime Upload Queue Wait v1",
+    "wait_for_runtime_uploads_on_queue",
+    "upload_queue_waits_recorded"
+)) {
+    Assert-ContainsText $runtimeUploadQueueWaitPlan $needle "Runtime Upload Queue Wait plan"
+}
+foreach ($needle in @(
+    "validate_upload_gpu_batch_execution",
+    "device.begin_command_list(queue)",
+    "mark_pending_allocations_submitted(plan, ring, result.submitted_fence)"
+)) {
+    Assert-ContainsText $rhiUploadStagingSource $needle "RHI upload staging async execution source"
+}
+foreach ($needle in @(
+    "rhi upload async execution submits staged buffer batch without waiting",
+    "rhi upload async execution rejects target mismatch before command list creation",
+    "rhi upload async execution rejects unreserved staging before command list creation",
+    "device.stats().fence_waits == 0",
+    "device.stats().queue_waits == 0"
+)) {
+    Assert-ContainsText $rhiUploadStagingTests $needle "MK_rhi_upload_staging_tests async execution coverage"
 }
 foreach ($needle in @(
     "**Status:** Completed.",
@@ -1616,6 +1685,9 @@ foreach ($recipe in @($committedDesktop3dManifest.validationRecipes)) {
     if ($isCommittedDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-gameplay-systems") {
         Write-Error "$committedDesktop3dManifestPath package validation recipe missing --require-gameplay-systems: $($recipe.name)"
     }
+    if ($recipe.name -eq "installed-d3d12-3d-package-smoke" -and [string]$recipe.command -notmatch "--require-package-upload-staging") {
+        Write-Error "$committedDesktop3dManifestPath D3D12 package recipe missing --require-package-upload-staging: $($recipe.name)"
+    }
     if ($recipe.name -match "scene-collision-package" -and [string]$recipe.command -notmatch "--require-scene-collision-package") {
         Write-Error "$committedDesktop3dManifestPath scene collision recipe missing --require-scene-collision-package: $($recipe.name)"
     }
@@ -1652,6 +1724,10 @@ foreach ($needle in @(
     "renderer_quality_expected_framegraph_barrier_steps=9",
     "selected generated 3D postprocess depth-input smoke",
     "selected generated 3D playable package smoke",
+    "selected D3D12 generated 3D package upload staging smoke",
+    "package_upload_staging_ready=1",
+    "package_upload_staging_package_transactions=4",
+    "package_upload_staging_ring_backed_uploads=4",
     "selected generated 3D gameplay systems package smoke",
     "selected D3D12 visible generated 3D production-style package proof",
     "selected generated 3D directional shadow package smoke",
@@ -1683,6 +1759,7 @@ foreach ($needle in @(
     "--require-renderer-quality-gates",
     "--require-postprocess-depth-input",
     "--require-playable-3d-slice",
+    "--require-package-upload-staging",
     "--require-gameplay-systems",
     "--require-native-ui-overlay",
     "--require-visible-3d-production-proof",
@@ -1712,6 +1789,7 @@ foreach ($needle in @(
     "runtime_animation_quaternion_clip_payload",
     "sample_and_apply_runtime_scene_render_animation_pose_3d",
     "scene_gpu_compute_morph_async_compute_queue_submits",
+    "mirakana/runtime_rhi/package_streaming_frame_graph.hpp",
     "execute_selected_runtime_package_streaming_safe_point",
     "residency_hint_failed",
     "required_preload_assets = {packaged_scene_asset_id()}",
@@ -1725,6 +1803,18 @@ foreach ($needle in @(
     "package_streaming_resident_resource_kinds=",
     "package_streaming_resident_packages=",
     "package_streaming_diagnostics=",
+    "--require-package-upload-staging",
+    "require_package_upload_staging",
+    "execute_runtime_package_upload_staging_evidence",
+    "package_upload_staging_status=",
+    "package_upload_staging_ready=",
+    "package_upload_staging_diagnostics=",
+    "package_upload_staging_package_transactions=",
+    "package_upload_staging_ring_backed_uploads=",
+    "package_upload_staging_submitted_fences=",
+    "package_upload_staging_graphics_waited_for_copy=",
+    "package_upload_staging_resource_updates_ready=",
+    "package_upload_staging_resource_update_graphics_queue_waits_recorded=",
     "--require-renderer-quality-gates",
     "evaluate_sdl_desktop_presentation_quality_gate",
     "renderer_quality_status=",

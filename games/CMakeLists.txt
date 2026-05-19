@@ -2247,6 +2247,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-visible-3d-production-proof
             --require-scene-collision-package
             --require-native-ui-textured-sprite-atlas
+            --require-package-upload-staging
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )

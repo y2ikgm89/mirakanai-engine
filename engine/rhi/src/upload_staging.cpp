@@ -49,6 +49,54 @@ const RhiUploadAllocationRecord* find_allocation_record(const RhiUploadStagingPl
                                                              : "RHI upload staging allocation is not active.";
 }
 
+struct PendingCopyCounts {
+    std::uint64_t buffer_copies{0};
+    std::uint64_t texture_copies{0};
+};
+
+[[nodiscard]] PendingCopyCounts count_pending_copies(const RhiUploadStagingPlan& plan) noexcept {
+    PendingCopyCounts counts;
+    for (const auto& copy : plan.pending_copies()) {
+        if (copy.kind == RhiUploadCopyKind::buffer) {
+            ++counts.buffer_copies;
+        } else {
+            ++counts.texture_copies;
+        }
+    }
+    return counts;
+}
+
+[[nodiscard]] RhiUploadResult
+validate_upload_gpu_batch_execution(const RhiUploadStagingPlan& plan, const RhiUploadRing& ring,
+                                    const std::vector<RhiGpuBufferCopyTarget>& buffer_targets,
+                                    const std::vector<RhiGpuTextureCopyTarget>& texture_targets) {
+    auto result = validate_upload_gpu_batch(plan, buffer_targets, texture_targets);
+    if (!result.succeeded()) {
+        return result;
+    }
+
+    for (const auto& copy : plan.pending_copies()) {
+        const auto* allocation = find_allocation_record(plan, copy.staging);
+        if (allocation == nullptr) {
+            const auto code = inactive_allocation_code(plan, copy.staging);
+            result.diagnostics.push_back(make_diagnostic(code, copy.staging, inactive_allocation_message(code)));
+            return result;
+        }
+        if (allocation->submitted) {
+            result.diagnostics.push_back(make_diagnostic(RhiUploadDiagnosticCode::already_submitted, copy.staging,
+                                                         "RHI upload GPU batch allocation was already submitted."));
+            return result;
+        }
+        if (!ring.owns_allocation(copy.staging)) {
+            result.diagnostics.push_back(make_diagnostic(
+                RhiUploadDiagnosticCode::invalid_allocation, copy.staging,
+                "RHI upload GPU batch execution requires reserve_for_allocation for every staging handle."));
+            return result;
+        }
+    }
+    return result;
+}
+
 } // namespace
 
 RhiUploadAllocationResult RhiUploadStagingPlan::allocate_staging_bytes(RhiUploadAllocationDesc desc) {
@@ -198,10 +246,14 @@ RhiUploadRing::RhiUploadRing(IRhiDevice& device, RhiUploadRingDesc desc)
     if (desc.size_bytes == 0) {
         throw std::invalid_argument("rhi upload ring size_bytes must be greater than zero");
     }
-    buffer_ = device.create_buffer(BufferDesc{
-        .size_bytes = desc.size_bytes,
-        .usage = BufferUsage::copy_source,
-    });
+    if (desc.buffer.value != 0) {
+        buffer_ = desc.buffer;
+    } else {
+        buffer_ = device.create_buffer(BufferDesc{
+            .size_bytes = desc.size_bytes,
+            .usage = BufferUsage::copy_source,
+        });
+    }
 }
 
 std::uint64_t RhiUploadRing::align_up(std::uint64_t value, std::uint64_t alignment) noexcept {
@@ -313,7 +365,8 @@ void RhiUploadRing::release_completed(FenceValue completed_fence) {
     spans_.erase(removed.begin(), removed.end());
 }
 
-RhiStagingBufferPool::RhiStagingBufferPool(IRhiDevice& device, RhiStagingBufferPoolDesc desc) : device_{&device} {
+RhiStagingBufferPool::RhiStagingBufferPool(IRhiDevice& device, RhiStagingBufferPoolDesc desc)
+    : device_{&device}, chunk_size_bytes_{desc.chunk_size_bytes} {
     if (desc.buffer_count == 0 || desc.chunk_size_bytes == 0) {
         throw std::invalid_argument("rhi staging buffer pool requires non-zero buffer_count and chunk_size_bytes");
     }
@@ -337,6 +390,17 @@ std::optional<BufferHandle> RhiStagingBufferPool::try_acquire() noexcept {
     return std::nullopt;
 }
 
+std::optional<RhiStagingBufferLease> RhiStagingBufferPool::try_acquire_lease() noexcept {
+    const auto buffer = try_acquire();
+    if (!buffer.has_value()) {
+        return std::nullopt;
+    }
+    return RhiStagingBufferLease{
+        .buffer = *buffer,
+        .size_bytes = chunk_size_bytes_,
+    };
+}
+
 void RhiStagingBufferPool::release(BufferHandle buffer) {
     for (std::size_t i = 0; i < buffers_.size(); ++i) {
         if (buffers_[i].value == buffer.value) {
@@ -345,6 +409,10 @@ void RhiStagingBufferPool::release(BufferHandle buffer) {
         }
     }
     throw std::invalid_argument("rhi staging buffer pool release handle is not owned by this pool");
+}
+
+void RhiStagingBufferPool::release(RhiStagingBufferLease lease) {
+    release(lease.buffer);
 }
 
 RhiUploadResult validate_upload_gpu_batch(const RhiUploadStagingPlan& plan,
@@ -418,6 +486,38 @@ RhiUploadResult mark_pending_allocations_submitted(RhiUploadStagingPlan& plan, R
         }
     }
     ring.notify_submit(fence);
+    return result;
+}
+
+RhiUploadGpuBatchExecutionResult
+execute_upload_gpu_batch_async(IRhiDevice& device, RhiUploadStagingPlan& plan, RhiUploadRing& ring, QueueKind queue,
+                               const std::vector<RhiGpuBufferCopyTarget>& buffer_targets,
+                               const std::vector<RhiGpuTextureCopyTarget>& texture_targets) {
+    RhiUploadGpuBatchExecutionResult result{.queue = queue};
+    auto validated = validate_upload_gpu_batch_execution(plan, ring, buffer_targets, texture_targets);
+    if (!validated.succeeded()) {
+        result.diagnostics = std::move(validated.diagnostics);
+        return result;
+    }
+
+    const auto copy_counts = count_pending_copies(plan);
+    auto commands = device.begin_command_list(queue);
+    auto recorded = record_upload_gpu_batch(*commands, plan, ring, buffer_targets, texture_targets);
+    if (!recorded.succeeded()) {
+        result.diagnostics = std::move(recorded.diagnostics);
+        return result;
+    }
+
+    commands->close();
+    result.submitted_fence = device.submit(*commands);
+    result.command_lists_submitted = 1;
+    result.buffer_copies_recorded = copy_counts.buffer_copies;
+    result.texture_copies_recorded = copy_counts.texture_copies;
+
+    auto marked = mark_pending_allocations_submitted(plan, ring, result.submitted_fence);
+    if (!marked.succeeded()) {
+        result.diagnostics = std::move(marked.diagnostics);
+    }
     return result;
 }
 

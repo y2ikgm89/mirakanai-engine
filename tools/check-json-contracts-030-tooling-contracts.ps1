@@ -570,7 +570,7 @@ $handoffPromptText = Get-Content -LiteralPath (Join-Path $root "docs/specs/2026-
 $roadmapText = Get-Content -LiteralPath (Join-Path $root "docs/roadmap.md") -Raw
 $authoredRuntimeWorkflowRequiredText = @(
     "validated authored-to-runtime workflow",
-    "register-source-asset -> cook-registered-source-assets -> migrate-scene-v2-runtime-package -> mirakana::runtime::load_runtime_asset_package -> mirakana::runtime_scene::instantiate_runtime_scene"
+    "register-source-asset -> cook-registered-source-assets -> migrate-scene-v2-runtime-package -> validate-runtime-scene-package"
 )
 foreach ($workflowDoc in @(
     @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
@@ -792,6 +792,19 @@ if ($sceneAuthoringSurface.Count -ne 1 -or $sceneAuthoringSurface[0].status -ne 
     Write-Error "engine manifest aiOperableProductionLoop authoring surface scene-component-prefab-schema-v2 must be ready as a contract-only MK_scene surface"
 }
 if (-not ([string]$sceneAuthoringSurface[0].notes).Contains("Contract-only") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("SceneNodePrefabSourceV2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("SceneComponentPrefabSourceV2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("prefab_source") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("ScenePrefabInstanceRefreshPlanV2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("plan_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("ScenePrefabInstanceRefreshResultV2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("apply_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("duplicate_prefab_source_identity") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("unsupported_nested_prefab_instance") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("unsupported_local_prefab_child") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("unsupported_local_prefab_component") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("source_node_id") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("source_component_id") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("nested prefab propagation/merge resolution UX") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("2D/3D vertical slices")) {
     Write-Error "engine manifest scene-component-prefab-schema-v2 authoring surface must keep contract-only follow-up limits explicit"
@@ -851,16 +864,7 @@ foreach ($packageSurface in $productionLoop.packageSurfaces) {
     }
 }
 
-$requiredGapIds = @(
-    "scene-component-prefab-schema-v2",
-    "frame-graph-v1",
-    "upload-staging-v1",
-    "2d-playable-vertical-slice",
-    "3d-playable-vertical-slice",
-    "editor-productization",
-    "production-ui-importer-platform-adapters",
-    "full-repository-quality-gate"
-)
+$requiredGapIds = @()
 $gapIds = @{}
 foreach ($gap in $productionLoop.unsupportedProductionGaps) {
     Assert-Properties $gap @("id", "oneDotZeroCloseoutTier", "status", "requiredBeforeReadyClaim", "notes") "engine manifest aiOperableProductionLoop unsupportedProductionGaps"
@@ -879,13 +883,28 @@ foreach ($gapId in $requiredGapIds) {
     }
 }
 $sceneSchemaGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "scene-component-prefab-schema-v2" })
-if ($sceneSchemaGap.Count -ne 1 -or $sceneSchemaGap[0].status -ne "implemented-contract-only") {
-    Write-Error "engine manifest aiOperableProductionLoop scene-component-prefab-schema-v2 gap must be implemented-contract-only"
+if ($sceneSchemaGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop scene-component-prefab-schema-v2 gap must leave unsupportedProductionGaps after foundation closeout"
 }
-if (-not ([string]$sceneSchemaGap[0].notes).Contains("contract-only") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("broad/dependent package cooking") -or
-    -not ([string]$sceneSchemaGap[0].notes).Contains("nested prefab propagation/merge resolution UX")) {
-    Write-Error "engine manifest aiOperableProductionLoop scene-component-prefab-schema-v2 gap must keep remaining unsupported claims explicit"
+$playable2dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "2d-playable-vertical-slice" })
+if ($playable2dGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop 2d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$playable3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" })
+if ($playable3dGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
+if ($editorProductizationGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
+if ($productionUiImporterPlatformGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
+}
+$fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "full-repository-quality-gate" })
+if ($fullRepoQualityGap.Count -ne 0) {
+    Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityGap.Count -ne 0) {
@@ -908,9 +927,11 @@ foreach ($needle in @(
     "viewport_color",
     "Frame Graph Texture Aliasing Barrier Command v1",
     "record_frame_graph_texture_aliasing_barriers",
-    "automatic executor insertion",
+    "Frame Graph Automatic Aliasing Barrier Insertion v1",
     "Package Streaming Frame Graph Texture Binding Handoff v1",
     "make_runtime_package_streaming_frame_graph_texture_bindings",
+    "Package Static Mesh Upload Binding Transaction v1",
+    "upload_runtime_package_streaming_mesh_gpu_bindings",
     "Frame Graph Render Pass Envelope v1",
     "render_passes_recorded",
     "Frame Graph RHI Queue Dependency Plan v1",
@@ -920,11 +941,14 @@ foreach ($needle in @(
     "execute_frame_graph_rhi_multi_queue_schedule",
     "Frame Graph RHI Multi-Queue Texture Barrier Execution v1",
     "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded",
-    "multi-queue pass command submission and opt-in texture barrier recording envelope",
-    "frame-graph-v1"
+    "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1",
+    "upload-staging-v1",
+    "native async upload execution",
+    "package skinned/morph streaming",
+    "staging-pool production adoption"
 )) {
     if (-not $recommendedText.Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph transient alias planning and next gap: $needle"
+        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
     }
 }
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })

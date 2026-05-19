@@ -18,6 +18,7 @@ enum class ScenePrefabAuthoringCommandKind : std::uint8_t {
     add_or_update_component,
     create_prefab,
     instantiate_prefab,
+    refresh_prefab_instance,
     free_form_edit,
 };
 

@@ -531,6 +531,10 @@ $rhiUploadStagingSourceText = Get-Content -LiteralPath (Join-Path $root "engine/
 $rhiUploadStagingTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/rhi_upload_staging_tests.cpp") -Raw
 $runtimeRhiUploadHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp") -Raw
 $runtimeRhiUploadSourceText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_rhi/src/runtime_upload.cpp") -Raw
+$runtimeRhiPackageStreamingHeaderText =
+    Get-Content -LiteralPath (Join-Path $root "engine/runtime_rhi/include/mirakana/runtime_rhi/package_streaming_frame_graph.hpp") -Raw
+$runtimeRhiPackageStreamingSourceText =
+    Get-Content -LiteralPath (Join-Path $root "engine/runtime_rhi/src/package_streaming_frame_graph.cpp") -Raw
 $runtimeSceneRhiHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_scene_rhi/include/mirakana/runtime_scene_rhi/runtime_scene_rhi.hpp") -Raw
 $runtimeSceneRhiSourceText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp") -Raw
 $runtimeRhiTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/runtime_rhi_tests.cpp") -Raw
@@ -540,6 +544,10 @@ $frameGraphRhiTextureSchedulePlanText =
     Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md") -Raw
 $rhiUploadStaleGenerationPlanText =
     Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md") -Raw
+$runtimeUploadQueueWaitPlanText =
+    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md") -Raw
+$runtimePackageUploadStagingEvidencePlanText =
+    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-18-upload-staging-v1-selected-package-upload-evidence-v1.md") -Raw
 $rendererCmakeText = Get-Content -LiteralPath (Join-Path $root "engine/renderer/CMakeLists.txt") -Raw
 $engineManifestText = Get-Content -LiteralPath (Join-Path $root "engine/agent/manifest.json") -Raw
 foreach ($needle in @("FrameGraphPassExecutionBinding", "FrameGraphExecutionCallbacks", "FrameGraphExecutionResult", "execute_frame_graph_v1_schedule")) {
@@ -739,6 +747,71 @@ foreach ($needle in @(
         Write-Error "MK_rhi_upload_staging_tests missing stale-generation coverage: $needle"
     }
 }
+foreach ($needle in @("RhiUploadGpuBatchExecutionResult", "execute_upload_gpu_batch_async")) {
+    if (-not $rhiUploadStagingHeaderText.Contains($needle)) {
+        Write-Error "RHI upload staging header missing async execution contract text: $needle"
+    }
+}
+foreach ($needle in @("RuntimeUploadQueueWaitResult", "wait_for_runtime_uploads_on_queue")) {
+    if (-not $runtimeRhiUploadHeaderText.Contains($needle)) {
+        Write-Error "runtime RHI upload header missing queue-wait contract text: $needle"
+    }
+}
+foreach ($needle in @("valid_runtime_upload_queue_kind", "device.wait_for_queue(consumer_queue, fence)", "queue_waits_recorded")) {
+    if (-not $runtimeRhiUploadSourceText.Contains($needle)) {
+        Write-Error "runtime RHI upload source missing queue-wait implementation text: $needle"
+    }
+}
+foreach ($needle in @("upload_queue_waits_recorded", "RuntimePackageStreamingMeshUploadBindingResult")) {
+    if (-not $runtimeRhiPackageStreamingHeaderText.Contains($needle)) {
+        Write-Error "runtime RHI package streaming header missing queue-wait contract text: $needle"
+    }
+}
+foreach ($needle in @("async_upload_fences", "wait_for_runtime_uploads_on_queue(device, rhi::QueueKind::graphics", "mesh-upload-queue-wait-failed")) {
+    if (-not $runtimeRhiPackageStreamingSourceText.Contains($needle)) {
+        Write-Error "runtime RHI package streaming source missing queue-wait implementation text: $needle"
+    }
+}
+foreach ($needle in @("runtime package streaming mesh upload transaction waits graphics queue for async copy upload", "transaction.upload_queue_waits_recorded == 1", "device.stats().fence_waits == 0", "device.stats().last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy")) {
+    if (-not $runtimeRhiTestsText.Contains($needle)) {
+        Write-Error "MK_runtime_rhi_tests missing runtime upload queue-wait coverage: $needle"
+    }
+}
+foreach ($needle in @("**Status:** Completed.", "Runtime Upload Queue Wait v1", "wait_for_runtime_uploads_on_queue", "upload_queue_waits_recorded")) {
+    if (-not $runtimeUploadQueueWaitPlanText.Contains($needle)) {
+        Write-Error "Runtime Upload Queue Wait plan missing text: $needle"
+    }
+}
+foreach ($needle in @("RuntimePackageUploadStagingEvidence", "RuntimePackageResourceUpdateReadinessResult", "make_runtime_package_resource_update_readiness", "execute_runtime_package_upload_staging_evidence")) {
+    if (-not $runtimeRhiPackageStreamingHeaderText.Contains($needle)) {
+        Write-Error "runtime RHI package streaming header missing package upload staging evidence contract text: $needle"
+    }
+}
+foreach ($needle in @("RhiStagingBufferPool", "try_acquire_lease", "upload_runtime_package_streaming_skinned_mesh_gpu_bindings", "make_runtime_package_resource_update_readiness", "package-upload-staging-counters-mismatch")) {
+    if (-not $runtimeRhiPackageStreamingSourceText.Contains($needle)) {
+        Write-Error "runtime RHI package streaming source missing package upload staging evidence implementation text: $needle"
+    }
+}
+foreach ($needle in @("runtime package upload staging evidence uses pooled async ring for selected package transactions", "runtime package resource update readiness publishes rows after upload fences are graphics ready", "evidence.package_transactions == 4", "evidence.ring_backed_uploads == 4", "evidence.graphics_waited_for_copy", "evidence.resource_updates_ready")) {
+    if (-not $runtimeRhiTestsText.Contains($needle)) {
+        Write-Error "MK_runtime_rhi_tests missing package upload staging evidence coverage: $needle"
+    }
+}
+foreach ($needle in @("**Status:**", "Selected Package Upload Evidence v1", "execute_runtime_package_upload_staging_evidence", "--require-package-upload-staging")) {
+    if (-not $runtimePackageUploadStagingEvidencePlanText.Contains($needle)) {
+        Write-Error "Selected Package Upload Evidence plan missing text: $needle"
+    }
+}
+foreach ($needle in @("validate_upload_gpu_batch_execution", "device.begin_command_list(queue)", "mark_pending_allocations_submitted(plan, ring, result.submitted_fence)")) {
+    if (-not $rhiUploadStagingSourceText.Contains($needle)) {
+        Write-Error "RHI upload staging source missing async execution implementation text: $needle"
+    }
+}
+foreach ($needle in @("rhi upload async execution submits staged buffer batch without waiting", "rhi upload async execution rejects target mismatch before command list creation", "rhi upload async execution rejects unreserved staging before command list creation", "device.stats().fence_waits == 0", "device.stats().queue_waits == 0")) {
+    if (-not $rhiUploadStagingTestsText.Contains($needle)) {
+        Write-Error "MK_rhi_upload_staging_tests missing async execution coverage: $needle"
+    }
+}
 foreach ($needle in @("**Status:** Completed.", "RHI Upload Stale Generation Diagnostics v1", "stale_generation", "native async upload execution")) {
     if (-not $rhiUploadStaleGenerationPlanText.Contains($needle)) {
         Write-Error "RHI Upload Stale Generation Diagnostics plan missing text: $needle"
@@ -916,6 +989,14 @@ if (-not (Test-Path $sample3dManifestFullPath)) {
         "renderer_quality_directional_shadow_filter_ready=",
         "framegraph_passes_executed=",
         "framegraph_barrier_steps_executed=",
+        "--require-framegraph-multiqueue-evidence",
+        "framegraph_multiqueue_command_lists_submitted=",
+        "framegraph_multiqueue_queue_waits_recorded=",
+        "framegraph_multiqueue_barriers_recorded=",
+        "framegraph_multiqueue_aliasing_barriers_recorded=",
+        "framegraph_multiqueue_pass_callbacks_invoked=",
+        "framegraph_multiqueue_submitted_pass_fences=",
+        "framegraph_multiqueue_graphics_waited_for_copy=",
         "primary_camera_seen_",
         "hud_boxes_submitted_"
     )) {
@@ -959,6 +1040,14 @@ if (-not (Test-Path $sample3dManifestFullPath)) {
         "framegraph_passes_executed",
         "framegraph_render_passes_recorded",
         "framegraph_barrier_steps_executed",
+        "--require-framegraph-multiqueue-evidence",
+        "framegraph_multiqueue_command_lists_submitted",
+        "framegraph_multiqueue_queue_waits_recorded",
+        "framegraph_multiqueue_barriers_recorded",
+        "framegraph_multiqueue_aliasing_barriers_recorded",
+        "framegraph_multiqueue_pass_callbacks_invoked",
+        "framegraph_multiqueue_submitted_pass_fences",
+        "framegraph_multiqueue_graphics_waited_for_copy",
         "--require-native-ui-overlay",
         "hud_boxes",
         "ui_overlay_requested",

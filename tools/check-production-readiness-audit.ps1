@@ -24,8 +24,9 @@ if ($null -eq $productionLoop) {
 }
 
 $gaps = @($productionLoop.unsupportedProductionGaps)
-if ($gaps.Count -eq 0) {
-    Write-Error "Production readiness audit expected unsupportedProductionGaps rows; remove this check only when a final closeout plan accepts a zero-gap manifest."
+$zeroGapCloseoutPlan = Join-Path $root "docs\superpowers\plans\2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md"
+if ($gaps.Count -eq 0 -and -not (Test-Path -LiteralPath $zeroGapCloseoutPlan -PathType Leaf)) {
+    Write-Error "Production readiness audit accepts a zero-gap manifest only after the full repository quality gate closeout plan exists."
 }
 
 $allowedStatuses = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)

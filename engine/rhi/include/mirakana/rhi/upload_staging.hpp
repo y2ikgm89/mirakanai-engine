@@ -124,6 +124,8 @@ struct RhiUploadRingDesc {
     std::uint64_t size_bytes{0};
     /// Minimum alignment applied to every sub-range start (use 256 for D3D12 constant buffer alignment defaults).
     std::uint64_t min_alignment{256};
+    /// Optional caller-owned `copy_source` buffer. When unset, the ring creates its own backing buffer.
+    BufferHandle buffer{};
 };
 
 /// Device-owned upload ring: one `copy_source` buffer and CPU/GPU lifetime tracking for byte spans keyed by
@@ -185,6 +187,11 @@ struct RhiStagingBufferPoolDesc {
     std::uint64_t chunk_size_bytes{0};
 };
 
+struct RhiStagingBufferLease {
+    BufferHandle buffer{};
+    std::uint64_t size_bytes{0};
+};
+
 /// Fixed-size pool of independent `copy_source` staging chunks (for uploads larger than a ring slot or parallel
 /// frames).
 class RhiStagingBufferPool {
@@ -197,10 +204,13 @@ class RhiStagingBufferPool {
     ~RhiStagingBufferPool() = default;
 
     [[nodiscard]] std::optional<BufferHandle> try_acquire() noexcept;
+    [[nodiscard]] std::optional<RhiStagingBufferLease> try_acquire_lease() noexcept;
     void release(BufferHandle buffer);
+    void release(RhiStagingBufferLease lease);
 
   private:
     IRhiDevice* device_{nullptr};
+    std::uint64_t chunk_size_bytes_{0};
     std::vector<BufferHandle> buffers_;
     std::vector<bool> free_;
 };
@@ -212,6 +222,19 @@ struct RhiGpuBufferCopyTarget {
 
 struct RhiGpuTextureCopyTarget {
     TextureHandle destination{};
+};
+
+struct RhiUploadGpuBatchExecutionResult {
+    std::vector<RhiUploadDiagnostic> diagnostics;
+    FenceValue submitted_fence;
+    QueueKind queue{QueueKind::copy};
+    std::uint64_t command_lists_submitted{0};
+    std::uint64_t buffer_copies_recorded{0};
+    std::uint64_t texture_copies_recorded{0};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
 };
 
 [[nodiscard]] RhiUploadResult validate_upload_gpu_batch(const RhiUploadStagingPlan& plan,
@@ -229,5 +252,12 @@ struct RhiGpuTextureCopyTarget {
 /// Marks every allocation touched by `pending_copies` as submitted, then tags ring spans with `fence`.
 [[nodiscard]] RhiUploadResult mark_pending_allocations_submitted(RhiUploadStagingPlan& plan, RhiUploadRing& ring,
                                                                  FenceValue fence);
+
+/// Records, closes, submits, and marks one pending upload batch on `queue` without waiting on the submitted fence.
+/// Invalid target counts or unreserved staging handles fail before command-list creation.
+[[nodiscard]] RhiUploadGpuBatchExecutionResult
+execute_upload_gpu_batch_async(IRhiDevice& device, RhiUploadStagingPlan& plan, RhiUploadRing& ring, QueueKind queue,
+                               const std::vector<RhiGpuBufferCopyTarget>& buffer_targets,
+                               const std::vector<RhiGpuTextureCopyTarget>& texture_targets);
 
 } // namespace mirakana::rhi
