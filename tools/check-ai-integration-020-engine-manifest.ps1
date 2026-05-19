@@ -1620,6 +1620,56 @@ foreach ($sampleSurface in @(
     Assert-ContainsText $sampleSurfaceText "RuntimeSceneGameplayInteractionSourceRow" $sampleSurface
     Assert-ContainsText $sampleSurfaceText "gameplay_interactions" $sampleSurface
 }
+$runtimeSessionProfilePathAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-session-profile-path-policy-v1" })
+if ($runtimeSessionProfilePathAuthoringSurface.Count -ne 1 -or
+    $runtimeSessionProfilePathAuthoringSurface[0].status -ne "ready" -or
+    $runtimeSessionProfilePathAuthoringSurface[0].owner -ne "MK_runtime") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-session-profile-path-policy-v1 must be ready as an MK_runtime surface"
+}
+if (-not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("RuntimeSessionProfilePathRequest") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("RuntimeSessionProfilePathPlan") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("plan_runtime_session_profile_paths") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("save.gesave") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("settings.settings") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("input.geinputprofile") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("absolute paths") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("parent traversal") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("platform user-directory resolver") -or
+    -not ([string]$runtimeSessionProfilePathAuthoringSurface[0].notes).Contains("cloud save system")) {
+    Write-Error "engine/agent/manifest.json runtime-session-profile-path-policy-v1 authoring surface must keep profile path contract and non-goals explicit"
+}
+$runtimeSessionServicesHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/session_services.hpp"
+$runtimeSessionServicesSourceText = Get-AgentSurfaceText "engine/runtime/src/session_services.cpp"
+$runtimeTestsText = Get-AgentSurfaceText "tests/unit/runtime_tests.cpp"
+foreach ($needle in @(
+        "RuntimeSessionProfilePathRequest",
+        "RuntimeSessionProfilePathPlan",
+        "RuntimeSessionProfilePathDiagnosticCode",
+        "plan_runtime_session_profile_paths"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesHeaderText $needle "engine/runtime/include/mirakana/runtime/session_services.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSessionProfilePathDiagnosticCode::invalid_game_id",
+        "RuntimeSessionProfilePathDiagnosticCode::invalid_profile_id",
+        "RuntimeSessionProfilePathDiagnosticCode::invalid_root_path",
+        "is_valid_runtime_profile_root_path",
+        "save.gesave",
+        "settings.settings",
+        "input.geinputprofile"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesSourceText $needle "engine/runtime/src/session_services.cpp"
+}
+Assert-ContainsText $runtimeTestsText "runtime session profile path plan composes deterministic game local document paths" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime session profile path plan rejects unsafe ids and paths without partial paths" "tests/unit/runtime_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeSessionProfilePathRequest" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_session_profile_paths" $docSurface.Label
+}
 $assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"

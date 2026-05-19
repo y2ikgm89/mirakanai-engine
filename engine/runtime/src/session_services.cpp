@@ -49,6 +49,47 @@ void validate_session_path(std::string_view path) {
     }
 }
 
+[[nodiscard]] bool is_runtime_profile_path_identifier_character(char character) noexcept {
+    return (character >= 'a' && character <= 'z') || (character >= 'A' && character <= 'Z') ||
+           (character >= '0' && character <= '9') || character == '_' || character == '-';
+}
+
+[[nodiscard]] bool is_valid_runtime_profile_path_identifier(std::string_view value) noexcept {
+    return !value.empty() && !contains_control_characters(value) &&
+           std::ranges::all_of(value, is_runtime_profile_path_identifier_character);
+}
+
+[[nodiscard]] bool is_valid_runtime_profile_root_path(std::string_view root_path) noexcept {
+    if (root_path.empty() || contains_control_characters(root_path) || root_path.front() == '/' ||
+        root_path.back() == '/' || root_path.find('\\') != std::string_view::npos ||
+        root_path.find(':') != std::string_view::npos || root_path.find("//") != std::string_view::npos) {
+        return false;
+    }
+
+    std::size_t segment_start = 0;
+    while (segment_start < root_path.size()) {
+        const auto segment_end = root_path.find('/', segment_start);
+        const auto segment =
+            root_path.substr(segment_start, segment_end == std::string_view::npos ? root_path.size() - segment_start
+                                                                                  : segment_end - segment_start);
+        if (!is_valid_runtime_profile_path_identifier(segment)) {
+            return false;
+        }
+        if (segment_end == std::string_view::npos) {
+            break;
+        }
+        segment_start = segment_end + 1U;
+    }
+    return true;
+}
+
+void add_runtime_profile_path_diagnostic(std::vector<RuntimeSessionProfilePathDiagnostic>& diagnostics,
+                                         RuntimeSessionProfilePathDiagnosticCode code, std::string field,
+                                         std::string_view value, std::string message) {
+    diagnostics.push_back(RuntimeSessionProfilePathDiagnostic{
+        .code = code, .field = std::move(field), .value = std::string(value), .message = std::move(message)});
+}
+
 void validate_entry_key(std::string_view key, std::string_view diagnostic_name) {
     if (key.empty()) {
         throw std::invalid_argument(std::string(diagnostic_name) + " key must not be empty");
@@ -1568,6 +1609,11 @@ bool RuntimeSettingsLoadResult::succeeded() const noexcept {
     return diagnostic.empty();
 }
 
+bool RuntimeSessionProfilePathPlan::succeeded() const noexcept {
+    return diagnostics.empty() && !save_data_path.empty() && !settings_path.empty() &&
+           !input_rebinding_profile_path.empty();
+}
+
 void RuntimeLocalizationCatalog::set_text(std::string key, std::string text) {
     set_sorted_entry(entries_, std::move(key), std::move(text), "runtime localization");
 }
@@ -2463,6 +2509,40 @@ make_runtime_input_rebinding_presentation(const RuntimeInputActionMap& base,
     }
 
     return model;
+}
+
+RuntimeSessionProfilePathPlan plan_runtime_session_profile_paths(const RuntimeSessionProfilePathRequest& request) {
+    RuntimeSessionProfilePathPlan plan;
+
+    if (!is_valid_runtime_profile_path_identifier(request.game_id)) {
+        add_runtime_profile_path_diagnostic(plan.diagnostics, RuntimeSessionProfilePathDiagnosticCode::invalid_game_id,
+                                            "game_id", request.game_id,
+                                            "runtime session profile game id must be a non-empty safe identifier");
+    }
+    if (!is_valid_runtime_profile_path_identifier(request.profile_id)) {
+        add_runtime_profile_path_diagnostic(
+            plan.diagnostics, RuntimeSessionProfilePathDiagnosticCode::invalid_profile_id, "profile_id",
+            request.profile_id, "runtime session profile id must be a non-empty safe identifier");
+    }
+    if (!is_valid_runtime_profile_root_path(request.root_path)) {
+        add_runtime_profile_path_diagnostic(
+            plan.diagnostics, RuntimeSessionProfilePathDiagnosticCode::invalid_root_path, "root_path",
+            request.root_path, "runtime session profile root path must be project relative");
+    }
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    std::string profile_root(request.root_path);
+    profile_root.push_back('/');
+    profile_root.append(request.game_id);
+    profile_root.push_back('/');
+    profile_root.append(request.profile_id);
+
+    plan.save_data_path = profile_root + "/save.gesave";
+    plan.settings_path = profile_root + "/settings.settings";
+    plan.input_rebinding_profile_path = profile_root + "/input.geinputprofile";
+    return plan;
 }
 
 std::string serialize_runtime_input_rebinding_profile(const RuntimeInputRebindingProfile& profile) {

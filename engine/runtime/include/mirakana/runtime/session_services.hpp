@@ -15,6 +15,34 @@
 
 namespace mirakana::runtime {
 
+enum class RuntimeSessionProfilePathDiagnosticCode : std::uint8_t {
+    invalid_game_id,
+    invalid_profile_id,
+    invalid_root_path,
+};
+
+struct RuntimeSessionProfilePathRequest {
+    std::string game_id;
+    std::string profile_id{"default"};
+    std::string root_path{"profiles"};
+};
+
+struct RuntimeSessionProfilePathDiagnostic {
+    RuntimeSessionProfilePathDiagnosticCode code{RuntimeSessionProfilePathDiagnosticCode::invalid_game_id};
+    std::string field;
+    std::string value;
+    std::string message;
+};
+
+struct RuntimeSessionProfilePathPlan {
+    std::string save_data_path;
+    std::string settings_path;
+    std::string input_rebinding_profile_path;
+    std::vector<RuntimeSessionProfilePathDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 struct RuntimeKeyValue {
     std::string key;
     std::string value;
@@ -417,6 +445,8 @@ present_runtime_input_axis_source(const RuntimeInputAxisSource& source);
 [[nodiscard]] RuntimeInputRebindingPresentationModel
 make_runtime_input_rebinding_presentation(const RuntimeInputActionMap& base,
                                           const RuntimeInputRebindingProfile& profile);
+[[nodiscard]] RuntimeSessionProfilePathPlan
+plan_runtime_session_profile_paths(const RuntimeSessionProfilePathRequest& request);
 [[nodiscard]] std::string serialize_runtime_input_rebinding_profile(const RuntimeInputRebindingProfile& profile);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult deserialize_runtime_input_rebinding_profile(std::string_view text);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult load_runtime_input_rebinding_profile(IFileSystem& filesystem,

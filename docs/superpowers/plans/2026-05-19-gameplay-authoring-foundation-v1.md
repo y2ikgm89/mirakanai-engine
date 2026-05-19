@@ -1,7 +1,7 @@
 # Gameplay Authoring Foundation v1 (2026-05-19)
 
 **Plan ID:** `gameplay-authoring-foundation-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -79,6 +79,8 @@ Layer a value-type interaction plan over resolved gameplay bindings so games can
 
 ## Phase 3: Debug Overlay Rows (Optional)
 
+**Status:** Not selected.
+
 ### Goal
 
 Expose runtime-visible/headless debug rows for gameplay bindings and interactions if Phase 1/2 diagnostics are insufficient for generated-game remediation.
@@ -120,4 +122,6 @@ Expose runtime-visible/headless debug rows for gameplay bindings and interaction
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
 - Phase 2 full closeout:
-  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit: unsupported_gaps=0`.
+- Phase 3 selection:
+  - Not selected. Phase 1/2 diagnostics and sample counters were sufficient for generated-game remediation at this milestone boundary.

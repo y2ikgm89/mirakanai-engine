@@ -1427,6 +1427,67 @@ MK_TEST("runtime settings loads defaults and rejects malformed documents") {
     MK_REQUIRE(broken.diagnostic.find("duplicate") != std::string::npos);
 }
 
+MK_TEST("runtime session profile path plan composes deterministic game local document paths") {
+    const auto plan =
+        mirakana::runtime::plan_runtime_session_profile_paths(mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"});
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.save_data_path == "profiles/sample_game/slot_1/save.gesave");
+    MK_REQUIRE(plan.settings_path == "profiles/sample_game/slot_1/settings.settings");
+    MK_REQUIRE(plan.input_rebinding_profile_path == "profiles/sample_game/slot_1/input.geinputprofile");
+
+    const auto custom_root =
+        mirakana::runtime::plan_runtime_session_profile_paths(mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "sample_game", .profile_id = "player-one", .root_path = "user/profiles"});
+
+    MK_REQUIRE(custom_root.succeeded());
+    MK_REQUIRE(custom_root.save_data_path == "user/profiles/sample_game/player-one/save.gesave");
+    MK_REQUIRE(custom_root.settings_path == "user/profiles/sample_game/player-one/settings.settings");
+    MK_REQUIRE(custom_root.input_rebinding_profile_path == "user/profiles/sample_game/player-one/input.geinputprofile");
+}
+
+MK_TEST("runtime session profile path plan rejects unsafe ids and paths without partial paths") {
+    using Code = mirakana::runtime::RuntimeSessionProfilePathDiagnosticCode;
+
+    const auto has_diagnostic = [](const auto& diagnostics, Code code, const std::string& field) {
+        return std::ranges::any_of(diagnostics, [code, &field](const auto& diagnostic) {
+            return diagnostic.code == code && diagnostic.field == field;
+        });
+    };
+
+    const auto empty_ids = mirakana::runtime::plan_runtime_session_profile_paths(
+        mirakana::runtime::RuntimeSessionProfilePathRequest{.game_id = "", .profile_id = "", .root_path = "profiles"});
+
+    MK_REQUIRE(!empty_ids.succeeded());
+    MK_REQUIRE(empty_ids.save_data_path.empty());
+    MK_REQUIRE(empty_ids.settings_path.empty());
+    MK_REQUIRE(empty_ids.input_rebinding_profile_path.empty());
+    MK_REQUIRE(has_diagnostic(empty_ids.diagnostics, Code::invalid_game_id, "game_id"));
+    MK_REQUIRE(has_diagnostic(empty_ids.diagnostics, Code::invalid_profile_id, "profile_id"));
+
+    const auto unsafe =
+        mirakana::runtime::plan_runtime_session_profile_paths(mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "../sample", .profile_id = "slot/1", .root_path = "/profiles"});
+
+    MK_REQUIRE(!unsafe.succeeded());
+    MK_REQUIRE(unsafe.save_data_path.empty());
+    MK_REQUIRE(unsafe.settings_path.empty());
+    MK_REQUIRE(unsafe.input_rebinding_profile_path.empty());
+    MK_REQUIRE(has_diagnostic(unsafe.diagnostics, Code::invalid_game_id, "game_id"));
+    MK_REQUIRE(has_diagnostic(unsafe.diagnostics, Code::invalid_profile_id, "profile_id"));
+    MK_REQUIRE(has_diagnostic(unsafe.diagnostics, Code::invalid_root_path, "root_path"));
+
+    const auto control =
+        mirakana::runtime::plan_runtime_session_profile_paths(mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "sample\tgame", .profile_id = "slot_1", .root_path = "profiles"});
+
+    MK_REQUIRE(!control.succeeded());
+    MK_REQUIRE(control.save_data_path.empty());
+    MK_REQUIRE(has_diagnostic(control.diagnostics, Code::invalid_game_id, "game_id"));
+}
+
 MK_TEST("runtime localization catalog resolves text with key fallback") {
     mirakana::MemoryFileSystem fs;
     mirakana::runtime::RuntimeLocalizationCatalog catalog;
