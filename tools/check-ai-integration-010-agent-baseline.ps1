@@ -594,7 +594,7 @@ Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "DesktopRuntim
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "DesktopRuntime3DPackage" "docs/current-capabilities.md"
 Assert-ContainsText (Get-Content -LiteralPath $aiGameDevelopmentPath -Raw) "DesktopRuntime3DPackage" "docs/ai-game-development.md"
 Assert-ContainsText (Get-Content -LiteralPath $roadmapPath -Raw) "DesktopRuntime3DPackage" "docs/roadmap.md"
-$productionCompletionMasterPlanContent = Get-Content -LiteralPath $productionCompletionMasterPlanPath -Raw
+$productionCompletionMasterPlanContent = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-DoesNotContainText $productionCompletionMasterPlanContent "3d-camera-controller-and-gameplay-template-v1" "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-DoesNotContainText $productionCompletionMasterPlanContent "first generated 3D camera/controller gameplay template" "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText (Get-Content -LiteralPath $currentCapabilitiesPath -Raw) "glTF Node Transform Animation Import v1" "docs/current-capabilities.md"

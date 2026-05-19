@@ -145,7 +145,7 @@
 
 ## Production Completion Execution
 
-- When executing `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, use `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps` as the current execution index.
+- When executing the lightweight production-completion master-plan index, use `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps`; load split chapters only as needed.
 - Keep each `unsupportedProductionGaps` row honest, including `oneDotZeroCloseoutTier`, in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` plus composed output; do not hand-edit `engine/agent/manifest.json`.
 - Re-read the master plan, registry, and manifest after user edits or resumes. Finish one selected gap as implemented, host-gated, blocked with evidence, or excluded before switching.
 - Prefer official documentation, Context7, project skills, and clean breaking greenfield designs over compatibility shims, broad ready claims, or shortcuts.

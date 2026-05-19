@@ -25,6 +25,15 @@ function Get-AgentSurfaceText([Parameter(Mandatory)][string]$relativePath) {
 
     $parts = [System.Collections.Generic.List[string]]::new()
     $parts.Add((Get-Content -LiteralPath $path -Raw))
+    $normalizedRelativePath = $relativePath -replace '\\', '/'
+    if ($normalizedRelativePath -eq "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+        $splitRoot = Join-Path $root "docs/superpowers/master-plans/production-completion-v1"
+        if (Test-Path -LiteralPath $splitRoot) {
+            Get-ChildItem -LiteralPath $splitRoot -Filter "*.md" -File |
+                Sort-Object Name |
+                ForEach-Object { $parts.Add((Get-Content -LiteralPath $_.FullName -Raw)) }
+        }
+    }
 
     $referenceRoot = Join-Path (Split-Path -Parent $path) "references"
     if (Test-Path -LiteralPath $referenceRoot) {
