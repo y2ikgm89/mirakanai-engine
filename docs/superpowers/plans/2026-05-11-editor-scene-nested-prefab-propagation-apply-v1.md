@@ -3,7 +3,7 @@
 **Plan ID:** `editor-scene-nested-prefab-propagation-apply-v1`  
 **Gap:** `editor-productization`  
 **Parent:** [2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md](2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md)  
-**Status:** Implementation plan  
+**Status:** Completed on 2026-05-19.  
 
 ## Goal
 
