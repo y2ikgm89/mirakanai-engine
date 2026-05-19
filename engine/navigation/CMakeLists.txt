@@ -2,6 +2,7 @@ add_library(mirakana_navigation
     src/local_avoidance.cpp
     src/navigation_agent.cpp
     src/navigation_grid.cpp
+    src/navigation_navmesh.cpp
     src/navigation_path_planner.cpp
     src/navigation_replan.cpp
     src/path_following.cpp

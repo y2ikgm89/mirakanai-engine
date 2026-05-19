@@ -299,7 +299,7 @@ try {
     if ($desktop2dManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
         Write-Error "Desktop runtime 2D package scaffold manifest must select 2d-desktop-runtime-package"
     }
-    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($desktop2dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 2D package scaffold manifest missing engine module: $module"
         }
@@ -338,7 +338,7 @@ try {
         "runtime/desktop_2d_package_game.geindex" `
         "runtime/assets/2d/level.tilemap" `
         "runtime/assets/2d/player.texture.geasset"
-    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-native-2d-sprite-smoke")) {
+    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")) {
         if (@($desktop2dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
             Write-Error "Desktop runtime 2D package scaffold manifest validationRecipes missing $recipe"
         }
@@ -369,11 +369,18 @@ try {
     Assert-ContainsText $desktop2dCmake "--require-native-2d-sprites" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-sprite-animation" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-tilemap-runtime-ux" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "--require-gameplay-systems" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "REQUIRES_D3D12_SHADERS" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "MK_configure_desktop_runtime_2d_sprite_shader_artifacts" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "runtime_2d_sprite.hlsl" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "MK_audio" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "MK_ai" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "MK_navigation" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "MK_physics" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "MK_ui_renderer" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dMain "mirakana/ai/behavior_tree.hpp" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "mirakana/navigation/navigation_path_planner.hpp" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "mirakana/physics/physics2d.hpp" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "RuntimeInputActionMap" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "validate_playable_2d_scene" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "submit_ui_renderer_submission" "Desktop 2D scaffold main.cpp"
@@ -390,12 +397,17 @@ try {
     Assert-ContainsText $desktop2dMain "--require-native-2d-sprites" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "--require-sprite-animation" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "--require-tilemap-runtime-ux" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "--require-gameplay-systems" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "native_2d_sprites_status" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "sprite_animation_frames_sampled" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "tilemap_cells_sampled" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "gameplay_systems_physics_contacts=" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "gameplay_systems_navigation_plan_status=" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "gameplay_systems_behavior_status=" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dReadme "--require-native-2d-sprites" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "--require-sprite-animation" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "--require-tilemap-runtime-ux" "Desktop 2D scaffold README"
+    Assert-ContainsText $desktop2dReadme "--require-gameplay-systems" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "production sprite batching" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dShader "vs_native_sprite_overlay" "Desktop 2D scaffold shader"
     Assert-ContainsText $desktop2dShader "ps_native_sprite_overlay" "Desktop 2D scaffold shader"
@@ -1863,6 +1875,12 @@ foreach ($needle in @(
     "gameplay_systems_status=",
     "gameplay_systems_ready=",
     "gameplay_systems_navigation_plan_status=",
+    "gameplay_systems_navigation_navmesh_status=",
+    "gameplay_systems_navigation_navmesh_dynamic_obstacles=",
+    "gameplay_systems_local_avoidance_status=",
+    "gameplay_systems_local_avoidance_applied_neighbors=",
+    "gameplay_systems_physics_policy_status=",
+    "gameplay_systems_physics_policy_dynamic_pushes=",
     "gameplay_systems_blackboard_status=",
     "gameplay_systems_behavior_status=",
     "gameplay_systems_audio_status=",

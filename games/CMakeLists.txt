@@ -1510,6 +1510,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             runtime/sample_2d_desktop_runtime_package.geindex
             --require-sprite-animation
             --require-tilemap-runtime-ux
+            --require-gameplay-systems
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1523,6 +1524,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-native-2d-sprites
             --require-sprite-animation
             --require-tilemap-runtime-ux
+            --require-gameplay-systems
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )
@@ -1535,6 +1537,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             MK_ui
             MK_ui_renderer
             MK_audio
+            MK_ai
+            MK_navigation
+            MK_physics
     )
     set_property(TARGET sample_2d_desktop_runtime_package PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
         "shaders/sample_2d_desktop_runtime_package_sprite.vs.dxil;shaders/sample_2d_desktop_runtime_package_sprite.ps.dxil;shaders/sample_2d_desktop_runtime_package_native_sprite_overlay.vs.dxil;shaders/sample_2d_desktop_runtime_package_native_sprite_overlay.ps.dxil"

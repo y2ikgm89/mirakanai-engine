@@ -377,7 +377,7 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
     if ($sample2dDesktopManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
         Write-Error "$sample2dDesktopManifestPath gameplayContract.productionRecipe must be 2d-desktop-runtime-package"
     }
-    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($sample2dDesktopManifest.engineModules) -notcontains $module) {
             Write-Error "$sample2dDesktopManifestPath engineModules missing $module"
         }
@@ -416,6 +416,8 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "--require-vulkan-shaders",
         "--require-vulkan-renderer",
         "--require-native-2d-sprites",
+        "--require-gameplay-systems",
+        "gameplay systems package proof",
         "public native or RHI handle access remains unsupported",
         "broad production sprite batching readiness remains unsupported",
         "general production renderer quality remains unsupported"
@@ -429,11 +431,15 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
     foreach ($needle in @(
         "mirakana/runtime_host/shader_bytecode.hpp",
         "mirakana/renderer/sprite_batch.hpp",
+        "mirakana/ai/behavior_tree.hpp",
+        "mirakana/navigation/navigation_path_planner.hpp",
+        "mirakana/physics/physics2d.hpp",
         "--require-d3d12-shaders",
         "--require-d3d12-renderer",
         "--require-vulkan-shaders",
         "--require-vulkan-renderer",
         "--require-native-2d-sprites",
+        "--require-gameplay-systems",
         "sample_2d_desktop_runtime_package_sprite.vs.dxil",
         "sample_2d_desktop_runtime_package_sprite.ps.dxil",
         "sample_2d_desktop_runtime_package_sprite.vs.spv",
@@ -449,6 +455,11 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "sprite_batch_plan_draws",
         "sprite_batch_plan_texture_binds",
         "sprite_batch_plan_diagnostics",
+        "gameplay_systems_status=",
+        "gameplay_systems_physics_contacts=",
+        "gameplay_systems_navigation_plan_status=",
+        "gameplay_systems_behavior_status=",
+        "required_gameplay_systems_unavailable",
         "required_native_2d_sprites_unavailable",
         "required_d3d12_renderer_unavailable",
         "required_vulkan_renderer_unavailable"
@@ -468,6 +479,10 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "sample_2d_desktop_runtime_package_native_sprite_overlay.vs.spv",
         "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv",
         "--require-native-2d-sprites",
+        "--require-gameplay-systems",
+        "MK_ai",
+        "MK_navigation",
+        "MK_physics",
         "sample_2d_desktop_runtime_package_shaders",
         "sample_2d_desktop_runtime_package_vulkan_shaders",
         "REQUIRES_D3D12_SHADERS"
@@ -484,7 +499,11 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "native_2d_texture_binds",
         "sprite_batch_plan_draws",
         "sprite_batch_plan_texture_binds",
-        "sprite_batch_plan_diagnostics"
+        "sprite_batch_plan_diagnostics",
+        "gameplay_systems_status",
+        "gameplay_systems_physics_contacts",
+        "gameplay_systems_navigation_plan_status",
+        "gameplay_systems_behavior_status"
     )) {
         if (-not $installedDesktopRuntimeValidationText.Contains($needle)) {
             Write-Error "tools/validate-installed-desktop-runtime.ps1 missing 2D native sprite package validation field: $needle"
@@ -1157,6 +1176,12 @@ if (-not (Test-Path -LiteralPath $generated3dPackageManifestFullPath)) {
         "gameplay_systems_status=",
         "gameplay_systems_ready=",
         "gameplay_systems_navigation_plan_status=",
+        "gameplay_systems_navigation_navmesh_status=",
+        "gameplay_systems_navigation_navmesh_dynamic_obstacles=",
+        "gameplay_systems_local_avoidance_status=",
+        "gameplay_systems_local_avoidance_applied_neighbors=",
+        "gameplay_systems_physics_policy_status=",
+        "gameplay_systems_physics_policy_dynamic_pushes=",
         "gameplay_systems_blackboard_status=",
         "gameplay_systems_behavior_status=",
         "gameplay_systems_audio_status=",

@@ -1322,7 +1322,7 @@ if ($activeChildProductionPlans.Count -eq 0) {
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.id) "next-production-gap-selection" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.id"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.path) "2026-05-03-production-completion-master-plan-v1.md" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.path"
 }
-$recommendedNextPlanText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+$recommendedNextPlanText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",

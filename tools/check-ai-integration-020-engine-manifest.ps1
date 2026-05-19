@@ -532,11 +532,13 @@ $desktop2dRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "2d-desk
 if ($desktop2dRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one 2d-desktop-runtime-package recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+    foreach ($module in @("MK_core", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_ai", "MK_navigation", "MK_physics", "MK_renderer")) {
         if (@($desktop2dRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe missing required module: $module"
         }
     }
+    Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "--require-gameplay-systems" "2d-desktop-runtime-package cooked runtime assumptions"
+    Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "gameplay_systems_*" "2d-desktop-runtime-package cooked runtime assumptions"
     if (@($desktop2dRecipe[0].allowedTemplates) -notcontains "DesktopRuntime2DPackage") {
         Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe must allow DesktopRuntime2DPackage"
     }
@@ -1609,7 +1611,7 @@ $runtimeResourceGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($runtimeResourceGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop runtime-resource-v2 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-$recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+$recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
@@ -1773,6 +1775,28 @@ foreach ($needle in @(
 $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "physics-1-0-collision-system" })
 if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
+}
+foreach ($closedGameplayGapId in @(
+    "navigation-navmesh-and-dynamic-obstacle-follow-up",
+    "physics-advanced-dynamics-follow-up",
+    "gameplay-2d-3d-package-evidence"
+)) {
+    $closedGameplayGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq $closedGameplayGapId })
+    if ($closedGameplayGap.Count -ne 0) {
+        Write-Error "engine/agent/manifest.json aiOperableProductionLoop $closedGameplayGapId gap must leave unsupportedProductionGaps after gameplay physics/navigation closeout"
+    }
+}
+foreach ($needle in @(
+    "gameplay-physics-navigation-ai-foundation-v1",
+    "NavigationNavmeshPathRequest",
+    "plan_navigation_navmesh_path",
+    "evaluate_physics_character_dynamic_policy_3d",
+    "selected generated 2D and 3D package gameplay systems composition smokes",
+    "navigation-navmesh-and-dynamic-obstacle-follow-up",
+    "physics-advanced-dynamics-follow-up",
+    "gameplay-2d-3d-package-evidence"
+)) {
+    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan gameplay closeout evidence"
 }
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Transient Texture Alias Planning v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphTransientTextureAliasPlan" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"

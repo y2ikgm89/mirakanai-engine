@@ -1,7 +1,7 @@
 # Gameplay Physics / AI Navigation / 2D-3D Essential Systems Expansion Master v1 (2026-05-19)
 
 **Plan ID:** `gameplay-physics-navigation-ai-foundation-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set machine-readable progress through `engine/agent/manifest.json.aiOperableProductionLoop` (`currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps`). Keep `currentActivePlan` aligned with this plan while this roadmap is active.
 
 ## Goal
@@ -75,6 +75,7 @@ Add missing production foundations for traversal and obstacle behavior beyond th
 - Deterministic scene-referenced movement obstacles can participate in path planning and replanning.
 - Local avoidance and movement completion/abort transitions are proven with reviewed diagnostic coverage.
 - No external pathing middleware appears in public gameplay contracts.
+- Phase 2 is complete for this plan: `NavigationNavmeshPathRequest` / `plan_navigation_navmesh_path` provide deterministic scene-ref polygon routing with dynamic obstacle evidence, and `sample_gameplay_foundation` now gates navmesh, grid replan, local avoidance, and physics movement-policy counters.
 
 ## Phase 3: Package-evidence and production slice proof
 
@@ -97,6 +98,7 @@ Prove selected generated 2D and 3D package workflows execute an integrated gamep
 - Selected sample package recipes report the new integration counters/rows from physics+navigation+AI composition.
 - The 2D and 3D gameplay sample loop path remains headless-testable and deterministic.
 - Host-gated items remain explicitly blocked until validated in this same manifest-backed plan.
+- Phase 3 is complete for this plan: `sample_2d_desktop_runtime_package` and generated `DesktopRuntime2DPackage` expose `--require-gameplay-systems` counters for 2D physics/navigation/AI, and `sample_generated_desktop_runtime_3d_package` plus generated `DesktopRuntime3DPackage` expose package-visible navmesh dynamic-obstacle, local-avoidance, and physics movement-policy counters.
 
 ## Initial Unsupported Gaps for this Plan
 
@@ -105,5 +107,5 @@ Prove selected generated 2D and 3D package workflows execute an integrated gamep
 - `physics-advanced-dynamics-follow-up`
 - `gameplay-2d-3d-package-evidence`
 
-These row IDs are recorded in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`;
-`gameplay-runtime-integration-foundation` is now closed and advanced as `ready` for this phase, while the remaining rows stay `partly-ready`/`planned` until their focused follow-up phases close.
+These row IDs were recorded in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` while this plan was active.
+The full gap cluster is now closed for the Engine 1.0 Windows-default ready surface: `gameplay-runtime-integration-foundation`, `navigation-navmesh-and-dynamic-obstacle-follow-up`, `physics-advanced-dynamics-follow-up`, and `gameplay-2d-3d-package-evidence` have focused evidence, and the composed manifest returns to the master plan with `unsupportedProductionGaps` empty.

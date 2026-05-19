@@ -29,6 +29,7 @@ Use this skill for C++ games, game.agent.json, new-game scaffolding, desktop run
 - Keep `game_name` and `new-game -Name` values matching `^[a-z][a-z0-9_]*$` and keep source-tree paths lowercase snake_case.
 - Runtime package payloads are byte-hashed. When adding a text cooked/runtime extension or `runtimePackageFiles` entry, update the game/scaffold `runtime/.gitattributes` with `text eol=lf`, keep scaffold/static checks aligned, and run the narrowest package smoke before the slice gate.
 - Generated 3D renderer-quality package smokes keep exact frame graph evidence: base postprocess expects `renderer_quality_expected_framegraph_passes=2`, `renderer_quality_expected_framegraph_render_passes=4`, `renderer_quality_framegraph_render_passes_ok=1`, and `renderer_quality_expected_framegraph_barrier_steps=4`; depth/shadow variants add `framegraph_render_passes_recorded` and `framegraph_barrier_steps_executed` counts in `references/full-guidance.md`.
+- Generated 2D/3D gameplay package smokes use public `MK_physics`, `MK_navigation`, and `MK_ai` only. For scene-ref routes use `NavigationNavmeshPathRequest` / `plan_navigation_navmesh_path` alongside grid replanning and `calculate_navigation_local_avoidance`; keep navmesh asset import, spline/funnel smoothing, full crowd simulation, scene/physics-owned integration, middleware, and background navigation jobs out of ready claims.
 - Validate with the smallest relevant package/game lane first, then `tools/validate.ps1` at the slice gate.
 
 ## Detailed Reference

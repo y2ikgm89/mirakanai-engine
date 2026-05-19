@@ -20,7 +20,10 @@
     "MK_scene_renderer",
     "MK_ui",
     "MK_ui_renderer",
-    "MK_audio"
+    "MK_audio",
+    "MK_ai",
+    "MK_navigation",
+    "MK_physics"
   ],
   "aiWorkflow": {
     "spec": "games/sample_2d_desktop_runtime_package/README.md",
@@ -39,15 +42,20 @@
     "sceneRenderer": "mirakana::submit_scene_render_packet",
     "ui": "mirakana::ui::UiDocument through mirakana::submit_ui_renderer_submission",
     "audio": "mirakana::AudioMixer using a cooked audio payload",
+    "physics": "mirakana::PhysicsWorld2D deterministic contact and trigger counters",
+    "navigation": "mirakana::plan_navigation_grid_agent_path plus mirakana::update_navigation_agent",
+    "ai": "mirakana::build_ai_perception_snapshot_2d, mirakana::write_ai_perception_blackboard, and mirakana::evaluate_behavior_tree",
     "renderer": "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback or host-owned RHI-backed presentation when packaged shader artifacts are present",
-    "currentRuntime": "host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package window smoke uses packaged DXIL shader bytecode and --require-d3d12-shaders --require-d3d12-renderer through host-owned presentation; the native 2D sprite package proof adds --require-native-2d-sprites so cooked scene sprite texture/material identity and HUD submission flow through the host-owned native RHI sprite overlay path with renderer-owned native sprite batch execution counters. The sprite animation package proof adds a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic frame sampling and sprite frame application emit sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming production atlas packing or full tilemap editor UX. Vulkan package window smoke uses toolchain/host-gated SPIR-V shader bytecode and --require-vulkan-shaders --require-vulkan-renderer. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
+    "currentRuntime": "host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package window smoke uses packaged DXIL shader bytecode and --require-d3d12-shaders --require-d3d12-renderer through host-owned presentation; the native 2D sprite package proof adds --require-native-2d-sprites so cooked scene sprite texture/material identity and HUD submission flow through the host-owned native RHI sprite overlay path with renderer-owned native sprite batch execution counters. The sprite animation package proof adds a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic frame sampling and sprite frame application emit sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming production atlas packing or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, and behavior tree counters emit gameplay_systems_* fields. Vulkan package window smoke uses toolchain/host-gated SPIR-V shader bytecode and --require-vulkan-shaders --require-vulkan-renderer. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
   },
   "backendReadiness": {
     "platform": "sdl3-desktop-host-gated",
     "graphics": "NullRenderer fallback plus host-gated D3D12 package window smoke, native 2D sprite package proof with renderer-owned native sprite batch execution counters, and Vulkan package window smoke through packaged shader artifacts. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported.",
     "audio": "device-independent cooked audio payload mixed through mirakana_audio",
     "ui": "mirakana_ui-headless renderer submission",
-    "physics": "not-required"
+    "physics": "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems",
+    "navigation": "MK_navigation grid path planning and agent update proof through --require-gameplay-systems",
+    "ai": "MK_ai perception-blackboard-behavior-tree proof through --require-gameplay-systems"
   },
   "importerRequirements": {
     "sourceFormats": [
@@ -89,6 +97,7 @@
         "installed-native-2d-sprite-smoke",
         "installed-2d-sprite-animation-smoke",
         "installed-2d-tilemap-runtime-ux-smoke",
+        "installed-2d-gameplay-systems-smoke",
         "installed-d3d12-window-smoke",
         "installed-vulkan-window-smoke"
       ]
@@ -131,6 +140,7 @@
         "installed-2d-package-smoke",
         "installed-2d-sprite-animation-smoke",
         "installed-2d-tilemap-runtime-ux-smoke",
+        "installed-2d-gameplay-systems-smoke",
         "installed-native-2d-sprite-smoke",
         "installed-d3d12-window-smoke",
         "installed-vulkan-window-smoke"
@@ -159,12 +169,16 @@
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-tilemap-runtime-ux"
     },
     {
+      "name": "installed-2d-gameplay-systems-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-gameplay-systems"
+    },
+    {
       "name": "installed-d3d12-window-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer"
     },
     {
       "name": "installed-native-2d-sprite-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux"
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems"
     },
     {
       "name": "installed-vulkan-window-smoke",

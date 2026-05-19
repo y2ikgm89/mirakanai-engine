@@ -1014,6 +1014,9 @@ if ($geNavigationModule[0].publicHeaders -notcontains "engine/navigation/include
 if ($geNavigationModule[0].publicHeaders -notcontains "engine/navigation/include/mirakana/navigation/navigation_path_planner.hpp") {
     Write-Error "engine/agent/manifest.json MK_navigation publicHeaders must include navigation_path_planner.hpp"
 }
+if ($geNavigationModule[0].publicHeaders -notcontains "engine/navigation/include/mirakana/navigation/navigation_navmesh.hpp") {
+    Write-Error "engine/agent/manifest.json MK_navigation publicHeaders must include navigation_navmesh.hpp"
+}
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentNavigation")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentNavigation"
 }
@@ -1024,6 +1027,8 @@ Assert-ContainsText ([string]$geNavigationModule[0].purpose) "smooth_navigation_
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "NavigationGridAgentPathRequest" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "NavigationGridAgentPathPlan" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "plan_navigation_grid_agent_path" "MK_navigation module purpose"
+Assert-ContainsText ([string]$geNavigationModule[0].purpose) "NavigationNavmeshPathRequest" "MK_navigation module purpose"
+Assert-ContainsText ([string]$geNavigationModule[0].purpose) "plan_navigation_navmesh_path" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "navmesh" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "crowd" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "scene/physics integration" "MK_navigation module purpose"
@@ -1035,6 +1040,8 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "smoo
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "NavigationGridAgentPathRequest" "navigation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "NavigationGridAgentPathPlan" "navigation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "plan_navigation_grid_agent_path" "navigation game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "NavigationNavmeshPathRequest" "navigation game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "plan_navigation_navmesh_path" "navigation game guidance"
 foreach ($navigationGuidance in @(
     "docs/architecture.md",
     "docs/roadmap.md",
@@ -1053,6 +1060,8 @@ foreach ($navigationGuidance in @(
     Assert-ContainsText $navigationText "NavigationGridAgentPathRequest" $navigationGuidance
     Assert-ContainsText $navigationText "NavigationGridAgentPathPlan" $navigationGuidance
     Assert-ContainsText $navigationText "plan_navigation_grid_agent_path" $navigationGuidance
+    Assert-ContainsText $navigationText "NavigationNavmeshPathRequest" $navigationGuidance
+    Assert-ContainsText $navigationText "plan_navigation_navmesh_path" $navigationGuidance
     Assert-ContainsText $navigationText "navmesh" $navigationGuidance
     Assert-ContainsText $navigationText "crowd" $navigationGuidance
     Assert-ContainsText $navigationText "scene/physics" $navigationGuidance
