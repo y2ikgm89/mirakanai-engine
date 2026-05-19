@@ -7,6 +7,7 @@
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/assets/material.hpp"
 #include "mirakana/assets/source_asset_registry.hpp"
+#include "mirakana/tools/registered_source_asset_cook_package_tool.hpp"
 
 #include <algorithm>
 #include <array>
@@ -487,6 +488,39 @@ PlaceholderAssetBundlePlan plan_placeholder_asset_bundle(const PlaceholderAssetB
                         std::string{source_asset_registry_format_v1()}, plan.source_registry_content);
     sort_changed_files(plan.changed_files);
     sort_provenance_rows(plan.provenance_rows);
+    return plan;
+}
+
+PlaceholderAssetCookPackagePlan plan_placeholder_asset_cook_package(const PlaceholderAssetCookPackageRequest& request) {
+    PlaceholderAssetCookPackagePlan plan;
+    plan.placeholder_plan = plan_placeholder_asset_bundle(request.placeholder_assets);
+    if (!plan.placeholder_plan.succeeded()) {
+        return plan;
+    }
+
+    RegisteredSourceAssetCookPackageRequest package_request;
+    package_request.source_registry_path = request.placeholder_assets.source_registry_path;
+    package_request.source_registry_content = plan.placeholder_plan.source_registry_content;
+    package_request.package_index_path = request.package_index_path;
+    package_request.package_index_content = request.package_index_content;
+    package_request.source_revision = request.source_revision;
+    package_request.selected_asset_keys.reserve(request.placeholder_assets.assets.size());
+    package_request.source_files.reserve(plan.placeholder_plan.changed_files.size());
+
+    for (const auto& asset : request.placeholder_assets.assets) {
+        package_request.selected_asset_keys.push_back(asset.asset_key);
+    }
+    for (const auto& file : plan.placeholder_plan.changed_files) {
+        if (file.path == request.placeholder_assets.source_registry_path) {
+            continue;
+        }
+        package_request.source_files.push_back(RegisteredSourceAssetCookPackageSourceFile{
+            .path = file.path,
+            .content = file.content,
+        });
+    }
+
+    plan.package_plan = plan_registered_source_asset_cook_package(package_request);
     return plan;
 }
 

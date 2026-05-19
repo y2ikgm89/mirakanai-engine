@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/asset_identity.hpp"
 #include "mirakana/assets/asset_registry.hpp"
+#include "mirakana/tools/registered_source_asset_cook_package_tool.hpp"
 
 #include <array>
 #include <cstdint>
@@ -70,6 +71,24 @@ struct PlaceholderAssetBundlePlan {
     }
 };
 
+struct PlaceholderAssetCookPackageRequest {
+    PlaceholderAssetBundleRequest placeholder_assets;
+    std::string package_index_path;
+    std::string package_index_content;
+    std::uint64_t source_revision{1};
+};
+
+struct PlaceholderAssetCookPackagePlan {
+    PlaceholderAssetBundlePlan placeholder_plan;
+    RegisteredSourceAssetCookPackageResult package_plan;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return placeholder_plan.succeeded() && package_plan.succeeded();
+    }
+};
+
 [[nodiscard]] PlaceholderAssetBundlePlan plan_placeholder_asset_bundle(const PlaceholderAssetBundleRequest& request);
+[[nodiscard]] PlaceholderAssetCookPackagePlan
+plan_placeholder_asset_cook_package(const PlaceholderAssetCookPackageRequest& request);
 
 } // namespace mirakana

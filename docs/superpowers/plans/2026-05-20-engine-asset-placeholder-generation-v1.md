@@ -1,7 +1,7 @@
 # Engine Asset Placeholder Generation v1 (2026-05-20)
 
 **Plan ID:** `engine-asset-placeholder-generation-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -53,7 +53,7 @@ Review existing `MK_assets` / `MK_tools` source/cooked asset contracts and selec
 
 ## Phase 2: Generated Game Or Package Adoption Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -73,3 +73,8 @@ Apply the selected placeholder primitive to one generated-game, sample-game, or 
 - Phase 1 implementation: `MK_tools` now exposes `plan_placeholder_asset_bundle` in `placeholder_asset_tool.hpp` for deterministic first-party texture, mesh, material, and audio source document planning with synchronized `GameEngine.SourceAssetRegistry.v1` content, changed-file hashes, provenance rows, and fail-closed diagnostics. This keeps `unsupportedProductionGaps = []`.
 - Phase 1 agent/static drift: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-public-api-boundaries.ps1` passed after manifest, docs, skills, and static guard updates.
 - Phase 1 slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `production-readiness-audit: unsupported_gaps=0`; Metal and Apple checks remained expected host-gated diagnostics on this Windows host.
+- Phase 2 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests` failed on missing `mirakana::PlaceholderAssetCookPackageRequest` and `mirakana::plan_placeholder_asset_cook_package` after adding the package-routing adoption test.
+- Phase 2 GREEN focused build/test: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests` passed, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_tests` passed.
+- Phase 2 implementation: `MK_tools` now exposes `PlaceholderAssetCookPackageRequest`, `PlaceholderAssetCookPackagePlan`, and `plan_placeholder_asset_cook_package`, routing generated placeholder source documents through the reviewed registered source cook/package planner before runtime package consumption. This keeps `unsupportedProductionGaps = []`.
+- Phase 2 agent/static drift: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, and `tools/check-ai-integration.ps1` passed after manifest, docs, skills, and static guard updates.
+- Phase 2 slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `production-readiness-audit: unsupported_gaps=0` and 65/65 tests passed; Metal and Apple checks remained expected host-gated diagnostics on this Windows host.

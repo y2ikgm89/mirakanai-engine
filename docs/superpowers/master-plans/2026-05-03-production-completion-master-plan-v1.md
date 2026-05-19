@@ -15,8 +15,8 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: `docs/superpowers/plans/2026-05-20-engine-asset-placeholder-generation-v1.md`.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-asset-placeholder-generation-v1` as the next developer-owned capability, not a reopened Engine 1.0 production gap. `engine-audio-gameplay-mixer-v1` is completed for Audio Gameplay Mix Planner v1 and source-tree sample adoption evidence.
+- Current active plan: `docs/superpowers/plans/2026-05-20-engine-gameplay-debug-overlay-v1.md`.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-gameplay-debug-overlay-v1` as the next developer-owned capability, not a reopened Engine 1.0 production gap. `engine-asset-placeholder-generation-v1` is completed for deterministic placeholder source documents plus registered source cook/package routing evidence.
 - Current gap cluster: none selected after the 2026-05-19 gameplay/physics/navigation/AI foundation closeout.
 
 ## Plan map
