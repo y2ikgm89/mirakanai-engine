@@ -846,6 +846,22 @@ if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtla
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("renderer texture upload")) {
     Write-Error "engine manifest ui-atlas-metadata-authoring-tooling-v1 authoring surface must keep cooked metadata tooling, decoded/glyph atlas bridges, and renderer-upload limits explicit"
 }
+$assetPlaceholderAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-placeholder-generation-v1" })
+if ($assetPlaceholderAuthoringSurface.Count -ne 1 -or $assetPlaceholderAuthoringSurface[0].status -ne "ready") {
+    Write-Error "engine manifest aiOperableProductionLoop authoring surface asset-placeholder-generation-v1 must be ready as an MK_tools surface"
+}
+if (-not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_placeholder_asset_bundle") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("placeholder_asset_tool.hpp") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetBundleRequest") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetBundlePlan") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetChangedFile") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetProvenanceRow") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetDiagnostic") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("external asset downloader") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("renderer/RHI residency")) {
+    Write-Error "engine manifest asset-placeholder-generation-v1 authoring surface must keep placeholder contract and non-goals explicit"
+}
 
 foreach ($packageSurface in $productionLoop.packageSurfaces) {
     Assert-Properties $packageSurface @("id", "status", "targets", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop packageSurfaces"

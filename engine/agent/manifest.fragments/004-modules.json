@@ -355,6 +355,7 @@
         "engine/tools/include/mirakana/tools/morph_mesh_cpu_source_bridge.hpp",
         "engine/tools/include/mirakana/tools/material_graph_shader_pipeline.hpp",
         "engine/tools/include/mirakana/tools/material_tool.hpp",
+        "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp",
         "engine/tools/include/mirakana/tools/registered_source_asset_cook_package_tool.hpp",
         "engine/tools/include/mirakana/tools/runtime_scene_package_validation_tool.hpp",
         "engine/tools/include/mirakana/tools/scene_prefab_authoring_tool.hpp",

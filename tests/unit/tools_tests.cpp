@@ -30,6 +30,7 @@
 #include "mirakana/tools/material_graph_shader_pipeline.hpp"
 #include "mirakana/tools/material_tool.hpp"
 #include "mirakana/tools/physics_collision_package_tool.hpp"
+#include "mirakana/tools/placeholder_asset_tool.hpp"
 #include "mirakana/tools/registered_source_asset_cook_package_tool.hpp"
 #include "mirakana/tools/runtime_scene_package_validation_tool.hpp"
 #include "mirakana/tools/scene_prefab_authoring_tool.hpp"
@@ -3952,6 +3953,136 @@ MK_TEST("source asset registration rejects unsafe paths unsupported formats exte
     MK_REQUIRE(failures_contain(package_result.diagnostics, "shader graph is not supported"));
     MK_REQUIRE(failures_contain(package_result.diagnostics, "live shader generation is not supported"));
     MK_REQUIRE(failures_contain(package_result.diagnostics, "editor productization is not supported"));
+}
+
+MK_TEST("placeholder asset bundle plans deterministic legal source documents and provenance rows") {
+    mirakana::PlaceholderAssetBundleRequest request;
+    request.source_registry_path = "source/assets/game.geassets";
+    request.assets = {
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/hero_sprite"},
+            .asset_kind = mirakana::AssetKind::texture,
+            .source_path = "source/placeholders/hero_sprite.texture_source",
+            .imported_path = "intermediate/imported/placeholders/hero_sprite.texture",
+            .seed = 7,
+            .texture_width = 4,
+            .texture_height = 4,
+        },
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/unit_quad"},
+            .asset_kind = mirakana::AssetKind::mesh,
+            .source_path = "source/placeholders/unit_quad.mesh_source",
+            .imported_path = "intermediate/imported/placeholders/unit_quad.mesh",
+        },
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/base_material"},
+            .asset_kind = mirakana::AssetKind::material,
+            .source_path = "source/placeholders/base_material.material",
+            .imported_path = "intermediate/imported/placeholders/base_material.material",
+            .material_base_color = {0.25F, 0.5F, 0.75F, 1.0F},
+        },
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/jump_beep"},
+            .asset_kind = mirakana::AssetKind::audio,
+            .source_path = "source/placeholders/jump_beep.audio_source",
+            .imported_path = "intermediate/imported/placeholders/jump_beep.audio",
+            .seed = 11,
+            .audio_sample_rate = 8000,
+            .audio_frame_count = 16,
+        },
+    };
+
+    const auto plan = mirakana::plan_placeholder_asset_bundle(request);
+    const auto repeat = mirakana::plan_placeholder_asset_bundle(request);
+    const auto find_file = [&plan](std::string_view path) -> const mirakana::PlaceholderAssetChangedFile* {
+        const auto it =
+            std::ranges::find_if(plan.changed_files, [path](const mirakana::PlaceholderAssetChangedFile& file) {
+                return file.path == path;
+            });
+        return it == plan.changed_files.end() ? nullptr : &*it;
+    };
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(repeat.succeeded());
+    MK_REQUIRE(plan.source_registry_content == repeat.source_registry_content);
+    MK_REQUIRE(plan.changed_files.size() == 5);
+    MK_REQUIRE(plan.provenance_rows.size() == 4);
+    MK_REQUIRE(text_contains(plan.source_registry_content, "asset.0.key=assets/placeholders/base_material\n"));
+    MK_REQUIRE(text_contains(plan.source_registry_content, "asset.1.key=assets/placeholders/hero_sprite\n"));
+    MK_REQUIRE(text_contains(plan.source_registry_content, "asset.2.key=assets/placeholders/jump_beep\n"));
+    MK_REQUIRE(text_contains(plan.source_registry_content, "asset.3.key=assets/placeholders/unit_quad\n"));
+
+    const auto* texture_file = find_file("source/placeholders/hero_sprite.texture_source");
+    const auto* mesh_file = find_file("source/placeholders/unit_quad.mesh_source");
+    const auto* material_file = find_file("source/placeholders/base_material.material");
+    const auto* audio_file = find_file("source/placeholders/jump_beep.audio_source");
+    MK_REQUIRE(texture_file != nullptr);
+    MK_REQUIRE(mesh_file != nullptr);
+    MK_REQUIRE(material_file != nullptr);
+    MK_REQUIRE(audio_file != nullptr);
+    MK_REQUIRE(texture_file->document_kind == "GameEngine.TextureSource.v1");
+    MK_REQUIRE(material_file->document_kind == "GameEngine.Material.v1");
+
+    const auto texture = mirakana::deserialize_texture_source_document(texture_file->content);
+    const auto mesh = mirakana::deserialize_mesh_source_document(mesh_file->content);
+    const auto material = mirakana::deserialize_material_definition(material_file->content);
+    const auto audio = mirakana::deserialize_audio_source_document(audio_file->content);
+    MK_REQUIRE(texture.width == 4);
+    MK_REQUIRE(texture.height == 4);
+    MK_REQUIRE(texture.pixel_format == mirakana::TextureSourcePixelFormat::rgba8_unorm);
+    MK_REQUIRE(texture.bytes.size() == 64);
+    MK_REQUIRE(mesh.vertex_count == 4);
+    MK_REQUIRE(mesh.index_count == 6);
+    MK_REQUIRE(mesh.vertex_bytes.size() == 48);
+    MK_REQUIRE(mesh.index_bytes.size() == 24);
+    MK_REQUIRE(material.id ==
+               mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/placeholders/base_material"}));
+    MK_REQUIRE(material.factors.base_color[2] == 0.75F);
+    MK_REQUIRE(audio.sample_rate == 8000);
+    MK_REQUIRE(audio.channel_count == 1);
+    MK_REQUIRE(audio.frame_count == 16);
+    MK_REQUIRE(audio.sample_format == mirakana::AudioSourceSampleFormat::pcm16);
+    MK_REQUIRE(audio.samples.size() == 32);
+    MK_REQUIRE(plan.provenance_rows[0].generator == "mirakana-placeholder-asset-tool-v1");
+    MK_REQUIRE(plan.provenance_rows[0].license == "LicenseRef-Proprietary");
+    MK_REQUIRE(plan.provenance_rows[0].content_hash != 0);
+}
+
+MK_TEST("placeholder asset bundle fails closed on unsafe duplicate and unsupported rows") {
+    mirakana::PlaceholderAssetBundleRequest request;
+    request.source_registry_path = "../game.geassets";
+    request.assets = {
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/hero_sprite"},
+            .asset_kind = mirakana::AssetKind::texture,
+            .source_path = "source/placeholders/hero_sprite.texture_source",
+            .imported_path = "intermediate/imported/placeholders/hero_sprite.texture",
+            .texture_width = 0,
+            .texture_height = 4,
+        },
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/hero_sprite"},
+            .asset_kind = mirakana::AssetKind::script,
+            .source_path = "source/placeholders/hero_script.script",
+            .imported_path = "intermediate/imported/placeholders/hero_script.script",
+        },
+    };
+
+    const auto plan = mirakana::plan_placeholder_asset_bundle(request);
+    const auto has_diagnostic = [&plan](std::string_view code) {
+        return std::ranges::any_of(plan.diagnostics, [code](const mirakana::PlaceholderAssetDiagnostic& diagnostic) {
+            return diagnostic.code == code;
+        });
+    };
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.source_registry_content.empty());
+    MK_REQUIRE(plan.changed_files.empty());
+    MK_REQUIRE(plan.provenance_rows.empty());
+    MK_REQUIRE(has_diagnostic("unsafe_source_registry_path"));
+    MK_REQUIRE(has_diagnostic("invalid_texture_dimensions"));
+    MK_REQUIRE(has_diagnostic("duplicate_asset_key"));
+    MK_REQUIRE(has_diagnostic("unsupported_asset_kind"));
 }
 
 MK_TEST("source asset registration validates dependency targets and canonical dry-run rows") {

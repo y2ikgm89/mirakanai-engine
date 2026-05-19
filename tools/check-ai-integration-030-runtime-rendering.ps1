@@ -179,6 +179,9 @@ if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEd
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorPrefabInstanceSourceLinks")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorPrefabInstanceSourceLinks"
 }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentAssetPlaceholderGeneration")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentAssetPlaceholderGeneration"
+}
 $geUiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_ui" })
 if ($geUiModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_ui module"
@@ -253,6 +256,9 @@ if (@($gePhysicsModule[0].publicHeaders) -notcontains "engine/physics/include/mi
 }
 if (@($geToolsModule[0].publicHeaders) -notcontains "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") {
     Write-Error "engine/agent/manifest.json MK_tools publicHeaders must include gltf_node_animation_import.hpp"
+}
+if (@($geToolsModule[0].publicHeaders) -notcontains "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") {
+    Write-Error "engine/agent/manifest.json MK_tools publicHeaders must include placeholder_asset_tool.hpp"
 }
 if (@($geEditorCoreModule[0].publicHeaders) -notcontains "editor/core/include/mirakana/editor/play_in_editor.hpp") {
     Write-Error "engine/agent/manifest.json MK_editor_core publicHeaders must include play_in_editor.hpp"
@@ -614,9 +620,31 @@ Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/m
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "apply_material_instance_package_update" "MK_tools material tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "plan_material_graph_package_update" "MK_tools material tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/material_tool.hpp") "apply_material_graph_package_update" "MK_tools material tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetBundleRequest" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetBundlePlan" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetChangedFile" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetProvenanceRow" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetDiagnostic" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "plan_placeholder_asset_bundle" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "source_asset_registry_format_v1" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "serialize_source_asset_registry_document" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "mirakana-placeholder-asset-tool-v1" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "LicenseRef-Proprietary" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "invalid_texture_dimensions" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/CMakeLists.txt") "placeholder_asset_tool.cpp" "MK_tools asset CMake source list"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "placeholder asset bundle plans deterministic legal source documents and provenance rows" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "placeholder asset bundle fails closed on unsafe duplicate and unsupported rows" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "unsupported_asset_kind" "MK_tools tests"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "plan_scene_package_update" "MK_tools scene tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "apply_scene_package_update" "MK_tools scene tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/assets/include/mirakana/assets/ui_atlas_metadata.hpp") "GameEngine.UiAtlas.v1" "MK_assets ui atlas metadata public header"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "plan_placeholder_asset_bundle" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetBundleRequest" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetBundlePlan" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetChangedFile" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "GameEngine.SourceAssetRegistry.v1" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetProvenanceRow" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "must not download external assets" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_accessibility_publish" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "publish_accessibility_payload" "runtime UI game guidance"

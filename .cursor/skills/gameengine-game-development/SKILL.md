@@ -24,3 +24,5 @@ Full workflow lives in shared skills. Start with the short `SKILL.md` routers, t
 Games live under `games/<game_name>/` with `game.agent.json`; see `AGENTS.md` **AI-Driven Game Development**.
 
 Runtime package payloads are byte-hashed. New text cooked/runtime extensions or `runtimePackageFiles` entries need matching `runtime/.gitattributes` `text eol=lf`, scaffold/static-check parity, and the narrowest package smoke before slice completion.
+
+Missing generated-game art/audio should use reviewed engine tooling such as `mirakana::PlaceholderAssetBundleRequest` / `mirakana::plan_placeholder_asset_bundle` to return a `PlaceholderAssetBundlePlan` with deterministic first-party placeholder source documents, changed-file hashes, provenance, and fail-closed diagnostics before source registry/cook/package lanes; do not download external assets or parse source assets at runtime.

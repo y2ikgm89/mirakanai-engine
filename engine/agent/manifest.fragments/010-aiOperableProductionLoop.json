@@ -4544,6 +4544,12 @@
         "notes": "Runtime Input Context Stack Planner v1 is a host-independent value contract for generated game input context handoff: RuntimeInputContextStackRequest carries ordered RuntimeInputContextLayerDesc rows for gameplay, menu, dialogue, rebinding, capture, or overlay layers; plan_runtime_input_context_stack validates context names, rejects duplicate contexts, returns a RuntimeInputContextStackPlan with a RuntimeInputContextStack only after diagnostics pass, supports default-context fallback, lets modal rows block lower-priority layers, and reports gameplay_input_available, gameplay_input_consumed, ui_context_active, and capture_context_active evidence. sample_2d_playable_foundation demonstrates source-tree adoption by planning a passive HUD overlay plus gameplay stack before evaluating RuntimeInputActionMap. Diagnostics cover invalid_context, duplicate_context, and no_active_context; failed plans clear partial stack rows. This is not a UI focus/navigation system, input binding document format change, command dispatcher, platform adapter, native handle surface, full runtime rebinding panel, or game-specific menu schema."
       },
       {
+        "id": "asset-placeholder-generation-v1",
+        "status": "ready",
+        "owner": "MK_tools",
+        "notes": "Asset Placeholder Generation v1 exposes plan_placeholder_asset_bundle through placeholder_asset_tool.hpp so reviewed engine tooling can derive deterministic first-party placeholder texture, mesh, material, and audio source documents, synchronized GameEngine.SourceAssetRegistry.v1 content, changed-file hashes, and provenance rows through PlaceholderAssetBundleRequest, PlaceholderAssetBundlePlan, PlaceholderAssetChangedFile, PlaceholderAssetProvenanceRow, and PlaceholderAssetDiagnostic. Diagnostics fail closed for unsafe registry/source/imported paths, duplicate asset keys, unsupported asset kinds, invalid texture dimensions, and invalid audio/material shapes. This is not an external asset downloader, image/audio generation service, source importer execution path, package cooking/apply command, renderer/RHI residency path, package streaming path, game-specific art direction system, native handle surface, or broad generated-game production readiness claim."
+      },
+      {
         "id": "asset-identity-v2",
         "status": "ready",
         "owner": "MK_assets",
