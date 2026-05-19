@@ -5617,6 +5617,12 @@
         "notes": "Runtime Scene Gameplay Binding v1 is a backend-neutral value contract for generated gameplay authoring: RuntimeSceneGameplayBindingSourceRow rows carry binding_id, gameplay_system_id, slot_id, node_name, and a required RuntimeSceneGameplayBindingComponentKind, and resolve_runtime_scene_gameplay_bindings maps them to RuntimeSceneGameplayBindingRow node ids only when authored scene names are unique and required camera, light, mesh_renderer, sprite_renderer, or any_renderable component gates pass. Diagnostics cover invalid ids, duplicate binding ids, missing or duplicate node names, and missing required components; failed resolutions clear partial bindings. This is not a gameplay system scheduler, script runtime, editor command surface, renderer/RHI execution path, package format change, or broad generated-game production readiness claim."
       },
       {
+        "id": "runtime-scene-gameplay-interaction-framework-v1",
+        "status": "ready",
+        "owner": "MK_runtime_scene",
+        "notes": "Runtime Scene Gameplay Interaction Framework v1 is a backend-neutral value contract for generated gameplay authoring: RuntimeSceneGameplayInteractionSourceRow rows carry action_id, RuntimeSceneGameplayInteractionKind, source_binding_id, target_binding_id, objective_id, and amount; RuntimeSceneGameplayInteractionPlanRequest carries the current RuntimeSceneGameplaySessionState; and plan_runtime_scene_gameplay_interactions consumes resolved RuntimeSceneGameplayBindingRow values to produce deterministic RuntimeSceneGameplayInteractionPlan rows for trigger, pickup, damage, heal, objective_progress, objective_complete, win, loss, and restart interactions. Diagnostics cover invalid or duplicate action ids, missing source or target bindings, missing objective ids, invalid positive amount requirements, and rejected terminal-state transitions; failed plans clear partial rows and preserve the caller-provided session state. This is not a gameplay system scheduler, script runtime, physics/event dispatcher, editor command surface, renderer/RHI execution path, package format change, or broad generated-game production readiness claim."
+      },
+      {
         "id": "asset-identity-v2",
         "status": "ready",
         "owner": "MK_assets",

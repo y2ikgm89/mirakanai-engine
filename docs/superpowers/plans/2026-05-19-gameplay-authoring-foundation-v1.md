@@ -58,9 +58,18 @@ Add a small `MK_runtime_scene` public contract that resolves explicit authored g
 
 ## Phase 2: Basic Interaction Framework
 
+**Status:** Completed.
+
 ### Goal
 
 Layer a value-type interaction plan over resolved gameplay bindings so games can express triggers, pickups, damage/heal, objectives, and win/loss/restart transitions without engine-specific game rules.
+
+### Implemented API Shape
+
+- `RuntimeSceneGameplayInteractionSourceRow`: authored action id, interaction kind, source/target binding ids, optional objective id, and amount.
+- `RuntimeSceneGameplayInteractionPlanRequest`: caller-provided session state.
+- `RuntimeSceneGameplayInteractionPlan`: deterministic resolved interaction rows, diagnostics, final session state, and `succeeded()`.
+- `plan_runtime_scene_gameplay_interactions`: fail-closed planner over Phase 1 binding rows.
 
 ### Done When
 
@@ -95,3 +104,20 @@ Expose runtime-visible/headless debug rows for gameplay bindings and interaction
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
 - Phase 1 full closeout:
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit: unsupported_gaps=0`.
+- Phase 2 RED:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_scene_tests`
+  - Expected failure before implementation: `RuntimeSceneGameplayInteractionSourceRow`, `RuntimeSceneGameplayInteractionPlanRequest`, `RuntimeSceneGameplayInteractionPlan`, and `plan_runtime_scene_gameplay_interactions` were undefined.
+- Phase 2 focused green:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_scene_tests`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_scene_tests`
+- Phase 2 sample usage:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_playable_foundation`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_gameplay_foundation`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "sample_2d_playable_foundation|sample_gameplay_foundation"`
+- Phase 2 agent/static and public contract:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- Phase 2 full closeout:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`

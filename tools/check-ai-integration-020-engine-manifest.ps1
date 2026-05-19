@@ -1568,6 +1568,58 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "resolve_runtime_scene_gameplay_bindings" $docSurface.Label
     Assert-ContainsText $docSurface.Text "RuntimeSceneGameplayBindingSourceRow" $docSurface.Label
 }
+$gameplayInteractionAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-scene-gameplay-interaction-framework-v1" })
+if ($gameplayInteractionAuthoringSurface.Count -ne 1 -or $gameplayInteractionAuthoringSurface[0].status -ne "ready" -or
+    $gameplayInteractionAuthoringSurface[0].owner -ne "MK_runtime_scene") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-scene-gameplay-interaction-framework-v1 must be ready as an MK_runtime_scene surface"
+}
+if (-not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayInteractionSourceRow") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayInteractionPlanRequest") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("plan_runtime_scene_gameplay_interactions") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("RuntimeSceneGameplayBindingRow") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("duplicate action ids") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("missing source or target bindings") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("rejected terminal-state transitions") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("gameplay system scheduler") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("physics/event dispatcher") -or
+    -not ([string]$gameplayInteractionAuthoringSurface[0].notes).Contains("package format change")) {
+    Write-Error "engine/agent/manifest.json runtime-scene-gameplay-interaction-framework-v1 authoring surface must keep interaction contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeSceneGameplayInteractionSourceRow",
+        "RuntimeSceneGameplayInteractionPlanRequest",
+        "RuntimeSceneGameplayInteractionPlan",
+        "plan_runtime_scene_gameplay_interactions"
+    )) {
+    Assert-ContainsText $runtimeSceneHeaderText $needle "engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSceneGameplayInteractionDiagnosticCode::duplicate_action_id",
+        "RuntimeSceneGameplayInteractionDiagnosticCode::missing_target_binding",
+        "RuntimeSceneGameplayInteractionDiagnosticCode::rejected_transition",
+        "gameplay_interaction_resulting_session_state"
+    )) {
+    Assert-ContainsText $runtimeSceneSourceText $needle "engine/runtime_scene/src/runtime_scene.cpp"
+}
+Assert-ContainsText $runtimeSceneTestsText "runtime scene gameplay interaction plan composes binding rows in authored order" "tests/unit/runtime_scene_tests.cpp"
+Assert-ContainsText $runtimeSceneTestsText "runtime scene gameplay interaction plan rejects invalid targets duplicates and terminal transitions" "tests/unit/runtime_scene_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "plan_runtime_scene_gameplay_interactions" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "RuntimeSceneGameplayInteractionSourceRow" $docSurface.Label
+}
+foreach ($sampleSurface in @(
+        "games/sample_2d_playable_foundation/main.cpp",
+        "games/sample_gameplay_foundation/main.cpp"
+    )) {
+    $sampleSurfaceText = Get-AgentSurfaceText $sampleSurface
+    Assert-ContainsText $sampleSurfaceText "plan_runtime_scene_gameplay_interactions" $sampleSurface
+    Assert-ContainsText $sampleSurfaceText "RuntimeSceneGameplayInteractionSourceRow" $sampleSurface
+    Assert-ContainsText $sampleSurfaceText "gameplay_interactions" $sampleSurface
+}
 $assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"

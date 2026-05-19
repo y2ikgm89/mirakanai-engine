@@ -85,6 +85,18 @@ find_gameplay_binding_diagnostic(const mirakana::runtime_scene::RuntimeSceneGame
     return nullptr;
 }
 
+[[nodiscard]] const mirakana::runtime_scene::RuntimeSceneGameplayInteractionDiagnostic*
+find_gameplay_interaction_diagnostic(const mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlan& plan,
+                                     mirakana::runtime_scene::RuntimeSceneGameplayInteractionDiagnosticCode code,
+                                     std::string_view action_id) {
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code && diagnostic.action_id == action_id) {
+            return &diagnostic;
+        }
+    }
+    return nullptr;
+}
+
 [[nodiscard]] mirakana::runtime::RuntimeAssetPackage
 make_scene_package(mirakana::AssetId scene_asset, const mirakana::Scene& scene,
                    std::vector<mirakana::runtime::RuntimeAssetRecord> records) {
@@ -627,6 +639,209 @@ MK_TEST("runtime scene gameplay bindings fail closed for invalid ambiguous and m
         "door.mesh");
     MK_REQUIRE(missing_component != nullptr);
     MK_REQUIRE(missing_component->node == door);
+}
+
+MK_TEST("runtime scene gameplay interaction plan composes binding rows in authored order") {
+    const auto scene_asset = mirakana::AssetId::from_name("scenes/gameplay_interactions");
+    const auto mesh = mirakana::AssetId::from_name("meshes/player");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    const auto sprite = mirakana::AssetId::from_name("textures/pickup");
+    auto source_scene = make_mesh_and_sprite_scene(mesh, material, sprite);
+    const auto exit = source_scene.create_node("Exit");
+    mirakana::SceneNodeComponents exit_components;
+    exit_components.light = mirakana::LightComponent{};
+    source_scene.set_components(exit, exit_components);
+    const auto package =
+        make_scene_package(scene_asset, source_scene,
+                           {
+                               make_record(mirakana::runtime::RuntimeAssetHandle{1}, mesh, mirakana::AssetKind::mesh,
+                                           "assets/meshes/player.mesh", {}),
+                               make_record(mirakana::runtime::RuntimeAssetHandle{2}, material,
+                                           mirakana::AssetKind::material, "assets/materials/player.material", {}),
+                               make_record(mirakana::runtime::RuntimeAssetHandle{3}, sprite,
+                                           mirakana::AssetKind::texture, "assets/textures/pickup.texture", {}),
+                           });
+
+    auto result = mirakana::runtime_scene::instantiate_runtime_scene(package, scene_asset);
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.instance.has_value());
+
+    const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayBindingSourceRow> binding_rows{
+        {
+            .binding_id = "player.actor",
+            .gameplay_system_id = "interaction",
+            .slot_id = "actor",
+            .node_name = "Player",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::mesh_renderer,
+        },
+        {
+            .binding_id = "pickup.coin",
+            .gameplay_system_id = "interaction",
+            .slot_id = "pickup",
+            .node_name = "Nameplate",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::sprite_renderer,
+        },
+        {
+            .binding_id = "level.exit",
+            .gameplay_system_id = "interaction",
+            .slot_id = "trigger",
+            .node_name = "Exit",
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::light,
+        },
+    };
+    const auto binding_resolution =
+        mirakana::runtime_scene::resolve_runtime_scene_gameplay_bindings(*result.instance, binding_rows);
+    MK_REQUIRE(binding_resolution.succeeded());
+
+    const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayInteractionSourceRow> interactions{
+        {
+            .action_id = "pickup.coin",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::pickup,
+            .source_binding_id = "player.actor",
+            .target_binding_id = "pickup.coin",
+            .amount = 1,
+        },
+        {
+            .action_id = "objective.coin",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::objective_progress,
+            .source_binding_id = "pickup.coin",
+            .objective_id = "collect_coin",
+            .amount = 1,
+        },
+        {
+            .action_id = "exit.win",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::win,
+            .source_binding_id = "level.exit",
+        },
+    };
+
+    const auto plan = mirakana::runtime_scene::plan_runtime_scene_gameplay_interactions(
+        binding_resolution.bindings, interactions,
+        mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlanRequest{
+            .session_state = mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running,
+        });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.rows.size() == 3);
+    MK_REQUIRE(plan.rows[0].action_id == "pickup.coin");
+    MK_REQUIRE(plan.rows[0].kind == mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::pickup);
+    MK_REQUIRE(plan.rows[0].source_node == mirakana::SceneNodeId{1});
+    MK_REQUIRE(plan.rows[0].target_node == mirakana::SceneNodeId{2});
+    MK_REQUIRE(plan.rows[0].amount == 1);
+    MK_REQUIRE(plan.rows[0].resulting_session_state ==
+               mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running);
+    MK_REQUIRE(plan.rows[1].action_id == "objective.coin");
+    MK_REQUIRE(plan.rows[1].objective_id == "collect_coin");
+    MK_REQUIRE(plan.rows[1].target_node == mirakana::null_scene_node);
+    MK_REQUIRE(plan.rows[2].action_id == "exit.win");
+    MK_REQUIRE(plan.rows[2].source_node == exit);
+    MK_REQUIRE(plan.rows[2].resulting_session_state == mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won);
+    MK_REQUIRE(plan.final_session_state == mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won);
+}
+
+MK_TEST("runtime scene gameplay interaction plan rejects invalid targets duplicates and terminal transitions") {
+    const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayBindingRow> bindings{
+        {
+            .binding_id = "player.actor",
+            .gameplay_system_id = "interaction",
+            .slot_id = "actor",
+            .node_name = "Player",
+            .node = mirakana::SceneNodeId{1},
+            .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::mesh_renderer,
+        },
+    };
+    const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayInteractionSourceRow> interactions{
+        {
+            .action_id = "",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::trigger,
+            .source_binding_id = "player.actor",
+            .target_binding_id = "missing.trigger",
+        },
+        {
+            .action_id = "duplicate.action",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::heal,
+            .source_binding_id = "player.actor",
+            .target_binding_id = "player.actor",
+            .amount = 1,
+        },
+        {
+            .action_id = "duplicate.action",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::damage,
+            .source_binding_id = "player.actor",
+            .target_binding_id = "player.actor",
+            .amount = 1,
+        },
+        {
+            .action_id = "missing.source",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::pickup,
+            .source_binding_id = "missing.actor",
+            .target_binding_id = "player.actor",
+            .amount = 1,
+        },
+        {
+            .action_id = "missing.target",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::pickup,
+            .source_binding_id = "player.actor",
+            .target_binding_id = "missing.pickup",
+            .amount = 1,
+        },
+        {
+            .action_id = "missing.objective",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::objective_complete,
+            .source_binding_id = "player.actor",
+        },
+        {
+            .action_id = "invalid.amount",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::damage,
+            .source_binding_id = "player.actor",
+            .target_binding_id = "player.actor",
+            .amount = 0,
+        },
+        {
+            .action_id = "terminal.pickup",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::pickup,
+            .source_binding_id = "player.actor",
+            .target_binding_id = "player.actor",
+            .amount = 1,
+        },
+        {
+            .action_id = "terminal.restart",
+            .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::restart,
+            .source_binding_id = "player.actor",
+        },
+    };
+
+    const auto plan = mirakana::runtime_scene::plan_runtime_scene_gameplay_interactions(
+        bindings, interactions,
+        mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlanRequest{
+            .session_state = mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won,
+        });
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.empty());
+    MK_REQUIRE(find_gameplay_interaction_diagnostic(
+                   plan, mirakana::runtime_scene::RuntimeSceneGameplayInteractionDiagnosticCode::invalid_action_id,
+                   "") != nullptr);
+    MK_REQUIRE(find_gameplay_interaction_diagnostic(
+                   plan, mirakana::runtime_scene::RuntimeSceneGameplayInteractionDiagnosticCode::duplicate_action_id,
+                   "duplicate.action") != nullptr);
+    MK_REQUIRE(find_gameplay_interaction_diagnostic(
+                   plan, mirakana::runtime_scene::RuntimeSceneGameplayInteractionDiagnosticCode::missing_source_binding,
+                   "missing.source") != nullptr);
+    MK_REQUIRE(find_gameplay_interaction_diagnostic(
+                   plan, mirakana::runtime_scene::RuntimeSceneGameplayInteractionDiagnosticCode::missing_target_binding,
+                   "missing.target") != nullptr);
+    MK_REQUIRE(find_gameplay_interaction_diagnostic(
+                   plan, mirakana::runtime_scene::RuntimeSceneGameplayInteractionDiagnosticCode::missing_objective_id,
+                   "missing.objective") != nullptr);
+    MK_REQUIRE(find_gameplay_interaction_diagnostic(
+                   plan, mirakana::runtime_scene::RuntimeSceneGameplayInteractionDiagnosticCode::invalid_amount,
+                   "invalid.amount") != nullptr);
+    MK_REQUIRE(find_gameplay_interaction_diagnostic(
+                   plan, mirakana::runtime_scene::RuntimeSceneGameplayInteractionDiagnosticCode::rejected_transition,
+                   "terminal.pickup") != nullptr);
+    MK_REQUIRE(plan.final_session_state == mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won);
 }
 
 MK_TEST("runtime scene resolves authored animation transform bindings and applies samples") {

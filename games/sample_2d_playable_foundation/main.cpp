@@ -9,6 +9,7 @@
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/runtime/session_services.hpp"
+#include "mirakana/runtime_scene/runtime_scene.hpp"
 #include "mirakana/scene/playable_2d.hpp"
 #include "mirakana/scene/render_packet.hpp"
 #include "mirakana/scene/scene.hpp"
@@ -70,6 +71,8 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
             .visible = true,
         };
         scene_.set_components(player_, player_components);
+
+        build_gameplay_interaction_plan(camera);
 
         ui_ok_ = build_hud();
         theme_.add(mirakana::UiThemeColor{.token = "hud.panel",
@@ -162,7 +165,10 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
                jump_voice_ != mirakana::null_audio_voice && frames_ == 3 && final_x_ == 3.0F && primary_camera_seen_ &&
                scene_sprites_submitted_ == 3 && hud_boxes_submitted_ == 3 && audio_commands_ == 1 &&
                audio_underruns_ == 0 && stats.frames_started == 3 && stats.frames_finished == 3 &&
-               stats.sprites_submitted == 6;
+               stats.sprites_submitted == 6 && gameplay_interaction_plan_.succeeded() &&
+               gameplay_interaction_plan_.rows.size() == 3U &&
+               gameplay_interaction_plan_.final_session_state ==
+                   mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won;
     }
 
     [[nodiscard]] int frames() const noexcept {
@@ -173,7 +179,58 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
         return final_x_;
     }
 
+    [[nodiscard]] std::size_t gameplay_interaction_count() const noexcept {
+        return gameplay_interaction_plan_.rows.size();
+    }
+
   private:
+    void build_gameplay_interaction_plan(mirakana::SceneNodeId camera) {
+        const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayBindingRow> bindings{
+            {
+                .binding_id = "player.actor",
+                .gameplay_system_id = "sample_2d",
+                .slot_id = "actor",
+                .node_name = "Player",
+                .node = player_,
+                .required_component =
+                    mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::sprite_renderer,
+            },
+            {
+                .binding_id = "camera.primary",
+                .gameplay_system_id = "sample_2d",
+                .slot_id = "trigger_target",
+                .node_name = "Main Camera",
+                .node = camera,
+                .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::camera,
+            },
+        };
+        const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayInteractionSourceRow> interactions{
+            {
+                .action_id = "movement.camera_trigger",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::trigger,
+                .source_binding_id = "player.actor",
+                .target_binding_id = "camera.primary",
+            },
+            {
+                .action_id = "score.progress",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::objective_progress,
+                .source_binding_id = "player.actor",
+                .objective_id = "score",
+                .amount = 100,
+            },
+            {
+                .action_id = "level.win",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::win,
+                .source_binding_id = "player.actor",
+            },
+        };
+        gameplay_interaction_plan_ = mirakana::runtime_scene::plan_runtime_scene_gameplay_interactions(
+            bindings, interactions,
+            mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlanRequest{
+                .session_state = mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running,
+            });
+    }
+
     [[nodiscard]] bool build_hud() {
         mirakana::ui::ElementDesc root;
         root.id = mirakana::ui::ElementId{"hud.root"};
@@ -210,6 +267,7 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     mirakana::runtime::RuntimeInputActionMap actions_;
     mirakana::Scene scene_{"Sample 2D Playable Foundation"};
     mirakana::SceneNodeId player_;
+    mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlan gameplay_interaction_plan_;
     mirakana::ui::UiDocument hud_;
     mirakana::UiRendererTheme theme_;
     mirakana::AudioMixer mixer_;
@@ -242,7 +300,8 @@ int main() {
     Sample2DPlayableFoundationGame game(input, renderer);
 
     const auto result = runner.run(game, mirakana::RunConfig{.max_frames = 8, .fixed_delta_seconds = 1.0 / 60.0});
-    std::cout << "sample_2d_playable_foundation frames=" << result.frames_run << " final_x=" << game.final_x() << '\n';
+    std::cout << "sample_2d_playable_foundation frames=" << result.frames_run << " final_x=" << game.final_x()
+              << " gameplay_interactions=" << game.gameplay_interaction_count() << '\n';
 
     return result.status == mirakana::RunStatus::stopped_by_app && result.frames_run == 3 && game.passed() ? 0 : 1;
 }

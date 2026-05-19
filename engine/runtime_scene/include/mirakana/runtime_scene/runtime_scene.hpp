@@ -180,6 +180,82 @@ struct RuntimeSceneGameplayBindingResolution {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+enum class RuntimeSceneGameplayInteractionKind : std::uint8_t {
+    trigger,
+    pickup,
+    damage,
+    heal,
+    objective_progress,
+    objective_complete,
+    win,
+    loss,
+    restart,
+};
+
+enum class RuntimeSceneGameplaySessionState : std::uint8_t {
+    running,
+    won,
+    lost,
+};
+
+enum class RuntimeSceneGameplayInteractionDiagnosticCode : std::uint8_t {
+    none,
+    invalid_action_id,
+    duplicate_action_id,
+    invalid_source_binding_id,
+    invalid_target_binding_id,
+    missing_source_binding,
+    missing_target_binding,
+    missing_objective_id,
+    invalid_amount,
+    rejected_transition,
+};
+
+struct RuntimeSceneGameplayInteractionSourceRow {
+    std::string action_id;
+    RuntimeSceneGameplayInteractionKind kind{RuntimeSceneGameplayInteractionKind::trigger};
+    std::string source_binding_id;
+    std::string target_binding_id;
+    std::string objective_id;
+    int amount{0};
+};
+
+struct RuntimeSceneGameplayInteractionPlanRequest {
+    RuntimeSceneGameplaySessionState session_state{RuntimeSceneGameplaySessionState::running};
+};
+
+struct RuntimeSceneGameplayInteractionRow {
+    std::string action_id;
+    RuntimeSceneGameplayInteractionKind kind{RuntimeSceneGameplayInteractionKind::trigger};
+    std::string source_binding_id;
+    std::string target_binding_id;
+    SceneNodeId source_node{null_scene_node};
+    SceneNodeId target_node{null_scene_node};
+    std::string objective_id;
+    int amount{0};
+    RuntimeSceneGameplaySessionState resulting_session_state{RuntimeSceneGameplaySessionState::running};
+};
+
+struct RuntimeSceneGameplayInteractionDiagnostic {
+    RuntimeSceneGameplayInteractionDiagnosticCode code{RuntimeSceneGameplayInteractionDiagnosticCode::none};
+    std::string action_id;
+    RuntimeSceneGameplayInteractionKind kind{RuntimeSceneGameplayInteractionKind::trigger};
+    std::string source_binding_id;
+    std::string target_binding_id;
+    std::string objective_id;
+    int amount{0};
+    RuntimeSceneGameplaySessionState session_state{RuntimeSceneGameplaySessionState::running};
+    std::string message;
+};
+
+struct RuntimeSceneGameplayInteractionPlan {
+    std::vector<RuntimeSceneGameplayInteractionRow> rows;
+    std::vector<RuntimeSceneGameplayInteractionDiagnostic> diagnostics;
+    RuntimeSceneGameplaySessionState final_session_state{RuntimeSceneGameplaySessionState::running};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 struct RuntimeSceneAnimationTransformApplyResult {
     bool succeeded{false};
     std::string diagnostic;
@@ -203,6 +279,11 @@ resolve_runtime_scene_animation_transform_bindings(const RuntimeSceneInstance& i
 [[nodiscard]] RuntimeSceneGameplayBindingResolution
 resolve_runtime_scene_gameplay_bindings(const RuntimeSceneInstance& instance,
                                         std::span<const RuntimeSceneGameplayBindingSourceRow> source_rows);
+
+[[nodiscard]] RuntimeSceneGameplayInteractionPlan
+plan_runtime_scene_gameplay_interactions(std::span<const RuntimeSceneGameplayBindingRow> bindings,
+                                         std::span<const RuntimeSceneGameplayInteractionSourceRow> source_rows,
+                                         RuntimeSceneGameplayInteractionPlanRequest request = {});
 
 [[nodiscard]] RuntimeSceneAnimationTransformApplyResult
 apply_runtime_scene_animation_transform_samples(RuntimeSceneInstance& instance,

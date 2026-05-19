@@ -15,6 +15,7 @@
 #include "mirakana/navigation/navigation_navmesh.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
 #include "mirakana/physics/physics3d.hpp"
+#include "mirakana/runtime_scene/runtime_scene.hpp"
 
 #include <array>
 #include <cmath>
@@ -229,6 +230,19 @@ physics_character_dynamic_policy_status_name(mirakana::PhysicsCharacterDynamicPo
     return "unknown";
 }
 
+[[nodiscard]] constexpr std::string_view
+runtime_scene_gameplay_session_state_name(mirakana::runtime_scene::RuntimeSceneGameplaySessionState state) noexcept {
+    switch (state) {
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running:
+        return "running";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won:
+        return "won";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::lost:
+        return "lost";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] constexpr mirakana::NavigationGridPointMapping navigation_mapping() noexcept {
     return mirakana::NavigationGridPointMapping{
         .origin = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
@@ -331,6 +345,7 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         build_navigation_navmesh_probe();
         build_physics_movement_policy_probe();
         render_audio_stream_probe();
+        build_runtime_scene_gameplay_interaction_probe();
 
         (void)animation_.trigger("move");
         context.logger.write(mirakana::LogRecord{
@@ -551,6 +566,22 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t physics_policy_trigger_overlap_count() const noexcept {
         return physics_policy_trigger_overlap_count_;
+    }
+
+    [[nodiscard]] bool runtime_scene_gameplay_interactions_ready() const noexcept {
+        return runtime_scene_gameplay_interaction_plan_.succeeded() &&
+               runtime_scene_gameplay_interaction_plan_.rows.size() == 4U &&
+               runtime_scene_gameplay_interaction_plan_.final_session_state ==
+                   mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won;
+    }
+
+    [[nodiscard]] std::size_t runtime_scene_gameplay_interaction_count() const noexcept {
+        return runtime_scene_gameplay_interaction_plan_.rows.size();
+    }
+
+    [[nodiscard]] mirakana::runtime_scene::RuntimeSceneGameplaySessionState
+    runtime_scene_gameplay_final_state() const noexcept {
+        return runtime_scene_gameplay_interaction_plan_.final_session_state;
     }
 
     [[nodiscard]] std::string gameplay_tick_order_trace() const {
@@ -833,6 +864,67 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         audio_stream_sample_count_ = output.buffer.interleaved_float_samples.size();
     }
 
+    void build_runtime_scene_gameplay_interaction_probe() {
+        const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayBindingRow> bindings{
+            {
+                .binding_id = "actor.player",
+                .gameplay_system_id = "sample_gameplay",
+                .slot_id = "actor",
+                .node_name = "Player",
+                .node = mirakana::SceneNodeId{1U},
+                .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::mesh_renderer,
+            },
+            {
+                .binding_id = "hazard.trigger",
+                .gameplay_system_id = "sample_gameplay",
+                .slot_id = "hazard",
+                .node_name = "Hazard",
+                .node = mirakana::SceneNodeId{2U},
+                .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::any_renderable,
+            },
+            {
+                .binding_id = "goal.exit",
+                .gameplay_system_id = "sample_gameplay",
+                .slot_id = "goal",
+                .node_name = "Exit",
+                .node = mirakana::SceneNodeId{3U},
+                .required_component = mirakana::runtime_scene::RuntimeSceneGameplayBindingComponentKind::any_renderable,
+            },
+        };
+        const std::vector<mirakana::runtime_scene::RuntimeSceneGameplayInteractionSourceRow> interactions{
+            {
+                .action_id = "hazard.enter",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::trigger,
+                .source_binding_id = "actor.player",
+                .target_binding_id = "hazard.trigger",
+            },
+            {
+                .action_id = "hazard.damage",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::damage,
+                .source_binding_id = "hazard.trigger",
+                .target_binding_id = "actor.player",
+                .amount = 1,
+            },
+            {
+                .action_id = "objective.escape",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::objective_progress,
+                .source_binding_id = "actor.player",
+                .objective_id = "escape",
+                .amount = 1,
+            },
+            {
+                .action_id = "goal.win",
+                .kind = mirakana::runtime_scene::RuntimeSceneGameplayInteractionKind::win,
+                .source_binding_id = "goal.exit",
+            },
+        };
+        runtime_scene_gameplay_interaction_plan_ = mirakana::runtime_scene::plan_runtime_scene_gameplay_interactions(
+            bindings, interactions,
+            mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlanRequest{
+                .session_state = mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running,
+            });
+    }
+
     void update_ai_navigation_composition() {
         if (navigation_agent_.status != mirakana::NavigationAgentStatus::moving ||
             navigation_plan_status_ != mirakana::NavigationGridAgentPathStatus::ready ||
@@ -976,6 +1068,7 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
     mirakana::NavigationNavmeshPathResult navigation_navmesh_plan_;
     mirakana::NavigationAgentState navigation_agent_;
     mirakana::BehaviorTreeTickResult last_tree_result_;
+    mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlan runtime_scene_gameplay_interaction_plan_;
     mirakana::Entity actor_entity_{};
     mirakana::PhysicsBody3DId floor_body_{};
     mirakana::PhysicsBody3DId actor_body_{};
@@ -1063,7 +1156,10 @@ int main() {
               << " physics_policy_rows=" << game.physics_policy_row_count()
               << " physics_policy_dynamic_pushes=" << game.physics_policy_dynamic_push_count()
               << " physics_policy_solid_contacts=" << game.physics_policy_solid_contact_count()
-              << " physics_policy_trigger_overlaps=" << game.physics_policy_trigger_overlap_count() << '\n';
+              << " physics_policy_trigger_overlaps=" << game.physics_policy_trigger_overlap_count()
+              << " runtime_scene_gameplay_interactions=" << game.runtime_scene_gameplay_interaction_count()
+              << " runtime_scene_gameplay_final_state="
+              << runtime_scene_gameplay_session_state_name(game.runtime_scene_gameplay_final_state()) << '\n';
 
     return result.status == mirakana::RunStatus::stopped_by_app && result.frames_run == 4 && game.frames() == 4 &&
                    game.initialized() && registry.living_count() == 0 && std::abs(position.x - 1.25F) < 0.0001F &&
@@ -1083,7 +1179,8 @@ int main() {
                    game.physics_policy_status() == mirakana::PhysicsCharacterDynamicPolicy3DStatus::constrained &&
                    game.physics_policy_diagnostic() == mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic::none &&
                    game.physics_policy_row_count() == 3U && game.physics_policy_dynamic_push_count() == 1U &&
-                   game.physics_policy_solid_contact_count() == 1U && game.physics_policy_trigger_overlap_count() == 1U
+                   game.physics_policy_solid_contact_count() == 1U &&
+                   game.physics_policy_trigger_overlap_count() == 1U && game.runtime_scene_gameplay_interactions_ready()
                ? 0
                : 1;
 }
