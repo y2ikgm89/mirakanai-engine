@@ -760,7 +760,12 @@ if ($requiresSpriteAnimation) {
             "sprite_animation_frames_sampled",
             "sprite_animation_frames_applied",
             "sprite_animation_selected_frame_sum",
-            "sprite_animation_diagnostics"
+            "sprite_animation_diagnostics",
+            "sprite_flipbook_ticks",
+            "sprite_flipbook_frames_sampled",
+            "sprite_flipbook_frames_applied",
+            "sprite_flipbook_selected_frame_sum",
+            "sprite_flipbook_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed desktop runtime smoke status line did not include sprite animation field: $field"
@@ -769,14 +774,23 @@ if ($requiresSpriteAnimation) {
     foreach ($field in @(
             "sprite_animation_frames_sampled",
             "sprite_animation_frames_applied",
-            "sprite_animation_selected_frame_sum"
+            "sprite_animation_selected_frame_sum",
+            "sprite_flipbook_frames_sampled",
+            "sprite_flipbook_frames_applied",
+            "sprite_flipbook_selected_frame_sum"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove sprite animation count: $field"
         }
     }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_ticks=$expectedSmokeFrames\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove frame-exact sprite flipbook ticks."
+    }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_animation_diagnostics=0\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove clean sprite animation diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_diagnostics=0\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove clean sprite flipbook diagnostics."
     }
 }
 if ($requiresTilemapRuntimeUx) {

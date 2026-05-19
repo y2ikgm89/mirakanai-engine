@@ -1,8 +1,8 @@
 # Sprite Animation Flipbook v1 (2026-05-20)
 
 **Plan ID:** `sprite-animation-flipbook-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is developer-owned 2D capability work, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** Keep this plan as historical evidence. Do not leave `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` pointing here after closeout. Keep `unsupportedProductionGaps = []`; this was developer-owned 2D capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
@@ -53,7 +53,7 @@ Define the smallest reusable flipbook state/update API over cooked sprite-frame 
 
 ## Phase 2: Package Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -71,3 +71,6 @@ Adopt the flipbook contract in the generated 2D package path so package smokes c
 - Phase 0 static gate: after manifest compose, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed locally on 2026-05-20.
 - Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_tests` failed first because `RuntimeSpriteFlipbookClipDesc`, `RuntimeSpriteFlipbookState`, `RuntimeSpriteFlipbookDesc`, and `advance_runtime_sprite_flipbook` did not exist.
 - Phase 1 GREEN: `MK_scene_renderer` now exposes value-only `RuntimeSpriteFlipbookClipDesc`, `RuntimeSpriteFlipbookDesc`, `RuntimeSpriteFlipbookState`, `RuntimeSpriteFlipbookSampleResult`, and `advance_runtime_sprite_flipbook`; focused build and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_scene_renderer_tests` passed.
+- Phase 2 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` failed first because `games/sample_2d_desktop_runtime_package/main.cpp` did not yet expose `advance_runtime_sprite_flipbook` package evidence.
+- Phase 2 GREEN: `sample_2d_desktop_runtime_package` now advances a named `idle` flipbook through `advance_runtime_sprite_flipbook`, applies the sampled frame through `sample_and_apply_runtime_scene_render_sprite_animation`, and reports package-visible `sprite_flipbook_ticks`, `sprite_flipbook_frames_sampled`, `sprite_flipbook_frames_applied`, `sprite_flipbook_selected_frame_sum`, and `sprite_flipbook_diagnostics` through the existing `--require-sprite-animation` recipe.
+- Phase 2 package evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed and installed smoke reported `sprite_flipbook_ticks=3`, `sprite_flipbook_frames_sampled=3`, `sprite_flipbook_frames_applied=3`, `sprite_flipbook_selected_frame_sum=2`, and `sprite_flipbook_diagnostics=0`.

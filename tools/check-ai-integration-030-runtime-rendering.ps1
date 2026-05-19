@@ -1996,6 +1996,8 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFl
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteFlipbookSampleResult" "sprite animation flipbook game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "advance_runtime_sprite_flipbook" "sprite animation flipbook game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteAnimationFrame" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "sprite_flipbook_frames_sampled" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "sprite_flipbook_frames_applied" "sprite animation flipbook game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "package-visible flipbook counters" "sprite animation flipbook game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "stable scene color/depth bindings 0/1 and 2/3" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "postprocess_depth_input_ready=1" "rendering game guidance"
