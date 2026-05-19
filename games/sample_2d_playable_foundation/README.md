@@ -2,7 +2,8 @@
 
 Source-tree proof for the `2d-playable-source-tree` recipe.
 
-This sample runs through `mirakana::HeadlessRunner`, `mirakana::VirtualInput`, `mirakana::runtime::RuntimeInputActionMap`,
+This sample runs through `mirakana::HeadlessRunner`, `mirakana::VirtualInput`,
+`mirakana::runtime::plan_runtime_input_context_stack`, `mirakana::runtime::RuntimeInputActionMap`,
 `mirakana::Scene` orthographic camera plus sprite nodes, `mirakana::validate_playable_2d_scene`, `mirakana::submit_scene_render_packet`,
 `mirakana::UiDocument`/`mirakana::submit_ui_renderer_submission`, `mirakana::AudioMixer`, and `mirakana::NullRenderer`.
 

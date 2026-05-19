@@ -38,8 +38,9 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
         context.logger.write(mirakana::LogRecord{
             .level = mirakana::LogLevel::info, .category = "sample", .message = "2d playable foundation started"});
 
-        actions_.bind_key_axis("move_x", mirakana::Key::left, mirakana::Key::right);
-        actions_.bind_key("jump", mirakana::Key::space);
+        actions_.bind_key_axis_in_context("gameplay", "move_x", mirakana::Key::left, mirakana::Key::right);
+        actions_.bind_key_in_context("gameplay", "jump", mirakana::Key::space);
+        actions_.bind_key_in_context("hud", "toggle_debug", mirakana::Key::escape);
         input_.press(mirakana::Key::right);
         input_.press(mirakana::Key::space);
 
@@ -110,8 +111,33 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
             return false;
         }
 
-        player->transform.position.x += actions_.axis_value("move_x", input_state);
-        if (actions_.action_pressed("jump", input_state)) {
+        input_context_plan_ =
+            mirakana::runtime::plan_runtime_input_context_stack(mirakana::runtime::RuntimeInputContextStackRequest{
+                .layers =
+                    {
+                        mirakana::runtime::RuntimeInputContextLayerDesc{
+                            .context = "hud",
+                            .kind = mirakana::runtime::RuntimeInputContextLayerKind::overlay,
+                            .active = true,
+                            .blocks_lower_priority = false,
+                            .consumes_gameplay_input = false,
+                        },
+                        mirakana::runtime::RuntimeInputContextLayerDesc{
+                            .context = "gameplay",
+                            .kind = mirakana::runtime::RuntimeInputContextLayerKind::gameplay,
+                            .active = true,
+                            .blocks_lower_priority = false,
+                            .consumes_gameplay_input = false,
+                        },
+                    },
+            });
+        input_context_plan_ok_ = input_context_plan_ok_ && input_context_plan_.succeeded();
+        input_contexts_planned_ += input_context_plan_.stack.active_contexts.size();
+        gameplay_input_available_seen_ = gameplay_input_available_seen_ || input_context_plan_.gameplay_input_available;
+        hud_overlay_seen_ = hud_overlay_seen_ || input_context_plan_.ui_context_active;
+
+        player->transform.position.x += actions_.axis_value("move_x", input_state, input_context_plan_.stack);
+        if (actions_.action_pressed("jump", input_state, input_context_plan_.stack)) {
             jump_voice_ = mixer_.play(
                 mirakana::AudioVoiceDesc{.clip = jump_cue_, .bus = "master", .gain = 1.0F, .looping = false});
         }
@@ -165,7 +191,8 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
                jump_voice_ != mirakana::null_audio_voice && frames_ == 3 && final_x_ == 3.0F && primary_camera_seen_ &&
                scene_sprites_submitted_ == 3 && hud_boxes_submitted_ == 3 && audio_commands_ == 1 &&
                audio_underruns_ == 0 && stats.frames_started == 3 && stats.frames_finished == 3 &&
-               stats.sprites_submitted == 6 && gameplay_interaction_plan_.succeeded() &&
+               stats.sprites_submitted == 6 && input_context_plan_ok_ && input_contexts_planned_ == 6U &&
+               gameplay_input_available_seen_ && hud_overlay_seen_ && gameplay_interaction_plan_.succeeded() &&
                gameplay_interaction_plan_.rows.size() == 3U &&
                gameplay_interaction_plan_.final_session_state ==
                    mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won;
@@ -181,6 +208,10 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t gameplay_interaction_count() const noexcept {
         return gameplay_interaction_plan_.rows.size();
+    }
+
+    [[nodiscard]] std::size_t input_context_count() const noexcept {
+        return input_contexts_planned_;
     }
 
   private:
@@ -265,6 +296,7 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     mirakana::VirtualInput& input_;
     mirakana::NullRenderer& renderer_;
     mirakana::runtime::RuntimeInputActionMap actions_;
+    mirakana::runtime::RuntimeInputContextStackPlan input_context_plan_;
     mirakana::Scene scene_{"Sample 2D Playable Foundation"};
     mirakana::SceneNodeId player_;
     mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlan gameplay_interaction_plan_;
@@ -278,6 +310,7 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     mirakana::AudioVoiceId jump_voice_;
     std::size_t scene_sprites_submitted_{0};
     std::size_t hud_boxes_submitted_{0};
+    std::size_t input_contexts_planned_{0};
     std::size_t audio_commands_{0};
     std::size_t audio_underruns_{0};
     int frames_{0};
@@ -287,6 +320,9 @@ class Sample2DPlayableFoundationGame final : public mirakana::GameApp {
     bool validation_ok_{true};
     bool audio_clip_registered_{false};
     bool primary_camera_seen_{false};
+    bool input_context_plan_ok_{true};
+    bool gameplay_input_available_seen_{false};
+    bool hud_overlay_seen_{false};
 };
 
 } // namespace
@@ -301,7 +337,8 @@ int main() {
 
     const auto result = runner.run(game, mirakana::RunConfig{.max_frames = 8, .fixed_delta_seconds = 1.0 / 60.0});
     std::cout << "sample_2d_playable_foundation frames=" << result.frames_run << " final_x=" << game.final_x()
-              << " gameplay_interactions=" << game.gameplay_interaction_count() << '\n';
+              << " gameplay_interactions=" << game.gameplay_interaction_count()
+              << " input_contexts=" << game.input_context_count() << '\n';
 
     return result.status == mirakana::RunStatus::stopped_by_app && result.frames_run == 3 && game.passed() ? 0 : 1;
 }

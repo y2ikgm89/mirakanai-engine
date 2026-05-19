@@ -33,7 +33,7 @@ For editor-assisted packaged playtests, use Editor Playtest Package Review Loop 
 - Backend readiness: `platform=headless`, `graphics=null`, `audio=device-independent`, `ui=mirakana_ui-headless`.
 - Packaging target: `source-tree-default` only.
 - Preferred flow: plan menu/gameplay/capture layers with `mirakana::runtime::RuntimeInputContextStackRequest` and `mirakana::runtime::plan_runtime_input_context_stack`, evaluate `mirakana::runtime::RuntimeInputActionMap` over first-party virtual input state and the planned `RuntimeInputContextStack`, keep world state in `mirakana::Scene` with a primary orthographic `mirakana::CameraComponent` and visible `mirakana::SpriteRendererComponent`, validate with `mirakana::validate_playable_2d_scene`, submit `mirakana::SceneRenderPacket` rows through `mirakana::submit_scene_render_packet`, submit HUD boxes/text through `mirakana::ui` and `mirakana_ui_renderer`, and schedule cue playback through `mirakana::AudioMixer`.
-- Proof: `games/sample_2d_playable_foundation`, `mirakana_playable_2d_tests`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
+- Proof: `games/sample_2d_playable_foundation` reports `input_contexts=6` after planning a passive HUD overlay plus gameplay stack before action evaluation, plus `mirakana_playable_2d_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 - Not implemented: desktop package readiness for this source-tree recipe, texture atlas cooking, tilemap editor UX, runtime image decoding, production sprite batching, native GPU output, and public native/RHI handle access. Use `2d-desktop-runtime-package` for the separate host-gated desktop/package proof.
 
 ## 2D Desktop Runtime Package Proof

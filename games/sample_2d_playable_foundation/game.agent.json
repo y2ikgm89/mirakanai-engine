@@ -29,7 +29,7 @@
     "productionRecipe": "2d-playable-source-tree",
     "appType": "mirakana::GameApp",
     "runner": "mirakana::HeadlessRunner",
-    "input": "mirakana::runtime::RuntimeInputActionMap over mirakana::VirtualInput",
+    "input": "mirakana::runtime::plan_runtime_input_context_stack plus mirakana::runtime::RuntimeInputActionMap over mirakana::VirtualInput",
     "scene": "mirakana::Scene with mirakana::CameraProjectionMode::orthographic and mirakana::SpriteRendererComponent",
     "sceneValidation": "mirakana::validate_playable_2d_scene",
     "sceneRenderer": "mirakana::submit_scene_render_packet",

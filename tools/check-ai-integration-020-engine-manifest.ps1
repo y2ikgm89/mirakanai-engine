@@ -1815,6 +1815,10 @@ Assert-ContainsText $runtimeTestsText "runtime input context stack plan resolves
 Assert-ContainsText $runtimeTestsText "runtime input context stack plan keeps gameplay under passive overlay" "tests/unit/runtime_tests.cpp"
 Assert-ContainsText $runtimeTestsText "runtime input context stack plan uses default context when no layer is active" "tests/unit/runtime_tests.cpp"
 Assert-ContainsText $runtimeTestsText "runtime input context stack plan rejects invalid layer descriptions" "tests/unit/runtime_tests.cpp"
+$sample2DPlayableFoundationText = Get-AgentSurfaceText "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "plan_runtime_input_context_stack" "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "RuntimeInputContextLayerKind::overlay" "games/sample_2d_playable_foundation/main.cpp"
+Assert-ContainsText $sample2DPlayableFoundationText "input_contexts=" "games/sample_2d_playable_foundation/main.cpp"
 foreach ($docSurface in @(
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
         @{ Text = $roadmapText; Label = "docs/roadmap.md" },

@@ -59,7 +59,7 @@ Read the existing runtime input action/context/rebinding APIs and select the sma
 
 ## Phase 2: Generated Game Adoption Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -71,6 +71,12 @@ Apply the context stack planner to one or more generated-game or sample-game pat
 - Focused build/test/package or source-tree validation proves the adoption.
 - Docs, manifest fragments, and static checks describe the adopted generated-game flow while keeping `unsupportedProductionGaps = []`.
 
+### Result
+
+- `sample_2d_playable_foundation` now binds gameplay movement/jump actions in a `gameplay` context and a passive HUD overlay action in a `hud` overlay context.
+- Each frame plans a passive HUD overlay plus gameplay stack with `plan_runtime_input_context_stack` before evaluating `RuntimeInputActionMap`.
+- The sample smoke reports `input_contexts=6` across the three-frame headless proof and fails if the planner diagnostics, gameplay availability, or overlay evidence regress.
+
 ## Validation Evidence
 
 - Phase 0 pointer sync: plan registry, production master-plan index, readiness ledger, manifest fragments, and composed manifest now point `currentActivePlan` / `recommendedNextPlan` at this plan while keeping `unsupportedProductionGaps = []`.
@@ -81,3 +87,8 @@ Apply the context stack planner to one or more generated-game or sample-game pat
 - Phase 1 focused runtime test: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_tests` passed.
 - Phase 1 static/public checks: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, and `git diff --check` passed.
 - Phase 1 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit` reported `unsupported_gaps=0`.
+- Phase 2 RED/static guard: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` failed before sample adoption because `games/sample_2d_playable_foundation/main.cpp` did not contain `plan_runtime_input_context_stack`.
+- Phase 2 focused sample build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_playable_foundation` passed after replacing an invalid `Key::tab` use with the existing `Key::escape`.
+- Phase 2 focused sample test: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R sample_2d_playable_foundation` passed.
+- Phase 2 static checks: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, and `git diff --check` passed.
+- Phase 2 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit` reported `unsupported_gaps=0`; CTest reported 65/65 tests passed.
