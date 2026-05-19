@@ -124,6 +124,235 @@ has_duplicate_blackboard_conditions(const std::span<const BehaviorTreeBlackboard
     return false;
 }
 
+[[nodiscard]] bool contains_string(const std::span<const std::string> values, const std::string_view value) noexcept {
+    return std::ranges::find_if(values, [value](const std::string& candidate) {
+               return std::string_view{candidate} == value;
+           }) != values.end();
+}
+
+[[nodiscard]] bool has_duplicate_behavior_ids(const BehaviorAuthoringDocument& document,
+                                              std::string_view& duplicate_id) noexcept {
+    for (auto first = document.behaviors.begin(); first != document.behaviors.end(); ++first) {
+        for (auto second = std::next(first); second != document.behaviors.end(); ++second) {
+            if (first->id == second->id) {
+                duplicate_id = first->id;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool has_duplicate_action_binding(const std::span<const BehaviorAuthoringActionBinding> actions,
+                                                const BehaviorTreeNodeId node_id) noexcept {
+    bool seen = false;
+    for (const auto& action : actions) {
+        if (action.node_id != node_id) {
+            continue;
+        }
+        if (seen) {
+            return true;
+        }
+        seen = true;
+    }
+    return false;
+}
+
+[[nodiscard]] const BehaviorAuthoringActionBinding*
+find_action_binding(const std::span<const BehaviorAuthoringActionBinding> actions,
+                    const BehaviorTreeNodeId node_id) noexcept {
+    const auto match = std::ranges::find_if(
+        actions, [node_id](const BehaviorAuthoringActionBinding& action) { return action.node_id == node_id; });
+    if (match == actions.end()) {
+        return nullptr;
+    }
+    return &(*match);
+}
+
+void append_behavior_authoring_diagnostic(std::vector<BehaviorAuthoringDiagnostic>& diagnostics,
+                                          const BehaviorAuthoringDiagnosticCode code, std::string behavior_id,
+                                          const BehaviorTreeNodeId node_id = {},
+                                          const BehaviorTreeNodeId referenced_node_id = {}, std::string key = {},
+                                          std::string action_id = {}) {
+    diagnostics.push_back(BehaviorAuthoringDiagnostic{.code = code,
+                                                      .behavior_id = std::move(behavior_id),
+                                                      .node_id = node_id,
+                                                      .referenced_node_id = referenced_node_id,
+                                                      .key = std::move(key),
+                                                      .action_id = std::move(action_id)});
+}
+
+[[nodiscard]] bool behavior_tree_has_cycle(const BehaviorTreeDesc& tree, const BehaviorTreeNodeId root_id,
+                                           BehaviorTreeNodeId& cycle_node_id) {
+    const auto* const root = find_node(tree, root_id);
+    if (root == nullptr) {
+        return false;
+    }
+
+    struct StackRow {
+        BehaviorTreeNodeId node_id{};
+        bool leaving{false};
+    };
+
+    std::vector<StackRow> stack{StackRow{.node_id = root_id, .leaving = false}};
+    std::vector<BehaviorTreeNodeId> active_stack;
+    std::vector<BehaviorTreeNodeId> completed_nodes;
+
+    while (!stack.empty()) {
+        const auto row = stack.back();
+        stack.pop_back();
+
+        if (row.leaving) {
+            const auto active = std::ranges::find(active_stack, row.node_id);
+            if (active != active_stack.end()) {
+                active_stack.erase(active);
+            }
+            completed_nodes.push_back(row.node_id);
+            continue;
+        }
+
+        if (std::ranges::find(active_stack, row.node_id) != active_stack.end()) {
+            cycle_node_id = row.node_id;
+            return true;
+        }
+        if (std::ranges::find(completed_nodes, row.node_id) != completed_nodes.end()) {
+            continue;
+        }
+
+        const auto* const node = find_node(tree, row.node_id);
+        if (node == nullptr) {
+            continue;
+        }
+
+        active_stack.push_back(row.node_id);
+        stack.push_back(StackRow{.node_id = row.node_id, .leaving = true});
+        for (auto child = node->children.rbegin(); child != node->children.rend(); ++child) {
+            stack.push_back(StackRow{.node_id = *child, .leaving = false});
+        }
+    }
+
+    return false;
+}
+
+void append_behavior_authoring_trace_rows(const BehaviorAuthoringBehaviorDesc& behavior,
+                                          std::vector<BehaviorAuthoringTraceRow>& trace) {
+    const auto* const root = find_node(behavior.tree, behavior.tree.root_id);
+    if (root == nullptr) {
+        return;
+    }
+
+    std::vector<BehaviorTreeNodeId> pending_nodes{root->id};
+    const auto step_limit =
+        std::max<std::size_t>(behavior.tree.nodes.size() * std::max<std::size_t>(1, behavior.tree.max_depth), 1);
+    std::size_t steps = 0;
+
+    while (!pending_nodes.empty() && steps < step_limit) {
+        const auto node_id = pending_nodes.back();
+        pending_nodes.pop_back();
+        ++steps;
+
+        const auto* const node = find_node(behavior.tree, node_id);
+        if (node == nullptr) {
+            continue;
+        }
+
+        trace.push_back(
+            BehaviorAuthoringTraceRow{.behavior_id = behavior.id, .node_id = node->id, .node_kind = node->kind});
+
+        for (auto child = node->children.rbegin(); child != node->children.rend(); ++child) {
+            pending_nodes.push_back(*child);
+        }
+    }
+}
+
+void validate_behavior_authoring_tree_shape(const BehaviorAuthoringBehaviorDesc& behavior,
+                                            std::vector<BehaviorAuthoringDiagnostic>& diagnostics) {
+    BehaviorTreeNodeId duplicate_node_id{};
+    if (has_duplicate_node_ids(behavior.tree, duplicate_node_id)) {
+        append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::duplicate_node_id,
+                                             behavior.id, duplicate_node_id);
+    }
+
+    if (find_node(behavior.tree, behavior.tree.root_id) == nullptr) {
+        append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::invalid_node_id, behavior.id,
+                                             behavior.tree.root_id);
+    }
+
+    for (const auto& node : behavior.tree.nodes) {
+        switch (node.kind) {
+        case BehaviorTreeNodeKind::sequence:
+        case BehaviorTreeNodeKind::selector:
+            for (const auto child_id : node.children) {
+                if (find_node(behavior.tree, child_id) == nullptr) {
+                    append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::invalid_node_id,
+                                                         behavior.id, node.id, child_id);
+                }
+            }
+            break;
+        case BehaviorTreeNodeKind::action:
+        case BehaviorTreeNodeKind::condition:
+            if (!node.children.empty()) {
+                append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::invalid_node_id,
+                                                     behavior.id, node.id, node.children.front());
+            }
+            break;
+        }
+    }
+
+    BehaviorTreeNodeId cycle_node_id{};
+    if (behavior_tree_has_cycle(behavior.tree, behavior.tree.root_id, cycle_node_id)) {
+        append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::cycle_detected, behavior.id,
+                                             cycle_node_id, cycle_node_id);
+    }
+}
+
+void validate_behavior_authoring_conditions(const BehaviorAuthoringBehaviorDesc& behavior,
+                                            const BehaviorAuthoringValidationContext context,
+                                            std::vector<BehaviorAuthoringDiagnostic>& diagnostics) {
+    for (const auto& condition : behavior.blackboard_conditions) {
+        const auto* const node = find_node(behavior.tree, condition.node_id);
+        if (node == nullptr || node->kind != BehaviorTreeNodeKind::condition) {
+            append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::invalid_node_id,
+                                                 behavior.id, condition.node_id);
+        }
+
+        if (!contains_string(context.blackboard_keys, condition.key)) {
+            append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::missing_blackboard_key,
+                                                 behavior.id, condition.node_id, {}, condition.key);
+        }
+    }
+}
+
+void validate_behavior_authoring_actions(const BehaviorAuthoringBehaviorDesc& behavior,
+                                         const BehaviorAuthoringValidationContext context,
+                                         std::vector<BehaviorAuthoringDiagnostic>& diagnostics) {
+    for (const auto& action : behavior.actions) {
+        const auto* const node = find_node(behavior.tree, action.node_id);
+        if (node == nullptr || node->kind != BehaviorTreeNodeKind::action) {
+            append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::invalid_node_id,
+                                                 behavior.id, action.node_id, {}, {}, action.action_id);
+        }
+        if (has_duplicate_action_binding(behavior.actions, action.node_id)) {
+            append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::duplicate_action_binding,
+                                                 behavior.id, action.node_id, {}, {}, action.action_id);
+        }
+        if (!contains_string(context.supported_actions, action.action_id)) {
+            append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::unsupported_action,
+                                                 behavior.id, action.node_id, {}, {}, action.action_id);
+        }
+    }
+
+    for (const auto& node : behavior.tree.nodes) {
+        if (node.kind != BehaviorTreeNodeKind::action) {
+            continue;
+        }
+        if (find_action_binding(behavior.actions, node.id) == nullptr) {
+            append_behavior_authoring_diagnostic(diagnostics, BehaviorAuthoringDiagnosticCode::missing_action_binding,
+                                                 behavior.id, node.id);
+        }
+    }
+}
+
 [[nodiscard]] constexpr BehaviorTreeDiagnostic behavior_tree_diagnostic_none() noexcept {
     return BehaviorTreeDiagnostic{.code = BehaviorTreeDiagnosticCode::none, .node_id = {}, .referenced_node_id = {}};
 }
@@ -550,6 +779,33 @@ const BehaviorTreeBlackboardValue* BehaviorTreeBlackboard::find(const std::strin
 
 std::span<const BehaviorTreeBlackboardEntry> BehaviorTreeBlackboard::entries() const noexcept {
     return entries_;
+}
+
+BehaviorAuthoringValidationResult
+validate_behavior_authoring_document(const BehaviorAuthoringDocument& document,
+                                     const BehaviorAuthoringValidationContext context) {
+    BehaviorAuthoringValidationResult result;
+
+    std::string_view duplicate_behavior_id;
+    if (has_duplicate_behavior_ids(document, duplicate_behavior_id)) {
+        append_behavior_authoring_diagnostic(result.diagnostics, BehaviorAuthoringDiagnosticCode::duplicate_behavior_id,
+                                             std::string{duplicate_behavior_id});
+    }
+
+    for (const auto& behavior : document.behaviors) {
+        if (behavior.id.empty()) {
+            append_behavior_authoring_diagnostic(result.diagnostics, BehaviorAuthoringDiagnosticCode::empty_behavior_id,
+                                                 behavior.id);
+        }
+
+        validate_behavior_authoring_tree_shape(behavior, result.diagnostics);
+        validate_behavior_authoring_conditions(behavior, context, result.diagnostics);
+        validate_behavior_authoring_actions(behavior, context, result.diagnostics);
+        append_behavior_authoring_trace_rows(behavior, result.trace);
+    }
+
+    result.succeeded = result.diagnostics.empty();
+    return result;
 }
 
 BehaviorTreeTickResult evaluate_behavior_tree(const BehaviorTreeDesc& tree,

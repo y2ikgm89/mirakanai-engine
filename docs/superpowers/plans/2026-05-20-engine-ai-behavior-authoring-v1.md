@@ -37,7 +37,7 @@ Select this plan as the next active developer-owned gameplay/AI capability after
 
 ## Phase 1: Behavior Document Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -66,3 +66,8 @@ Adopt the behavior authoring contract in selected generated gameplay package pat
 ## Validation Evidence
 
 - Phase 0 pointer sync: this plan was selected after `sprite-animation-flipbook-v1` completed package-visible flipbook counters, while `unsupportedProductionGaps = []` stayed empty.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_ai_tests` failed first because `BehaviorAuthoringDocument`, `BehaviorAuthoringValidationContext`, and `validate_behavior_authoring_document` did not exist.
+- Phase 1 focused build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_ai_tests` passed after the value-only behavior authoring contract was implemented.
+- Phase 1 focused tests: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_ai_tests` passed.
+- Phase 1 static checks: `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed.
+- Phase 1 full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed.

@@ -1286,8 +1286,8 @@ $geAiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_ai" })
 if ($geAiModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_ai module"
 }
-if ($geAiModule[0].status -ne "implemented-behavior-tree-blackboard-perception-services") {
-    Write-Error "engine/agent/manifest.json MK_ai status must advertise the behavior tree blackboard and perception services slice honestly"
+if ($geAiModule[0].status -ne "implemented-behavior-tree-blackboard-perception-authoring") {
+    Write-Error "engine/agent/manifest.json MK_ai status must advertise the behavior tree blackboard, perception, and behavior authoring slice honestly"
 }
 if ($geAiModule[0].publicHeaders -notcontains "engine/ai/include/mirakana/ai/behavior_tree.hpp") {
     Write-Error "engine/agent/manifest.json MK_ai publicHeaders must include behavior_tree.hpp"
@@ -1305,6 +1305,9 @@ Assert-ContainsText ([string]$geAiModule[0].purpose) "AiPerceptionAgent2D" "MK_a
 Assert-ContainsText ([string]$geAiModule[0].purpose) "AiPerceptionTarget2D" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "build_ai_perception_snapshot_2d" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "write_ai_perception_blackboard" "MK_ai module purpose"
+Assert-ContainsText ([string]$geAiModule[0].purpose) "BehaviorAuthoringDocument" "MK_ai module purpose"
+Assert-ContainsText ([string]$geAiModule[0].purpose) "BehaviorAuthoringValidationContext" "MK_ai module purpose"
+Assert-ContainsText ([string]$geAiModule[0].purpose) "validate_behavior_authoring_document" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "duplicate-blackboard-key" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "blackboard-type-mismatch" "MK_ai module purpose"
 Assert-ContainsText ([string]$geAiModule[0].purpose) "persistent blackboard services" "MK_ai module purpose"
@@ -1315,6 +1318,9 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "AiPerception
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "AiPerceptionTarget2D" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "build_ai_perception_snapshot_2d" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "write_ai_perception_blackboard" "AI game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "BehaviorAuthoringDocument" "AI game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "BehaviorAuthoringValidationContext" "AI game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "validate_behavior_authoring_document" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "blackboard-type-mismatch" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "persistent blackboard services" "AI game guidance"
 foreach ($aiApiGuidance in @(
@@ -1333,6 +1339,9 @@ foreach ($aiApiGuidance in @(
     Assert-ContainsText $aiApiText "AiPerceptionTarget2D" $aiApiGuidance
     Assert-ContainsText $aiApiText "build_ai_perception_snapshot_2d" $aiApiGuidance
     Assert-ContainsText $aiApiText "write_ai_perception_blackboard" $aiApiGuidance
+    Assert-ContainsText $aiApiText "BehaviorAuthoringDocument" $aiApiGuidance
+    Assert-ContainsText $aiApiText "BehaviorAuthoringValidationContext" $aiApiGuidance
+    Assert-ContainsText $aiApiText "validate_behavior_authoring_document" $aiApiGuidance
     Assert-ContainsText $aiApiText "blackboard" $aiApiGuidance
 }
 foreach ($aiStatusGuidance in @(
@@ -1343,6 +1352,7 @@ foreach ($aiStatusGuidance in @(
     $aiStatusText = Get-AgentSurfaceText $aiStatusGuidance
     Assert-ContainsText $aiStatusText "Behavior Tree Blackboard Conditions v0" $aiStatusGuidance
     Assert-ContainsText $aiStatusText "AI Perception Services v1" $aiStatusGuidance
+    Assert-ContainsText $aiStatusText "AI Behavior Authoring Foundation v1" $aiStatusGuidance
     Assert-ContainsText $aiStatusText "persistent blackboard" $aiStatusGuidance
 }
 foreach ($sampleAiGuidance in @(

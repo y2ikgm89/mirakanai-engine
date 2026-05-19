@@ -955,6 +955,162 @@ MK_TEST("ai perception blackboard projection rejects invalid snapshots and keys"
     MK_REQUIRE(duplicate_key.diagnostic == mirakana::AiPerceptionDiagnostic::invalid_blackboard_key);
 }
 
+MK_TEST("behavior authoring document validates supported actions blackboard keys and trace order") {
+    const mirakana::BehaviorAuthoringDocument document{
+        .behaviors =
+            std::vector<mirakana::BehaviorAuthoringBehaviorDesc>{
+                mirakana::BehaviorAuthoringBehaviorDesc{
+                    .id = "enemy_patrol",
+                    .tree =
+                        mirakana::BehaviorTreeDesc{
+                            .root_id = 1,
+                            .nodes =
+                                std::vector<mirakana::BehaviorTreeNodeDesc>{
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 1, .kind = mirakana::BehaviorTreeNodeKind::sequence, .children = {2, 3}},
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 2, .kind = mirakana::BehaviorTreeNodeKind::condition, .children = {}},
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 3, .kind = mirakana::BehaviorTreeNodeKind::action, .children = {}},
+                                },
+                        },
+                    .blackboard_conditions =
+                        std::vector<mirakana::BehaviorTreeBlackboardCondition>{
+                            mirakana::BehaviorTreeBlackboardCondition{
+                                .node_id = 2,
+                                .key = "perception.has_target",
+                                .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+                        },
+                    .actions =
+                        std::vector<mirakana::BehaviorAuthoringActionBinding>{
+                            mirakana::BehaviorAuthoringActionBinding{.node_id = 3, .action_id = "move_to_target"},
+                        },
+                },
+            },
+    };
+    const std::vector<std::string> blackboard_keys{"perception.has_target"};
+    const std::vector<std::string> action_ids{"move_to_target"};
+
+    const auto first = mirakana::validate_behavior_authoring_document(
+        document, mirakana::BehaviorAuthoringValidationContext{
+                      .blackboard_keys = std::span<const std::string>{blackboard_keys},
+                      .supported_actions = std::span<const std::string>{action_ids},
+                  });
+    const auto second = mirakana::validate_behavior_authoring_document(
+        document, mirakana::BehaviorAuthoringValidationContext{
+                      .blackboard_keys = std::span<const std::string>{blackboard_keys},
+                      .supported_actions = std::span<const std::string>{action_ids},
+                  });
+
+    MK_REQUIRE(first.succeeded);
+    MK_REQUIRE(first.diagnostics.empty());
+    MK_REQUIRE(first.trace == second.trace);
+    MK_REQUIRE(first.trace.size() == 3U);
+    MK_REQUIRE(first.trace[0].behavior_id == "enemy_patrol");
+    MK_REQUIRE(first.trace[0].node_id == 1U);
+    MK_REQUIRE(first.trace[1].node_id == 2U);
+    MK_REQUIRE(first.trace[2].node_id == 3U);
+}
+
+MK_TEST("behavior authoring document reports invalid node keys and unsupported actions deterministically") {
+    const mirakana::BehaviorAuthoringDocument document{
+        .behaviors =
+            std::vector<mirakana::BehaviorAuthoringBehaviorDesc>{
+                mirakana::BehaviorAuthoringBehaviorDesc{
+                    .id = "enemy_chase",
+                    .tree =
+                        mirakana::BehaviorTreeDesc{
+                            .root_id = 1,
+                            .nodes =
+                                std::vector<mirakana::BehaviorTreeNodeDesc>{
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 1, .kind = mirakana::BehaviorTreeNodeKind::sequence, .children = {2, 3}},
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 2, .kind = mirakana::BehaviorTreeNodeKind::condition, .children = {}},
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 3, .kind = mirakana::BehaviorTreeNodeKind::action, .children = {}},
+                                },
+                        },
+                    .blackboard_conditions =
+                        std::vector<mirakana::BehaviorTreeBlackboardCondition>{
+                            mirakana::BehaviorTreeBlackboardCondition{
+                                .node_id = 42,
+                                .key = "perception.lost_target",
+                                .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+                        },
+                    .actions =
+                        std::vector<mirakana::BehaviorAuthoringActionBinding>{
+                            mirakana::BehaviorAuthoringActionBinding{.node_id = 3, .action_id = "teleport_to_target"},
+                        },
+                },
+            },
+    };
+    const std::vector<std::string> blackboard_keys{"perception.has_target"};
+    const std::vector<std::string> action_ids{"move_to_target"};
+    const auto result = mirakana::validate_behavior_authoring_document(
+        document, mirakana::BehaviorAuthoringValidationContext{
+                      .blackboard_keys = std::span<const std::string>{blackboard_keys},
+                      .supported_actions = std::span<const std::string>{action_ids},
+                  });
+
+    MK_REQUIRE(!result.succeeded);
+    MK_REQUIRE(result.diagnostics.size() == 3U);
+    MK_REQUIRE(result.diagnostics[0].code == mirakana::BehaviorAuthoringDiagnosticCode::invalid_node_id);
+    MK_REQUIRE(result.diagnostics[0].node_id == 42U);
+    MK_REQUIRE(result.diagnostics[1].code == mirakana::BehaviorAuthoringDiagnosticCode::missing_blackboard_key);
+    MK_REQUIRE(result.diagnostics[1].key == "perception.lost_target");
+    MK_REQUIRE(result.diagnostics[2].code == mirakana::BehaviorAuthoringDiagnosticCode::unsupported_action);
+    MK_REQUIRE(result.diagnostics[2].node_id == 3U);
+    MK_REQUIRE(result.diagnostics[2].action_id == "teleport_to_target");
+}
+
+MK_TEST("behavior authoring document rejects duplicate behavior ids deterministically") {
+    const auto behavior = mirakana::BehaviorAuthoringBehaviorDesc{
+        .id = "shared_enemy_behavior",
+        .tree =
+            mirakana::BehaviorTreeDesc{
+                .root_id = 1,
+                .nodes =
+                    std::vector<mirakana::BehaviorTreeNodeDesc>{
+                        mirakana::BehaviorTreeNodeDesc{
+                            .id = 1, .kind = mirakana::BehaviorTreeNodeKind::action, .children = {}},
+                    },
+            },
+        .blackboard_conditions = {},
+        .actions =
+            std::vector<mirakana::BehaviorAuthoringActionBinding>{
+                mirakana::BehaviorAuthoringActionBinding{.node_id = 1, .action_id = "idle"},
+            },
+    };
+    const mirakana::BehaviorAuthoringDocument document{
+        .behaviors =
+            std::vector<mirakana::BehaviorAuthoringBehaviorDesc>{
+                behavior,
+                behavior,
+            },
+    };
+    const std::vector<std::string> action_ids{"idle"};
+
+    const auto first = mirakana::validate_behavior_authoring_document(
+        document, mirakana::BehaviorAuthoringValidationContext{
+                      .blackboard_keys = {},
+                      .supported_actions = std::span<const std::string>{action_ids},
+                  });
+    const auto second = mirakana::validate_behavior_authoring_document(
+        document, mirakana::BehaviorAuthoringValidationContext{
+                      .blackboard_keys = {},
+                      .supported_actions = std::span<const std::string>{action_ids},
+                  });
+
+    MK_REQUIRE(!first.succeeded);
+    MK_REQUIRE(first.diagnostics == second.diagnostics);
+    MK_REQUIRE(first.diagnostics.size() == 1U);
+    MK_REQUIRE(first.diagnostics[0].code == mirakana::BehaviorAuthoringDiagnosticCode::duplicate_behavior_id);
+    MK_REQUIRE(first.diagnostics[0].behavior_id == "shared_enemy_behavior");
+}
+
 int main() {
     return mirakana::test::run_all();
 }
