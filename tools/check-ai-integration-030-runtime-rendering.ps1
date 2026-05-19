@@ -632,17 +632,28 @@ Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/p
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetCookPackageRequest" "MK_tools placeholder asset tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "PlaceholderAssetCookPackagePlan" "MK_tools placeholder asset tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/placeholder_asset_tool.hpp") "plan_placeholder_asset_cook_package" "MK_tools placeholder asset tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "SpriteAtlasSourceFrameDesc" "MK_tools sprite atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "SpriteAtlasSourceAuthoringDesc" "MK_tools sprite atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "SpriteAtlasSourceAuthoringPlan" "MK_tools sprite atlas tool public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "plan_sprite_atlas_source_authoring" "MK_tools sprite atlas tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "source_asset_registry_format_v1" "MK_tools placeholder asset tool source"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "serialize_source_asset_registry_document" "MK_tools placeholder asset tool source"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "plan_registered_source_asset_cook_package" "MK_tools placeholder asset tool source"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "mirakana-placeholder-asset-tool-v1" "MK_tools placeholder asset tool source"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "LicenseRef-Proprietary" "MK_tools placeholder asset tool source"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "invalid_texture_dimensions" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/sprite_atlas_tool.cpp") "pack_sprite_atlas_rgba8_max_side" "MK_tools sprite atlas tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/sprite_atlas_tool.cpp") "serialize_source_asset_registry_document" "MK_tools sprite atlas tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/sprite_atlas_tool.cpp") "runtime_source_image_decoding" "MK_tools sprite atlas tool source"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/CMakeLists.txt") "placeholder_asset_tool.cpp" "MK_tools asset CMake source list"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/CMakeLists.txt") "sprite_atlas_tool.cpp" "MK_tools asset CMake source list"
 Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "placeholder asset bundle plans deterministic legal source documents and provenance rows" "MK_tools tests"
 Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "placeholder asset bundle fails closed on unsafe duplicate and unsupported rows" "MK_tools tests"
 Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "placeholder asset cook package routes generated source documents through registered package planning" "MK_tools tests"
 Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "unsupported_asset_kind" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "sprite atlas source authoring packs deterministic texture source and registry rows" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "sprite atlas source authoring rejects duplicate and invalid frame ids" "MK_tools tests"
+Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "sprite atlas source authoring rejects unsupported frame format and dimensions" "MK_tools tests"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "plan_scene_package_update" "MK_tools scene tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "apply_scene_package_update" "MK_tools scene tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/assets/include/mirakana/assets/ui_atlas_metadata.hpp") "GameEngine.UiAtlas.v1" "MK_assets ui atlas metadata public header"
@@ -655,6 +666,22 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderG
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "GameEngine.SourceAssetRegistry.v1" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetProvenanceRow" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "must not download external assets" "asset placeholder game guidance"
+foreach ($spriteAtlasSourceAuthoringNeedle in @(
+    "SpriteAtlasSourceFrameDesc",
+    "SpriteAtlasSourceAuthoringDesc",
+    "SpriteAtlasSourceAuthoringPlan",
+    "plan_sprite_atlas_source_authoring",
+    "GameEngine.TextureSource.v1",
+    "GameEngine.SourceAssetRegistry.v1",
+    "SpriteAtlasSourceChangedFile",
+    "SpriteAtlasSourceFrameRow",
+    "registered source cook/package validation",
+    "must not parse PNG/source images",
+    "renderer/RHI residency",
+    "animation semantics"
+)) {
+    Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAtlasSourceAuthoring) $spriteAtlasSourceAuthoringNeedle "sprite atlas source authoring game guidance"
+}
 foreach ($gameplayDebugOverlayGuidanceNeedle in @(
     "RuntimeGameplayDebugOverlayRowDesc",
     "RuntimeGameplayDebugOverlayCategory",

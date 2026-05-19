@@ -41,6 +41,7 @@
 #include "mirakana/tools/shader_toolchain.hpp"
 #include "mirakana/tools/source_asset_registration_tool.hpp"
 #include "mirakana/tools/source_image_decode.hpp"
+#include "mirakana/tools/sprite_atlas_tool.hpp"
 #include "mirakana/tools/tilemap_tool.hpp"
 #include "mirakana/tools/ui_atlas_tool.hpp"
 #include "mirakana/ui/ui.hpp"
@@ -390,6 +391,37 @@ void append_le_f32(std::string& output, float value) {
         .decoded_image = make_decoded_ui_pixel(std::byte{0x00}, std::byte{0x00}, std::byte{0xFF}, std::byte{0xFF}),
         .color = std::array<float, 4>{0.5F, 0.5F, 1.0F, 1.0F},
     });
+    return desc;
+}
+
+[[nodiscard]] mirakana::TextureSourceDocument make_sprite_atlas_frame(std::uint8_t red, std::uint8_t green,
+                                                                      std::uint8_t blue) {
+    mirakana::TextureSourceDocument frame;
+    frame.width = 1;
+    frame.height = 1;
+    frame.pixel_format = mirakana::TextureSourcePixelFormat::rgba8_unorm;
+    frame.bytes = {red, green, blue, 0xFF};
+    return frame;
+}
+
+[[nodiscard]] mirakana::SpriteAtlasSourceAuthoringDesc make_sprite_atlas_source_authoring_desc() {
+    mirakana::SpriteAtlasSourceAuthoringDesc desc;
+    desc.source_registry_path = "source/assets/game.geassets";
+    desc.atlas_asset_key = mirakana::AssetKeyV2{"assets/sprites/player_atlas"};
+    desc.atlas_source_path = "source/sprites/player_atlas.texture_source";
+    desc.atlas_imported_path = "runtime/assets/2d/player_atlas.texture";
+    desc.frames = {
+        mirakana::SpriteAtlasSourceFrameDesc{
+            .frame_id = "hero/walk",
+            .source_path = "source/sprites/hero_walk.png",
+            .image = make_sprite_atlas_frame(0x00, 0x00, 0xFF),
+        },
+        mirakana::SpriteAtlasSourceFrameDesc{
+            .frame_id = "hero/idle",
+            .source_path = "source/sprites/hero_idle.png",
+            .image = make_sprite_atlas_frame(0xFF, 0x00, 0x00),
+        },
+    };
     return desc;
 }
 
@@ -1372,6 +1404,13 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
 }
 
 [[nodiscard]] bool failures_contain(const std::vector<mirakana::RegisteredSourceAssetCookPackageDiagnostic>& failures,
+                                    std::string_view needle) {
+    return std::ranges::any_of(failures, [needle](const auto& failure) {
+        return failure.message.find(needle) != std::string::npos || failure.code.find(needle) != std::string::npos;
+    });
+}
+
+[[nodiscard]] bool failures_contain(const std::vector<mirakana::SpriteAtlasSourceAuthoringDiagnostic>& failures,
                                     std::string_view needle) {
     return std::ranges::any_of(failures, [needle](const auto& failure) {
         return failure.message.find(needle) != std::string::npos || failure.code.find(needle) != std::string::npos;
@@ -3168,6 +3207,82 @@ MK_TEST("packed runtime UI atlas rejects invalid decoded images and package path
     MK_REQUIRE(!packing_claim_result.succeeded());
     MK_REQUIRE(failures_contain(packing_claim_result.failures,
                                 "ui atlas packing must be deterministic-sprite-atlas-rgba8-max-side"));
+}
+
+MK_TEST("sprite atlas source authoring packs deterministic texture source and registry rows") {
+    const auto desc = make_sprite_atlas_source_authoring_desc();
+
+    const auto plan = mirakana::plan_sprite_atlas_source_authoring(desc);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.atlas_texture.width == 2);
+    MK_REQUIRE(plan.atlas_texture.height == 1);
+    MK_REQUIRE(plan.atlas_texture.pixel_format == mirakana::TextureSourcePixelFormat::rgba8_unorm);
+    MK_REQUIRE(plan.atlas_texture.bytes == std::vector<std::uint8_t>({0xFF, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0xFF}));
+    MK_REQUIRE(plan.atlas_texture_content.contains("format=GameEngine.TextureSource.v1\n"));
+    MK_REQUIRE(plan.atlas_texture_content.contains("texture.data_hex=ff0000ff0000ffff\n"));
+
+    MK_REQUIRE(plan.frame_rows.size() == 2);
+    MK_REQUIRE(plan.frame_rows[0].frame_id == "hero/idle");
+    MK_REQUIRE(plan.frame_rows[0].x == 0);
+    MK_REQUIRE(plan.frame_rows[0].u0 == 0.0F);
+    MK_REQUIRE(plan.frame_rows[0].u1 == 0.5F);
+    MK_REQUIRE(plan.frame_rows[1].frame_id == "hero/walk");
+    MK_REQUIRE(plan.frame_rows[1].x == 1);
+    MK_REQUIRE(plan.frame_rows[1].u0 == 0.5F);
+    MK_REQUIRE(plan.frame_rows[1].u1 == 1.0F);
+
+    const auto registry = mirakana::deserialize_source_asset_registry_document(plan.source_registry_content);
+    MK_REQUIRE(registry.assets.size() == 1);
+    MK_REQUIRE(registry.assets[0].key.value == desc.atlas_asset_key.value);
+    MK_REQUIRE(registry.assets[0].kind == mirakana::AssetKind::texture);
+    MK_REQUIRE(registry.assets[0].source_path == desc.atlas_source_path);
+    MK_REQUIRE(registry.assets[0].source_format ==
+               mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture));
+    MK_REQUIRE(registry.assets[0].imported_path == desc.atlas_imported_path);
+
+    MK_REQUIRE(plan.changed_files.size() == 2);
+    MK_REQUIRE(plan.changed_files[0].path == desc.atlas_source_path);
+    MK_REQUIRE(plan.changed_files[0].document_kind == "GameEngine.TextureSource.v1");
+    MK_REQUIRE(plan.changed_files[1].path == desc.source_registry_path);
+    MK_REQUIRE(plan.changed_files[1].document_kind == mirakana::source_asset_registry_format_v1());
+}
+
+MK_TEST("sprite atlas source authoring rejects duplicate and invalid frame ids") {
+    auto duplicate = make_sprite_atlas_source_authoring_desc();
+    duplicate.frames[1].frame_id = duplicate.frames[0].frame_id;
+    const auto duplicate_result = mirakana::plan_sprite_atlas_source_authoring(duplicate);
+    MK_REQUIRE(!duplicate_result.succeeded());
+    MK_REQUIRE(duplicate_result.changed_files.empty());
+    MK_REQUIRE(failures_contain(duplicate_result.diagnostics, "duplicate_frame_id"));
+
+    auto invalid = make_sprite_atlas_source_authoring_desc();
+    invalid.frames[0].frame_id = "bad frame";
+    const auto invalid_result = mirakana::plan_sprite_atlas_source_authoring(invalid);
+    MK_REQUIRE(!invalid_result.succeeded());
+    MK_REQUIRE(failures_contain(invalid_result.diagnostics, "invalid_frame_id"));
+}
+
+MK_TEST("sprite atlas source authoring rejects unsupported frame format and dimensions") {
+    auto unsupported_format = make_sprite_atlas_source_authoring_desc();
+    unsupported_format.frames[0].image.pixel_format = mirakana::TextureSourcePixelFormat::r8_unorm;
+    const auto unsupported_format_result = mirakana::plan_sprite_atlas_source_authoring(unsupported_format);
+    MK_REQUIRE(!unsupported_format_result.succeeded());
+    MK_REQUIRE(failures_contain(unsupported_format_result.diagnostics, "unsupported_pixel_format"));
+
+    auto invalid_dimensions = make_sprite_atlas_source_authoring_desc();
+    invalid_dimensions.frames[0].image.width = 0;
+    const auto invalid_dimensions_result = mirakana::plan_sprite_atlas_source_authoring(invalid_dimensions);
+    MK_REQUIRE(!invalid_dimensions_result.succeeded());
+    MK_REQUIRE(failures_contain(invalid_dimensions_result.diagnostics, "invalid_frame_dimensions"));
+
+    auto too_small = make_sprite_atlas_source_authoring_desc();
+    too_small.max_side = 1;
+    const auto too_small_result = mirakana::plan_sprite_atlas_source_authoring(too_small);
+    MK_REQUIRE(!too_small_result.succeeded());
+    MK_REQUIRE(too_small_result.changed_files.empty());
+    MK_REQUIRE(failures_contain(too_small_result.diagnostics, "atlas_exceeds_max_side"));
 }
 
 MK_TEST("packed runtime UI atlas apply leaves existing files unchanged when validation fails") {

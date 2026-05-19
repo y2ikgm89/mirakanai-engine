@@ -38,7 +38,7 @@ Make the manifest pointers, master-plan ledger, and plan registry select `sprite
 
 ## Phase 1: Source Atlas Authoring Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -68,3 +68,7 @@ Adopt the sprite atlas authoring contract in a generated 2D source/package path 
 
 - Phase 0 pointer sync: plan registry, production master-plan index, readiness ledger, manifest fragments, and composed manifest point `currentActivePlan` / `recommendedNextPlan` at this plan while keeping `unsupportedProductionGaps = []`.
 - Phase 0 surface/full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and `tools/validate.ps1` passed while selecting this plan; `production-readiness-audit` reported `unsupported_gaps=0` and 65/65 CTest tests passed.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests` failed while `tests/unit/tools_tests.cpp` referenced missing `mirakana/tools/sprite_atlas_tool.hpp`.
+- Phase 1 implementation: `MK_tools` now exposes `SpriteAtlasSourceFrameDesc`, `SpriteAtlasSourceAuthoringDesc`, `SpriteAtlasSourceAuthoringPlan`, and `plan_sprite_atlas_source_authoring` to validate reviewed RGBA8 source frames, canonicalize frame ordering by frame id, pack through `pack_sprite_atlas_rgba8_max_side`, emit `GameEngine.TextureSource.v1` atlas source content, synchronize one `GameEngine.SourceAssetRegistry.v1` texture row, and return changed-file hashes plus frame UV/provenance rows. Unsupported runtime source decoding, renderer/RHI residency, package streaming, animation semantics, editor productization, and free-form editing stay fail-closed.
+- Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_tests` passed for the new source atlas authoring tests.
+- Phase 1 surface/full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-ai-integration.ps1`, and `tools/validate.ps1` passed; `production-readiness-audit` reported `unsupported_gaps=0` and 65/65 CTest tests passed.

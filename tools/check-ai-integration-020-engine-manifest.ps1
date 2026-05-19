@@ -1942,6 +1942,22 @@ if (-not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_pla
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("renderer/RHI residency")) {
     Write-Error "engine/agent/manifest.json asset-placeholder-generation-v1 authoring surface must keep placeholder contract and non-goals explicit"
 }
+$spriteAtlasAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "sprite-atlas-authoring-v1" })
+if ($spriteAtlasAuthoringSurface.Count -ne 1 -or $spriteAtlasAuthoringSurface[0].status -ne "ready") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface sprite-atlas-authoring-v1 must be ready as an MK_tools surface"
+}
+if (-not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceFrameDesc") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringDesc") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringPlan") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("plan_sprite_atlas_source_authoring") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("sprite_atlas_tool.hpp") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.TextureSource.v1") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("renderer/RHI residency") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("package streaming") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("animation semantics")) {
+    Write-Error "engine/agent/manifest.json sprite-atlas-authoring-v1 authoring surface must keep source atlas contract and non-goals explicit"
+}
 
 $requiredProductionGapIds = @()
 $productionGapIds = @{}

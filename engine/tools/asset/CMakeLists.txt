@@ -8,6 +8,7 @@ add_library(MK_tools_asset OBJECT
     registered_source_asset_cook_package_tool.cpp
     source_asset_registration_tool.cpp
     source_image_decode.cpp
+    sprite_atlas_tool.cpp
     material_tool.cpp
     tilemap_tool.cpp
     placeholder_asset_tool.cpp
