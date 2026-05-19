@@ -17,6 +17,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <span>
 #include <string>
@@ -40,7 +41,7 @@ constexpr const char* k_target_distance_key{"composition.target_distance"};
 constexpr const char* k_visible_targets_key{"composition.visible_targets"};
 constexpr const char* k_audible_targets_key{"composition.audible_targets"};
 constexpr const char* k_target_state_key{"composition.target_state"};
-enum class GameplayRuntimeStep {
+enum class GameplayRuntimeStep : std::uint8_t {
     physics_apply_force,
     physics_step,
     physics_resolve_contacts,
