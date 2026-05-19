@@ -2,8 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `runtime-gameplay-systems-composition-v1`  
-**Status:** Complete.  
+**Plan ID:** `runtime-gameplay-systems-composition-v1`
+**Status:** Complete.
 **Goal:** Promote `sample_gameplay_foundation` into a headless generated-game composition proof that uses physics authored collision/controller movement, navigation path planning, AI perception/blackboard behavior, audio device streaming, animation, and the game lifecycle together without native handles or middleware.
 
 **Architecture:** Keep this as a source-tree headless sample proof over existing public `mirakana::` APIs. The sample owns explicit rows for physics collision, navigation grids, perception targets, behavior-tree leaf statuses, and audio PCM samples; engine subsystems stay decoupled and do not gain scene/physics/AI hidden integration.

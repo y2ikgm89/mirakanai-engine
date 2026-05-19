@@ -1,7 +1,7 @@
 # Animation Two-Bone IK XY Plane v1 (2026-05-06)
 
-**Plan ID:** `animation-two-bone-ik-xy-plane-v1`  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)  
+**Plan ID:** `animation-two-bone-ik-xy-plane-v1`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6 (`root-motion-ik-and-morph-foundation-v1` umbrella)
 **Status:** Completed on 2026-05-06.
 
 ## Goal

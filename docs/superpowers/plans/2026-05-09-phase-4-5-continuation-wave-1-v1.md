@@ -1,8 +1,8 @@
 # Phase 4–5 Continuation Wave 1 v1 (2026-05-09)
 
-**Plan ID:** `phase-4-5-continuation-wave-1-v1`  
-**Status:** Completed (child plans dated 2026-05-09; see table below).  
-**Parent roadmap:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `phase-4-5-continuation-wave-1-v1`
+**Status:** Completed (child plans dated 2026-05-09; see table below).
+**Parent roadmap:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Prior milestone (closed):** [2026-05-09-phase-4-5-closure-milestone-v1.md](2026-05-09-phase-4-5-closure-milestone-v1.md) — do **not** reopen or extend its ledger.
 
 ## Goal

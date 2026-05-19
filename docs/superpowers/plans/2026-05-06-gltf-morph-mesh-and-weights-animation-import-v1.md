@@ -1,7 +1,7 @@
 # glTF Morph Mesh and Weights Animation Import v1 (2026-05-06)
 
-**Plan ID:** `gltf-morph-mesh-and-weights-animation-import-v1`  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6  
+**Plan ID:** `gltf-morph-mesh-and-weights-animation-import-v1`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 6
 **Status:** Completed on 2026-05-05 (validation recorded after implementation).
 
 ## Goal

@@ -10,9 +10,9 @@
 
 ---
 
-**Plan ID:** `physics-broader-exact-casts-and-sweeps-v1`  
-**Status:** Completed.  
-**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `physics-broader-exact-casts-and-sweeps-v1`
+**Status:** Completed.
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Previous Slice:** [2026-05-09-physics-scene-package-collision-authoring-v1.md](2026-05-09-physics-scene-package-collision-authoring-v1.md)
 
 ## Context

@@ -1,10 +1,10 @@
 # Editor glTF Mesh Inspect Assets Selection Auto-Follow v1 (2026-05-10)
 
-**Plan ID:** `editor-gltf-mesh-inspect-assets-selection-auto-follow-v1`  
-**Gap:** `editor-productization`  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
-**Depends on:** [2026-05-10-editor-gltf-mesh-inspect-snapshot-clipboard-v1.md](2026-05-10-editor-gltf-mesh-inspect-snapshot-clipboard-v1.md)  
-**Status:** Completed  
+**Plan ID:** `editor-gltf-mesh-inspect-assets-selection-auto-follow-v1`
+**Gap:** `editor-productization`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Depends on:** [2026-05-10-editor-gltf-mesh-inspect-snapshot-clipboard-v1.md](2026-05-10-editor-gltf-mesh-inspect-snapshot-clipboard-v1.md)
+**Status:** Completed
 
 ## Goal
 

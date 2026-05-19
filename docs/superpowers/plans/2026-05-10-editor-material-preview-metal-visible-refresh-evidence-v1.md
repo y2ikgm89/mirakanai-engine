@@ -1,10 +1,10 @@
 # Editor Material Preview Metal Visible Refresh Evidence v1 (2026-05-10)
 
-**Plan ID:** `editor-material-preview-metal-visible-refresh-evidence-v1`  
-**Gap:** `editor-productization`  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
-**Depends on:** [2026-05-10-editor-material-preview-vulkan-visible-refresh-evidence-v1.md](2026-05-10-editor-material-preview-vulkan-visible-refresh-evidence-v1.md), [2026-05-10-editor-material-preview-display-path-contract-alignment-v1.md](2026-05-10-editor-material-preview-display-path-contract-alignment-v1.md)  
-**Status:** Completed  
+**Plan ID:** `editor-material-preview-metal-visible-refresh-evidence-v1`
+**Gap:** `editor-productization`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Depends on:** [2026-05-10-editor-material-preview-vulkan-visible-refresh-evidence-v1.md](2026-05-10-editor-material-preview-vulkan-visible-refresh-evidence-v1.md), [2026-05-10-editor-material-preview-display-path-contract-alignment-v1.md](2026-05-10-editor-material-preview-display-path-contract-alignment-v1.md)
+**Status:** Completed
 
 ## Goal
 

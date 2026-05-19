@@ -10,10 +10,10 @@
 
 ---
 
-**Plan ID:** `physics-1-0-collision-system-closeout-v1`  
-**Status:** Completed.  
-**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
-**Gap:** `physics-1-0-collision-system` Phase P4.  
+**Plan ID:** `physics-1-0-collision-system-closeout-v1`
+**Status:** Completed.
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Gap:** `physics-1-0-collision-system` Phase P4.
 **Previous Slice:** [2026-05-09-physics-jolt-adapter-gate-v1.md](2026-05-09-physics-jolt-adapter-gate-v1.md)
 
 ## Context

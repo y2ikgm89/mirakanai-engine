@@ -1,7 +1,7 @@
 # Runtime Scene Quaternion Animation Transform Binding v1 (2026-05-06)
 
-**Plan ID:** `runtime-scene-quaternion-animation-transform-binding-v1`  
-**Status:** Completed  
+**Plan ID:** `runtime-scene-quaternion-animation-transform-binding-v1`
+**Status:** Completed
 **Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal

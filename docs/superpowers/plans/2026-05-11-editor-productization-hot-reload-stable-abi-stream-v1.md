@@ -1,9 +1,9 @@
 # Editor Productization Hot Reload And Stable ABI Stream v1 (2026-05-11)
 
-**Plan ID:** `editor-productization-hot-reload-stable-abi-stream-v1`  
-**Gap:** `editor-productization`  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
-**Status:** Completed (hot reload track exit; stable ABI exclusion path complete; mid-play DLL replacement remains unsupported)  
+**Plan ID:** `editor-productization-hot-reload-stable-abi-stream-v1`
+**Gap:** `editor-productization`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Status:** Completed (hot reload track exit; stable ABI exclusion path complete; mid-play DLL replacement remains unsupported)
 
 ## Goal
 

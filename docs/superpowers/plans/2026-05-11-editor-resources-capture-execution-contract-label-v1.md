@@ -1,8 +1,8 @@
 # Editor Resources Capture Execution Contract Label v1 (2026-05-11)
 
-**Plan ID:** `editor-resources-capture-execution-contract-label-v1`  
-**Gap:** `editor-productization` (resource management execution stream follow-up after items 1–3)  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `editor-resources-capture-execution-contract-label-v1`
+**Gap:** `editor-productization` (resource management execution stream follow-up after items 1–3)
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Stream:** [2026-05-11-editor-productization-resource-management-execution-stream-v1.md](2026-05-11-editor-productization-resource-management-execution-stream-v1.md)
 
 ## Goal

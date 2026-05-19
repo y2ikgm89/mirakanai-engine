@@ -1,8 +1,8 @@
 # Editor Productization Material Preview Display Parity Stream v1 (2026-05-11)
 
-**Plan ID:** `editor-productization-material-preview-display-parity-stream-v1`  
-**Gap:** `editor-productization`  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `editor-productization-material-preview-display-parity-stream-v1`
+**Gap:** `editor-productization`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Status:** Future host-gated program stream (outside Windows-default 1.0 blocker set)
 
 ## Goal

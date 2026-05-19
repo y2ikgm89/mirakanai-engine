@@ -1,9 +1,9 @@
 # Editor Input Rebinding Profile Persistence v1 (2026-05-10)
 
-**Plan ID:** `editor-input-rebinding-profile-persistence-v1`  
-**Gap:** `editor-productization`  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
-**Status:** Completed  
+**Plan ID:** `editor-input-rebinding-profile-persistence-v1`
+**Gap:** `editor-productization`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Status:** Completed
 
 ## Goal
 

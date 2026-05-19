@@ -2,8 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `ai-perception-services-v1`  
-**Status:** Complete.  
+**Plan ID:** `ai-perception-services-v1`
+**Status:** Complete.
 **Goal:** Add a first-party deterministic AI perception service contract that turns explicit 2D agent/target rows into behavior-tree blackboard facts for generated games without claiming scene, physics, middleware, async services, or editor graph authoring.
 
 **Architecture:** Keep perception in `mirakana_ai` as a standard-library-only value API beside behavior tree and blackboard support. Callers own scene/physics queries and provide explicit target rows; `mirakana_ai` computes deterministic sight/hearing facts and projects the best target into `BehaviorTreeBlackboard` entries.

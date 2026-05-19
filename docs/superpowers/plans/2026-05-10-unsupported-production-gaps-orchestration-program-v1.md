@@ -1,6 +1,6 @@
 # Unsupported Production Gaps Orchestration Program v1 (2026-05-10)
 
-**Plan ID:** `unsupported-production-gaps-orchestration-program-v1`  
+**Plan ID:** `unsupported-production-gaps-orchestration-program-v1`
 **Status:** Active program index. This file is the machine-readable execution index for all eleven `engine/agent/manifest.json.unsupportedProductionGaps` rows; it does not replace gap-by-gap validation or dated implementation child plans.
 
 ## Goal

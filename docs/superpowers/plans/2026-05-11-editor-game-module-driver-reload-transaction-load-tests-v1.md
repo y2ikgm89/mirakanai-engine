@@ -1,8 +1,8 @@
 # Editor Game Module Driver Reload Transaction Load Tests v1 (2026-05-11)
 
-**Plan ID:** `editor-game-module-driver-reload-transaction-load-tests-v1`  
-**Gap:** `editor-productization`  
-**Parent stream:** [2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md](2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md) (child slice 2 — reload transaction tests)  
+**Plan ID:** `editor-game-module-driver-reload-transaction-load-tests-v1`
+**Gap:** `editor-productization`
+**Parent stream:** [2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md](2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md) (child slice 2 — reload transaction tests)
 **Parent roadmap:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal

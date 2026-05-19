@@ -1,6 +1,6 @@
 # Editor Game Module Driver CTest Probe Evidence UI v1 (2026-05-10)
 
-**Plan ID:** `editor-game-module-driver-ctest-probe-evidence-ui-v1`  
+**Plan ID:** `editor-game-module-driver-ctest-probe-evidence-ui-v1`
 **Status:** Completed.
 
 ## Goal

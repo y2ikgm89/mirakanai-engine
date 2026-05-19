@@ -10,10 +10,10 @@
 
 ---
 
-**Plan ID:** `physics-benchmark-determinism-gates-v1`  
-**Status:** Completed.  
-**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
-**Gap:** `physics-1-0-collision-system` Phase P2.  
+**Plan ID:** `physics-benchmark-determinism-gates-v1`
+**Status:** Completed.
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Gap:** `physics-1-0-collision-system` Phase P2.
 **Previous Slice:** [2026-05-09-physics-joints-foundation-v1.md](2026-05-09-physics-joints-foundation-v1.md)
 
 ## Context

@@ -1,9 +1,9 @@
 # Editor Productization Nested Prefab Propagation Stream v1 (2026-05-11)
 
-**Plan ID:** `editor-productization-nested-prefab-propagation-stream-v1`  
-**Gap:** `editor-productization` (primary) / `scene-component-prefab-schema-v2` (follow-on authoring)  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
-**Status:** Active program stream (planning ledger; not a single implementation slice)  
+**Plan ID:** `editor-productization-nested-prefab-propagation-stream-v1`
+**Gap:** `editor-productization` (primary) / `scene-component-prefab-schema-v2` (follow-on authoring)
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Status:** Active program stream (planning ledger; not a single implementation slice)
 
 ## Goal
 

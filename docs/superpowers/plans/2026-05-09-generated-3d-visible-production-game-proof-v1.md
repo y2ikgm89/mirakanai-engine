@@ -10,9 +10,9 @@
 
 ---
 
-**Plan ID:** `generated-3d-visible-production-game-proof-v1`  
-**Status:** Completed.  
-**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `generated-3d-visible-production-game-proof-v1`
+**Status:** Completed.
+**Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Previous Slice:** [2026-05-09-generated-3d-native-ui-text-glyph-atlas-package-smoke-v1.md](2026-05-09-generated-3d-native-ui-text-glyph-atlas-package-smoke-v1.md)
 
 ## Context

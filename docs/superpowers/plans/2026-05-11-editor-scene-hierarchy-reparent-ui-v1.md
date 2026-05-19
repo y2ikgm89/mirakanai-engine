@@ -1,9 +1,9 @@
 # Editor Scene Hierarchy Reparent UI v1 (2026-05-11)
 
-**Plan ID:** `editor-scene-hierarchy-reparent-ui-v1`  
-**Gap:** `editor-productization`  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
-**Status:** Completed  
+**Plan ID:** `editor-scene-hierarchy-reparent-ui-v1`
+**Gap:** `editor-productization`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Status:** Completed
 
 ## Goal
 

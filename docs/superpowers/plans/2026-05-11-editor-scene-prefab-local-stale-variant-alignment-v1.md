@@ -1,10 +1,10 @@
 # Editor Scene Prefab Local And Stale Variant Alignment v1 (2026-05-11)
 
-**Plan ID:** `editor-scene-prefab-local-stale-variant-alignment-v1`  
-**Date:** 2026-05-11  
-**Gap:** `editor-productization`  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
-**Stream:** [2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md](2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md)  
+**Plan ID:** `editor-scene-prefab-local-stale-variant-alignment-v1`
+**Date:** 2026-05-11
+**Gap:** `editor-productization`
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Stream:** [2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md](2026-05-11-editor-productization-nested-prefab-propagation-stream-v1.md)
 
 ## Goal
 

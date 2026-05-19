@@ -1,8 +1,8 @@
 # Editor Resource Capture PIX Host Handoff Evidence v1 (2026-05-11)
 
-**Plan ID:** `editor-resource-capture-pix-host-handoff-evidence-v1`  
-**Gap:** `editor-productization` (shared diagnostics with `renderer-rhi-resource-foundation`)  
-**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)  
+**Plan ID:** `editor-resource-capture-pix-host-handoff-evidence-v1`
+**Gap:** `editor-productization` (shared diagnostics with `renderer-rhi-resource-foundation`)
+**Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Stream:** [2026-05-11-editor-productization-resource-management-execution-stream-v1.md](2026-05-11-editor-productization-resource-management-execution-stream-v1.md) (stream item 3)
 
 ## Goal

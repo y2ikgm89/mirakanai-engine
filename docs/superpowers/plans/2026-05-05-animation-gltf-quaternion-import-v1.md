@@ -1,7 +1,7 @@
 # Animation glTF Quaternion Import v1 (2026-05-05)
 
-**Plan ID:** `animation-gltf-quaternion-import-v1`  
-**Status:** Completed  
+**Plan ID:** `animation-gltf-quaternion-import-v1`
+**Status:** Completed
 **Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal

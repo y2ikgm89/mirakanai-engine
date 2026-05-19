@@ -1,7 +1,7 @@
 # Runtime RHI Compute Morph Renderer Consumption D3D12 v1 (2026-05-06)
 
-**Plan ID:** `runtime-rhi-compute-morph-renderer-consumption-d3d12-v1`  
-**Status:** Completed  
+**Plan ID:** `runtime-rhi-compute-morph-renderer-consumption-d3d12-v1`
+**Status:** Completed
 **Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal

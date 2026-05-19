@@ -2,8 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `audio-device-streaming-baseline-v1`  
-**Status:** Completed.  
+**Plan ID:** `audio-device-streaming-baseline-v1`
+**Status:** Completed.
 **Goal:** Add a first-party audio device stream planning and render pump contract that keeps output queues filled with deterministic PCM without exposing SDL3, AAudio, codec, or OS handles to game code.
 
 **Architecture:** Keep the new contract in `mirakana_audio` beside `AudioMixer` because it is device-independent queue-fill policy over existing clip/render metadata. Optional device adapters such as `mirakana_audio_sdl3` continue to own actual OS streams and only consume the generated interleaved float buffer.

@@ -1,6 +1,6 @@
 # Gameplay Physics / AI Navigation / 2D-3D Essential Systems Expansion Master v1 (2026-05-19)
 
-**Plan ID:** `gameplay-physics-navigation-ai-foundation-v1`  
+**Plan ID:** `gameplay-physics-navigation-ai-foundation-v1`
 **Status:** Active.
 **Current pointer rule:** Set machine-readable progress through `engine/agent/manifest.json.aiOperableProductionLoop` (`currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps`). Keep `currentActivePlan` aligned with this plan while this roadmap is active.
 
@@ -105,5 +105,5 @@ Prove selected generated 2D and 3D package workflows execute an integrated gamep
 - `physics-advanced-dynamics-follow-up`
 - `gameplay-2d-3d-package-evidence`
 
-These row IDs are recorded in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`; 
+These row IDs are recorded in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`;
 `gameplay-runtime-integration-foundation` is now closed and advanced as `ready` for this phase, while the remaining rows stay `partly-ready`/`planned` until their focused follow-up phases close.

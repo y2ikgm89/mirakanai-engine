@@ -1,7 +1,7 @@
 # Animation FABRIK 3D Pose Application v1 (2026-05-05)
 
-**Plan ID:** `animation-fabrik-3d-pose-application-v1`  
-**Status:** Completed  
+**Plan ID:** `animation-fabrik-3d-pose-application-v1`
+**Status:** Completed
 **Parent:** [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
 ## Goal

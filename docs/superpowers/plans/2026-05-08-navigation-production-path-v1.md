@@ -2,8 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `navigation-production-path-v1`  
-**Status:** Complete.  
+**Plan ID:** `navigation-production-path-v1`
+**Status:** Complete.
 **Goal:** Add a first-party navigation production path planner that composes validated grid pathfinding, optional smoothing, point-path mapping, and `NavigationAgentState` creation for generated games without claiming navmesh, crowd simulation, scene/physics integration, or middleware.
 
 **Architecture:** Keep the planner in `mirakana_navigation` because it is a dependency-free value contract over existing grid/path/agent APIs. Generated games and headless samples consume the planner through public `mirakana::` headers only.
