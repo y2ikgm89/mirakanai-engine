@@ -400,6 +400,67 @@ struct RuntimeInputRebindingPresentationModel {
     [[nodiscard]] bool ready() const noexcept;
 };
 
+enum class RuntimeSessionProfileDocumentKind : std::uint8_t {
+    save_data,
+    settings,
+    input_rebinding_profile,
+};
+
+enum class RuntimeSessionProfileDocumentStatus : std::uint8_t {
+    loaded,
+    defaulted_missing,
+    written,
+    failed_invalid_path,
+    failed_corrupt,
+    failed_unsupported_version,
+    failed_invalid_document,
+    failed_write,
+};
+
+struct RuntimeSessionProfileDocuments {
+    RuntimeSaveData save_data;
+    RuntimeSettings settings;
+    RuntimeInputRebindingProfile input_rebinding_profile;
+};
+
+struct RuntimeSessionProfileDocumentRow {
+    RuntimeSessionProfileDocumentKind kind{RuntimeSessionProfileDocumentKind::save_data};
+    RuntimeSessionProfileDocumentStatus status{RuntimeSessionProfileDocumentStatus::failed_invalid_path};
+    std::string path;
+    std::string diagnostic;
+    bool defaulted{false};
+};
+
+struct RuntimeSessionProfileDocumentLoadRequest {
+    RuntimeSessionProfilePathRequest profile;
+    RuntimeSessionProfileDocuments defaults;
+};
+
+struct RuntimeSessionProfileDocumentLoadResult {
+    RuntimeSessionProfilePathPlan paths;
+    RuntimeSaveData save_data;
+    RuntimeSettings settings;
+    RuntimeInputRebindingProfile input_rebinding_profile;
+    std::vector<RuntimeSessionProfileDocumentRow> rows;
+    bool used_defaults{false};
+    bool has_blocking_diagnostics{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+struct RuntimeSessionProfileDocumentWriteRequest {
+    RuntimeSessionProfilePathRequest profile;
+    RuntimeSessionProfileDocuments documents;
+};
+
+struct RuntimeSessionProfileDocumentWriteResult {
+    RuntimeSessionProfilePathPlan paths;
+    std::vector<RuntimeSessionProfileDocumentRow> rows;
+    std::size_t documents_written{0};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 [[nodiscard]] std::string serialize_runtime_save_data(const RuntimeSaveData& data);
 [[nodiscard]] RuntimeSaveDataLoadResult deserialize_runtime_save_data(std::string_view text);
 [[nodiscard]] RuntimeSaveDataLoadResult load_runtime_save_data(IFileSystem& filesystem, std::string_view path);
@@ -447,6 +508,12 @@ make_runtime_input_rebinding_presentation(const RuntimeInputActionMap& base,
                                           const RuntimeInputRebindingProfile& profile);
 [[nodiscard]] RuntimeSessionProfilePathPlan
 plan_runtime_session_profile_paths(const RuntimeSessionProfilePathRequest& request);
+[[nodiscard]] RuntimeSessionProfileDocumentLoadResult
+load_runtime_session_profile_documents(IFileSystem& filesystem,
+                                       const RuntimeSessionProfileDocumentLoadRequest& request);
+[[nodiscard]] RuntimeSessionProfileDocumentWriteResult
+write_runtime_session_profile_documents(IFileSystem& filesystem,
+                                        const RuntimeSessionProfileDocumentWriteRequest& request);
 [[nodiscard]] std::string serialize_runtime_input_rebinding_profile(const RuntimeInputRebindingProfile& profile);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult deserialize_runtime_input_rebinding_profile(std::string_view text);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult load_runtime_input_rebinding_profile(IFileSystem& filesystem,

@@ -375,6 +375,17 @@ find_rebinding_presentation_row(const std::vector<mirakana::runtime::RuntimeInpu
     return nullptr;
 }
 
+[[nodiscard]] const mirakana::runtime::RuntimeSessionProfileDocumentRow*
+find_session_profile_document_row(const std::vector<mirakana::runtime::RuntimeSessionProfileDocumentRow>& rows,
+                                  mirakana::runtime::RuntimeSessionProfileDocumentKind kind) noexcept {
+    for (const auto& row : rows) {
+        if (row.kind == kind) {
+            return &row;
+        }
+    }
+    return nullptr;
+}
+
 } // namespace
 
 MK_TEST("runtime asset package loads cooked payloads with stable handles") {
@@ -1486,6 +1497,134 @@ MK_TEST("runtime session profile path plan rejects unsafe ids and paths without 
     MK_REQUIRE(!control.succeeded());
     MK_REQUIRE(control.save_data_path.empty());
     MK_REQUIRE(has_diagnostic(control.diagnostics, Code::invalid_game_id, "game_id"));
+}
+
+MK_TEST("runtime session profile document bundle loads documents and defaults missing optional rows") {
+    using Kind = mirakana::runtime::RuntimeSessionProfileDocumentKind;
+    using Status = mirakana::runtime::RuntimeSessionProfileDocumentStatus;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
+
+    mirakana::runtime::RuntimeSaveData save;
+    save.set_value("checkpoint", "intro");
+    mirakana::runtime::RuntimeSettings settings;
+    settings.set_value("audio.master_volume", "0.75");
+    mirakana::runtime::write_runtime_save_data(fs, paths.save_data_path, save);
+    mirakana::runtime::write_runtime_settings(fs, paths.settings_path, settings);
+
+    mirakana::runtime::RuntimeSessionProfileDocuments defaults;
+    defaults.save_data.set_value("checkpoint", "new_game");
+    defaults.settings.set_value("audio.master_volume", "1.0");
+    defaults.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = defaults});
+
+    MK_REQUIRE(loaded.succeeded());
+    MK_REQUIRE(!loaded.has_blocking_diagnostics);
+    MK_REQUIRE(loaded.used_defaults);
+    MK_REQUIRE(loaded.rows.size() == 3);
+    MK_REQUIRE(loaded.save_data.value_or("checkpoint", "") == "intro");
+    MK_REQUIRE(loaded.settings.value_or("audio.master_volume", "") == "0.75");
+    MK_REQUIRE(loaded.input_rebinding_profile.profile_id == "slot_1");
+
+    const auto* save_row = find_session_profile_document_row(loaded.rows, Kind::save_data);
+    const auto* settings_row = find_session_profile_document_row(loaded.rows, Kind::settings);
+    const auto* input_row = find_session_profile_document_row(loaded.rows, Kind::input_rebinding_profile);
+    MK_REQUIRE(save_row != nullptr);
+    MK_REQUIRE(settings_row != nullptr);
+    MK_REQUIRE(input_row != nullptr);
+    MK_REQUIRE(save_row->status == Status::loaded);
+    MK_REQUIRE(settings_row->status == Status::loaded);
+    MK_REQUIRE(input_row->status == Status::defaulted_missing);
+    MK_REQUIRE(input_row->defaulted);
+    MK_REQUIRE(input_row->path == paths.input_rebinding_profile_path);
+}
+
+MK_TEST("runtime session profile document bundle separates corrupt and unsupported documents") {
+    using Kind = mirakana::runtime::RuntimeSessionProfileDocumentKind;
+    using Status = mirakana::runtime::RuntimeSessionProfileDocumentStatus;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
+    fs.write_text(paths.save_data_path, "format=GameEngine.RuntimeSaveData.v0\nschema.version=1\n");
+    fs.write_text(paths.settings_path, "format=GameEngine.RuntimeSettings.v1\nentry.audio.master_volume=0.75\n");
+    fs.write_text(paths.input_rebinding_profile_path,
+                  "format=GameEngine.RuntimeInputRebindingProfile.v0\nprofile.id=slot_1\n");
+
+    mirakana::runtime::RuntimeSessionProfileDocuments defaults;
+    defaults.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = defaults});
+
+    MK_REQUIRE(!loaded.succeeded());
+    MK_REQUIRE(loaded.has_blocking_diagnostics);
+    MK_REQUIRE(loaded.rows.size() == 3);
+
+    const auto* save_row = find_session_profile_document_row(loaded.rows, Kind::save_data);
+    const auto* settings_row = find_session_profile_document_row(loaded.rows, Kind::settings);
+    const auto* input_row = find_session_profile_document_row(loaded.rows, Kind::input_rebinding_profile);
+    MK_REQUIRE(save_row != nullptr);
+    MK_REQUIRE(settings_row != nullptr);
+    MK_REQUIRE(input_row != nullptr);
+    MK_REQUIRE(save_row->status == Status::failed_unsupported_version);
+    MK_REQUIRE(settings_row->status == Status::failed_corrupt);
+    MK_REQUIRE(input_row->status == Status::failed_unsupported_version);
+}
+
+MK_TEST("runtime session profile document bundle writes reviewed defaults without deleting unrelated files") {
+    using Kind = mirakana::runtime::RuntimeSessionProfileDocumentKind;
+    using Status = mirakana::runtime::RuntimeSessionProfileDocumentStatus;
+
+    mirakana::MemoryFileSystem fs;
+    fs.write_text("profiles/sample_game/slot_1/notes.txt", "keep");
+
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    mirakana::runtime::RuntimeSessionProfileDocuments documents;
+    documents.save_data.set_value("checkpoint", "intro");
+    documents.settings.set_value("audio.master_volume", "0.80");
+    documents.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto written = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+
+    MK_REQUIRE(written.succeeded());
+    MK_REQUIRE(written.documents_written == 3);
+    MK_REQUIRE(written.rows.size() == 3);
+    MK_REQUIRE(find_session_profile_document_row(written.rows, Kind::save_data)->status == Status::written);
+    MK_REQUIRE(find_session_profile_document_row(written.rows, Kind::settings)->status == Status::written);
+    MK_REQUIRE(find_session_profile_document_row(written.rows, Kind::input_rebinding_profile)->status ==
+               Status::written);
+    MK_REQUIRE(fs.exists("profiles/sample_game/slot_1/notes.txt"));
+    MK_REQUIRE(fs.read_text("profiles/sample_game/slot_1/notes.txt") == "keep");
+
+    const auto reloaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+    MK_REQUIRE(reloaded.succeeded());
+    MK_REQUIRE(reloaded.save_data.value_or("checkpoint", "") == "intro");
+    MK_REQUIRE(reloaded.settings.value_or("audio.master_volume", "") == "0.80");
+
+    auto invalid_documents = documents;
+    invalid_documents.input_rebinding_profile.profile_id = "bad profile";
+    const auto invalid_profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_bad", .root_path = "profiles"};
+    const auto rejected = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = invalid_profile,
+                                                                         .documents = invalid_documents});
+
+    MK_REQUIRE(!rejected.succeeded());
+    MK_REQUIRE(rejected.documents_written == 0);
+    MK_REQUIRE(!fs.exists("profiles/sample_game/slot_bad/save.gesave"));
+    const auto* rejected_input = find_session_profile_document_row(rejected.rows, Kind::input_rebinding_profile);
+    MK_REQUIRE(rejected_input != nullptr);
+    MK_REQUIRE(rejected_input->status == Status::failed_invalid_document);
 }
 
 MK_TEST("runtime localization catalog resolves text with key fallback") {

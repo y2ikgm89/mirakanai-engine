@@ -1670,6 +1670,58 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "RuntimeSessionProfilePathRequest" $docSurface.Label
     Assert-ContainsText $docSurface.Text "plan_runtime_session_profile_paths" $docSurface.Label
 }
+$runtimeSessionProfileDocumentBundleAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-session-profile-document-bundle-v1" })
+if ($runtimeSessionProfileDocumentBundleAuthoringSurface.Count -ne 1 -or
+    $runtimeSessionProfileDocumentBundleAuthoringSurface[0].status -ne "ready" -or
+    $runtimeSessionProfileDocumentBundleAuthoringSurface[0].owner -ne "MK_runtime") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-session-profile-document-bundle-v1 must be ready as an MK_runtime surface"
+}
+if (-not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("RuntimeSessionProfileDocuments") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("RuntimeSessionProfileDocumentRow") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("load_runtime_session_profile_documents") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("write_runtime_session_profile_documents") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("defaulted_missing") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("failed_corrupt") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("failed_unsupported_version") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("unrelated files under the profile root are not deleted") -or
+    -not ([string]$runtimeSessionProfileDocumentBundleAuthoringSurface[0].notes).Contains("game-specific save schema")) {
+    Write-Error "engine/agent/manifest.json runtime-session-profile-document-bundle-v1 authoring surface must keep document bundle contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeSessionProfileDocuments",
+        "RuntimeSessionProfileDocumentRow",
+        "RuntimeSessionProfileDocumentLoadRequest",
+        "RuntimeSessionProfileDocumentWriteRequest",
+        "load_runtime_session_profile_documents",
+        "write_runtime_session_profile_documents"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesHeaderText $needle "engine/runtime/include/mirakana/runtime/session_services.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSessionProfileDocumentStatus::defaulted_missing",
+        "RuntimeSessionProfileDocumentStatus::failed_corrupt",
+        "RuntimeSessionProfileDocumentStatus::failed_unsupported_version",
+        "serialize_runtime_input_rebinding_profile",
+        "runtime_session_profile_document_failure_status"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesSourceText $needle "engine/runtime/src/session_services.cpp"
+}
+Assert-ContainsText $runtimeTestsText "runtime session profile document bundle loads documents and defaults missing optional rows" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime session profile document bundle separates corrupt and unsupported documents" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime session profile document bundle writes reviewed defaults without deleting unrelated files" "tests/unit/runtime_tests.cpp"
+$sampleGameplayFoundationText = Get-AgentSurfaceText "games/sample_gameplay_foundation/main.cpp"
+Assert-ContainsText $sampleGameplayFoundationText "load_runtime_session_profile_documents" "games/sample_gameplay_foundation/main.cpp"
+Assert-ContainsText $sampleGameplayFoundationText "write_runtime_session_profile_documents" "games/sample_gameplay_foundation/main.cpp"
+Assert-ContainsText $sampleGameplayFoundationText "runtime_profile_documents" "games/sample_gameplay_foundation/main.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeSessionProfileDocuments" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "load_runtime_session_profile_documents" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "write_runtime_session_profile_documents" $docSurface.Label
+}
 $assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"

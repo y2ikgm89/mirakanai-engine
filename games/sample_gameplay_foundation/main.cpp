@@ -15,6 +15,7 @@
 #include "mirakana/navigation/navigation_navmesh.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
 #include "mirakana/physics/physics3d.hpp"
+#include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime_scene/runtime_scene.hpp"
 
 #include <array>
@@ -346,6 +347,7 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         build_physics_movement_policy_probe();
         render_audio_stream_probe();
         build_runtime_scene_gameplay_interaction_probe();
+        build_runtime_profile_documents_probe();
 
         (void)animation_.trigger("move");
         context.logger.write(mirakana::LogRecord{
@@ -582,6 +584,19 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
     [[nodiscard]] mirakana::runtime_scene::RuntimeSceneGameplaySessionState
     runtime_scene_gameplay_final_state() const noexcept {
         return runtime_scene_gameplay_interaction_plan_.final_session_state;
+    }
+
+    [[nodiscard]] bool runtime_profile_documents_ready() const noexcept {
+        return runtime_profile_write_.succeeded() && runtime_profile_load_.succeeded() &&
+               runtime_profile_load_.rows.size() == 3U && runtime_profile_write_.documents_written == 3U;
+    }
+
+    [[nodiscard]] std::size_t runtime_profile_document_rows() const noexcept {
+        return runtime_profile_load_.rows.size();
+    }
+
+    [[nodiscard]] std::size_t runtime_profile_documents_written() const noexcept {
+        return runtime_profile_write_.documents_written;
     }
 
     [[nodiscard]] std::string gameplay_tick_order_trace() const {
@@ -925,6 +940,22 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
             });
     }
 
+    void build_runtime_profile_documents_probe() {
+        mirakana::MemoryFileSystem fs;
+        mirakana::runtime::RuntimeSessionProfileDocuments documents;
+        documents.save_data.set_value("checkpoint", "intro");
+        documents.settings.set_value("audio.master_volume", "0.80");
+        documents.input_rebinding_profile.profile_id = "slot_1";
+
+        const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "sample_gameplay", .profile_id = "slot_1", .root_path = "profiles"};
+        runtime_profile_write_ = mirakana::runtime::write_runtime_session_profile_documents(
+            fs,
+            mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+        runtime_profile_load_ = mirakana::runtime::load_runtime_session_profile_documents(
+            fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+    }
+
     void update_ai_navigation_composition() {
         if (navigation_agent_.status != mirakana::NavigationAgentStatus::moving ||
             navigation_plan_status_ != mirakana::NavigationGridAgentPathStatus::ready ||
@@ -1069,6 +1100,8 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
     mirakana::NavigationAgentState navigation_agent_;
     mirakana::BehaviorTreeTickResult last_tree_result_;
     mirakana::runtime_scene::RuntimeSceneGameplayInteractionPlan runtime_scene_gameplay_interaction_plan_;
+    mirakana::runtime::RuntimeSessionProfileDocumentWriteResult runtime_profile_write_;
+    mirakana::runtime::RuntimeSessionProfileDocumentLoadResult runtime_profile_load_;
     mirakana::Entity actor_entity_{};
     mirakana::PhysicsBody3DId floor_body_{};
     mirakana::PhysicsBody3DId actor_body_{};
@@ -1159,7 +1192,9 @@ int main() {
               << " physics_policy_trigger_overlaps=" << game.physics_policy_trigger_overlap_count()
               << " runtime_scene_gameplay_interactions=" << game.runtime_scene_gameplay_interaction_count()
               << " runtime_scene_gameplay_final_state="
-              << runtime_scene_gameplay_session_state_name(game.runtime_scene_gameplay_final_state()) << '\n';
+              << runtime_scene_gameplay_session_state_name(game.runtime_scene_gameplay_final_state())
+              << " runtime_profile_documents=" << game.runtime_profile_document_rows()
+              << " runtime_profile_writes=" << game.runtime_profile_documents_written() << '\n';
 
     return result.status == mirakana::RunStatus::stopped_by_app && result.frames_run == 4 && game.frames() == 4 &&
                    game.initialized() && registry.living_count() == 0 && std::abs(position.x - 1.25F) < 0.0001F &&
@@ -1180,7 +1215,8 @@ int main() {
                    game.physics_policy_diagnostic() == mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic::none &&
                    game.physics_policy_row_count() == 3U && game.physics_policy_dynamic_push_count() == 1U &&
                    game.physics_policy_solid_contact_count() == 1U &&
-                   game.physics_policy_trigger_overlap_count() == 1U && game.runtime_scene_gameplay_interactions_ready()
+                   game.physics_policy_trigger_overlap_count() == 1U &&
+                   game.runtime_scene_gameplay_interactions_ready() && game.runtime_profile_documents_ready()
                ? 0
                : 1;
 }

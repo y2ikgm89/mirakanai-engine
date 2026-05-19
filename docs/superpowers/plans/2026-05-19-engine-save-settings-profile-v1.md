@@ -1,7 +1,7 @@
 # Engine Save Settings Profile v1 (2026-05-19)
 
 **Plan ID:** `engine-save-settings-profile-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is a developer-owned capability milestone, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -65,11 +65,18 @@ Add a small `MK_runtime` public contract that derives safe, deterministic game-l
 
 ## Phase 2: Runtime Profile Document Bundle
 
-**Status:** Next.
+**Status:** Completed.
 
 ### Goal
 
 Layer a value-type profile document bundle over the path policy so generated games can load existing documents, apply defaults for missing optional documents, and report corrupt/unsupported-version diagnostics before gameplay starts.
+
+### Implemented Surface
+
+- `MK_runtime` exposes `RuntimeSessionProfileDocuments`, `RuntimeSessionProfileDocumentRow`, `RuntimeSessionProfileDocumentLoadRequest`, `RuntimeSessionProfileDocumentLoadResult`, `RuntimeSessionProfileDocumentWriteRequest`, `RuntimeSessionProfileDocumentWriteResult`, `load_runtime_session_profile_documents`, and `write_runtime_session_profile_documents`.
+- Load rows distinguish `loaded`, `defaulted_missing`, `failed_corrupt`, `failed_unsupported_version`, and `failed_invalid_path` statuses for save/settings/input-profile documents.
+- Write rows validate all three reviewed default documents before writing `save.gesave`, `settings.settings`, and `input.geinputprofile`; unrelated profile-root files are not deleted.
+- `sample_gameplay_foundation` demonstrates source-tree default write and load before gameplay starts.
 
 ### Done When
 
@@ -83,4 +90,9 @@ Layer a value-type profile document bundle over the path policy so generated gam
 - Focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_tests` passed.
 - Focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_tests` passed.
 - Static/drift: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/check-ai-integration.ps1` passed after docs/manifest/static guard updates.
-- Full phase gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit` reported `unsupported_gaps=0`.
+- Phase 1 full phase gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit` reported `unsupported_gaps=0`.
+- Phase 2 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_tests` failed before implementation because `RuntimeSessionProfileDocuments`, `RuntimeSessionProfileDocumentRow`, `load_runtime_session_profile_documents`, and `write_runtime_session_profile_documents` were undefined.
+- Phase 2 focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_tests` and `--target sample_gameplay_foundation` passed. One parallel `sample_gameplay_foundation` build hit transient MSVC C1041 PDB contention and passed when rerun alone.
+- Phase 2 focused: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_tests` and `-R sample_gameplay_foundation` passed.
+- Phase 2 static/drift: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/check-ai-integration.ps1` passed after docs/manifest/static guard updates.
+- Phase 2 full phase gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit` reported `unsupported_gaps=0`.
