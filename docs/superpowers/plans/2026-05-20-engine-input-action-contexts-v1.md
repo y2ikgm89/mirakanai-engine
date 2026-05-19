@@ -39,7 +39,7 @@ Make the manifest pointers, master-plan ledger, and plan registry agree that `en
 
 ## Phase 1: Runtime Input Context Review And First Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -51,8 +51,33 @@ Read the existing runtime input action/context/rebinding APIs and select the sma
 - RED runtime tests describe the selected missing behavior.
 - Focused runtime build/test and relevant public/agent static checks pass.
 
+### Result
+
+- Selected missing primitive: Runtime Input Context Stack Planner v1.
+- Added `RuntimeInputContextStackRequest`, `RuntimeInputContextLayerDesc`, `RuntimeInputContextLayerKind`, `RuntimeInputContextStackDiagnostic`, `RuntimeInputContextStackPlan`, and `plan_runtime_input_context_stack`.
+- The planner validates gameplay/menu/dialogue/rebinding/capture/overlay context layers before producing a `RuntimeInputContextStack`, fails closed for invalid or duplicate contexts, supports default-context fallback, supports modal lower-priority blocking, and reports `gameplay_input_available`, `gameplay_input_consumed`, `ui_context_active`, and `capture_context_active`.
+
+## Phase 2: Generated Game Adoption Evidence
+
+**Status:** Pending.
+
+### Goal
+
+Apply the context stack planner to one or more generated-game or sample-game paths so menu/HUD/capture handoff is package- or source-tree-visible, not just a unit-tested helper.
+
+### Done When
+
+- At least one existing generated-game/sample flow uses `plan_runtime_input_context_stack` before evaluating `RuntimeInputActionMap`.
+- Focused build/test/package or source-tree validation proves the adoption.
+- Docs, manifest fragments, and static checks describe the adopted generated-game flow while keeping `unsupportedProductionGaps = []`.
+
 ## Validation Evidence
 
 - Phase 0 pointer sync: plan registry, production master-plan index, readiness ledger, manifest fragments, and composed manifest now point `currentActivePlan` / `recommendedNextPlan` at this plan while keeping `unsupportedProductionGaps = []`.
 - Phase 0 static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
 - Phase 0 full gate inherited from the checkpoint: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit` reported `unsupported_gaps=0`.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_tests` failed before implementation because `RuntimeInputContextStackRequest`, `RuntimeInputContextLayerDesc`, `RuntimeInputContextLayerKind`, and `plan_runtime_input_context_stack` were not defined.
+- Phase 1 focused runtime build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_tests` passed.
+- Phase 1 focused runtime test: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_tests` passed.
+- Phase 1 static/public checks: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, and `git diff --check` passed.
+- Phase 1 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; `production-readiness-audit` reported `unsupported_gaps=0`.

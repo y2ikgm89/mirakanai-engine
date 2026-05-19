@@ -556,6 +556,21 @@ void validate_context_name(std::string_view context) {
     }
 }
 
+void add_context_stack_diagnostic(std::vector<RuntimeInputContextStackDiagnostic>& diagnostics,
+                                  RuntimeInputContextStackDiagnosticCode code, std::string_view context,
+                                  std::string_view message) {
+    diagnostics.push_back(RuntimeInputContextStackDiagnostic{
+        .code = code, .context = std::string(context), .message = std::string(message)});
+}
+
+[[nodiscard]] bool is_ui_context_layer(RuntimeInputContextLayerKind kind) noexcept {
+    return kind != RuntimeInputContextLayerKind::gameplay;
+}
+
+[[nodiscard]] bool is_capture_context_layer(RuntimeInputContextLayerKind kind) noexcept {
+    return kind == RuntimeInputContextLayerKind::rebinding || kind == RuntimeInputContextLayerKind::capture;
+}
+
 void validate_key(Key key) {
     if (key_name(key).empty()) {
         throw std::invalid_argument("runtime input action key is unsupported");
@@ -1707,6 +1722,77 @@ const std::vector<RuntimeLocalizationEntry>& RuntimeLocalizationCatalog::entries
 
 bool RuntimeLocalizationCatalogLoadResult::succeeded() const noexcept {
     return diagnostic.empty();
+}
+
+bool RuntimeInputContextStackPlan::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
+RuntimeInputContextStackPlan plan_runtime_input_context_stack(const RuntimeInputContextStackRequest& request) {
+    RuntimeInputContextStackPlan plan;
+    std::vector<std::string_view> seen_contexts;
+    bool has_active_layer = false;
+
+    for (const auto& layer : request.layers) {
+        bool context_valid = true;
+        try {
+            validate_context_name(layer.context);
+        } catch (const std::exception& error) {
+            add_context_stack_diagnostic(plan.diagnostics, RuntimeInputContextStackDiagnosticCode::invalid_context,
+                                         layer.context, error.what());
+            context_valid = false;
+        }
+
+        if (context_valid) {
+            if (std::ranges::find(seen_contexts, std::string_view(layer.context)) != seen_contexts.end()) {
+                add_context_stack_diagnostic(plan.diagnostics,
+                                             RuntimeInputContextStackDiagnosticCode::duplicate_context, layer.context,
+                                             "runtime input context stack layers must have unique contexts");
+            } else {
+                seen_contexts.push_back(layer.context);
+            }
+        }
+
+        has_active_layer = has_active_layer || layer.active;
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    if (!has_active_layer) {
+        if (!request.allow_default_context) {
+            add_context_stack_diagnostic(plan.diagnostics, RuntimeInputContextStackDiagnosticCode::no_active_context,
+                                         "", "runtime input context stack requires at least one active context");
+            return plan;
+        }
+        plan.default_context_active = true;
+        plan.gameplay_input_available = true;
+        return plan;
+    }
+
+    for (const auto& layer : request.layers) {
+        if (!layer.active) {
+            continue;
+        }
+
+        plan.stack.active_contexts.push_back(layer.context);
+        plan.ui_context_active = plan.ui_context_active || is_ui_context_layer(layer.kind);
+        plan.capture_context_active = plan.capture_context_active || is_capture_context_layer(layer.kind);
+        plan.gameplay_input_consumed =
+            plan.gameplay_input_consumed || layer.consumes_gameplay_input || is_capture_context_layer(layer.kind);
+        plan.gameplay_input_available =
+            plan.gameplay_input_available || layer.kind == RuntimeInputContextLayerKind::gameplay;
+
+        if (layer.blocks_lower_priority) {
+            break;
+        }
+    }
+
+    if (plan.gameplay_input_consumed) {
+        plan.gameplay_input_available = false;
+    }
+    return plan;
 }
 
 void RuntimeInputActionMap::bind_key(std::string action, Key key) {

@@ -1921,6 +1921,174 @@ MK_TEST("runtime input action contexts do not fall back to default when stack is
     MK_REQUIRE(actions.axis_value("move_x", state, stack) == 0.0F);
 }
 
+MK_TEST("runtime input context stack plan resolves modal menu before gameplay") {
+    mirakana::runtime::RuntimeInputContextStackRequest request;
+    request.layers = {
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "menu",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::menu,
+            .active = true,
+            .blocks_lower_priority = true,
+            .consumes_gameplay_input = true,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "gameplay",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::gameplay,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_context_stack(request);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.stack.active_contexts.size() == 1U);
+    MK_REQUIRE(plan.stack.active_contexts[0] == "menu");
+    MK_REQUIRE(plan.ui_context_active);
+    MK_REQUIRE(!plan.capture_context_active);
+    MK_REQUIRE(plan.gameplay_input_consumed);
+    MK_REQUIRE(!plan.gameplay_input_available);
+
+    mirakana::runtime::RuntimeInputActionMap actions;
+    actions.bind_key_in_context("menu", "confirm", mirakana::Key::space);
+    actions.bind_gamepad_button_in_context("gameplay", "confirm", mirakana::GamepadId{1},
+                                           mirakana::GamepadButton::south);
+
+    mirakana::VirtualInput keyboard;
+    mirakana::VirtualGamepadInput gamepad;
+    mirakana::runtime::RuntimeInputStateView state;
+    state.keyboard = &keyboard;
+    state.gamepad = &gamepad;
+
+    gamepad.press(mirakana::GamepadId{1}, mirakana::GamepadButton::south);
+    MK_REQUIRE(!actions.action_down("confirm", state, plan.stack));
+    keyboard.press(mirakana::Key::space);
+    MK_REQUIRE(actions.action_down("confirm", state, plan.stack));
+}
+
+MK_TEST("runtime input context stack plan keeps gameplay under passive overlay") {
+    mirakana::runtime::RuntimeInputContextStackRequest request;
+    request.layers = {
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "debug_overlay",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::overlay,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "gameplay",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::gameplay,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_context_stack(request);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.stack.active_contexts.size() == 2U);
+    MK_REQUIRE(plan.stack.active_contexts[0] == "debug_overlay");
+    MK_REQUIRE(plan.stack.active_contexts[1] == "gameplay");
+    MK_REQUIRE(plan.ui_context_active);
+    MK_REQUIRE(!plan.capture_context_active);
+    MK_REQUIRE(!plan.gameplay_input_consumed);
+    MK_REQUIRE(plan.gameplay_input_available);
+
+    mirakana::runtime::RuntimeInputActionMap actions;
+    actions.bind_key_in_context("debug_overlay", "toggle_debug", mirakana::Key::escape);
+    actions.bind_key_in_context("gameplay", "jump", mirakana::Key::space);
+
+    mirakana::VirtualInput keyboard;
+    mirakana::runtime::RuntimeInputStateView state;
+    state.keyboard = &keyboard;
+
+    keyboard.press(mirakana::Key::escape);
+    keyboard.press(mirakana::Key::space);
+    MK_REQUIRE(actions.action_down("toggle_debug", state, plan.stack));
+    MK_REQUIRE(actions.action_down("jump", state, plan.stack));
+}
+
+MK_TEST("runtime input context stack plan uses default context when no layer is active") {
+    mirakana::runtime::RuntimeInputContextStackRequest request;
+    request.layers = {
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "menu",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::menu,
+            .active = false,
+            .blocks_lower_priority = true,
+            .consumes_gameplay_input = true,
+        },
+    };
+    request.allow_default_context = true;
+
+    const auto plan = mirakana::runtime::plan_runtime_input_context_stack(request);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.stack.active_contexts.empty());
+    MK_REQUIRE(plan.default_context_active);
+    MK_REQUIRE(plan.gameplay_input_available);
+    MK_REQUIRE(!plan.gameplay_input_consumed);
+    MK_REQUIRE(!plan.ui_context_active);
+    MK_REQUIRE(!plan.capture_context_active);
+
+    mirakana::runtime::RuntimeInputActionMap actions;
+    actions.bind_key("confirm", mirakana::Key::space);
+    actions.bind_key_in_context("menu", "confirm", mirakana::Key::escape);
+
+    mirakana::VirtualInput keyboard;
+    mirakana::runtime::RuntimeInputStateView state;
+    state.keyboard = &keyboard;
+
+    keyboard.press(mirakana::Key::escape);
+    MK_REQUIRE(!actions.action_down("confirm", state, plan.stack));
+    keyboard.press(mirakana::Key::space);
+    MK_REQUIRE(actions.action_down("confirm", state, plan.stack));
+}
+
+MK_TEST("runtime input context stack plan rejects invalid layer descriptions") {
+    mirakana::runtime::RuntimeInputContextStackRequest request;
+    request.allow_default_context = false;
+    request.layers = {
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "bad context",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::menu,
+            .active = true,
+            .blocks_lower_priority = true,
+            .consumes_gameplay_input = true,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "menu",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::menu,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "menu",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::dialogue,
+            .active = false,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_input_context_stack(request);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.stack.active_contexts.empty());
+    MK_REQUIRE(!plan.default_context_active);
+    MK_REQUIRE(!plan.gameplay_input_available);
+    MK_REQUIRE(std::ranges::any_of(plan.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == mirakana::runtime::RuntimeInputContextStackDiagnosticCode::invalid_context;
+    }));
+    MK_REQUIRE(std::ranges::any_of(plan.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == mirakana::runtime::RuntimeInputContextStackDiagnosticCode::duplicate_context;
+    }));
+}
+
 MK_TEST("runtime input action duplicate bind calls are ignored") {
     mirakana::runtime::RuntimeInputActionMap actions;
     actions.bind_key_in_context("gameplay", "confirm", mirakana::Key::space);

@@ -1777,6 +1777,54 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "plan_runtime_menu_hud" $docSurface.Label
     Assert-ContainsText $docSurface.Text "RuntimeMenuHudCommandRow" $docSurface.Label
 }
+$runtimeInputContextStackPlannerAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-input-context-stack-planner-v1" })
+if ($runtimeInputContextStackPlannerAuthoringSurface.Count -ne 1 -or
+    $runtimeInputContextStackPlannerAuthoringSurface[0].status -ne "ready" -or
+    $runtimeInputContextStackPlannerAuthoringSurface[0].owner -ne "MK_runtime") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-input-context-stack-planner-v1 must be ready as an MK_runtime surface"
+}
+if (-not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("RuntimeInputContextStackRequest") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("RuntimeInputContextLayerDesc") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("RuntimeInputContextStackPlan") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("plan_runtime_input_context_stack") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("duplicate_context") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("invalid_context") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("full runtime rebinding panel") -or
+    -not ([string]$runtimeInputContextStackPlannerAuthoringSurface[0].notes).Contains("game-specific menu schema")) {
+    Write-Error "engine/agent/manifest.json runtime-input-context-stack-planner-v1 authoring surface must keep input context planner contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeInputContextStackRequest",
+        "RuntimeInputContextLayerDesc",
+        "RuntimeInputContextLayerKind",
+        "RuntimeInputContextStackDiagnostic",
+        "RuntimeInputContextStackPlan",
+        "plan_runtime_input_context_stack"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesHeaderText $needle "engine/runtime/include/mirakana/runtime/session_services.hpp"
+}
+foreach ($needle in @(
+        "RuntimeInputContextStackDiagnosticCode::invalid_context",
+        "RuntimeInputContextStackDiagnosticCode::duplicate_context",
+        "RuntimeInputContextStackDiagnosticCode::no_active_context",
+        "is_capture_context_layer"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesSourceText $needle "engine/runtime/src/session_services.cpp"
+}
+Assert-ContainsText $runtimeTestsText "runtime input context stack plan resolves modal menu before gameplay" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime input context stack plan keeps gameplay under passive overlay" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime input context stack plan uses default context when no layer is active" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime input context stack plan rejects invalid layer descriptions" "tests/unit/runtime_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeInputContextStackRequest" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_input_context_stack" $docSurface.Label
+}
+Assert-ContainsText $manifestRaw "currentInputContextPlanning" "engine/agent/manifest.json"
+Assert-ContainsText $manifestRaw "RuntimeInputContextStackPlan" "engine/agent/manifest.json"
 $assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity-v2" })
 if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"

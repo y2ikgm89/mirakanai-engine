@@ -133,6 +133,52 @@ struct RuntimeInputContextStack {
     std::vector<std::string> active_contexts;
 };
 
+enum class RuntimeInputContextLayerKind : std::uint8_t {
+    gameplay,
+    menu,
+    dialogue,
+    rebinding,
+    capture,
+    overlay,
+};
+
+struct RuntimeInputContextLayerDesc {
+    std::string context;
+    RuntimeInputContextLayerKind kind{RuntimeInputContextLayerKind::gameplay};
+    bool active{false};
+    bool blocks_lower_priority{false};
+    bool consumes_gameplay_input{false};
+};
+
+struct RuntimeInputContextStackRequest {
+    std::vector<RuntimeInputContextLayerDesc> layers;
+    bool allow_default_context{true};
+};
+
+enum class RuntimeInputContextStackDiagnosticCode : std::uint8_t {
+    invalid_context,
+    duplicate_context,
+    no_active_context,
+};
+
+struct RuntimeInputContextStackDiagnostic {
+    RuntimeInputContextStackDiagnosticCode code{RuntimeInputContextStackDiagnosticCode::invalid_context};
+    std::string context;
+    std::string message;
+};
+
+struct RuntimeInputContextStackPlan {
+    RuntimeInputContextStack stack;
+    std::vector<RuntimeInputContextStackDiagnostic> diagnostics;
+    bool default_context_active{false};
+    bool gameplay_input_available{false};
+    bool gameplay_input_consumed{false};
+    bool ui_context_active{false};
+    bool capture_context_active{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 struct RuntimeInputActionBinding {
     std::string context;
     std::string action;
@@ -478,6 +524,8 @@ void write_runtime_settings(IFileSystem& filesystem, std::string_view path, cons
 void write_runtime_localization_catalog(IFileSystem& filesystem, std::string_view path,
                                         const RuntimeLocalizationCatalog& catalog);
 
+[[nodiscard]] RuntimeInputContextStackPlan
+plan_runtime_input_context_stack(const RuntimeInputContextStackRequest& request);
 [[nodiscard]] std::string serialize_runtime_input_actions(const RuntimeInputActionMap& actions);
 [[nodiscard]] RuntimeInputActionMapLoadResult deserialize_runtime_input_actions(std::string_view text);
 [[nodiscard]] RuntimeInputActionMapLoadResult load_runtime_input_actions(IFileSystem& filesystem,
