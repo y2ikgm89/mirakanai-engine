@@ -1,3 +1,18 @@
+function Get-JsonContractSurfaceText([Parameter(Mandatory)][string]$relativePath) {
+    $normalizedRelativePath = $relativePath -replace '\\', '/'
+    $fullPath = Join-Path $root $normalizedRelativePath
+    $parts = [System.Collections.Generic.List[string]]::new()
+    $parts.Add((Get-Content -LiteralPath $fullPath -Raw))
+    if ($normalizedRelativePath -eq "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+        $splitRoot = Join-Path $root "docs/superpowers/master-plans/production-completion-v1"
+        if (Test-Path -LiteralPath $splitRoot) {
+            Get-ChildItem -LiteralPath $splitRoot -Filter "*.md" -File |
+                Sort-Object Name |
+                ForEach-Object { $parts.Add((Get-Content -LiteralPath $_.FullName -Raw)) }
+        }
+    }
+    return $parts -join "`n"
+}
 #requires -Version 7.0
 #requires -PSEdition Core
 
@@ -352,7 +367,7 @@ foreach ($check in @(
     if (-not (Test-Path -LiteralPath $checkPath)) {
         Write-Error "Missing runtime resource resident package mount set evidence file: $($check.Path)"
     }
-    $fileText = Get-Content -LiteralPath $checkPath -Raw
+    $fileText = Get-JsonContractSurfaceText $check.Path
     foreach ($needle in $check.Needles) {
         Assert-ContainsText $fileText $needle "$($check.Path) runtime resource resident package mount set evidence"
     }
@@ -374,7 +389,7 @@ foreach ($check in @(
         )
     }
 )) {
-    $fileText = Get-Content -LiteralPath (Join-Path $root $check.Path) -Raw
+    $fileText = Get-JsonContractSurfaceText $check.Path
     foreach ($needle in $check.Needles) {
         Assert-ContainsText $fileText $needle "$($check.Path) renderer-rhi-resource-foundation closeout evidence"
     }
@@ -395,7 +410,7 @@ foreach ($check in @(
         )
     }
 )) {
-    $fileText = Get-Content -LiteralPath (Join-Path $root $check.Path) -Raw
+    $fileText = Get-JsonContractSurfaceText $check.Path
     foreach ($needle in $check.Needles) {
         Assert-ContainsText $fileText $needle "$($check.Path) frame-graph-v1 closeout evidence"
     }
@@ -416,7 +431,7 @@ foreach ($check in @(
         )
     }
 )) {
-    $fileText = Get-Content -LiteralPath (Join-Path $root $check.Path) -Raw
+    $fileText = Get-JsonContractSurfaceText $check.Path
     foreach ($needle in $check.Needles) {
         Assert-ContainsText $fileText $needle "$($check.Path) upload-staging-v1 closeout evidence"
     }
@@ -928,7 +943,7 @@ $runtimeUiDocs = @{
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI Accessibility Publish Plan v1", "IAccessibilityAdapter", "native accessibility objects", "Runtime UI IME Composition Publish Plan v1", "IImeAdapter", "native IME/text-input sessions", "Runtime UI Platform Text Input Session Plan v1", "IPlatformIntegrationAdapter", "virtual keyboard behavior", "Runtime UI Text Shaping Request Plan v1", "ITextShapingAdapter", "Runtime UI Font Rasterization Request Plan v1", "IFontRasterizerAdapter", "Runtime UI Image Decode Request Plan v1", "IImageDecodingAdapter", "source image codecs", "renderer texture upload")
 }
 foreach ($docPath in $runtimeUiDocs.Keys) {
-    $docText = Get-Content -LiteralPath (Join-Path $root $docPath) -Raw
+    $docText = Get-JsonContractSurfaceText $docPath
     foreach ($needle in $runtimeUiDocs[$docPath]) {
         if (-not $docText.Contains($needle)) {
             Write-Error "$docPath missing Runtime UI accessibility publish evidence: $needle"
@@ -947,7 +962,7 @@ $runtimeUiPngDocs = @{
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI PNG Image Decoding Adapter v1", "PngImageDecodingAdapter", "decode_audited_png_rgba8")
 }
 foreach ($docPath in $runtimeUiPngDocs.Keys) {
-    $docText = Get-Content -LiteralPath (Join-Path $root $docPath) -Raw
+    $docText = Get-JsonContractSurfaceText $docPath
     foreach ($needle in $runtimeUiPngDocs[$docPath]) {
         if (-not $docText.Contains($needle)) {
             Write-Error "$docPath missing Runtime UI PNG image decoding adapter evidence: $needle"
@@ -966,7 +981,7 @@ $runtimeUiDecodedAtlasDocs = @{
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture.v1")
 }
 foreach ($docPath in $runtimeUiDecodedAtlasDocs.Keys) {
-    $docText = Get-Content -LiteralPath (Join-Path $root $docPath) -Raw
+    $docText = Get-JsonContractSurfaceText $docPath
     foreach ($needle in $runtimeUiDecodedAtlasDocs[$docPath]) {
         if (-not $docText.Contains($needle)) {
             Write-Error "$docPath missing Runtime UI decoded image atlas package bridge evidence: $needle"
@@ -986,7 +1001,7 @@ $runtimeUiGlyphAtlasDocs = @{
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI Glyph Atlas Package Bridge v1", "author_packed_ui_glyph_atlas_from_rasterized_glyphs", "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas")
 }
 foreach ($docPath in $runtimeUiGlyphAtlasDocs.Keys) {
-    $docText = Get-Content -LiteralPath (Join-Path $root $docPath) -Raw
+    $docText = Get-JsonContractSurfaceText $docPath
     foreach ($needle in $runtimeUiGlyphAtlasDocs[$docPath]) {
         if (-not $docText.Contains($needle)) {
             Write-Error "$docPath missing Runtime UI glyph atlas package bridge evidence: $needle"
@@ -1002,7 +1017,7 @@ $runtimeInputRebindingCaptureDocs = @{
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime Input Rebinding Capture Contract v1", "RuntimeInputRebindingCaptureRequest", "capture_runtime_input_rebinding_action")
 }
 foreach ($docPath in $runtimeInputRebindingCaptureDocs.Keys) {
-    $docText = Get-Content -LiteralPath (Join-Path $root $docPath) -Raw
+    $docText = Get-JsonContractSurfaceText $docPath
     foreach ($needle in $runtimeInputRebindingCaptureDocs[$docPath]) {
         if (-not $docText.Contains($needle)) {
         Write-Error "$docPath missing Runtime input rebinding capture evidence: $needle"
@@ -1019,7 +1034,7 @@ $runtimeInputRebindingFocusConsumptionDocs = @{
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime Input Rebinding Focus Consumption v1", "RuntimeInputRebindingFocusCaptureRequest", "capture_runtime_input_rebinding_action_with_focus", "gameplay_input_consumed")
 }
 foreach ($docPath in $runtimeInputRebindingFocusConsumptionDocs.Keys) {
-    $docText = Get-Content -LiteralPath (Join-Path $root $docPath) -Raw
+    $docText = Get-JsonContractSurfaceText $docPath
     foreach ($needle in $runtimeInputRebindingFocusConsumptionDocs[$docPath]) {
         if (-not $docText.Contains($needle)) {
             Write-Error "$docPath missing Runtime input rebinding focus consumption evidence: $needle"
@@ -1036,7 +1051,7 @@ $runtimeInputRebindingPresentationRowsDocs = @{
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime Input Rebinding Presentation Rows v1", "RuntimeInputRebindingPresentationToken", "make_runtime_input_rebinding_presentation", "platform input glyph generation")
 }
 foreach ($docPath in $runtimeInputRebindingPresentationRowsDocs.Keys) {
-    $docText = Get-Content -LiteralPath (Join-Path $root $docPath) -Raw
+    $docText = Get-JsonContractSurfaceText $docPath
     foreach ($needle in $runtimeInputRebindingPresentationRowsDocs[$docPath]) {
         if (-not $docText.Contains($needle)) {
             Write-Error "$docPath missing Runtime input rebinding presentation rows evidence: $needle"
@@ -1054,7 +1069,7 @@ $editorInputRebindingActionCaptureDocs = @{
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Editor Input Rebinding Action Capture Panel v1", "EditorInputRebindingCaptureModel", "reviewed editor action capture lane")
 }
 foreach ($docPath in $editorInputRebindingActionCaptureDocs.Keys) {
-    $docText = Get-Content -LiteralPath (Join-Path $root $docPath) -Raw
+    $docText = Get-JsonContractSurfaceText $docPath
     foreach ($needle in $editorInputRebindingActionCaptureDocs[$docPath]) {
         if (-not $docText.Contains($needle)) {
             Write-Error "$docPath missing Editor input rebinding action capture evidence: $needle"

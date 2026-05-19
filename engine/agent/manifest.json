@@ -5716,15 +5716,6 @@
     ],
     "unsupportedProductionGaps": [
       {
-        "id": "gameplay-runtime-integration-foundation",
-        "oneDotZeroCloseoutTier": "foundation-follow-up",
-        "status": "partly-ready",
-        "requiredBeforeReadyClaim": [
-          "deterministic gameplay tick-order proof evidence"
-        ],
-        "notes": "Implemented deterministic gameplay tick-order proof in \u0060sample_gameplay_foundation\u0060 (\u0060physics.apply_force\u0060, \u0060physics.step\u0060, \u0060physics.resolve_contacts\u0060, \u0060animation.update\u0060, \u0060navigation_and_ai.update\u0060). Next phase evidence remains focused on package-evidence and nav/physics follow-up requirements."
-      },
-      {
         "id": "navigation-navmesh-and-dynamic-obstacle-follow-up",
         "oneDotZeroCloseoutTier": "foundation-follow-up",
         "status": "partly-ready",

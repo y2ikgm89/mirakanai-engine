@@ -1,0 +1,53 @@
+# Production Completion v1 - Developer-Owned Engine Capability Backlog
+
+Source index: [Production Completion Master Plan v1](../2026-05-03-production-completion-master-plan-v1.md). Load this chapter only when its scope is needed; do not bulk-read the whole split plan by default.
+
+## Developer-Owned Engine Capability Backlog for Game Creation
+
+Game-creation agents must stay game-surface scoped, but the engine still needs a clear developer-owned backlog of generally useful capabilities that unlock broader gameplay families. These rows are **not permission for game-creation agents to edit engine internals**. They are the queue of engine features a developer may select when a game handoff row reports a missing capability.
+
+Backlog rules:
+
+- **Developer-owned only:** each row requires a separate engine-feature plan before implementation. Game-creation agents may reference a row in a handoff, but may not implement it.
+- **Official-practice first:** plans must use official CMake/vcpkg/SDK/library docs, keep engine boundaries intact, update manifest fragments/schemas/skills/static checks when public capabilities change, and run focused validation plus `tools/validate.ps1` at slice close.
+- **Game-facing public contract:** every feature must expose a small first-party API or reviewed command surface that games can use without native handles, middleware types, renderer internals, editor dependencies, or toolchain assumptions.
+- **AI-operable evidence:** every promoted capability needs manifest rows, validation recipes, sample/game evidence, failure diagnostics, and remediation guidance so Codex/Claude/Cursor can use it without guessing.
+- **Optional dependencies stay optional:** middleware, scripting runtimes, codecs, or platform SDK adapters require vcpkg feature gating, legal/dependency records, host gates, and fallback diagnostics.
+
+Priority tiers:
+
+| Tier | Meaning |
+| --- | --- |
+| `foundational-unblocker` | Common feature likely to block many generated games; implement before broad AI game generation claims. |
+| `gameplay-family-enabler` | Unlocks a reusable gameplay family capability but is not required for every small 2D/3D game. |
+| `scale-enabler` | Needed for large worlds, high entity counts, or richer production workflows. |
+| `optional-adapter` | Useful integration that must remain dependency/host gated. |
+
+Recommended developer-owned capability rows:
+
+| Capability id | Tier | Why games need it | Developer implementation boundary | Evidence before game agents can use it |
+| --- | --- | --- | --- | --- |
+| `engine-gameplay-interaction-framework-v1` | `foundational-unblocker` | Most games need interactions, triggers, damage/heal, pickups, objectives, and restart/win/loss rules. | First-party gameplay data/contracts and game-local authoring helpers; no engine-specific game logic. | Unit tests, sample 2D/3D usage, package counters, manifest recipe rows, quality-rubric integration. |
+| `engine-save-settings-profile-v1` | `foundational-unblocker` | AI-created games need save/load, settings, input profiles, progress, and reset behavior. | Versioned first-party save/settings documents, migration diagnostics, user-data path policy, and game-local profile files. | Save/load/migration tests, corrupt/old-version diagnostics, generated package smoke evidence. |
+| `engine-ui-game-menu-hud-v1` | `foundational-unblocker` | Games need menus, HUD, pause/restart, prompts, simple dialogue boxes, and input rebinding UI. | Runtime UI contracts and game-owned UI documents/assets; no Dear ImGui/editor dependency. | Headless UI model tests, package-visible HUD/menu counters, 2D/3D examples, accessibility/IME unsupported rows as needed. |
+| `engine-audio-gameplay-mixer-v1` | `foundational-unblocker` | Games need music, SFX, volume groups, spatial one-shots, looping ambience, and pause/fade behavior. | First-party audio event/mixer contracts over existing audio output/streaming adapters; optional codecs remain gated. | Audio event tests, package counters, device-gated smoke, missing codec diagnostics. |
+| `engine-input-action-contexts-v1` | `foundational-unblocker` | AI-created games need reliable keyboard/mouse/gamepad/touch mappings, context switching, UI capture, and rebinding. | Public runtime input action/context/profile contracts with platform adapters behind `engine/platform`. | Input/rebinding tests, focus/capture diagnostics, generated 2D/3D package evidence. |
+| `engine-scene-gameplay-binding-v1` | `foundational-unblocker` | AI needs a supported way to bind scene nodes/components to gameplay systems without hand-editing engine internals. | Scene/component tags, stable ids, gameplay binding rows, and validation helpers; no runtime reflection magic. | Scene validation tests, missing/duplicate binding diagnostics, sample package counters. |
+| `engine-asset-placeholder-generation-v1` | `foundational-unblocker` | AI needs legal placeholder sprites, meshes, materials, UI, and audio cues when user assets do not exist. | Deterministic first-party placeholder generators under tools/assets with provenance/license rows. | Hash/provenance tests, package registration proof, replacement workflow docs. |
+| `engine-gameplay-debug-overlay-v1` | `foundational-unblocker` | AI and developers need runtime-visible diagnostics for objectives, input, physics/nav/AI, package state, and failures. | First-party runtime UI/debug rows; optional editor panels are separate. | Package-visible overlay counters, headless row tests, no renderer/native handle exposure. |
+| `engine-quest-dialogue-state-v1` | `gameplay-family-enabler` | Narrative, tutorial, progression, adventure, and objective-driven games need quests, branching dialogue, objectives, flags, and rewards. | Versioned quest/dialogue documents, localization keys, save-state integration, and validation rows. | Graph/schema tests, sample game usage, save/load evidence, package counters. |
+| `engine-inventory-items-crafting-v1` | `gameplay-family-enabler` | Item-driven, survival, crafting, economy, progression, and sandbox games need item definitions, inventory rules, recipes, and placement/cost validation. | First-party item/inventory/crafting documents and deterministic state transitions. | Unit tests, generated sample package proof, invalid recipe diagnostics, save/load evidence. |
+| `engine-construction-placement-v1` | `gameplay-family-enabler` | Building/sandbox games need placement previews, collision/nav invalidation, snapping, costs, and persistence. | Game-facing placement/rule contracts and scene update review rows; engine physics/nav updates remain reviewed. | Placement validation tests, package counters, save/load evidence, invalid placement remediation rows. |
+| `engine-ai-behavior-authoring-v1` | `gameplay-family-enabler` | NPC-heavy games need behavior assets, blackboard/perception integration, and deterministic decision traces. | First-party behavior documents and runtime execution contracts; no arbitrary script execution. | Behavior trace tests, package-visible AI counters, authoring diagnostics. |
+| `engine-navmesh-crowd-v1` | `gameplay-family-enabler` | Exploration, tactics, crowd, companion, and navigation-heavy games need navmesh, richer obstacles, local avoidance, and path diagnostics. | First-party navmesh/crowd APIs or optional adapter behind opaque boundary; no middleware types in public APIs. | Path/crowd tests, dynamic obstacle diagnostics, 2D/3D package evidence, host/dependency gates if adapter-based. |
+| `engine-advanced-physics-controller-v1` | `gameplay-family-enabler` | Movement-heavy, action, platforming, vehicle, and physical-world games need character dynamics, sweeps, constraints, moving platforms, and deterministic interactions. | First-party controller/query/constraint contracts; optional middleware remains adapter-gated. | Deterministic physics tests, movement package counters, replay diagnostics. |
+| `engine-procedural-generation-v1` | `gameplay-family-enabler` | Replayable, sandbox, procedural, and systemic games need seed-driven maps, encounters, loot, and object placement. | Versioned first-party generator inputs/outputs and validation rows; no external service dependency. | Seed determinism tests, generated scene/package validation, content quality rubric rows. |
+| `engine-world-region-streaming-v1` | `scale-enabler` | Larger maps need region/chunk packages, safe load/unload, resource budgets, and world-state persistence. | Region package contracts, safe-point streaming, resource/nav/physics partition hooks. | Region streaming tests, budget counters, generated package evidence, missing-region diagnostics. |
+| `engine-entity-scale-and-culling-v1` | `scale-enabler` | High-object-count games need entity query, culling, LOD, instancing, and update/draw budgets. | Backend-neutral scene/runtime/renderer contracts; renderer internals remain private. | CPU/GPU counters, package quality gates, deterministic culling/LOD tests. |
+| `engine-scripting-sandbox-v1` | `optional-adapter` | Some game creators need game-local scripts/mods for high freedom and rapid iteration. | Optional Lua/WASM/etc. adapter with restricted host API, dependency/legal records, execution budgets, and deterministic diagnostics. | Sandbox permission tests, script validation, replay/package counters, no filesystem/network/process access by default. |
+| `engine-networking-foundation-v1` | `optional-adapter` | Multiplayer games eventually need transport/session/replication foundations. | Separate architecture/security plan, transport abstraction, threat model, deterministic simulation prerequisites. | Security review, replay tests, network host gates, no broad multiplayer ready claim from local gameplay. |
+
+When a game-creation handoff references one of these rows, the developer should either implement a scoped engine-feature plan, record a supported workaround, or mark the requested game feature unsupported for the current engine version. After implementation, the developer updates the manifest and validation recipes so future game-creation agents can use the capability from game-owned files only.
+
+
+Promotion rule: add a developer-owned engine capability only when the missing feature can become a reusable primitive with schema/API validation, manifest exposure, and at least two plausible gameplay-family consumers. Otherwise keep it as game-owned sample code or content.

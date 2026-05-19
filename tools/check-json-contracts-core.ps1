@@ -25,6 +25,21 @@ function Assert-DoesNotContainText($text, $needle, $label) {
 
 function Get-ActiveChildProductionPlans {
     $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
+function Get-JsonContractSurfaceText([Parameter(Mandatory)][string]$relativePath) {
+    $normalizedRelativePath = $relativePath -replace '\\', '/'
+    $fullPath = Join-Path $root $normalizedRelativePath
+    $parts = [System.Collections.Generic.List[string]]::new()
+    $parts.Add((Get-Content -LiteralPath $fullPath -Raw))
+    if ($normalizedRelativePath -eq "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+        $splitRoot = Join-Path $root "docs/superpowers/master-plans/production-completion-v1"
+        if (Test-Path -LiteralPath $splitRoot) {
+            Get-ChildItem -LiteralPath $splitRoot -Filter "*.md" -File |
+                Sort-Object Name |
+                ForEach-Object { $parts.Add((Get-Content -LiteralPath $_.FullName -Raw)) }
+        }
+    }
+    return $parts -join "`n"
+}
     $plansRoot = Join-Path $root "docs/superpowers/plans"
     if (-not (Test-Path -LiteralPath $plansRoot -PathType Container)) {
         Write-Error "Missing production plan directory: docs/superpowers/plans"
