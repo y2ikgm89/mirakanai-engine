@@ -15,6 +15,7 @@
 #include <limits>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -97,6 +98,58 @@ select_runtime_sprite_animation_frame(const runtime::RuntimeSpriteAnimationPaylo
         cursor += frame.duration_seconds;
         if (sample_time < cursor || index + 1U == animation.frames.size()) {
             selected_frame_index = index;
+            return &frame;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] bool valid_sprite_flipbook_clip_name(std::string_view name) noexcept {
+    return !name.empty() && name.find('\n') == std::string_view::npos && name.find('\r') == std::string_view::npos &&
+           name.find('\0') == std::string_view::npos;
+}
+
+[[nodiscard]] const RuntimeSpriteFlipbookClipDesc*
+find_runtime_sprite_flipbook_clip(std::span<const RuntimeSpriteFlipbookClipDesc> clips,
+                                  std::string_view name) noexcept {
+    for (const auto& clip : clips) {
+        if (clip.name == name) {
+            return &clip;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] bool runtime_sprite_flipbook_clip_frame_range_valid(const RuntimeSpriteFlipbookDesc& desc,
+                                                                  const RuntimeSpriteFlipbookClipDesc& clip) noexcept {
+    return clip.frame_count > 0U && clip.first_frame_index < desc.frames.size() &&
+           clip.frame_count <= desc.frames.size() - clip.first_frame_index;
+}
+
+[[nodiscard]] bool runtime_sprite_flipbook_clip_duration(const RuntimeSpriteFlipbookDesc& desc,
+                                                         const RuntimeSpriteFlipbookClipDesc& clip,
+                                                         float& duration_seconds) noexcept {
+    duration_seconds = 0.0F;
+    for (std::size_t offset = 0; offset < clip.frame_count; ++offset) {
+        const auto& frame = desc.frames[clip.first_frame_index + offset];
+        if (!std::isfinite(frame.duration_seconds) || frame.duration_seconds <= 0.0F) {
+            return false;
+        }
+        duration_seconds += frame.duration_seconds;
+    }
+    return duration_seconds > 0.0F;
+}
+
+[[nodiscard]] const runtime::RuntimeSpriteAnimationFrame*
+select_runtime_sprite_flipbook_frame(const RuntimeSpriteFlipbookDesc& desc, const RuntimeSpriteFlipbookClipDesc& clip,
+                                     float sample_time_seconds, std::size_t& selected_frame_index) noexcept {
+    float cursor = 0.0F;
+    for (std::size_t offset = 0; offset < clip.frame_count; ++offset) {
+        const auto frame_index = clip.first_frame_index + offset;
+        const auto& frame = desc.frames[frame_index];
+        cursor += frame.duration_seconds;
+        if (sample_time_seconds < cursor || offset + 1U == clip.frame_count) {
+            selected_frame_index = frame_index;
             return &frame;
         }
     }
@@ -1048,6 +1101,64 @@ RuntimeSceneRenderAnimationApplyResult sample_and_apply_runtime_scene_render_ani
 
     result.succeeded = true;
     result.applied_sample_count = apply_result.applied_sample_count;
+    return result;
+}
+
+RuntimeSpriteFlipbookSampleResult advance_runtime_sprite_flipbook(RuntimeSpriteFlipbookState& state,
+                                                                  const RuntimeSpriteFlipbookDesc& desc,
+                                                                  float delta_seconds) {
+    RuntimeSpriteFlipbookSampleResult result;
+    if (!valid_sprite_flipbook_clip_name(state.clip_name)) {
+        result.diagnostic = "runtime sprite flipbook clip name is invalid";
+        return result;
+    }
+
+    const auto* clip = find_runtime_sprite_flipbook_clip(desc.clips, state.clip_name);
+    if (clip == nullptr) {
+        result.diagnostic = "runtime sprite flipbook clip was not found";
+        return result;
+    }
+    if (!runtime_sprite_flipbook_clip_frame_range_valid(desc, *clip)) {
+        result.diagnostic = "runtime sprite flipbook clip frame range is invalid";
+        return result;
+    }
+
+    float clip_duration_seconds = 0.0F;
+    if (!runtime_sprite_flipbook_clip_duration(desc, *clip, clip_duration_seconds)) {
+        result.diagnostic = "runtime sprite flipbook clip frame duration is invalid";
+        return result;
+    }
+
+    const auto safe_delta = std::isfinite(delta_seconds) ? delta_seconds : 0.0F;
+    const auto advanced_time = state.elapsed_seconds + safe_delta;
+    float sample_time_seconds = advanced_time;
+    bool clamped_to_end = false;
+    if (clip->loop) {
+        sample_time_seconds = std::fmod(sample_time_seconds, clip_duration_seconds);
+        if (sample_time_seconds < 0.0F) {
+            sample_time_seconds += clip_duration_seconds;
+        }
+    } else {
+        clamped_to_end = sample_time_seconds >= clip_duration_seconds;
+        sample_time_seconds = std::clamp(sample_time_seconds, 0.0F, clip_duration_seconds);
+    }
+
+    std::size_t selected_frame_index = 0;
+    const auto* frame = select_runtime_sprite_flipbook_frame(desc, *clip, sample_time_seconds, selected_frame_index);
+    if (frame == nullptr) {
+        result.diagnostic = "runtime sprite flipbook selected no frame";
+        return result;
+    }
+
+    state.elapsed_seconds = sample_time_seconds;
+    result.succeeded = true;
+    result.clip_name = clip->name;
+    result.sampled_frame_count = 1;
+    result.selected_frame_index = selected_frame_index;
+    result.sample_time_seconds = sample_time_seconds;
+    result.clip_duration_seconds = clip_duration_seconds;
+    result.clamped_to_end = clamped_to_end;
+    result.frame = *frame;
     return result;
 }
 

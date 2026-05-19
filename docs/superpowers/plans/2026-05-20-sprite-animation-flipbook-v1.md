@@ -39,7 +39,7 @@ Select this plan as the next active developer-owned 2D capability after `sprite-
 
 ## Phase 1: Flipbook State Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -69,3 +69,5 @@ Adopt the flipbook contract in the generated 2D package path so package smokes c
 
 - Phase 0 pointer sync: plan registry, readiness ledger, production master-plan index, manifest fragments, and composed manifest select this plan as the next active developer-owned capability after `sprite-batching-renderer-v1` while keeping `unsupportedProductionGaps = []`.
 - Phase 0 static gate: after manifest compose, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed locally on 2026-05-20.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_tests` failed first because `RuntimeSpriteFlipbookClipDesc`, `RuntimeSpriteFlipbookState`, `RuntimeSpriteFlipbookDesc`, and `advance_runtime_sprite_flipbook` did not exist.
+- Phase 1 GREEN: `MK_scene_renderer` now exposes value-only `RuntimeSpriteFlipbookClipDesc`, `RuntimeSpriteFlipbookDesc`, `RuntimeSpriteFlipbookState`, `RuntimeSpriteFlipbookSampleResult`, and `advance_runtime_sprite_flipbook`; focused build and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_scene_renderer_tests` passed.

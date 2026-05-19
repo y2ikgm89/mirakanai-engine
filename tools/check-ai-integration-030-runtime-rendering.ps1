@@ -182,6 +182,9 @@ if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEd
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentAssetPlaceholderGeneration")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentAssetPlaceholderGeneration"
 }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentSpriteAnimationFlipbook")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentSpriteAnimationFlipbook"
+}
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentGameplayDebugOverlay")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentGameplayDebugOverlay"
 }
@@ -1648,6 +1651,7 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional L
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "build_scene_directional_shadow_light_space_plan" "MK_scene_renderer module purpose"
 Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "sample_and_apply_runtime_scene_render_animation_float_clip" "MK_scene_renderer module purpose"
+Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "advance_runtime_sprite_flipbook" "MK_scene_renderer module purpose"
 Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "sample_runtime_morph_mesh_cpu_animation_float_clip" "MK_scene_renderer module purpose"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRhi) "RHI Depth Attachment Contract v0" "RHI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRhi) "RenderPassDepthAttachment" "RHI game guidance"
@@ -1987,6 +1991,12 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Sprit
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "SpriteBatchPlanDesc" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "atlas_backed_batch_count" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "unsupported_reordering_policy" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteFlipbookClipDesc" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteFlipbookState" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteFlipbookSampleResult" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "advance_runtime_sprite_flipbook" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "RuntimeSpriteAnimationFrame" "sprite animation flipbook game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentSpriteAnimationFlipbook) "package-visible flipbook counters" "sprite animation flipbook game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "stable scene color/depth bindings 0/1 and 2/3" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "postprocess_depth_input_ready=1" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "--require-postprocess-depth-input" "runtime game guidance"

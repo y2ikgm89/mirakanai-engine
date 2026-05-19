@@ -197,6 +197,35 @@ struct RuntimeSceneRenderSpriteAnimationApplyResult {
     std::size_t selected_frame_index{0};
 };
 
+struct RuntimeSpriteFlipbookClipDesc {
+    std::string name;
+    std::size_t first_frame_index{0};
+    std::size_t frame_count{0};
+    bool loop{true};
+};
+
+struct RuntimeSpriteFlipbookDesc {
+    std::span<const runtime::RuntimeSpriteAnimationFrame> frames;
+    std::span<const RuntimeSpriteFlipbookClipDesc> clips;
+};
+
+struct RuntimeSpriteFlipbookState {
+    std::string clip_name;
+    float elapsed_seconds{0.0F};
+};
+
+struct RuntimeSpriteFlipbookSampleResult {
+    bool succeeded{false};
+    std::string diagnostic;
+    std::string clip_name;
+    std::size_t sampled_frame_count{0};
+    std::size_t selected_frame_index{0};
+    float sample_time_seconds{0.0F};
+    float clip_duration_seconds{0.0F};
+    bool clamped_to_end{false};
+    runtime::RuntimeSpriteAnimationFrame frame;
+};
+
 struct RuntimeMorphMeshCpuAnimationSampleResult {
     bool succeeded{false};
     std::string diagnostic;
@@ -280,6 +309,9 @@ instantiate_runtime_scene_render_data(const runtime::RuntimeAssetPackage& packag
     const std::vector<AnimationJointTrack3dDesc>& tracks, float time_seconds);
 [[nodiscard]] RuntimeSceneRenderSpriteAnimationApplyResult sample_and_apply_runtime_scene_render_sprite_animation(
     RuntimeSceneRenderInstance& instance, const runtime::RuntimeSpriteAnimationPayload& animation, float time_seconds);
+[[nodiscard]] RuntimeSpriteFlipbookSampleResult advance_runtime_sprite_flipbook(RuntimeSpriteFlipbookState& state,
+                                                                                const RuntimeSpriteFlipbookDesc& desc,
+                                                                                float delta_seconds);
 [[nodiscard]] RuntimeMorphMeshCpuAnimationSampleResult
 sample_runtime_morph_mesh_cpu_animation_float_clip(const runtime::RuntimeMorphMeshCpuPayload& morph,
                                                    const AnimationFloatClipSourceDocument& clip,

@@ -73,6 +73,19 @@ Assert-Properties $engine.gameCodeGuidance @("currentEditorPrefabInstanceSourceL
 Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorGameModuleDriverLoad") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorRuntimeScenePackageValidationExecution") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentSpriteAnimationFlipbook") "engine manifest gameCodeGuidance"
+foreach ($needle in @(
+    "RuntimeSpriteFlipbookClipDesc",
+    "RuntimeSpriteFlipbookState",
+    "RuntimeSpriteFlipbookSampleResult",
+    "advance_runtime_sprite_flipbook",
+    "RuntimeSpriteAnimationFrame",
+    "package-visible flipbook counters"
+)) {
+    if (-not ([string]$engine.gameCodeGuidance.currentSpriteAnimationFlipbook).Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentSpriteAnimationFlipbook missing: $needle"
+    }
+}
 foreach ($needle in @(
     "EditorInProcessRuntimeHostDesc",
     "EditorInProcessRuntimeHostModel",
