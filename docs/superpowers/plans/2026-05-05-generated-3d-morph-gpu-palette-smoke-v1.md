@@ -64,7 +64,3 @@ Expose the runtime-scene RHI morph GPU palette bridge through the SDL desktop sc
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1` passed, including 16/16 desktop-runtime CTest rows.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including `ctest --preset dev` 29/29 passed; Metal and Apple checks remained diagnostic-only host blockers as expected on Windows.
-
-
-
-

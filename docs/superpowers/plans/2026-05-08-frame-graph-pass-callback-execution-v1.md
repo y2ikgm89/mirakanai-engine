@@ -60,5 +60,3 @@ schedule and invokes caller-provided barrier/pass callbacks in deterministic ord
 | `git diff --check` | PASS | CRLF conversion warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | CTest 29/29 passed; Apple/Metal lanes remain host-gated/diagnostic-only on this Windows host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Required before commit. |
-
-

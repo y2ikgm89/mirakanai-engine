@@ -105,5 +105,3 @@ timed overlap proof is attempted.
   full-repo tidy is not claimed for this slice.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed; validation reported diagnostic-only Metal/Apple host blockers, built the
   `dev` preset, and CTest passed 29/29 tests including `mirakana_rhi_tests` and `mirakana_d3d12_rhi_tests`.
-
-

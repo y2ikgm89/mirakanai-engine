@@ -121,7 +121,3 @@
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`: PASS.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: PASS.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: PASS after syncing the mirrored `check-json-contracts.ps1` apply-ready allowlist for `create-material-from-graph`; final run reports `validate: ok`.
-
-
-
-

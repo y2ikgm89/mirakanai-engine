@@ -129,9 +129,3 @@ Implement `editor-prefab-variant-reviewed-resolution-v1` as a narrow follow-up t
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; Metal/Apple lanes remained diagnostic/host-gated on this Windows host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Default dev build completed after validation. |
 | Slice-closing commit | Pending |  |
-
-
-
-
-
-

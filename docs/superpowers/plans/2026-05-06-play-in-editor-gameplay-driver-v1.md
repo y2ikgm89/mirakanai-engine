@@ -105,9 +105,3 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed on Windows; 29/29 CTest tests passed. Metal/Apple checks remain diagnostic/host-gated on this host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Default dev preset build passed after validation. |
 | Slice-closing commit | PASS | Commit staged only the files owned by the Play-In-Editor isolation/driver slice and synchronized AI guidance. |
-
-
-
-
-
-

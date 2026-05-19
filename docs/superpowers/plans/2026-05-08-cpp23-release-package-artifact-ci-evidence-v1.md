@@ -95,7 +95,3 @@
 | `git diff --check` | PASS | No whitespace errors after removing trailing blank lines; Git reported LF-to-CRLF working-copy warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; 29/29 CTest tests passed. Diagnostic-only host gates remain Metal tools and Apple packaging on this Windows host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configure/build completed successfully. |
-
-
-
-

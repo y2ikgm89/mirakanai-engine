@@ -36,5 +36,3 @@ Land the **hot reload stream item 1** deliverable: a formal session **state mach
 | Build | `cmake --build --preset dev --target MK_editor_core_tests` |
 | Test | `ctest --preset dev --output-on-failure -R MK_editor_core_tests` |
 | Repo | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` |
-
-

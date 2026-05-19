@@ -83,5 +83,3 @@ synchronization guidance for multiple versions of compute-produced graphics data
   docs/manifest/skill/subagent updates.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. It reported `tidy-check: ok (1 files)`, rebuilt the `dev` preset, and
   passed CTest `29/29`. Metal shader packaging and Apple packaging remained Windows-host diagnostic-only blockers.
-
-

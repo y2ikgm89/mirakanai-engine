@@ -406,5 +406,3 @@ Editor Profiler Trace Export v1, Editor Profiler Trace File Save v1, Editor Prof
 5. Keep dependency-gated work explicit. Broader importer depth, production UI text/font/accessibility/image adapters, and optional middleware must start with `license-audit`, dependency records, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md` updates.
 6. Keep Wave 3 Vulkan and Wave 4 Metal visible backend proofs maintained behind runtime/toolchain gates while shared asset/material paths evolve.
 7. Keep Wave 11 updated whenever public APIs, manifests, generated-game scaffolding, skills, rules, or subagents change; `agent-context` exposes module ownership, sample game readiness, asset/importer capabilities, platform targets, and validation recipes.
-
-

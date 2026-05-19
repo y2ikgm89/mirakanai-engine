@@ -71,5 +71,3 @@ choose the elbow side from an authored guide vector instead of exposing the solv
   including `mirakana/math/vec.hpp`.
 - Full repository validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. It included `tidy-check: ok (1 files)`, full build, and CTest
   `29/29` passing; Metal and Apple packaging remained diagnostic-only host blockers on this Windows host.
-
-

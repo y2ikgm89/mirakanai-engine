@@ -45,5 +45,3 @@ Import Khronos glTF 2.0 **non-skinned** triangle primitives with **morph targets
 ## Non-Goals
 
 - GPU morph execution, renderer/RHI scene binding for morph deformation, sparse accessor support, Draco decode, STEP/CUBICSPLINE samplers, glTF materials, and generated-game morph authoring UX.
-
-

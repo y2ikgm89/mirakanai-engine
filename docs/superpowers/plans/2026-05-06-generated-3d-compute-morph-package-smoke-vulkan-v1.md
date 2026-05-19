@@ -116,5 +116,3 @@ Metal parity, directional-shadow morph rendering, scene-schema compute-morph aut
 renderer quality. The next active slice is `2d-native-sprite-batching-execution-v1`, which moves the remaining 2D
 production gap from telemetry-only sprite batch planning toward a narrow renderer-owned native sprite batching
 execution proof.
-
-

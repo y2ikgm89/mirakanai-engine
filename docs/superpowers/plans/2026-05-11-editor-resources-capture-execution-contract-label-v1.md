@@ -34,5 +34,3 @@ Capture execution rows, phase codes, PIX host-helper wiring, and `MK_editor_core
 | Compose manifest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Pass (fragment `010-aiOperableProductionLoop.json` updated + composed) |
 | Focused tests | `ctest --preset dev -R MK_editor_core_tests --output-on-failure` | Pass |
 | Repo gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass (includes `tools/build.ps1` + full `ctest --preset dev`) |
-
-

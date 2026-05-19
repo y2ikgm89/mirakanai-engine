@@ -74,5 +74,3 @@ POSITION/NORMAL/TANGENT compute output buffers and lit tangent-frame package ren
 - GREEN: `cmd.exe /d /c "set Path=%Path%&& set PATH=&& ctest --preset dev -R mirakana_renderer_tests --output-on-failure"` passed.
 - Static/format/API/tidy: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1` passed before the final documentation/pointer update.
 - Final validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after selecting `runtime-rhi-compute-morph-queue-synchronization-d3d12-v1` as the next active plan and updating docs/manifest/static checks.
-
-

@@ -131,9 +131,3 @@ Sources:
 - Slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed 65/65 tests; Metal and Apple evidence remained host-gated diagnostic-only on this Windows host.
 - Build gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed after `validate.ps1`.
 - Publication: committed and pushed `codex/frame-graph-shadow-scratch-color-target-state-ownership`, then opened PR [#64](https://github.com/y2ikgm89/mirakanai-engine/pull/64).
-
-
-
-
-
-

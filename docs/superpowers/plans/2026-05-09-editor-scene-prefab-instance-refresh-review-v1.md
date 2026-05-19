@@ -102,7 +102,3 @@ The selected production gap is `editor-productization`. The previous slices adde
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed | AI integration sentinels passed after docs, manifest, skills, plan registry, and static-check updates. |
 | `git diff --check -- .agents/skills/editor-change/SKILL.md .claude/skills/gameengine-editor/SKILL.md docs/editor.md docs/current-capabilities.md docs/roadmap.md docs/testing.md docs/superpowers/plans/README.md docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md docs/superpowers/plans/2026-05-09-editor-scene-prefab-instance-refresh-review-v1.md editor/core/include/mirakana/editor/scene_authoring.hpp editor/core/src/scene_authoring.cpp editor/src/main.cpp engine/agent/manifest.json tests/unit/editor_core_tests.cpp tools/check-ai-integration.ps1 tools/check-json-contracts.ps1` | Passed | Whitespace check passed; Git reported line-ending normalization warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation passed. `production-readiness-audit-check` still reports 11 non-ready unsupported gaps, including `editor-productization` as `partly-ready`; Metal/Apple diagnostics remain host-gated. |
-
-
-
-

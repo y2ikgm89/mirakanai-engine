@@ -117,9 +117,3 @@ Expected: `MK_renderer_tests` passes.
 - Slice gates passed: `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1`.
 - Full gate passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`; Apple/Metal diagnostics remain host-gated as expected on this Windows host.
 - Standalone build passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`.
-
-
-
-
-
-

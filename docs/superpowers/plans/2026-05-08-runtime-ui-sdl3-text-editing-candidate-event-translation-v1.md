@@ -89,7 +89,3 @@
 - Added copied first-party SDL3 IME candidate rows to `mirakana::SdlWindowEvent`.
 - Kept `mirakana_ui` free of SDL3 headers and native handles.
 - Did not mark the broad `production-ui-importer-platform-adapters` gap ready; native IME services, UI-side composition/candidate publication, virtual keyboard behavior, text editing model mutation, text shaping, font rasterization, OS accessibility, and broader platform adapters remain follow-up work.
-
-
-
-

@@ -122,7 +122,3 @@
 | `git diff --check` | PASS | No whitespace errors in the working-tree diff. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Coherent slice validation passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Slice-closing build passed. |
-
-
-
-

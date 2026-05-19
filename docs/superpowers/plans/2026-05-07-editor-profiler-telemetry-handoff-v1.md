@@ -141,9 +141,3 @@ Close the next narrow profiler productization gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configured and built all targets successfully. |
 | Final `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 && pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Commit-prep gate passed; `validate` reported 29/29 CTest tests and `build` completed the dev preset. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Editor Profiler Telemetry Handoff v1 files and leave unrelated dirty guidance files unstaged. |
-
-
-
-
-
-

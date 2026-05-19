@@ -40,5 +40,3 @@ Prove that reviewed nested prefab propagation remains atomic when the nested pre
 ## Next Candidate After Validation
 
 - Return to `recommendedNextPlan.id=next-production-gap-selection` and pick the next `editor-productization` wedge from the manifest-selected order.
-
-

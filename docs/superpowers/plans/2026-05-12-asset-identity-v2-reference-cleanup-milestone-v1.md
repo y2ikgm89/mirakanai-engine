@@ -308,7 +308,3 @@ Expected: commit succeeds and unrelated dirty worktree files remain unstaged.
 | `Invoke-ScriptAnalyzer -Severity Error` on `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, `tools/new-game.ps1` | Passed | Error severity returned no diagnostics. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation passed; `production-readiness-audit` reports `unsupported_gaps=10`; CTest passed 47/47. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Explicit commit-prep build gate passed after validation. |
-
-
-
-

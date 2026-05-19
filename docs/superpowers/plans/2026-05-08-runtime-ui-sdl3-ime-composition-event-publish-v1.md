@@ -97,9 +97,3 @@
 - The bridge converts SDL UTF-8 character cursor positions into byte offsets before UI validation. Negative cursor rows clamp to `0`; oversized cursor rows clamp to the copied composition byte length.
 - Non-`text_editing` rows are ignored without diagnostics or adapter dispatch. Invalid UI targets are rejected by the existing `mirakana_ui` publication helper.
 - This slice intentionally does not implement committed text insertion, text model mutation, candidate UI, native IME parity, virtual keyboard policy, accessibility bridge publication, cross-platform text services, production shaping, font rasterization, renderer texture upload, or third-party adapters.
-
-
-
-
-
-

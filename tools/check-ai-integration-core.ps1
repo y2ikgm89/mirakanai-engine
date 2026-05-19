@@ -574,5 +574,3 @@ function Invoke-CheckAiIntegrationSections {
         . (Join-Path $PSScriptRoot $sectionFile)
     }
 }
-
-

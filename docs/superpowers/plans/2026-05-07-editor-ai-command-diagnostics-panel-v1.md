@@ -125,7 +125,3 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Full validation passed, including agent/static checks, production readiness audit, toolchain checks, tidy smoke, dev build, and 29/29 dev CTest tests. Metal/Apple diagnostics remain host-gated on this Windows host as expected. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Default dev configure/build completed after validation. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Editor AI Command Diagnostics Panel v1 files; leave unrelated pre-existing guidance changes unstaged. |
-
-
-
-

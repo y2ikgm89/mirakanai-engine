@@ -120,5 +120,3 @@ For `editor-productization`, the Windows-default 1.0 surface is closed by [Edito
 | Plan |
 | --- |
 | [2026-05-11-phase4-full-repository-quality-gate-ci-analyzer-expansion-v1.md](2026-05-11-phase4-full-repository-quality-gate-ci-analyzer-expansion-v1.md) |
-
-

@@ -19,6 +19,7 @@ jobs:
   changes:
     name: Select PR validation tier
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       windows: ${{ steps.classify.outputs.windows }}
       linux: ${{ steps.classify.outputs.linux }}
@@ -29,9 +30,10 @@ jobs:
       windows_cpp23: ${{ steps.classify.outputs.windows_cpp23 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Classify touched surfaces
         id: classify
@@ -57,11 +59,13 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Check PR diff whitespace
         shell: pwsh
@@ -88,16 +92,75 @@ jobs:
     needs: changes
     if: needs.changes.outputs.windows == 'true'
     runs-on: windows-2025-vs2026
+    timeout-minutes: 120
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Restore vcpkg tool checkout cache
+        id: restore-vcpkg-tool
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ runner.os }}-vcpkg-tool-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-tool-
 
       - name: Clone vcpkg tool checkout
+        if: ${{ steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+
+      - name: Update vcpkg tool baseline
         shell: pwsh
         run: |
           $manifest = Get-Content vcpkg.json -Raw | ConvertFrom-Json
-          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git external/vcpkg
-          git -C external/vcpkg checkout $manifest.'builtin-baseline'
+          $targetBaseline = $manifest.'builtin-baseline'
+          if (!(Test-Path external/vcpkg/.git)) {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
+          try {
+            $currentBaseline = git -C external/vcpkg rev-parse HEAD
+            $resolvedTarget = git -C external/vcpkg rev-parse $targetBaseline
+          } catch {
+            $currentBaseline = [string]::Empty
+            $resolvedTarget = [string]::Empty
+          }
+          if ([string]::IsNullOrWhiteSpace($resolvedTarget) -or $currentBaseline -ne $resolvedTarget) {
+            git -C external/vcpkg fetch --depth 1 origin $targetBaseline
+            git -C external/vcpkg checkout --force $targetBaseline
+          }
+
+      - name: Restore vcpkg package cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
+      - name: Restore vcpkg installed cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: vcpkg_installed
+          key: ${{ runner.os }}-vcpkg-installed-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-installed-
+
+      - name: Restore Windows dev build cache
+        id: restore-dev-build
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/build/dev
+          key: ${{ runner.os }}-dev-build-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-dev-build-
 
       - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
         shell: pwsh
@@ -109,9 +172,11 @@ jobs:
 
       - name: Upload Windows test logs
         if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-test-logs
+          retention-days: 14
+          include-hidden-files: false
           path: |
             out/build/dev/Testing/**/*.log
           if-no-files-found: warn
@@ -121,16 +186,79 @@ jobs:
     needs: changes
     if: needs.changes.outputs.windows_cpp23 == 'true'
     runs-on: windows-2025-vs2026
+    timeout-minutes: 150
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Restore vcpkg tool checkout cache
+        id: restore-vcpkg-tool
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ runner.os }}-vcpkg-tool-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-tool-
 
       - name: Clone vcpkg tool checkout
+        if: ${{ steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
+        shell: pwsh
+        run: |
+          git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+
+      - name: Update vcpkg tool baseline
         shell: pwsh
         run: |
           $manifest = Get-Content vcpkg.json -Raw | ConvertFrom-Json
-          git clone --filter=blob:none https://github.com/microsoft/vcpkg.git external/vcpkg
-          git -C external/vcpkg checkout $manifest.'builtin-baseline'
+          $targetBaseline = $manifest.'builtin-baseline'
+          if (!(Test-Path external/vcpkg/.git)) {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
+          try {
+            $currentBaseline = git -C external/vcpkg rev-parse HEAD
+            $resolvedTarget = git -C external/vcpkg rev-parse $targetBaseline
+          } catch {
+            $currentBaseline = [string]::Empty
+            $resolvedTarget = [string]::Empty
+          }
+          if ([string]::IsNullOrWhiteSpace($resolvedTarget) -or $currentBaseline -ne $resolvedTarget) {
+            git -C external/vcpkg fetch --depth 1 origin $targetBaseline
+            git -C external/vcpkg checkout --force $targetBaseline
+          }
+
+      - name: Restore vcpkg package cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
+      - name: Restore vcpkg installed cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: vcpkg_installed
+          key: ${{ runner.os }}-vcpkg-installed-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-installed-
+
+      - name: Restore Windows C++23 build cache
+        id: restore-cpp23-build
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            out/build/cpp23-eval
+            out/build/cpp23-release-preset-eval
+            out/build/installed-consumer-cpp23-release-eval
+            out/install/cpp23-release-eval
+          key: ${{ runner.os }}-cpp23-build-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-cpp23-build-
 
       - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
         shell: pwsh
@@ -142,9 +270,11 @@ jobs:
 
       - name: Upload Windows C++23 test logs
         if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-cpp23-test-logs
+          retention-days: 14
+          include-hidden-files: false
           path: |
             out/build/cpp23-eval/Testing/**/*.log
             out/build/cpp23-release-preset-eval/Testing/**/*.log
@@ -152,9 +282,11 @@ jobs:
 
       - name: Upload Windows C++23 packages
         if: ${{ success() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-packages
+          retention-days: 14
+          include-hidden-files: false
           path: |
             out/build/cpp23-release-preset-eval/*.zip
             out/build/cpp23-release-preset-eval/*.zip.sha256
@@ -165,12 +297,52 @@ jobs:
     needs: changes
     if: needs.changes.outputs.linux == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPRESS: true
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_MAXSIZE: 2G
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+      CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-      - name: Install build and coverage tools
-        run: sudo apt-get update && sudo apt-get install -y clang g++ ninja-build
+      - name: Restore Linux ccache
+        id: restore-linux-ccache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-ccache-linux-clang-${{ hashFiles('CMakePresets.json', 'vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-linux-clang-
+
+      - name: Restore Linux CMake build cache
+        id: restore-linux-build
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/build/ci-linux-clang
+          key: ${{ runner.os }}-linux-ci-linux-clang-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-linux-ci-linux-clang-
+
+      - name: Verify preinstalled toolchain and install ccache
+        run: |
+          command -v clang >/dev/null 2>&1 || { echo "clang is required on ubuntu-latest runner images"; exit 1; }
+          command -v g++ >/dev/null 2>&1 || { echo "g++ is required on ubuntu-latest runner images"; exit 1; }
+          command -v ninja >/dev/null 2>&1 || { echo "ninja is required on ubuntu-latest runner images"; exit 1; }
+          if ! command -v ccache >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends --no-install-suggests ccache
+          fi
+
+      - name: Prepare ccache
+        run: |
+          ccache --zero-stats
 
       - name: Configure
         run: cmake --preset ci-linux-clang
@@ -181,11 +353,17 @@ jobs:
       - name: Test
         run: ctest --preset ci-linux-clang --output-on-failure
 
+      - name: Show ccache stats
+        if: ${{ always() && !cancelled() }}
+        run: ccache --show-stats
+
       - name: Upload Linux test logs
         if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-test-logs
+          retention-days: 14
+          include-hidden-files: false
           path: |
             out/build/ci-linux-clang/Testing/**/*.log
           if-no-files-found: warn
@@ -195,22 +373,70 @@ jobs:
     needs: changes
     if: needs.changes.outputs.linux_coverage == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPRESS: true
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_MAXSIZE: 2G
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+      CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-      - name: Install build and coverage tools
-        run: sudo apt-get update && sudo apt-get install -y clang g++ lcov ninja-build
+      - name: Restore Linux coverage ccache
+        id: restore-linux-coverage-ccache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-ccache-linux-coverage-${{ hashFiles('CMakePresets.json', 'vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-linux-coverage-
+
+      - name: Restore Linux coverage build cache
+        id: restore-linux-coverage-build
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/build/coverage
+          key: ${{ runner.os }}-linux-coverage-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-linux-coverage-
+
+      - name: Verify preinstalled toolchain and install coverage extras
+        run: |
+          command -v clang >/dev/null 2>&1 || { echo "clang is required on ubuntu-latest runner images"; exit 1; }
+          command -v ninja >/dev/null 2>&1 || { echo "ninja is required on ubuntu-latest runner images"; exit 1; }
+          missing_packages=()
+          command -v ccache >/dev/null 2>&1 || missing_packages+=("ccache")
+          command -v lcov >/dev/null 2>&1 || missing_packages+=("lcov")
+          if [ "${#missing_packages[@]}" -gt 0 ]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends --no-install-suggests "${missing_packages[@]}"
+          fi
+
+      - name: Prepare ccache
+        run: |
+          ccache --zero-stats
 
       - name: Coverage
         shell: pwsh
         run: ./tools/check-coverage.ps1 -Strict
 
+      - name: Show ccache stats
+        if: ${{ always() && !cancelled() }}
+        run: ccache --show-stats
+
       - name: Upload Linux coverage logs
         if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-coverage
+          retention-days: 14
+          include-hidden-files: false
           path: |
             out/build/coverage/Testing/**
             out/build/coverage/coverage*.info
@@ -221,12 +447,51 @@ jobs:
     needs: changes
     if: needs.changes.outputs.linux_sanitizers == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPRESS: true
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_MAXSIZE: 2G
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+      CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-      - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y clang ninja-build
+      - name: Restore Linux sanitizer ccache
+        id: restore-linux-sanitizer-ccache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-ccache-linux-asan-${{ hashFiles('CMakePresets.json', 'vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-linux-asan-
+
+      - name: Restore Linux sanitizer build cache
+        id: restore-linux-sanitizer-build
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/build/clang-asan-ubsan
+          key: ${{ runner.os }}-linux-asan-ubsan-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-linux-asan-ubsan-
+
+      - name: Verify preinstalled toolchain and install ccache
+        run: |
+          command -v clang >/dev/null 2>&1 || { echo "clang is required on ubuntu-latest runner images"; exit 1; }
+          command -v ninja >/dev/null 2>&1 || { echo "ninja is required on ubuntu-latest runner images"; exit 1; }
+          if ! command -v ccache >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends --no-install-suggests ccache
+          fi
+
+      - name: Prepare ccache
+        run: |
+          ccache --zero-stats
 
       - name: Configure
         run: cmake --preset clang-asan-ubsan
@@ -239,11 +504,17 @@ jobs:
           UBSAN_OPTIONS: print_stacktrace=1
         run: ctest --preset clang-asan-ubsan --output-on-failure
 
+      - name: Show ccache stats
+        if: ${{ always() && !cancelled() }}
+        run: ccache --show-stats
+
       - name: Upload sanitizer test logs
         if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-sanitizer-test-logs
+          retention-days: 14
+          include-hidden-files: false
           path: out/build/clang-asan-ubsan/Testing/**/*.log
           if-no-files-found: warn
 
@@ -252,22 +523,68 @@ jobs:
     needs: changes
     if: needs.changes.outputs.static_analysis == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPRESS: true
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_MAXSIZE: 2G
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+      CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-      - name: Install static analysis tools
-        run: sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build
+      - name: Restore Linux tidy ccache
+        id: restore-linux-tidy-ccache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-ccache-linux-tidy-${{ hashFiles('CMakePresets.json', 'vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-linux-tidy-
+
+      - name: Restore Linux tidy build cache
+        id: restore-linux-tidy-build
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/build/ci-linux-tidy
+          key: ${{ runner.os }}-linux-tidy-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-linux-tidy-
+
+      - name: Verify preinstalled toolchain and install ccache
+        run: |
+          command -v clang >/dev/null 2>&1 || { echo "clang is required on ubuntu-latest runner images"; exit 1; }
+          command -v clang-tidy >/dev/null 2>&1 || { echo "clang-tidy is required on ubuntu-latest runner images"; exit 1; }
+          command -v ninja >/dev/null 2>&1 || { echo "ninja is required on ubuntu-latest runner images"; exit 1; }
+          if ! command -v ccache >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends --no-install-suggests ccache
+          fi
+
+      - name: Prepare ccache
+        run: |
+          ccache --zero-stats
 
       - name: Run clang-tidy
         shell: pwsh
         run: ./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0
 
+      - name: Show ccache stats
+        if: ${{ always() && !cancelled() }}
+        run: ccache --show-stats
+
       - name: Upload static analysis logs
         if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: static-analysis-tidy-logs
+          retention-days: 14
+          include-hidden-files: false
           path: |
             out/build/ci-linux-tidy/compile_commands.json
             out/build/ci-linux-tidy/.cmake/api/v1/reply/*.json
@@ -278,18 +595,52 @@ jobs:
     needs: changes
     if: needs.changes.outputs.macos == 'true'
     runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPRESS: true
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_MAXSIZE: 2G
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+      CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-      - name: Ensure Ninja is available
+      - name: Restore macOS ccache
+        id: restore-macos-ccache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .ccache
+          key: ${{ runner.os }}-macos-ccache-${{ hashFiles('CMakePresets.json', 'vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-macos-ccache-
+
+      - name: Restore macOS build cache
+        id: restore-macos-build
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/build/ci-macos-appleclang
+          key: ${{ runner.os }}-macos-clang-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-macos-clang-
+
+      - name: Ensure build tools are available
         shell: bash
         run: |
-          if command -v ninja >/dev/null 2>&1; then
-            ninja --version
-          else
-            brew install ninja
+          command -v ninja >/dev/null 2>&1 || { echo "ninja is required on macos-latest runner images"; exit 1; }
+          if ! command -v ccache >/dev/null 2>&1; then
+            brew install ccache
           fi
+          ninja --version
+          ccache --version
+
+      - name: Prepare ccache
+        run: |
+          ccache --zero-stats
 
       - name: Configure
         run: cmake --preset ci-macos-appleclang
@@ -300,11 +651,17 @@ jobs:
       - name: Test
         run: ctest --preset ci-macos-appleclang --output-on-failure
 
+      - name: Show ccache stats
+        if: ${{ always() && !cancelled() }}
+        run: ccache --show-stats
+
       - name: Upload macOS test logs
         if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: macos-test-logs
+          retention-days: 14
+          include-hidden-files: false
           path: out/build/ci-macos-appleclang/Testing/**/*.log
           if-no-files-found: warn
 
@@ -322,6 +679,7 @@ jobs:
       - macos
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Verify selected validation tier
         shell: pwsh

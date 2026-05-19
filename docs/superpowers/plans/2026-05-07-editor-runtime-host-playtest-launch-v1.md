@@ -140,7 +140,3 @@ Close the next narrow editor-productization gap:
 | `git diff --check` | PASS | No whitespace errors in the final slice diff; repository line-ending warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; CTest reported 29/29 tests passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Default dev configure/build completed with MSBuild exit 0. |
-
-
-
-

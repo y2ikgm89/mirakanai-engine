@@ -117,7 +117,3 @@
 | `git diff --check -- ...` | PASS | No whitespace errors; only CRLF normalization warnings from Git. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `29/29` CTest tests passed and `validate: ok`; Metal/iOS checks remain diagnostic host gates on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Debug preset configured and built all default targets. |
-
-
-
-

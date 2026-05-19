@@ -111,9 +111,3 @@ Close the current input rebinding loophole after Input Rebinding Profile UX v1 a
 ## Status
 
 **Status:** Completed.
-
-
-
-
-
-

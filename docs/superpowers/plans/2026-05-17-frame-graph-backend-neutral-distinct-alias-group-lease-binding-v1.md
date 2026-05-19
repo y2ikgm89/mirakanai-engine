@@ -143,9 +143,3 @@ The completed Frame Graph lease-binding slice binds one transient texture lease 
 - STATIC: `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed after durable guidance and manifest synchronization.
 - SLICE GATE: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed; diagnostic-only host gates still report missing Apple/Metal tools on this Windows host as expected.
 - PUBLICATION PREFLIGHT: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed after validation.
-
-
-
-
-
-

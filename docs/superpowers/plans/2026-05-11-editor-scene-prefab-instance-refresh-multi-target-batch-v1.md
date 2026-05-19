@@ -35,5 +35,3 @@ Add a **reviewed multi-target** prefab instance refresh path: operators select m
 | --- | --- |
 | `MK_editor_core_tests` | Multi-target plan/apply + serialized batch UI contract |
 | `tools/validate.ps1` | Run at slice close |
-
-

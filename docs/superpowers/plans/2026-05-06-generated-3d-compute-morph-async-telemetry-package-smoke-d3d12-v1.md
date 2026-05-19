@@ -74,7 +74,3 @@ D3D12 focused runtime-host/package tests, static docs checks.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` passed after the public SDL3 runtime-host stats additions.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1` passed with the generated compile database for the default `dev` preset.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including agent/config/json/dependency/toolchain/static checks, public API boundary check, tidy smoke, MSVC dev build, and 29/29 CTest tests. Metal/Apple diagnostics remained explicit host/tooling blockers only and did not fail validation.
-
-
-
-

@@ -86,7 +86,3 @@
 - Framegraph stats for this renderer come from executor results.
 - Docs/manifest/static checks describe this as a second renderer migration while keeping final-state policy, production graph ownership, transient allocation, aliasing, multi-queue scheduling, package streaming, Metal parity, and broad renderer readiness unsupported.
 - Focused renderer tests, agent/static checks, `validate.ps1`, and `build.ps1` pass or record concrete host blockers.
-
-
-
-

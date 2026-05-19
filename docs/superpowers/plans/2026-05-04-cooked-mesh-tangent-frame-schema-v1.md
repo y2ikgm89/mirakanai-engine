@@ -58,7 +58,3 @@
 ---
 
 *計画起票・完了記録: 2026-05-04。スライス id: `cooked-mesh-tangent-frame-schema-v1`（Phase 6）。*
-
-
-
-

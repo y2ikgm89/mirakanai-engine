@@ -33,5 +33,3 @@ Provide a **minimal analytic two-bone IK** solver in the **parent XY plane** (co
 ## Non-Goals
 
 - Full FABRIK/C CD chains, twist extraction, joint limits beyond reachability, integration with `AnimationSkeletonDesc` sampling, IK in glTF assets.
-
-

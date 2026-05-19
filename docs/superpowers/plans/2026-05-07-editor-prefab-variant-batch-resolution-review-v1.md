@@ -125,7 +125,3 @@ Provide a narrow editor-productization improvement over the existing prefab vari
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Passed full validation; Metal/Apple lanes remain diagnostic/host-gated as expected on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Built the `dev` preset successfully. |
 | Slice-closing commit | Pending |  |
-
-
-
-

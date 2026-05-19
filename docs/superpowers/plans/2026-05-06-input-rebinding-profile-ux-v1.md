@@ -153,7 +153,3 @@ axis.gameplay.move_x=keys:left:right,gamepad:1:left_x:1:0.25
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: PASS.
 - `ctest --preset dev -R "mirakana_runtime_tests|mirakana_editor_core_tests" --output-on-failure`: PASS.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: PASS. Diagnostic-only host gates remain for missing Apple/Metal tools on this Windows host.
-
-
-
-

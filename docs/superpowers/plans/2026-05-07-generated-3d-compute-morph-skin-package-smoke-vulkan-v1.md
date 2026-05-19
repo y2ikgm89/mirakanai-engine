@@ -126,7 +126,3 @@ Close a narrow 3D production gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation completed with `validate: ok`; Windows host-gated Metal/Apple diagnostics were reported as diagnostic-only/host-gated. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Dev preset configure/build completed successfully. |
 | Slice-closing commit | Passed | Stage only this slice's implementation, docs, manifest, sample, generator, test, and guidance files; leave unrelated pre-existing dirty files unstaged. |
-
-
-
-

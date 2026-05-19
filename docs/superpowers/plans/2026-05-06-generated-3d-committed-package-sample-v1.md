@@ -113,7 +113,3 @@ Record command results here while implementing this plan.
   - The initial source-tree smoke exposed an incorrect generated morph package pass condition that compared cumulative morphed vertex rows to frame count. The template now records vertices per sample and validates cumulative rows as `frames * vertices_per_sample`.
   - The initial installed package smoke exposed a stale generated skinned vertex stride and a D3D12 scene renderer path that treated skinned compute morph as if the static mesh compute morph vertex shader were required. The template now uses `runtime_skinned_mesh_vertex_stride_bytes`, links `mirakana_runtime_rhi`, emits skinned upload/resolution fields, and the D3D12 scene renderer separates static compute morph pipeline setup from skinned compute morph dispatch.
   - The generated `main.cpp` template now formats C++ output through the resolved repository clang-format when available, with explicit `.clang-format` selection and a final newline, so future `DesktopRuntime3DPackage` scaffolds stay aligned with repository formatting.
-
-
-
-

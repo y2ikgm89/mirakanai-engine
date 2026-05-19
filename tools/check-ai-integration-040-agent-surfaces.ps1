@@ -1916,5 +1916,3 @@ foreach ($check in $editorResourceCaptureRequestChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor resource capture request contract: $($missingNeedles -join ', ')"
     }
 }
-
-

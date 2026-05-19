@@ -52,7 +52,3 @@ Record command results here while implementing this plan.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: PASS.
   - Local Markdown link check over `docs/**/*.md`: PASS after skipping fenced code blocks.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: PASS. `validate: ok`; CTest 29/29 passed. Diagnostic-only blockers remain unchanged for missing Metal tools and Apple packaging on this Windows host.
-
-
-
-

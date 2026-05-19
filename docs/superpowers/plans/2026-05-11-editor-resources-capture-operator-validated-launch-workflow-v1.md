@@ -55,5 +55,3 @@ Close the resource execution stream toward **operator-validated external tool in
 
 - Extend operator workflow docs with screenshots or a short **Recommended workflow** subsection tying PIX session dir → attach capture for AI analysis (`docs/ai-integration.md` cross-link only if needed).
 - Stream exit: reconcile `requiredBeforeReadyClaim` wording after broader operator evidence is recorded (separate manifest slice if narrowing claims).
-
-

@@ -90,7 +90,3 @@
 - Added copied first-party text rows to `mirakana::SdlWindowEvent` for SDL3 committed text and editing composition events.
 - Kept `mirakana_ui` free of SDL3 headers and native handles.
 - Did not mark the broad `production-ui-importer-platform-adapters` gap ready; native IME services, UI-side composition publication, virtual keyboard behavior, text editing model mutation, text shaping, font rasterization, OS accessibility, and broader platform adapters remain follow-up work.
-
-
-
-

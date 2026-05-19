@@ -61,5 +61,3 @@ Add a deterministic `MK_runtime` resident package mount set for Runtime Resource
 ## Non-Goals
 
 - Broad package streaming, disk VFS mount discovery, file watching, hot reload, automatic eviction, renderer/RHI residency ownership, GPU upload/staging execution, allocator/VRAM budget enforcement, and 2D/3D vertical-slice ready claims.
-
-

@@ -76,7 +76,3 @@
 - Static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
 - Static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/tools/scene/scene_v2_runtime_package_migration_tool.cpp,tests/unit/tools_tests.cpp` passed.
 - Gate: full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed.
-
-
-
-

@@ -678,9 +678,3 @@ Append a validation evidence table with the exact command, result, and relevant 
 | `tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -SmokeArgs @('--smoke','--require-config','runtime/sample_generated_desktop_runtime_3d_package.config','--require-scene-package','runtime/sample_generated_desktop_runtime_3d_package.geindex','--require-scene-collision-package')` | PASS | Selected installed package smoke reports `collision_package_status=ready`, `collision_package_ready=1`, `collision_package_diagnostics=0`, `collision_package_bodies=3`, `collision_package_triggers=1`, `collision_package_contacts=1`, `collision_package_trigger_overlaps=1`, `collision_package_world_ready=1`, and `gameplay_systems_collision_package_ready=1`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full repository validation passed after pointer/doc/manifest sync. Windows host gates Apple/Metal diagnostics as expected. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Full dev preset build passed after validation. |
-
-
-
-
-
-

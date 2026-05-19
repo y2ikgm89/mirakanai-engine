@@ -420,9 +420,3 @@ Append a validation evidence table with command, result, and relevant test names
 - Exclusions: conservative sweep behavior, controller policy, joints, CCD, benchmark gates, editor UX, Jolt/native backends, oriented primitives, mesh/convex casts, and broad physics readiness are intentionally deferred.
 - Placeholder scan: no task contains deferred placeholder markers; every behavior task names the target files and expected verification commands.
 - Type consistency: public names use `PhysicsShape3DDesc`, `PhysicsQueryFilter3D`, `PhysicsExactShapeSweep3D*`, and `PhysicsWorld3D::exact_shape_sweep` consistently.
-
-
-
-
-
-

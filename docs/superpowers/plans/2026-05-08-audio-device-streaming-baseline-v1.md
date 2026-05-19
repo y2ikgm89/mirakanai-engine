@@ -100,7 +100,3 @@
 ## Status
 
 **Status:** Completed.
-
-
-
-

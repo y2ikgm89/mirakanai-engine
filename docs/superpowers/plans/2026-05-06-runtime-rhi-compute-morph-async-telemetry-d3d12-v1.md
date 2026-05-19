@@ -75,5 +75,3 @@ focused tests, static docs checks.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1`
 - Final validation passed:
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
-
-

@@ -105,8 +105,3 @@ Reduce the `full-repository-quality-gate` developer-efficiency loophole found du
 ## Status
 
 **Status:** Completed.
-
-
-
-
-

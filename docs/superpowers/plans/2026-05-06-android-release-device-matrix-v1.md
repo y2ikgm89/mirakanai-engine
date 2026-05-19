@@ -106,9 +106,3 @@
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with `validate: ok`; it rebuilt the dev preset, ran `ctest` with 29/29 tests passing, kept shader Metal tooling and Apple packaging as diagnostic-only host blockers, and reported Android packaging ready with `android-avd=ready (Mirakanai_API36)`.
 - PASS: `engine/agent/manifest.json` now returns `currentActivePlan` to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` and `recommendedNextPlan.id` to `next-production-gap-selection`.
-
-
-
-
-
-

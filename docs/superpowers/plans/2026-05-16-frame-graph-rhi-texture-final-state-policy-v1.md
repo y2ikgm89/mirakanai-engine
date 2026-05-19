@@ -92,7 +92,3 @@
 - Framegraph barrier stats count executor-owned final-state transitions.
 - Docs/manifest/static checks describe this as final-state policy support while keeping first-use writer setup, transient allocation, aliasing, multi-queue scheduling, package streaming, production graph ownership, and broad renderer readiness unsupported.
 - Focused renderer tests, agent/static checks, `validate.ps1`, and `build.ps1` pass or record concrete host blockers.
-
-
-
-

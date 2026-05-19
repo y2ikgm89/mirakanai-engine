@@ -66,5 +66,3 @@ clamping pose output after an unconstrained solve.
   existing clang-tidy warnings. The repository `validate` tidy smoke below still passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: PASS. The run included license/config/json/recipe/AI/dependency/toolchain/API checks, shader and
   mobile diagnostic-only host gates, tidy smoke, default MSVC build, generated C++23 mode check, and CTest 29/29 passing.
-
-

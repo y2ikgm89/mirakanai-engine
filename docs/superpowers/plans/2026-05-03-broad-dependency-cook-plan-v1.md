@@ -67,5 +67,3 @@
 ---
 
 *Plan completed: 2026-05-03. Evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` green after `RegisteredSourceAssetCookDependencyExpansion` + registry BFS closure in `registered_source_asset_cook_package_tool.cpp`.*
-
-

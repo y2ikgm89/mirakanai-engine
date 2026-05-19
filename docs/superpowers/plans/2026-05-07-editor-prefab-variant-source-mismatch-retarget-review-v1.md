@@ -123,7 +123,3 @@ Close the next narrow merge/rebase UX gap for prefab variants without adding aut
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Full repository validation passed, including `MK_editor_core_tests` in the dev CTest preset. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Dev preset build completed after validation. |
 | Slice-closing commit | Pending |  |
-
-
-
-

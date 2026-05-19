@@ -1878,5 +1878,3 @@ Assert-ContainsText $runtimeInputRebindingCapturePlanText "MK_runtime_tests" "ru
 Assert-ContainsText $runtimeInputRebindingFocusConsumptionPlanText "Runtime Input Rebinding Focus Consumption v1" "runtime input rebinding focus consumption plan"
 Assert-ContainsText $runtimeInputRebindingFocusConsumptionPlanText "**Status:** Completed" "runtime input rebinding focus consumption plan"
 Assert-ContainsText $runtimeInputRebindingFocusConsumptionPlanText "RuntimeInputRebindingFocusCaptureRequest" "runtime input rebinding focus consumption plan"
-
-

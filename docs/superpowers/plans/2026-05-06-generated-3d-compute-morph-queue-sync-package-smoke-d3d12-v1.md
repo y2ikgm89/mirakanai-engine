@@ -67,5 +67,3 @@ Boundary: without exposing RHI or native backend details.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1` passed.
 - GREEN: final focused package-smoke checks passed: `mirakana_runtime_host_sdl3_public_api_compile` build, `mirakana_runtime_host_sdl3_tests` build, and `ctest --preset desktop-runtime -R mirakana_runtime_host_sdl3_tests --output-on-failure`.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after docs/manifest/static-check synchronization; diagnostic-only host blockers remained missing Metal tools and Apple packaging tools on Windows.
-
-

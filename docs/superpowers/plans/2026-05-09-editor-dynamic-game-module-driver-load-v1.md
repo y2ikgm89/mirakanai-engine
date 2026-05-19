@@ -193,7 +193,3 @@
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after closeout pointer sync; generated dry-run game directories were absent after the check.
 - `git diff --check` passed with only line-ending warnings and no whitespace errors.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including 29/29 `dev` CTest tests. Metal/Apple diagnostics remained host-gated on this Windows host and were reported as diagnostic-only / host-gated, not ready claims.
-
-
-
-

@@ -86,7 +86,3 @@
 - `RhiPostprocessFrameRenderer` uses the Frame Graph RHI texture executor for scheduled inter-pass texture transitions.
 - The manifest/docs still describe `frame-graph-v1` as an active foundation follow-up unless the unsupported gap row is explicitly narrowed with evidence.
 - Focused renderer tests, agent/static checks, `validate.ps1`, and `build.ps1` pass or record concrete host blockers.
-
-
-
-

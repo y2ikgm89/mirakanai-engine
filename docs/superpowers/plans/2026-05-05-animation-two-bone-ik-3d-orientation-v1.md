@@ -63,5 +63,3 @@ editor, glTF, or native handles.
   while scanning broad existing warning surfaces; the validate-scoped
   `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -MaxFiles 1` passed.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after completion metadata update; CTest reported 29/29 tests passed.
-
-

@@ -164,7 +164,3 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
 
 - This slice intentionally narrows the `3d-playable-vertical-slice` gap but does not mark it ready. Remaining broad claims such as Vulkan/Metal parity, source import execution, editor productization, public native/RHI handles, and broad generated 3D production readiness stay unsupported or host-gated.
 - The working tree includes unrelated pre-existing changes, so no coherent slice commit was created from this mixed worktree.
-
-
-
-

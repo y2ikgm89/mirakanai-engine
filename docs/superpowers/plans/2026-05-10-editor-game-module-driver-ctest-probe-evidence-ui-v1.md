@@ -33,7 +33,3 @@ Expose deterministic editor-core UI rows that tie the visible Play-In-Editor gam
 | --- | --- |
 | `MK_editor_core` tests | `MK_editor_core_tests` covers new UI ids |
 | validate.ps1 | Run at slice close |
-
-
-
-

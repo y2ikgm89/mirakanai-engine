@@ -66,5 +66,3 @@ vertex shader.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` passed.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after final evidence updates; CTest reported `29/29` tests passed and
   `validate: ok`.
-
-

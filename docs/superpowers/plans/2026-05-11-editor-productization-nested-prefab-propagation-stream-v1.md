@@ -45,7 +45,3 @@ Sequence work toward **nested prefab propagation and merge-style UX** under revi
 16. **Completed (local-child policy during nested propagation):** [2026-05-12-editor-scene-nested-prefab-propagation-local-child-policy-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-local-child-policy-v1.md) — reviewed batch propagation carries `keep_local_children=true` into nested refreshes so a local child subtree under `weapon.prefab` stays local, selected, and undoable while Shield / Grip source additions apply.
 17. **Completed (loader drift atomicity):** [2026-05-12-editor-scene-nested-prefab-propagation-loader-drift-atomicity-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-loader-drift-atomicity-v1.md) — a stateful nested loader that succeeds during validation and returns `std::nullopt` during later apply yields an empty undoable action and leaves the live scene, selection, and source-node counts unchanged.
 18. **Completed (multi-target late loader drift atomicity):** [2026-05-12-editor-scene-nested-prefab-propagation-multi-target-late-loader-drift-atomicity-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-multi-target-late-loader-drift-atomicity-v1.md) — a two-target disjoint batch stays live-scene and undo-stack atomic when the later target's nested loader drifts after planning, first-target apply, and later-target validation already succeeded on the working clone.
-
-
-
-

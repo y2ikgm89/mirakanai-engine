@@ -65,5 +65,3 @@ first-party binding rows and refresh scene render packets without exposing rende
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`: `public-api-boundary-check: ok`.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1`: `tidy-check: ok (1 files)`.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: `validate: ok` with 29/29 CTest tests passed.
-
-

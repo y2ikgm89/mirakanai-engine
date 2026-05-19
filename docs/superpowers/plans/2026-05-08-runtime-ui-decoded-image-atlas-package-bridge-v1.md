@@ -110,7 +110,3 @@ Close the current UI image pipeline loophole after Runtime UI PNG Image Decoding
 ## Status
 
 **Status:** Completed.
-
-
-
-

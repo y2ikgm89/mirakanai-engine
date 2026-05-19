@@ -89,7 +89,3 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | PASS | `editor-productization` is audited as `partly-ready` with remaining unsupported claims. |
 | `git diff --check` | PASS | No whitespace errors; Git reported only CRLF normalization warnings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation completed with 29/29 CTest tests passing; Apple/Metal host checks remain diagnostic host-gated on this Windows host. |
-
-
-
-

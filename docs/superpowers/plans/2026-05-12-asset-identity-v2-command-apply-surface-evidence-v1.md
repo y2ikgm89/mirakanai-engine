@@ -52,5 +52,3 @@ Close the `asset command apply surfaces` blocker for Asset Identity v2 by record
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - PASS: final `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (47/47 tests; Metal and Apple lanes remain diagnostic-only host-gated on this Windows host).
-
-

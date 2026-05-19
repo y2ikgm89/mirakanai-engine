@@ -120,7 +120,3 @@ Close a narrow editor-productization gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full repository validation passed, including 29/29 CTest tests. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Full dev build passed after validation. |
 | Slice-closing commit | Passed | Staged only Editor Project Native Dialog v1 files and created `feat: add project native dialogs`. |
-
-
-
-

@@ -86,5 +86,3 @@ docs checks.
 - Final validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. Diagnostic-only host gates remain unchanged: Metal shader tooling is
   missing `metal` / `metallib` on Windows, Apple packaging requires macOS/Xcode tools, Android release signing is not
   configured, and no Android device-smoke target is connected.
-
-

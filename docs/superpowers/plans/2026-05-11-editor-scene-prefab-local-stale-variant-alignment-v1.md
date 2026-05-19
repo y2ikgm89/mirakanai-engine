@@ -35,5 +35,3 @@ Extend **scene prefab instance refresh** review tooling so **local child** and *
 | --- | --- | --- |
 | Unit tests | `ctest --preset dev --output-on-failure -R MK_editor_core_tests` | Pass (0.24s) |
 | Repository validate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass |
-
-

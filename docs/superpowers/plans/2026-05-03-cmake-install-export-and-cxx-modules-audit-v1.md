@@ -96,7 +96,3 @@
 ---
 
 *Plan authored: 2026-05-03. Slice completed: docs/building.md、AGENTS.md、`CMakeLists.txt` module/install comments aligned.*
-
-
-
-

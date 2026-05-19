@@ -104,7 +104,3 @@ Reduce the master-plan physics exact-query loophole by proving one exact primiti
 ## Status
 
 **Status:** Completed.
-
-
-
-

@@ -53,7 +53,3 @@ Add a narrow public `MK_runtime_rhi` bridge that turns caller-owned, already-upl
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed | Manifest compose and plan pointer contracts pass after closeout. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full slice gate passed; host-gated Apple/Metal diagnostics remain non-fatal, and CTest reported 65/65 tests passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Standalone build gate passed before publishing the branch. |
-
-
-
-

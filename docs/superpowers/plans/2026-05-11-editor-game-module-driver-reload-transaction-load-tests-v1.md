@@ -32,5 +32,3 @@ Prove **stopped-state** editor game module driver **reload transaction** behavio
 | `cmake --build --preset dev --target MK_editor_game_module_driver_probe MK_editor_game_module_driver_load_tests` | Pass (2026-05-11, Windows) |
 | `ctest --preset dev -R MK_editor_game_module_driver_load_tests --output-on-failure` | Pass (2026-05-11) |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass (2026-05-11) |
-
-

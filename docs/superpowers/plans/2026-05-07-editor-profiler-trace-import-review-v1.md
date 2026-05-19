@@ -155,9 +155,3 @@ Close the next narrow profiler productization gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configure/build completed after validation. |
 | Final `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 && pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Commit-prep gate passed after full validation and dev build. |
 | Slice-closing commit | PASS | Commit staged only this slice's trace import review files and left unrelated dirty guidance files unstaged. |
-
-
-
-
-
-

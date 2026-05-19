@@ -125,5 +125,3 @@ tests.
   `cmd /c "set PATH=& cmake --build --preset dev"`, `cmd /c "set PATH=& ctest --preset dev --output-on-failure"`,
   and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1` reported Vulkan SPIR-V readiness and Metal toolchain
   blockers as diagnostic-only on this Windows host.
-
-

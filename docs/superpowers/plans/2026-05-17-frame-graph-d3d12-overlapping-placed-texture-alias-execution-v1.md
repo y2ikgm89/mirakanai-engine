@@ -121,7 +121,3 @@ The previous D3D12 placed transient texture lease slice creates one private heap
 - FULL VALIDATION: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including 65/65 CTest tests. Metal/Apple checks remain host-gated diagnostics on this Windows host as expected.
 - BUILD: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed after full validation.
 - PUBLICATION: Commit `ea5101f` was pushed to `codex/frame-graph-d3d12-overlapping-placed-texture-alias-execution`, and PR `#80` was created at `https://github.com/y2ikgm89/mirakanai-engine/pull/80`.
-
-
-
-

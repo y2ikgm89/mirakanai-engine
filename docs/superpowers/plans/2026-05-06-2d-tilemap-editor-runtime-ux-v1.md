@@ -95,5 +95,3 @@ runtime games depend on Dear ImGui or editor-private APIs.
 - GREEN: `ctest --preset desktop-runtime -R "sample_2d_desktop_runtime_package_(smoke|shader_artifacts_smoke)" --output-on-failure` passed.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed and installed validation accepted the same tilemap runtime UX counters.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after static AI integration checks were updated.
-
-

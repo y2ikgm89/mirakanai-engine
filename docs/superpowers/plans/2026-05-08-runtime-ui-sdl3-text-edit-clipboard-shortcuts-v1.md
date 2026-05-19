@@ -402,9 +402,3 @@ Expected: commit succeeds only after validation is green.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` initially timed out, then failed in the default `dev` test lane because the Visual Studio-generated `RUN_TESTS` target held `MK_platform_process_tests` until CTest's 1500 second timeout while direct CTest preset execution passed.
 - `ctest --preset dev --output-on-failure -R "^MK_platform_process_tests$" --timeout 60` passed, and `ctest --preset dev --output-on-failure --timeout 300` passed 29/29.
 - `tools/test.ps1` now builds `dev` through the resolved CMake tool and then invokes the resolved CTest tool directly with `--preset dev --output-on-failure --timeout 300`, matching the documented CTest preset lane and avoiding the generator-specific `RUN_TESTS` wrapper hang.
-
-
-
-
-
-

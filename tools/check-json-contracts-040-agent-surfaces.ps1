@@ -681,7 +681,11 @@ foreach ($needle in @(
     "static-analysis:",
     "name: Full Repository Static Analysis",
     "runs-on: ubuntu-latest",
-    "sudo apt-get update && sudo apt-get install -y clang clang-tidy ninja-build",
+    "Verify preinstalled toolchain and install ccache",
+    'command -v clang >/dev/null 2>&1 || { echo "clang is required on ubuntu-latest runner images"; exit 1; }',
+    'command -v clang-tidy >/dev/null 2>&1 || { echo "clang-tidy is required on ubuntu-latest runner images"; exit 1; }',
+    'command -v ninja >/dev/null 2>&1 || { echo "ninja is required on ubuntu-latest runner images"; exit 1; }',
+    "sudo apt-get install -y --no-install-recommends --no-install-suggests ccache",
     "./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy",
     "-Jobs 0",
     "static-analysis-tidy-logs"
@@ -1065,5 +1069,3 @@ $uiAtlasToolHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/tools
 $uiAtlasToolSourceText = Get-Content -LiteralPath (Join-Path $root "engine/tools/asset/ui_atlas_tool.cpp") -Raw
 $toolsTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/tools_tests.cpp") -Raw
 $uiRendererTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/ui_renderer_tests.cpp") -Raw
-
-

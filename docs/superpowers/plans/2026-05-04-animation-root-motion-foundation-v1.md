@@ -64,5 +64,3 @@ Add a dependency-free root-motion sampling contract to `mirakana_animation` so g
 ## Non-Goals
 
 - Root rotation extraction, loop accumulation, motion warping, IK, morph deformation, animation graph authoring, cooked animation asset schema, glTF-specific API changes, renderer/RHI integration, GPU skinning changes, runtime host wiring, editor UI, package streaming, or broad skeletal animation production readiness.
-
-

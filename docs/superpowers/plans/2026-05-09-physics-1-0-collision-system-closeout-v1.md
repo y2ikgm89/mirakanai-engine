@@ -88,7 +88,3 @@
 | `git diff --check -- ...` | PASS | No whitespace errors; Git reported CRLF normalization warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; CTest passed 29/29. Metal/iOS remain Windows host-gated diagnostics. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configure/build completed with MSBuild 17.14.23. |
-
-
-
-

@@ -53,7 +53,3 @@
 | `git diff --check` | PASS | Whitespace gate passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Slice-closing gate passed; default CTest passed 29/29. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Commit gate passed after `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`. |
-
-
-
-

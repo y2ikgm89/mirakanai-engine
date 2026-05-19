@@ -31,5 +31,3 @@ Action rebinding capture already exists end-to-end; axis presentation and profil
 | Step | Command | Result |
 | --- | --- | --- |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
-
-

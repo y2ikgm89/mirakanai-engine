@@ -31,5 +31,3 @@ Wire `make_gltf_mesh_inspect_ui_model` into the visible `MK_editor` Inspector so
 | Step | Command | Result |
 | --- | --- | --- |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
-
-

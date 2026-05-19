@@ -159,7 +159,3 @@ Expected before implementation: compile failure for the new runtime scene packag
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. It included `production-readiness-audit-check: ok` with `unsupported_gaps=11`, `editor-productization status=partly-ready`, full `ctest --preset dev` at 29/29 passing, `public-api-boundary-check: ok`, `tidy-check: ok (1 files)`, and diagnostic-only host gates for Metal/Apple tooling on this Windows host.
 
 Discovered clean contract fix: current sample `.geindex` entries already use runtime-relative paths, so `contentRoot: "runtime"` would duplicate the runtime prefix during actual validation. This slice removes the duplicated manifest/template `contentRoot` values and adds static guards so future generated manifests omit `contentRoot` when cooked package entries already include the runtime-relative directory.
-
-
-
-

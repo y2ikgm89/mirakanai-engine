@@ -72,5 +72,3 @@
 ## Next Candidate After Validation
 
 - Continue the Phase 1 foundation order with `renderer-rhi-resource-foundation`.
-
-

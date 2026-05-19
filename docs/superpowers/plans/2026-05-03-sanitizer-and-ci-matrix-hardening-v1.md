@@ -75,5 +75,3 @@
 ---
 
 *Plan authored: 2026-05-03. Slice completed: Ninja+preset hardening, CI env `UBSAN_OPTIONS`, configure STATUS messages, docs/testing.md matrix, policy script assertion.*
-
-

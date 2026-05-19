@@ -101,7 +101,3 @@
 | `git diff --check` | PASS | Exit 0; only line-ending normalization warnings were printed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed: schema/agent/static checks, production-readiness audit, toolchain checks, tidy check, dev configure/build, and 29/29 dev CTest tests. Metal/Apple diagnostics remain host-gated as expected on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configured and built successfully. |
-
-
-
-

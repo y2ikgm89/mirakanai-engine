@@ -50,5 +50,3 @@ Add a host-independent Runtime Resource v2 helper that removes an explicit resid
 | JSON contracts / AI integration / production readiness audit | PASS | `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-production-readiness-audit.ps1`, and `tools/check-agents.ps1` reported ok; `Invoke-ScriptAnalyzer -Severity Error` on edited static-check scripts emitted no errors. |
 | Full validation | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` reported `validate: ok`; CTest passed 50/50 tests. Diagnostic-only Metal/Apple host gates remained blocked on this Windows host as expected. |
 | Build | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` completed the `dev` configure/build. |
-
-

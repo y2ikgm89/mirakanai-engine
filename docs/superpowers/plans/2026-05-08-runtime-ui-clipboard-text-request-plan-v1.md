@@ -255,9 +255,3 @@ Expected: commit succeeds only after validation is green.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | Passed | Audit still honestly reports `unsupported_gaps=11`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Final default gate passed after updating the core adapter-contract test expectation. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit gate passed. |
-
-
-
-
-
-

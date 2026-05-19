@@ -105,7 +105,3 @@
 | `git diff --check` | PASS | No whitespace errors; Git reported only line-ending conversion warnings for modified text files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; CTest reported `100% tests passed, 0 tests failed out of 29`. Metal/Apple checks remained diagnostic/host-gated on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configured and built successfully with MSBuild. |
-
-
-
-

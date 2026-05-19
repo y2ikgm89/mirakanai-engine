@@ -126,7 +126,3 @@ physics readiness.
 | `git diff --check` | PASS | No whitespace errors; Git reported CRLF conversion warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full repository validation passed; Metal/iOS diagnostics remain host-gated on this Windows host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Default dev build completed after validation. |
-
-
-
-

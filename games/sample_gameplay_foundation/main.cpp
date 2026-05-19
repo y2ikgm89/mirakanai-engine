@@ -157,6 +157,8 @@ navigation_local_avoidance_diagnostic_name(mirakana::NavigationLocalAvoidanceDia
     return grid;
 }
 
+[[nodiscard]] mirakana::NavigationGridCoord to_navigation_grid_coord(mirakana::NavigationPoint2 point) noexcept;
+
 [[nodiscard]] std::vector<mirakana::NavigationGridCoord>
 to_navigation_grid_path(std::span<const mirakana::NavigationPoint2> path) {
     std::vector<mirakana::NavigationGridCoord> grid_path;
@@ -682,6 +684,7 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         navigation_agent_ = update.state;
     }
 
+    mirakana::NavigationGrid navigation_grid_;
     mirakana::PhysicsWorld3D physics_;
     mirakana::AnimationStateMachine animation_;
     mirakana::PhysicsAuthoredCollisionScene3DBuildResult authored_collision_;
@@ -698,12 +701,27 @@ class SampleGameplayFoundationGame final : public mirakana::GameApp {
         mirakana::NavigationGridAgentPathStatus::invalid_request};
     mirakana::AudioDeviceStreamStatus audio_stream_status_{mirakana::AudioDeviceStreamStatus::invalid_request};
     std::size_t navigation_path_point_count_{0U};
+    std::size_t navigation_replan_attempt_count_{0U};
+    std::size_t navigation_replan_reused_count_{0U};
+    std::size_t navigation_replan_replanned_count_{0U};
+    std::size_t local_avoidance_applied_neighbor_count_{0U};
+    std::size_t navigation_dynamic_obstacle_count_{0U};
+    std::uint32_t navigation_replan_last_total_cost_{0U};
+    std::size_t local_avoidance_step_count_{0U};
+    std::size_t navigation_replan_last_path_point_count_{0U};
     std::size_t last_perception_target_count_{0U};
     std::uint32_t audio_stream_frames_{0U};
     std::size_t audio_stream_sample_count_{0U};
     std::size_t tick_order_violations_{0U};
     std::size_t last_tick_step_count_{0U};
     std::array<GameplayRuntimeStep, k_gameplay_runtime_step_count> last_tick_steps_{};
+    mirakana::NavigationGridReplanStatus navigation_replan_last_status_{
+        mirakana::NavigationGridReplanStatus::invalid_endpoint};
+    mirakana::NavigationLocalAvoidanceStatus local_avoidance_last_status_{
+        mirakana::NavigationLocalAvoidanceStatus::invalid_request};
+    mirakana::NavigationLocalAvoidanceDiagnostic local_avoidance_last_diagnostic_{
+        mirakana::NavigationLocalAvoidanceDiagnostic::none};
+    bool navigation_dynamic_obstacle_injected_{false};
     int frames_{0};
 };
 

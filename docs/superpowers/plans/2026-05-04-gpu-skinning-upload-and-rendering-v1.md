@@ -56,5 +56,3 @@
 | 2026-05-04 | 起票: `gltf-animation-skin-import-v1` 完了に伴い `currentActivePlan` を本スライスへ移行。 |
 | 2026-05-04 | 実装: joint/shadow descriptor 順序、`shadow_receiver_skinned` PS バリアント、`runtime_scene_rhi` joint 先頭マージ、`MK_runtime_scene_rhi_tests` 追加。`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` / `api-boundary-check` / `shader-toolchain-check` / `ctest -C Debug -R MK_runtime_scene_rhi_tests` をホストで実行し証跡表を更新。 |
 | 2026-05-04 | 完了: D3D12 offscreen readback テストと `sample_desktop_runtime_game --require-gpu-skinning` package smoke を確認。`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1` PASS（29/29）、`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` PASS、`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1` PASS（16/16）、`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS。 |
-
-

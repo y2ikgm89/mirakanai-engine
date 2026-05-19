@@ -42,5 +42,3 @@ Keep `ScenePrefabInstanceRefreshBatchPlan::apply_reviewed_nested_prefab_propagat
 - Completed follow-up: `editor-scene-nested-prefab-propagation-fail-closed-edge-coverage-v1`.
 - Completed follow-up: `editor-scene-nested-prefab-propagation-two-level-batch-v1`.
 - Next selection returns to `recommendedNextPlan.id=next-production-gap-selection`.
-
-

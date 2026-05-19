@@ -108,5 +108,3 @@ This slice completes a narrow renderer-owned native RHI sprite batch execution p
 execution, public native/RHI handle exposure, broad production sprite batching readiness, or broad renderer quality.
 The next active slice is `2d-sprite-animation-package-v1`, which addresses the remaining generated 2D sprite animation
 package workflow gap.
-
-

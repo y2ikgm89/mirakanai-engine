@@ -179,9 +179,3 @@ make_ai_reviewed_validation_execution_batch_ui_model(const EditorAiReviewedValid
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed with 29/29 `dev` CTest tests; Metal and Apple host checks remained diagnostic host gates on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | `tools/build.ps1` configured and built the `dev` preset successfully. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the reviewed validation batch execution files; leave unrelated pre-existing guidance changes unstaged. |
-
-
-
-
-
-

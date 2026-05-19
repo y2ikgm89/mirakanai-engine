@@ -52,5 +52,3 @@ Bridge existing glTF morph-weight animation import into the first-party cooked s
 - STEP or CUBICSPLINE animation sampler support.
 - Animation graph authoring, retargeted graph playback, GPU morph execution, or generated 3D production-ready animation.
 - Broad package dependency cooking or automatic asset dependency traversal beyond the selected cooked clip source path.
-
-

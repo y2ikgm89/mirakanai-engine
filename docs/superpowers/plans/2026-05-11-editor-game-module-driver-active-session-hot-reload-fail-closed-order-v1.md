@@ -35,5 +35,3 @@ Ship the first **verifiable, fail-closed** vertical toward the active-session ho
 
 - Microsoft Learn: [FreeLibrary function (libloaderapi.h)](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-freelibrary) — decrements the module reference count; unload occurs when the count reaches zero; `DllMain` receives `DLL_PROCESS_DETACH` before unload.
 - Microsoft Learn: [FreeLibrary and AfxFreeLibrary (C++ build)](https://learn.microsoft.com/en-us/cpp/build/freelibrary-and-afxfreelibrary?view=msvc-170) — paired `LoadLibrary`/`FreeLibrary` usage expectations.
-
-

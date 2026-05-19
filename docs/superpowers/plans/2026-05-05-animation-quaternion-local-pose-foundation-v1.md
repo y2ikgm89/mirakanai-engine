@@ -69,5 +69,3 @@ platform, editor, glTF importer, or native handles.
   `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -MaxFiles 1`.
 - Full validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (CTest 29/29 passed; diagnostic-only blockers remained Metal tools
   and Apple packaging host tools).
-
-

@@ -39,5 +39,3 @@ Introduce a **first-party cooked scalar float animation clip** asset: `GameEngin
 
 - glTF translation/rotation/scale channel import into this clip format.
 - GPU animation curves, sampler reduction, or `mirakana_animation` runtime coupling in `mirakana_runtime`.
-
-

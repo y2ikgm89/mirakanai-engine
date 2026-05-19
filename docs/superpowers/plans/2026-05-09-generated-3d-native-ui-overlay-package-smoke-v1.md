@@ -337,7 +337,3 @@ Expected: PASS or record concrete host/tool blockers.
 - Spec coverage: covers generated 3D sample behavior, generated scaffold parity, package validation, manifest/docs/skills, static checks, and validation gates.
 - Placeholder scan: no placeholder tasks; all commands and expected fields are explicit.
 - Scope check: excludes texture UI atlas, font/text production, Metal, native handles, and broad generated 3D readiness; these require later child plans.
-
-
-
-

@@ -43,5 +43,3 @@ Reclassify the remaining `editor-productization` 1.0 scope after the recent Wind
 ## Next Candidate After Validation
 
 - Start the Phase 1 foundation order with `asset-identity-v2`.
-
-

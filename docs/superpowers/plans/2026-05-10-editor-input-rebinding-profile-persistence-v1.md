@@ -33,5 +33,3 @@ Add **explicit, reviewed** Save and Load of in-memory `RuntimeInputRebindingProf
 | Step | Command | Result |
 | --- | --- | --- |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
-
-

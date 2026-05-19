@@ -103,5 +103,3 @@ for sprite/material dependency edges, `mirakana_scene_renderer` deterministic fr
 validation, and static contract checks. It intentionally does not add runtime source image decoding, atlas packing,
 tilemap editor UX, package streaming execution, public native/RHI handles, Metal readiness, broad production sprite
 batching readiness, or broad renderer quality claims.
-
-

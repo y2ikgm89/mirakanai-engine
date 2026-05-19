@@ -73,5 +73,3 @@ After this slice completes, `engine/agent/manifest.json.aiOperableProductionLoop
 ## Non-Goals
 
 - Full 3D joint orientation, quaternion APIs, angular wrap normalization, backward accumulation, negative-time wrapping, motion warping, IK, broader morph production, animation graph authoring, cooked animation asset schema, glTF-specific API changes, renderer/RHI integration, GPU skinning changes, runtime host wiring, editor UI, package streaming, or broad skeletal animation production readiness.
-
-

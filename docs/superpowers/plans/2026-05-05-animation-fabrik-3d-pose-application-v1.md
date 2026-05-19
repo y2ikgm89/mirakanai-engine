@@ -57,5 +57,3 @@ unit-quaternion local rotations for ordered skeleton chains.
 - Focused GREEN verified with `cmd.exe /d /c 'set Path=%Path%&& set PATH=&& cmake --build --preset dev --target mirakana_core_tests'` and `out\build\dev\Debug\mirakana_core_tests.exe`.
 - Static gates passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-json-contracts.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -MaxFiles 1`.
 - Full validation passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` on 2026-05-05; CTest reported 29/29 passing, while Metal/Apple host checks remained diagnostic-only host blockers.
-
-

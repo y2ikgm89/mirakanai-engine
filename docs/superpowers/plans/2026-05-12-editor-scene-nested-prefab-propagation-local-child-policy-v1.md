@@ -40,5 +40,3 @@ Prove that reviewed nested prefab propagation carries the explicit `keep_local_c
 ## Next Candidate After Validation
 
 - Loader drift atomicity is complete in [2026-05-12-editor-scene-nested-prefab-propagation-loader-drift-atomicity-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-loader-drift-atomicity-v1.md). Return to `recommendedNextPlan.id=next-production-gap-selection` and pick the next `editor-productization` wedge from the manifest-selected order.
-
-

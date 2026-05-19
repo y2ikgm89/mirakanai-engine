@@ -41,5 +41,3 @@ Add deterministic Scene/Prefab v2 prefab instance source provenance so `instanti
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/scene/src/schema_v2.cpp,engine/tools/scene/scene_prefab_authoring_tool.cpp,tests/unit/tools_tests.cpp` | PASS |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS; 65 tests passed; Metal/Apple host checks remained diagnostic-only/host-gated on Windows |
-
-

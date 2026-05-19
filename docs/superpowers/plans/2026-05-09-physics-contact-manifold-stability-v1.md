@@ -402,9 +402,3 @@ Append a validation evidence table with command, result, and relevant test names
 - Exclusions: CCD, joints, character/dynamic policy, benchmark gates, editor UX, optional Jolt/native backend, oriented boxes, mesh/convex casts, and broad physics readiness are intentionally deferred.
 - Placeholder scan: no task contains deferred placeholder markers; each task names files, commands, and expected outcomes.
 - Type consistency: public names use `PhysicsContactPoint3D`, `PhysicsContactManifold3D`, and `PhysicsWorld3D::contact_manifolds` consistently.
-
-
-
-
-
-

@@ -33,5 +33,3 @@ Add deterministic **nested prefab review summary counters** to `ScenePrefabInsta
 | --- | --- | --- |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
 | Targeted tests | `out/build/dev/Debug/MK_editor_core_tests.exe` | PASS |
-
-

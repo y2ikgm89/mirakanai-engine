@@ -94,7 +94,3 @@
 | `git diff --check` | PASS | No whitespace errors; Git reported only CRLF conversion warnings for touched and pre-existing dirty files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; CTest reported `100% tests passed, 0 tests failed out of 29`. Metal/iOS diagnostics remain host-gated on this Windows machine. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | `tools/build.ps1` completed the `dev` preset build with exit 0. |
-
-
-
-

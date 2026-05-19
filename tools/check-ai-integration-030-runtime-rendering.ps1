@@ -2105,5 +2105,3 @@ foreach ($needle in $editorSceneAuthoringNeedles) {
 if ($missingEditorSceneAuthoringNeedles.Count -gt 0) {
     Write-Error "ai-integration-check: editor shell missing SceneAuthoringDocument wiring: $($missingEditorSceneAuthoringNeedles -join ', ')"
 }
-
-

@@ -42,5 +42,3 @@ Prove that reviewed nested prefab propagation batch apply handles two-level nest
 
 - Completed next coverage: [2026-05-12-editor-scene-nested-prefab-propagation-selected-added-node-remap-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-selected-added-node-remap-v1.md) covers remapping a selected nested `weapon.prefab` `Blade` source node through reviewed two-level propagation while preserving its local display name override.
 - `editor-productization-next-production-gap-selection`: return to `recommendedNextPlan.id=next-production-gap-selection` and pick the next `editor-productization` wedge from the master plan.
-
-

@@ -105,7 +105,3 @@
 | Focused `MK_runtime_tests` after formatting | Passed | Re-ran focused build/test after formatting the touched C++ files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation passed, including all 29 CTest tests. Metal/Apple checks reported expected diagnostic/host-gated blockers on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Full dev preset build passed after validation. |
-
-
-
-

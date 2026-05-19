@@ -121,7 +121,3 @@ Close the next narrow prefab variant merge/rebase UX gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Full validation passed; Metal/Apple diagnostics remain host-gated as expected on this Windows host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Default dev build completed after validation. |
 | Slice-closing commit | Pass | Commit stages only accept-current implementation, focused plan, docs, manifest, skills, tests, and static checks; unrelated dirty files remain unstaged. |
-
-
-
-

@@ -99,7 +99,3 @@ Reduce the master-plan physics loophole from "no character controller or authore
 ## Status
 
 **Status:** Completed.
-
-
-
-

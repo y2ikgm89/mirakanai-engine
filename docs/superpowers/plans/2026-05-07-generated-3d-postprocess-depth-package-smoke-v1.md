@@ -97,7 +97,3 @@
 | `git diff --check` | PASS | No whitespace errors; Git reported existing LF-to-CRLF working-copy warnings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed after JSON contract, agent integration, production readiness audit, toolchain checks, tidy smoke, build, and CTest; Metal/Apple diagnostics remain host-gated as expected on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset build passed before the slice-closing commit. |
-
-
-
-

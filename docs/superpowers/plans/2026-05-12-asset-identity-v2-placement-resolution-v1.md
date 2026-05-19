@@ -47,5 +47,3 @@ Add a host-independent `MK_assets` placement-resolution planner that turns revie
 ## Next Candidate After Validation
 
 - Continue `asset-identity-v2` with scene/render/UI/gameplay reference cleanup or a reviewed asset command apply surface.
-
-

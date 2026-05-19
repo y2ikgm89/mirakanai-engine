@@ -150,7 +150,3 @@ Expected before implementation: compile failure for the new refresh policy and r
 ## Status
 
 Completed.
-
-
-
-

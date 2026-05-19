@@ -34,5 +34,3 @@ The shell already supports manual path copy from Assets selection and `inspect_g
 | Step | Command | Result |
 | --- | --- | --- |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
-
-

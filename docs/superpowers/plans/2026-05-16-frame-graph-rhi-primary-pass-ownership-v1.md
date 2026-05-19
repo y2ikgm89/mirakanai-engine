@@ -133,9 +133,3 @@ Expected: `MK_renderer_tests` passes.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -Command '. .\tools\common.ps1; $tools = Assert-CppBuildTools; Invoke-CheckedCommand $tools.CMake --build --preset dev --target MK_d3d12_rhi_tests; Invoke-CheckedCommand $tools.CTest --preset dev --output-on-failure -R "MK_d3d12_rhi_tests"'` passed after updating D3D12 failure-path expectations for executor-owned primary pass timing.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with `validate: ok` and 65/65 CTest tests passing. Metal and Apple host lanes remained diagnostic/host-gated on Windows as expected.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` completed successfully after full validation.
-
-
-
-
-
-

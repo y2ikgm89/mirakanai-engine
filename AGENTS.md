@@ -198,5 +198,3 @@
 - Relevant tests are added or updated when behavior/API/regression risk changed, and they cover the smallest durable external guarantee.
 - Validation has run: focused checks for docs/agent-only/non-runtime slices, full `tools/validate.ps1` for C++/runtime/build/packaging/public-contract slices, or a concrete blocker is recorded.
 - Legal and third-party records are updated for any external material.
-
-

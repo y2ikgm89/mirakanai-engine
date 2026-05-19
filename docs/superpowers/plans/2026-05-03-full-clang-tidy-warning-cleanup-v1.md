@@ -144,7 +144,3 @@
 ---
 
 *Plan authored: 2026-05-03. Slice closed 2026-05-03: strict tidy gate exit 0, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` green; `engine/agent/manifest.json` `currentActivePlan` advanced to `docs/superpowers/plans/2026-05-03-cmake-install-export-and-cxx-modules-audit-v1.md` per [production-gap-selection-v1](2026-05-03-production-gap-selection-v1.md) ranking.*
-
-
-
-

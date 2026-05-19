@@ -89,7 +89,3 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit preflight build passed after the review fixes; MSBuild emitted existing shared-intermediate `MSB8028` warnings. |
 | `gh pr create --base main --head codex/frame-graph-automatic-aliasing-barriers` | Passed | Created PR #83 for the automatic aliasing-barrier insertion slice. |
 | `gh pr merge 83 --repo y2ikgm89/mirakanai-engine --auto --merge --delete-branch --match-head-commit 45c8e9f8fb37181516bb6770241c4d4165926199` | Passed | PR #83 merged into `main`; the first local invocation was blocked by an unrelated checked-out `main` worktree, so the repository-scoped retry avoided local checkout state. |
-
-
-
-

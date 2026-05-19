@@ -121,7 +121,3 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | `validate: ok`; dev CTest reported 29/29 tests passed. Metal/Apple diagnostics remained host-gated on this Windows host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Build completed for the dev preset. |
 | Slice-closing commit | Pending |  |
-
-
-
-

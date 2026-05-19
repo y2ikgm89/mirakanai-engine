@@ -123,7 +123,3 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed | `agent-config-check: ok`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed | Passed after targeted clang-format on touched C++ files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full repository gate passed; shader Metal and Apple host checks remained diagnostic/host-gated on Windows. |
-
-
-
-

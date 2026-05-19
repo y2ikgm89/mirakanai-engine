@@ -107,7 +107,3 @@
 | `git diff --check` | Pass | Whitespace check passed; Git line-ending warnings are from existing workspace settings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Full validation passed. Windows reports Metal/iOS lanes as diagnostic-only / host-gated; CTest passed 29/29. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Full dev build passed after validation. |
-
-
-
-

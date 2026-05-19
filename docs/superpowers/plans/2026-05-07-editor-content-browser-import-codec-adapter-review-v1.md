@@ -146,9 +146,3 @@ Close the next narrow editor-productization gap:
 | `git diff --check` | PASS | No whitespace errors; Git reported only existing LF-to-CRLF working-tree warnings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; dev CTest reported `100% tests passed, 0 tests failed out of 29`; shader/mobile/Apple host-only lanes remained diagnostic or host-gated. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev configure/build completed successfully for engine, editor-core tests, tools tests, and sample targets. |
-
-
-
-
-
-

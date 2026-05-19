@@ -142,7 +142,3 @@ Close the next narrow editor-productization gap:
 | `git diff --check` | PASS | Whitespace check passed after trimming the manifest EOF. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed, including agent/json/production audit, toolchain, tidy, build, and 29/29 default CTest tests. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Default `dev` build completed after validation. |
-
-
-
-

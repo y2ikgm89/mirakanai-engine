@@ -1233,5 +1233,3 @@ function Invoke-JsonContractSections {
         . (Join-Path $PSScriptRoot $sectionFile)
     }
 }
-
-

@@ -30,5 +30,3 @@ Expose a **deterministic, preview-only** ordering of descendant linked prefab in
 ## Validation evidence
 
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
-
-

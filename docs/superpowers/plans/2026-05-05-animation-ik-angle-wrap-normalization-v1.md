@@ -58,5 +58,3 @@ small local differences instead of near-`2pi` jumps.
   existing repository warnings; the introduced `pi` literal warning was removed by switching to `std::numbers`.
 - Full repository validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. It included `tidy-check: ok (1 files)`, full build, and CTest
   `29/29` passing; Metal and Apple packaging remained diagnostic-only host blockers on this Windows host.
-
-

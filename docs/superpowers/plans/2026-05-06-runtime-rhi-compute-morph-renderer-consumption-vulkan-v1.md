@@ -93,5 +93,3 @@ configure.
 - Fixture validation: `C:\VulkanSDK\1.4.341.1\Bin\spirv-val.exe --target-env vulkan1.3 out\vulkan-compute-morph-test-artifacts\vulkan_compute_morph_renderer_position.vs.spv` passed.
 - Fixture validation: `C:\VulkanSDK\1.4.341.1\Bin\spirv-val.exe --target-env vulkan1.3 out\vulkan-compute-morph-test-artifacts\vulkan_compute_morph_renderer_position.ps.spv` passed.
 - GREEN: `cmd /c "set PATH=& set MK_VULKAN_TEST_COMPUTE_MORPH_SPV=G:\workspace\development\GameEngine\out\vulkan-compute-morph-test-artifacts\vulkan_compute_morph_position.cs.spv& set MK_VULKAN_TEST_COMPUTE_MORPH_RENDER_VERTEX_SPV=G:\workspace\development\GameEngine\out\vulkan-compute-morph-test-artifacts\vulkan_compute_morph_renderer_position.vs.spv& set MK_VULKAN_TEST_COMPUTE_MORPH_RENDER_FRAGMENT_SPV=G:\workspace\development\GameEngine\out\vulkan-compute-morph-test-artifacts\vulkan_compute_morph_renderer_position.ps.spv& ctest --preset dev -R MK_backend_scaffold_tests --output-on-failure"` passed.
-
-

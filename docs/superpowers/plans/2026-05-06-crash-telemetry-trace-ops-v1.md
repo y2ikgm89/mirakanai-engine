@@ -99,7 +99,3 @@
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed license/config/json/recipe/SDK/package/AI/dependency/toolchain/format/tidy/build/CTest validation; shader and Apple checks reported the existing diagnostic-only Metal/Apple host blockers.
 - `engine/agent/manifest.json` keeps `currentActivePlan` on the master plan and returns `recommendedNextPlan.id` to `next-production-gap-selection`.
-
-
-
-

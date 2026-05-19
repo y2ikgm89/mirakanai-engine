@@ -47,5 +47,3 @@ GPU capture and RHI lifetime evidence must stay aligned with native backend tear
 - Launching PIX UI by default from the editor button (operators may run the script manually with launch enabled).
 - Clearing Vulkan/Metal material-preview `requiredBeforeReadyClaim` rows.
 - Marking `editor-productization` gap ready or removing `resource management/capture execution` follow-ups beyond this reviewed helper evidence slice.
-
-

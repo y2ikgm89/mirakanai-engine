@@ -96,5 +96,3 @@ CTest env-gated Vulkan runtime tests, and DXC/SPIR-V shader artifacts produced o
 - Static sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after moving `currentActivePlan` to Runtime RHI Compute Morph Renderer Consumption Vulkan v1.
 - Formatting and API boundary: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` passed.
 - Final validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. The run included license/config/json/recipe/agent/dependency/toolchain/shader-toolchain/mobile diagnostic checks, CMake configure/build, tidy-check, and `ctest --preset dev` with 29/29 tests passing.
-
-

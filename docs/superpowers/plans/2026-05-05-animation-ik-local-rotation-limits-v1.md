@@ -46,5 +46,3 @@ Add deterministic local Z-rotation clamp rows to the FABRIK pose-application hel
 ## Non-Goals
 
 - Solver-integrated joint constraints, pole vectors, CCD, full 3D joint orientation, quaternion interpolation, twist extraction, skeletal retargeting, IK assets, glTF IK import, animation graph authoring, GPU morph, renderer/RHI integration, package cook/runtime changes, or generated-game production readiness.
-
-

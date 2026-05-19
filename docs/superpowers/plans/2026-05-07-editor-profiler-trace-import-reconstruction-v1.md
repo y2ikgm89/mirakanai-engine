@@ -55,7 +55,3 @@
 | `git diff --check` | Passed | Line-ending warnings only; no whitespace errors. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full validation passed; CTest reported 29/29 tests passed. Metal/Apple host lanes remained diagnostic/host-gated on Windows as expected. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit gate build completed successfully. |
-
-
-
-

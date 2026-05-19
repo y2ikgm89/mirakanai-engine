@@ -36,5 +36,3 @@ The current burn-down already supports explicit resident mount sets, resident ca
 - Review: `cpp-reviewer` subagent reported no findings for the slot-preserving replacement semantics, raw candidate catalog preflight, projected rollback paths, and stale-handle invalidation coverage.
 - Full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including 51/51 CTest tests; shader/Apple host checks remained diagnostic-only/host-gated as expected on this Windows host.
 - Commit gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed.
-
-

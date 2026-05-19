@@ -121,7 +121,3 @@ Close a narrow 3D production gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | `validate: ok`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 && pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` exited 0. |
 | Slice-closing commit | Passed | This slice-closing commit stages only the Vulkan NORMAL/TANGENT package smoke files and leaves unrelated pre-existing dirty files unstaged. |
-
-
-
-

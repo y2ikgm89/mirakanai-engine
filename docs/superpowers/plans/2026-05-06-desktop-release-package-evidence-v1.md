@@ -117,7 +117,3 @@
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1` completed Release configure/build, 29/29 CTest tests, install, installed consumer configure/build/test, `installed-sdk-validation: ok`, CPack ZIP/SHA256 generation, and `release-package-artifacts: ok`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed after the plan record was updated.
 - `engine/agent/manifest.json` keeps `currentActivePlan` on the master plan and returns `recommendedNextPlan.id` to `next-production-gap-selection`.
-
-
-
-

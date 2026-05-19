@@ -2110,5 +2110,3 @@ foreach ($staleScenarioClaim in @(
 
 $headlessScaffoldRoot = New-ScaffoldCheckRoot
 $null = $headlessScaffoldRoot
-
-

@@ -82,9 +82,3 @@
 ---
 
 *Plan authored: 2026-05-03. Scope: Phase 0 production gap selection and manifest/roadmap truth sync; no new engine capabilities.*
-
-
-
-
-
-

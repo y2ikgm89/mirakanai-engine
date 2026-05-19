@@ -396,9 +396,3 @@ Append a validation evidence table with command, result, and relevant test names
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` | TIMEOUT | Standalone full tidy run timed out after 15 minutes on `editor/core/src/scene_authoring.cpp`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` later ran the default tidy smoke successfully. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full repository validation passed, including build, 29/29 CTest tests, and default `tidy-check: ok (1 files)`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Default build completed. |
-
-
-
-
-
-

@@ -35,5 +35,3 @@ Record an explicit **1.0 product decision**: the engine does **not** ship or sup
 | --- | --- | --- |
 | Compose manifest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Pass |
 | Repo gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass |
-
-

@@ -74,5 +74,3 @@ package record through runtime/gameplay code, without runtime glTF parsing or re
 - GREEN `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1` passed, including 16/16 CTest desktop-runtime lane tests.
 - GREEN `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including `ai-integration-check: ok`, `public-api-boundary-check: ok`,
   validate-scoped tidy, build, and 29/29 dev CTest tests.
-
-

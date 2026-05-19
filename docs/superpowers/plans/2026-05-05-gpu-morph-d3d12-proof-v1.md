@@ -70,5 +70,3 @@ through `RhiFrameRenderer` as a visibly morphed indexed mesh using RHI-neutral p
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: passed; 29/29 CTest tests passed. Metal and Apple checks remained diagnostic-only host gates
   on this Windows host.
-
-

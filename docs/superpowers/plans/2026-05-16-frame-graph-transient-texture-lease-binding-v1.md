@@ -128,7 +128,3 @@ Expected: focused tests pass.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`; CTest reported 65/65 tests passed. Metal/Apple diagnostics remain host-gated as expected on this Windows host.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`.
-
-
-
-

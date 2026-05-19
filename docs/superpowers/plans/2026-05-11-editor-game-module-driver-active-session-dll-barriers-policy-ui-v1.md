@@ -44,5 +44,3 @@ Expose **fail-closed, read-only policy and barrier rows** under the existing `pl
 | Format | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` when C++ touched |
 | Unit | `ctest --preset dev -R editor_core_tests --output-on-failure` (or full `MK_editor_core_tests` selection) |
 | Repo gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` |
-
-

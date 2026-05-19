@@ -53,5 +53,3 @@
 ---
 
 *計画作成: 2026-05-04。スライス id: `source-image-decode-and-atlas-packing-v1`（Phase 4 / バックログ実装）。*
-
-

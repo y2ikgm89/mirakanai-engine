@@ -107,7 +107,3 @@
 | `git diff --check` | Pass | No whitespace errors; Git reported LF-to-CRLF working-copy warnings only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | `validate: ok`; default validation ran `ci-matrix-check: ok` and 29/29 CTest tests passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Dev preset build completed successfully. |
-
-
-
-

@@ -52,5 +52,3 @@ This program file sequences gap IDs (Phase 0–4); it does **not** remove `unsup
 | Phase 2 | `2d-playable-vertical-slice`, `3d-playable-vertical-slice` | Tracked — vertical-slice proofs respect `hostGates`; no Metal/Vulkan parity claims without evidence. |
 | Phase 3 | `production-ui-importer-platform-adapters` | Tracked — adapters require dependency/legal/vcpkg alignment per `AGENTS.md`. |
 | Phase 4 | `full-repository-quality-gate` | Tracked — tidy/coverage/sanitizer/CI evidence expands only with manifest-aligned ready claims. |
-
-

@@ -121,9 +121,3 @@ Implement `nested-prefab-conflict-ux-v1` as a narrow conflict review surface:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | `validate: ok`; host-specific Metal and Apple checks remained diagnostic-only blockers on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Default repository build completed after validation. |
 | Slice-closing commit | Pass | This commit closes the read-only prefab variant conflict review slice after validation/build gates. |
-
-
-
-
-
-

@@ -86,5 +86,3 @@ tests, and Microsoft D3D12 multi-engine fence synchronization guidance.
   emitting existing unrelated warnings; the validate-scoped `-MaxFiles 1` tidy lane passed.
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. It reported `tidy-check: ok (1 files)`, rebuilt the `dev` preset, and ran CTest
   `29/29` passed. Metal shader tools and Apple packaging remain diagnostic-only blockers on this Windows host.
-
-

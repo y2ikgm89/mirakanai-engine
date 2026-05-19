@@ -111,5 +111,3 @@ C++23, `mirakana_rhi`, `mirakana_rhi_d3d12`, existing compute-morph pipelined sc
   (`30977 warnings generated.` from the existing compile database smoke, exit 0).
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed: 29/29 CTest tests passed, `validate: ok`; Metal shader tools and Apple packaging
   remained diagnostic-only host blockers on Windows.
-
-

@@ -131,9 +131,3 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Exit 0. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Dev preset configured and built. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Play-In-Editor Visible Viewport Wiring v1 files; leave unrelated pre-existing guidance changes unstaged. |
-
-
-
-
-
-

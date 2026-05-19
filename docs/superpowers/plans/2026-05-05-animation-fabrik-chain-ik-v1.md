@@ -45,5 +45,3 @@ Add a deterministic multi-segment XY-plane FABRIK IK helper in `mirakana_animati
 ## Non-Goals
 
 - Full 3D joint orientation, quaternion interpolation, twist extraction, pole vectors, angular limits, CCD, skeletal pose write-back, IK assets, glTF IK import, animation graph authoring, GPU morph, renderer/RHI integration, or generated-game production readiness.
-
-

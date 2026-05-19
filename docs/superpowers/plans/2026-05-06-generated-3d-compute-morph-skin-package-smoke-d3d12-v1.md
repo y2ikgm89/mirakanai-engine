@@ -81,5 +81,3 @@ C++23, `mirakana_runtime_host_sdl3_presentation`, `mirakana_runtime_scene_rhi`, 
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -MaxFiles 1`
 - Final validation passed:
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
-
-

@@ -111,7 +111,3 @@
 - Added strict UTF-8 committed text validation plus byte-offset cursor and selection boundary validation before mutation.
 - Added SDL3 bridge helpers `sdl3_committed_text_from_window_event` and `apply_sdl3_committed_text_event` over copied `SdlWindowEventKind::text_input` rows.
 - Updated current-truth docs, the master plan ledger, and `engine/agent/manifest.json` while keeping full text editing widget behavior, deletion/backspace/navigation key handling, selection UI, candidate UI, virtual keyboard policy, OS accessibility bridge publication, production shaping/font/rasterization/upload, and cross-platform native IME parity unsupported.
-
-
-
-

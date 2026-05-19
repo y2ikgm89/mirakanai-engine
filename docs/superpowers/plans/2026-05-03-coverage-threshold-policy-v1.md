@@ -80,5 +80,3 @@
 ---
 
 *Plan authored: 2026-05-03. Slice completed: coverage-thresholds.json, check-coverage.ps1 lcov gate, validate.yml lcov install + artifact paths.*
-
-

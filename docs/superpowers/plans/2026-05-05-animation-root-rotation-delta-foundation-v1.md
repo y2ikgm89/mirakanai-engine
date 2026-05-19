@@ -60,5 +60,3 @@ Extend the existing root-motion sampling contract so gameplay and later animatio
 ## Non-Goals
 
 - Full 3D joint orientation, quaternion APIs, angular wrap normalization, loop accumulation, motion warping, IK, broader morph production, animation graph authoring, cooked animation asset schema, glTF-specific API changes, renderer/RHI integration, GPU skinning changes, runtime host wiring, editor UI, package streaming, or broad skeletal animation production readiness.
-
-

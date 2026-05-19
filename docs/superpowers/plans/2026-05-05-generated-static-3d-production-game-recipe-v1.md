@@ -76,5 +76,3 @@
 ---
 
 *計画作成: 2026-05-05。スライス id: `generated-static-3d-production-game-recipe-v1`（Phase 6 / 運用正典化）。*
-
-

@@ -56,5 +56,3 @@
 ---
 
 *計画起票: 2026-05-06。スライス id: `gltf-mesh-editor-ux-v1`（Phase 6）。*
-
-

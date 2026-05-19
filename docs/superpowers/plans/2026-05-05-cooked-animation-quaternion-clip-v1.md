@@ -76,5 +76,3 @@ joint TRS tracks into runtime/gameplay code without reparsing glTF.
   `Operation not permitted` before repository validation executed.
 - Static: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -MaxFiles 1`.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
-
-

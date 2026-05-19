@@ -89,7 +89,3 @@
 - FIXED: Added the explicit workflow marker.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with `validate: ok`; default validation ran `production-readiness-audit-check`, reported `unsupported_gaps=11`, kept Apple/Metal host blockers diagnostic-only, rebuilt the dev preset, and ran `ctest` with 29/29 tests passing.
-
-
-
-

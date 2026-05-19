@@ -130,7 +130,3 @@
 - Direct `cmake --build --preset dev --target mirakana_ui_renderer_tests` is blocked in this shell by the host `Path` / `PATH` duplicate MSBuild environment issue; the same build passed through a sanitized environment with a single `Path`.
 - `ctest --preset dev -R "mirakana_ui_renderer_tests" --output-on-failure`: passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: passed. Diagnostic-only host gates remain unchanged: Metal shader tools and Apple packaging are unavailable on this Windows host.
-
-
-
-

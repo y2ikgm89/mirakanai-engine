@@ -35,5 +35,3 @@ Align **nested prefab instance refresh** review tooling with **Prefab Variant co
 | --- | --- | --- |
 | Unit tests | `ctest --preset dev --output-on-failure -R MK_editor_core_tests` | Record exit code |
 | Repository validate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Record exit code |
-
-

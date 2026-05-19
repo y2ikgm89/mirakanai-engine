@@ -44,5 +44,3 @@ Close the remaining `editor-productization` unsupported production gap for the E
 ## Next Candidate After Validation
 
 - Continue the remaining closeout wedges with `production-ui-importer-platform-adapters`, then `full-repository-quality-gate`.
-
-

@@ -34,5 +34,3 @@ Add deterministic **dry-run-only** counters on `ScenePrefabInstanceRefreshPlan` 
 | --- | --- | --- |
 | Targeted tests | `out/build/dev/Debug/MK_editor_core_tests.exe` | PASS |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
-
-

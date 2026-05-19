@@ -65,5 +65,3 @@ Bridge selected cooked `morph_mesh_cpu` package rows into retained RHI morph GPU
   `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
 - Final validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. CTest reported 29/29 tests passed. Metal and Apple packaging remained
   diagnostic-only host gates on this Windows host.
-
-

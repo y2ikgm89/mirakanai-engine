@@ -40,5 +40,3 @@ Prove that reviewed nested prefab propagation batch apply fails closed when nest
 
 - Completed follow-up: `editor-scene-nested-prefab-propagation-two-level-batch-v1`.
 - Next selection returns to `recommendedNextPlan.id=next-production-gap-selection`.
-
-

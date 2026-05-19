@@ -62,5 +62,3 @@ Remove `production-ui-importer-platform-adapters` from `unsupportedProductionGap
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | PASS | Reports `unsupported_gaps=1`; only `full-repository-quality-gate` remains. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Passed after formatting the touched C++ sources. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed; CTest passed 65/65, shader/Apple host gates remain diagnostic-only or host-gated. |
-
-

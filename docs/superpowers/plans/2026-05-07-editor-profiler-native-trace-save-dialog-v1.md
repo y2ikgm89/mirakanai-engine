@@ -128,9 +128,3 @@ Close the next narrow Profiler observability UX gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Default dev build passed. |
 | Final `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 && pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Commit-prep gate passed after formatting, docs, manifest, and static-check updates. |
 | Slice-closing commit | Pending | Stage only this slice's files and leave unrelated dirty files unstaged. |
-
-
-
-
-
-

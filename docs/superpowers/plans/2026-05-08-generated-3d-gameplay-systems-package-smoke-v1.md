@@ -105,7 +105,3 @@
 | `git diff --check` | Passed | Exit 0; Git reported only CRLF normalization warnings for touched text files. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Exit 0. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Exit 0 through `tools/build.ps1` and the `dev` preset. |
-
-
-
-

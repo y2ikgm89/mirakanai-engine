@@ -135,7 +135,3 @@ Expected: compile fails because the new types/functions do not exist yet.
 - Static/agent: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-production-readiness-audit.ps1` passed.
 - Slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 65/65 CTest tests. Metal/Apple host checks remained diagnostic-only or host-gated on Windows as expected.
 - Build gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed.
-
-
-
-

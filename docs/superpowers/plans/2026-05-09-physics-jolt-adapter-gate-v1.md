@@ -93,7 +93,3 @@
 - Scope is adapter readiness or explicit exclusion, not broad middleware parity.
 - The default ready surface must remain first-party and dependency-free unless the dependency/legal gate is intentionally opened.
 - The active pointer must remain synchronized with `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
-
-
-
-

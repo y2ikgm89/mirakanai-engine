@@ -137,9 +137,3 @@ Sources:
 - Agent/static validation: `tools/format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed after the final agent-surface drift check and static guard updates.
 - Final full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `65/65` tests; Metal/Apple diagnostics remain host-gated on this Windows host as expected.
 - Final build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` passed.
-
-
-
-
-
-

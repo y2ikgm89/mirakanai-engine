@@ -157,7 +157,3 @@ Expected before implementation: compile failure for the new contract metadata mo
 ## Status
 
 Completed.
-
-
-
-

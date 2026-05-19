@@ -150,7 +150,3 @@ Close the next narrow editor-productization gap:
 | `git diff --check` | PASS | Whitespace check passed; Git emitted only existing LF-to-CRLF working-copy warnings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed, including JSON contracts, AI integration, production-readiness audit, toolchain checks, tidy-check, full dev build, and 29/29 CTest tests. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Commit gate build passed for the `dev` preset after `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`. |
-
-
-
-

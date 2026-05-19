@@ -33,5 +33,3 @@ Expose reviewed Scene hierarchy **Reparent** controls in the visible `MK_editor`
 | Step | Command | Result |
 | --- | --- | --- |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS |
-
-

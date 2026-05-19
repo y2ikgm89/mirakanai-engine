@@ -175,9 +175,3 @@ std::string profiler_trace_export_status_;
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed; CTest reported 29/29 tests passed. Host-gated Metal and Apple diagnostics remained diagnostic-only on Windows. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev preset configured and built all targets successfully. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Editor Profiler Trace Export v1 files; leave unrelated pre-existing guidance changes unstaged. |
-
-
-
-
-
-

@@ -143,7 +143,3 @@ Close the next narrow resource-management/capture productization gap:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; dev CTest passed 29/29. Diagnostic-only host gates remain for Metal/Apple as expected on this Windows host. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | PASS | Dev build completed through `tools/build.ps1`. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Editor Resource Capture Execution Evidence v1 files; leave unrelated pre-existing guidance changes unstaged. |
-
-
-
-

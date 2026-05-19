@@ -77,5 +77,3 @@ computed into a POSITION output buffer and rendered through the existing package
   scoped tidy lane above proves the tidy setup is functional for this slice.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (29/29 CTest tests passed; shader-toolchain Metal and Apple packaging entries remained
   diagnostic-only host gates on Windows).
-
-

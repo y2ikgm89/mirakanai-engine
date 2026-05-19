@@ -46,5 +46,3 @@ Further waves (Wave 2+) should use **new dated milestone files** rather than app
 - Each row in **Wave 1 scope** has a **Completed** child plan (or documented blocker + unchanged gap promotion rules).
 - `docs/superpowers/plans/README.md` lists this wave as a **Completed milestone** row until superseded.
 - No contradictory uplift of unsupported-gap `status` without cited validation logs.
-
-

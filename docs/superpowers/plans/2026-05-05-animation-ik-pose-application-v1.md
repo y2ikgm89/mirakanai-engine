@@ -46,5 +46,3 @@ Add a deterministic `mirakana_animation` helper that writes planar FABRIK chain 
 ## Non-Goals
 
 - Joint limits, pole vectors, CCD, full 3D joint orientation, quaternion interpolation, twist extraction, skeletal retargeting, IK assets, glTF IK import, animation graph authoring, GPU morph, renderer/RHI integration, package cook/runtime changes, or generated-game production readiness.
-
-

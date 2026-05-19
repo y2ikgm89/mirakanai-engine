@@ -48,5 +48,3 @@ When `MK_editor` uses the **Metal** RHI backend for the viewport/material previe
 
 - Existing: `ge.editor.material_gpu_preview_execution.v1` (unchanged).
 - Proposed retained row: `material_asset_preview.gpu.execution.metal_visible_refresh` with text values `complete` \| `pending` \| `not-applicable`.
-
-

@@ -411,9 +411,3 @@ Expected: PASS or record concrete host/tool blockers.
 - Spec coverage: covers generated 3D sample behavior, cooked package files, generated scaffold parity, package validation, manifest/docs/skills, static checks, and validation gates.
 - Placeholder scan: no `TODO` or open-ended implementation steps remain; the only computed value is explicitly tied to the repository `Get-Fnv1a64Decimal` helper used by the generated package code.
 - Scope check: excludes production text/font behavior, runtime source image decoding, source image atlas packing, Metal, public native/RHI handles, and broad generated 3D readiness; those require later child plans.
-
-
-
-
-
-

@@ -37,7 +37,3 @@ Define a **clean-break, no-backward-compatibility** documentation authority stac
 | --- | --- |
 | Manifest `currentActivePlan` unchanged unless a deliberate execution switch | N/A (docs-only governance); manifest still points at master plan for gap burn-down. |
 | No contradiction between spec invariant 4 and CMake skills | Verified at authoring time. |
-
-
-
-

@@ -40,5 +40,3 @@ Prove that reviewed multi-target nested prefab propagation remains atomic when a
 ## Next Candidate After Validation
 
 - Return to `recommendedNextPlan.id=next-production-gap-selection` and pick the next `editor-productization` wedge from the manifest-selected order.
-
-

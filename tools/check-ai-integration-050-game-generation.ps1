@@ -1946,5 +1946,3 @@ foreach ($check in $editorMaterialAssetPreviewPanelChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor material asset preview diagnostics contract: $($missingNeedles -join ', ')"
     }
 }
-
-

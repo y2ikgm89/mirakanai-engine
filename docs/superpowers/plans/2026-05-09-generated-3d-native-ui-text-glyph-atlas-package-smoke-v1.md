@@ -444,9 +444,3 @@ git commit -m "feat: prove generated 3d native ui text glyph atlas smoke"
 ```
 
 If unrelated user changes remain in the worktree, leave them unstaged and record that explicitly in the completion report.
-
-
-
-
-
-

@@ -146,7 +146,3 @@ Expected: compile fails because the new types/fields do not exist yet, or render
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`; full validation passed with 65/65 CTest tests.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`.
 - REVIEW: read-only rendering-auditor subagent found no blockers. Non-blocking feedback to add source-level static guards and clarify the active plan scope was applied before final validation.
-
-
-
-

@@ -207,7 +207,3 @@ Expected: commit succeeds only after validation is green.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | Passed | Audit passed and still reports `unsupported_gaps=11`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Final default gate passed on 2026-05-08; host-gated Apple/Metal diagnostics remain diagnostic-only. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit gate build passed on 2026-05-08. |
-
-
-
-

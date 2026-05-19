@@ -114,7 +114,3 @@ Commit, push the existing PR branch, and keep PR #120 updated.
 - Focused static checks: `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files engine/runtime_rhi/src/package_streaming_frame_graph.cpp,tests/unit/runtime_rhi_tests.cpp,games/sample_generated_desktop_runtime_3d_package/main.cpp`, `tools/check-json-contracts.ps1`, and `tools/check-ai-integration.ps1` passed.
 - Installed package smoke: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package` passed with `package_upload_staging_resource_updates_ready=1`, `package_upload_staging_resource_updates=4`, `package_upload_staging_resource_update_submitted_fences=4`, `package_upload_staging_resource_update_graphics_ready_updates=4`, `package_upload_staging_resource_update_graphics_queue_waits_recorded=3`, and `package_upload_staging_resource_update_same_queue_graphics_updates=1`.
 - Full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. `production-readiness-audit-check` reported `unsupported_gaps=6` with `upload-staging-v1` removed and `scene-component-prefab-schema-v2` as the remaining foundation follow-up.
-
-
-
-

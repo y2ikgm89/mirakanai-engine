@@ -246,9 +246,3 @@ Expected: commit succeeds only after validation is green.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | Passed | Reports `unsupported_gaps=11`; broad unsupported gaps remain honest. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Final default gate before `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1`; diagnostic-only Apple/Metal host gates remain. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed | Commit gate. |
-
-
-
-
-
-

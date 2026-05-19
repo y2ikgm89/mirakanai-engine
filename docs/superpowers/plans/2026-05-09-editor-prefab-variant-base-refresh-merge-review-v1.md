@@ -103,7 +103,3 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS | `json-contract-check: ok`. |
 | `git diff --check -- ...` | PASS | Targeted touched-file whitespace check exited 0; Git reported only line-ending normalization warnings. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | `validate: ok`; production-readiness audit reports 11 remaining unsupported gaps with `editor-productization` still `partly-ready`; full CTest passed 29/29, 0 failures. |
-
-
-
-

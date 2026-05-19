@@ -30,5 +30,3 @@ Extend `MK_editor_core_tests` so `plan_scene_prefab_instance_refresh_batch` / `m
 | --- | --- | --- | --- |
 | Editor core | `ctest --preset dev -R MK_editor_core_tests --output-on-failure` | Pass | Pass |
 | Repository | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Pass |
-
-

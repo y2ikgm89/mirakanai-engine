@@ -67,5 +67,3 @@
 ---
 
 *Plan authored: 2026-05-04. Slice: material-graph-authoring-v1 (Phase 4 / child 1).*
-
-

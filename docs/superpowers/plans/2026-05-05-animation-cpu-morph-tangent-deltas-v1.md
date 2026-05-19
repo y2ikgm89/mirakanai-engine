@@ -44,5 +44,3 @@ Expose deterministic CPU morph evaluation for **tangent deltas** per vertex: sam
 ## Next-Step Decision
 
 Keep `aiOperableProductionLoop.currentActivePlan` on the production-completion master plan until the next narrow Phase 6 child is filed in `manifest.json`. Prefer the next dated slice from the umbrella: loop accumulation, IK, morph weight curves + glTF morph cook/import, or `3d-camera-controller-and-gameplay-template-v1`.
-
-

@@ -60,5 +60,3 @@ Remove `full-repository-quality-gate` from `unsupportedProductionGaps` once the 
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS | Cross-agent instruction parity and budgets passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Text/format gate passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed; CTest passed 65/65, shader/Apple host gates remain diagnostic-only or host-gated. |
-
-

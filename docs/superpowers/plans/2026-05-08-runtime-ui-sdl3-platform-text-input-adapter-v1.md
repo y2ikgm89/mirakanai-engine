@@ -291,9 +291,3 @@ Expected: clean commit containing only this slice.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | Pass | Unsupported gap audit still reports `unsupported_gaps=11` and keeps `production-ui-importer-platform-adapters` planned. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Default completion gate; CTest 29/29 passed, Apple/Metal host gates remained diagnostic-only, and production audit still reports `unsupported_gaps=11`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Commit gate. |
-
-
-
-
-
-

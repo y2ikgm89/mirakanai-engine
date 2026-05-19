@@ -104,7 +104,3 @@ Each row must become its own **`docs/superpowers/plans/2026-__-__-*.md`** focuse
 - Production package streaming, arbitrary eviction, enforced GPU allocator budgets.
 - **General** live shader generation and **full** automatic graph codegen.
 - Unity/UE-class editor UX, dynamic game modules, fully automatic import pipelines.
-
-
-
-

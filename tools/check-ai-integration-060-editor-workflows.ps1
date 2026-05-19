@@ -1752,5 +1752,3 @@ foreach ($check in $editorSceneNativeDialogChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor scene native dialog contract: $($missingNeedles -join ', ')"
     }
 }
-
-

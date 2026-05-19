@@ -82,5 +82,3 @@ pole vector guide, without expanding the solver into full 3D orientation IK.
   `mirakana/animation/skeleton.hpp` and `mirakana/math/vec.hpp`; `tools\check-tidy.ps1 -MaxFiles 1` then passed.
 - Full repository validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. It included `tidy-check: ok (1 files)`, full build, and CTest
   `29/29` passing; Metal and Apple packaging remained diagnostic-only host blockers on this Windows host.
-
-

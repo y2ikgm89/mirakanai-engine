@@ -50,5 +50,3 @@ Add a deterministic Runtime Resource v2 resident catalog cache in `MK_runtime` s
 | JSON contracts / AI integration / production readiness audit | PASS | `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-production-readiness-audit.ps1`, and `tools/check-agents.ps1` passed. Production readiness audit still reports 10 known unsupported gap rows. |
 | Full validation | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` reported `validate: ok`; CTest passed 48/48 tests. Host-gated Apple/mobile diagnostic evidence remains explicitly unavailable on this Windows host. |
 | Build | PASS | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` configured `dev` and built all dev targets including `MK_runtime_resource_resident_cache_tests.exe`. |
-
-

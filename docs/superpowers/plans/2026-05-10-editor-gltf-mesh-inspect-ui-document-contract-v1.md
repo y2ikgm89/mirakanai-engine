@@ -33,5 +33,3 @@ Expose read-only glTF mesh primitive inspect results as a retained-mode `mirakan
 | --- | --- | --- |
 | Focused tests | `ctest --preset dev -R MK_editor_core_tests --output-on-failure` | PASS |
 | Repository gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS (Windows dev preset, 2026-05-10) |
-
-

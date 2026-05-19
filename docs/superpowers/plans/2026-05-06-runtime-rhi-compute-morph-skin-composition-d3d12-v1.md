@@ -80,5 +80,3 @@ C++23, `mirakana_renderer`, `mirakana_runtime_rhi`, `mirakana_runtime_scene_rhi`
   focused `mirakana_runtime_rhi_tests`, `mirakana_d3d12_rhi_tests`, `mirakana_renderer_tests`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`. The final
   validate run reports Metal shader tools and Apple packaging/signing as diagnostic-only host blockers on this Windows
   host.
-
-

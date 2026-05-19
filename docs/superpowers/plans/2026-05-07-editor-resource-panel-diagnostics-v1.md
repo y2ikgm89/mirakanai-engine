@@ -125,9 +125,3 @@
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Exit 0; all 29 default CTest entries passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Pass | Dev preset configured and built. |
 | Slice-closing commit | Recorded by this slice-closing commit | Stage only the Editor Resource Panel Diagnostics v1 files; leave unrelated pre-existing guidance changes unstaged. |
-
-
-
-
-
-

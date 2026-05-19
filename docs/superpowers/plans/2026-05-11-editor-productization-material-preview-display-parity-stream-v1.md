@@ -34,5 +34,3 @@ Track future **Vulkan/Metal material-preview display parity** claims relative to
 ## Host-only execution cycle (`metal-apple`)
 
 Treat **stream item 3** as a **separate dated plan + validation cycle** from Windows-default `editor-productization` work. Author the implementation plan only when the operator host satisfies `metal-apple` (`engine/agent/manifest.json` `aiOperableProductionLoop.hostGates`), run `tools/check-shader-toolchain.ps1` / Apple toolchain probes as required by the slice, attach host evidence (logs, screenshots, or recipe output paths) to the plan validation table, and update manifest future/host-gated notes in the same merge so `check-ai-integration` stays aligned. Windows-only agents should not claim this slice complete without that host evidence.
-
-
