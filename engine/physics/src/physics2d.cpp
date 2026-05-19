@@ -7,6 +7,7 @@
 #include <cmath>
 #include <optional>
 #include <stdexcept>
+#include <utility>
 
 namespace mirakana {
 namespace {
@@ -142,6 +143,11 @@ struct BoundsRaycast2D {
 
     return BoundsRaycast2D{
         .point = origin + direction * entry_distance, .normal = entry_normal, .distance = entry_distance};
+}
+
+[[nodiscard]] bool is_valid_raycast_desc(const PhysicsRaycast2DDesc& desc) noexcept {
+    return finite_vec(desc.origin) && finite_vec(desc.direction) && finite(desc.max_distance) &&
+           desc.max_distance >= 0.0F && length(desc.direction) > 0.000001F;
 }
 
 [[nodiscard]] Vec2 fallback_normal(Vec2 delta) noexcept {
@@ -454,6 +460,44 @@ std::optional<PhysicsRaycastHit2D> PhysicsWorld2D::raycast(PhysicsRaycast2DDesc 
     return closest;
 }
 
+PhysicsRaycastBatch2DResult PhysicsWorld2D::raycast_batch(const PhysicsRaycastBatch2DDesc& desc) const {
+    PhysicsRaycastBatch2DResult result;
+    if (desc.max_queries == 0U || desc.queries.size() > desc.max_queries) {
+        result.status = PhysicsCollisionQueryBatchStatus::invalid_request;
+        result.diagnostic = PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded;
+        return result;
+    }
+
+    result.status = PhysicsCollisionQueryBatchStatus::completed;
+    result.diagnostic = PhysicsCollisionQueryBatchDiagnostic::none;
+    result.rows.reserve(desc.queries.size());
+
+    for (std::size_t index = 0; index < desc.queries.size(); ++index) {
+        const auto& query = desc.queries[index];
+        if (!is_valid_raycast_desc(query)) {
+            result.rows.push_back(PhysicsRaycastBatch2DRow{
+                .source_index = index,
+                .status = PhysicsCollisionQueryRowStatus::invalid_request,
+                .diagnostic = PhysicsCollisionQueryRowDiagnostic::invalid_request,
+            });
+            continue;
+        }
+
+        auto row = PhysicsRaycastBatch2DRow{
+            .source_index = index,
+            .status = PhysicsCollisionQueryRowStatus::no_hit,
+            .diagnostic = PhysicsCollisionQueryRowDiagnostic::none,
+        };
+        if (auto hit = raycast(query); hit.has_value()) {
+            row.status = PhysicsCollisionQueryRowStatus::hit;
+            row.hit = *hit;
+        }
+        result.rows.push_back(std::move(row));
+    }
+
+    return result;
+}
+
 std::optional<PhysicsShapeSweepHit2D> PhysicsWorld2D::shape_sweep(PhysicsShapeSweep2DDesc desc) const {
     if (!is_valid_shape_sweep_desc(desc)) {
         return std::nullopt;
@@ -517,6 +561,44 @@ std::optional<PhysicsShapeSweepHit2D> PhysicsWorld2D::shape_sweep(PhysicsShapeSw
     }
 
     return closest;
+}
+
+PhysicsShapeSweepBatch2DResult PhysicsWorld2D::shape_sweep_batch(const PhysicsShapeSweepBatch2DDesc& desc) const {
+    PhysicsShapeSweepBatch2DResult result;
+    if (desc.max_queries == 0U || desc.queries.size() > desc.max_queries) {
+        result.status = PhysicsCollisionQueryBatchStatus::invalid_request;
+        result.diagnostic = PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded;
+        return result;
+    }
+
+    result.status = PhysicsCollisionQueryBatchStatus::completed;
+    result.diagnostic = PhysicsCollisionQueryBatchDiagnostic::none;
+    result.rows.reserve(desc.queries.size());
+
+    for (std::size_t index = 0; index < desc.queries.size(); ++index) {
+        const auto& query = desc.queries[index];
+        if (!is_valid_shape_sweep_desc(query)) {
+            result.rows.push_back(PhysicsShapeSweepBatch2DRow{
+                .source_index = index,
+                .status = PhysicsCollisionQueryRowStatus::invalid_request,
+                .diagnostic = PhysicsCollisionQueryRowDiagnostic::invalid_request,
+            });
+            continue;
+        }
+
+        auto row = PhysicsShapeSweepBatch2DRow{
+            .source_index = index,
+            .status = PhysicsCollisionQueryRowStatus::no_hit,
+            .diagnostic = PhysicsCollisionQueryRowDiagnostic::none,
+        };
+        if (auto hit = shape_sweep(query); hit.has_value()) {
+            row.status = PhysicsCollisionQueryRowStatus::hit;
+            row.hit = *hit;
+        }
+        result.rows.push_back(std::move(row));
+    }
+
+    return result;
 }
 
 void PhysicsWorld2D::apply_force(PhysicsBody2DId id, Vec2 force) {

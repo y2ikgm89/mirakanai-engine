@@ -37,7 +37,7 @@ Select this plan as the next active developer-owned gameplay/physics capability 
 
 ## Phase 1: Deterministic Query Batch Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -47,7 +47,7 @@ Define the smallest reusable collision query batch contract over existing physic
 
 - RED tests or static guards fail first for missing query batch validation/execution behavior.
 - `MK_physics` exposes value-only request/result/diagnostic rows for reusable generated-game collision query authoring.
-- Focused tests prove deterministic ordering, layer/mask filtering, trigger inclusion/exclusion, invalid shape/query diagnostics, and budgeted result counts.
+- Focused tests prove deterministic ordering, layer/mask filtering, raycast trigger inclusion, shape-sweep trigger inclusion/exclusion, invalid shape/query diagnostics, default-unbounded query counts, and explicit budget rejection.
 
 ## Phase 2: Package Query Evidence
 
@@ -66,3 +66,6 @@ Adopt the collision query contract in selected generated gameplay package paths 
 ## Validation Evidence
 
 - Phase 0 pointer sync: this plan was selected after `engine-ai-behavior-authoring-v1` completed package-visible behavior authoring counters, while `unsupportedProductionGaps = []` stayed empty.
+- Phase 1 RED: adding batch raycast/sweep tests first failed because `PhysicsRaycastBatch2DDesc`, `PhysicsRaycastBatch3DDesc`, `PhysicsShapeSweepBatch2DDesc`, `PhysicsShapeSweepBatch3DDesc`, `PhysicsWorld2D::raycast_batch`, `PhysicsWorld3D::raycast_batch`, `PhysicsWorld2D::shape_sweep_batch`, and `PhysicsWorld3D::shape_sweep_batch` did not exist. A follow-up RED proved the initial default `max_queries = 64` contract rejected 65 `.queries` rows before the default was changed to unbounded.
+- Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed after docs, manifest fragments, composed manifest, skills, and static needles were synchronized. The review subagents found no blocking C++ issues and identified diagnostic/default-budget surface gaps that were fixed before the phase gate.
+- Phase 1 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on Windows with expected diagnostic-only host gates for unavailable Apple/Metal tooling; `production-readiness-audit` reported `unsupported_gaps=0`.

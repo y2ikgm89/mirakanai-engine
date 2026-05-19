@@ -4,8 +4,11 @@
 #pragma once
 
 #include "mirakana/math/vec.hpp"
+#include "mirakana/physics/collision_query.hpp"
 
+#include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <vector>
 
@@ -90,6 +93,25 @@ struct PhysicsRaycastHit2D {
     float distance{0.0F};
 };
 
+struct PhysicsRaycastBatch2DDesc {
+    std::vector<PhysicsRaycast2DDesc> queries;
+    // The default is intentionally unbounded; set a positive cap to fail closed on unexpected query counts.
+    std::size_t max_queries{std::numeric_limits<std::size_t>::max()};
+};
+
+struct PhysicsRaycastBatch2DRow {
+    std::size_t source_index{0};
+    PhysicsCollisionQueryRowStatus status{PhysicsCollisionQueryRowStatus::invalid_request};
+    PhysicsCollisionQueryRowDiagnostic diagnostic{PhysicsCollisionQueryRowDiagnostic::none};
+    std::optional<PhysicsRaycastHit2D> hit;
+};
+
+struct PhysicsRaycastBatch2DResult {
+    PhysicsCollisionQueryBatchStatus status{PhysicsCollisionQueryBatchStatus::invalid_request};
+    PhysicsCollisionQueryBatchDiagnostic diagnostic{PhysicsCollisionQueryBatchDiagnostic::none};
+    std::vector<PhysicsRaycastBatch2DRow> rows;
+};
+
 struct PhysicsTriggerOverlap2D {
     // Sorted by body id; first/second do not imply trigger/other roles.
     PhysicsBody2DId first;
@@ -117,6 +139,25 @@ struct PhysicsShapeSweepHit2D {
     bool initial_overlap{false};
 };
 
+struct PhysicsShapeSweepBatch2DDesc {
+    std::vector<PhysicsShapeSweep2DDesc> queries;
+    // The default is intentionally unbounded; set a positive cap to fail closed on unexpected query counts.
+    std::size_t max_queries{std::numeric_limits<std::size_t>::max()};
+};
+
+struct PhysicsShapeSweepBatch2DRow {
+    std::size_t source_index{0};
+    PhysicsCollisionQueryRowStatus status{PhysicsCollisionQueryRowStatus::invalid_request};
+    PhysicsCollisionQueryRowDiagnostic diagnostic{PhysicsCollisionQueryRowDiagnostic::none};
+    std::optional<PhysicsShapeSweepHit2D> hit;
+};
+
+struct PhysicsShapeSweepBatch2DResult {
+    PhysicsCollisionQueryBatchStatus status{PhysicsCollisionQueryBatchStatus::invalid_request};
+    PhysicsCollisionQueryBatchDiagnostic diagnostic{PhysicsCollisionQueryBatchDiagnostic::none};
+    std::vector<PhysicsShapeSweepBatch2DRow> rows;
+};
+
 [[nodiscard]] bool is_valid_physics_body_desc(const PhysicsBody2DDesc& desc) noexcept;
 
 class PhysicsWorld2D {
@@ -131,7 +172,9 @@ class PhysicsWorld2D {
     [[nodiscard]] std::vector<PhysicsContact2D> contacts() const;
     [[nodiscard]] std::vector<PhysicsTriggerOverlap2D> trigger_overlaps() const;
     [[nodiscard]] std::optional<PhysicsRaycastHit2D> raycast(PhysicsRaycast2DDesc desc) const;
+    [[nodiscard]] PhysicsRaycastBatch2DResult raycast_batch(const PhysicsRaycastBatch2DDesc& desc) const;
     [[nodiscard]] std::optional<PhysicsShapeSweepHit2D> shape_sweep(PhysicsShapeSweep2DDesc desc) const;
+    [[nodiscard]] PhysicsShapeSweepBatch2DResult shape_sweep_batch(const PhysicsShapeSweepBatch2DDesc& desc) const;
 
     void apply_force(PhysicsBody2DId id, Vec2 force);
     void step(float delta_seconds);

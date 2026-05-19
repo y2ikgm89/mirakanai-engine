@@ -423,10 +423,23 @@ if (-not ([string]$geAudioModule[0].purpose).Contains("AudioGameplayMixRequest")
 if ($gePhysicsModule[0].status -ne "implemented-physics-1-0-ready-surface") {
     Write-Error "engine manifest MK_physics status must advertise the Physics 1.0 ready surface honestly"
 }
+if (@($gePhysicsModule[0].publicHeaders) -notcontains "engine/physics/include/mirakana/physics/collision_query.hpp") {
+    Write-Error "engine manifest MK_physics publicHeaders must include collision_query.hpp"
+}
 if (-not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterController3DDesc") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("move_physics_character_controller_3d") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsAuthoredCollisionScene3DDesc") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("build_physics_world_3d_from_authored_collision_scene") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCollisionQueryBatchStatus") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCollisionQueryBatchDiagnostic") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCollisionQueryRowStatus") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCollisionQueryRowDiagnostic") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsRaycastBatch2DDesc") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsWorld2D::raycast_batch") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsWorld3D::shape_sweep_batch") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("source-indexed value-only query rows") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("default-unbounded query counts") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("explicit positive max_queries budgets") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsShape3DDesc::aabb") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsShape3DDesc::sphere") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsShape3DDesc::capsule") -or
@@ -462,7 +475,7 @@ if (-not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterControl
     -not ([string]$gePhysicsModule[0].purpose).Contains("validated Physics 1.0 ready surface") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("explicit Jolt/native middleware exclusion") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsWorld3D::step remains discrete")) {
-    Write-Error "engine manifest MK_physics purpose must describe exact shape sweeps, contact manifold stability, CCD foundation, character/dynamic policy, joints foundation, and benchmark determinism gates honestly"
+    Write-Error "engine manifest MK_physics purpose must describe query batches, exact shape sweeps, contact manifold stability, CCD foundation, character/dynamic policy, joints foundation, and benchmark determinism gates honestly"
 }
 if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource v2") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("generation-checked") -or

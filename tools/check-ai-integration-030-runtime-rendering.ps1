@@ -260,6 +260,9 @@ if ($gePhysicsModule[0].status -ne "implemented-physics-1-0-ready-surface") {
 if (@($gePhysicsModule[0].publicHeaders) -notcontains "engine/physics/include/mirakana/physics/physics3d.hpp") {
     Write-Error "engine/agent/manifest.json MK_physics publicHeaders must include physics3d.hpp"
 }
+if (@($gePhysicsModule[0].publicHeaders) -notcontains "engine/physics/include/mirakana/physics/collision_query.hpp") {
+    Write-Error "engine/agent/manifest.json MK_physics publicHeaders must include collision_query.hpp"
+}
 if (@($geToolsModule[0].publicHeaders) -notcontains "engine/tools/include/mirakana/tools/gltf_node_animation_import.hpp") {
     Write-Error "engine/agent/manifest.json MK_tools publicHeaders must include gltf_node_animation_import.hpp"
 }
@@ -332,6 +335,16 @@ Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "move_physics_characte
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsAuthoredCollisionScene3DDesc" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "build_physics_world_3d_from_authored_collision_scene" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "native backend requests failing closed" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCollisionQueryBatchStatus" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCollisionQueryBatchDiagnostic" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCollisionQueryRowStatus" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCollisionQueryRowDiagnostic" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsRaycastBatch2DDesc" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsWorld2D::raycast_batch" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsWorld3D::shape_sweep_batch" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "source-indexed value-only query rows" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "default-unbounded query counts" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "explicit positive max_queries budgets" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsShape3DDesc::aabb" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsShape3DDesc::sphere" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsShape3DDesc::capsule" "MK_physics module purpose"
@@ -1209,6 +1222,16 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "move_ph
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsAuthoredCollisionScene3DDesc" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsAuthoredCollisionScene3DBuildResult" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "build_physics_world_3d_from_authored_collision_scene" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCollisionQueryBatchStatus" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCollisionQueryBatchDiagnostic" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCollisionQueryRowStatus" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCollisionQueryRowDiagnostic" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsRaycastBatch2DDesc" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsWorld2D::raycast_batch" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsWorld3D::shape_sweep_batch" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "source-indexed value-only query rows" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "default-unbounded query counts" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "explicit positive max_queries budgets" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsShape3DDesc::aabb" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsShape3DDesc::sphere" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsShape3DDesc::capsule" "physics game guidance"
@@ -1250,6 +1273,13 @@ foreach ($physicsGuidance in @(
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $physicsText = Get-AgentSurfaceText $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsCollisionQueryBatchStatus" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsCollisionQueryBatchDiagnostic" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsCollisionQueryRowStatus" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsCollisionQueryRowDiagnostic" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsWorld2D::raycast_batch" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsWorld3D::shape_sweep_batch" $physicsGuidance
+    Assert-ContainsText $physicsText "default-unbounded" $physicsGuidance
     Assert-ContainsText $physicsText "move_physics_character_controller_3d" $physicsGuidance
     Assert-ContainsText $physicsText "build_physics_world_3d_from_authored_collision_scene" $physicsGuidance
     Assert-ContainsText $physicsText "PhysicsWorld3D::exact_shape_sweep" $physicsGuidance

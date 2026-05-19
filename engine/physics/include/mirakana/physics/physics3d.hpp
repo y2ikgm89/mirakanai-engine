@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/math/vec.hpp"
+#include "mirakana/physics/collision_query.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -111,6 +112,25 @@ struct PhysicsRaycastHit3D {
     float distance{0.0F};
 };
 
+struct PhysicsRaycastBatch3DDesc {
+    std::vector<PhysicsRaycast3DDesc> queries;
+    // The default is intentionally unbounded; set a positive cap to fail closed on unexpected query counts.
+    std::size_t max_queries{std::numeric_limits<std::size_t>::max()};
+};
+
+struct PhysicsRaycastBatch3DRow {
+    std::size_t source_index{0};
+    PhysicsCollisionQueryRowStatus status{PhysicsCollisionQueryRowStatus::invalid_request};
+    PhysicsCollisionQueryRowDiagnostic diagnostic{PhysicsCollisionQueryRowDiagnostic::none};
+    std::optional<PhysicsRaycastHit3D> hit;
+};
+
+struct PhysicsRaycastBatch3DResult {
+    PhysicsCollisionQueryBatchStatus status{PhysicsCollisionQueryBatchStatus::invalid_request};
+    PhysicsCollisionQueryBatchDiagnostic diagnostic{PhysicsCollisionQueryBatchDiagnostic::none};
+    std::vector<PhysicsRaycastBatch3DRow> rows;
+};
+
 struct PhysicsTriggerOverlap3D {
     // Sorted by body id; first/second do not imply trigger/other roles.
     PhysicsBody3DId first;
@@ -137,6 +157,25 @@ struct PhysicsShapeSweepHit3D {
     Vec3 normal{.x = 1.0F, .y = 0.0F, .z = 0.0F};
     float distance{0.0F};
     bool initial_overlap{false};
+};
+
+struct PhysicsShapeSweepBatch3DDesc {
+    std::vector<PhysicsShapeSweep3DDesc> queries;
+    // The default is intentionally unbounded; set a positive cap to fail closed on unexpected query counts.
+    std::size_t max_queries{std::numeric_limits<std::size_t>::max()};
+};
+
+struct PhysicsShapeSweepBatch3DRow {
+    std::size_t source_index{0};
+    PhysicsCollisionQueryRowStatus status{PhysicsCollisionQueryRowStatus::invalid_request};
+    PhysicsCollisionQueryRowDiagnostic diagnostic{PhysicsCollisionQueryRowDiagnostic::none};
+    std::optional<PhysicsShapeSweepHit3D> hit;
+};
+
+struct PhysicsShapeSweepBatch3DResult {
+    PhysicsCollisionQueryBatchStatus status{PhysicsCollisionQueryBatchStatus::invalid_request};
+    PhysicsCollisionQueryBatchDiagnostic diagnostic{PhysicsCollisionQueryBatchDiagnostic::none};
+    std::vector<PhysicsShapeSweepBatch3DRow> rows;
 };
 
 class PhysicsShape3DDesc {
@@ -519,7 +558,9 @@ class PhysicsWorld3D {
     [[nodiscard]] std::vector<PhysicsContactManifold3D> contact_manifolds() const;
     [[nodiscard]] std::vector<PhysicsTriggerOverlap3D> trigger_overlaps() const;
     [[nodiscard]] std::optional<PhysicsRaycastHit3D> raycast(PhysicsRaycast3DDesc desc) const;
+    [[nodiscard]] PhysicsRaycastBatch3DResult raycast_batch(const PhysicsRaycastBatch3DDesc& desc) const;
     [[nodiscard]] std::optional<PhysicsShapeSweepHit3D> shape_sweep(PhysicsShapeSweep3DDesc desc) const;
+    [[nodiscard]] PhysicsShapeSweepBatch3DResult shape_sweep_batch(const PhysicsShapeSweepBatch3DDesc& desc) const;
     [[nodiscard]] PhysicsExactShapeSweep3DResult exact_shape_sweep(PhysicsExactShapeSweep3DDesc desc) const;
     [[nodiscard]] PhysicsExactSphereCast3DResult exact_sphere_cast(PhysicsExactSphereCast3DDesc desc) const;
     [[nodiscard]] PhysicsContinuousStep3DResult step_continuous(float delta_seconds,

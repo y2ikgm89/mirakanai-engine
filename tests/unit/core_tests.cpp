@@ -5483,6 +5483,7 @@ MK_TEST("2d physics raycast respects collision masks and disabled bodies") {
         .shape = mirakana::PhysicsShape2DKind::aabb,
         .radius = 0.5F,
         .collision_layer = sensor_layer,
+        .trigger = true,
     });
     const auto terrain = world.create_body(mirakana::PhysicsBody2DDesc{
         .position = mirakana::Vec2{.x = 3.0F, .y = 0.0F},
@@ -5819,6 +5820,202 @@ MK_TEST("2d physics shape sweep reports nearest initial and filtered hits") {
                         terrain_layer,
                     })
                     .has_value());
+}
+
+MK_TEST("2d physics raycast batch preserves source order and per query diagnostics") {
+    mirakana::PhysicsWorld2D world(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}});
+    constexpr std::uint32_t terrain_layer = 1U << 1U;
+    constexpr std::uint32_t sensor_layer = 1U << 2U;
+
+    const auto terrain = world.create_body(mirakana::PhysicsBody2DDesc{
+        .position = mirakana::Vec2{.x = 2.0F, .y = 0.0F},
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape2DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+    });
+    const auto sensor = world.create_body(mirakana::PhysicsBody2DDesc{
+        .position = mirakana::Vec2{.x = 4.0F, .y = 0.0F},
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape2DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = sensor_layer,
+    });
+
+    const auto result = world
+                            .raycast_batch(
+                                mirakana::PhysicsRaycastBatch2DDesc{
+                                    .queries =
+                                        {
+                                            mirakana::PhysicsRaycast2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                            mirakana::PhysicsRaycast2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 3.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                            },
+                                            mirakana::PhysicsRaycast2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = sensor_layer,
+                                            },
+                                            mirakana::PhysicsRaycast2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                        },
+                                    .max_queries = 4U,
+                                });
+
+    MK_REQUIRE(result.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(result.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none);
+    MK_REQUIRE(result.rows.size() == 4U);
+    MK_REQUIRE(result.rows[0].source_index == 0U);
+    MK_REQUIRE(result.rows[0].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[0].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::none);
+    MK_REQUIRE(result.rows[0].hit.has_value());
+    MK_REQUIRE(result.rows[0].hit->body == terrain);
+    MK_REQUIRE(result.rows[1].source_index == 1U);
+    MK_REQUIRE(result.rows[1].status == mirakana::PhysicsCollisionQueryRowStatus::no_hit);
+    MK_REQUIRE(!result.rows[1].hit.has_value());
+    MK_REQUIRE(result.rows[2].source_index == 2U);
+    MK_REQUIRE(result.rows[2].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[2].hit.has_value());
+    MK_REQUIRE(result.rows[2].hit->body == sensor);
+    MK_REQUIRE(result.rows[3].source_index == 3U);
+    MK_REQUIRE(result.rows[3].status == mirakana::PhysicsCollisionQueryRowStatus::invalid_request);
+    MK_REQUIRE(result.rows[3].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::invalid_request);
+    MK_REQUIRE(!result.rows[3].hit.has_value());
+
+    const std::vector<mirakana::PhysicsRaycast2DDesc> default_budget_queries(
+        65U, mirakana::PhysicsRaycast2DDesc{
+                 .origin = mirakana::Vec2{.x = 0.0F, .y = 3.0F},
+                 .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                 .max_distance = 10.0F,
+                 .collision_mask = terrain_layer,
+             });
+    const auto default_budget = world.raycast_batch(mirakana::PhysicsRaycastBatch2DDesc{
+        .queries = default_budget_queries,
+    });
+    MK_REQUIRE(default_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(default_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none);
+    MK_REQUIRE(default_budget.rows.size() == default_budget_queries.size());
+
+    const auto over_budget = world.raycast_batch(mirakana::PhysicsRaycastBatch2DDesc{
+        .queries = {mirakana::PhysicsRaycast2DDesc{}, mirakana::PhysicsRaycast2DDesc{}},
+        .max_queries = 1U,
+    });
+    MK_REQUIRE(over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request);
+    MK_REQUIRE(over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded);
+    MK_REQUIRE(over_budget.rows.empty());
+}
+
+MK_TEST("2d physics shape sweep batch preserves filters and per query diagnostics") {
+    mirakana::PhysicsWorld2D world(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}});
+    constexpr std::uint32_t terrain_layer = 1U << 1U;
+    constexpr std::uint32_t sensor_layer = 1U << 2U;
+
+    const auto sensor = world.create_body(mirakana::PhysicsBody2DDesc{
+        .position = mirakana::Vec2{.x = 2.0F, .y = 0.0F},
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape2DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = sensor_layer,
+        .trigger = true,
+    });
+    const auto terrain = world.create_body(mirakana::PhysicsBody2DDesc{
+        .position = mirakana::Vec2{.x = 4.0F, .y = 0.0F},
+        .velocity = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape2DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+    });
+
+    const auto result = world
+                            .shape_sweep_batch(
+                                mirakana::PhysicsShapeSweepBatch2DDesc{
+                                    .queries =
+                                        {
+                                            mirakana::PhysicsShapeSweep2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape2DKind::aabb,
+                                                .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+                                                .radius = 0.5F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                                .include_triggers = false,
+                                            },
+                                            mirakana::PhysicsShapeSweep2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape2DKind::aabb,
+                                                .half_extents = mirakana::Vec2{.x = 0.5F, .y = 0.5F},
+                                                .radius = 0.5F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                                .include_triggers = true,
+                                            },
+                                            mirakana::PhysicsShapeSweep2DDesc{
+                                                .origin = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+                                                .direction = mirakana::Vec2{.x = 1.0F, .y = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape2DKind::aabb,
+                                                .half_extents = mirakana::Vec2{.x = 0.0F, .y = 0.5F},
+                                                .radius = 0.5F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                        },
+                                    .max_queries = 3U,
+                                });
+
+    MK_REQUIRE(result.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(result.rows.size() == 3U);
+    MK_REQUIRE(result.rows[0].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[0].hit.has_value());
+    MK_REQUIRE(result.rows[0].hit->body == terrain);
+    MK_REQUIRE(result.rows[1].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[1].hit.has_value());
+    MK_REQUIRE(result.rows[1].hit->body == sensor);
+    MK_REQUIRE(result.rows[2].source_index == 2U);
+    MK_REQUIRE(result.rows[2].status == mirakana::PhysicsCollisionQueryRowStatus::invalid_request);
+    MK_REQUIRE(result.rows[2].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::invalid_request);
+
+    const auto over_budget = world.shape_sweep_batch(mirakana::PhysicsShapeSweepBatch2DDesc{
+        .queries = {mirakana::PhysicsShapeSweep2DDesc{}, mirakana::PhysicsShapeSweep2DDesc{}},
+        .max_queries = 1U,
+    });
+    MK_REQUIRE(over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request);
+    MK_REQUIRE(over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded);
+    MK_REQUIRE(over_budget.rows.empty());
 }
 
 MK_TEST("2d physics reports circle contacts and resolves dynamic body against static body") {
@@ -7486,6 +7683,96 @@ MK_TEST("3d physics raycast hits nearest collision bounds and reports surface da
     MK_REQUIRE(hit->normal == (mirakana::Vec3{-1.0F, 0.0F, 0.0F}));
 }
 
+MK_TEST("3d physics raycast batch preserves source order and per query diagnostics") {
+    mirakana::PhysicsWorld3D world;
+    constexpr std::uint32_t terrain_layer = 1U << 1U;
+    constexpr std::uint32_t sensor_layer = 1U << 2U;
+
+    const auto terrain = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+    });
+    const auto sensor = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = sensor_layer,
+        .trigger = true,
+    });
+
+    const auto result = world
+                            .raycast_batch(
+                                mirakana::PhysicsRaycastBatch3DDesc{
+                                    .queries =
+                                        {
+                                            mirakana::PhysicsRaycast3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                            mirakana::PhysicsRaycast3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 3.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                            },
+                                            mirakana::PhysicsRaycast3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = sensor_layer,
+                                            },
+                                            mirakana::PhysicsRaycast3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                        },
+                                    .max_queries = 4U,
+                                });
+
+    MK_REQUIRE(result.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(result.rows.size() == 4U);
+    MK_REQUIRE(result.rows[0].source_index == 0U);
+    MK_REQUIRE(result.rows[0].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[0].hit.has_value());
+    MK_REQUIRE(result.rows[0].hit->body == terrain);
+    MK_REQUIRE(result.rows[1].source_index == 1U);
+    MK_REQUIRE(result.rows[1].status == mirakana::PhysicsCollisionQueryRowStatus::no_hit);
+    MK_REQUIRE(!result.rows[1].hit.has_value());
+    MK_REQUIRE(result.rows[2].source_index == 2U);
+    MK_REQUIRE(result.rows[2].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[2].hit.has_value());
+    MK_REQUIRE(result.rows[2].hit->body == sensor);
+    MK_REQUIRE(result.rows[3].source_index == 3U);
+    MK_REQUIRE(result.rows[3].status == mirakana::PhysicsCollisionQueryRowStatus::invalid_request);
+    MK_REQUIRE(result.rows[3].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::invalid_request);
+
+    const auto over_budget = world.raycast_batch(mirakana::PhysicsRaycastBatch3DDesc{
+        .queries = {mirakana::PhysicsRaycast3DDesc{}, mirakana::PhysicsRaycast3DDesc{}},
+        .max_queries = 1U,
+    });
+    MK_REQUIRE(over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request);
+    MK_REQUIRE(over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded);
+    MK_REQUIRE(over_budget.rows.empty());
+}
+
 MK_TEST("3d physics reports trigger overlaps without contact resolution") {
     mirakana::PhysicsWorld3D world;
     constexpr std::uint32_t player_layer = 1U << 0U;
@@ -7811,6 +8098,137 @@ MK_TEST("3d physics shape sweep reports nearest initial and filtered hits") {
                         terrain_layer,
                     })
                     .has_value());
+}
+
+MK_TEST("3d physics shape sweep batch preserves source order filters and diagnostics") {
+    mirakana::PhysicsWorld3D world;
+    constexpr std::uint32_t terrain_layer = 1U << 1U;
+    constexpr std::uint32_t sensor_layer = 1U << 2U;
+
+    const auto sensor = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = sensor_layer,
+        .collision_mask = 0xFFFF'FFFFU,
+        .half_height = 0.5F,
+        .trigger = true,
+    });
+    const auto near = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+        .collision_mask = 0xFFFF'FFFFU,
+    });
+    const auto far = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 6.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+        .collision_mask = 0xFFFF'FFFFU,
+    });
+
+    const auto result = world
+                            .shape_sweep_batch(
+                                mirakana::PhysicsShapeSweepBatch3DDesc{
+                                    .queries =
+                                        {
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.5F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                                .ignored_body = mirakana::null_physics_body_3d,
+                                                .include_triggers = false,
+                                            },
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.5F,
+                                                .collision_mask = terrain_layer | sensor_layer,
+                                                .ignored_body = mirakana::null_physics_body_3d,
+                                                .include_triggers = true,
+                                            },
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.5F,
+                                                .collision_mask = terrain_layer,
+                                                .ignored_body = near,
+                                                .include_triggers = false,
+                                            },
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::capsule,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.0F,
+                                                .collision_mask = terrain_layer,
+                                            },
+                                        },
+                                    .max_queries = 4U,
+                                });
+
+    MK_REQUIRE(result.status == mirakana::PhysicsCollisionQueryBatchStatus::completed);
+    MK_REQUIRE(result.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none);
+    MK_REQUIRE(result.rows.size() == 4U);
+    MK_REQUIRE(result.rows[0].source_index == 0U);
+    MK_REQUIRE(result.rows[0].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[0].hit.has_value());
+    MK_REQUIRE(result.rows[0].hit->body == near);
+    MK_REQUIRE(result.rows[1].source_index == 1U);
+    MK_REQUIRE(result.rows[1].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[1].hit.has_value());
+    MK_REQUIRE(result.rows[1].hit->body == sensor);
+    MK_REQUIRE(result.rows[2].source_index == 2U);
+    MK_REQUIRE(result.rows[2].status == mirakana::PhysicsCollisionQueryRowStatus::hit);
+    MK_REQUIRE(result.rows[2].hit.has_value());
+    MK_REQUIRE(result.rows[2].hit->body == far);
+    MK_REQUIRE(result.rows[3].source_index == 3U);
+    MK_REQUIRE(result.rows[3].status == mirakana::PhysicsCollisionQueryRowStatus::invalid_request);
+    MK_REQUIRE(result.rows[3].diagnostic == mirakana::PhysicsCollisionQueryRowDiagnostic::invalid_request);
+    MK_REQUIRE(!result.rows[3].hit.has_value());
+
+    const auto over_budget = world.shape_sweep_batch(mirakana::PhysicsShapeSweepBatch3DDesc{
+        .queries = {mirakana::PhysicsShapeSweep3DDesc{}, mirakana::PhysicsShapeSweep3DDesc{}},
+        .max_queries = 1U,
+    });
+    MK_REQUIRE(over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request);
+    MK_REQUIRE(over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded);
+    MK_REQUIRE(over_budget.rows.empty());
 }
 
 MK_TEST("3d physics exact sphere cast hits sphere surface without bounds inflation") {
