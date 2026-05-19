@@ -1853,7 +1853,7 @@ PhysicsRaycastBatch3DResult PhysicsWorld3D::raycast_batch(const PhysicsRaycastBa
             row.status = PhysicsCollisionQueryRowStatus::hit;
             row.hit = *hit;
         }
-        result.rows.push_back(std::move(row));
+        result.rows.push_back(row);
     }
 
     return result;
@@ -1956,7 +1956,7 @@ PhysicsShapeSweepBatch3DResult PhysicsWorld3D::shape_sweep_batch(const PhysicsSh
             row.status = PhysicsCollisionQueryRowStatus::hit;
             row.hit = *hit;
         }
-        result.rows.push_back(std::move(row));
+        result.rows.push_back(row);
     }
 
     return result;

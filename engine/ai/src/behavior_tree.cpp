@@ -9,6 +9,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <memory>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -226,8 +227,8 @@ void append_behavior_authoring_diagnostic(std::vector<BehaviorAuthoringDiagnosti
 
         active_stack.push_back(row.node_id);
         stack.push_back(StackRow{.node_id = row.node_id, .leaving = true});
-        for (auto child = node->children.rbegin(); child != node->children.rend(); ++child) {
-            stack.push_back(StackRow{.node_id = *child, .leaving = false});
+        for (const auto child : std::views::reverse(node->children)) {
+            stack.push_back(StackRow{.node_id = child, .leaving = false});
         }
     }
 
@@ -259,8 +260,8 @@ void append_behavior_authoring_trace_rows(const BehaviorAuthoringBehaviorDesc& b
         trace.push_back(
             BehaviorAuthoringTraceRow{.behavior_id = behavior.id, .node_id = node->id, .node_kind = node->kind});
 
-        for (auto child = node->children.rbegin(); child != node->children.rend(); ++child) {
-            pending_nodes.push_back(*child);
+        for (const auto child : std::views::reverse(node->children)) {
+            pending_nodes.push_back(child);
         }
     }
 }
