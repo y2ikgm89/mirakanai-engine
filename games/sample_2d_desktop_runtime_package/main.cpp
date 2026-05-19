@@ -692,6 +692,9 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         sprite_batch_plan_texture_binds_ += batch_plan.texture_bind_count;
         sprite_batch_plan_diagnostics_ += batch_plan.diagnostics.size();
         scene_sprites_submitted_ += scene_submit.sprites_submitted;
+        sprite_batch_plan_atlas_backed_batches_ += batch_plan.atlas_backed_batch_count;
+        sprite_batch_plan_repeated_atlas_batches_ += batch_plan.repeated_atlas_batch_count;
+        sprite_batch_plan_repeated_atlas_sprites_ += batch_plan.repeated_atlas_sprite_count;
         primary_camera_seen_ = primary_camera_seen_ || scene_submit.has_primary_camera;
 
         update_hud_text();
@@ -733,17 +736,23 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     }
 
     [[nodiscard]] bool passed(std::uint32_t expected_frames) const noexcept {
+        const auto expected_sprite_submissions =
+            static_cast<std::uint64_t>(expected_frames) * static_cast<std::uint64_t>(package_scene_sprites_);
         return ui_ok_ && ui_text_updates_ok_ && validation_ok_ && audio_clip_registered_ &&
                jump_voice_ != mirakana::null_audio_voice && frames_ == expected_frames &&
                final_x_ == static_cast<float>(expected_frames) && primary_camera_seen_ &&
-               scene_sprites_submitted_ == expected_frames && hud_boxes_submitted_ == expected_frames &&
-               sprite_batch_plan_ok_ && sprite_batch_plan_sprites_ == expected_frames &&
-               sprite_batch_plan_textured_sprites_ == expected_frames && sprite_batch_plan_draws_ == expected_frames &&
-               sprite_batch_plan_texture_binds_ == expected_frames && sprite_batch_plan_diagnostics_ == 0 &&
-               sprite_animation_ok_ && sprite_animation_frames_sampled_ == expected_frames &&
+               scene_sprites_submitted_ == expected_sprite_submissions && hud_boxes_submitted_ == expected_frames &&
+               sprite_batch_plan_ok_ && sprite_batch_plan_sprites_ == expected_sprite_submissions &&
+               sprite_batch_plan_textured_sprites_ == expected_sprite_submissions &&
+               sprite_batch_plan_draws_ == expected_frames && sprite_batch_plan_texture_binds_ == expected_frames &&
+               sprite_batch_plan_atlas_backed_batches_ == expected_frames &&
+               sprite_batch_plan_repeated_atlas_batches_ == expected_frames &&
+               sprite_batch_plan_repeated_atlas_sprites_ == expected_sprite_submissions &&
+               sprite_batch_plan_diagnostics_ == 0 && sprite_animation_ok_ &&
+               sprite_animation_frames_sampled_ == expected_frames &&
                sprite_animation_frames_applied_ == expected_frames && sprite_animation_diagnostics_ == 0 &&
                sprite_animation_selected_frame_sum_ > 0 && audio_commands_ == 1 && audio_underruns_ == 0 &&
-               package_scene_sprites_ == 1 && tilemap_runtime_ok_ && tilemap_layers_ == 1 &&
+               package_scene_sprites_ == 2 && tilemap_runtime_ok_ && tilemap_layers_ == 1 &&
                tilemap_visible_layers_ == 1 && tilemap_tiles_ == 2 && tilemap_non_empty_cells_ == 3 &&
                tilemap_sampled_cells_ == 3 && tilemap_diagnostics_ == 0 && gameplay_systems_.passed(expected_frames);
     }
@@ -790,6 +799,18 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::uint64_t sprite_batch_plan_texture_binds() const noexcept {
         return sprite_batch_plan_texture_binds_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_plan_atlas_backed_batches() const noexcept {
+        return sprite_batch_plan_atlas_backed_batches_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_plan_repeated_atlas_batches() const noexcept {
+        return sprite_batch_plan_repeated_atlas_batches_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_plan_repeated_atlas_sprites() const noexcept {
+        return sprite_batch_plan_repeated_atlas_sprites_;
     }
 
     [[nodiscard]] std::size_t sprite_batch_plan_diagnostics() const noexcept {
@@ -974,6 +995,9 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     std::uint64_t sprite_batch_plan_textured_sprites_{0};
     std::uint64_t sprite_batch_plan_draws_{0};
     std::uint64_t sprite_batch_plan_texture_binds_{0};
+    std::uint64_t sprite_batch_plan_atlas_backed_batches_{0};
+    std::uint64_t sprite_batch_plan_repeated_atlas_batches_{0};
+    std::uint64_t sprite_batch_plan_repeated_atlas_sprites_{0};
     std::size_t sprite_batch_plan_diagnostics_{0};
     std::uint64_t sprite_animation_frames_sampled_{0};
     std::uint64_t sprite_animation_frames_applied_{0};
@@ -1572,6 +1596,9 @@ int main(int argc, char** argv) {
         << " sprite_batch_plan_textured_sprites=" << game.sprite_batch_plan_textured_sprites()
         << " sprite_batch_plan_draws=" << game.sprite_batch_plan_draws()
         << " sprite_batch_plan_texture_binds=" << game.sprite_batch_plan_texture_binds()
+        << " sprite_batch_plan_atlas_backed_batches=" << game.sprite_batch_plan_atlas_backed_batches()
+        << " sprite_batch_plan_repeated_atlas_batches=" << game.sprite_batch_plan_repeated_atlas_batches()
+        << " sprite_batch_plan_repeated_atlas_sprites=" << game.sprite_batch_plan_repeated_atlas_sprites()
         << " sprite_batch_plan_diagnostics=" << game.sprite_batch_plan_diagnostics()
         << " sprite_animation_frames_sampled=" << game.sprite_animation_frames_sampled()
         << " sprite_animation_frames_applied=" << game.sprite_animation_frames_applied()

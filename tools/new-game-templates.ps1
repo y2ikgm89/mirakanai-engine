@@ -4262,7 +4262,7 @@ audio.data_hex=0000803e0000003f0000803e00000000
     $scene = @"
 format=GameEngine.Scene.v1
 scene.name=$DisplayTitle Generated 2D Scene
-node.count=2
+node.count=3
 node.1.name=Main Camera
 node.1.parent=0
 node.1.position=0,0,10
@@ -4284,6 +4284,16 @@ node.2.sprite_renderer.material=$materialId
 node.2.sprite_renderer.size=1.5,2
 node.2.sprite_renderer.tint=0.2,0.7,1,1
 node.2.sprite_renderer.visible=true
+node.3.name=Player Echo
+node.3.parent=0
+node.3.position=1.75,0,0
+node.3.scale=1,1,1
+node.3.rotation=0,0,0
+node.3.sprite_renderer.sprite=$textureId
+node.3.sprite_renderer.material=$materialId
+node.3.sprite_renderer.size=1.5,2
+node.3.sprite_renderer.tint=0.2,0.7,1,0.8
+node.3.sprite_renderer.visible=true
 "@
     $scene = ConvertTo-LfText -Text $scene
 
@@ -5036,7 +5046,7 @@ This game uses the optional desktop runtime package lane with a first-party cook
 - `game.agent.json.packageStreamingResidencyTargets` as host-gated safe-point package streaming intent
 - `PACKAGE_FILES_FROM_MANIFEST`
 
-The generated package proves cooked sprite/material/audio/scene loading, first-party cooked sprite animation frame sampling and application, deterministic data-only tilemap metadata with visible-cell runtime sampling counters through `--require-tilemap-runtime-ux`, a deterministic 2D gameplay systems package proof through `--require-gameplay-systems`, 2D scene validation, HUD submission, audio cue intent, package smoke validation, and a host-gated D3D12 native 2D sprite overlay smoke through `--require-native-2d-sprites`. It does not claim production atlas packing, full tilemap editor UX, runtime image decoding, production sprite batching, package streaming execution, Metal readiness, public native/RHI handles, or general renderer quality.
+The generated package proves cooked sprite/material/audio/scene loading, atlas-backed repeated scene sprite planning counters through `sprite_batch_plan_atlas_backed_batches`, `sprite_batch_plan_repeated_atlas_batches`, and `sprite_batch_plan_repeated_atlas_sprites`, first-party cooked sprite animation frame sampling and application, deterministic data-only tilemap metadata with visible-cell runtime sampling counters through `--require-tilemap-runtime-ux`, a deterministic 2D gameplay systems package proof through `--require-gameplay-systems`, 2D scene validation, HUD submission, audio cue intent, package smoke validation, and a host-gated D3D12 native 2D sprite overlay smoke through `--require-native-2d-sprites`. It does not claim production atlas packing, full tilemap editor UX, runtime image decoding, production sprite batching, package streaming execution, Metal readiness, public native/RHI handles, or general renderer quality.
 
 ## Validate
 
@@ -5450,11 +5460,11 @@ function New-DesktopRuntime2DManifest {
             navigation = "mirakana::plan_navigation_grid_agent_path plus mirakana::update_navigation_agent"
             ai = "mirakana::build_ai_perception_snapshot_2d, mirakana::write_ai_perception_blackboard, and mirakana::evaluate_behavior_tree"
             renderer = "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback or host-owned RHI-backed native 2D sprite overlay when packaged shader artifacts are present"
-            currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-native-2d-sprites so cooked scene sprite texture/material identity and HUD submission flow through the host-owned native RHI sprite overlay path with native_2d_sprite_batches_executed counters. The sprite atlas source authoring target records reviewed RGBA8 frame rows for plan_sprite_atlas_source_authoring, emits GameEngine.TextureSource.v1 plus GameEngine.SourceAssetRegistry.v1 authoring files, and keeps those source files outside runtimePackageFiles before cooked runtime consumption. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic frame sampling and sprite frame application emit sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming runtime image decoding, production atlas packing, or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, and behavior tree counters emit gameplay_systems_* fields. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
+            currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-native-2d-sprites so cooked scene sprite texture/material identity, atlas-backed scene sprite planning counters including sprite_batch_plan_atlas_backed_batches, sprite_batch_plan_repeated_atlas_batches, and sprite_batch_plan_repeated_atlas_sprites, and HUD submission flow through the host-owned native RHI sprite overlay path with native_2d_sprite_batches_executed counters. The sprite atlas source authoring target records reviewed RGBA8 frame rows for plan_sprite_atlas_source_authoring, emits GameEngine.TextureSource.v1 plus GameEngine.SourceAssetRegistry.v1 authoring files, and keeps those source files outside runtimePackageFiles before cooked runtime consumption. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic frame sampling and sprite frame application emit sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming runtime image decoding, production atlas packing, or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, and behavior tree counters emit gameplay_systems_* fields. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, and general production renderer quality remains unsupported."
         }
         backendReadiness = [ordered]@{
             platform = "sdl3-desktop-host-gated"
-            graphics = "NullRenderer fallback plus host-gated D3D12 native 2D sprite batch execution counters through generated shader artifacts. Sprite atlas source authoring remains a reviewed tooling/source contract only; runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness, and general production renderer quality remain unsupported."
+            graphics = "NullRenderer fallback plus host-gated D3D12 native 2D sprite batch execution counters and atlas-backed scene sprite plan counters through generated shader artifacts. Sprite atlas source authoring remains a reviewed tooling/source contract only; runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness, and general production renderer quality remain unsupported."
             audio = "device-independent cooked audio payload mixed through MK_audio"
             ui = "MK_ui-headless renderer submission"
             physics = "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems"

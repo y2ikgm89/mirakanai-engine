@@ -1,7 +1,7 @@
 # Sprite Batching Renderer v1 (2026-05-20)
 
 **Plan ID:** `sprite-batching-renderer-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is developer-owned 2D capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -53,7 +53,7 @@ Define the narrow reusable contract for atlas-backed repeated sprite submission 
 
 ## Phase 2: Package Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -73,3 +73,7 @@ Adopt the contract in a generated 2D package path so package smokes can verify d
 - Phase 1 implementation: `MK_renderer` now exposes `SpriteBatchPlanDesc` and `SpriteBatchPlanOptions` so atlas-backed repeated sprite batch planning can remain order-preserving by default, fail closed on unsupported reorder requests, optionally reject untextured rows when an atlas-backed-only policy is requested, and report `atlas_backed_batch_count`, `repeated_atlas_batch_count`, and `repeated_atlas_sprite_count` without exposing native/RHI handles.
 - Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_renderer_tests` passed for the new sprite batching renderer tests.
 - Phase 1 surface/full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/validate.ps1` passed; `production-readiness-audit` reported `unsupported_gaps=0` and 65/65 CTest tests passed.
+- Phase 2 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` failed as expected after static guards required `sprite_batch_plan_atlas_backed_batches` before the 2D package sample/template emitted it.
+- Phase 2 implementation: `sample_2d_desktop_runtime_package` and generated `DesktopRuntime2DPackage` scenes now contain two adjacent atlas-backed cooked sprite rows, and their smoke status lines report `sprite_batch_plan_atlas_backed_batches`, `sprite_batch_plan_repeated_atlas_batches`, and `sprite_batch_plan_repeated_atlas_sprites` through `mirakana::plan_scene_sprite_batches` without exposing native/RHI handles or claiming production sprite sorting.
+- Phase 2 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package` passed, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed with `sprite_batch_plan_atlas_backed_batches=3`, `sprite_batch_plan_repeated_atlas_batches=3`, and `sprite_batch_plan_repeated_atlas_sprites=6` on the installed D3D12 package smoke.
+- Phase 2 surface/full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and `tools/validate.ps1` passed; `production-readiness-audit` reported `unsupported_gaps=0` and all CTest tests passed.

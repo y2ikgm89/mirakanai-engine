@@ -316,6 +316,9 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
             "sprite_batch_plan_textured_sprites",
             "sprite_batch_plan_draws",
             "sprite_batch_plan_texture_binds",
+            "sprite_batch_plan_atlas_backed_batches",
+            "sprite_batch_plan_repeated_atlas_batches",
+            "sprite_batch_plan_repeated_atlas_sprites",
             "sprite_batch_plan_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
@@ -326,7 +329,10 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
             "sprite_batch_plan_sprites",
             "sprite_batch_plan_textured_sprites",
             "sprite_batch_plan_draws",
-            "sprite_batch_plan_texture_binds"
+            "sprite_batch_plan_texture_binds",
+            "sprite_batch_plan_atlas_backed_batches",
+            "sprite_batch_plan_repeated_atlas_batches",
+            "sprite_batch_plan_repeated_atlas_sprites"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove sprite batch plan count: $field"
