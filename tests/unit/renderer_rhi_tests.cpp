@@ -6499,13 +6499,17 @@ MK_TEST("rhi directional shadow smoke frame renderer records a shadow receiver s
         .wait_for_completion = true,
         .scene_depth_format = mirakana::rhi::Format::depth24_stencil8,
         .shadow_depth_format = mirakana::rhi::Format::depth24_stencil8,
-        .shadow_depth_atlas_extent = mirakana::Extent2D{.width = 64, .height = 36},
-        .directional_shadow_cascade_count = 1,
+        .shadow_depth_atlas_extent = mirakana::Extent2D{.width = 128, .height = 36},
+        .directional_shadow_cascade_count = 2,
         .shadow_receiver_constants_initial = make_dummy_packed_shadow_receiver_constants(),
         .shadow_receiver_descriptor_set_index = 1,
     });
     MK_REQUIRE(renderer.frame_graph_pass_count() == 3);
     MK_REQUIRE(renderer.directional_shadow_ready());
+    MK_REQUIRE(renderer.directional_shadow_cascade_count() == 2);
+    MK_REQUIRE(renderer.shadow_atlas_extent().width == 128);
+    MK_REQUIRE(renderer.shadow_atlas_extent().height == 36);
+    MK_REQUIRE(renderer.shadow_cascade_tile_width() == 64);
 
     renderer.begin_frame();
     renderer.draw_mesh(mirakana::MeshCommand{
@@ -6532,7 +6536,7 @@ MK_TEST("rhi directional shadow smoke frame renderer records a shadow receiver s
     MK_REQUIRE(rhi_stats.render_passes_begun == 3);
     MK_REQUIRE(rhi_stats.graphics_pipelines_bound == 3);
     MK_REQUIRE(rhi_stats.descriptor_sets_bound == 3);
-    MK_REQUIRE(rhi_stats.draw_calls == 3);
+    MK_REQUIRE(rhi_stats.draw_calls == 4);
     MK_REQUIRE(rhi_stats.present_calls == 1);
 }
 

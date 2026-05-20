@@ -75,6 +75,9 @@ class RhiDirectionalShadowSmokeFrameRenderer final : public IRenderer {
     [[nodiscard]] ShadowReceiverFilterMode shadow_filter_mode() const noexcept;
     [[nodiscard]] float shadow_filter_radius_texels() const noexcept;
     [[nodiscard]] std::uint32_t shadow_filter_tap_count() const noexcept;
+    [[nodiscard]] std::uint32_t directional_shadow_cascade_count() const noexcept;
+    [[nodiscard]] Extent2D shadow_atlas_extent() const noexcept;
+    [[nodiscard]] std::uint32_t shadow_cascade_tile_width() const noexcept;
     [[nodiscard]] std::uint32_t frame_graph_pass_count() const noexcept {
         return frame_graph_pass_count_;
     }
@@ -92,7 +95,6 @@ class RhiDirectionalShadowSmokeFrameRenderer final : public IRenderer {
     void recreate_scene_textures();
     void recreate_shadow_textures();
     void recompute_shadow_atlas_extent();
-    [[nodiscard]] std::uint32_t shadow_cascade_tile_width() const noexcept;
     void update_descriptors();
     void record_shadow_mesh_draw(const MeshCommand& command);
     void record_scene_mesh_draw(const MeshCommand& command);

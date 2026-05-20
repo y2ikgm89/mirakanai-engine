@@ -168,6 +168,7 @@ $smokeOutput = Invoke-InstalledRuntimeSmoke -FilePath $runtimeExecutable -Argume
 $requiresPostprocessDepthInput = @($SmokeArgs) -contains "--require-postprocess-depth-input"
 $requiresDirectionalShadow = @($SmokeArgs) -contains "--require-directional-shadow"
 $requiresDirectionalShadowFiltering = @($SmokeArgs) -contains "--require-directional-shadow-filtering"
+$requiresD3d12ShadowCascadePolicy = @($SmokeArgs) -contains "--require-d3d12-shadow-cascade-policy"
 $requiresLightingShadowPolicy = @($SmokeArgs) -contains "--require-lighting-shadow-policy"
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
@@ -1227,6 +1228,22 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bdirectional_shadow_filter_radius_texels=1\b") {
                 Write-Error "Installed desktop runtime smoke status line did not prove directional shadow filter radius."
+            }
+        }
+        if ($requiresD3d12ShadowCascadePolicy) {
+            $expectedD3d12ShadowCascadeFields = @{
+                "directional_shadow_cascade_count" = "4"
+                "directional_shadow_cascade_tile_width" = "225"
+                "directional_shadow_atlas_width" = "900"
+                "directional_shadow_atlas_height" = "225"
+                "directional_shadow_light_space_cascades" = "4"
+                "directional_shadow_cascade_splits" = "5"
+            }
+            foreach ($field in $expectedD3d12ShadowCascadeFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedD3d12ShadowCascadeFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove D3D12 shadow cascade field: $field=$($expectedD3d12ShadowCascadeFields[$field])"
+                }
             }
         }
     }

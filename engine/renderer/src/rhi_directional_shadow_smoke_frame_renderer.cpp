@@ -451,6 +451,14 @@ std::uint32_t RhiDirectionalShadowSmokeFrameRenderer::shadow_filter_tap_count() 
     return shadow_filter_tap_count_;
 }
 
+std::uint32_t RhiDirectionalShadowSmokeFrameRenderer::directional_shadow_cascade_count() const noexcept {
+    return directional_shadow_cascade_count_;
+}
+
+Extent2D RhiDirectionalShadowSmokeFrameRenderer::shadow_atlas_extent() const noexcept {
+    return shadow_atlas_extent_;
+}
+
 void RhiDirectionalShadowSmokeFrameRenderer::resize(Extent2D extent) {
     if (frame_active_) {
         throw std::logic_error("rhi shadow smoke renderer cannot resize during an active frame");

@@ -67,6 +67,12 @@ struct NativeRendererCreateResult {
         SdlDesktopPresentationDirectionalShadowFilterMode::none};
     std::uint32_t directional_shadow_filter_tap_count{0};
     float directional_shadow_filter_radius_texels{0.0F};
+    std::uint32_t directional_shadow_cascade_count{0};
+    std::uint32_t directional_shadow_cascade_tile_width{0};
+    std::uint32_t directional_shadow_atlas_width{0};
+    std::uint32_t directional_shadow_atlas_height{0};
+    std::uint32_t directional_shadow_light_space_cascades{0};
+    std::uint32_t directional_shadow_cascade_splits{0};
     SdlDesktopPresentationNativeUiOverlayStatus native_ui_overlay_status{
         SdlDesktopPresentationNativeUiOverlayStatus::not_requested};
     std::vector<SdlDesktopPresentationNativeUiOverlayDiagnostic> native_ui_overlay_diagnostics;
@@ -1945,6 +1951,15 @@ make_native_ui_overlay_atlas_binding(rhi::IRhiDevice& device, const runtime::Run
                     to_presentation_filter_mode(shadow_renderer->shadow_filter_mode());
                 result.directional_shadow_filter_tap_count = shadow_renderer->shadow_filter_tap_count();
                 result.directional_shadow_filter_radius_texels = shadow_renderer->shadow_filter_radius_texels();
+                const auto shadow_atlas_extent = shadow_renderer->shadow_atlas_extent();
+                result.directional_shadow_cascade_count = shadow_renderer->directional_shadow_cascade_count();
+                result.directional_shadow_cascade_tile_width = shadow_renderer->shadow_cascade_tile_width();
+                result.directional_shadow_atlas_width = shadow_atlas_extent.width;
+                result.directional_shadow_atlas_height = shadow_atlas_extent.height;
+                result.directional_shadow_light_space_cascades =
+                    static_cast<std::uint32_t>(directional_light_space_plan.clip_from_world_cascades.size());
+                result.directional_shadow_cascade_splits =
+                    static_cast<std::uint32_t>(directional_light_space_plan.cascade_split_distances.size());
                 if (native_ui_overlay_requested) {
                     result.native_ui_overlay_status = SdlDesktopPresentationNativeUiOverlayStatus::ready;
                     result.native_ui_overlay_ready = shadow_renderer->native_ui_overlay_ready();
@@ -3313,6 +3328,15 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
                     to_presentation_filter_mode(shadow_renderer->shadow_filter_mode());
                 result.directional_shadow_filter_tap_count = shadow_renderer->shadow_filter_tap_count();
                 result.directional_shadow_filter_radius_texels = shadow_renderer->shadow_filter_radius_texels();
+                const auto shadow_atlas_extent = shadow_renderer->shadow_atlas_extent();
+                result.directional_shadow_cascade_count = shadow_renderer->directional_shadow_cascade_count();
+                result.directional_shadow_cascade_tile_width = shadow_renderer->shadow_cascade_tile_width();
+                result.directional_shadow_atlas_width = shadow_atlas_extent.width;
+                result.directional_shadow_atlas_height = shadow_atlas_extent.height;
+                result.directional_shadow_light_space_cascades =
+                    static_cast<std::uint32_t>(directional_light_space_plan.clip_from_world_cascades.size());
+                result.directional_shadow_cascade_splits =
+                    static_cast<std::uint32_t>(directional_light_space_plan.cascade_split_distances.size());
                 if (native_ui_overlay_requested) {
                     result.native_ui_overlay_status = SdlDesktopPresentationNativeUiOverlayStatus::ready;
                     result.native_ui_overlay_ready = shadow_renderer->native_ui_overlay_ready();
@@ -3515,6 +3539,12 @@ struct SdlDesktopPresentation::Impl {
         SdlDesktopPresentationDirectionalShadowFilterMode::none};
     std::uint32_t directional_shadow_filter_tap_count{0};
     float directional_shadow_filter_radius_texels{0.0F};
+    std::uint32_t directional_shadow_cascade_count{0};
+    std::uint32_t directional_shadow_cascade_tile_width{0};
+    std::uint32_t directional_shadow_atlas_width{0};
+    std::uint32_t directional_shadow_atlas_height{0};
+    std::uint32_t directional_shadow_light_space_cascades{0};
+    std::uint32_t directional_shadow_cascade_splits{0};
     SdlDesktopPresentationNativeUiOverlayStatus native_ui_overlay_status{
         SdlDesktopPresentationNativeUiOverlayStatus::not_requested};
     bool native_ui_overlay_requested{false};
@@ -3836,6 +3866,14 @@ SdlDesktopPresentation::SdlDesktopPresentation(const SdlDesktopPresentationDesc&
                             renderer_result.directional_shadow_filter_tap_count;
                         impl_->directional_shadow_filter_radius_texels =
                             renderer_result.directional_shadow_filter_radius_texels;
+                        impl_->directional_shadow_cascade_count = renderer_result.directional_shadow_cascade_count;
+                        impl_->directional_shadow_cascade_tile_width =
+                            renderer_result.directional_shadow_cascade_tile_width;
+                        impl_->directional_shadow_atlas_width = renderer_result.directional_shadow_atlas_width;
+                        impl_->directional_shadow_atlas_height = renderer_result.directional_shadow_atlas_height;
+                        impl_->directional_shadow_light_space_cascades =
+                            renderer_result.directional_shadow_light_space_cascades;
+                        impl_->directional_shadow_cascade_splits = renderer_result.directional_shadow_cascade_splits;
                         impl_->native_ui_overlay_requested =
                             impl_->native_ui_overlay_requested || renderer_result.native_ui_overlay_requested;
                         impl_->native_ui_overlay_status = renderer_result.native_ui_overlay_status;
@@ -3875,6 +3913,14 @@ SdlDesktopPresentation::SdlDesktopPresentation(const SdlDesktopPresentationDesc&
                     impl_->directional_shadow_filter_tap_count = renderer_result.directional_shadow_filter_tap_count;
                     impl_->directional_shadow_filter_radius_texels =
                         renderer_result.directional_shadow_filter_radius_texels;
+                    impl_->directional_shadow_cascade_count = renderer_result.directional_shadow_cascade_count;
+                    impl_->directional_shadow_cascade_tile_width =
+                        renderer_result.directional_shadow_cascade_tile_width;
+                    impl_->directional_shadow_atlas_width = renderer_result.directional_shadow_atlas_width;
+                    impl_->directional_shadow_atlas_height = renderer_result.directional_shadow_atlas_height;
+                    impl_->directional_shadow_light_space_cascades =
+                        renderer_result.directional_shadow_light_space_cascades;
+                    impl_->directional_shadow_cascade_splits = renderer_result.directional_shadow_cascade_splits;
                     impl_->native_ui_overlay_requested =
                         impl_->native_ui_overlay_requested || renderer_result.native_ui_overlay_requested;
                     impl_->native_ui_overlay_status = renderer_result.native_ui_overlay_status;
@@ -4156,6 +4202,14 @@ SdlDesktopPresentation::SdlDesktopPresentation(const SdlDesktopPresentationDesc&
                             renderer_result.directional_shadow_filter_tap_count;
                         impl_->directional_shadow_filter_radius_texels =
                             renderer_result.directional_shadow_filter_radius_texels;
+                        impl_->directional_shadow_cascade_count = renderer_result.directional_shadow_cascade_count;
+                        impl_->directional_shadow_cascade_tile_width =
+                            renderer_result.directional_shadow_cascade_tile_width;
+                        impl_->directional_shadow_atlas_width = renderer_result.directional_shadow_atlas_width;
+                        impl_->directional_shadow_atlas_height = renderer_result.directional_shadow_atlas_height;
+                        impl_->directional_shadow_light_space_cascades =
+                            renderer_result.directional_shadow_light_space_cascades;
+                        impl_->directional_shadow_cascade_splits = renderer_result.directional_shadow_cascade_splits;
                         impl_->native_ui_overlay_requested =
                             impl_->native_ui_overlay_requested || renderer_result.native_ui_overlay_requested;
                         impl_->native_ui_overlay_status = renderer_result.native_ui_overlay_status;
@@ -4195,6 +4249,14 @@ SdlDesktopPresentation::SdlDesktopPresentation(const SdlDesktopPresentationDesc&
                     impl_->directional_shadow_filter_tap_count = renderer_result.directional_shadow_filter_tap_count;
                     impl_->directional_shadow_filter_radius_texels =
                         renderer_result.directional_shadow_filter_radius_texels;
+                    impl_->directional_shadow_cascade_count = renderer_result.directional_shadow_cascade_count;
+                    impl_->directional_shadow_cascade_tile_width =
+                        renderer_result.directional_shadow_cascade_tile_width;
+                    impl_->directional_shadow_atlas_width = renderer_result.directional_shadow_atlas_width;
+                    impl_->directional_shadow_atlas_height = renderer_result.directional_shadow_atlas_height;
+                    impl_->directional_shadow_light_space_cascades =
+                        renderer_result.directional_shadow_light_space_cascades;
+                    impl_->directional_shadow_cascade_splits = renderer_result.directional_shadow_cascade_splits;
                     impl_->native_ui_overlay_requested =
                         impl_->native_ui_overlay_requested || renderer_result.native_ui_overlay_requested;
                     impl_->native_ui_overlay_status = renderer_result.native_ui_overlay_status;
@@ -4307,6 +4369,12 @@ SdlDesktopPresentationReport SdlDesktopPresentation::report() const noexcept {
         .directional_shadow_filter_mode = impl_->directional_shadow_filter_mode,
         .directional_shadow_filter_tap_count = impl_->directional_shadow_filter_tap_count,
         .directional_shadow_filter_radius_texels = impl_->directional_shadow_filter_radius_texels,
+        .directional_shadow_cascade_count = impl_->directional_shadow_cascade_count,
+        .directional_shadow_cascade_tile_width = impl_->directional_shadow_cascade_tile_width,
+        .directional_shadow_atlas_width = impl_->directional_shadow_atlas_width,
+        .directional_shadow_atlas_height = impl_->directional_shadow_atlas_height,
+        .directional_shadow_light_space_cascades = impl_->directional_shadow_light_space_cascades,
+        .directional_shadow_cascade_splits = impl_->directional_shadow_cascade_splits,
         .native_ui_overlay_status = impl_->native_ui_overlay_status,
         .native_ui_overlay_requested = impl_->native_ui_overlay_requested,
         .native_ui_overlay_ready = impl_->native_ui_overlay_ready,

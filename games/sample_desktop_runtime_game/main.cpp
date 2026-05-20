@@ -49,6 +49,7 @@ struct DesktopRuntimeGameOptions {
     bool require_postprocess_depth_input{false};
     bool require_directional_shadow{false};
     bool require_directional_shadow_filtering{false};
+    bool require_d3d12_shadow_cascade_policy{false};
     bool require_lighting_shadow_policy{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
@@ -709,7 +710,7 @@ void print_usage() {
                  "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
                  "[--require-directional-shadow] [--require-directional-shadow-filtering] "
-                 "[--require-lighting-shadow-policy] "
+                 "[--require-d3d12-shadow-cascade-policy] [--require-lighting-shadow-policy] "
                  "[--require-renderer-quality-gates] [--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
                  "[--require-native-ui-textured-sprite-atlas] "
@@ -769,6 +770,16 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_directional_shadow = true;
             options.require_directional_shadow_filtering = true;
+            continue;
+        }
+        if (arg == "--require-d3d12-shadow-cascade-policy") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_directional_shadow = true;
+            options.require_directional_shadow_filtering = true;
+            options.require_d3d12_shadow_cascade_policy = true;
             continue;
         }
         if (arg == "--require-lighting-shadow-policy") {
@@ -1236,6 +1247,12 @@ void print_presentation_report(std::string_view prefix, const mirakana::SdlDeskt
                      report.directional_shadow_filter_mode)
               << " directional_shadow_filter_taps=" << report.directional_shadow_filter_tap_count
               << " directional_shadow_filter_radius_texels=" << report.directional_shadow_filter_radius_texels
+              << " directional_shadow_cascade_count=" << report.directional_shadow_cascade_count
+              << " directional_shadow_cascade_tile_width=" << report.directional_shadow_cascade_tile_width
+              << " directional_shadow_atlas_width=" << report.directional_shadow_atlas_width
+              << " directional_shadow_atlas_height=" << report.directional_shadow_atlas_height
+              << " directional_shadow_light_space_cascades=" << report.directional_shadow_light_space_cascades
+              << " directional_shadow_cascade_splits=" << report.directional_shadow_cascade_splits
               << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
               << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
               << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -1634,6 +1651,29 @@ int main(int argc, char** argv) {
             return 9;
         }
     }
+    if (options.require_d3d12_shadow_cascade_policy) {
+        const auto report = host.presentation_report();
+        const bool atlas_matches =
+            report.directional_shadow_cascade_tile_width > 0 &&
+            report.directional_shadow_atlas_width ==
+                report.directional_shadow_cascade_count * report.directional_shadow_cascade_tile_width &&
+            report.directional_shadow_atlas_height == report.directional_shadow_cascade_tile_width;
+        const bool cascade_policy_matches =
+            report.directional_shadow_cascade_count == 4 && atlas_matches &&
+            report.directional_shadow_light_space_cascades == report.directional_shadow_cascade_count &&
+            report.directional_shadow_cascade_splits == report.directional_shadow_cascade_count + 1U;
+        if (!cascade_policy_matches) {
+            std::cout << "sample_desktop_runtime_game required_d3d12_shadow_cascade_policy_unavailable"
+                      << " cascades=" << report.directional_shadow_cascade_count
+                      << " tile_width=" << report.directional_shadow_cascade_tile_width
+                      << " atlas_width=" << report.directional_shadow_atlas_width
+                      << " atlas_height=" << report.directional_shadow_atlas_height
+                      << " light_space_cascades=" << report.directional_shadow_light_space_cascades
+                      << " cascade_splits=" << report.directional_shadow_cascade_splits << '\n';
+            print_presentation_report("sample_desktop_runtime_game", host);
+            return 9;
+        }
+    }
     if (options.require_native_ui_overlay && !host.presentation_report().native_ui_overlay_ready) {
         std::cout << "sample_desktop_runtime_game required_native_ui_overlay_unavailable status="
                   << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(
@@ -1737,6 +1777,12 @@ int main(int argc, char** argv) {
         << mirakana::sdl_desktop_presentation_directional_shadow_filter_mode_name(report.directional_shadow_filter_mode)
         << " directional_shadow_filter_taps=" << report.directional_shadow_filter_tap_count
         << " directional_shadow_filter_radius_texels=" << report.directional_shadow_filter_radius_texels
+        << " directional_shadow_cascade_count=" << report.directional_shadow_cascade_count
+        << " directional_shadow_cascade_tile_width=" << report.directional_shadow_cascade_tile_width
+        << " directional_shadow_atlas_width=" << report.directional_shadow_atlas_width
+        << " directional_shadow_atlas_height=" << report.directional_shadow_atlas_height
+        << " directional_shadow_light_space_cascades=" << report.directional_shadow_light_space_cascades
+        << " directional_shadow_cascade_splits=" << report.directional_shadow_cascade_splits
         << " lighting_shadow_policy_status="
         << lighting_shadow_policy_status_name(options.require_lighting_shadow_policy, lighting_shadow_policy_ready)
         << " lighting_shadow_policy_ready=" << (lighting_shadow_policy_ready ? 1 : 0)
@@ -1904,6 +1950,15 @@ int main(int argc, char** argv) {
                  mirakana::SdlDesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
              report.directional_shadow_filter_tap_count != 9 ||
              report.directional_shadow_filter_radius_texels != 1.0F)) {
+            return 3;
+        }
+        if (options.require_d3d12_shadow_cascade_policy &&
+            (report.directional_shadow_cascade_count != 4 || report.directional_shadow_cascade_tile_width == 0 ||
+             report.directional_shadow_atlas_width !=
+                 report.directional_shadow_cascade_count * report.directional_shadow_cascade_tile_width ||
+             report.directional_shadow_atlas_height != report.directional_shadow_cascade_tile_width ||
+             report.directional_shadow_light_space_cascades != report.directional_shadow_cascade_count ||
+             report.directional_shadow_cascade_splits != report.directional_shadow_cascade_count + 1U)) {
             return 3;
         }
         if (options.require_lighting_shadow_policy && !lighting_shadow_policy_ready) {
