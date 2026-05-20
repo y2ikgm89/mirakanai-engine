@@ -1,8 +1,8 @@
 # Engine Navmesh Crowd v1 (2026-05-20)
 
 **Plan ID:** `engine-navmesh-crowd-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is developer-owned navigation/gameplay capability work, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** This milestone is complete. Keep `unsupportedProductionGaps = []`; this was developer-owned navigation/gameplay capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
@@ -51,7 +51,7 @@ Define the smallest reusable crowd/navigation contract over existing route, agen
 
 ## Phase 2: Package Crowd Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -69,3 +69,10 @@ Adopt the crowd/navigation contract in selected generated package paths so packa
 - Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_navigation_tests` failed on missing `mirakana/navigation/navigation_crowd.hpp` after adding crowd query tests first.
 - Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_navigation_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_navigation_tests` passed after adding `NavigationCrowdPlanRequest` / `plan_navigation_navmesh_crowd` value rows, deterministic ordering, dynamic-obstacle route propagation, local-avoidance aggregation, duplicate/invalid-agent diagnostics, max-agent budget rejection, and replay counter tests.
 - Phase 1 static/full validation: `tools/check-agents.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/check-format.ps1` passed; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `unsupported_gaps=0` and only existing diagnostic-only Apple/Metal host gates.
+- Phase 2 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-installed-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package` failed first after the installed generated 3D package validation required package-visible `gameplay_systems_navigation_crowd_*` fields.
+- Phase 2 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_generated_desktop_runtime_3d_package` passed, and the direct source-tree smoke reported `gameplay_systems_navigation_crowd_status=success`, `gameplay_systems_navigation_crowd_source_order_ready=1`, `gameplay_systems_navigation_crowd_agents=2`, `gameplay_systems_navigation_crowd_route_successes=2`, `gameplay_systems_navigation_crowd_avoidance_successes=2`, `gameplay_systems_navigation_crowd_applied_neighbors=2`, and `gameplay_systems_navigation_crowd_dynamic_obstacles=2`.
+- Phase 2 package evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package` passed; installed validation reported `installed-desktop-runtime-validation: ok (sample_generated_desktop_runtime_3d_package)` with the same package-visible navmesh/crowd counters.
+- Phase 2 static/agent evidence: `tools/check-tidy.ps1 -Files games/sample_generated_desktop_runtime_3d_package/main.cpp`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, `tools/check-agents.ps1`, `tools/check-json-contracts.ps1`, and `tools/check-ai-integration.ps1` passed after updating docs, manifest fragments, generated manifest, scaffolding/static guards, and plan pointers.
+- Phase 2 full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `unsupported_gaps=0`, all 65 dev tests passing, and only expected diagnostic-only Apple/Metal host gates.
+- Post-closeout hardening: MSVC `MSB8028` warnings were traced to stale Visual Studio `.tlog` / `.lastbuildstate` records from an older aliased build root inside the same `out/build/dev` tree. `tools/cmake.ps1` now clears only those stale `.tlog` directories under the resolved CMake build directory before Visual Studio builds, preserving per-target `COMPILE_PDB_OUTPUT_DIRECTORY`, `/INCREMENTAL:NO`, and normal MSBuild parallelism without adding global `/FS`.
+- Post-closeout static hardening: manifest closeout guards now read `latestCloseoutEvidence`, `completedContext`, and `reason` together, so future active-plan pointer updates do not have to copy historical closeout prose into `recommendedNextPlan.reason`.

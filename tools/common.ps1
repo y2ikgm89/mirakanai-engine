@@ -810,6 +810,222 @@ function Test-CMakeBuildCommand {
     return $leafName -ieq "cmake"
 }
 
+function Get-CMakeBuildPresetName {
+    param([Parameter()][string[]]$Arguments = @())
+
+    for ($index = 0; $index -lt $Arguments.Count; $index++) {
+        $argument = $Arguments[$index]
+        if ($argument -eq "--preset" -and ($index + 1) -lt $Arguments.Count) {
+            return $Arguments[$index + 1]
+        }
+        if ($argument.StartsWith("--preset=", [System.StringComparison]::Ordinal)) {
+            return $argument.Substring("--preset=".Length)
+        }
+    }
+
+    return $null
+}
+
+function Get-CMakeConfigurePreset {
+    param(
+        [Parameter(Mandatory = $true)]$Presets,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    foreach ($preset in @($Presets.configurePresets)) {
+        if ((Get-JsonPropertyValue $preset "name") -eq $Name) {
+            return $preset
+        }
+    }
+
+    return $null
+}
+
+function ConvertTo-CMakePresetNativePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$SourceDirectory,
+        [Parameter(Mandatory = $true)][string]$PresetName
+    )
+
+    $expanded = $Path.Replace('${sourceDir}', $SourceDirectory).Replace('${presetName}', $PresetName)
+    if ([System.IO.Path]::IsPathRooted($expanded)) {
+        return [System.IO.Path]::GetFullPath($expanded)
+    }
+
+    return [System.IO.Path]::GetFullPath((Join-Path $SourceDirectory $expanded))
+}
+
+function Resolve-CMakeConfigurePresetBinaryDirectory {
+    param(
+        [Parameter(Mandatory = $true)]$Presets,
+        [Parameter(Mandatory = $true)][string]$ConfigurePresetName,
+        [Parameter(Mandatory = $true)][string]$SourceDirectory
+    )
+
+    $preset = Get-CMakeConfigurePreset -Presets $Presets -Name $ConfigurePresetName
+    if ($null -eq $preset) {
+        return $null
+    }
+
+    $binaryDirectory = $null
+    if (Test-JsonProperty $preset "inherits") {
+        foreach ($inheritedPresetName in @((Get-JsonPropertyValue $preset "inherits"))) {
+            if ([string]::IsNullOrWhiteSpace([string]$inheritedPresetName)) {
+                continue
+            }
+
+            $inheritedBinaryDirectory = Resolve-CMakeConfigurePresetBinaryDirectory `
+                -Presets $Presets `
+                -ConfigurePresetName ([string]$inheritedPresetName) `
+                -SourceDirectory $SourceDirectory
+            if (-not [string]::IsNullOrWhiteSpace($inheritedBinaryDirectory)) {
+                $binaryDirectory = $inheritedBinaryDirectory
+            }
+        }
+    }
+
+    if (Test-JsonProperty $preset "binaryDir") {
+        $binaryDirectory = ConvertTo-CMakePresetNativePath `
+            -Path ([string](Get-JsonPropertyValue $preset "binaryDir")) `
+            -SourceDirectory $SourceDirectory `
+            -PresetName $ConfigurePresetName
+    }
+
+    return $binaryDirectory
+}
+
+function Resolve-CMakeBuildDirectory {
+    param([Parameter()][string[]]$Arguments = @())
+
+    $repositoryRoot = Get-RepoRoot
+    for ($index = 0; $index -lt $Arguments.Count; $index++) {
+        $argument = $Arguments[$index]
+        if ($argument.StartsWith("--build=", [System.StringComparison]::Ordinal)) {
+            $buildDirectory = $argument.Substring("--build=".Length)
+            if ([System.IO.Path]::IsPathRooted($buildDirectory)) {
+                return [System.IO.Path]::GetFullPath($buildDirectory)
+            }
+
+            return [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $buildDirectory))
+        }
+        if ($argument -eq "--build" -and ($index + 1) -lt $Arguments.Count) {
+            $candidate = $Arguments[$index + 1]
+            if (-not $candidate.StartsWith("-", [System.StringComparison]::Ordinal)) {
+                if ([System.IO.Path]::IsPathRooted($candidate)) {
+                    return [System.IO.Path]::GetFullPath($candidate)
+                }
+
+                return [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $candidate))
+            }
+        }
+    }
+
+    $buildPresetName = Get-CMakeBuildPresetName -Arguments $Arguments
+    if ([string]::IsNullOrWhiteSpace($buildPresetName)) {
+        return $null
+    }
+
+    $presets = Read-CMakePresets
+    $buildPreset = $null
+    foreach ($preset in @($presets.buildPresets)) {
+        if ((Get-JsonPropertyValue $preset "name") -eq $buildPresetName) {
+            $buildPreset = $preset
+            break
+        }
+    }
+    if ($null -eq $buildPreset -or -not (Test-JsonProperty $buildPreset "configurePreset")) {
+        return $null
+    }
+
+    return Resolve-CMakeConfigurePresetBinaryDirectory `
+        -Presets $presets `
+        -ConfigurePresetName ([string](Get-JsonPropertyValue $buildPreset "configurePreset")) `
+        -SourceDirectory $repositoryRoot
+}
+
+function Clear-StaleMsvcLastBuildState {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param([AllowNull()][string]$BuildDirectory)
+
+    if (-not [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
+        return
+    }
+    if ([string]::IsNullOrWhiteSpace($BuildDirectory)) {
+        return
+    }
+
+    $resolvedBuildDirectory = Resolve-Path -LiteralPath $BuildDirectory -ErrorAction SilentlyContinue
+    if (-not $resolvedBuildDirectory) {
+        return
+    }
+
+    $buildRoot = [System.IO.Path]::GetFullPath($resolvedBuildDirectory.Path).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    $cachePath = Join-Path $buildRoot "CMakeCache.txt"
+    if (-not (Test-Path -LiteralPath $cachePath -PathType Leaf)) {
+        return
+    }
+
+    $cacheText = Get-Content -LiteralPath $cachePath -Raw
+    if ($cacheText -notmatch "(?m)^CMAKE_GENERATOR:INTERNAL=Visual Studio") {
+        return
+    }
+
+    $buildRootPrefix = "$buildRoot$([System.IO.Path]::DirectorySeparatorChar)"
+    $staleTlogDirectories = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $lastBuildStateFiles = Get-ChildItem -LiteralPath $buildRoot -Recurse -Filter "*.lastbuildstate" -File -ErrorAction SilentlyContinue
+    foreach ($lastBuildStateFile in $lastBuildStateFiles) {
+        $stateText = Get-Content -LiteralPath $lastBuildStateFile.FullName -Raw -ErrorAction SilentlyContinue
+        foreach ($line in ($stateText -split "`r?`n")) {
+            $stateMatch = [regex]::Match($line, "^[^|]+\|[^|]+\|(.+)$")
+            if (-not $stateMatch.Success) {
+                continue
+            }
+
+            $stateDirectory = $stateMatch.Groups[1].Value.Trim()
+            if ([string]::IsNullOrWhiteSpace($stateDirectory)) {
+                continue
+            }
+
+            $normalizedStateDirectory = [System.IO.Path]::GetFullPath($stateDirectory).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+            if ($normalizedStateDirectory.Equals($buildRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+                $normalizedStateDirectory.StartsWith($buildRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                continue
+            }
+
+            $tlogDirectory = Split-Path -Parent $lastBuildStateFile.FullName
+            if ((Split-Path -Leaf $tlogDirectory).EndsWith(".tlog", [System.StringComparison]::OrdinalIgnoreCase)) {
+                $null = $staleTlogDirectories.Add($tlogDirectory)
+            }
+        }
+    }
+
+    if ($staleTlogDirectories.Count -eq 0) {
+        return
+    }
+
+    foreach ($tlogDirectory in $staleTlogDirectories) {
+        $resolvedTlogDirectory = Resolve-Path -LiteralPath $tlogDirectory -ErrorAction SilentlyContinue
+        if (-not $resolvedTlogDirectory) {
+            continue
+        }
+
+        $normalizedTlogDirectory = [System.IO.Path]::GetFullPath($resolvedTlogDirectory.Path)
+        if (-not $normalizedTlogDirectory.StartsWith($buildRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            Write-Error "Refusing to remove stale MSVC tlog outside build directory: $normalizedTlogDirectory"
+        }
+        if (-not (Split-Path -Leaf $normalizedTlogDirectory).EndsWith(".tlog", [System.StringComparison]::OrdinalIgnoreCase)) {
+            Write-Error "Refusing to remove non-tlog stale MSVC state directory: $normalizedTlogDirectory"
+        }
+
+        if ($PSCmdlet.ShouldProcess($normalizedTlogDirectory, "Remove stale MSVC tlog directory")) {
+            Remove-Item -LiteralPath $normalizedTlogDirectory -Recurse -Force
+        }
+    }
+
+    Write-Information "tools/cmake-build: removed $($staleTlogDirectories.Count) stale MSVC .tlog director$(if ($staleTlogDirectories.Count -eq 1) { 'y' } else { 'ies' }) from $buildRoot." -InformationAction Continue
+}
+
 function Get-NormalizedProcessEnvironment {
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     $entries = [System.Collections.Generic.List[object]]::new()
@@ -860,6 +1076,7 @@ function Invoke-CheckedCommand {
         if (Test-CMakeBuildCommand -FilePath $FilePath -Arguments $Arguments) {
             $cmakeBuildMutex = Initialize-RepoExclusiveToolMutex -RepositoryRoot (Get-RepoRoot) -ToolId "cmake-build"
             Write-Information "tools/cmake-build: exclusive repository mutex acquired; running CMake build..." -InformationAction Continue
+            Clear-StaleMsvcLastBuildState -BuildDirectory (Resolve-CMakeBuildDirectory -Arguments $Arguments) -Confirm:$false
         }
 
         $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
