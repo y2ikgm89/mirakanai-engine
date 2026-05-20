@@ -4092,6 +4092,151 @@ MK_TEST("material binding metadata maps masked materials to alpha test pipeline 
     MK_REQUIRE(!metadata.requires_alpha_blending);
 }
 
+MK_TEST("modern material variant diagnostics accept pbr ready material rows") {
+    const mirakana::AssetId material_id = mirakana::AssetId::from_name("materials/generated/rock");
+    const mirakana::AssetId base_color = mirakana::AssetId::from_name("textures/rock_base_color");
+    const mirakana::AssetId normal = mirakana::AssetId::from_name("textures/rock_normal");
+    const mirakana::AssetId metallic_roughness = mirakana::AssetId::from_name("textures/rock_metallic_roughness");
+    const mirakana::MaterialDefinition material{
+        .id = material_id,
+        .name = "Generated Rock",
+        .shading_model = mirakana::MaterialShadingModel::lit,
+        .surface_mode = mirakana::MaterialSurfaceMode::opaque,
+        .factors =
+            mirakana::MaterialFactors{
+                .base_color = {1.0F, 1.0F, 1.0F, 1.0F},
+                .emissive = {0.0F, 0.0F, 0.0F},
+                .metallic = 0.6F,
+                .roughness = 0.35F,
+            },
+        .texture_bindings =
+            {
+                mirakana::MaterialTextureBinding{.slot = mirakana::MaterialTextureSlot::normal, .texture = normal},
+                mirakana::MaterialTextureBinding{.slot = mirakana::MaterialTextureSlot::base_color,
+                                                 .texture = base_color},
+                mirakana::MaterialTextureBinding{.slot = mirakana::MaterialTextureSlot::metallic_roughness,
+                                                 .texture = metallic_roughness},
+            },
+        .double_sided = false,
+    };
+
+    const auto plan = mirakana::plan_modern_material_variants({
+        mirakana::ModernMaterialVariantDesc{
+            .source_kind = mirakana::ModernMaterialVariantSourceKind::graph_lowered_material,
+            .material = material,
+            .shader_evidence_ready = true,
+            .shader_graph_execution_requested = false,
+            .required_texture_slots =
+                {
+                    mirakana::MaterialTextureSlot::base_color,
+                    mirakana::MaterialTextureSlot::normal,
+                    mirakana::MaterialTextureSlot::metallic_roughness,
+                },
+        },
+    });
+
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.rows.size() == 1);
+    MK_REQUIRE(plan.rows[0].status == mirakana::ModernMaterialVariantStatus::ready);
+    MK_REQUIRE(plan.rows[0].source_kind == mirakana::ModernMaterialVariantSourceKind::graph_lowered_material);
+    MK_REQUIRE(plan.rows[0].material == material_id);
+    MK_REQUIRE(plan.rows[0].texture_binding_count == 3);
+    MK_REQUIRE(plan.rows[0].pbr_factor_ready);
+    MK_REQUIRE(plan.rows[0].required_textures_ready);
+    MK_REQUIRE(plan.rows[0].shader_evidence_ready);
+}
+
+MK_TEST("modern material variant diagnostics classify invalid and host gated rows") {
+    const mirakana::AssetId material_id = mirakana::AssetId::from_name("materials/generated/actor");
+    const mirakana::AssetId base_color = mirakana::AssetId::from_name("textures/actor_base_color");
+    mirakana::MaterialDefinition material{
+        .id = material_id,
+        .name = "Generated Actor",
+        .shading_model = mirakana::MaterialShadingModel::lit,
+        .surface_mode = mirakana::MaterialSurfaceMode::opaque,
+        .factors =
+            mirakana::MaterialFactors{
+                .base_color = {1.0F, 1.0F, 1.0F, 1.0F},
+                .emissive = {0.0F, 0.0F, 0.0F},
+                .metallic = 1.25F,
+                .roughness = 0.4F,
+            },
+        .texture_bindings =
+            {
+                mirakana::MaterialTextureBinding{.slot = mirakana::MaterialTextureSlot::base_color,
+                                                 .texture = base_color},
+            },
+        .double_sided = false,
+    };
+
+    const auto plan = mirakana::plan_modern_material_variants({
+        mirakana::ModernMaterialVariantDesc{
+            .source_kind = mirakana::ModernMaterialVariantSourceKind::material_instance,
+            .material = material,
+            .shader_evidence_ready = false,
+            .shader_graph_execution_requested = true,
+            .required_texture_slots =
+                {
+                    mirakana::MaterialTextureSlot::base_color,
+                    mirakana::MaterialTextureSlot::normal,
+                    mirakana::MaterialTextureSlot::metallic_roughness,
+                },
+        },
+    });
+
+    MK_REQUIRE(plan.rows.size() == 1);
+    MK_REQUIRE(plan.rows[0].status == mirakana::ModernMaterialVariantStatus::invalid);
+    MK_REQUIRE(plan.rows[0].source_kind == mirakana::ModernMaterialVariantSourceKind::material_instance);
+    MK_REQUIRE(plan.rows[0].pbr_factor_ready == false);
+    MK_REQUIRE(plan.rows[0].required_textures_ready == false);
+    MK_REQUIRE(plan.rows[0].shader_evidence_ready == false);
+    MK_REQUIRE(plan.diagnostics.size() == 4);
+    MK_REQUIRE(plan.diagnostics[0].code == mirakana::ModernMaterialVariantDiagnosticCode::invalid_factor_range);
+    MK_REQUIRE(plan.diagnostics[1].code == mirakana::ModernMaterialVariantDiagnosticCode::missing_texture_dependency);
+    MK_REQUIRE(plan.diagnostics[1].texture_slot == mirakana::MaterialTextureSlot::normal);
+    MK_REQUIRE(plan.diagnostics[2].code == mirakana::ModernMaterialVariantDiagnosticCode::missing_texture_dependency);
+    MK_REQUIRE(plan.diagnostics[2].texture_slot == mirakana::MaterialTextureSlot::metallic_roughness);
+    MK_REQUIRE(plan.diagnostics[3].code == mirakana::ModernMaterialVariantDiagnosticCode::missing_shader_evidence);
+}
+
+MK_TEST("modern material variant diagnostics reject unsupported shader graph execution") {
+    const mirakana::AssetId material_id = mirakana::AssetId::from_name("materials/generated/portal");
+    const mirakana::AssetId base_color = mirakana::AssetId::from_name("textures/portal_base_color");
+    const mirakana::AssetId normal = mirakana::AssetId::from_name("textures/portal_normal");
+    const mirakana::AssetId metallic_roughness = mirakana::AssetId::from_name("textures/portal_metallic_roughness");
+    const mirakana::MaterialDefinition material{
+        .id = material_id,
+        .name = "Generated Portal",
+        .shading_model = mirakana::MaterialShadingModel::lit,
+        .surface_mode = mirakana::MaterialSurfaceMode::opaque,
+        .factors = mirakana::MaterialFactors{},
+        .texture_bindings =
+            {
+                mirakana::MaterialTextureBinding{.slot = mirakana::MaterialTextureSlot::base_color,
+                                                 .texture = base_color},
+                mirakana::MaterialTextureBinding{.slot = mirakana::MaterialTextureSlot::normal, .texture = normal},
+                mirakana::MaterialTextureBinding{.slot = mirakana::MaterialTextureSlot::metallic_roughness,
+                                                 .texture = metallic_roughness},
+            },
+        .double_sided = false,
+    };
+
+    const auto plan = mirakana::plan_modern_material_variants({
+        mirakana::ModernMaterialVariantDesc{
+            .source_kind = mirakana::ModernMaterialVariantSourceKind::graph_lowered_material,
+            .material = material,
+            .shader_evidence_ready = true,
+            .shader_graph_execution_requested = true,
+        },
+    });
+
+    MK_REQUIRE(plan.rows.size() == 1);
+    MK_REQUIRE(plan.rows[0].status == mirakana::ModernMaterialVariantStatus::unsupported);
+    MK_REQUIRE(plan.diagnostics.size() == 1);
+    MK_REQUIRE(plan.diagnostics[0].code ==
+               mirakana::ModernMaterialVariantDiagnosticCode::unsupported_shader_graph_execution);
+}
+
 MK_TEST("material instance overrides parent factors and texture slots") {
     const auto parent_id = mirakana::AssetId::from_name("materials/player");
     const auto instance_id = mirakana::AssetId::from_name("materials/player.team-red");
