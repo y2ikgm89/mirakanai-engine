@@ -15,6 +15,7 @@
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/renderer/sprite_batch.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/quest_dialogue.hpp"
 #include "mirakana/runtime/runtime_diagnostics.hpp"
 #include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
@@ -288,6 +289,184 @@ ai_perception_blackboard_status_name(mirakana::AiPerceptionBlackboardStatus stat
                   });
 }
 
+struct Gameplay2DQuestDialogueProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t transition_rows{0U};
+    std::size_t completed_objectives{0U};
+    std::size_t flags{0U};
+    std::size_t dialogue_nodes{0U};
+    std::size_t action_ids{0U};
+    std::size_t reward_ids{0U};
+    std::size_t state_rows{0U};
+};
+
+[[nodiscard]] mirakana::runtime::RuntimeQuestDialogueDocument gameplay_2d_quest_dialogue_document() {
+    using namespace mirakana::runtime;
+
+    return RuntimeQuestDialogueDocument{
+        .flags = {"story.met_elder"},
+        .quests =
+            std::vector<RuntimeQuestDesc>{
+                RuntimeQuestDesc{
+                    .id = "quest.intro",
+                    .title_localization_key = "quest.intro.title",
+                    .prerequisites = {},
+                    .objectives =
+                        std::vector<RuntimeQuestObjectiveDesc>{
+                            RuntimeQuestObjectiveDesc{
+                                .id = "talk_elder",
+                                .localization_key = "quest.intro.objective.talk_elder",
+                                .prerequisites = {},
+                                .reward_ids = {"xp_small"},
+                            },
+                        },
+                    .reward_ids = {"story_unlock"},
+                },
+            },
+        .dialogues =
+            std::vector<RuntimeDialogueGraphDesc>{
+                RuntimeDialogueGraphDesc{
+                    .id = "dialogue.elder",
+                    .root_node_id = "start",
+                    .nodes =
+                        std::vector<RuntimeDialogueNodeDesc>{
+                            RuntimeDialogueNodeDesc{
+                                .id = "start",
+                                .localization_key = "dialogue.elder.start",
+                                .choices =
+                                    std::vector<RuntimeDialogueChoiceDesc>{
+                                        RuntimeDialogueChoiceDesc{
+                                            .id = "accept",
+                                            .localization_key = "dialogue.elder.accept",
+                                            .next_node_id = "accepted",
+                                            .prerequisites =
+                                                std::vector<RuntimeQuestPrerequisite>{
+                                                    RuntimeQuestPrerequisite{
+                                                        .kind = RuntimeQuestPrerequisiteKind::flag_set,
+                                                        .quest_id = {},
+                                                        .objective_id = {},
+                                                        .flag_id = "story.met_elder",
+                                                    },
+                                                },
+                                            .action_ids = {"open_quest_intro"},
+                                        },
+                                    },
+                                .action_ids = {},
+                            },
+                            RuntimeDialogueNodeDesc{
+                                .id = "accepted",
+                                .localization_key = "dialogue.elder.accepted",
+                                .choices = {},
+                                .action_ids = {"close_dialogue"},
+                            },
+                        },
+                },
+            },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeQuestDialogueValidationContext gameplay_2d_quest_dialogue_context() {
+    static const std::vector<std::string> localization_keys{
+        "quest.intro.title",     "quest.intro.objective.talk_elder", "dialogue.elder.start",
+        "dialogue.elder.accept", "dialogue.elder.accepted",
+    };
+    static const std::vector<std::string> reward_ids{"xp_small", "story_unlock"};
+    static const std::vector<std::string> action_ids{"open_quest_intro", "close_dialogue"};
+
+    return mirakana::runtime::RuntimeQuestDialogueValidationContext{
+        .localization_keys = std::span<const std::string>{localization_keys},
+        .supported_reward_ids = std::span<const std::string>{reward_ids},
+        .supported_action_ids = std::span<const std::string>{action_ids},
+    };
+}
+
+[[nodiscard]] Gameplay2DQuestDialogueProbeResult validate_gameplay_2d_quest_dialogue() {
+    using Kind = mirakana::runtime::RuntimeQuestDialogueTransitionKind;
+    using Status = mirakana::runtime::RuntimeQuestDialogueTransitionStatus;
+
+    Gameplay2DQuestDialogueProbeResult result;
+    const auto document = gameplay_2d_quest_dialogue_document();
+    const auto context = gameplay_2d_quest_dialogue_context();
+    const auto validation = mirakana::runtime::validate_runtime_quest_dialogue_document(document, context);
+    result.diagnostics += validation.diagnostics.size();
+    if (!validation.succeeded) {
+        return result;
+    }
+
+    mirakana::runtime::RuntimeQuestDialogueState state;
+    const auto completed_objective = mirakana::runtime::advance_runtime_quest_dialogue_state(
+        document, state,
+        mirakana::runtime::RuntimeQuestDialogueTransitionRequest{
+            .kind = Kind::complete_objective,
+            .flag_id = {},
+            .quest_id = "quest.intro",
+            .objective_id = "talk_elder",
+            .dialogue_id = {},
+            .dialogue_choice_id = {},
+        },
+        context);
+    result.transition_rows += completed_objective.rows.size();
+    result.diagnostics += completed_objective.diagnostics.size();
+    result.reward_ids += completed_objective.reward_ids.size();
+    if (!completed_objective.succeeded || completed_objective.rows.empty() ||
+        completed_objective.rows.front().status != Status::completed) {
+        return result;
+    }
+    state = completed_objective.state;
+
+    const auto accepted_flag = mirakana::runtime::advance_runtime_quest_dialogue_state(
+        document, state,
+        mirakana::runtime::RuntimeQuestDialogueTransitionRequest{
+            .kind = Kind::set_flag,
+            .flag_id = "story.met_elder",
+            .quest_id = {},
+            .objective_id = {},
+            .dialogue_id = {},
+            .dialogue_choice_id = {},
+        },
+        context);
+    result.transition_rows += accepted_flag.rows.size();
+    result.diagnostics += accepted_flag.diagnostics.size();
+    if (!accepted_flag.succeeded || accepted_flag.rows.empty() ||
+        accepted_flag.rows.front().status != Status::accepted) {
+        return result;
+    }
+    state = accepted_flag.state;
+
+    const auto accepted_choice = mirakana::runtime::advance_runtime_quest_dialogue_state(
+        document, state,
+        mirakana::runtime::RuntimeQuestDialogueTransitionRequest{
+            .kind = Kind::choose_dialogue,
+            .flag_id = {},
+            .quest_id = {},
+            .objective_id = {},
+            .dialogue_id = "dialogue.elder",
+            .dialogue_choice_id = "accept",
+        },
+        context);
+    result.transition_rows += accepted_choice.rows.size();
+    result.diagnostics += accepted_choice.diagnostics.size();
+    result.reward_ids += accepted_choice.reward_ids.size();
+    if (!accepted_choice.succeeded || accepted_choice.rows.empty() ||
+        accepted_choice.rows.front().status != Status::accepted) {
+        return result;
+    }
+    state = accepted_choice.state;
+
+    result.completed_objectives = state.completed_objectives.size();
+    result.flags = state.flags_set.size();
+    result.dialogue_nodes = state.dialogue_nodes.size();
+    result.action_ids = accepted_choice.action_ids.size();
+    const auto state_validation = mirakana::runtime::validate_runtime_quest_dialogue_state(document, state, context);
+    result.diagnostics += state_validation.diagnostics.size();
+    result.state_rows = state_validation.rows.size();
+    result.ready = result.diagnostics == 0U && result.transition_rows == 3U && result.completed_objectives == 1U &&
+                   result.flags == 1U && result.dialogue_nodes == 1U && result.action_ids == 2U &&
+                   result.reward_ids == 2U && result.state_rows == 3U && state_validation.succeeded;
+    return result;
+}
+
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
@@ -389,6 +568,17 @@ class Gameplay2DSystemsProbe final {
         behavior_authoring_diagnostics_ = behavior_authoring.diagnostics.size();
         behavior_authoring_trace_nodes_ = behavior_authoring.trace.size();
 
+        const auto quest_dialogue = validate_gameplay_2d_quest_dialogue();
+        quest_dialogue_ready_ = quest_dialogue.ready;
+        quest_dialogue_diagnostics_ = quest_dialogue.diagnostics;
+        quest_dialogue_transition_rows_ = quest_dialogue.transition_rows;
+        quest_dialogue_completed_objectives_ = quest_dialogue.completed_objectives;
+        quest_dialogue_flags_ = quest_dialogue.flags;
+        quest_dialogue_dialogue_nodes_ = quest_dialogue.dialogue_nodes;
+        quest_dialogue_action_ids_ = quest_dialogue.action_ids;
+        quest_dialogue_reward_ids_ = quest_dialogue.reward_ids;
+        quest_dialogue_state_rows_ = quest_dialogue.state_rows;
+
         started_ = true;
     }
 
@@ -427,7 +617,11 @@ class Gameplay2DSystemsProbe final {
                last_blackboard_status_ == mirakana::AiPerceptionBlackboardStatus::ready && blackboard_has_target_ &&
                blackboard_needs_move_ && last_tree_result_.status == mirakana::BehaviorTreeStatus::success &&
                last_tree_result_.visited_nodes.size() == 4U && behavior_authoring_ready_ &&
-               behavior_authoring_diagnostics_ == 0U && behavior_authoring_trace_nodes_ == 4U;
+               behavior_authoring_diagnostics_ == 0U && behavior_authoring_trace_nodes_ == 4U &&
+               quest_dialogue_ready_ && quest_dialogue_diagnostics_ == 0U && quest_dialogue_transition_rows_ == 3U &&
+               quest_dialogue_completed_objectives_ == 1U && quest_dialogue_flags_ == 1U &&
+               quest_dialogue_dialogue_nodes_ == 1U && quest_dialogue_action_ids_ == 2U &&
+               quest_dialogue_reward_ids_ == 2U && quest_dialogue_state_rows_ == 3U;
     }
 
     [[nodiscard]] Gameplay2DSystemsStatus status(std::uint32_t expected_ticks) const {
@@ -523,6 +717,42 @@ class Gameplay2DSystemsProbe final {
 
     [[nodiscard]] std::size_t behavior_authoring_trace_node_count() const noexcept {
         return behavior_authoring_trace_nodes_;
+    }
+
+    [[nodiscard]] bool quest_dialogue_ready() const noexcept {
+        return quest_dialogue_ready_;
+    }
+
+    [[nodiscard]] std::size_t quest_dialogue_diagnostic_count() const noexcept {
+        return quest_dialogue_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t quest_dialogue_transition_row_count() const noexcept {
+        return quest_dialogue_transition_rows_;
+    }
+
+    [[nodiscard]] std::size_t quest_dialogue_completed_objective_count() const noexcept {
+        return quest_dialogue_completed_objectives_;
+    }
+
+    [[nodiscard]] std::size_t quest_dialogue_flag_count() const noexcept {
+        return quest_dialogue_flags_;
+    }
+
+    [[nodiscard]] std::size_t quest_dialogue_dialogue_node_count() const noexcept {
+        return quest_dialogue_dialogue_nodes_;
+    }
+
+    [[nodiscard]] std::size_t quest_dialogue_action_id_count() const noexcept {
+        return quest_dialogue_action_ids_;
+    }
+
+    [[nodiscard]] std::size_t quest_dialogue_reward_id_count() const noexcept {
+        return quest_dialogue_reward_ids_;
+    }
+
+    [[nodiscard]] std::size_t quest_dialogue_state_row_count() const noexcept {
+        return quest_dialogue_state_rows_;
     }
 
   private:
@@ -639,12 +869,21 @@ class Gameplay2DSystemsProbe final {
     std::size_t last_perception_visible_count_{0U};
     std::size_t behavior_authoring_diagnostics_{0U};
     std::size_t behavior_authoring_trace_nodes_{0U};
+    std::size_t quest_dialogue_diagnostics_{0U};
+    std::size_t quest_dialogue_transition_rows_{0U};
+    std::size_t quest_dialogue_completed_objectives_{0U};
+    std::size_t quest_dialogue_flags_{0U};
+    std::size_t quest_dialogue_dialogue_nodes_{0U};
+    std::size_t quest_dialogue_action_ids_{0U};
+    std::size_t quest_dialogue_reward_ids_{0U};
+    std::size_t quest_dialogue_state_rows_{0U};
     std::uint32_t ticks_{0U};
     std::uint32_t physics_ticks_{0U};
     bool last_perception_has_primary_target_{false};
     bool blackboard_has_target_{false};
     bool blackboard_needs_move_{false};
     bool behavior_authoring_ready_{false};
+    bool quest_dialogue_ready_{false};
     bool started_{false};
 };
 
@@ -1062,6 +1301,42 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_trace_nodes() const noexcept {
         return gameplay_systems_.behavior_authoring_trace_node_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_quest_dialogue_ready() const noexcept {
+        return gameplay_systems_.quest_dialogue_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_quest_dialogue_diagnostics() const noexcept {
+        return gameplay_systems_.quest_dialogue_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_quest_dialogue_transition_rows() const noexcept {
+        return gameplay_systems_.quest_dialogue_transition_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_quest_dialogue_completed_objectives() const noexcept {
+        return gameplay_systems_.quest_dialogue_completed_objective_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_quest_dialogue_flags() const noexcept {
+        return gameplay_systems_.quest_dialogue_flag_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_quest_dialogue_dialogue_nodes() const noexcept {
+        return gameplay_systems_.quest_dialogue_dialogue_node_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_quest_dialogue_action_ids() const noexcept {
+        return gameplay_systems_.quest_dialogue_action_id_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_quest_dialogue_reward_ids() const noexcept {
+        return gameplay_systems_.quest_dialogue_reward_id_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_quest_dialogue_state_rows() const noexcept {
+        return gameplay_systems_.quest_dialogue_state_row_count();
     }
 
   private:
@@ -1773,6 +2048,16 @@ int main(int argc, char** argv) {
         << " gameplay_systems_behavior_authoring_ready=" << (game.gameplay_systems_behavior_authoring_ready() ? 1 : 0)
         << " gameplay_systems_behavior_authoring_diagnostics=" << game.gameplay_systems_behavior_authoring_diagnostics()
         << " gameplay_systems_behavior_authoring_trace_nodes=" << game.gameplay_systems_behavior_authoring_trace_nodes()
+        << " gameplay_systems_quest_dialogue_ready=" << (game.gameplay_systems_quest_dialogue_ready() ? 1 : 0)
+        << " gameplay_systems_quest_dialogue_diagnostics=" << game.gameplay_systems_quest_dialogue_diagnostics()
+        << " gameplay_systems_quest_dialogue_transition_rows=" << game.gameplay_systems_quest_dialogue_transition_rows()
+        << " gameplay_systems_quest_dialogue_completed_objectives="
+        << game.gameplay_systems_quest_dialogue_completed_objectives()
+        << " gameplay_systems_quest_dialogue_flags=" << game.gameplay_systems_quest_dialogue_flags()
+        << " gameplay_systems_quest_dialogue_dialogue_nodes=" << game.gameplay_systems_quest_dialogue_dialogue_nodes()
+        << " gameplay_systems_quest_dialogue_action_ids=" << game.gameplay_systems_quest_dialogue_action_ids()
+        << " gameplay_systems_quest_dialogue_reward_ids=" << game.gameplay_systems_quest_dialogue_reward_ids()
+        << " gameplay_systems_quest_dialogue_state_rows=" << game.gameplay_systems_quest_dialogue_state_rows()
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -1845,7 +2130,12 @@ int main(int argc, char** argv) {
                   << " gameplay_systems_behavior_authoring_diagnostics="
                   << game.gameplay_systems_behavior_authoring_diagnostics()
                   << " gameplay_systems_behavior_authoring_trace_nodes="
-                  << game.gameplay_systems_behavior_authoring_trace_nodes() << '\n';
+                  << game.gameplay_systems_behavior_authoring_trace_nodes()
+                  << " gameplay_systems_quest_dialogue_ready=" << (game.gameplay_systems_quest_dialogue_ready() ? 1 : 0)
+                  << " gameplay_systems_quest_dialogue_diagnostics="
+                  << game.gameplay_systems_quest_dialogue_diagnostics()
+                  << " gameplay_systems_quest_dialogue_transition_rows="
+                  << game.gameplay_systems_quest_dialogue_transition_rows() << '\n';
         return 12;
     }
 

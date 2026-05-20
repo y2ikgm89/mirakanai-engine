@@ -51,7 +51,7 @@ Define the smallest reusable quest/dialogue authoring contract for quest ids, ob
 
 ## Phase 2: Runtime State Transition Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -72,3 +72,8 @@ Add value-only quest/dialogue state transition helpers over validated documents 
 - Phase 1 focused GREEN: `MK_runtime_quest_dialogue_tests` builds and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_tests|MK_runtime_quest_dialogue_tests"` passes, proving deterministic diagnostics and fail-closed invalid quest/dialogue documents.
 - Phase 1 static drift checks: `check-format`, focused `check-tidy.ps1 -Files engine/runtime/src/quest_dialogue.cpp`, `check-json-contracts`, `check-agents`, `check-ai-integration`, and `check-public-api-boundaries` pass after manifest fragment compose.
 - Phase 1 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-05-20 with 66/66 CTest tests passing and only expected diagnostic-only host gates for Apple/Metal on this Windows host.
+- Phase 2 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_quest_dialogue_tests` failed before implementation because `RuntimeQuestDialogueStateValidationResult`, `validate_runtime_quest_dialogue_state`, returned transition `reward_ids`, and dialogue follow-up action rows were missing.
+- Phase 2 focused GREEN: `MK_runtime_quest_dialogue_tests` builds, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_quest_dialogue_tests"` passes, and `sample_2d_desktop_runtime_package --require-gameplay-systems` reports `gameplay_systems_quest_dialogue_ready=1`, `transition_rows=3`, `action_ids=2`, `reward_ids=2`, and `state_rows=3`.
+- Phase 2 package evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed, including installed D3D12 package smoke with quest/dialogue action, reward, and save-state counters.
+- Phase 2 static drift checks: `check-format`, `check-json-contracts`, `check-agents`, `check-ai-integration`, `check-public-api-boundaries`, and focused `check-tidy.ps1 -Files engine/runtime/src/quest_dialogue.cpp,games/sample_2d_desktop_runtime_package/main.cpp,tests/unit/runtime_quest_dialogue_tests.cpp` passed after manifest fragment compose.
+- Phase 2 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-05-20 with 66/66 CTest tests passing, `production-readiness-audit: unsupported_gaps=0`, and only expected diagnostic-only host gates for Apple/Metal on this Windows host.
