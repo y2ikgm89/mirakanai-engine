@@ -38,7 +38,7 @@ Select this plan as the next active developer-owned gameplay-family capability a
 
 ## Phase 1: Item Catalog Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -69,3 +69,6 @@ Add value-only inventory and recipe transition helpers over validated catalogs s
 ## Validation Evidence
 
 - Phase 0 pointer sync selected this plan after `engine-quest-dialogue-state-v1` completed deterministic quest/dialogue state validation, transition rows, action/reward ids, package counters, hosted PR #137, and merge commit `cad53e3cc7e6221769b4b15ac56793ac6bc490d5`, while `unsupportedProductionGaps = []` stayed empty.
+- Phase 1 adds Runtime Item Catalog v1 in `MK_runtime` through `RuntimeItemCatalogDocument`, `RuntimeItemDesc`, `RuntimeItemCostDesc`, `RuntimeItemCatalogValidationContext`, `RuntimeItemCatalogValidationResult`, `RuntimeItemCatalogDiagnostic`, `RuntimeItemCatalogValidationRow`, and `validate_runtime_item_catalog_document`.
+- Phase 1 RED test evidence: `MK_runtime_inventory_items_tests` failed before implementation because `mirakana/runtime/inventory_items.hpp` was missing.
+- Phase 1 focused GREEN evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_inventory_items_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_inventory_items_tests"` passed for deterministic valid rows and fail-closed diagnostics.

@@ -191,6 +191,9 @@ if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentGa
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentQuestDialogueState")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentQuestDialogueState"
 }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentInventoryItemCatalog")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentInventoryItemCatalog"
+}
 $geUiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_ui" })
 if ($geUiModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_ui module"
@@ -253,6 +256,9 @@ if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mi
 }
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/quest_dialogue.hpp") {
     Write-Error "engine/agent/manifest.json MK_runtime publicHeaders must include quest_dialogue.hpp"
+}
+if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/inventory_items.hpp") {
+    Write-Error "engine/agent/manifest.json MK_runtime publicHeaders must include inventory_items.hpp"
 }
 if ($geAudioModule[0].status -ne "implemented-gameplay-audio-mix-planner") {
     Write-Error "engine/agent/manifest.json MK_audio status must advertise the gameplay audio mix planner honestly"
@@ -770,6 +776,40 @@ foreach ($questDialogueSurface in @(
     Assert-ContainsText $questDialogueSurfaceText "validate_runtime_quest_dialogue_state" $questDialogueSurface
     Assert-ContainsText $questDialogueSurfaceText "advance_runtime_quest_dialogue_state" $questDialogueSurface
     Assert-ContainsText $questDialogueSurfaceText "game-owned" $questDialogueSurface
+}
+foreach ($inventoryItemGuidanceNeedle in @(
+    "RuntimeItemCatalogDocument",
+    "RuntimeItemDesc",
+    "RuntimeItemCostDesc",
+    "RuntimeItemCatalogValidationContext",
+    "RuntimeItemCatalogValidationResult",
+    "RuntimeItemCatalogDiagnostic",
+    "RuntimeItemCatalogValidationRow",
+    "validate_runtime_item_catalog_document",
+    "duplicate item ids",
+    "invalid stack limits",
+    "unsupported category ids",
+    "unsupported tag ids",
+    "unsafe localization keys",
+    "missing item references",
+    "invalid cost quantities",
+    "game-owned"
+)) {
+    Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInventoryItemCatalog) $inventoryItemGuidanceNeedle "inventory item catalog game guidance"
+}
+foreach ($inventoryItemSurface in @(
+    "docs/current-capabilities.md",
+    "docs/ai-game-development.md",
+    ".agents/skills/gameengine-game-development/SKILL.md",
+    ".claude/skills/gameengine-game-development/SKILL.md",
+    ".cursor/skills/gameengine-game-development/SKILL.md"
+)) {
+    $inventoryItemSurfaceText = Get-AgentSurfaceText $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "RuntimeItemCatalogDocument" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "RuntimeItemCatalogValidationContext" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "RuntimeItemCatalogValidationResult" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "validate_runtime_item_catalog_document" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "game-owned" $inventoryItemSurface
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_accessibility_publish" "runtime UI game guidance"
