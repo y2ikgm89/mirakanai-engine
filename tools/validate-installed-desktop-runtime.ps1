@@ -366,13 +366,22 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "gameplay_systems_behavior_nodes",
                 "gameplay_systems_behavior_authoring_ready",
                 "gameplay_systems_behavior_authoring_diagnostics",
-                "gameplay_systems_behavior_authoring_trace_nodes"
+                "gameplay_systems_behavior_authoring_trace_nodes",
+                "gameplay_systems_quest_dialogue_ready",
+                "gameplay_systems_quest_dialogue_diagnostics",
+                "gameplay_systems_quest_dialogue_transition_rows",
+                "gameplay_systems_quest_dialogue_completed_objectives",
+                "gameplay_systems_quest_dialogue_flags",
+                "gameplay_systems_quest_dialogue_dialogue_nodes",
+                "gameplay_systems_quest_dialogue_action_ids",
+                "gameplay_systems_quest_dialogue_reward_ids",
+                "gameplay_systems_quest_dialogue_state_rows"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
             }
         }
-        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready")) {
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_quest_dialogue_ready")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
@@ -430,6 +439,30 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_trace_nodes=4\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay behavior authoring trace nodes."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean quest dialogue diagnostics."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_transition_rows=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact quest dialogue transition rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_completed_objectives=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact quest dialogue objective progress."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_flags=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact quest dialogue flag progress."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_dialogue_nodes=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact quest dialogue node progress."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_action_ids=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact quest dialogue action ids."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_reward_ids=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact quest dialogue reward ids."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_state_rows=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact quest dialogue save-state rows."
         }
     }
 }

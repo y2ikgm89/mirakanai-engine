@@ -731,6 +731,23 @@ foreach ($questDialogueGuidanceNeedle in @(
     "RuntimeDialogueChoiceDesc",
     "RuntimeQuestDialogueValidationContext",
     "validate_runtime_quest_dialogue_document",
+    "RuntimeQuestDialogueState",
+    "RuntimeQuestDialogueTransitionRequest",
+    "RuntimeQuestDialogueTransitionRow",
+    "RuntimeQuestDialogueTransitionResult",
+    "RuntimeQuestDialogueTransitionStatus",
+    "RuntimeQuestDialogueStateValidationResult",
+    "validate_runtime_quest_dialogue_state",
+    "advance_runtime_quest_dialogue_state",
+    "accepted",
+    "ignored",
+    "blocked",
+    "completed",
+    "invalid",
+    "gameplay_systems_quest_dialogue_transition_rows",
+    "gameplay_systems_quest_dialogue_action_ids",
+    "gameplay_systems_quest_dialogue_reward_ids",
+    "gameplay_systems_quest_dialogue_state_rows",
     "RuntimeQuestDialogueDiagnostic",
     "RuntimeQuestDialogueValidationRow",
     "game-owned",
@@ -749,6 +766,9 @@ foreach ($questDialogueSurface in @(
     $questDialogueSurfaceText = Get-AgentSurfaceText $questDialogueSurface
     Assert-ContainsText $questDialogueSurfaceText "RuntimeQuestDialogueDocument" $questDialogueSurface
     Assert-ContainsText $questDialogueSurfaceText "validate_runtime_quest_dialogue_document" $questDialogueSurface
+    Assert-ContainsText $questDialogueSurfaceText "RuntimeQuestDialogueState" $questDialogueSurface
+    Assert-ContainsText $questDialogueSurfaceText "validate_runtime_quest_dialogue_state" $questDialogueSurface
+    Assert-ContainsText $questDialogueSurfaceText "advance_runtime_quest_dialogue_state" $questDialogueSurface
     Assert-ContainsText $questDialogueSurfaceText "game-owned" $questDialogueSurface
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"

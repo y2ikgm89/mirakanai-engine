@@ -147,8 +147,158 @@ struct RuntimeQuestDialogueValidationResult {
     std::vector<RuntimeQuestDialogueValidationRow> rows;
 };
 
+enum class RuntimeQuestDialogueTransitionKind : std::uint8_t {
+    set_flag,
+    complete_objective,
+    choose_dialogue,
+};
+
+enum class RuntimeQuestDialogueTransitionStatus : std::uint8_t {
+    accepted,
+    ignored,
+    blocked,
+    completed,
+    invalid,
+};
+
+enum class RuntimeQuestDialogueTransitionDiagnosticCode : std::uint8_t {
+    none,
+    invalid_document,
+    invalid_state,
+    invalid_request,
+    missing_flag,
+    missing_quest,
+    missing_objective,
+    missing_dialogue,
+    missing_dialogue_node,
+    missing_dialogue_choice,
+    blocked_prerequisite,
+};
+
+enum class RuntimeQuestDialogueStateDiagnosticCode : std::uint8_t {
+    none,
+    invalid_document,
+    duplicate_flag,
+    missing_flag,
+    duplicate_completed_objective,
+    missing_quest,
+    missing_objective,
+    duplicate_dialogue_node,
+    missing_dialogue,
+    missing_dialogue_node,
+};
+
+enum class RuntimeQuestDialogueStateRowKind : std::uint8_t {
+    flag,
+    completed_objective,
+    dialogue_node,
+};
+
+struct RuntimeQuestDialogueObjectiveState {
+    std::string quest_id;
+    std::string objective_id;
+
+    [[nodiscard]] bool operator==(const RuntimeQuestDialogueObjectiveState&) const = default;
+};
+
+struct RuntimeQuestDialogueNodeState {
+    std::string dialogue_id;
+    std::string node_id;
+
+    [[nodiscard]] bool operator==(const RuntimeQuestDialogueNodeState&) const = default;
+};
+
+struct RuntimeQuestDialogueState {
+    std::vector<std::string> flags_set;
+    std::vector<RuntimeQuestDialogueObjectiveState> completed_objectives;
+    std::vector<RuntimeQuestDialogueNodeState> dialogue_nodes;
+
+    [[nodiscard]] bool operator==(const RuntimeQuestDialogueState&) const = default;
+};
+
+struct RuntimeQuestDialogueStateRow {
+    RuntimeQuestDialogueStateRowKind kind{RuntimeQuestDialogueStateRowKind::flag};
+    std::string quest_id;
+    std::string objective_id;
+    std::string dialogue_id;
+    std::string dialogue_node_id;
+    std::string flag_id;
+
+    [[nodiscard]] bool operator==(const RuntimeQuestDialogueStateRow&) const = default;
+};
+
+struct RuntimeQuestDialogueStateDiagnostic {
+    RuntimeQuestDialogueStateDiagnosticCode code{RuntimeQuestDialogueStateDiagnosticCode::none};
+    std::string quest_id;
+    std::string objective_id;
+    std::string dialogue_id;
+    std::string dialogue_node_id;
+    std::string flag_id;
+
+    [[nodiscard]] bool operator==(const RuntimeQuestDialogueStateDiagnostic&) const = default;
+};
+
+struct RuntimeQuestDialogueStateValidationResult {
+    bool succeeded{true};
+    std::vector<RuntimeQuestDialogueStateDiagnostic> diagnostics;
+    std::vector<RuntimeQuestDialogueStateRow> rows;
+};
+
+struct RuntimeQuestDialogueTransitionRequest {
+    RuntimeQuestDialogueTransitionKind kind{RuntimeQuestDialogueTransitionKind::set_flag};
+    std::string flag_id;
+    std::string quest_id;
+    std::string objective_id;
+    std::string dialogue_id;
+    std::string dialogue_choice_id;
+};
+
+struct RuntimeQuestDialogueTransitionRow {
+    RuntimeQuestDialogueTransitionKind kind{RuntimeQuestDialogueTransitionKind::set_flag};
+    RuntimeQuestDialogueTransitionStatus status{RuntimeQuestDialogueTransitionStatus::accepted};
+    std::string quest_id;
+    std::string objective_id;
+    std::string dialogue_id;
+    std::string dialogue_node_id;
+    std::string dialogue_choice_id;
+    std::string referenced_dialogue_node_id;
+    std::string flag_id;
+
+    [[nodiscard]] bool operator==(const RuntimeQuestDialogueTransitionRow&) const = default;
+};
+
+struct RuntimeQuestDialogueTransitionDiagnostic {
+    RuntimeQuestDialogueTransitionDiagnosticCode code{RuntimeQuestDialogueTransitionDiagnosticCode::none};
+    std::string quest_id;
+    std::string objective_id;
+    std::string dialogue_id;
+    std::string dialogue_node_id;
+    std::string dialogue_choice_id;
+    std::string flag_id;
+
+    [[nodiscard]] bool operator==(const RuntimeQuestDialogueTransitionDiagnostic&) const = default;
+};
+
+struct RuntimeQuestDialogueTransitionResult {
+    bool succeeded{true};
+    RuntimeQuestDialogueState state;
+    std::vector<RuntimeQuestDialogueTransitionRow> rows;
+    std::vector<RuntimeQuestDialogueTransitionDiagnostic> diagnostics;
+    std::vector<std::string> action_ids;
+    std::vector<std::string> reward_ids;
+};
+
 [[nodiscard]] RuntimeQuestDialogueValidationResult
 validate_runtime_quest_dialogue_document(const RuntimeQuestDialogueDocument& document,
                                          RuntimeQuestDialogueValidationContext context);
+
+[[nodiscard]] RuntimeQuestDialogueStateValidationResult
+validate_runtime_quest_dialogue_state(const RuntimeQuestDialogueDocument& document,
+                                      const RuntimeQuestDialogueState& state,
+                                      RuntimeQuestDialogueValidationContext context);
+
+[[nodiscard]] RuntimeQuestDialogueTransitionResult advance_runtime_quest_dialogue_state(
+    const RuntimeQuestDialogueDocument& document, const RuntimeQuestDialogueState& state,
+    const RuntimeQuestDialogueTransitionRequest& request, RuntimeQuestDialogueValidationContext context);
 
 } // namespace mirakana::runtime

@@ -56,11 +56,25 @@ namespace {
     return match == quest.objectives.end() ? nullptr : std::to_address(match);
 }
 
+[[nodiscard]] const RuntimeDialogueGraphDesc* find_dialogue(const RuntimeQuestDialogueDocument& document,
+                                                            const std::string_view dialogue_id) noexcept {
+    const auto match = std::ranges::find_if(
+        document.dialogues, [dialogue_id](const RuntimeDialogueGraphDesc& row) { return row.id == dialogue_id; });
+    return match == document.dialogues.end() ? nullptr : std::to_address(match);
+}
+
 [[nodiscard]] const RuntimeDialogueNodeDesc* find_dialogue_node(const RuntimeDialogueGraphDesc& dialogue,
                                                                 const std::string_view node_id) noexcept {
     const auto match = std::ranges::find_if(
         dialogue.nodes, [node_id](const RuntimeDialogueNodeDesc& node) { return node.id == node_id; });
     return match == dialogue.nodes.end() ? nullptr : std::to_address(match);
+}
+
+[[nodiscard]] const RuntimeDialogueChoiceDesc* find_dialogue_choice(const RuntimeDialogueNodeDesc& node,
+                                                                    const std::string_view choice_id) noexcept {
+    const auto match = std::ranges::find_if(
+        node.choices, [choice_id](const RuntimeDialogueChoiceDesc& choice) { return choice.id == choice_id; });
+    return match == node.choices.end() ? nullptr : std::to_address(match);
 }
 
 void add_diagnostic(std::vector<RuntimeQuestDialogueDiagnostic>& diagnostics,
@@ -138,6 +152,91 @@ template <typename T, typename Getter>
         }
     }
     return false;
+}
+
+[[nodiscard]] bool state_has_flag(const RuntimeQuestDialogueState& state, const std::string_view flag_id) noexcept {
+    return std::ranges::find(state.flags_set, flag_id) != state.flags_set.end();
+}
+
+[[nodiscard]] bool state_has_completed_objective(const RuntimeQuestDialogueState& state,
+                                                 const std::string_view quest_id,
+                                                 const std::string_view objective_id) noexcept {
+    return std::ranges::find_if(state.completed_objectives,
+                                [quest_id, objective_id](const RuntimeQuestDialogueObjectiveState& row) {
+                                    return row.quest_id == quest_id && row.objective_id == objective_id;
+                                }) != state.completed_objectives.end();
+}
+
+[[nodiscard]] const RuntimeQuestDialogueNodeState*
+find_dialogue_node_state(const RuntimeQuestDialogueState& state, const std::string_view dialogue_id) noexcept {
+    const auto match =
+        std::ranges::find_if(state.dialogue_nodes, [dialogue_id](const RuntimeQuestDialogueNodeState& row) {
+            return row.dialogue_id == dialogue_id;
+        });
+    return match == state.dialogue_nodes.end() ? nullptr : std::to_address(match);
+}
+
+void set_dialogue_node_state(RuntimeQuestDialogueState& state, const std::string& dialogue_id,
+                             const std::string& node_id) {
+    const auto match =
+        std::ranges::find_if(state.dialogue_nodes, [&dialogue_id](const RuntimeQuestDialogueNodeState& row) {
+            return row.dialogue_id == dialogue_id;
+        });
+    if (match == state.dialogue_nodes.end()) {
+        state.dialogue_nodes.push_back(RuntimeQuestDialogueNodeState{.dialogue_id = dialogue_id, .node_id = node_id});
+        return;
+    }
+    match->node_id = node_id;
+}
+
+[[nodiscard]] bool prerequisites_satisfied(const RuntimeQuestDialogueState& state,
+                                           const std::span<const RuntimeQuestPrerequisite> prerequisites) noexcept {
+    return std::ranges::all_of(prerequisites, [&state](const RuntimeQuestPrerequisite& prerequisite) {
+        switch (prerequisite.kind) {
+        case RuntimeQuestPrerequisiteKind::flag_set:
+            return state_has_flag(state, prerequisite.flag_id);
+        case RuntimeQuestPrerequisiteKind::objective_completed:
+            return state_has_completed_objective(state, prerequisite.quest_id, prerequisite.objective_id);
+        }
+        return false;
+    });
+}
+
+void add_transition_diagnostic(std::vector<RuntimeQuestDialogueTransitionDiagnostic>& diagnostics,
+                               RuntimeQuestDialogueTransitionDiagnostic diagnostic) {
+    diagnostics.push_back(std::move(diagnostic));
+}
+
+void add_transition_row(std::vector<RuntimeQuestDialogueTransitionRow>& rows, RuntimeQuestDialogueTransitionRow row) {
+    rows.push_back(std::move(row));
+}
+
+void add_state_diagnostic(std::vector<RuntimeQuestDialogueStateDiagnostic>& diagnostics,
+                          RuntimeQuestDialogueStateDiagnostic diagnostic) {
+    diagnostics.push_back(std::move(diagnostic));
+}
+
+void add_state_row(std::vector<RuntimeQuestDialogueStateRow>& rows, RuntimeQuestDialogueStateRow row) {
+    rows.push_back(std::move(row));
+}
+
+[[nodiscard]] bool contains_completed_objective(const std::span<const RuntimeQuestDialogueObjectiveState> rows,
+                                                const RuntimeQuestDialogueObjectiveState& row) {
+    return std::ranges::find(rows, row) != rows.end();
+}
+
+[[nodiscard]] bool contains_dialogue_state_for_dialogue(const std::span<const RuntimeQuestDialogueNodeState> rows,
+                                                        const std::string_view dialogue_id) {
+    return std::ranges::find_if(rows, [dialogue_id](const RuntimeQuestDialogueNodeState& row) {
+               return row.dialogue_id == dialogue_id;
+           }) != rows.end();
+}
+
+[[nodiscard]] bool all_quest_objectives_completed(const RuntimeQuestDesc& quest,
+                                                  const RuntimeQuestDialogueState& state) noexcept {
+    return std::ranges::all_of(quest.objectives, [&quest, &state](const RuntimeQuestObjectiveDesc& objective) {
+        return state_has_completed_objective(state, quest.id, objective.id);
+    });
 }
 
 void validate_localization_key(std::vector<RuntimeQuestDialogueDiagnostic>& diagnostics, std::string quest_id,
@@ -402,6 +501,380 @@ validate_runtime_quest_dialogue_document(const RuntimeQuestDialogueDocument& doc
     if (result.succeeded) {
         append_success_rows(result, document);
     }
+    return result;
+}
+
+RuntimeQuestDialogueStateValidationResult
+validate_runtime_quest_dialogue_state(const RuntimeQuestDialogueDocument& document,
+                                      const RuntimeQuestDialogueState& state,
+                                      const RuntimeQuestDialogueValidationContext context) {
+    RuntimeQuestDialogueStateValidationResult result;
+
+    const auto document_validation = validate_runtime_quest_dialogue_document(document, context);
+    if (!document_validation.succeeded) {
+        result.succeeded = false;
+        add_state_diagnostic(result.diagnostics, RuntimeQuestDialogueStateDiagnostic{
+                                                     .code = RuntimeQuestDialogueStateDiagnosticCode::invalid_document,
+                                                 });
+        return result;
+    }
+
+    std::vector<std::string> seen_flags;
+    for (const std::string& flag_id : state.flags_set) {
+        if (std::ranges::find(seen_flags, flag_id) != seen_flags.end()) {
+            add_state_diagnostic(result.diagnostics,
+                                 RuntimeQuestDialogueStateDiagnostic{
+                                     .code = RuntimeQuestDialogueStateDiagnosticCode::duplicate_flag,
+                                     .flag_id = flag_id,
+                                 });
+            continue;
+        }
+        seen_flags.push_back(flag_id);
+        if (!is_safe_token(flag_id) || !has_flag(document, flag_id)) {
+            add_state_diagnostic(result.diagnostics, RuntimeQuestDialogueStateDiagnostic{
+                                                         .code = RuntimeQuestDialogueStateDiagnosticCode::missing_flag,
+                                                         .flag_id = flag_id,
+                                                     });
+            continue;
+        }
+        add_state_row(result.rows, RuntimeQuestDialogueStateRow{
+                                       .kind = RuntimeQuestDialogueStateRowKind::flag,
+                                       .flag_id = flag_id,
+                                   });
+    }
+
+    std::vector<RuntimeQuestDialogueObjectiveState> seen_objectives;
+    for (const RuntimeQuestDialogueObjectiveState& objective_state : state.completed_objectives) {
+        if (contains_completed_objective(seen_objectives, objective_state)) {
+            add_state_diagnostic(result.diagnostics,
+                                 RuntimeQuestDialogueStateDiagnostic{
+                                     .code = RuntimeQuestDialogueStateDiagnosticCode::duplicate_completed_objective,
+                                     .quest_id = objective_state.quest_id,
+                                     .objective_id = objective_state.objective_id,
+                                 });
+            continue;
+        }
+        seen_objectives.push_back(objective_state);
+        const auto* const quest =
+            is_safe_token(objective_state.quest_id) ? find_quest(document, objective_state.quest_id) : nullptr;
+        if (quest == nullptr) {
+            add_state_diagnostic(result.diagnostics, RuntimeQuestDialogueStateDiagnostic{
+                                                         .code = RuntimeQuestDialogueStateDiagnosticCode::missing_quest,
+                                                         .quest_id = objective_state.quest_id,
+                                                         .objective_id = objective_state.objective_id,
+                                                     });
+            continue;
+        }
+        const auto* const objective = is_safe_token(objective_state.objective_id)
+                                          ? find_objective(*quest, objective_state.objective_id)
+                                          : nullptr;
+        if (objective == nullptr) {
+            add_state_diagnostic(result.diagnostics,
+                                 RuntimeQuestDialogueStateDiagnostic{
+                                     .code = RuntimeQuestDialogueStateDiagnosticCode::missing_objective,
+                                     .quest_id = objective_state.quest_id,
+                                     .objective_id = objective_state.objective_id,
+                                 });
+            continue;
+        }
+        add_state_row(result.rows, RuntimeQuestDialogueStateRow{
+                                       .kind = RuntimeQuestDialogueStateRowKind::completed_objective,
+                                       .quest_id = objective_state.quest_id,
+                                       .objective_id = objective_state.objective_id,
+                                   });
+    }
+
+    std::vector<RuntimeQuestDialogueNodeState> seen_dialogue_nodes;
+    for (const RuntimeQuestDialogueNodeState& node_state : state.dialogue_nodes) {
+        if (contains_dialogue_state_for_dialogue(seen_dialogue_nodes, node_state.dialogue_id)) {
+            add_state_diagnostic(result.diagnostics,
+                                 RuntimeQuestDialogueStateDiagnostic{
+                                     .code = RuntimeQuestDialogueStateDiagnosticCode::duplicate_dialogue_node,
+                                     .dialogue_id = node_state.dialogue_id,
+                                     .dialogue_node_id = node_state.node_id,
+                                 });
+            continue;
+        }
+        seen_dialogue_nodes.push_back(node_state);
+        const auto* const dialogue =
+            is_safe_token(node_state.dialogue_id) ? find_dialogue(document, node_state.dialogue_id) : nullptr;
+        if (dialogue == nullptr) {
+            add_state_diagnostic(result.diagnostics,
+                                 RuntimeQuestDialogueStateDiagnostic{
+                                     .code = RuntimeQuestDialogueStateDiagnosticCode::missing_dialogue,
+                                     .dialogue_id = node_state.dialogue_id,
+                                     .dialogue_node_id = node_state.node_id,
+                                 });
+            continue;
+        }
+        const auto* const node =
+            is_safe_token(node_state.node_id) ? find_dialogue_node(*dialogue, node_state.node_id) : nullptr;
+        if (node == nullptr) {
+            add_state_diagnostic(result.diagnostics,
+                                 RuntimeQuestDialogueStateDiagnostic{
+                                     .code = RuntimeQuestDialogueStateDiagnosticCode::missing_dialogue_node,
+                                     .dialogue_id = node_state.dialogue_id,
+                                     .dialogue_node_id = node_state.node_id,
+                                 });
+            continue;
+        }
+        add_state_row(result.rows, RuntimeQuestDialogueStateRow{
+                                       .kind = RuntimeQuestDialogueStateRowKind::dialogue_node,
+                                       .dialogue_id = node_state.dialogue_id,
+                                       .dialogue_node_id = node_state.node_id,
+                                   });
+    }
+
+    if (!result.diagnostics.empty()) {
+        result.succeeded = false;
+        result.rows.clear();
+    }
+
+    return result;
+}
+
+RuntimeQuestDialogueTransitionResult advance_runtime_quest_dialogue_state(
+    const RuntimeQuestDialogueDocument& document, const RuntimeQuestDialogueState& state,
+    const RuntimeQuestDialogueTransitionRequest& request, const RuntimeQuestDialogueValidationContext context) {
+    RuntimeQuestDialogueTransitionResult result{.succeeded = true, .state = state};
+
+    const auto validation = validate_runtime_quest_dialogue_document(document, context);
+    if (!validation.succeeded) {
+        result.succeeded = false;
+        add_transition_row(result.rows,
+                           RuntimeQuestDialogueTransitionRow{.kind = request.kind,
+                                                             .status = RuntimeQuestDialogueTransitionStatus::invalid,
+                                                             .quest_id = request.quest_id,
+                                                             .objective_id = request.objective_id,
+                                                             .dialogue_id = request.dialogue_id,
+                                                             .dialogue_choice_id = request.dialogue_choice_id,
+                                                             .flag_id = request.flag_id});
+        add_transition_diagnostic(result.diagnostics,
+                                  RuntimeQuestDialogueTransitionDiagnostic{
+                                      .code = RuntimeQuestDialogueTransitionDiagnosticCode::invalid_document,
+                                      .quest_id = request.quest_id,
+                                      .objective_id = request.objective_id,
+                                      .dialogue_id = request.dialogue_id,
+                                      .dialogue_choice_id = request.dialogue_choice_id,
+                                      .flag_id = request.flag_id});
+        return result;
+    }
+
+    const auto state_validation = validate_runtime_quest_dialogue_state(document, state, context);
+    if (!state_validation.succeeded) {
+        result.succeeded = false;
+        add_transition_row(result.rows,
+                           RuntimeQuestDialogueTransitionRow{.kind = request.kind,
+                                                             .status = RuntimeQuestDialogueTransitionStatus::invalid,
+                                                             .quest_id = request.quest_id,
+                                                             .objective_id = request.objective_id,
+                                                             .dialogue_id = request.dialogue_id,
+                                                             .dialogue_choice_id = request.dialogue_choice_id,
+                                                             .flag_id = request.flag_id});
+        add_transition_diagnostic(result.diagnostics,
+                                  RuntimeQuestDialogueTransitionDiagnostic{
+                                      .code = RuntimeQuestDialogueTransitionDiagnosticCode::invalid_state,
+                                      .quest_id = request.quest_id,
+                                      .objective_id = request.objective_id,
+                                      .dialogue_id = request.dialogue_id,
+                                      .dialogue_choice_id = request.dialogue_choice_id,
+                                      .flag_id = request.flag_id});
+        return result;
+    }
+
+    switch (request.kind) {
+    case RuntimeQuestDialogueTransitionKind::set_flag: {
+        RuntimeQuestDialogueTransitionRow row{
+            .kind = request.kind,
+            .status = RuntimeQuestDialogueTransitionStatus::accepted,
+            .flag_id = request.flag_id,
+        };
+        if (!is_safe_token(request.flag_id) || !has_flag(document, request.flag_id)) {
+            result.succeeded = false;
+            row.status = RuntimeQuestDialogueTransitionStatus::invalid;
+            add_transition_row(result.rows, std::move(row));
+            add_transition_diagnostic(
+                result.diagnostics,
+                RuntimeQuestDialogueTransitionDiagnostic{
+                    .code = RuntimeQuestDialogueTransitionDiagnosticCode::missing_flag, .flag_id = request.flag_id});
+            return result;
+        }
+        if (state_has_flag(state, request.flag_id)) {
+            row.status = RuntimeQuestDialogueTransitionStatus::ignored;
+            add_transition_row(result.rows, std::move(row));
+            return result;
+        }
+        result.state.flags_set.push_back(request.flag_id);
+        add_transition_row(result.rows, std::move(row));
+        return result;
+    }
+    case RuntimeQuestDialogueTransitionKind::complete_objective: {
+        RuntimeQuestDialogueTransitionRow row{
+            .kind = request.kind,
+            .status = RuntimeQuestDialogueTransitionStatus::completed,
+            .quest_id = request.quest_id,
+            .objective_id = request.objective_id,
+        };
+        const auto* const quest = is_safe_token(request.quest_id) ? find_quest(document, request.quest_id) : nullptr;
+        if (quest == nullptr) {
+            result.succeeded = false;
+            row.status = RuntimeQuestDialogueTransitionStatus::invalid;
+            add_transition_row(result.rows, std::move(row));
+            add_transition_diagnostic(result.diagnostics,
+                                      RuntimeQuestDialogueTransitionDiagnostic{
+                                          .code = RuntimeQuestDialogueTransitionDiagnosticCode::missing_quest,
+                                          .quest_id = request.quest_id,
+                                          .objective_id = request.objective_id});
+            return result;
+        }
+        const auto* const objective =
+            is_safe_token(request.objective_id) ? find_objective(*quest, request.objective_id) : nullptr;
+        if (objective == nullptr) {
+            result.succeeded = false;
+            row.status = RuntimeQuestDialogueTransitionStatus::invalid;
+            add_transition_row(result.rows, std::move(row));
+            add_transition_diagnostic(result.diagnostics,
+                                      RuntimeQuestDialogueTransitionDiagnostic{
+                                          .code = RuntimeQuestDialogueTransitionDiagnosticCode::missing_objective,
+                                          .quest_id = request.quest_id,
+                                          .objective_id = request.objective_id});
+            return result;
+        }
+        if (state_has_completed_objective(state, request.quest_id, request.objective_id)) {
+            row.status = RuntimeQuestDialogueTransitionStatus::ignored;
+            add_transition_row(result.rows, std::move(row));
+            return result;
+        }
+        if (!prerequisites_satisfied(state, quest->prerequisites) ||
+            !prerequisites_satisfied(state, objective->prerequisites)) {
+            result.succeeded = false;
+            row.status = RuntimeQuestDialogueTransitionStatus::blocked;
+            add_transition_row(result.rows, std::move(row));
+            add_transition_diagnostic(result.diagnostics,
+                                      RuntimeQuestDialogueTransitionDiagnostic{
+                                          .code = RuntimeQuestDialogueTransitionDiagnosticCode::blocked_prerequisite,
+                                          .quest_id = request.quest_id,
+                                          .objective_id = request.objective_id});
+            return result;
+        }
+        result.state.completed_objectives.push_back(
+            RuntimeQuestDialogueObjectiveState{.quest_id = request.quest_id, .objective_id = request.objective_id});
+        result.reward_ids = objective->reward_ids;
+        if (all_quest_objectives_completed(*quest, result.state)) {
+            result.reward_ids.insert(result.reward_ids.end(), quest->reward_ids.begin(), quest->reward_ids.end());
+        }
+        add_transition_row(result.rows, std::move(row));
+        return result;
+    }
+    case RuntimeQuestDialogueTransitionKind::choose_dialogue: {
+        RuntimeQuestDialogueTransitionRow row{
+            .kind = request.kind,
+            .status = RuntimeQuestDialogueTransitionStatus::accepted,
+            .dialogue_id = request.dialogue_id,
+            .dialogue_choice_id = request.dialogue_choice_id,
+        };
+        const auto* const dialogue =
+            is_safe_token(request.dialogue_id) ? find_dialogue(document, request.dialogue_id) : nullptr;
+        if (dialogue == nullptr) {
+            result.succeeded = false;
+            row.status = RuntimeQuestDialogueTransitionStatus::invalid;
+            add_transition_row(result.rows, std::move(row));
+            add_transition_diagnostic(result.diagnostics,
+                                      RuntimeQuestDialogueTransitionDiagnostic{
+                                          .code = RuntimeQuestDialogueTransitionDiagnosticCode::missing_dialogue,
+                                          .dialogue_id = request.dialogue_id,
+                                          .dialogue_choice_id = request.dialogue_choice_id});
+            return result;
+        }
+        const auto* const active_node = find_dialogue_node_state(state, request.dialogue_id);
+        const std::string_view node_id =
+            active_node == nullptr ? std::string_view{dialogue->root_node_id} : std::string_view{active_node->node_id};
+        row.dialogue_node_id = std::string{node_id};
+        const auto* const node = find_dialogue_node(*dialogue, node_id);
+        if (node == nullptr) {
+            result.succeeded = false;
+            row.status = RuntimeQuestDialogueTransitionStatus::invalid;
+            add_transition_row(result.rows, std::move(row));
+            add_transition_diagnostic(result.diagnostics,
+                                      RuntimeQuestDialogueTransitionDiagnostic{
+                                          .code = RuntimeQuestDialogueTransitionDiagnosticCode::missing_dialogue_node,
+                                          .dialogue_id = request.dialogue_id,
+                                          .dialogue_node_id = std::string{node_id},
+                                          .dialogue_choice_id = request.dialogue_choice_id});
+            return result;
+        }
+        const auto* const choice = is_safe_token(request.dialogue_choice_id)
+                                       ? find_dialogue_choice(*node, request.dialogue_choice_id)
+                                       : nullptr;
+        if (choice == nullptr) {
+            result.succeeded = false;
+            row.status = RuntimeQuestDialogueTransitionStatus::invalid;
+            add_transition_row(result.rows, std::move(row));
+            add_transition_diagnostic(result.diagnostics,
+                                      RuntimeQuestDialogueTransitionDiagnostic{
+                                          .code = RuntimeQuestDialogueTransitionDiagnosticCode::missing_dialogue_choice,
+                                          .dialogue_id = request.dialogue_id,
+                                          .dialogue_node_id = std::string{node_id},
+                                          .dialogue_choice_id = request.dialogue_choice_id});
+            return result;
+        }
+        if (!prerequisites_satisfied(state, choice->prerequisites)) {
+            result.succeeded = false;
+            row.status = RuntimeQuestDialogueTransitionStatus::blocked;
+            add_transition_row(result.rows, std::move(row));
+            add_transition_diagnostic(result.diagnostics,
+                                      RuntimeQuestDialogueTransitionDiagnostic{
+                                          .code = RuntimeQuestDialogueTransitionDiagnosticCode::blocked_prerequisite,
+                                          .dialogue_id = request.dialogue_id,
+                                          .dialogue_node_id = std::string{node_id},
+                                          .dialogue_choice_id = request.dialogue_choice_id});
+            return result;
+        }
+        if (!choice->next_node_id.empty()) {
+            const auto* const next_node = find_dialogue_node(*dialogue, choice->next_node_id);
+            if (next_node == nullptr) {
+                result.succeeded = false;
+                row.status = RuntimeQuestDialogueTransitionStatus::invalid;
+                row.referenced_dialogue_node_id = choice->next_node_id;
+                add_transition_row(result.rows, std::move(row));
+                add_transition_diagnostic(
+                    result.diagnostics, RuntimeQuestDialogueTransitionDiagnostic{
+                                            .code = RuntimeQuestDialogueTransitionDiagnosticCode::missing_dialogue_node,
+                                            .dialogue_id = request.dialogue_id,
+                                            .dialogue_node_id = std::string{node_id},
+                                            .dialogue_choice_id = request.dialogue_choice_id});
+                return result;
+            }
+            row.referenced_dialogue_node_id = next_node->id;
+            set_dialogue_node_state(result.state, request.dialogue_id, next_node->id);
+            result.action_ids = choice->action_ids;
+            result.action_ids.insert(result.action_ids.end(), next_node->action_ids.begin(),
+                                     next_node->action_ids.end());
+        } else {
+            result.action_ids = choice->action_ids;
+        }
+        add_transition_row(result.rows, std::move(row));
+        return result;
+    }
+    }
+
+    result.succeeded = false;
+    add_transition_row(result.rows,
+                       RuntimeQuestDialogueTransitionRow{.kind = request.kind,
+                                                         .status = RuntimeQuestDialogueTransitionStatus::invalid,
+                                                         .quest_id = request.quest_id,
+                                                         .objective_id = request.objective_id,
+                                                         .dialogue_id = request.dialogue_id,
+                                                         .dialogue_choice_id = request.dialogue_choice_id,
+                                                         .flag_id = request.flag_id});
+    add_transition_diagnostic(
+        result.diagnostics,
+        RuntimeQuestDialogueTransitionDiagnostic{.code = RuntimeQuestDialogueTransitionDiagnosticCode::invalid_request,
+                                                 .quest_id = request.quest_id,
+                                                 .objective_id = request.objective_id,
+                                                 .dialogue_id = request.dialogue_id,
+                                                 .dialogue_choice_id = request.dialogue_choice_id,
+                                                 .flag_id = request.flag_id});
     return result;
 }
 
