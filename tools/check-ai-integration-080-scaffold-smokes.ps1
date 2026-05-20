@@ -251,6 +251,9 @@ try {
     Assert-ContainsText $repositoryGamesCmake '${MK_SCENE_SHADER_TARGET}_shader_artifacts_smoke' "Desktop material/shader scaffold source-tree shader smoke"
     Assert-ContainsText ($materialShaderManifest.validationRecipes | ConvertTo-Json -Depth 12) "--require-vulkan-scene-shaders" "Desktop material/shader scaffold manifest validation recipes"
     Assert-ContainsText $materialShaderMain "load_runtime_asset_package" "Desktop material/shader scaffold main.cpp"
+    Assert-ContainsText $materialShaderMain "plan_modern_material_variants" "Desktop material/shader scaffold main.cpp"
+    Assert-ContainsText $materialShaderMain "modern_material_variants=" "Desktop material/shader scaffold main.cpp"
+    Assert-ContainsText $materialShaderMain "modern_material_shader_evidence_ready=" "Desktop material/shader scaffold main.cpp"
     Assert-ContainsText $materialShaderSourceMaterial "format=GameEngine.Material.v1" "Desktop material/shader scaffold source material"
     Assert-ContainsText $materialShaderSceneHlsl "vs_main" "Desktop material/shader scaffold scene shader"
     Assert-ContainsText $materialShaderSceneHlsl "ps_main" "Desktop material/shader scaffold scene shader"
@@ -265,6 +268,9 @@ $committedMaterialShaderMain =
 foreach ($needle in @(
     "kRuntimeSceneTangentSpaceStrideBytes{48}",
     "VertexSemantic::tangent",
+    "plan_modern_material_variants",
+    "modern_material_variants=",
+    "modern_material_shader_evidence_ready=",
     "framegraph_barrier_steps_executed !=",
     "static_cast<std::uint64_t>(options.max_frames) * 2U"
 )) {

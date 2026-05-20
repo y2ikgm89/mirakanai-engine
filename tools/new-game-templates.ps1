@@ -356,6 +356,7 @@ function New-DesktopRuntimeCookedSceneMainCpp {
 
 #include "mirakana/assets/asset_identity.hpp"
 #include "mirakana/assets/asset_registry.hpp"
+#include "mirakana/assets/material.hpp"
 #include "mirakana/core/application.hpp"
 #include "mirakana/math/transform.hpp"
 #include "mirakana/platform/filesystem.hpp"
@@ -412,6 +413,17 @@ constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{"shaders/${
 constexpr std::string_view kRuntimePostprocessVulkanFragmentShaderPath{"shaders/${TargetName}_postprocess.ps.spv"};
 constexpr std::uint32_t kRuntimeSceneTangentSpaceStrideBytes{48};
 
+struct ModernMaterialPackageEvidence {
+    std::size_t variants{0};
+    std::size_t ready{0};
+    std::size_t host_gated{0};
+    std::size_t unsupported{0};
+    std::size_t invalid{0};
+    std::size_t diagnostics{0};
+    std::size_t texture_dependencies{0};
+    std::size_t shader_evidence_ready{0};
+};
+
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
@@ -459,6 +471,73 @@ constexpr std::uint32_t kRuntimeSceneTangentSpaceStrideBytes{48};
             .semantic = mirakana::rhi::VertexSemantic::tangent,
         },
     };
+}
+
+[[nodiscard]] std::vector<mirakana::MaterialTextureSlot>
+required_modern_material_texture_slots(const mirakana::MaterialDefinition& material) {
+    std::vector<mirakana::MaterialTextureSlot> slots;
+    slots.reserve(material.texture_bindings.size());
+    for (const auto& binding : material.texture_bindings) {
+        if (binding.texture.value != 0 && binding.slot != mirakana::MaterialTextureSlot::unknown) {
+            slots.push_back(binding.slot);
+        }
+    }
+    return slots;
+}
+
+void count_modern_material_status(ModernMaterialPackageEvidence& evidence,
+                                  mirakana::ModernMaterialVariantStatus status) noexcept {
+    switch (status) {
+    case mirakana::ModernMaterialVariantStatus::ready:
+        ++evidence.ready;
+        break;
+    case mirakana::ModernMaterialVariantStatus::host_gated:
+        ++evidence.host_gated;
+        break;
+    case mirakana::ModernMaterialVariantStatus::unsupported:
+        ++evidence.unsupported;
+        break;
+    case mirakana::ModernMaterialVariantStatus::invalid:
+        ++evidence.invalid;
+        break;
+    case mirakana::ModernMaterialVariantStatus::unknown:
+        break;
+    }
+}
+
+[[nodiscard]] ModernMaterialPackageEvidence
+build_modern_material_package_evidence(const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package,
+                                       bool shader_evidence_ready) {
+    ModernMaterialPackageEvidence evidence;
+    if (!runtime_package.has_value()) {
+        return evidence;
+    }
+
+    std::vector<mirakana::ModernMaterialVariantDesc> variants;
+    for (const auto& record : runtime_package->records()) {
+        auto material_payload = mirakana::runtime::runtime_material_payload(record);
+        if (!material_payload.succeeded()) {
+            continue;
+        }
+        auto required_texture_slots = required_modern_material_texture_slots(material_payload.payload.material);
+        evidence.texture_dependencies += required_texture_slots.size();
+        variants.push_back(mirakana::ModernMaterialVariantDesc{
+            .source_kind = mirakana::ModernMaterialVariantSourceKind::base_material,
+            .material = std::move(material_payload.payload.material),
+            .shader_evidence_ready = shader_evidence_ready,
+            .shader_graph_execution_requested = false,
+            .required_texture_slots = std::move(required_texture_slots),
+        });
+    }
+
+    const auto plan = mirakana::plan_modern_material_variants(variants);
+    evidence.variants = plan.rows.size();
+    evidence.diagnostics = plan.diagnostics.size();
+    for (const auto& row : plan.rows) {
+        count_modern_material_status(evidence, row.status);
+        evidence.shader_evidence_ready += row.shader_evidence_ready ? 1U : 0U;
+    }
+    return evidence;
 }
 
 class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
@@ -982,6 +1061,8 @@ int main(int argc, char** argv) {
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
+    const auto modern_material_evidence = build_modern_material_package_evidence(
+        runtime_package, d3d12_shader_bytecode.ready() || vulkan_shader_bytecode.ready());
 
     std::cout << "$TargetName status=" << status_name(result.status)
               << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
@@ -1014,7 +1095,15 @@ int main(int argc, char** argv) {
               << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
               << " frames=" << result.frames_run << " game_frames=" << game.frames()
               << " scene_meshes=" << game.scene_meshes_submitted()
-              << " scene_materials=" << game.scene_materials_resolved() << '\n';
+              << " scene_materials=" << game.scene_materials_resolved()
+              << " modern_material_variants=" << modern_material_evidence.variants
+              << " modern_material_ready=" << modern_material_evidence.ready
+              << " modern_material_host_gated=" << modern_material_evidence.host_gated
+              << " modern_material_unsupported=" << modern_material_evidence.unsupported
+              << " modern_material_invalid=" << modern_material_evidence.invalid
+              << " modern_material_diagnostics=" << modern_material_evidence.diagnostics
+              << " modern_material_texture_dependencies=" << modern_material_evidence.texture_dependencies
+              << " modern_material_shader_evidence_ready=" << modern_material_evidence.shader_evidence_ready << '\n';
     print_presentation_report("$TargetName", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "$TargetName presentation_diagnostic="
