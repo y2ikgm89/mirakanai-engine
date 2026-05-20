@@ -137,6 +137,33 @@ jobs:
             git -C external/vcpkg checkout --force $targetBaseline
           }
 
+      - name: Capture Windows toolchain cache identity
+        id: windows-toolchain-cache
+        shell: pwsh
+        run: |
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+            throw "vswhere.exe was not found at '$vswhere'"
+          }
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if ([string]::IsNullOrWhiteSpace($vsPath)) {
+            throw "Visual Studio with MSBuild was not found"
+          }
+          $toolRoot = Join-Path $vsPath "VC\Tools\MSVC"
+          $clPath = Get-ChildItem -LiteralPath $toolRoot -Directory |
+            Sort-Object -Property Name -Descending |
+            ForEach-Object { Join-Path $_.FullName "bin\Hostx64\x64\cl.exe" } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($clPath)) {
+            throw "MSVC cl.exe was not found below '$toolRoot'"
+          }
+          $identityText = @($env:ImageOS, $env:ImageVersion, $vsPath, $clPath) -join "|"
+          $identityBytes = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($identityText))
+          $identity = -join ($identityBytes | ForEach-Object { $_.ToString("x2") })
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "identity=$identity"
+          Write-Information "windows-toolchain-cache-identity=$identity" -InformationAction Continue
+
       - name: Restore vcpkg package cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -158,9 +185,9 @@ jobs:
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: out/build/dev
-          key: ${{ runner.os }}-dev-build-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          key: ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
           restore-keys: |
-            ${{ runner.os }}-dev-build-
+            ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-
 
       - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
         shell: pwsh
@@ -231,6 +258,33 @@ jobs:
             git -C external/vcpkg checkout --force $targetBaseline
           }
 
+      - name: Capture Windows toolchain cache identity
+        id: windows-toolchain-cache
+        shell: pwsh
+        run: |
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+            throw "vswhere.exe was not found at '$vswhere'"
+          }
+          $vsPath = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if ([string]::IsNullOrWhiteSpace($vsPath)) {
+            throw "Visual Studio with MSBuild was not found"
+          }
+          $toolRoot = Join-Path $vsPath "VC\Tools\MSVC"
+          $clPath = Get-ChildItem -LiteralPath $toolRoot -Directory |
+            Sort-Object -Property Name -Descending |
+            ForEach-Object { Join-Path $_.FullName "bin\Hostx64\x64\cl.exe" } |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($clPath)) {
+            throw "MSVC cl.exe was not found below '$toolRoot'"
+          }
+          $identityText = @($env:ImageOS, $env:ImageVersion, $vsPath, $clPath) -join "|"
+          $identityBytes = [System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes($identityText))
+          $identity = -join ($identityBytes | ForEach-Object { $_.ToString("x2") })
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Value "identity=$identity"
+          Write-Information "windows-toolchain-cache-identity=$identity" -InformationAction Continue
+
       - name: Restore vcpkg package cache
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -256,9 +310,9 @@ jobs:
             out/build/cpp23-release-preset-eval
             out/build/installed-consumer-cpp23-release-eval
             out/install/cpp23-release-eval
-          key: ${{ runner.os }}-cpp23-build-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          key: ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
           restore-keys: |
-            ${{ runner.os }}-cpp23-build-
+            ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-
 
       - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
         shell: pwsh
