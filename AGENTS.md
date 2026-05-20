@@ -140,7 +140,7 @@
 - After changing agent surfaces (`tools/*.ps1` dot-source pairs, skill folders, validation scripts, rules, settings, subagents, or manifest fragments), follow **Repository consistency checklist** in `docs/workflows.md` (toolchain -> `check-agents` -> `check-ai-integration` -> public API checks -> `validate.ps1` as appropriate).
 - Tracked `.clangd` points at `out/build/dev`; run `tools/cmake.ps1 --preset dev` when clangd lacks a database. Use `editor/src/compile_flags.txt` and `editor/include/compile_flags.txt` only as fallback IDE flags. `MK_tools` sources live under `engine/tools/{shader,gltf,asset,scene}/`; public headers stay in `engine/tools/include/mirakana/tools/`.
 - For parallel write work, prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree`; keep `.worktrees/` and `.claude/worktrees/` ignored; manual worktrees use setup, merged worktrees use guarded cleanup.
-- Use project subagents in `.codex/agents/` and `.claude/agents/` only when the user explicitly asks for subagent delegation or parallel agent work; keep read-only roles read-only and write-capable roles limited to builder/fixer work.
+- Use subagents in `.codex/agents/` and `.claude/agents/` only when the user explicitly asks for delegation or parallel work; keep roles scoped and close stale completed agents before spawning replacements near tool limits.
 - Every task should define: Goal, Context, Constraints, Done when.
 
 ## Production Completion Execution
