@@ -231,6 +231,8 @@ Assert-ContainsText $testingContent "pwsh -NoProfile -ExecutionPolicy Bypass -Fi
 Assert-ContainsText $testingContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format-text.ps1" "docs/testing.md"
 Assert-ContainsText $testingContent "tools/check-text-format-contract.ps1" "docs/testing.md"
 Assert-ContainsText $testingContent "CMake File API codemodel" "docs/testing.md"
+Assert-ContainsText $testingContent "-ShardCount 4" "docs/testing.md"
+Assert-ContainsText $testingContent "-ShardIndex <matrix>" "docs/testing.md"
 Assert-ContainsText $testingContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/testing.md"
 Assert-ContainsText $testingContent "normalized-configure-environment" "docs/testing.md"
 Assert-ContainsText $testingContent "normalized-build-environment" "docs/testing.md"
@@ -266,6 +268,8 @@ foreach ($cmakeSkillPath in @(
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/INCREMENTAL:NO" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "COMPILE_PDB_OUTPUT_DIRECTORY" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "-ShardCount" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "-ShardIndex" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "MSB8028" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) 'Do not repair generated `out/build/<preset>` trees' $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "CMakeCache.txt" $cmakeSkillPath
@@ -307,6 +311,9 @@ Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=
 $tidyWrapperContent = Get-AgentSurfaceText "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent '[string[]]$Files' "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent '[int]$Jobs' "tools/check-tidy.ps1"
+Assert-ContainsText $tidyWrapperContent '[int]$ShardCount' "tools/check-tidy.ps1"
+Assert-ContainsText $tidyWrapperContent '[int]$ShardIndex' "tools/check-tidy.ps1"
+Assert-ContainsText $tidyWrapperContent 'tidy-check: shard' "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent "--warnings-as-errors=*" "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent "ForEach-Object -Parallel" "tools/check-tidy.ps1"
 $clangTidyContent = Get-AgentSurfaceText ".clang-tidy"

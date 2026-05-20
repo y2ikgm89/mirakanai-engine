@@ -7,6 +7,8 @@ param(
     [switch]$Strict,
     [int]$MaxFiles = 0,
     [int]$Jobs = 0,
+    [int]$ShardCount = 1,
+    [int]$ShardIndex = 0,
     [string[]]$Files = @()
 )
 
@@ -408,6 +410,28 @@ if ($requestedSet.Count -gt 0) {
             $tidyFiles.Add($requestedFile) | Out-Null
         }
     }
+}
+
+if ($ShardCount -lt 1) {
+    Write-Error "tidy-check: -ShardCount must be a positive integer"
+}
+if ($ShardIndex -lt 0 -or $ShardIndex -ge $ShardCount) {
+    Write-Error "tidy-check: -ShardIndex must be zero-based and less than -ShardCount"
+}
+if ($requestedSet.Count -gt 0 -and $ShardCount -gt 1) {
+    Write-Error "tidy-check: -ShardCount cannot be combined with -Files; pass a focused file list to one job"
+}
+if ($ShardCount -gt 1) {
+    $orderedFiles = @($tidyFiles | Sort-Object)
+    $unshardedFileCount = $orderedFiles.Count
+    $shardedFiles = [System.Collections.Generic.List[string]]::new()
+    for ($fileIndex = 0; $fileIndex -lt $orderedFiles.Count; ++$fileIndex) {
+        if (($fileIndex % $ShardCount) -eq $ShardIndex) {
+            $shardedFiles.Add($orderedFiles[$fileIndex]) | Out-Null
+        }
+    }
+    $tidyFiles = $shardedFiles
+    Write-Host "tidy-check: shard $($ShardIndex + 1)/$ShardCount selected $($tidyFiles.Count) of $unshardedFileCount files"
 }
 
 if ($MaxFiles -gt 0 -and $tidyFiles.Count -gt $MaxFiles) {
