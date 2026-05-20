@@ -349,6 +349,7 @@ Assert-ContainsText (Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build
 Assert-ContainsText (Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md") "-SkipStaticChecks" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 $cmakeListsContent = Get-AgentSurfaceText "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'set_tests_properties(MK_platform_process_tests PROPERTIES RUN_SERIAL TRUE)' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'set_tests_properties(MK_d3d12_rhi_tests PROPERTIES RUN_SERIAL TRUE)' "CMakeLists.txt"
 Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]' "tools/check-agents.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--delete-branch",\s*"--match-head-commit"\]' "tools/check-agents.ps1"
 $tidyWrapperContent = Get-AgentSurfaceText "tools/check-tidy.ps1"
