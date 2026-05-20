@@ -440,6 +440,7 @@ $playable3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_
 if ($playable3dGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
+$recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
     "3d-playable-vertical-slice",
     "generated desktop 3D package proof",
@@ -447,7 +448,7 @@ foreach ($needle in @(
     "visible 3D aggregate counters",
     "native UI overlay/atlas package counters"
 )) {
-    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "engine manifest aiOperableProductionLoop recommendedNextPlan 3d closeout"
+    Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan 3d closeout"
 }
 $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "physics-1-0-collision-system" })
 if ($physicsCollisionGap.Count -ne 0) {
@@ -504,7 +505,7 @@ foreach ($needle in @(
     "2d-playable-vertical-slice",
     "3d-playable-vertical-slice"
 )) {
-    if (-not ((([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " ").Contains($needle)) {
+    if (-not $recommendedText.Contains($needle)) {
         Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
     }
 }

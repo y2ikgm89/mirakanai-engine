@@ -10,5 +10,5 @@ alwaysApply: false
 - After manual `git worktree add`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` inside the linked worktree before configure.
 - Install optional packages only via `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1`. CMake configure stays on `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`.
 - Do not delete `external/vcpkg`; restore with `git clone https://github.com/microsoft/vcpkg.git external/vcpkg` then bootstrap when missing.
-- MSVC targets must keep per-target `COMPILE_PDB_OUTPUT_DIRECTORY` / `COMPILE_PDB_NAME` through `MK_apply_common_target_options`; do not add global `/FS` for C1041 unless a measured follow-up proves it is still required.
+- MSVC targets must keep per-target `COMPILE_PDB_OUTPUT_DIRECTORY` / `COMPILE_PDB_NAME` through `MK_apply_common_target_options`; use `tools/cmake.ps1` so stale `.tlog` directories with older aliased `.lastbuildstate` roots are cleared before Visual Studio builds, and do not add global `/FS` for C1041 unless a measured follow-up proves it is still required.
 - **`MK_tools`:** cluster `OBJECT` targets under `engine/tools/{shader,gltf,asset,scene}/`; see [`docs/specs/2026-05-11-directory-layout-target-v1.md`](../../docs/specs/2026-05-11-directory-layout-target-v1.md).

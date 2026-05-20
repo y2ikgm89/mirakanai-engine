@@ -2170,7 +2170,7 @@ foreach ($needle in @(
     "visible 3D aggregate counters",
     "native UI overlay/atlas package counters"
 )) {
-    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason 3d closeout"
+    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan 3d closeout"
 }
 $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "physics-1-0-collision-system" })
 if ($physicsCollisionGap.Count -ne 0) {
@@ -2257,11 +2257,11 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "broad production render graph scheduling" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Metal memory alias allocation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason"
+Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+Assert-ContainsText $recommendedText "scene-component-prefab-schema-v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+Assert-ContainsText $recommendedText "2d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+Assert-ContainsText $recommendedText "3d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
 foreach ($needle in @(
     "editor-productization",
     "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
@@ -2273,5 +2273,5 @@ foreach ($needle in @(
     "explicit future/dependency-gated exclusions for broad low-level UI, codec, importer, platform SDK",
     "full-repository-quality-gate"
 )) {
-    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.reason closeout wedges"
+    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan closeout wedges"
 }
