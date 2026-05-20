@@ -2,6 +2,7 @@ add_library(mirakana_runtime
     src/asset_runtime.cpp
     src/package_streaming.cpp
     src/physics_collision_runtime.cpp
+    src/quest_dialogue.cpp
     src/resource_runtime.cpp
     src/runtime_diagnostics.cpp
     src/session_services.cpp

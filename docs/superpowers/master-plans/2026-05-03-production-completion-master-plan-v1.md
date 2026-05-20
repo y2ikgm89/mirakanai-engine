@@ -15,8 +15,8 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: `docs/superpowers/plans/2026-05-20-engine-advanced-physics-controller-v1.md`.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-advanced-physics-controller-v1` as the next developer-owned gameplay/physics capability, not a reopened Engine 1.0 production gap. `engine-navmesh-crowd-v1` is completed for deterministic navmesh/crowd query rows and package-visible `gameplay_systems_navigation_crowd_*` counters in `sample_generated_desktop_runtime_3d_package` package evidence.
+- Current active plan: `docs/superpowers/plans/2026-05-20-engine-quest-dialogue-state-v1.md`.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-quest-dialogue-state-v1` as the next developer-owned gameplay/narrative capability, not a reopened Engine 1.0 production gap. `engine-advanced-physics-controller-v1` is completed for deterministic advanced-controller planning rows and package-visible `gameplay_systems_advanced_controller_*` counters in `sample_generated_desktop_runtime_3d_package` package evidence.
 - Current gap cluster: none selected after the 2026-05-19 gameplay/physics/navigation/AI foundation closeout.
 
 ## Plan map

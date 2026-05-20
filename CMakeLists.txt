@@ -236,6 +236,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_tests)
     add_test(NAME MK_runtime_tests COMMAND MK_runtime_tests)
 
+    add_executable(MK_runtime_quest_dialogue_tests
+        tests/unit/runtime_quest_dialogue_tests.cpp
+    )
+    target_link_libraries(MK_runtime_quest_dialogue_tests PRIVATE MK_runtime)
+    target_include_directories(MK_runtime_quest_dialogue_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_quest_dialogue_tests)
+    add_test(NAME MK_runtime_quest_dialogue_tests COMMAND MK_runtime_quest_dialogue_tests)
+
     add_executable(MK_runtime_scene_tests
         tests/unit/runtime_scene_tests.cpp
     )
