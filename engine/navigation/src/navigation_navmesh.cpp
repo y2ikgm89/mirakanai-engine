@@ -231,7 +231,7 @@ NavigationNavmeshPathResult plan_navigation_navmesh_path(const NavigationNavmesh
             const auto candidate = distances[*current] + step_cost;
             if (candidate < distances[edge.to]) {
                 distances[edge.to] = candidate;
-                previous[edge.to] = *current;
+                previous[edge.to] = current;
             }
         }
     }
@@ -249,7 +249,7 @@ NavigationNavmeshPathResult plan_navigation_navmesh_path(const NavigationNavmesh
     }
 
     std::vector<std::size_t> reversed_indices;
-    for (std::optional<std::size_t> cursor = *goal; cursor.has_value(); cursor = previous[*cursor]) {
+    for (std::optional<std::size_t> cursor = goal; cursor.has_value(); cursor = previous[*cursor]) {
         reversed_indices.push_back(*cursor);
         if (*cursor == *start) {
             break;

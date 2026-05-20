@@ -144,7 +144,7 @@ namespace {
 build_neighbors(std::span<const NavigationCrowdAgentDesc> agents, std::span<const std::size_t> sorted_indices,
                 std::size_t source_index) {
     std::vector<NavigationLocalAvoidanceNeighborDesc> neighbors;
-    neighbors.reserve(agents.size() > 0U ? agents.size() - 1U : 0U);
+    neighbors.reserve(!agents.empty() ? agents.size() - 1U : 0U);
     for (const std::size_t neighbor_index : sorted_indices) {
         if (neighbor_index == source_index) {
             continue;
