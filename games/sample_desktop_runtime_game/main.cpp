@@ -49,6 +49,7 @@ struct DesktopRuntimeGameOptions {
     bool require_postprocess_depth_input{false};
     bool require_directional_shadow{false};
     bool require_directional_shadow_filtering{false};
+    bool require_lighting_shadow_policy{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_native_ui_overlay{false};
@@ -269,12 +270,14 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
     SampleDesktopRuntimeGame(mirakana::VirtualInput& input, mirakana::IRenderer& renderer, bool throttle,
                              std::optional<mirakana::RuntimeSceneRenderInstance> scene, bool scene_gpu_mode,
                              std::vector<mirakana::AnimationJointTrack3dDesc> quaternion_animation_tracks,
-                             bool textured_ui_atlas_mode, mirakana::UiRendererImagePalette image_palette,
+                             bool lighting_shadow_policy_mode, bool textured_ui_atlas_mode,
+                             mirakana::UiRendererImagePalette image_palette,
                              mirakana::SdlDesktopPresentation* presentation = nullptr)
         : input_(input), renderer_(renderer), throttle_(throttle), scene_(std::move(scene)),
           quaternion_animation_tracks_(std::move(quaternion_animation_tracks)),
           image_palette_(std::move(image_palette)), scene_gpu_mode_(scene_gpu_mode),
-          textured_ui_atlas_mode_(textured_ui_atlas_mode), presentation_(presentation) {}
+          lighting_shadow_policy_mode_(lighting_shadow_policy_mode), textured_ui_atlas_mode_(textured_ui_atlas_mode),
+          presentation_(presentation) {}
 
     void on_start(mirakana::EngineContext&) override {
         input_.press(mirakana::Key::right);
@@ -337,6 +340,37 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
             scene_mesh_plan_unique_meshes_ += mesh_plan.unique_mesh_count;
             scene_mesh_plan_unique_materials_ += mesh_plan.unique_material_count;
             scene_mesh_plan_diagnostics_ += mesh_plan.diagnostics.size();
+            if (lighting_shadow_policy_mode_) {
+                const auto lighting_policy = mirakana::plan_scene_lighting_shadow_policy(
+                    *render_packet, mirakana::SceneLightingShadowPolicyDesc{
+                                        .max_light_count = 8,
+                                        .max_shadowed_light_count = 1,
+                                        .shadow_map =
+                                            mirakana::SceneShadowMapDesc{
+                                                .extent = mirakana::rhi::Extent2D{.width = 1024, .height = 1024},
+                                                .depth_format = mirakana::rhi::Format::depth24_stencil8,
+                                                .directional_cascade_count = 1,
+                                            },
+                                    });
+                lighting_shadow_policy_ok_ = lighting_shadow_policy_ok_ && lighting_policy.succeeded();
+                lighting_shadow_policy_light_count_ = lighting_policy.light_count;
+                lighting_shadow_policy_directional_light_count_ = lighting_policy.directional_light_count;
+                lighting_shadow_policy_point_light_count_ = lighting_policy.point_light_count;
+                lighting_shadow_policy_spot_light_count_ = lighting_policy.spot_light_count;
+                lighting_shadow_policy_shadowed_light_count_ = lighting_policy.shadowed_light_count;
+                lighting_shadow_policy_directional_cascade_count_ = lighting_policy.directional_cascade_count;
+                lighting_shadow_policy_shadow_atlas_width_ = lighting_policy.shadow_atlas_extent.width;
+                lighting_shadow_policy_shadow_atlas_height_ = lighting_policy.shadow_atlas_extent.height;
+                lighting_shadow_policy_light_rows_ = lighting_policy.light_rows.size();
+                lighting_shadow_policy_diagnostics_ += lighting_policy.diagnostics.size();
+                if (lighting_policy.succeeded() && lighting_policy.light_count > 0 &&
+                    lighting_policy.shadowed_light_count > 0 &&
+                    lighting_policy.light_rows.size() == static_cast<std::size_t>(lighting_policy.light_count) &&
+                    lighting_policy.directional_cascade_count > 0 && lighting_policy.shadow_atlas_extent.width > 0 &&
+                    lighting_policy.shadow_atlas_extent.height > 0) {
+                    ++lighting_shadow_policy_ready_frames_;
+                }
+            }
             mirakana::ScenePbrGpuSubmitContext pbr_gpu{};
             const mirakana::ScenePbrGpuSubmitContext* pbr_ptr = nullptr;
             if (scene_gpu_mode_ && presentation_ != nullptr) {
@@ -425,6 +459,15 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
                std::abs(final_quaternion_scene_rotation_z_ - 3.14159265F) < 0.0001F;
     }
 
+    [[nodiscard]] bool lighting_shadow_policy_passed(std::uint32_t expected_frames) const noexcept {
+        return lighting_shadow_policy_ok_ && lighting_shadow_policy_ready_frames_ == expected_frames &&
+               lighting_shadow_policy_diagnostics_ == 0 && lighting_shadow_policy_light_count_ > 0 &&
+               lighting_shadow_policy_shadowed_light_count_ > 0 &&
+               lighting_shadow_policy_light_rows_ == static_cast<std::size_t>(lighting_shadow_policy_light_count_) &&
+               lighting_shadow_policy_directional_cascade_count_ > 0 &&
+               lighting_shadow_policy_shadow_atlas_width_ > 0 && lighting_shadow_policy_shadow_atlas_height_ > 0;
+    }
+
     [[nodiscard]] std::uint32_t frames() const noexcept {
         return frames_;
     }
@@ -505,6 +548,50 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
         return final_quaternion_scene_rotation_z_;
     }
 
+    [[nodiscard]] std::uint32_t lighting_shadow_policy_light_count() const noexcept {
+        return lighting_shadow_policy_light_count_;
+    }
+
+    [[nodiscard]] std::uint32_t lighting_shadow_policy_directional_light_count() const noexcept {
+        return lighting_shadow_policy_directional_light_count_;
+    }
+
+    [[nodiscard]] std::uint32_t lighting_shadow_policy_point_light_count() const noexcept {
+        return lighting_shadow_policy_point_light_count_;
+    }
+
+    [[nodiscard]] std::uint32_t lighting_shadow_policy_spot_light_count() const noexcept {
+        return lighting_shadow_policy_spot_light_count_;
+    }
+
+    [[nodiscard]] std::uint32_t lighting_shadow_policy_shadowed_light_count() const noexcept {
+        return lighting_shadow_policy_shadowed_light_count_;
+    }
+
+    [[nodiscard]] std::uint32_t lighting_shadow_policy_directional_cascade_count() const noexcept {
+        return lighting_shadow_policy_directional_cascade_count_;
+    }
+
+    [[nodiscard]] std::uint32_t lighting_shadow_policy_shadow_atlas_width() const noexcept {
+        return lighting_shadow_policy_shadow_atlas_width_;
+    }
+
+    [[nodiscard]] std::uint32_t lighting_shadow_policy_shadow_atlas_height() const noexcept {
+        return lighting_shadow_policy_shadow_atlas_height_;
+    }
+
+    [[nodiscard]] std::size_t lighting_shadow_policy_light_rows() const noexcept {
+        return lighting_shadow_policy_light_rows_;
+    }
+
+    [[nodiscard]] std::size_t lighting_shadow_policy_diagnostics() const noexcept {
+        return lighting_shadow_policy_diagnostics_;
+    }
+
+    [[nodiscard]] std::uint32_t lighting_shadow_policy_ready_frames() const noexcept {
+        return lighting_shadow_policy_ready_frames_;
+    }
+
   private:
     [[nodiscard]] bool build_hud() {
         mirakana::ui::ElementDesc root;
@@ -563,6 +650,7 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
     std::optional<mirakana::RuntimeSceneRenderInstance> scene_;
     std::vector<mirakana::AnimationJointTrack3dDesc> quaternion_animation_tracks_;
     bool scene_gpu_mode_{false};
+    bool lighting_shadow_policy_mode_{false};
     bool textured_ui_atlas_mode_{false};
     mirakana::SdlDesktopPresentation* presentation_{nullptr};
     std::uint32_t frames_{0};
@@ -580,6 +668,17 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
     std::uint64_t quaternion_animation_tracks_sampled_{0};
     std::uint32_t quaternion_animation_failures_{0};
     std::uint32_t quaternion_animation_scene_applied_{0};
+    std::uint32_t lighting_shadow_policy_ready_frames_{0};
+    std::uint32_t lighting_shadow_policy_light_count_{0};
+    std::uint32_t lighting_shadow_policy_directional_light_count_{0};
+    std::uint32_t lighting_shadow_policy_point_light_count_{0};
+    std::uint32_t lighting_shadow_policy_spot_light_count_{0};
+    std::uint32_t lighting_shadow_policy_shadowed_light_count_{0};
+    std::uint32_t lighting_shadow_policy_directional_cascade_count_{0};
+    std::uint32_t lighting_shadow_policy_shadow_atlas_width_{0};
+    std::uint32_t lighting_shadow_policy_shadow_atlas_height_{0};
+    std::size_t lighting_shadow_policy_light_rows_{0};
+    std::size_t lighting_shadow_policy_diagnostics_{0};
     float final_camera_x_{0.0F};
     float final_quaternion_z_{0.0F};
     float final_quaternion_w_{1.0F};
@@ -589,6 +688,7 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
     bool primary_camera_seen_{false};
     bool quaternion_animation_seen_{false};
     bool scene_mesh_plan_ok_{true};
+    bool lighting_shadow_policy_ok_{true};
 };
 
 [[nodiscard]] bool parse_positive_uint32(std::string_view text, std::uint32_t& value) noexcept {
@@ -609,6 +709,7 @@ void print_usage() {
                  "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
                  "[--require-directional-shadow] [--require-directional-shadow-filtering] "
+                 "[--require-lighting-shadow-policy] "
                  "[--require-renderer-quality-gates] [--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
                  "[--require-native-ui-textured-sprite-atlas] "
@@ -668,6 +769,10 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_directional_shadow = true;
             options.require_directional_shadow_filtering = true;
+            continue;
+        }
+        if (arg == "--require-lighting-shadow-policy") {
+            options.require_lighting_shadow_policy = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -774,6 +879,13 @@ make_renderer_quality_gate_desc(const DesktopRuntimeGameOptions& options) noexce
         desc.expected_frames = options.max_frames;
     }
     return desc;
+}
+
+[[nodiscard]] std::string_view lighting_shadow_policy_status_name(bool requested, bool ready) noexcept {
+    if (!requested) {
+        return "not_requested";
+    }
+    return ready ? "ready" : "blocked";
 }
 
 [[nodiscard]] std::string_view
@@ -1183,6 +1295,10 @@ int main(int argc, char** argv) {
         std::cerr << "--require-gpu-skinning requires --require-scene-package\n";
         return 4;
     }
+    if (options.require_lighting_shadow_policy && (!runtime_package.has_value() || !packaged_scene.has_value())) {
+        std::cerr << "--require-lighting-shadow-policy requires --require-scene-package\n";
+        return 4;
+    }
     if (options.require_quaternion_animation && packaged_quaternion_animation_tracks.empty()) {
         std::cerr << "--require-quaternion-animation requires --require-scene-package\n";
         return 4;
@@ -1550,10 +1666,10 @@ int main(int argc, char** argv) {
         }
     }
 
-    SampleDesktopRuntimeGame game(host.input(), host.renderer(), options.throttle, std::move(packaged_scene),
-                                  host.scene_gpu_bindings_ready(), std::move(packaged_quaternion_animation_tracks),
-                                  options.require_native_ui_textured_sprite_atlas, std::move(ui_atlas_metadata.palette),
-                                  &host.presentation());
+    SampleDesktopRuntimeGame game(
+        host.input(), host.renderer(), options.throttle, std::move(packaged_scene), host.scene_gpu_bindings_ready(),
+        std::move(packaged_quaternion_animation_tracks), options.require_lighting_shadow_policy,
+        options.require_native_ui_textured_sprite_atlas, std::move(ui_atlas_metadata.palette), &host.presentation());
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
@@ -1562,6 +1678,7 @@ int main(int argc, char** argv) {
     const auto framegraph_multiqueue = options.require_framegraph_multiqueue_evidence
                                            ? run_frame_graph_multi_queue_package_evidence(host.presentation())
                                            : mirakana::FrameGraphRhiMultiQueuePackageEvidence{};
+    const bool lighting_shadow_policy_ready = game.lighting_shadow_policy_passed(options.max_frames);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -1620,6 +1737,20 @@ int main(int argc, char** argv) {
         << mirakana::sdl_desktop_presentation_directional_shadow_filter_mode_name(report.directional_shadow_filter_mode)
         << " directional_shadow_filter_taps=" << report.directional_shadow_filter_tap_count
         << " directional_shadow_filter_radius_texels=" << report.directional_shadow_filter_radius_texels
+        << " lighting_shadow_policy_status="
+        << lighting_shadow_policy_status_name(options.require_lighting_shadow_policy, lighting_shadow_policy_ready)
+        << " lighting_shadow_policy_ready=" << (lighting_shadow_policy_ready ? 1 : 0)
+        << " lighting_shadow_policy_diagnostics=" << game.lighting_shadow_policy_diagnostics()
+        << " lighting_shadow_policy_lights=" << game.lighting_shadow_policy_light_count()
+        << " lighting_shadow_policy_directional_lights=" << game.lighting_shadow_policy_directional_light_count()
+        << " lighting_shadow_policy_point_lights=" << game.lighting_shadow_policy_point_light_count()
+        << " lighting_shadow_policy_spot_lights=" << game.lighting_shadow_policy_spot_light_count()
+        << " lighting_shadow_policy_shadowed_lights=" << game.lighting_shadow_policy_shadowed_light_count()
+        << " lighting_shadow_policy_directional_cascades=" << game.lighting_shadow_policy_directional_cascade_count()
+        << " lighting_shadow_policy_shadow_atlas_width=" << game.lighting_shadow_policy_shadow_atlas_width()
+        << " lighting_shadow_policy_shadow_atlas_height=" << game.lighting_shadow_policy_shadow_atlas_height()
+        << " lighting_shadow_policy_light_rows=" << game.lighting_shadow_policy_light_rows()
+        << " lighting_shadow_policy_ready_frames=" << game.lighting_shadow_policy_ready_frames()
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -1773,6 +1904,9 @@ int main(int argc, char** argv) {
                  mirakana::SdlDesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
              report.directional_shadow_filter_tap_count != 9 ||
              report.directional_shadow_filter_radius_texels != 1.0F)) {
+            return 3;
+        }
+        if (options.require_lighting_shadow_policy && !lighting_shadow_policy_ready) {
             return 3;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {

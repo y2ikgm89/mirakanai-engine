@@ -168,6 +168,7 @@ $smokeOutput = Invoke-InstalledRuntimeSmoke -FilePath $runtimeExecutable -Argume
 $requiresPostprocessDepthInput = @($SmokeArgs) -contains "--require-postprocess-depth-input"
 $requiresDirectionalShadow = @($SmokeArgs) -contains "--require-directional-shadow"
 $requiresDirectionalShadowFiltering = @($SmokeArgs) -contains "--require-directional-shadow-filtering"
+$requiresLightingShadowPolicy = @($SmokeArgs) -contains "--require-lighting-shadow-policy"
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
@@ -350,6 +351,29 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         foreach ($field in @("ui_texture_overlay_requested", "ui_texture_overlay_status", "ui_texture_overlay_atlas_ready", "ui_texture_overlay_sprites_submitted", "ui_texture_overlay_texture_binds", "ui_texture_overlay_draws", "ui_atlas_metadata_status", "ui_atlas_metadata_pages", "ui_atlas_metadata_bindings")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not include textured UI overlay field: $field"
+            }
+        }
+    }
+    if ($requiresLightingShadowPolicy) {
+        $expectedLightingShadowPolicyFields = @{
+            "lighting_shadow_policy_status" = "ready"
+            "lighting_shadow_policy_ready" = "1"
+            "lighting_shadow_policy_diagnostics" = "0"
+            "lighting_shadow_policy_lights" = "1"
+            "lighting_shadow_policy_directional_lights" = "1"
+            "lighting_shadow_policy_point_lights" = "0"
+            "lighting_shadow_policy_spot_lights" = "0"
+            "lighting_shadow_policy_shadowed_lights" = "1"
+            "lighting_shadow_policy_directional_cascades" = "1"
+            "lighting_shadow_policy_shadow_atlas_width" = "1024"
+            "lighting_shadow_policy_shadow_atlas_height" = "1024"
+            "lighting_shadow_policy_light_rows" = "1"
+            "lighting_shadow_policy_ready_frames" = [string]$expectedSmokeFrames
+        }
+        foreach ($field in $expectedLightingShadowPolicyFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedLightingShadowPolicyFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove lighting shadow policy field: $field=$($expectedLightingShadowPolicyFields[$field])"
             }
         }
     }

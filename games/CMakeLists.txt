@@ -1477,6 +1477,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-postprocess-depth-input
             --require-directional-shadow
             --require-directional-shadow-filtering
+            --require-lighting-shadow-policy
             --require-renderer-quality-gates
             --require-framegraph-multiqueue-evidence
             --require-native-ui-overlay
