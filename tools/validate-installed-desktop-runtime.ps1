@@ -262,6 +262,7 @@ if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpresentation_back
     Write-Error "Installed desktop runtime smoke status line did not include presentation_backend_reports report field."
 }
 if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") {
+    $expectedVulkanMaterialShaderEvidence = if ($requireVulkanShaderArtifacts) { 1 } else { 0 }
     foreach ($field in @(
             "modern_material_variants",
             "modern_material_ready",
@@ -270,7 +271,10 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") 
             "modern_material_invalid",
             "modern_material_diagnostics",
             "modern_material_texture_dependencies",
-            "modern_material_shader_evidence_ready"
+            "modern_material_shader_evidence_ready",
+            "modern_material_d3d12_shader_evidence_ready",
+            "modern_material_vulkan_shader_evidence_ready",
+            "modern_material_selected_shader_evidence_ready"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed material/shader package smoke status line did not include modern material field: $field"
@@ -290,6 +294,15 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") 
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_shader_evidence_ready=1\b") {
         Write-Error "Installed material/shader package smoke status line did not prove shader evidence readiness."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_d3d12_shader_evidence_ready=1\b") {
+        Write-Error "Installed material/shader package smoke status line did not prove D3D12 shader evidence readiness."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_vulkan_shader_evidence_ready=$expectedVulkanMaterialShaderEvidence\b") {
+        Write-Error "Installed material/shader package smoke status line did not match expected Vulkan shader evidence readiness: $expectedVulkanMaterialShaderEvidence."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_selected_shader_evidence_ready=1\b") {
+        Write-Error "Installed material/shader package smoke status line did not prove selected backend shader evidence readiness."
     }
 }
 if ($GameTarget -eq "sample_desktop_runtime_game") {

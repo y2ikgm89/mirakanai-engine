@@ -254,6 +254,11 @@ try {
     Assert-ContainsText $materialShaderMain "plan_modern_material_variants" "Desktop material/shader scaffold main.cpp"
     Assert-ContainsText $materialShaderMain "modern_material_variants=" "Desktop material/shader scaffold main.cpp"
     Assert-ContainsText $materialShaderMain "modern_material_shader_evidence_ready=" "Desktop material/shader scaffold main.cpp"
+    Assert-ContainsText $materialShaderMain "modern_material_d3d12_shader_evidence_ready=" "Desktop material/shader scaffold main.cpp"
+    Assert-ContainsText $materialShaderMain "modern_material_vulkan_shader_evidence_ready=" "Desktop material/shader scaffold main.cpp"
+    Assert-ContainsText $materialShaderMain "modern_material_selected_shader_evidence_ready=" "Desktop material/shader scaffold main.cpp"
+    $validateInstalledRuntimeScript = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
+    Assert-ContainsText $validateInstalledRuntimeScript '$expectedVulkanMaterialShaderEvidence = if ($requireVulkanShaderArtifacts) { 1 } else { 0 }' "Installed desktop runtime validation"
     Assert-ContainsText $materialShaderSourceMaterial "format=GameEngine.Material.v1" "Desktop material/shader scaffold source material"
     Assert-ContainsText $materialShaderSceneHlsl "vs_main" "Desktop material/shader scaffold scene shader"
     Assert-ContainsText $materialShaderSceneHlsl "ps_main" "Desktop material/shader scaffold scene shader"
@@ -271,6 +276,9 @@ foreach ($needle in @(
     "plan_modern_material_variants",
     "modern_material_variants=",
     "modern_material_shader_evidence_ready=",
+    "modern_material_d3d12_shader_evidence_ready=",
+    "modern_material_vulkan_shader_evidence_ready=",
+    "modern_material_selected_shader_evidence_ready=",
     "framegraph_barrier_steps_executed !=",
     "static_cast<std::uint64_t>(options.max_frames) * 2U"
 )) {

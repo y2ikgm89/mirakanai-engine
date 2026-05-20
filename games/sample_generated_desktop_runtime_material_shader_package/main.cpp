@@ -77,6 +77,15 @@ struct ModernMaterialPackageEvidence {
     std::size_t diagnostics{0};
     std::size_t texture_dependencies{0};
     std::size_t shader_evidence_ready{0};
+    std::size_t d3d12_shader_evidence_ready{0};
+    std::size_t vulkan_shader_evidence_ready{0};
+    std::size_t selected_shader_evidence_ready{0};
+};
+
+struct ModernMaterialShaderEvidenceReadiness {
+    bool selected_backend{false};
+    bool d3d12{false};
+    bool vulkan{false};
 };
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
@@ -163,7 +172,7 @@ void count_modern_material_status(ModernMaterialPackageEvidence& evidence,
 
 [[nodiscard]] ModernMaterialPackageEvidence
 build_modern_material_package_evidence(const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package,
-                                       bool shader_evidence_ready) {
+                                       ModernMaterialShaderEvidenceReadiness shader_evidence) {
     ModernMaterialPackageEvidence evidence;
     if (!runtime_package.has_value()) {
         return evidence;
@@ -180,7 +189,7 @@ build_modern_material_package_evidence(const std::optional<mirakana::runtime::Ru
         variants.push_back(mirakana::ModernMaterialVariantDesc{
             .source_kind = mirakana::ModernMaterialVariantSourceKind::base_material,
             .material = std::move(material_payload.payload.material),
-            .shader_evidence_ready = shader_evidence_ready,
+            .shader_evidence_ready = shader_evidence.selected_backend,
             .shader_graph_execution_requested = false,
             .required_texture_slots = std::move(required_texture_slots),
         });
@@ -193,7 +202,23 @@ build_modern_material_package_evidence(const std::optional<mirakana::runtime::Ru
         count_modern_material_status(evidence, row.status);
         evidence.shader_evidence_ready += row.shader_evidence_ready ? 1U : 0U;
     }
+    evidence.d3d12_shader_evidence_ready = shader_evidence.d3d12 ? plan.rows.size() : 0U;
+    evidence.vulkan_shader_evidence_ready = shader_evidence.vulkan ? plan.rows.size() : 0U;
+    evidence.selected_shader_evidence_ready = evidence.shader_evidence_ready;
     return evidence;
+}
+
+[[nodiscard]] bool selected_modern_material_shader_evidence_ready(mirakana::SdlDesktopPresentationBackend backend,
+                                                                  bool d3d12_ready, bool vulkan_ready) noexcept {
+    switch (backend) {
+    case mirakana::SdlDesktopPresentationBackend::d3d12:
+        return d3d12_ready;
+    case mirakana::SdlDesktopPresentationBackend::vulkan:
+        return vulkan_ready;
+    case mirakana::SdlDesktopPresentationBackend::null_renderer:
+        break;
+    }
+    return false;
 }
 
 class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
@@ -737,8 +762,16 @@ int main(int argc, char** argv) {
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
+    const bool d3d12_material_shader_evidence_ready = d3d12_shader_bytecode.ready();
+    const bool vulkan_material_shader_evidence_ready = vulkan_shader_bytecode.ready();
     const auto modern_material_evidence = build_modern_material_package_evidence(
-        runtime_package, d3d12_shader_bytecode.ready() || vulkan_shader_bytecode.ready());
+        runtime_package,
+        ModernMaterialShaderEvidenceReadiness{
+            .selected_backend = selected_modern_material_shader_evidence_ready(
+                report.selected_backend, d3d12_material_shader_evidence_ready, vulkan_material_shader_evidence_ready),
+            .d3d12 = d3d12_material_shader_evidence_ready,
+            .vulkan = vulkan_material_shader_evidence_ready,
+        });
 
     std::cout << "sample_generated_desktop_runtime_material_shader_package status=" << status_name(result.status)
               << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
@@ -776,7 +809,12 @@ int main(int argc, char** argv) {
               << " modern_material_invalid=" << modern_material_evidence.invalid
               << " modern_material_diagnostics=" << modern_material_evidence.diagnostics
               << " modern_material_texture_dependencies=" << modern_material_evidence.texture_dependencies
-              << " modern_material_shader_evidence_ready=" << modern_material_evidence.shader_evidence_ready << '\n';
+              << " modern_material_shader_evidence_ready=" << modern_material_evidence.shader_evidence_ready
+              << " modern_material_d3d12_shader_evidence_ready=" << modern_material_evidence.d3d12_shader_evidence_ready
+              << " modern_material_vulkan_shader_evidence_ready="
+              << modern_material_evidence.vulkan_shader_evidence_ready
+              << " modern_material_selected_shader_evidence_ready="
+              << modern_material_evidence.selected_shader_evidence_ready << '\n';
     print_presentation_report("sample_generated_desktop_runtime_material_shader_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_material_shader_package presentation_diagnostic="
