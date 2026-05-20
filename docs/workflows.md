@@ -373,8 +373,8 @@ Local Linux validation should use the CI preset with Ninja and Clang:
 
 ```bash
 cmake --preset ci-linux-clang
-cmake --build --preset ci-linux-clang
-ctest --preset ci-linux-clang --output-on-failure
+cmake --build --preset ci-linux-clang --parallel "$(nproc)"
+ctest --preset ci-linux-clang --output-on-failure --parallel "$(nproc)"
 ```
 
 CI uploads diagnostic test logs after failed validation steps, Linux coverage diagnostics after failed coverage steps, and Windows release package ZIP artifacts after successful release evaluation. The Windows release evaluation installs the package and builds `examples/installed_consumer` against the installed `mirakana::` CMake targets before publishing the ZIP.
@@ -385,8 +385,8 @@ macOS CI is defined for Metal host coverage. Local macOS validation should mirro
 
 ```bash
 cmake --preset ci-macos-appleclang
-cmake --build --preset ci-macos-appleclang
-ctest --preset ci-macos-appleclang --output-on-failure
+cmake --build --preset ci-macos-appleclang --parallel "$(sysctl -n hw.logicalcpu)"
+ctest --preset ci-macos-appleclang --output-on-failure --parallel "$(sysctl -n hw.logicalcpu)"
 ```
 
 ## Mobile Packaging
