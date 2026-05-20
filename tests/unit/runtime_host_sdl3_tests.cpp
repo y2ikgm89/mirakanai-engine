@@ -832,6 +832,30 @@ MK_TEST("sdl desktop presentation quality gate expects postprocess depth framegr
     MK_REQUIRE(quality.framegraph_execution_budget_current);
 }
 
+MK_TEST("sdl desktop presentation postprocess policy exposes package-visible chain counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
+    report.postprocess_status = mirakana::SdlDesktopPresentationPostprocessStatus::ready;
+    report.postprocess_depth_input_requested = true;
+    report.postprocess_depth_input_ready = true;
+    report.backbuffer_extent = mirakana::Extent2D{.width = 1280, .height = 720};
+
+    const auto policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
+
+    MK_REQUIRE(policy.status == mirakana::SdlDesktopPresentationPostprocessPolicyStatus::ready);
+    MK_REQUIRE(policy.ready);
+    MK_REQUIRE(policy.diagnostics_count == 0);
+    MK_REQUIRE(policy.effect_count == 1);
+    MK_REQUIRE(policy.color_grading_effect);
+    MK_REQUIRE(!policy.bloom_effect);
+    MK_REQUIRE(policy.scene_color_required);
+    MK_REQUIRE(policy.scene_depth_required);
+    MK_REQUIRE(policy.postprocess_pass_count == 1);
+    MK_REQUIRE(policy.framegraph_pass_count == 2);
+    MK_REQUIRE(policy.framegraph_barrier_step_budget == 2);
+    MK_REQUIRE(policy.backend_shader_evidence_ready);
+}
+
 MK_TEST("sdl desktop presentation quality gate expects postprocess framegraph scene target prep steps") {
     mirakana::SdlDesktopPresentationReport report;
     report.postprocess_status = mirakana::SdlDesktopPresentationPostprocessStatus::ready;

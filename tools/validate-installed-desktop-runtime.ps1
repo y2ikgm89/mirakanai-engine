@@ -165,6 +165,7 @@ if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Ru
 
 $env:PATH = (($installedBin, $env:PATH) -join [System.IO.Path]::PathSeparator)
 $smokeOutput = Invoke-InstalledRuntimeSmoke -FilePath $runtimeExecutable -Arguments @($SmokeArgs)
+$requiresPostprocess = @($SmokeArgs) -contains "--require-postprocess"
 $requiresPostprocessDepthInput = @($SmokeArgs) -contains "--require-postprocess-depth-input"
 $requiresDirectionalShadow = @($SmokeArgs) -contains "--require-directional-shadow"
 $requiresDirectionalShadowFiltering = @($SmokeArgs) -contains "--require-directional-shadow-filtering"
@@ -228,6 +229,7 @@ if ($requiresPlayable3dSlice) {
     $requiresPackageStreamingSafePoint = $true
 }
 if ($requiresVisible3dProductionProof) {
+    $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
     $requiresRendererQualityGates = $true
     $requiresPlayable3dSlice = $true
@@ -238,13 +240,24 @@ if ($requiresSceneCollisionPackage) {
     $requiresPackageStreamingSafePoint = $true
 }
 if ($requiresShadowMorphComposition) {
+    $requiresPostprocess = $true
     $requiresDirectionalShadow = $true
     $requiresDirectionalShadowFiltering = $true
     $requiresPostprocessDepthInput = $true
     $requiresRendererQualityGates = $true
 }
+if ($requiresPostprocessDepthInput) {
+    $requiresPostprocess = $true
+}
 if ($requiresDirectionalShadowFiltering) {
     $requiresDirectionalShadow = $true
+}
+if ($requiresDirectionalShadow) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+}
+if ($requiresRendererQualityGates) {
+    $requiresPostprocess = $true
 }
 if ($requiresNativeUiTexturedSpriteAtlas) {
     $requiresNativeUiOverlay = $true
@@ -1189,6 +1202,28 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpostprocess_status=ready") {
         Write-Error "Installed desktop runtime smoke status line did not prove ready postprocess_status for a ready scene GPU path."
+    }
+    if ($requiresPostprocess) {
+        $expectedPostprocessPolicySceneDepthRequired = if ($requiresPostprocessDepthInput) { "1" } else { "0" }
+        $expectedPostprocessPolicyFields = @{
+            "postprocess_policy_status" = "ready"
+            "postprocess_policy_ready" = "1"
+            "postprocess_policy_diagnostics" = "0"
+            "postprocess_policy_effects" = "1"
+            "postprocess_policy_postprocess_passes" = "1"
+            "postprocess_policy_framegraph_passes" = "2"
+            "postprocess_policy_framegraph_barrier_step_budget" = "2"
+            "postprocess_policy_scene_color_required" = "1"
+            "postprocess_policy_scene_depth_required" = $expectedPostprocessPolicySceneDepthRequired
+            "postprocess_policy_color_grading_effect" = "1"
+            "postprocess_policy_backend_shader_evidence_ready" = "1"
+        }
+        foreach ($field in $expectedPostprocessPolicyFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedPostprocessPolicyFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove postprocess policy field: $field=$($expectedPostprocessPolicyFields[$field])"
+            }
+        }
     }
     $expectedFramegraphPasses = if ($requiresDirectionalShadow) { 3 } else { 2 }
     $expectedFramegraphPassExecutions = $expectedSmokeFrames * $expectedFramegraphPasses
