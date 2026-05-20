@@ -22,6 +22,7 @@
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
+#include "mirakana/runtime_scene/runtime_scene.hpp"
 #include "mirakana/scene/playable_2d.hpp"
 #include "mirakana/scene/render_packet.hpp"
 #include "mirakana/scene/scene.hpp"
@@ -313,6 +314,17 @@ struct Gameplay2DInventoryProbeResult {
     std::size_t final_stacks{0U};
     std::uint32_t final_workbench_quantity{0U};
 };
+
+struct Gameplay2DConstructionPlacementProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t validation_rows{0U};
+    std::size_t intent_rows{0U};
+    std::size_t intent_accepted_rows{0U};
+    std::size_t intent_occupied_cells{0U};
+};
+
+[[nodiscard]] mirakana::AssetId packaged_sprite_texture_asset_id();
 
 [[nodiscard]] mirakana::runtime::RuntimeQuestDialogueDocument gameplay_2d_quest_dialogue_document() {
     using namespace mirakana::runtime;
@@ -625,6 +637,85 @@ struct Gameplay2DInventoryProbeResult {
     return result;
 }
 
+[[nodiscard]] Gameplay2DConstructionPlacementProbeResult validate_gameplay_2d_construction_placement() {
+    using namespace mirakana::runtime;
+    using IntentStatus = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    Gameplay2DConstructionPlacementProbeResult result;
+    const auto catalog = gameplay_2d_inventory_catalog_document();
+    const std::vector<std::string> placement_ids{"grid_2d"};
+    const std::vector<RuntimeConstructionPlacementSurfaceDesc> surfaces{
+        RuntimeConstructionPlacementSurfaceDesc{.id = "floor", .placement_id = "grid_2d"},
+    };
+    const std::vector<RuntimeConstructionPlacementCandidateDesc> candidates{
+        RuntimeConstructionPlacementCandidateDesc{
+            .item_id = "workbench",
+            .surface_id = "floor",
+            .grid_x = 4.0F,
+            .grid_y = 7.0F,
+            .grid_z = 0.0F,
+            .world_x = 4.5F,
+            .world_y = 7.5F,
+            .world_z = 0.0F,
+            .footprint_width = 2U,
+            .footprint_height = 1U,
+            .footprint_depth = 1U,
+            .occupied_cells =
+                std::vector<RuntimeConstructionPlacementCellDesc>{
+                    RuntimeConstructionPlacementCellDesc{.x = 4, .y = 7, .z = 0},
+                    RuntimeConstructionPlacementCellDesc{.x = 5, .y = 7, .z = 0},
+                },
+            .provided_costs =
+                std::vector<RuntimeItemCostDesc>{
+                    RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                },
+        },
+    };
+
+    const auto placement = validate_runtime_construction_placement(
+        catalog, candidates,
+        RuntimeConstructionPlacementValidationContext{
+            .supported_placement_ids = std::span<const std::string>{placement_ids},
+            .supported_surfaces = std::span<const RuntimeConstructionPlacementSurfaceDesc>{surfaces},
+        });
+    result.diagnostics += placement.diagnostics.size();
+    result.validation_rows = placement.rows.size();
+    if (!placement.succeeded) {
+        return result;
+    }
+
+    mirakana::SceneNodeComponents components;
+    components.sprite_renderer = mirakana::SpriteRendererComponent{
+        .sprite = packaged_sprite_texture_asset_id(),
+        .material = mirakana::AssetId{11460315010553722633ULL},
+        .size = mirakana::Vec2{.x = 2.0F, .y = 1.0F},
+        .tint = {0.8F, 0.6F, 0.35F, 1.0F},
+        .visible = true,
+    };
+    const std::vector<mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "Workbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = components,
+            .reviewed = true,
+        },
+    };
+    const auto intent_plan = mirakana::runtime_scene::plan_runtime_scene_construction_placement_intents(
+        placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+    result.diagnostics += intent_plan.diagnostics.size();
+    result.intent_rows = intent_plan.rows.size();
+    for (const auto& row : intent_plan.rows) {
+        if (row.status == IntentStatus::accepted) {
+            ++result.intent_accepted_rows;
+            result.intent_occupied_cells += row.occupied_cells.size();
+        }
+    }
+    result.ready = intent_plan.succeeded() && result.diagnostics == 0U && result.validation_rows == 3U &&
+                   result.intent_rows == 1U && result.intent_accepted_rows == 1U && result.intent_occupied_cells == 2U;
+    return result;
+}
+
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
@@ -748,6 +839,14 @@ class Gameplay2DSystemsProbe final {
         inventory_items_final_stacks_ = inventory_items.final_stacks;
         inventory_items_final_workbench_quantity_ = inventory_items.final_workbench_quantity;
 
+        const auto construction_placement = validate_gameplay_2d_construction_placement();
+        construction_placement_ready_ = construction_placement.ready;
+        construction_placement_diagnostics_ = construction_placement.diagnostics;
+        construction_placement_validation_rows_ = construction_placement.validation_rows;
+        construction_placement_intent_rows_ = construction_placement.intent_rows;
+        construction_placement_intent_accepted_rows_ = construction_placement.intent_accepted_rows;
+        construction_placement_intent_occupied_cells_ = construction_placement.intent_occupied_cells;
+
         started_ = true;
     }
 
@@ -794,7 +893,11 @@ class Gameplay2DSystemsProbe final {
                inventory_items_diagnostics_ == 0U && inventory_items_catalog_rows_ == 2U &&
                inventory_items_state_rows_ == 2U && inventory_items_transition_rows_ == 2U &&
                inventory_items_accepted_rows_ == 1U && inventory_items_completed_rows_ == 1U &&
-               inventory_items_final_stacks_ == 1U && inventory_items_final_workbench_quantity_ == 1U;
+               inventory_items_final_stacks_ == 1U && inventory_items_final_workbench_quantity_ == 1U &&
+               construction_placement_ready_ && construction_placement_diagnostics_ == 0U &&
+               construction_placement_validation_rows_ == 3U && construction_placement_intent_rows_ == 1U &&
+               construction_placement_intent_accepted_rows_ == 1U &&
+               construction_placement_intent_occupied_cells_ == 2U;
     }
 
     [[nodiscard]] Gameplay2DSystemsStatus status(std::uint32_t expected_ticks) const {
@@ -964,6 +1067,30 @@ class Gameplay2DSystemsProbe final {
         return inventory_items_final_workbench_quantity_;
     }
 
+    [[nodiscard]] bool construction_placement_ready() const noexcept {
+        return construction_placement_ready_;
+    }
+
+    [[nodiscard]] std::size_t construction_placement_diagnostic_count() const noexcept {
+        return construction_placement_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t construction_placement_validation_row_count() const noexcept {
+        return construction_placement_validation_rows_;
+    }
+
+    [[nodiscard]] std::size_t construction_placement_intent_row_count() const noexcept {
+        return construction_placement_intent_rows_;
+    }
+
+    [[nodiscard]] std::size_t construction_placement_intent_accepted_row_count() const noexcept {
+        return construction_placement_intent_accepted_rows_;
+    }
+
+    [[nodiscard]] std::size_t construction_placement_intent_occupied_cell_count() const noexcept {
+        return construction_placement_intent_occupied_cells_;
+    }
+
   private:
     void update_ai_navigation_composition() {
         if (navigation_plan_status_ != mirakana::NavigationGridAgentPathStatus::ready ||
@@ -1093,6 +1220,11 @@ class Gameplay2DSystemsProbe final {
     std::size_t inventory_items_accepted_rows_{0U};
     std::size_t inventory_items_completed_rows_{0U};
     std::size_t inventory_items_final_stacks_{0U};
+    std::size_t construction_placement_diagnostics_{0U};
+    std::size_t construction_placement_validation_rows_{0U};
+    std::size_t construction_placement_intent_rows_{0U};
+    std::size_t construction_placement_intent_accepted_rows_{0U};
+    std::size_t construction_placement_intent_occupied_cells_{0U};
     std::uint32_t inventory_items_final_workbench_quantity_{0U};
     std::uint32_t ticks_{0U};
     std::uint32_t physics_ticks_{0U};
@@ -1102,6 +1234,7 @@ class Gameplay2DSystemsProbe final {
     bool behavior_authoring_ready_{false};
     bool quest_dialogue_ready_{false};
     bool inventory_items_ready_{false};
+    bool construction_placement_ready_{false};
     bool started_{false};
 };
 
@@ -1591,6 +1724,30 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::uint32_t gameplay_systems_inventory_items_final_workbench_quantity() const noexcept {
         return gameplay_systems_.inventory_items_final_workbench_quantity();
+    }
+
+    [[nodiscard]] bool gameplay_systems_construction_placement_ready() const noexcept {
+        return gameplay_systems_.construction_placement_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_construction_placement_diagnostics() const noexcept {
+        return gameplay_systems_.construction_placement_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_construction_placement_validation_rows() const noexcept {
+        return gameplay_systems_.construction_placement_validation_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_construction_placement_intent_rows() const noexcept {
+        return gameplay_systems_.construction_placement_intent_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_construction_placement_intent_accepted_rows() const noexcept {
+        return gameplay_systems_.construction_placement_intent_accepted_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_construction_placement_intent_occupied_cells() const noexcept {
+        return gameplay_systems_.construction_placement_intent_occupied_cell_count();
     }
 
   private:
@@ -2323,6 +2480,18 @@ int main(int argc, char** argv) {
         << " gameplay_systems_inventory_items_final_stacks=" << game.gameplay_systems_inventory_items_final_stacks()
         << " gameplay_systems_inventory_items_final_workbench_quantity="
         << game.gameplay_systems_inventory_items_final_workbench_quantity()
+        << " gameplay_systems_construction_placement_ready="
+        << (game.gameplay_systems_construction_placement_ready() ? 1 : 0)
+        << " gameplay_systems_construction_placement_diagnostics="
+        << game.gameplay_systems_construction_placement_diagnostics()
+        << " gameplay_systems_construction_placement_validation_rows="
+        << game.gameplay_systems_construction_placement_validation_rows()
+        << " gameplay_systems_construction_placement_intent_rows="
+        << game.gameplay_systems_construction_placement_intent_rows()
+        << " gameplay_systems_construction_placement_intent_accepted_rows="
+        << game.gameplay_systems_construction_placement_intent_accepted_rows()
+        << " gameplay_systems_construction_placement_intent_occupied_cells="
+        << game.gameplay_systems_construction_placement_intent_occupied_cells()
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -2406,7 +2575,13 @@ int main(int argc, char** argv) {
                   << " gameplay_systems_inventory_items_diagnostics="
                   << game.gameplay_systems_inventory_items_diagnostics()
                   << " gameplay_systems_inventory_items_transition_rows="
-                  << game.gameplay_systems_inventory_items_transition_rows() << '\n';
+                  << game.gameplay_systems_inventory_items_transition_rows()
+                  << " gameplay_systems_construction_placement_ready="
+                  << (game.gameplay_systems_construction_placement_ready() ? 1 : 0)
+                  << " gameplay_systems_construction_placement_diagnostics="
+                  << game.gameplay_systems_construction_placement_diagnostics()
+                  << " gameplay_systems_construction_placement_intent_rows="
+                  << game.gameplay_systems_construction_placement_intent_rows() << '\n';
         return 12;
     }
 

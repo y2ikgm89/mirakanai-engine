@@ -313,8 +313,16 @@ MK_TEST("runtime construction placement validates deterministic candidate rows")
     MK_REQUIRE(first.rows[0].item_id == "workbench");
     MK_REQUIRE(first.rows[0].surface_id == "floor");
     MK_REQUIRE(first.rows[0].placement_id == "grid_2d");
+    MK_REQUIRE(first.rows[0].grid_x == 4.0F);
+    MK_REQUIRE(first.rows[0].grid_y == 7.0F);
+    MK_REQUIRE(first.rows[0].grid_z == 0.0F);
+    MK_REQUIRE(first.rows[0].world_x == 4.5F);
+    MK_REQUIRE(first.rows[0].world_y == 7.5F);
+    MK_REQUIRE(first.rows[0].world_z == 0.0F);
     MK_REQUIRE(first.rows[0].footprint_width == 2U);
     MK_REQUIRE(first.rows[1].kind == RuntimeConstructionPlacementValidationRowKind::occupied_cell);
+    MK_REQUIRE(first.rows[1].world_x == 4.5F);
+    MK_REQUIRE(first.rows[1].world_y == 7.5F);
     MK_REQUIRE(first.rows[1].cell_x == 4);
     MK_REQUIRE(first.rows[1].cell_y == 7);
     MK_REQUIRE(first.rows[2].kind == RuntimeConstructionPlacementValidationRowKind::occupied_cell);

@@ -284,6 +284,12 @@ struct RuntimeConstructionPlacementValidationRow {
     std::string item_id;
     std::string placement_id;
     std::string surface_id;
+    float grid_x{0.0F};
+    float grid_y{0.0F};
+    float grid_z{0.0F};
+    float world_x{0.0F};
+    float world_y{0.0F};
+    float world_z{0.0F};
     std::uint32_t footprint_width{0U};
     std::uint32_t footprint_height{0U};
     std::uint32_t footprint_depth{0U};
