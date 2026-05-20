@@ -465,6 +465,53 @@ struct PhysicsJointSolve3DResult {
     std::vector<PhysicsJointSolve3DRow> rows;
 };
 
+struct PhysicsReplaySignature3D {
+    std::uint64_t value{0};
+    std::uint64_t body_count{0};
+};
+
+enum class PhysicsAdvancedController3DStatus : std::uint8_t { moved, constrained, invalid_request };
+
+enum class PhysicsAdvancedController3DDiagnostic : std::uint8_t {
+    none,
+    invalid_movement,
+    missing_controller_body,
+    invalid_moving_platform,
+    invalid_constraints,
+};
+
+struct PhysicsMovingPlatform3DDesc {
+    PhysicsBody3DId body;
+    Vec3 displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+};
+
+struct PhysicsMovingPlatform3DRow {
+    std::size_t source_index{0};
+    PhysicsBody3DId body;
+    PhysicsBody3DId grounded_body;
+    Vec3 applied_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    PhysicsAdvancedController3DDiagnostic diagnostic{PhysicsAdvancedController3DDiagnostic::none};
+    bool applied{false};
+};
+
+struct PhysicsAdvancedController3DDesc {
+    PhysicsCharacterDynamicPolicy3DDesc movement{};
+    std::vector<PhysicsMovingPlatform3DDesc> moving_platforms;
+    PhysicsBody3DId controller_body;
+    PhysicsJointSolve3DDesc constraints{};
+};
+
+struct PhysicsAdvancedController3DResult {
+    PhysicsAdvancedController3DStatus status{PhysicsAdvancedController3DStatus::invalid_request};
+    PhysicsAdvancedController3DDiagnostic diagnostic{PhysicsAdvancedController3DDiagnostic::none};
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    PhysicsCharacterDynamicPolicy3DResult movement{};
+    std::vector<PhysicsMovingPlatform3DRow> moving_platform_rows;
+    PhysicsJointSolve3DResult constraints{};
+    PhysicsReplaySignature3D replay_before{};
+    PhysicsReplaySignature3D replay_after{};
+};
+
 enum class PhysicsDeterminismGate3DStatus : std::uint8_t { passed, budget_exceeded, invalid_request };
 
 enum class PhysicsDeterminismGate3DDiagnostic : std::uint8_t {
@@ -494,11 +541,6 @@ struct PhysicsDeterminismGate3DCounts {
     std::uint64_t contact_manifolds{0};
     std::uint64_t trigger_overlaps{0};
     std::uint64_t contact_points{0};
-};
-
-struct PhysicsReplaySignature3D {
-    std::uint64_t value{0};
-    std::uint64_t body_count{0};
 };
 
 struct PhysicsDeterminismGate3DResult {
@@ -595,6 +637,9 @@ evaluate_physics_character_dynamic_policy_3d(const PhysicsWorld3D& world,
                                                                 const PhysicsJointSolve3DDesc& desc);
 
 [[nodiscard]] PhysicsReplaySignature3D make_physics_replay_signature_3d(const PhysicsWorld3D& world);
+
+[[nodiscard]] PhysicsAdvancedController3DResult
+plan_physics_advanced_controller_3d(const PhysicsWorld3D& world, const PhysicsAdvancedController3DDesc& desc);
 
 [[nodiscard]] PhysicsDeterminismGate3DResult
 evaluate_physics_determinism_gate_3d(const PhysicsWorld3D& world, const PhysicsDeterminismGate3DConfig& config = {});

@@ -463,6 +463,10 @@ if (-not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterControl
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterDynamicPolicy3DRow") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterDynamicPolicy3DResult") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("evaluate_physics_character_dynamic_policy_3d") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsAdvancedController3DDesc") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsMovingPlatform3DDesc") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsAdvancedController3DResult") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("plan_physics_advanced_controller_3d") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsJoint3DStatus") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDistanceJoint3DDesc") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsJointSolve3DResult") -or
@@ -478,7 +482,7 @@ if (-not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterControl
     -not ([string]$gePhysicsModule[0].purpose).Contains("validated Physics 1.0 ready surface") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("explicit Jolt/native middleware exclusion") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsWorld3D::step remains discrete")) {
-    Write-Error "engine manifest MK_physics purpose must describe query batches, exact shape sweeps, contact manifold stability, CCD foundation, character/dynamic policy, joints foundation, and benchmark determinism gates honestly"
+    Write-Error "engine manifest MK_physics purpose must describe query batches, exact shape sweeps, contact manifold stability, CCD foundation, character/dynamic policy, advanced controller planning, joints foundation, and benchmark determinism gates honestly"
 }
 if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource v2") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("generation-checked") -or

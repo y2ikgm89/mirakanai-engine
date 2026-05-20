@@ -9533,6 +9533,160 @@ MK_TEST("3d physics character dynamic policy honors filters and rejects invalid 
     MK_REQUIRE(world.find_body(accepted_wall)->position == before.position);
 }
 
+MK_TEST("3d physics advanced controller composes movement platform constraints and replay rows") {
+    mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+    constexpr std::uint32_t character_layer = 1U << 0U;
+    constexpr std::uint32_t platform_layer = 1U << 1U;
+    constexpr std::uint32_t trigger_layer = 1U << 2U;
+    constexpr std::uint32_t dynamic_layer = 1U << 3U;
+
+    const auto platform = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 1.5F, .y = -0.5F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 4.0F, .y = 0.5F, .z = 4.0F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = platform_layer,
+        .collision_mask = character_layer,
+    });
+    const auto trigger = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 1.2F, .y = 1.05F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.1F, .y = 1.0F, .z = 1.0F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = trigger_layer,
+        .collision_mask = character_layer,
+        .half_height = 0.5F,
+        .trigger = true,
+    });
+    const auto crate = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 2.2F, .y = 1.05F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+        .half_extents = mirakana::Vec3{.x = 0.25F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = dynamic_layer,
+        .collision_mask = character_layer,
+    });
+    const auto controller_proxy = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 0.0F, .y = 1.05F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+        .collision_enabled = false,
+    });
+    const auto follower = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.9F, .y = 1.05F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+        .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+        .collision_enabled = false,
+    });
+
+    mirakana::PhysicsAdvancedController3DDesc request;
+    request.movement.position = mirakana::Vec3{.x = 0.0F, .y = 1.05F, .z = 0.0F};
+    request.movement.displacement = mirakana::Vec3{.x = 3.0F, .y = 0.0F, .z = 0.0F};
+    request.movement.radius = 0.5F;
+    request.movement.half_height = 0.5F;
+    request.movement.character_layer = character_layer;
+    request.movement.collision_mask = platform_layer | trigger_layer | dynamic_layer;
+    request.movement.include_triggers = true;
+    request.movement.skin_width = 0.02F;
+    request.movement.ground_probe_distance = 0.2F;
+    request.movement.dynamic_push_distance = 0.25F;
+    request.moving_platforms.push_back(mirakana::PhysicsMovingPlatform3DDesc{
+        .body = platform,
+        .displacement = mirakana::Vec3{.x = 0.25F, .y = 0.0F, .z = 0.0F},
+    });
+    request.controller_body = controller_proxy;
+    request.constraints.config.iterations = 4U;
+    request.constraints.distance_joints.push_back(mirakana::PhysicsDistanceJoint3DDesc{
+        .first = controller_proxy,
+        .second = follower,
+        .rest_distance = 1.0F,
+    });
+
+    const auto before_controller = *world.find_body(controller_proxy);
+    const auto before_follower = *world.find_body(follower);
+    const auto before_signature = mirakana::make_physics_replay_signature_3d(world);
+
+    const auto result = mirakana::plan_physics_advanced_controller_3d(world, request);
+    const auto repeated = mirakana::plan_physics_advanced_controller_3d(world, request);
+
+    MK_REQUIRE(trigger != mirakana::null_physics_body_3d);
+    MK_REQUIRE(crate != mirakana::null_physics_body_3d);
+    MK_REQUIRE(result.status == mirakana::PhysicsAdvancedController3DStatus::moved);
+    MK_REQUIRE(result.diagnostic == mirakana::PhysicsAdvancedController3DDiagnostic::none);
+    MK_REQUIRE(result.movement.status == mirakana::PhysicsCharacterDynamicPolicy3DStatus::moved);
+    MK_REQUIRE(result.movement.rows.size() == 3);
+    MK_REQUIRE(result.movement.rows[0].kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::trigger_overlap);
+    MK_REQUIRE(result.movement.rows[1].kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::dynamic_push);
+    MK_REQUIRE(result.movement.rows[2].kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::ground_probe);
+    MK_REQUIRE(result.moving_platform_rows.size() == 1);
+    MK_REQUIRE(result.moving_platform_rows[0].source_index == 0U);
+    MK_REQUIRE(result.moving_platform_rows[0].body == platform);
+    MK_REQUIRE(result.moving_platform_rows[0].grounded_body == platform);
+    MK_REQUIRE(result.moving_platform_rows[0].applied);
+    MK_REQUIRE(result.moving_platform_rows[0].applied_displacement == request.moving_platforms[0].displacement);
+    MK_REQUIRE(std::abs(result.position.x - 3.25F) < 0.0001F);
+    MK_REQUIRE(result.constraints.status == mirakana::PhysicsJoint3DStatus::solved);
+    MK_REQUIRE(result.constraints.rows.size() == 1);
+    MK_REQUIRE(result.constraints.rows[0].source_index == 0U);
+    MK_REQUIRE(result.constraints.rows[0].diagnostic == mirakana::PhysicsJoint3DDiagnostic::none);
+    MK_REQUIRE(result.replay_before.value == before_signature.value);
+    MK_REQUIRE(result.replay_after.value != before_signature.value);
+    MK_REQUIRE(repeated.replay_after.value == result.replay_after.value);
+    MK_REQUIRE(world.find_body(controller_proxy)->position == before_controller.position);
+    MK_REQUIRE(world.find_body(follower)->position == before_follower.position);
+}
+
+MK_TEST("3d physics advanced controller rejects missing controller constraint body") {
+    mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+    const auto follower = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 2.0F, .y = 1.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+
+    mirakana::PhysicsAdvancedController3DDesc request;
+    request.movement.position = mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F};
+    request.movement.displacement = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+    request.controller_body = mirakana::PhysicsBody3DId{999U};
+    request.constraints.distance_joints.push_back(mirakana::PhysicsDistanceJoint3DDesc{
+        .first = request.controller_body,
+        .second = follower,
+        .rest_distance = 1.0F,
+    });
+
+    const auto result = mirakana::plan_physics_advanced_controller_3d(world, request);
+
+    MK_REQUIRE(result.status == mirakana::PhysicsAdvancedController3DStatus::invalid_request);
+    MK_REQUIRE(result.diagnostic == mirakana::PhysicsAdvancedController3DDiagnostic::missing_controller_body);
+    MK_REQUIRE(result.movement.rows.empty());
+    MK_REQUIRE(result.moving_platform_rows.empty());
+    MK_REQUIRE(result.constraints.rows.empty());
+    MK_REQUIRE(result.position == request.movement.position);
+}
+
 MK_TEST("3d physics authored collision scene builds deterministic world") {
     mirakana::PhysicsAuthoredCollisionScene3DDesc scene;
     scene.bodies.push_back(mirakana::PhysicsAuthoredCollisionBody3DDesc{

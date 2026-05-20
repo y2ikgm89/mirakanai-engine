@@ -1492,6 +1492,34 @@ struct DistanceJointWorkItem3D {
     PhysicsBody3D* second{nullptr};
 };
 
+[[nodiscard]] bool advanced_controller_requires_controller_body(const PhysicsAdvancedController3DDesc& desc) noexcept {
+    return desc.controller_body != null_physics_body_3d || !desc.constraints.distance_joints.empty();
+}
+
+[[nodiscard]] std::optional<PhysicsBody3DId>
+advanced_controller_grounded_body(const PhysicsCharacterDynamicPolicy3DResult& movement) noexcept {
+    for (const auto& row : movement.rows) {
+        if (row.kind == PhysicsCharacterDynamicPolicy3DRowKind::ground_probe && row.grounded) {
+            return row.body;
+        }
+    }
+    for (const auto& row : movement.rows) {
+        if (row.grounded) {
+            return row.body;
+        }
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] PhysicsAdvancedController3DStatus
+advanced_controller_status_for(PhysicsCharacterDynamicPolicy3DStatus movement_status) noexcept {
+    if (movement_status == PhysicsCharacterDynamicPolicy3DStatus::constrained ||
+        movement_status == PhysicsCharacterDynamicPolicy3DStatus::initial_overlap) {
+        return PhysicsAdvancedController3DStatus::constrained;
+    }
+    return PhysicsAdvancedController3DStatus::moved;
+}
+
 inline constexpr std::uint64_t physics_replay_hash_offset_3d = 1469598103934665603ULL;
 inline constexpr std::uint64_t physics_replay_hash_prime_3d = 1099511628211ULL;
 
@@ -2432,6 +2460,92 @@ PhysicsReplaySignature3D make_physics_replay_signature_3d(const PhysicsWorld3D& 
     }
 
     return signature;
+}
+
+PhysicsAdvancedController3DResult plan_physics_advanced_controller_3d(const PhysicsWorld3D& world,
+                                                                      const PhysicsAdvancedController3DDesc& desc) {
+    PhysicsAdvancedController3DResult result;
+    result.position = desc.movement.position;
+    result.replay_before = make_physics_replay_signature_3d(world);
+    result.replay_after = result.replay_before;
+
+    if (advanced_controller_requires_controller_body(desc) && world.find_body(desc.controller_body) == nullptr) {
+        result.status = PhysicsAdvancedController3DStatus::invalid_request;
+        result.diagnostic = PhysicsAdvancedController3DDiagnostic::missing_controller_body;
+        return result;
+    }
+
+    auto planned_world = world;
+    result.movement = evaluate_physics_character_dynamic_policy_3d(planned_world, desc.movement);
+    result.position = result.movement.position;
+    if (result.movement.status == PhysicsCharacterDynamicPolicy3DStatus::invalid_request) {
+        result.status = PhysicsAdvancedController3DStatus::invalid_request;
+        result.diagnostic = PhysicsAdvancedController3DDiagnostic::invalid_movement;
+        return result;
+    }
+
+    for (const auto& row : result.movement.rows) {
+        if (row.kind != PhysicsCharacterDynamicPolicy3DRowKind::dynamic_push ||
+            length(row.suggested_displacement) <= 0.000001F) {
+            continue;
+        }
+        auto* body = planned_world.find_body(row.body);
+        if (body != nullptr && body->dynamic) {
+            body->position = body->position + row.suggested_displacement;
+        }
+    }
+
+    const auto grounded_body = advanced_controller_grounded_body(result.movement);
+    result.moving_platform_rows.reserve(desc.moving_platforms.size());
+    bool invalid_moving_platform = false;
+    for (std::size_t index = 0; index < desc.moving_platforms.size(); ++index) {
+        const auto& platform = desc.moving_platforms[index];
+        PhysicsMovingPlatform3DRow row;
+        row.source_index = index;
+        row.body = platform.body;
+        row.grounded_body = grounded_body.value_or(null_physics_body_3d);
+
+        auto* platform_body = planned_world.find_body(platform.body);
+        if (platform_body == nullptr || !finite_vec(platform.displacement)) {
+            row.diagnostic = PhysicsAdvancedController3DDiagnostic::invalid_moving_platform;
+            invalid_moving_platform = true;
+            result.moving_platform_rows.push_back(row);
+            continue;
+        }
+
+        if (grounded_body.has_value() && platform.body == *grounded_body) {
+            row.applied = true;
+            row.applied_displacement = platform.displacement;
+            result.position = result.position + platform.displacement;
+            platform_body->position = platform_body->position + platform.displacement;
+        }
+
+        result.moving_platform_rows.push_back(row);
+    }
+
+    if (invalid_moving_platform) {
+        result.status = PhysicsAdvancedController3DStatus::invalid_request;
+        result.diagnostic = PhysicsAdvancedController3DDiagnostic::invalid_moving_platform;
+        result.replay_after = make_physics_replay_signature_3d(planned_world);
+        return result;
+    }
+
+    if (auto* controller_body = planned_world.find_body(desc.controller_body); controller_body != nullptr) {
+        controller_body->position = result.position;
+    }
+
+    result.constraints = solve_physics_joints_3d(planned_world, desc.constraints);
+    if (result.constraints.status == PhysicsJoint3DStatus::invalid_request) {
+        result.status = PhysicsAdvancedController3DStatus::invalid_request;
+        result.diagnostic = PhysicsAdvancedController3DDiagnostic::invalid_constraints;
+        result.replay_after = make_physics_replay_signature_3d(planned_world);
+        return result;
+    }
+
+    result.replay_after = make_physics_replay_signature_3d(planned_world);
+    result.status = advanced_controller_status_for(result.movement.status);
+    result.diagnostic = PhysicsAdvancedController3DDiagnostic::none;
+    return result;
 }
 
 PhysicsDeterminismGate3DResult evaluate_physics_determinism_gate_3d(const PhysicsWorld3D& world,

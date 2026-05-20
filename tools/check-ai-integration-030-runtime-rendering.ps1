@@ -368,6 +368,10 @@ Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCharacterDynam
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCharacterDynamicPolicy3DRow" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCharacterDynamicPolicy3DResult" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "evaluate_physics_character_dynamic_policy_3d" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsAdvancedController3DDesc" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsMovingPlatform3DDesc" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsAdvancedController3DResult" "MK_physics module purpose"
+Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "plan_physics_advanced_controller_3d" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsJoint3DStatus" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsDistanceJoint3DDesc" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsJointSolve3DResult" "MK_physics module purpose"
@@ -1258,6 +1262,10 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "Physics
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCharacterDynamicPolicy3DRow" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsCharacterDynamicPolicy3DResult" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "evaluate_physics_character_dynamic_policy_3d" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsAdvancedController3DDesc" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsMovingPlatform3DDesc" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsAdvancedController3DResult" "physics game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "plan_physics_advanced_controller_3d" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsJoint3DStatus" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsDistanceJoint3DDesc" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsJointSolve3DResult" "physics game guidance"
@@ -1298,6 +1306,8 @@ foreach ($physicsGuidance in @(
     Assert-ContainsText $physicsText "PhysicsWorld3D::step_continuous" $physicsGuidance
     Assert-ContainsText $physicsText "PhysicsCharacterDynamicPolicy3DDesc" $physicsGuidance
     Assert-ContainsText $physicsText "evaluate_physics_character_dynamic_policy_3d" $physicsGuidance
+    Assert-ContainsText $physicsText "PhysicsAdvancedController3DDesc" $physicsGuidance
+    Assert-ContainsText $physicsText "plan_physics_advanced_controller_3d" $physicsGuidance
     Assert-ContainsText $physicsText "PhysicsJointSolve3DResult" $physicsGuidance
     Assert-ContainsText $physicsText "solve_physics_joints_3d" $physicsGuidance
     Assert-ContainsText $physicsText "PhysicsReplaySignature3D" $physicsGuidance
