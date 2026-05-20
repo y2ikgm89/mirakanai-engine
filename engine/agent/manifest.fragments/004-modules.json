@@ -169,6 +169,7 @@
       ],
       "publicHeaders": [
         "engine/runtime/include/mirakana/runtime/asset_runtime.hpp",
+        "engine/runtime/include/mirakana/runtime/inventory_items.hpp",
         "engine/runtime/include/mirakana/runtime/package_streaming.hpp",
         "engine/runtime/include/mirakana/runtime/quest_dialogue.hpp",
         "engine/runtime/include/mirakana/runtime/resource_runtime.hpp",
