@@ -147,6 +147,7 @@ function Get-SampleDesktopRuntimeGameVulkanSmokeArgs {
     $list.Add('--require-postprocess-depth-input') | Out-Null
     $list.Add('--require-directional-shadow') | Out-Null
     $list.Add('--require-directional-shadow-filtering') | Out-Null
+    $list.Add('--require-lighting-shadow-policy') | Out-Null
     $list.Add('--require-native-ui-overlay') | Out-Null
     $list.Add('--require-native-ui-textured-sprite-atlas') | Out-Null
     return $list.ToArray()

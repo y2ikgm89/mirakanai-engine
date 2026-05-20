@@ -2295,17 +2295,16 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "--requi
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "--require-directional-shadow-filtering" "runtime game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "directional_shadow_ready=1" "runtime game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "directional_shadow_filter_mode=fixed_pcf_3x3" "runtime game guidance"
-foreach ($directionalShadowPackageGuidance in @(
-    "engine/agent/manifest.json",
-    "games/CMakeLists.txt",
-    "games/sample_desktop_runtime_game/game.agent.json",
-    "games/sample_desktop_runtime_game/README.md",
-    "tools/validate-installed-desktop-runtime.ps1"
-)) {
+foreach ($directionalShadowPackageGuidance in @("engine/agent/manifest.json", "games/CMakeLists.txt", "games/sample_desktop_runtime_game/game.agent.json", "games/sample_desktop_runtime_game/README.md", "tools/validate-installed-desktop-runtime.ps1")) {
     $directionalShadowPackageText = Get-AgentSurfaceText $directionalShadowPackageGuidance
-    Assert-ContainsText $directionalShadowPackageText "--require-directional-shadow" $directionalShadowPackageGuidance
-    Assert-ContainsText $directionalShadowPackageText "--require-directional-shadow-filtering" $directionalShadowPackageGuidance
+    foreach ($directionalShadowNeedle in @("--require-directional-shadow", "--require-directional-shadow-filtering")) { Assert-ContainsText $directionalShadowPackageText $directionalShadowNeedle $directionalShadowPackageGuidance }
 }
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.desktopRuntime3dLightingShadowPolicyPackageSmoke) "--require-lighting-shadow-policy" "lighting shadow policy package guidance"
+foreach ($lightingShadowPolicyPackageGuidance in @("engine/agent/manifest.json", "games/sample_desktop_runtime_game/game.agent.json", "games/sample_desktop_runtime_game/README.md", "docs/ai-game-development.md", "docs/current-capabilities.md", "docs/workflows.md", ".agents/skills/rendering-change/references/full-guidance.md", ".claude/skills/gameengine-rendering/references/full-guidance.md")) {
+    $lightingShadowPolicyPackageText = Get-AgentSurfaceText $lightingShadowPolicyPackageGuidance
+    foreach ($lightingShadowPolicyNeedle in @("--require-lighting-shadow-policy", "lighting_shadow_policy_status=ready", "lighting_shadow_policy_ready=1", "lighting_shadow_policy_diagnostics=0", "lighting_shadow_policy_light_rows=1")) { Assert-ContainsText $lightingShadowPolicyPackageText $lightingShadowPolicyNeedle $lightingShadowPolicyPackageGuidance }
+}
+foreach ($lightingShadowPolicyFlagGuidance in @("games/CMakeLists.txt", "tools/validate-installed-desktop-runtime.ps1")) { Assert-ContainsText (Get-AgentSurfaceText $lightingShadowPolicyFlagGuidance) "--require-lighting-shadow-policy" $lightingShadowPolicyFlagGuidance }
 foreach ($rendererQualityPackageGuidance in @(
     "engine/agent/manifest.json",
     "games/sample_desktop_runtime_game/game.agent.json",
