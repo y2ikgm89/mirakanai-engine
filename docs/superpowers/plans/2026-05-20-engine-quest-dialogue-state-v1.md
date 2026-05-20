@@ -1,7 +1,7 @@
 # Engine Quest Dialogue State v1 (2026-05-20)
 
 **Plan ID:** `engine-quest-dialogue-state-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is developer-owned gameplay-family capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
