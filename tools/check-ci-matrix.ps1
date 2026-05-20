@@ -285,8 +285,12 @@ Assert-ValidationTierSelection `
 $validateWorkflow = Read-RequiredText ".github/workflows/validate.yml"
 $checkoutActionRef = "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
 $cacheActionRef = "actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae"
+$cacheRestoreActionRef = "actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae"
+$cacheSaveActionRef = "actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae"
 $uploadArtifactActionRef = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
 Assert-ContainsText -Text $validateWorkflow -Needle $cacheActionRef -Label ".github/workflows/validate.yml cache action pin"
+Assert-ContainsText -Text $validateWorkflow -Needle $cacheRestoreActionRef -Label ".github/workflows/validate.yml cache restore action pin"
+Assert-ContainsText -Text $validateWorkflow -Needle $cacheSaveActionRef -Label ".github/workflows/validate.yml cache save action pin"
 Assert-DoesNotContainAny $validateWorkflow @(
     "uses: actions/cache@v5",
     "uses: actions/checkout@v6",
@@ -373,12 +377,18 @@ Assert-ContainsAll $windowsJob @(
     "path: out/vcpkg",
     "path: vcpkg_installed",
     "Restore Windows dev build cache",
+    $cacheRestoreActionRef,
     "path: out/build/dev",
-    'key: ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}',
+    'key: ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}-${{ github.sha }}',
+    '${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}-',
     '${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-',
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1 -SkipStaticChecks",
+    "Save Windows dev build cache",
+    $cacheSaveActionRef,
+    "steps.restore-dev-build.outputs.cache-hit != 'true'",
+    "key: `${{ steps.restore-dev-build.outputs.cache-primary-key }}",
     'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: windows-test-logs",
@@ -413,15 +423,21 @@ Assert-ContainsAll $windowsCpp23Job @(
     "path: out/vcpkg",
     "path: vcpkg_installed",
     "Restore Windows C++23 build cache",
+    $cacheRestoreActionRef,
     "out/build/cpp23-eval",
     "out/build/cpp23-release-preset-eval",
     "out/build/installed-consumer-cpp23-release-eval",
     "out/install/cpp23-release-eval",
-    'key: ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}',
+    'key: ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}-${{ github.sha }}',
+    '${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}-',
     '${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-',
     "restore-cpp23-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/evaluate-cpp23.ps1 -Release",
+    "Save Windows C++23 build cache",
+    $cacheSaveActionRef,
+    "steps.restore-cpp23-build.outputs.cache-hit != 'true'",
+    "key: `${{ steps.restore-cpp23-build.outputs.cache-primary-key }}",
     'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: windows-cpp23-test-logs",

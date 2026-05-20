@@ -170,11 +170,12 @@ jobs:
 
       - name: Restore Windows dev build cache
         id: restore-dev-build
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: out/build/dev
-          key: ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          key: ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-
             ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-
 
       - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
@@ -184,6 +185,13 @@ jobs:
       - name: Validate
         shell: pwsh
         run: ./tools/validate.ps1 -SkipStaticChecks
+
+      - name: Save Windows dev build cache
+        if: ${{ success() && !cancelled() && steps.restore-dev-build.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/build/dev
+          key: ${{ steps.restore-dev-build.outputs.cache-primary-key }}
 
       - name: Upload Windows test logs
         if: ${{ failure() && !cancelled() }}
@@ -291,15 +299,16 @@ jobs:
 
       - name: Restore Windows C++23 build cache
         id: restore-cpp23-build
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             out/build/cpp23-eval
             out/build/cpp23-release-preset-eval
             out/build/installed-consumer-cpp23-release-eval
             out/install/cpp23-release-eval
-          key: ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}
+          key: ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-
             ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-
 
       - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
@@ -309,6 +318,17 @@ jobs:
       - name: C++23 Release Evaluation
         shell: pwsh
         run: ./tools/evaluate-cpp23.ps1 -Release
+
+      - name: Save Windows C++23 build cache
+        if: ${{ success() && !cancelled() && steps.restore-cpp23-build.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            out/build/cpp23-eval
+            out/build/cpp23-release-preset-eval
+            out/build/installed-consumer-cpp23-release-eval
+            out/install/cpp23-release-eval
+          key: ${{ steps.restore-cpp23-build.outputs.cache-primary-key }}
 
       - name: Upload Windows C++23 test logs
         if: ${{ failure() && !cancelled() }}
