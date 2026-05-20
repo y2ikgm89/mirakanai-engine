@@ -63,8 +63,8 @@ Assert-FileContainsText ".github/workflows/validate.yml" @(
     "ninja --version",
     "brew install ccache",
     "cmake --preset ci-macos-appleclang",
-    "cmake --build --preset ci-macos-appleclang",
-    "ctest --preset ci-macos-appleclang --output-on-failure"
+    'cmake --build --preset ci-macos-appleclang --parallel "$(sysctl -n hw.logicalcpu)"',
+    'ctest --preset ci-macos-appleclang --output-on-failure --parallel "$(sysctl -n hw.logicalcpu)"'
 )
 
 $hostIsMacOS = Test-IsMacOS

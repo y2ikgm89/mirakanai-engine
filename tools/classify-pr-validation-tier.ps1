@@ -160,7 +160,7 @@ function New-ValidationTierSelection {
     return [pscustomobject][ordered]@{
         windows = $heavyBuildLane
         linux = $heavyBuildLane
-        linux_sanitizers = $sanitizerRelevant
+        linux_sanitizers = ($ciOrWorkflow -or $sanitizerRelevant)
         linux_coverage = $coverageRelevant
         static_analysis = ($heavyBuildLane -or $staticPolicy -or $sourceCode)
         macos = $heavyBuildLane
