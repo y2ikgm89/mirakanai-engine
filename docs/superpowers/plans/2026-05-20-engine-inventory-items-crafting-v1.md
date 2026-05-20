@@ -1,8 +1,8 @@
 # Engine Inventory Items Crafting v1 (2026-05-20)
 
 **Plan ID:** `engine-inventory-items-crafting-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is developer-owned gameplay-family capability work, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** Do not keep `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` pointed at this completed plan. Keep `unsupportedProductionGaps = []`; this was developer-owned gameplay-family capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
