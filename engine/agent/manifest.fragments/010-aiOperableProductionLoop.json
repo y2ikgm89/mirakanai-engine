@@ -1783,13 +1783,13 @@
         ],
         "unsupportedClaims": [
           "navmesh assets",
-          "full crowd simulation",
+          "persistent/full crowd simulation beyond value-only batch planning",
           "perception",
           "async behavior tree tasks",
           "scene or physics engine integration",
           "editor graph authoring"
         ],
-        "followUpCapability": "Navmesh/crowd foundations and editor visualization are separate future slices."
+        "followUpCapability": "Navmesh asset import, persistent crowd simulation, scene/physics-owned integration, and editor visualization are separate future slices."
       },
       {
         "id": "runtime-ui-headless",

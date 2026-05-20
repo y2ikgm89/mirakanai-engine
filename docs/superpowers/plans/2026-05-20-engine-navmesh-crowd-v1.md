@@ -37,7 +37,7 @@ Select this plan as the next active developer-owned navigation/gameplay capabili
 
 ## Phase 1: Deterministic Crowd Query Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -66,3 +66,6 @@ Adopt the crowd/navigation contract in selected generated package paths so packa
 ## Validation Evidence
 
 - Phase 0 pointer sync: this plan was selected after `physics-collision-query-v1` completed deterministic collision query batches and package-visible `collision_query_batch_*` counters, while `unsupportedProductionGaps = []` stayed empty.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_navigation_tests` failed on missing `mirakana/navigation/navigation_crowd.hpp` after adding crowd query tests first.
+- Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_navigation_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_navigation_tests` passed after adding `NavigationCrowdPlanRequest` / `plan_navigation_navmesh_crowd` value rows, deterministic ordering, dynamic-obstacle route propagation, local-avoidance aggregation, duplicate/invalid-agent diagnostics, max-agent budget rejection, and replay counter tests.
+- Phase 1 static/full validation: `tools/check-agents.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/check-format.ps1` passed; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `unsupported_gaps=0` and only existing diagnostic-only Apple/Metal host gates.
