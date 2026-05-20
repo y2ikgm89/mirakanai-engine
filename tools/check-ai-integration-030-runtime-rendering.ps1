@@ -1873,7 +1873,7 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "recommended next plan reason"
-foreach ($needle in @("RHI Depth Attachment Contract v0", "Lighting Shadow Policy v1", "LightingShadowPolicyPlan", "plan_lighting_shadow_policy", "Stable Directional Light-Space Policy v0", "DirectionalShadowLightSpacePlan")) {
+foreach ($needle in @("RHI Depth Attachment Contract v0", "Postprocess Chain Policy v1", "PostprocessChainPolicyPlan", "plan_postprocess_chain_policy", "Lighting Shadow Policy v1", "LightingShadowPolicyPlan", "plan_lighting_shadow_policy", "Stable Directional Light-Space Policy v0", "DirectionalShadowLightSpacePlan")) {
     Assert-ContainsText ([string]$geRendererModule[0].purpose) $needle "MK_renderer module purpose"
 }
 foreach ($needle in @("plan_scene_lighting_shadow_policy", "build_scene_directional_shadow_light_space_plan", "sample_and_apply_runtime_scene_render_animation_float_clip", "advance_runtime_sprite_flipbook", "sample_runtime_morph_mesh_cpu_animation_float_clip")) {
@@ -2213,6 +2213,8 @@ foreach ($postprocessDepthGuidance in @(
     Assert-ContainsText $postprocessDepthText "package-visible" $postprocessDepthGuidance
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Postprocess Depth Input Readback Foundation v0" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Postprocess Chain Policy v1" "rendering game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "PostprocessChainPolicyPlan" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Sprite Batching Renderer v1 Phase 1" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "SpriteBatchPlanDesc" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "atlas_backed_batch_count" "rendering game guidance"
