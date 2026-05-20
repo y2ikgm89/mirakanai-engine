@@ -15,8 +15,8 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: `docs/superpowers/plans/2026-05-21-engine-construction-placement-v1.md`.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-construction-placement-v1` as the current developer-owned construction/placement capability, not a reopened Engine 1.0 production gap. `engine-inventory-items-crafting-v1` is completed for deterministic item catalogs, inventory state validation, value-only add/remove/craft transitions, and package-visible `gameplay_systems_inventory_items_*` counters in `sample_2d_desktop_runtime_package` package evidence.
+- Current active plan: `docs/superpowers/plans/2026-05-21-renderer-modern-materials-v1.md`.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `renderer-modern-materials-v1` as the current developer-owned renderer 1.x capability, not a reopened Engine 1.0 production gap. `engine-construction-placement-v1` is completed for deterministic placement validation, reviewed runtime-scene placement intent rows, same-batch occupancy hardening, package-visible construction placement counters, PR #145, and full validation evidence.
 - Current gap cluster: none selected after the 2026-05-19 gameplay/physics/navigation/AI foundation closeout.
 
 ## Plan map

@@ -6,6 +6,7 @@
 #include "mirakana/assets/asset_registry.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -84,6 +85,62 @@ struct MaterialPipelineBindingMetadata {
     std::vector<MaterialPipelineBinding> bindings;
 };
 
+enum class ModernMaterialVariantSourceKind : std::uint8_t {
+    unknown,
+    base_material,
+    material_instance,
+    graph_lowered_material,
+};
+
+enum class ModernMaterialVariantStatus : std::uint8_t { unknown, ready, invalid, host_gated, unsupported };
+
+enum class ModernMaterialVariantDiagnosticCode : std::uint8_t {
+    unknown,
+    invalid_source_kind,
+    invalid_material_definition,
+    invalid_factor_range,
+    unsupported_shading_model,
+    invalid_required_texture_slot,
+    missing_texture_dependency,
+    missing_shader_evidence,
+    unsupported_shader_graph_execution,
+};
+
+struct ModernMaterialVariantDesc {
+    ModernMaterialVariantSourceKind source_kind{ModernMaterialVariantSourceKind::unknown};
+    MaterialDefinition material;
+    bool shader_evidence_ready{false};
+    bool shader_graph_execution_requested{false};
+    std::vector<MaterialTextureSlot> required_texture_slots{
+        MaterialTextureSlot::base_color,
+        MaterialTextureSlot::normal,
+        MaterialTextureSlot::metallic_roughness,
+    };
+};
+
+struct ModernMaterialVariantRow {
+    ModernMaterialVariantSourceKind source_kind{ModernMaterialVariantSourceKind::unknown};
+    ModernMaterialVariantStatus status{ModernMaterialVariantStatus::unknown};
+    AssetId material;
+    std::size_t texture_binding_count{0};
+    bool pbr_factor_ready{false};
+    bool required_textures_ready{false};
+    bool shader_evidence_ready{false};
+};
+
+struct ModernMaterialVariantDiagnostic {
+    ModernMaterialVariantDiagnosticCode code{ModernMaterialVariantDiagnosticCode::unknown};
+    ModernMaterialVariantSourceKind source_kind{ModernMaterialVariantSourceKind::unknown};
+    AssetId material;
+    MaterialTextureSlot texture_slot{MaterialTextureSlot::unknown};
+    std::string message;
+};
+
+struct ModernMaterialVariantPlan {
+    std::vector<ModernMaterialVariantRow> rows;
+    std::vector<ModernMaterialVariantDiagnostic> diagnostics;
+};
+
 [[nodiscard]] bool is_valid_material_texture_binding(const MaterialTextureBinding& binding) noexcept;
 [[nodiscard]] bool is_valid_material_definition(const MaterialDefinition& material) noexcept;
 [[nodiscard]] bool is_valid_material_instance_definition(const MaterialInstanceDefinition& material) noexcept;
@@ -95,6 +152,8 @@ is_valid_material_pipeline_binding_metadata(const MaterialPipelineBindingMetadat
                                                            const MaterialInstanceDefinition& instance);
 [[nodiscard]] MaterialPipelineBindingMetadata
 build_material_pipeline_binding_metadata(const MaterialDefinition& material);
+[[nodiscard]] ModernMaterialVariantPlan
+plan_modern_material_variants(const std::vector<ModernMaterialVariantDesc>& variants);
 
 [[nodiscard]] std::string serialize_material_definition(const MaterialDefinition& material);
 [[nodiscard]] MaterialDefinition deserialize_material_definition(std::string_view text);

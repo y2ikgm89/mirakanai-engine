@@ -74,6 +74,18 @@ constexpr std::string_view material_instance_format = "GameEngine.MaterialInstan
     return false;
 }
 
+[[nodiscard]] bool valid_modern_material_source_kind(ModernMaterialVariantSourceKind kind) noexcept {
+    switch (kind) {
+    case ModernMaterialVariantSourceKind::base_material:
+    case ModernMaterialVariantSourceKind::material_instance:
+    case ModernMaterialVariantSourceKind::graph_lowered_material:
+        return true;
+    case ModernMaterialVariantSourceKind::unknown:
+        break;
+    }
+    return false;
+}
+
 [[nodiscard]] bool has_shader_stage(MaterialShaderStageMask stages) noexcept {
     return stages != MaterialShaderStageMask::none;
 }
@@ -110,6 +122,23 @@ constexpr std::string_view material_instance_format = "GameEngine.MaterialInstan
         }
     }
     return false;
+}
+
+[[nodiscard]] bool has_texture_slot(const MaterialDefinition& material, MaterialTextureSlot slot) noexcept {
+    return std::ranges::any_of(material.texture_bindings, [slot](const MaterialTextureBinding& binding) {
+        return binding.slot == slot && binding.texture.value != 0;
+    });
+}
+
+void add_modern_material_diagnostic(std::vector<ModernMaterialVariantDiagnostic>& diagnostics,
+                                    ModernMaterialVariantDiagnosticCode code,
+                                    ModernMaterialVariantSourceKind source_kind, AssetId material,
+                                    MaterialTextureSlot texture_slot, std::string message) {
+    diagnostics.push_back(ModernMaterialVariantDiagnostic{.code = code,
+                                                          .source_kind = source_kind,
+                                                          .material = material,
+                                                          .texture_slot = texture_slot,
+                                                          .message = std::move(message)});
 }
 
 [[nodiscard]] std::string_view shading_model_name(MaterialShadingModel model) noexcept {
@@ -546,6 +575,100 @@ MaterialPipelineBindingMetadata build_material_pipeline_binding_metadata(const M
         throw std::invalid_argument("material pipeline binding metadata is invalid");
     }
     return metadata;
+}
+
+ModernMaterialVariantPlan plan_modern_material_variants(const std::vector<ModernMaterialVariantDesc>& variants) {
+    ModernMaterialVariantPlan plan;
+    plan.rows.reserve(variants.size());
+
+    for (const auto& variant : variants) {
+        bool invalid = false;
+        bool unsupported = false;
+        bool host_gated = false;
+        bool missing_required_texture = false;
+        const bool factors_ready =
+            variant.material.shading_model == MaterialShadingModel::lit && valid_factors(variant.material.factors);
+
+        if (!valid_modern_material_source_kind(variant.source_kind)) {
+            invalid = true;
+            add_modern_material_diagnostic(plan.diagnostics, ModernMaterialVariantDiagnosticCode::invalid_source_kind,
+                                           variant.source_kind, variant.material.id, MaterialTextureSlot::unknown,
+                                           "modern material variant source kind is invalid");
+        }
+
+        if (!valid_factors(variant.material.factors)) {
+            invalid = true;
+            add_modern_material_diagnostic(plan.diagnostics, ModernMaterialVariantDiagnosticCode::invalid_factor_range,
+                                           variant.source_kind, variant.material.id, MaterialTextureSlot::unknown,
+                                           "modern material factors are outside supported ranges");
+        }
+
+        if (!is_valid_material_definition(variant.material) && valid_factors(variant.material.factors)) {
+            invalid = true;
+            add_modern_material_diagnostic(
+                plan.diagnostics, ModernMaterialVariantDiagnosticCode::invalid_material_definition, variant.source_kind,
+                variant.material.id, MaterialTextureSlot::unknown, "material definition is invalid");
+        }
+
+        if (variant.material.shading_model != MaterialShadingModel::lit) {
+            unsupported = true;
+            add_modern_material_diagnostic(
+                plan.diagnostics, ModernMaterialVariantDiagnosticCode::unsupported_shading_model, variant.source_kind,
+                variant.material.id, MaterialTextureSlot::unknown, "modern material variants require lit shading");
+        }
+
+        for (const auto slot : variant.required_texture_slots) {
+            if (!valid_texture_slot(slot)) {
+                invalid = true;
+                add_modern_material_diagnostic(
+                    plan.diagnostics, ModernMaterialVariantDiagnosticCode::invalid_required_texture_slot,
+                    variant.source_kind, variant.material.id, slot, "required material texture slot is invalid");
+                continue;
+            }
+            if (!has_texture_slot(variant.material, slot)) {
+                missing_required_texture = true;
+                add_modern_material_diagnostic(plan.diagnostics,
+                                               ModernMaterialVariantDiagnosticCode::missing_texture_dependency,
+                                               variant.source_kind, variant.material.id, slot,
+                                               "modern material variant is missing a required texture dependency");
+            }
+        }
+
+        if (!variant.shader_evidence_ready) {
+            host_gated = true;
+            add_modern_material_diagnostic(plan.diagnostics,
+                                           ModernMaterialVariantDiagnosticCode::missing_shader_evidence,
+                                           variant.source_kind, variant.material.id, MaterialTextureSlot::unknown,
+                                           "modern material variant is missing backend shader evidence");
+        }
+
+        if (!invalid && variant.shader_graph_execution_requested) {
+            unsupported = true;
+            add_modern_material_diagnostic(plan.diagnostics,
+                                           ModernMaterialVariantDiagnosticCode::unsupported_shader_graph_execution,
+                                           variant.source_kind, variant.material.id, MaterialTextureSlot::unknown,
+                                           "live shader graph execution is not supported by this material contract");
+        }
+
+        ModernMaterialVariantStatus status = ModernMaterialVariantStatus::ready;
+        if (invalid) {
+            status = ModernMaterialVariantStatus::invalid;
+        } else if (unsupported) {
+            status = ModernMaterialVariantStatus::unsupported;
+        } else if (host_gated || missing_required_texture) {
+            status = ModernMaterialVariantStatus::host_gated;
+        }
+
+        plan.rows.push_back(ModernMaterialVariantRow{.source_kind = variant.source_kind,
+                                                     .status = status,
+                                                     .material = variant.material.id,
+                                                     .texture_binding_count = variant.material.texture_bindings.size(),
+                                                     .pbr_factor_ready = factors_ready,
+                                                     .required_textures_ready = !missing_required_texture,
+                                                     .shader_evidence_ready = variant.shader_evidence_ready});
+    }
+
+    return plan;
 }
 
 std::string serialize_material_definition(const MaterialDefinition& material) {

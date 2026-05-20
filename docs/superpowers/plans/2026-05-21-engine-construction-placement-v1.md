@@ -1,8 +1,8 @@
 # Engine Construction Placement v1 (2026-05-21)
 
 **Plan ID:** `engine-construction-placement-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is developer-owned gameplay-family capability work, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** Historical implementation evidence. Do not leave `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` pointing here after closeout. Keep `unsupportedProductionGaps = []`; this was developer-owned gameplay-family capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
@@ -83,3 +83,4 @@ Add reviewed scene update intent rows so game-owned code can convert accepted pl
 - Phase 2 agent-surface/static evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/inventory_items.cpp,engine/runtime_scene/src/runtime_scene.cpp,tests/unit/runtime_inventory_items_tests.cpp,tests/unit/runtime_scene_tests.cpp,games/sample_2d_desktop_runtime_package/main.cpp`, and `git diff --check` passed.
 - Phase 2 installed package evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { .\tools\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -SmokeArgs @('--smoke','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-gameplay-systems') }"` passed, including installed SDK validation, installed desktop runtime validation, CPack, and construction placement counters.
 - Phase 2 full slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `production-readiness-audit: unsupported_gaps=0`; host-gated Apple/Metal diagnostics remain non-blocking on this Windows host.
+- Hosted closeout: PR #145 merged into `main` with merge commit `8ab437c694709c0f193246255c3d553a8188476c`; hosted PR Gate, Windows MSVC, Full Repository Static Analysis shards, Linux, CodeQL, iOS, and macOS Metal CMake checks passed. The next active developer-owned capability is `renderer-modern-materials-v1`.
