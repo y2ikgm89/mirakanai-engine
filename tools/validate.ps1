@@ -16,11 +16,14 @@ function Invoke-ValidateToolScript {
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string]$ScriptFileName
+        [string]$ScriptFileName,
+
+        [string[]]$Arguments = @()
     )
 
-    Write-Host "validate: running $ScriptFileName"
-    & (Join-Path $PSScriptRoot $ScriptFileName)
+    $displayArguments = if ($Arguments.Count -gt 0) { " $($Arguments -join ' ')" } else { "" }
+    Write-Host "validate: running $ScriptFileName$displayArguments"
+    & (Join-Path $PSScriptRoot $ScriptFileName) @Arguments
 }
 
 foreach ($scriptFileName in @(
@@ -48,16 +51,16 @@ foreach ($scriptFileName in @(
     Invoke-ValidateToolScript -ScriptFileName $scriptFileName
 }
 
-Write-Host "validate: running check-tidy.ps1"
-& (Join-Path $PSScriptRoot "check-tidy.ps1") -MaxFiles 1
-
 foreach ($scriptFileName in @(
         "build.ps1",
-        "check-generated-msvc-cxx23-mode.ps1",
-        "test.ps1"
+        "check-generated-msvc-cxx23-mode.ps1"
     )) {
     Invoke-ValidateToolScript -ScriptFileName $scriptFileName
 }
+
+Write-Host "validate: running check-tidy.ps1 -MaxFiles 1 -ReuseExistingFileApiReply"
+& (Join-Path $PSScriptRoot "check-tidy.ps1") -MaxFiles 1 -ReuseExistingFileApiReply
+Invoke-ValidateToolScript -ScriptFileName "test.ps1" -Arguments @("-SkipBuild")
 
 Write-Host "validate: ok"
 exit 0

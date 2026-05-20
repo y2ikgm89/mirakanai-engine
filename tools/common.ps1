@@ -895,6 +895,17 @@ function Resolve-CMakeConfigurePresetBinaryDirectory {
     return $binaryDirectory
 }
 
+function New-CMakeFileApiCodemodelQuery {
+    param([Parameter(Mandatory = $true)][string]$BuildDir)
+
+    $queryDir = Join-Path $BuildDir ".cmake/api/v1/query"
+    $queryPath = Join-Path $queryDir "codemodel-v2"
+    New-Item -ItemType Directory -Force -Path $queryDir | Out-Null
+    if (-not (Test-Path -LiteralPath $queryPath -PathType Leaf)) {
+        New-Item -ItemType File -Path $queryPath | Out-Null
+    }
+}
+
 function Resolve-CMakeBuildDirectory {
     param([Parameter()][string[]]$Arguments = @())
 

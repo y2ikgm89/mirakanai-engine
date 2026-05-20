@@ -4763,7 +4763,7 @@
         "validationRecipes": [
           "default"
         ],
-        "notes": "Strict clang-tidy compile database availability is ready for the default dev validation path. tools/check-tidy.ps1 verifies .clang-tidy, requests CMake File API codemodel data and configures the preset when native compile_commands.json is unavailable, synthesizes clang-tidy arguments rows for Visual Studio generator builds, supports -Files for targeted changed-file clang-tidy on compile-database source files, and still reports missing CMake or clang-tidy as local tool blockers."
+        "notes": "Strict clang-tidy compile database availability is ready for the default dev validation path. tools/build.ps1 prepares CMake File API codemodel data before the dev configure/build, tools/validate.ps1 reuses that reply for the check-tidy.ps1 -MaxFiles 1 smoke and then runs test.ps1 -SkipBuild, while standalone tools/check-tidy.ps1 still configures the preset when native compile_commands.json is unavailable. The wrapper synthesizes clang-tidy arguments rows for Visual Studio generator builds, supports -Files for targeted changed-file clang-tidy on compile-database source files, and still reports missing CMake or clang-tidy as local tool blockers."
       }
     ],
     "validationRecipeMap": [
