@@ -51,7 +51,7 @@ paths:
 - Keep module scanning disabled for non-module executable targets such as tests, probes, samples, and games through `MK_disable_module_scanning_for_non_module_executable`; engine/library targets keep the preset-level module scan policy.
 - Keep `MK_ENABLE_IMPORT_STD=ON` for those module-scanning presets, but only rely on `import std;` in targets when CMake reports `23` in `CMAKE_CXX_COMPILER_IMPORT_STD`.
 - Keep reviewed CI exception presets explicit: `ci-linux-tidy`, `coverage`, and `ci-macos-appleclang` set module scanning/import-std `OFF` because clang-tidy should not depend on build-generated module maps and those coverage/Apple host paths do not provide supported CMake module dependency scanning.
-- Use the `cpp23-eval` presets and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1` for C++23 verification checks. No switch, or explicit `-Debug`, runs the Debug lane; `-Release` is release/package-only; `-Debug -Release -Gui` is the full local C++23 confidence pass.
+- Use the `cpp23-eval` presets and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1` for C++23 verification checks. No switch, or explicit `-Debug`, runs the Debug lane; `-Release` is release/package-only; `-Debug -Release -Gui` is the full local C++23 confidence pass. The script uses automatic CMake/CTest parallelism by default; pass `-Jobs <N>` only to throttle a constrained host.
 - Use Context7 for current CMake, vcpkg, compiler, and SDK documentation before relying on memory for toolchain-specific behavior.
 
 ## Validation

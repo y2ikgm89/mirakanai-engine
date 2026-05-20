@@ -66,7 +66,7 @@ For Release/package verification:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release
 ```
 
-The `-Release` lane is release-only: it configures/builds/tests `cpp23-release-eval`, validates the installed SDK consumer, runs CPack, and checks release package artifacts without also running the Debug `cpp23-eval` tree. The Windows C++23 Release Evaluation CI job uses this release-only lane so it does not duplicate the separate Windows MSVC Debug validation job.
+The `-Release` lane is release-only: it configures/builds/tests `cpp23-release-eval`, validates the installed SDK consumer, runs CPack, and checks release package artifacts without also running the Debug `cpp23-eval` tree. The Windows C++23 Release Evaluation CI job uses this release-only lane so it does not duplicate the separate Windows MSVC Debug validation job. `tools/evaluate-cpp23.ps1` uses automatic CMake/CTest parallelism by default; pass `-Jobs <N>` only to throttle a constrained host.
 
 The C++23 presets keep CMake module scanning enabled for engine/library targets, but non-module executable targets such as tests, probes, samples, and games explicitly set `CXX_SCAN_FOR_MODULES OFF`. That follows CMake's target-level scan property and avoids unnecessary MSVC module dependency scan work in the Release lane without weakening module coverage for targets that can own `FILE_SET CXX_MODULES`.
 
