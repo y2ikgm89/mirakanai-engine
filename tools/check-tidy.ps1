@@ -147,6 +147,19 @@ function Split-CompileCommandFragment {
     return $tokens
 }
 
+function Test-ClangTidyIgnoredMsvcCompileOption {
+    param([AllowNull()][string]$Token)
+
+    if ([string]::IsNullOrWhiteSpace($Token)) {
+        return $false
+    }
+
+    # These options tune MSVC build scheduling or PDB throughput only. They are
+    # not semantic inputs for clang-tidy, and clang-cl does not accept all of
+    # them when replaying synthesized Visual Studio compile commands.
+    return ($Token -match '^/MP(?:\d+)?$' -or $Token -eq "/Zf")
+}
+
 function New-FileApiCodemodelQuery {
     param([Parameter(Mandatory = $true)][string]$BuildDir)
 
@@ -257,7 +270,9 @@ function Convert-FileApiCodemodelToCompileDatabase {
 
             foreach ($fragment in @($compileGroup.compileCommandFragments)) {
                 foreach ($token in (Split-CompileCommandFragment -Fragment ([string]$fragment.fragment))) {
-                    if ($token -eq "/std:c++23preview") {
+                    if (Test-ClangTidyIgnoredMsvcCompileOption -Token $token) {
+                        continue
+                    } elseif ($token -eq "/std:c++23preview") {
                         $arguments.Add("/std:c++latest") | Out-Null
                     } else {
                         $arguments.Add($token) | Out-Null

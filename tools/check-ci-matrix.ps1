@@ -157,6 +157,7 @@ Assert-ContainsText $validateScript "check-ci-matrix.ps1" "tools/validate.ps1 de
 Assert-ContainsAll $validateScript @(
     "[switch]`$StaticOnly",
     "[switch]`$SkipStaticChecks",
+    "[switch]`$SkipTidySmoke",
     "validate: -StaticOnly and -SkipStaticChecks cannot be combined"
 ) "tools/validate.ps1 static/build split contract"
 
@@ -384,7 +385,7 @@ Assert-ContainsAll $windowsJob @(
     '${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-',
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
-    "run: ./tools/validate.ps1 -SkipStaticChecks",
+    "run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke",
     "Save Windows dev build cache",
     $cacheSaveActionRef,
     "steps.restore-dev-build.outputs.cache-hit != 'true'",

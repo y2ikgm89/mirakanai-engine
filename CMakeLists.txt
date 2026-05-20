@@ -23,6 +23,7 @@ set(MK_CXX_STANDARD "23" CACHE STRING "C++ standard level used by Mirakanai targ
 set_property(CACHE MK_CXX_STANDARD PROPERTY STRINGS 23)
 set(MK_MSVC_CXX23_STANDARD_OPTION "/std:c++23preview" CACHE STRING "MSVC C++23 standard mode flag")
 set_property(CACHE MK_MSVC_CXX23_STANDARD_OPTION PROPERTY STRINGS "/std:c++23preview" "/std:c++23")
+set(MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES "2" CACHE STRING "MSVC /MP process count per compiler invocation")
 
 if(NOT MK_CXX_STANDARD STREQUAL "23")
     message(FATAL_ERROR "MK_CXX_STANDARD must be 23")
@@ -37,8 +38,15 @@ if(MSVC)
     if(NOT MK_MSVC_CXX23_STANDARD_OPTION MATCHES "^/std:c\\+\\+23(preview)?$")
         message(FATAL_ERROR "MK_MSVC_CXX23_STANDARD_OPTION must be /std:c++23preview or /std:c++23")
     endif()
+    if(NOT MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES MATCHES "^[1-9][0-9]*$")
+        message(FATAL_ERROR "MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES must be an integer between 1 and 65536")
+    endif()
+    if(MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES GREATER 65536)
+        message(FATAL_ERROR "MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES must be an integer between 1 and 65536")
+    endif()
     set(CMAKE_CXX23_STANDARD_COMPILE_OPTION "${MK_MSVC_CXX23_STANDARD_OPTION}")
     set(CMAKE_CXX23_EXTENSION_COMPILE_OPTION "${MK_MSVC_CXX23_STANDARD_OPTION}")
+    set(MK_MSVC_MULTIPROCESSOR_COMPILE_OPTION "/MP${MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES}")
 endif()
 
 if(MK_ENABLE_CXX_MODULE_SCANNING)
@@ -95,7 +103,7 @@ function(MK_apply_common_target_options target_name)
     endif()
 
     if(MSVC)
-        target_compile_options(${target_name} PRIVATE /W4 /permissive- /EHsc)
+        target_compile_options(${target_name} PRIVATE /W4 /permissive- /EHsc ${MK_MSVC_MULTIPROCESSOR_COMPILE_OPTION} /Zf)
         set_target_properties(${target_name} PROPERTIES
             COMPILE_PDB_NAME ${target_name}
             COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb/${target_name}"

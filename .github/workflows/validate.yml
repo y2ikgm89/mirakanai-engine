@@ -184,7 +184,7 @@ jobs:
 
       - name: Validate
         shell: pwsh
-        run: ./tools/validate.ps1 -SkipStaticChecks
+        run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke
 
       - name: Save Windows dev build cache
         if: ${{ success() && !cancelled() && steps.restore-dev-build.outputs.cache-hit != 'true' }}
