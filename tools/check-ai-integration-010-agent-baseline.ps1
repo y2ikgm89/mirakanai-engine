@@ -325,6 +325,7 @@ Assert-ContainsText (Get-AgentSurfaceText "docs/workflows.md") "automatic CMake/
 Assert-ContainsText (Get-AgentSurfaceText ".agents/skills/cmake-build-system/SKILL.md") "automatic CMake/CTest parallelism" ".agents/skills/cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".claude/skills/gameengine-cmake-build-system/SKILL.md") "automatic CMake/CTest parallelism" ".claude/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md") "automatic CMake/CTest parallelism" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
+Assert-ContainsText (Get-AgentSurfaceText "CMakeLists.txt") "set_tests_properties(MK_platform_process_tests PROPERTIES RUN_SERIAL TRUE)" "CMakeLists.txt"
 Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]' "tools/check-agents.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/check-agents.ps1") 'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--delete-branch",\s*"--match-head-commit"\]' "tools/check-agents.ps1"
 $tidyWrapperContent = Get-AgentSurfaceText "tools/check-tidy.ps1"

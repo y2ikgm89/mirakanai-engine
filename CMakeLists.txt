@@ -570,6 +570,7 @@ if(BUILD_TESTING)
         add_dependencies(MK_platform_process_tests MK_dynamic_library_probe)
         MK_apply_common_target_options(MK_platform_process_tests)
         add_test(NAME MK_platform_process_tests COMMAND MK_platform_process_tests)
+        set_tests_properties(MK_platform_process_tests PROPERTIES RUN_SERIAL TRUE)
 
         add_executable(MK_editor_game_module_driver_load_tests
             tests/unit/editor_game_module_driver_load_tests.cpp

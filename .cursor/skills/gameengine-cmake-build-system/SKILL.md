@@ -24,6 +24,7 @@ Full workflow lives in shared skills. Read these canonical files (ASCII paths):
 | Baseline | `AGENTS.md` |
 
 Validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`, `tools/cmake.ps1`, `tools/ctest.ps1`, and related wrappers in `AGENTS.md`.
+Use CTest `RUN_SERIAL` only for time-sensitive host-resource tests; keep suite-wide automatic CMake/CTest parallelism enabled.
 
 MSVC targets use `COMPILE_PDB_OUTPUT_DIRECTORY` / `COMPILE_PDB_NAME` per target and linkable targets use `/INCREMENTAL:NO` through `MK_apply_common_target_options`; `tools/cmake.ps1` clears stale `.tlog` directories with older aliased `.lastbuildstate` roots before Visual Studio builds to avoid MSB8028. See the canonical skills and `docs/building.md`.
 

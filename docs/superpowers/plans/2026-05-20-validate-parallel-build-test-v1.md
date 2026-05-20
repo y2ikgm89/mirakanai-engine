@@ -17,6 +17,7 @@ Reduce local `tools/validate.ps1` wall-clock time without reducing validation co
 
 - Keep every existing `validate.ps1` check; do not add a fast mode or skip mode.
 - Keep overlapping CMake build invocation serialization and MSVC per-target PDB isolation intact.
+- Keep host-resource or file-system watcher tests honest under CTest parallelism by marking only the affected CTest entries serial.
 - Preserve focused loops and one full `validate.ps1` at coherent build/toolchain/public-contract gates.
 - Update agent surfaces and manifest fragments because validation workflow behavior changes.
 
@@ -30,6 +31,7 @@ Reduce local `tools/validate.ps1` wall-clock time without reducing validation co
 - `tools/build.ps1` configures once, then runs `cmake --build --preset dev --parallel <jobs>` with `-Jobs 0` resolving to host processor count.
 - `tools/test.ps1` builds with the same CMake parallelism unless `-SkipBuild` is used, then runs CTest with `--parallel <jobs>`.
 - Docs, skills, subagents, manifest fragments, composed manifest, and static checks describe the clean wrapper contract.
+- Hosted Windows MSVC file-watcher contention is resolved through CTest `RUN_SERIAL` for `MK_platform_process_tests`, not by disabling suite-wide parallelism.
 - Focused checks and full `tools/validate.ps1` pass.
 
 ## Validation Evidence
@@ -48,3 +50,10 @@ Reduce local `tools/validate.ps1` wall-clock time without reducing validation co
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS | Guarded wrapper/docs/manifest/skill contract passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | PASS | Text and C++ formatting checks passed. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | PASS | Full validation passed; `production-readiness-audit: unsupported_gaps=0`; expected Windows host-gated diagnostics for Apple/Metal remained diagnostic-only. The validate run also proved `test.ps1 -SkipBuild` is now invoked directly instead of through array splatting that cannot carry named switches once `-Jobs` exists. |
+| Hosted PR #131 Windows MSVC check at head `36af827d` | FAIL | CTest parallelism exposed `MK_platform_process_tests` / Windows native file watcher as time-sensitive under concurrent hosted load: `events=0`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` after adding the RUN_SERIAL static guard | FAIL | Proved the guard caught missing `set_tests_properties(MK_platform_process_tests PROPERTIES RUN_SERIAL TRUE)` before the CMake fix. |
+| Context7 CTest documentation lookup | PASS | Confirmed official CTest `RUN_SERIAL` is the intended property for tests that must not execute concurrently with other tests. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` after `RUN_SERIAL` fix | PASS | Regenerated CTest files and kept default `cmake --build --parallel 32`. |
+| `Select-String out/build/dev/CTestTestfile.cmake -Pattern 'MK_platform_process_tests|RUN_SERIAL'` | PASS | Generated CTest metadata contains `RUN_SERIAL "TRUE"` for `MK_platform_process_tests`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1 -SkipBuild` after `RUN_SERIAL` fix | PASS | Parallel CTest still ran 65/65 tests successfully; `MK_platform_process_tests` ran after the parallel group and passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` after `RUN_SERIAL` fix | PASS | Full validation passed in 77.4s with automatic CMake/CTest parallelism; `production-readiness-audit: unsupported_gaps=0`; Apple/Metal diagnostics remained expected host-gated checks. |

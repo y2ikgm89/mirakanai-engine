@@ -22,7 +22,7 @@ paths:
 - Keep include paths scoped with `target_include_directories`.
 - Give public libraries both `$<BUILD_INTERFACE:...>` and `$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>` include paths.
 - Use `target_compile_features` for C++ standard requirements.
-- Register tests with CTest.
+- Register tests with CTest; mark only time-sensitive host-resource tests with `RUN_SERIAL` instead of disabling suite-wide parallel CTest execution.
 - For registered desktop runtime games, prefer `PACKAGE_FILES_FROM_MANIFEST` so `game.agent.json.runtimePackageFiles` is the package file source of truth; do not mix it with literal `PACKAGE_FILES`.
 - Keep local build output under `out/`.
 - **Worktree cleanup:** Safe to delete for a clean rebuild: `out/`, Android Gradle/CXX outputs under `platform/android/` per `.gitignore`, `*.log`, `imgui.ini`, and (only when followed by `tools/bootstrap-deps.ps1`) `vcpkg_installed/`. **Never delete `external/vcpkg` or the entire `external/` directory as cache**—presets point `CMAKE_TOOLCHAIN_FILE` at `external/vcpkg/scripts/buildsystems/vcpkg.cmake`. Restore with `git clone https://github.com/microsoft/vcpkg.git external/vcpkg`, bootstrap `vcpkg.exe`, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` or `tools/bootstrap-deps.ps1`.
