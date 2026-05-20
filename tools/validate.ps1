@@ -60,7 +60,8 @@ foreach ($scriptFileName in @(
 
 Write-Host "validate: running check-tidy.ps1 -MaxFiles 1 -ReuseExistingFileApiReply"
 & (Join-Path $PSScriptRoot "check-tidy.ps1") -MaxFiles 1 -ReuseExistingFileApiReply
-Invoke-ValidateToolScript -ScriptFileName "test.ps1" -Arguments @("-SkipBuild")
+Write-Host "validate: running test.ps1 -SkipBuild"
+& (Join-Path $PSScriptRoot "test.ps1") -SkipBuild
 
 Write-Host "validate: ok"
 exit 0
