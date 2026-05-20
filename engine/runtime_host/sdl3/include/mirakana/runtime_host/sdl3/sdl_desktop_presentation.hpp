@@ -186,6 +186,12 @@ struct SdlDesktopPresentationReport {
         SdlDesktopPresentationDirectionalShadowFilterMode::none};
     std::uint32_t directional_shadow_filter_tap_count{0};
     float directional_shadow_filter_radius_texels{0.0F};
+    std::uint32_t directional_shadow_cascade_count{0};
+    std::uint32_t directional_shadow_cascade_tile_width{0};
+    std::uint32_t directional_shadow_atlas_width{0};
+    std::uint32_t directional_shadow_atlas_height{0};
+    std::uint32_t directional_shadow_light_space_cascades{0};
+    std::uint32_t directional_shadow_cascade_splits{0};
     SdlDesktopPresentationNativeUiOverlayStatus native_ui_overlay_status{
         SdlDesktopPresentationNativeUiOverlayStatus::not_requested};
     bool native_ui_overlay_requested{false};
