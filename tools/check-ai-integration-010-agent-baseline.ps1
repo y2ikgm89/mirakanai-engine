@@ -1734,6 +1734,10 @@ foreach ($appleHelperNeedle in @("Test-IsMacOS", "Get-AppleDeveloperDirectory", 
     Assert-ContainsText $appleHostHelpersText $appleHelperNeedle "tools/apple-host-helpers.ps1"
 }
 Assert-ContainsText $mobilePackagingScriptText "apple-host-helpers.ps1" "tools/check-mobile-packaging.ps1"
+Assert-ContainsText $mobilePackagingScriptText "Invoke-MobilePackagingProbe" "tools/check-mobile-packaging.ps1"
+Assert-ContainsText $mobilePackagingScriptText 'Kill($true)' "tools/check-mobile-packaging.ps1"
+Assert-ContainsText $mobilePackagingScriptText "probe-timeout" "tools/check-mobile-packaging.ps1"
+Assert-ContainsText $workflowsContent "probe-timeout" "docs/workflows.md"
 Assert-ContainsText $appleHostEvidenceScriptText "apple-host-helpers.ps1" "tools/check-apple-host-evidence.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "check-apple-host-evidence.ps1" "tools/validate.ps1"
 foreach ($appleHostEvidenceDocCheck in @(

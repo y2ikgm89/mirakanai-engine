@@ -152,6 +152,109 @@ function Test-EnvironmentSet {
     return $true
 }
 
+function Invoke-MobilePackagingProbe {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [string[]]$ArgumentList = @(),
+        [int]$TimeoutSeconds = 5
+    )
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $FilePath
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+    foreach ($argument in $ArgumentList) {
+        if ($null -ne $argument) {
+            $null = $startInfo.ArgumentList.Add([string]$argument)
+        }
+    }
+
+    $timeoutMilliseconds = [Math]::Max(1, $TimeoutSeconds) * 1000
+    $childProcess = [System.Diagnostics.Process]::new()
+    $childProcess.StartInfo = $startInfo
+
+    try {
+        $null = $childProcess.Start()
+        $standardOutputTask = $childProcess.StandardOutput.ReadToEndAsync()
+        $standardErrorTask = $childProcess.StandardError.ReadToEndAsync()
+        $timedOut = -not $childProcess.WaitForExit($timeoutMilliseconds)
+        if ($timedOut) {
+            try {
+                $childProcess.Kill($true)
+            }
+            catch {
+                $null = $_.Exception
+            }
+
+            if (-not $childProcess.WaitForExit(2000)) {
+                return [pscustomobject]@{
+                    TimedOut  = $true
+                    ExitCode  = $null
+                    Lines     = @()
+                    ErrorText = ""
+                }
+            }
+        }
+        else {
+            $childProcess.WaitForExit()
+        }
+
+        $standardOutput = $standardOutputTask.GetAwaiter().GetResult()
+        $standardError = $standardErrorTask.GetAwaiter().GetResult()
+        $lines = @($standardOutput -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+
+        return [pscustomobject]@{
+            TimedOut  = $timedOut
+            ExitCode  = $(if ($timedOut) { $null } else { $childProcess.ExitCode })
+            Lines     = $lines
+            ErrorText = $standardError
+        }
+    }
+    catch {
+        return [pscustomobject]@{
+            TimedOut  = $false
+            ExitCode  = $null
+            Lines     = @()
+            ErrorText = $_.Exception.Message
+        }
+    }
+    finally {
+        $childProcess.Dispose()
+    }
+}
+
+function Get-MobilePackagingAndroidAvdNames {
+    param(
+        [string]$Emulator,
+        [int]$TimeoutSeconds = 5
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Emulator)) {
+        return [pscustomobject]@{
+            TimedOut = $false
+            Names    = @()
+        }
+    }
+
+    Set-AndroidAvdHomeEnvironment | Out-Null
+    $probe = Invoke-MobilePackagingProbe -FilePath $Emulator -ArgumentList @("-list-avds") -TimeoutSeconds $TimeoutSeconds
+    if ($probe.TimedOut -or $probe.ExitCode -ne 0) {
+        return [pscustomobject]@{
+            TimedOut = $probe.TimedOut
+            Names    = @()
+        }
+    }
+
+    return [pscustomobject]@{
+        TimedOut = $false
+        Names    = @($probe.Lines | ForEach-Object { ([string]$_).Trim() } | Where-Object {
+                -not [string]::IsNullOrWhiteSpace($_)
+            })
+    }
+}
+
 foreach ($file in @(
     "platform/android/settings.gradle.kts",
     "platform/android/build.gradle.kts",
@@ -216,11 +319,24 @@ if (-not $apksigner) {
 }
 
 $emulator = Find-AndroidEmulatorCommand
-$androidAvds = @(Get-AndroidAvdNames)
+$androidAvdProbeTimedOut = $false
+$androidAvds = @()
+if ($emulator) {
+    $androidAvdProbe = Get-MobilePackagingAndroidAvdNames -Emulator $emulator
+    $androidAvdProbeTimedOut = $androidAvdProbe.TimedOut
+    $androidAvds = @($androidAvdProbe.Names)
+}
+
 $androidDeviceReady = $false
+$androidDeviceProbeTimedOut = $false
 if ($adb) {
-    $deviceLines = @(& $adb "devices" 2>$null)
-    $androidDeviceReady = @($deviceLines | Select-Object -Skip 1 | Where-Object { [string]$_ -match "^\S+\s+device$" }).Count -gt 0
+    $deviceProbe = Invoke-MobilePackagingProbe -FilePath $adb -ArgumentList @("devices")
+    $androidDeviceProbeTimedOut = $deviceProbe.TimedOut
+    if (-not $deviceProbe.TimedOut -and $deviceProbe.ExitCode -eq 0) {
+        $androidDeviceReady = @($deviceProbe.Lines | Select-Object -Skip 1 | Where-Object {
+                [string]$_ -match "^\S+\s+device$"
+            }).Count -gt 0
+    }
 }
 
 $androidReleaseSigningEnvironment = @(
@@ -309,14 +425,20 @@ else {
     Write-Host "mobile-packaging: android-emulator=not-installed"
 }
 
-if ($androidAvds.Count -gt 0) {
+if ($androidAvdProbeTimedOut) {
+    Write-Host "mobile-packaging: android-avd=probe-timeout"
+}
+elseif ($androidAvds.Count -gt 0) {
     Write-Host "mobile-packaging: android-avd=ready ($($androidAvds -join ', '))"
 }
 else {
     Write-Host "mobile-packaging: android-avd=not-configured"
 }
 
-if ($androidDeviceReady) {
+if ($androidDeviceProbeTimedOut) {
+    Write-Host "mobile-packaging: android-device-smoke=probe-timeout"
+}
+elseif ($androidDeviceReady) {
     Write-Host "mobile-packaging: android-device-smoke=ready"
 }
 else {
