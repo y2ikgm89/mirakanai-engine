@@ -261,6 +261,37 @@ if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpresentation_sele
 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpresentation_backend_reports=") {
     Write-Error "Installed desktop runtime smoke status line did not include presentation_backend_reports report field."
 }
+if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") {
+    foreach ($field in @(
+            "modern_material_variants",
+            "modern_material_ready",
+            "modern_material_host_gated",
+            "modern_material_unsupported",
+            "modern_material_invalid",
+            "modern_material_diagnostics",
+            "modern_material_texture_dependencies",
+            "modern_material_shader_evidence_ready"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed material/shader package smoke status line did not include modern material field: $field"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_variants=1\b") {
+        Write-Error "Installed material/shader package smoke status line did not prove one modern material variant."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_ready=1\b") {
+        Write-Error "Installed material/shader package smoke status line did not prove one ready modern material variant."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_diagnostics=0\b") {
+        Write-Error "Installed material/shader package smoke status line did not prove clean modern material diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_texture_dependencies=1\b") {
+        Write-Error "Installed material/shader package smoke status line did not prove the material texture dependency count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_shader_evidence_ready=1\b") {
+        Write-Error "Installed material/shader package smoke status line did not prove shader evidence readiness."
+    }
+}
 if ($GameTarget -eq "sample_desktop_runtime_game") {
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcamera_primary=1\b") {
         Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove a primary 3D camera."
