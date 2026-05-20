@@ -578,6 +578,14 @@ jobs:
     if: needs.changes.outputs.static_analysis == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_index: 0
+          - shard_index: 1
+          - shard_index: 2
+          - shard_index: 3
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_BASEDIR: ${{ github.workspace }}
@@ -626,7 +634,7 @@ jobs:
 
       - name: Run clang-tidy
         shell: pwsh
-        run: ./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -Jobs 0
+        run: ./tools/check-tidy.ps1 -Strict -Preset ci-linux-tidy -ShardCount 4 -ShardIndex ${{ matrix.shard_index }} -Jobs 0
 
       - name: Show ccache stats
         if: ${{ always() && !cancelled() }}
