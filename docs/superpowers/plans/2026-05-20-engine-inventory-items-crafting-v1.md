@@ -52,7 +52,7 @@ Define the smallest reusable item/catalog contract for item ids, stack limits, c
 
 ## Phase 2: Inventory And Crafting Transition Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -72,3 +72,9 @@ Add value-only inventory and recipe transition helpers over validated catalogs s
 - Phase 1 adds Runtime Item Catalog v1 in `MK_runtime` through `RuntimeItemCatalogDocument`, `RuntimeItemDesc`, `RuntimeItemCostDesc`, `RuntimeItemCatalogValidationContext`, `RuntimeItemCatalogValidationResult`, `RuntimeItemCatalogDiagnostic`, `RuntimeItemCatalogValidationRow`, and `validate_runtime_item_catalog_document`.
 - Phase 1 RED test evidence: `MK_runtime_inventory_items_tests` failed before implementation because `mirakana/runtime/inventory_items.hpp` was missing.
 - Phase 1 focused GREEN evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_inventory_items_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_inventory_items_tests"` passed for deterministic valid rows and fail-closed diagnostics.
+- Phase 2 adds value-only inventory/crafting transition contracts through `RuntimeInventoryState`, `RuntimeInventoryStackDesc`, `RuntimeInventoryStateValidationResult`, `validate_runtime_inventory_state`, `RuntimeCraftingRecipeDocument`, `RuntimeCraftingRecipeDesc`, `RuntimeInventoryTransitionRequest`, `RuntimeInventoryTransitionResult`, `RuntimeInventoryTransitionStatus`, and `advance_runtime_inventory_state`.
+- Phase 2 RED test evidence: `MK_runtime_inventory_items_tests` failed before implementation because the inventory state, crafting recipe, and transition request/result symbols were missing.
+- Phase 2 focused GREEN evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_inventory_items_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_inventory_items_tests"`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "sample_2d_desktop_runtime_package_smoke"` passed.
+- Phase 2 package evidence: `sample_2d_desktop_runtime_package --smoke --require-gameplay-systems` emitted `gameplay_systems_inventory_items_ready=1`, `gameplay_systems_inventory_items_diagnostics=0`, `gameplay_systems_inventory_items_catalog_rows=2`, `gameplay_systems_inventory_items_state_rows=2`, `gameplay_systems_inventory_items_transition_rows=2`, `gameplay_systems_inventory_items_accepted_rows=1`, `gameplay_systems_inventory_items_completed_rows=1`, and `gameplay_systems_inventory_items_final_workbench_quantity=1`.
+- Phase 2 agent-surface/static evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/inventory_items.cpp,tests/unit/runtime_inventory_items_tests.cpp,games/sample_2d_desktop_runtime_package/main.cpp`, and `git diff --check` passed.
+- Phase 2 coherent gate evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `unsupported_gaps=0`, all 67 tests passing, and only existing host-gated/diagnostic-only Apple/Metal/mobile notes.
