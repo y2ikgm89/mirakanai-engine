@@ -28,9 +28,25 @@ constexpr auto shadow_receiver_pass = "shadow.receiver.resolve";
     return format == rhi::Format::depth24_stencil8;
 }
 
+[[nodiscard]] std::uint32_t count_to_shadow_uint32(std::size_t count) noexcept {
+    return count > static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())
+               ? std::numeric_limits<std::uint32_t>::max()
+               : static_cast<std::uint32_t>(count);
+}
+
 void append_diagnostic(ShadowMapPlan& plan, ShadowMapDiagnosticCode code, std::string message) {
     plan.diagnostics.push_back(ShadowMapDiagnostic{
         .code = code,
+        .message = std::move(message),
+    });
+}
+
+void append_diagnostic(LightingShadowPolicyPlan& plan, LightingShadowPolicyDiagnosticCode code, std::size_t light_index,
+                       std::uint32_t source_index, std::string message) {
+    plan.diagnostics.push_back(LightingShadowPolicyDiagnostic{
+        .code = code,
+        .light_index = light_index,
+        .source_index = source_index,
         .message = std::move(message),
     });
 }
@@ -75,8 +91,17 @@ void append_diagnostic(DirectionalShadowLightSpacePlan& plan, DirectionalShadowL
     return std::isfinite(value) && value >= 0.0F && value <= 1.0F;
 }
 
+[[nodiscard]] bool is_valid_light_policy_type(LightingShadowPolicyLightType type) noexcept {
+    return type == LightingShadowPolicyLightType::directional || type == LightingShadowPolicyLightType::point ||
+           type == LightingShadowPolicyLightType::spot;
+}
+
 [[nodiscard]] bool is_finite_vec3(Vec3 value) noexcept {
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+}
+
+[[nodiscard]] bool is_valid_non_negative_color(Vec3 color) noexcept {
+    return is_finite_vec3(color) && color.x >= 0.0F && color.y >= 0.0F && color.z >= 0.0F;
 }
 
 [[nodiscard]] Vec3 normalize_vec3(Vec3 value) noexcept {
@@ -246,6 +271,155 @@ void append_frustum_slice_corners_world(const DirectionalShadowCascadeCameraInpu
 }
 
 } // namespace
+
+LightingShadowPolicyPlan plan_lighting_shadow_policy(const LightingShadowPolicyDesc& desc) {
+    LightingShadowPolicyPlan plan;
+    plan.light_count = count_to_shadow_uint32(desc.lights.size());
+    plan.shadow_tile_extent = desc.shadow_tile_extent;
+
+    if (desc.lights.size() > static_cast<std::size_t>(desc.max_light_count)) {
+        append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::too_many_lights, 0,
+                          invalid_shadow_map_light_index(),
+                          "lighting policy light count exceeds the configured budget");
+    }
+
+    std::uint32_t shadowed_count = 0;
+    std::uint32_t directional_shadowed_count = 0;
+    for (std::size_t index = 0; index < desc.lights.size(); ++index) {
+        const auto& light = desc.lights[index];
+        switch (light.type) {
+        case LightingShadowPolicyLightType::directional:
+            ++plan.directional_light_count;
+            break;
+        case LightingShadowPolicyLightType::point:
+            ++plan.point_light_count;
+            break;
+        case LightingShadowPolicyLightType::spot:
+            ++plan.spot_light_count;
+            break;
+        case LightingShadowPolicyLightType::unknown:
+            break;
+        }
+
+        if (!is_valid_light_policy_type(light.type)) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::invalid_light_type, index, light.source_index,
+                              "lighting policy light type is unsupported");
+        }
+
+        if (!is_valid_non_negative_color(light.color)) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::invalid_light_color, index, light.source_index,
+                              "lighting policy light color must be finite and non-negative");
+        }
+
+        if (!std::isfinite(light.intensity) || light.intensity < 0.0F) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::invalid_light_intensity, index,
+                              light.source_index, "lighting policy light intensity must be finite and non-negative");
+        }
+
+        if ((light.type == LightingShadowPolicyLightType::point || light.type == LightingShadowPolicyLightType::spot) &&
+            (!std::isfinite(light.range) || light.range <= 0.0F)) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::invalid_light_range, index, light.source_index,
+                              "point and spot lights require a positive finite range");
+        }
+
+        if (light.type == LightingShadowPolicyLightType::spot &&
+            (!std::isfinite(light.inner_cone_radians) || !std::isfinite(light.outer_cone_radians) ||
+             light.inner_cone_radians < 0.0F || light.outer_cone_radians <= light.inner_cone_radians)) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::invalid_spot_cone, index, light.source_index,
+                              "spot lights require finite cone angles with outer greater than inner");
+        }
+
+        if (light.casts_shadows) {
+            ++shadowed_count;
+            if (light.type == LightingShadowPolicyLightType::directional) {
+                ++directional_shadowed_count;
+            } else {
+                append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::unsupported_shadow_light_type, index,
+                                  light.source_index,
+                                  "shadow policy currently supports directional shadow lights only");
+            }
+        }
+    }
+    plan.shadowed_light_count = shadowed_count;
+
+    if (shadowed_count > desc.max_shadowed_light_count) {
+        append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::too_many_shadowed_lights, 0,
+                          invalid_shadow_map_light_index(),
+                          "lighting policy shadowed light count exceeds the configured budget");
+    }
+
+    if (shadowed_count != 0) {
+        if (!is_valid_shadow_extent(desc.shadow_tile_extent)) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::invalid_shadow_tile_extent, 0,
+                              invalid_shadow_map_light_index(), "shadow policy tile extent must be non-zero");
+        }
+        if (!is_supported_shadow_depth_format(desc.shadow_depth_format)) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::unsupported_depth_format, 0,
+                              invalid_shadow_map_light_index(), "shadow policy requires depth24_stencil8");
+        }
+        if (desc.directional_cascade_count < 1 || desc.directional_cascade_count > 8) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::invalid_directional_cascade_count, 0,
+                              invalid_shadow_map_light_index(),
+                              "directional shadow cascade count must be between 1 and 8");
+        }
+        if (desc.caster_count == 0) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::missing_shadow_casters, 0,
+                              invalid_shadow_map_light_index(), "shadow policy requires at least one caster");
+        }
+        if (desc.receiver_count == 0) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::missing_shadow_receivers, 0,
+                              invalid_shadow_map_light_index(), "shadow policy requires at least one receiver");
+        }
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    plan.directional_cascade_count = directional_shadowed_count == 0 ? 0 : desc.directional_cascade_count;
+    if (directional_shadowed_count != 0) {
+        const auto atlas_width = static_cast<std::uint64_t>(desc.shadow_tile_extent.width) *
+                                 static_cast<std::uint64_t>(desc.directional_cascade_count) *
+                                 static_cast<std::uint64_t>(directional_shadowed_count);
+        if (atlas_width > static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max())) {
+            append_diagnostic(plan, LightingShadowPolicyDiagnosticCode::shadow_atlas_extent_overflow, 0,
+                              invalid_shadow_map_light_index(), "shadow policy atlas width overflow");
+            return plan;
+        }
+        plan.shadow_atlas_extent = rhi::Extent2D{
+            .width = static_cast<std::uint32_t>(atlas_width),
+            .height = desc.shadow_tile_extent.height,
+        };
+    }
+
+    plan.light_rows.reserve(desc.lights.size());
+    std::uint32_t shadow_tile_offset = 0;
+    for (const auto& light : desc.lights) {
+        LightingShadowPolicyLightRow row{
+            .type = light.type,
+            .color = light.color,
+            .intensity = light.intensity,
+            .range = light.range,
+            .inner_cone_radians = light.inner_cone_radians,
+            .outer_cone_radians = light.outer_cone_radians,
+            .casts_shadows = light.casts_shadows,
+            .source_index = light.source_index,
+        };
+        if (light.casts_shadows && light.type == LightingShadowPolicyLightType::directional) {
+            row.shadow_cascade_count = desc.directional_cascade_count;
+            row.shadow_atlas_tile_offset_x = shadow_tile_offset;
+            shadow_tile_offset += desc.shadow_tile_extent.width * desc.directional_cascade_count;
+        }
+        plan.light_rows.push_back(row);
+    }
+    return plan;
+}
+
+bool has_lighting_shadow_policy_diagnostic(const LightingShadowPolicyPlan& plan,
+                                           LightingShadowPolicyDiagnosticCode code) noexcept {
+    return std::ranges::any_of(
+        plan.diagnostics, [code](const LightingShadowPolicyDiagnostic& diagnostic) { return diagnostic.code == code; });
+}
 
 ShadowMapPlan build_shadow_map_plan(const ShadowMapDesc& desc) {
     ShadowMapPlan plan;

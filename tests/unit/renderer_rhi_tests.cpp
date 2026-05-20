@@ -5311,6 +5311,51 @@ MK_TEST("sprite batch planner diagnoses invalid texture metadata as untextured f
     MK_REQUIRE(plan.diagnostics[1].sprite_index == 1);
 }
 
+MK_TEST("lighting shadow policy reports invalid light parameters") {
+    const std::array<mirakana::LightingShadowPolicyLightDesc, 4> lights{{
+        mirakana::LightingShadowPolicyLightDesc{
+            .type = mirakana::LightingShadowPolicyLightType::unknown,
+            .source_index = 1,
+        },
+        mirakana::LightingShadowPolicyLightDesc{
+            .type = mirakana::LightingShadowPolicyLightType::directional,
+            .color = mirakana::Vec3{.x = -1.0F, .y = 1.0F, .z = 1.0F},
+            .intensity = -0.5F,
+            .source_index = 2,
+        },
+        mirakana::LightingShadowPolicyLightDesc{
+            .type = mirakana::LightingShadowPolicyLightType::point,
+            .range = 0.0F,
+            .source_index = 3,
+        },
+        mirakana::LightingShadowPolicyLightDesc{
+            .type = mirakana::LightingShadowPolicyLightType::spot,
+            .range = 8.0F,
+            .inner_cone_radians = 0.75F,
+            .outer_cone_radians = 0.25F,
+            .source_index = 4,
+        },
+    }};
+
+    const auto plan = mirakana::plan_lighting_shadow_policy(mirakana::LightingShadowPolicyDesc{
+        .lights = lights,
+        .max_light_count = 8,
+    });
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.light_rows.empty());
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::invalid_light_type));
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::invalid_light_color));
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::invalid_light_intensity));
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::invalid_light_range));
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::invalid_spot_cone));
+}
+
 MK_TEST("shadow map foundation builds a deterministic directional plan") {
     const auto plan = mirakana::build_shadow_map_plan(mirakana::ShadowMapDesc{
         .light = mirakana::ShadowMapLightDesc{.type = mirakana::ShadowMapLightType::directional, .casts_shadows = true},

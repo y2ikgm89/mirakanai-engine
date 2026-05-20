@@ -40,7 +40,7 @@ Close the completed modern materials active pointer and select `renderer-lightin
 
 ## Phase 1: Light List and Shadow Policy Diagnostics
 
-**Status:** Planned.
+**Status:** Completed.
 
 ### Goal
 
@@ -83,3 +83,9 @@ Promote only the backend-specific lighting/shadow execution evidence that has fr
 ## Validation Evidence
 
 - Phase 0 started after `renderer-modern-materials-v1` completed through PR #148, merge commit `d50e2055c77ea9eca1d99f21e86687a91e8f2572`, hosted PR Gate, Windows MSVC, Full Repository Static Analysis shards, Linux, CodeQL, iOS, and macOS Metal CMake checks, plus local full `tools/validate.ps1` evidence while `unsupportedProductionGaps = []` stayed empty.
+- Phase 0 pointer sync selected this plan in `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/superpowers/master-plans/production-completion-v1/01-one-dot-zero-readiness-ledger.md`, and `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`; composed `engine/agent/manifest.json` reports `currentActivePlan=docs/superpowers/plans/2026-05-21-renderer-lighting-shadows-v1.md`, `recommendedNextPlan.id=renderer-lighting-shadows-v1`, and `unsupportedProductionGaps = []`.
+- Phase 0 static evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` passed with `unsupported_gaps=0`.
+- Phase 1 RED evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_tests` failed before implementation because `plan_scene_lighting_shadow_policy`, `SceneLightingShadowPolicyDesc`, `LightingShadowPolicyPlan`, `LightingShadowPolicyLightType`, and `has_lighting_shadow_policy_diagnostic` did not exist.
+- Phase 1 implementation adds backend-neutral `LightingShadowPolicyDesc`, `LightingShadowPolicyPlan`, `LightingShadowPolicyLightRow`, `LightingShadowPolicyDiagnostic`, and `plan_lighting_shadow_policy` in `MK_renderer`, plus `SceneLightingShadowPolicyDesc` and `plan_scene_lighting_shadow_policy` in `MK_scene_renderer` for converting `SceneRenderPacket` light rows into deterministic light-count, directional/point/spot, shadowed-light, atlas/cascade, and fail-closed diagnostic rows. The contract is value-only and does not render additional lights, mutate packages, expose native/RHI handles, or claim Vulkan/Metal parity.
+- Phase 1 focused evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests MK_scene_renderer_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_tests|MK_scene_renderer_tests"`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/renderer/src/shadow_map.cpp,engine/scene_renderer/src/scene_renderer.cpp,tests/unit/renderer_rhi_tests.cpp,tests/unit/scene_renderer_tests.cpp` passed.
+- Phase 1 full gate evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 67/67 CTest tests and `production-readiness-audit: unsupported_gaps=0`; Apple/Metal host diagnostics remain host-gated/diagnostic-only as before.

@@ -17,6 +17,26 @@ namespace mirakana {
 
 enum class ShadowMapLightType : std::uint8_t { unknown = 0, directional, point, spot };
 
+enum class LightingShadowPolicyLightType : std::uint8_t { unknown = 0, directional, point, spot };
+
+enum class LightingShadowPolicyDiagnosticCode : std::uint8_t {
+    none = 0,
+    too_many_lights,
+    too_many_shadowed_lights,
+    invalid_light_type,
+    invalid_light_color,
+    invalid_light_intensity,
+    invalid_light_range,
+    invalid_spot_cone,
+    unsupported_shadow_light_type,
+    invalid_shadow_tile_extent,
+    invalid_directional_cascade_count,
+    shadow_atlas_extent_overflow,
+    unsupported_depth_format,
+    missing_shadow_casters,
+    missing_shadow_receivers,
+};
+
 enum class ShadowMapDiagnosticCode : std::uint8_t {
     none = 0,
     missing_light,
@@ -85,6 +105,65 @@ struct ShadowMapLightDesc {
     ShadowMapLightType type{ShadowMapLightType::unknown};
     bool casts_shadows{false};
     std::uint32_t source_index{invalid_shadow_map_light_index()};
+};
+
+struct LightingShadowPolicyLightDesc {
+    LightingShadowPolicyLightType type{LightingShadowPolicyLightType::unknown};
+    Vec3 color{.x = 1.0F, .y = 1.0F, .z = 1.0F};
+    float intensity{1.0F};
+    float range{10.0F};
+    float inner_cone_radians{0.0F};
+    float outer_cone_radians{0.0F};
+    bool casts_shadows{false};
+    std::uint32_t source_index{invalid_shadow_map_light_index()};
+};
+
+struct LightingShadowPolicyDesc {
+    std::span<const LightingShadowPolicyLightDesc> lights;
+    std::uint32_t max_light_count{8};
+    std::uint32_t max_shadowed_light_count{1};
+    rhi::Extent2D shadow_tile_extent;
+    rhi::Format shadow_depth_format{rhi::Format::depth24_stencil8};
+    std::uint32_t directional_cascade_count{1};
+    std::uint32_t caster_count{0};
+    std::uint32_t receiver_count{0};
+};
+
+struct LightingShadowPolicyLightRow {
+    LightingShadowPolicyLightType type{LightingShadowPolicyLightType::unknown};
+    Vec3 color{.x = 1.0F, .y = 1.0F, .z = 1.0F};
+    float intensity{1.0F};
+    float range{10.0F};
+    float inner_cone_radians{0.0F};
+    float outer_cone_radians{0.0F};
+    bool casts_shadows{false};
+    std::uint32_t source_index{invalid_shadow_map_light_index()};
+    std::uint32_t shadow_cascade_count{0};
+    std::uint32_t shadow_atlas_tile_offset_x{0};
+};
+
+struct LightingShadowPolicyDiagnostic {
+    LightingShadowPolicyDiagnosticCode code{LightingShadowPolicyDiagnosticCode::none};
+    std::size_t light_index{0};
+    std::uint32_t source_index{invalid_shadow_map_light_index()};
+    std::string message;
+};
+
+struct LightingShadowPolicyPlan {
+    std::uint32_t light_count{0};
+    std::uint32_t directional_light_count{0};
+    std::uint32_t point_light_count{0};
+    std::uint32_t spot_light_count{0};
+    std::uint32_t shadowed_light_count{0};
+    std::uint32_t directional_cascade_count{0};
+    rhi::Extent2D shadow_tile_extent{};
+    rhi::Extent2D shadow_atlas_extent{};
+    std::vector<LightingShadowPolicyLightRow> light_rows;
+    std::vector<LightingShadowPolicyDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
 };
 
 struct ShadowMapDesc {
@@ -231,6 +310,9 @@ struct DirectionalShadowLightSpacePlan {
     }
 };
 
+[[nodiscard]] LightingShadowPolicyPlan plan_lighting_shadow_policy(const LightingShadowPolicyDesc& desc);
+[[nodiscard]] bool has_lighting_shadow_policy_diagnostic(const LightingShadowPolicyPlan& plan,
+                                                         LightingShadowPolicyDiagnosticCode code) noexcept;
 [[nodiscard]] ShadowMapPlan build_shadow_map_plan(const ShadowMapDesc& desc);
 [[nodiscard]] bool has_shadow_map_diagnostic(const ShadowMapPlan& plan, ShadowMapDiagnosticCode code) noexcept;
 [[nodiscard]] ShadowReceiverPlan build_shadow_receiver_plan(const ShadowReceiverDesc& desc);
