@@ -443,6 +443,15 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_navigation_navmesh_polygons",
             "gameplay_systems_navigation_navmesh_dynamic_obstacles",
             "gameplay_systems_navigation_navmesh_total_cost",
+            "gameplay_systems_navigation_crowd_status",
+            "gameplay_systems_navigation_crowd_diagnostic",
+            "gameplay_systems_navigation_crowd_rows",
+            "gameplay_systems_navigation_crowd_source_order_ready",
+            "gameplay_systems_navigation_crowd_agents",
+            "gameplay_systems_navigation_crowd_route_successes",
+            "gameplay_systems_navigation_crowd_avoidance_successes",
+            "gameplay_systems_navigation_crowd_applied_neighbors",
+            "gameplay_systems_navigation_crowd_dynamic_obstacles",
             "gameplay_systems_local_avoidance_status",
             "gameplay_systems_local_avoidance_diagnostic",
             "gameplay_systems_local_avoidance_steps",
@@ -481,6 +490,33 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_total_cost=[1-9]\d*\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh non-zero cost."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_status=success\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove successful gameplay navmesh crowd plan."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay navmesh crowd diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_rows=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact gameplay navmesh crowd row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_source_order_ready=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove deterministic gameplay navmesh crowd source ordering."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_agents=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact gameplay navmesh crowd agent count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_route_successes=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh crowd route successes."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_avoidance_successes=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh crowd avoidance successes."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_applied_neighbors=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh crowd applied neighbors."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_dynamic_obstacles=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh crowd dynamic obstacle propagation."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_local_avoidance_status=success\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove successful gameplay local avoidance."
