@@ -35,6 +35,7 @@ if ($geNavigationModule[0].status -ne "implemented-production-path-planner") {
 foreach ($header in @(
     "engine/navigation/include/mirakana/navigation/navigation_path_planner.hpp",
     "engine/navigation/include/mirakana/navigation/navigation_replan.hpp",
+    "engine/navigation/include/mirakana/navigation/navigation_crowd.hpp",
     "engine/navigation/include/mirakana/navigation/navigation_navmesh.hpp",
     "engine/navigation/include/mirakana/navigation/path_smoothing.hpp",
     "engine/navigation/include/mirakana/navigation/local_avoidance.hpp"
@@ -51,6 +52,8 @@ foreach ($needle in @(
     "plan_navigation_grid_agent_path",
     "NavigationNavmeshPathRequest",
     "plan_navigation_navmesh_path",
+    "NavigationCrowdPlanRequest",
+    "plan_navigation_navmesh_crowd",
     "navmesh",
     "crowd",
     "scene/physics integration",
@@ -63,7 +66,7 @@ foreach ($needle in @(
 if (-not $engine.gameCodeGuidance.PSObject.Properties.Name.Contains("currentNavigation")) {
     Write-Error "engine manifest gameCodeGuidance must declare currentNavigation"
 }
-foreach ($needle in @("NavigationGridAgentPathRequest", "NavigationGridAgentPathPlan", "plan_navigation_grid_agent_path", "NavigationNavmeshPathRequest", "plan_navigation_navmesh_path", "navmesh", "crowd", "scene/physics integration", "editor visualization")) {
+foreach ($needle in @("NavigationGridAgentPathRequest", "NavigationGridAgentPathPlan", "plan_navigation_grid_agent_path", "NavigationNavmeshPathRequest", "plan_navigation_navmesh_path", "NavigationCrowdPlanRequest", "plan_navigation_navmesh_crowd", "navmesh", "crowd", "scene/physics integration", "editor visualization")) {
     if (-not ([string]$engine.gameCodeGuidance.currentNavigation).Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentNavigation missing $needle"
     }

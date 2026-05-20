@@ -1187,6 +1187,8 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "Navi
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "plan_navigation_grid_agent_path" "navigation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "NavigationNavmeshPathRequest" "navigation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "plan_navigation_navmesh_path" "navigation game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "NavigationCrowdPlanRequest" "navigation game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "plan_navigation_navmesh_crowd" "navigation game guidance"
 foreach ($navigationGuidance in @(
     "docs/architecture.md",
     "docs/roadmap.md",
@@ -1207,6 +1209,8 @@ foreach ($navigationGuidance in @(
     Assert-ContainsText $navigationText "plan_navigation_grid_agent_path" $navigationGuidance
     Assert-ContainsText $navigationText "NavigationNavmeshPathRequest" $navigationGuidance
     Assert-ContainsText $navigationText "plan_navigation_navmesh_path" $navigationGuidance
+    Assert-ContainsText $navigationText "NavigationCrowdPlanRequest" $navigationGuidance
+    Assert-ContainsText $navigationText "plan_navigation_navmesh_crowd" $navigationGuidance
     Assert-ContainsText $navigationText "navmesh" $navigationGuidance
     Assert-ContainsText $navigationText "crowd" $navigationGuidance
     Assert-ContainsText $navigationText "scene/physics" $navigationGuidance

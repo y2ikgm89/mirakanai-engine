@@ -5,6 +5,7 @@
 
 #include "mirakana/navigation/local_avoidance.hpp"
 #include "mirakana/navigation/navigation_agent.hpp"
+#include "mirakana/navigation/navigation_crowd.hpp"
 #include "mirakana/navigation/navigation_grid.hpp"
 #include "mirakana/navigation/navigation_navmesh.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
@@ -446,6 +447,255 @@ MK_TEST("navigation navmesh reports deterministic diagnostics for invalid scene 
     MK_REQUIRE(blocked_start.diagnostic == mirakana::NavigationNavmeshPathDiagnostic::blocked_start);
     MK_REQUIRE(blocked_start.dynamic_obstacle_count == 1U);
     MK_REQUIRE(blocked_start.failing_polygon == 1U);
+}
+
+MK_TEST("navigation navmesh crowd plans agents deterministically with avoidance and dynamic obstacles") {
+    const std::vector<mirakana::NavigationNavmeshPolygon> polygons{
+        mirakana::NavigationNavmeshPolygon{.id = 1U,
+                                           .scene_ref = "scene.start",
+                                           .center = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 2U,
+                                           .scene_ref = "scene.direct",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 3U,
+                                           .scene_ref = "scene.goal",
+                                           .center = mirakana::NavigationPoint2{.x = 2.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 4U,
+                                           .scene_ref = "scene.detour",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 1.0F},
+                                           .traversal_cost = 1U},
+    };
+    const std::vector<mirakana::NavigationNavmeshPortal> portals{
+        mirakana::NavigationNavmeshPortal{.from = 1U, .to = 2U, .cost = 1U, .bidirectional = true},
+        mirakana::NavigationNavmeshPortal{.from = 2U, .to = 3U, .cost = 1U, .bidirectional = true},
+        mirakana::NavigationNavmeshPortal{.from = 1U, .to = 4U, .cost = 1U, .bidirectional = true},
+        mirakana::NavigationNavmeshPortal{.from = 4U, .to = 3U, .cost = 1U, .bidirectional = true},
+    };
+    const std::vector<mirakana::NavigationNavmeshDynamicObstacle> obstacles{
+        mirakana::NavigationNavmeshDynamicObstacle{
+            .id = 77U, .blocked_polygon = 2U, .scene_ref = "scene.crate", .enabled = true},
+    };
+    const std::vector<mirakana::NavigationCrowdAgentDesc> agents{
+        mirakana::NavigationCrowdAgentDesc{
+            .id = 20U,
+            .position = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+            .start_polygon = 1U,
+            .goal_polygon = 3U,
+            .radius = 0.5F,
+            .config =
+                mirakana::NavigationAgentConfig{.max_speed = 2.0F, .slowing_radius = 1.0F, .arrival_radius = 0.01F},
+            .desired_velocity = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+        },
+        mirakana::NavigationCrowdAgentDesc{
+            .id = 10U,
+            .position = mirakana::NavigationPoint2{.x = 0.25F, .y = 0.0F},
+            .start_polygon = 1U,
+            .goal_polygon = 3U,
+            .radius = 0.5F,
+            .config =
+                mirakana::NavigationAgentConfig{.max_speed = 2.0F, .slowing_radius = 1.0F, .arrival_radius = 0.01F},
+            .desired_velocity = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+        },
+    };
+
+    const auto result = mirakana::plan_navigation_navmesh_crowd(mirakana::NavigationCrowdPlanRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .dynamic_obstacles = obstacles,
+        .agents = agents,
+        .max_agents = 4U,
+        .separation_weight = 2.0F,
+        .prediction_time_seconds = 0.0F,
+    });
+    const auto replay = mirakana::plan_navigation_navmesh_crowd(mirakana::NavigationCrowdPlanRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .dynamic_obstacles = obstacles,
+        .agents = agents,
+        .max_agents = 4U,
+        .separation_weight = 2.0F,
+        .prediction_time_seconds = 0.0F,
+    });
+
+    MK_REQUIRE(result.status == mirakana::NavigationCrowdPlanStatus::success);
+    MK_REQUIRE(result.diagnostic == mirakana::NavigationCrowdPlanDiagnostic::none);
+    MK_REQUIRE(result.rows.size() == 2U);
+    MK_REQUIRE(result.planned_agent_count == 2U);
+    MK_REQUIRE(result.route_success_count == 2U);
+    MK_REQUIRE(result.avoidance_success_count == 2U);
+    MK_REQUIRE(result.applied_neighbor_count == 2U);
+    MK_REQUIRE(result.dynamic_obstacle_count == 2U);
+    MK_REQUIRE(result.rows[0].agent_id == 10U);
+    MK_REQUIRE(result.rows[0].source_index == 1U);
+    MK_REQUIRE(result.rows[1].agent_id == 20U);
+    MK_REQUIRE(result.rows[1].source_index == 0U);
+
+    for (const mirakana::NavigationCrowdAgentPlanRow& row : result.rows) {
+        MK_REQUIRE(row.status == mirakana::NavigationCrowdPlanStatus::success);
+        MK_REQUIRE(row.route_status == mirakana::NavigationNavmeshPathStatus::success);
+        MK_REQUIRE(row.route_diagnostic == mirakana::NavigationNavmeshPathDiagnostic::none);
+        MK_REQUIRE(row.avoidance_status == mirakana::NavigationLocalAvoidanceStatus::success);
+        MK_REQUIRE(row.avoidance_diagnostic == mirakana::NavigationLocalAvoidanceDiagnostic::none);
+        MK_REQUIRE(row.neighbor_count == 1U);
+        MK_REQUIRE(row.applied_neighbor_count == 1U);
+        MK_REQUIRE(row.dynamic_obstacle_count == 1U);
+        MK_REQUIRE(row.route_cost == 4U);
+        MK_REQUIRE(row.desired_velocity == (mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F}));
+        MK_REQUIRE(row.adjusted_velocity != row.desired_velocity);
+        MK_REQUIRE(row.planned_state.status == mirakana::NavigationAgentStatus::moving);
+        MK_REQUIRE(row.planned_state.path.size() == 3U);
+    }
+
+    MK_REQUIRE(replay.status == result.status);
+    MK_REQUIRE(replay.planned_agent_count == result.planned_agent_count);
+    MK_REQUIRE(replay.route_success_count == result.route_success_count);
+    MK_REQUIRE(replay.avoidance_success_count == result.avoidance_success_count);
+    MK_REQUIRE(replay.applied_neighbor_count == result.applied_neighbor_count);
+    MK_REQUIRE(replay.dynamic_obstacle_count == result.dynamic_obstacle_count);
+    MK_REQUIRE(replay.rows.size() == result.rows.size());
+    MK_REQUIRE(replay.rows[0].adjusted_velocity == result.rows[0].adjusted_velocity);
+    MK_REQUIRE(replay.rows[1].adjusted_velocity == result.rows[1].adjusted_velocity);
+}
+
+MK_TEST("navigation navmesh crowd rejects invalid duplicate and over-budget agents") {
+    const std::vector<mirakana::NavigationNavmeshPolygon> polygons{
+        mirakana::NavigationNavmeshPolygon{.id = 1U,
+                                           .scene_ref = "scene.start",
+                                           .center = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 2U,
+                                           .scene_ref = "scene.goal",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+    };
+    const std::vector<mirakana::NavigationNavmeshPortal> portals{
+        mirakana::NavigationNavmeshPortal{.from = 1U, .to = 2U, .cost = 1U, .bidirectional = true},
+    };
+    const mirakana::NavigationCrowdAgentDesc base_agent{
+        .id = 10U,
+        .position = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+        .start_polygon = 1U,
+        .goal_polygon = 2U,
+        .radius = 0.5F,
+        .config = mirakana::NavigationAgentConfig{.max_speed = 2.0F, .slowing_radius = 1.0F, .arrival_radius = 0.01F},
+        .desired_velocity = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+    };
+
+    const auto empty = mirakana::plan_navigation_navmesh_crowd(mirakana::NavigationCrowdPlanRequest{
+        .polygons = polygons,
+        .portals = portals,
+    });
+    MK_REQUIRE(empty.status == mirakana::NavigationCrowdPlanStatus::invalid_request);
+    MK_REQUIRE(empty.diagnostic == mirakana::NavigationCrowdPlanDiagnostic::empty_agents);
+    MK_REQUIRE(empty.rows.empty());
+
+    std::vector<mirakana::NavigationCrowdAgentDesc> duplicate_agents{base_agent, base_agent};
+    const auto duplicate = mirakana::plan_navigation_navmesh_crowd(mirakana::NavigationCrowdPlanRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .agents = duplicate_agents,
+    });
+    MK_REQUIRE(duplicate.status == mirakana::NavigationCrowdPlanStatus::duplicate_agent);
+    MK_REQUIRE(duplicate.diagnostic == mirakana::NavigationCrowdPlanDiagnostic::duplicate_agent_id);
+    MK_REQUIRE(duplicate.failing_agent == 10U);
+    MK_REQUIRE(duplicate.failing_source_index == 1U);
+    MK_REQUIRE(duplicate.rows.empty());
+
+    auto invalid_agent = base_agent;
+    invalid_agent.radius = -1.0F;
+    const std::vector<mirakana::NavigationCrowdAgentDesc> invalid_agents{invalid_agent};
+    const auto invalid = mirakana::plan_navigation_navmesh_crowd(mirakana::NavigationCrowdPlanRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .agents = invalid_agents,
+    });
+    MK_REQUIRE(invalid.status == mirakana::NavigationCrowdPlanStatus::invalid_agent);
+    MK_REQUIRE(invalid.diagnostic == mirakana::NavigationCrowdPlanDiagnostic::invalid_agent_radius);
+    MK_REQUIRE(invalid.failing_agent == 10U);
+    MK_REQUIRE(invalid.failing_source_index == 0U);
+    MK_REQUIRE(invalid.rows.empty());
+
+    auto second_agent = base_agent;
+    second_agent.id = 20U;
+    const std::vector<mirakana::NavigationCrowdAgentDesc> budget_agents{base_agent, second_agent};
+    const auto over_budget = mirakana::plan_navigation_navmesh_crowd(mirakana::NavigationCrowdPlanRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .agents = budget_agents,
+        .max_agents = 1U,
+    });
+    MK_REQUIRE(over_budget.status == mirakana::NavigationCrowdPlanStatus::agent_budget_exceeded);
+    MK_REQUIRE(over_budget.diagnostic == mirakana::NavigationCrowdPlanDiagnostic::agent_budget_exceeded);
+    MK_REQUIRE(over_budget.failing_agent == 20U);
+    MK_REQUIRE(over_budget.failing_source_index == 1U);
+    MK_REQUIRE(over_budget.rows.empty());
+}
+
+MK_TEST("navigation navmesh crowd reports route and avoidance diagnostics") {
+    const std::vector<mirakana::NavigationNavmeshPolygon> polygons{
+        mirakana::NavigationNavmeshPolygon{.id = 1U,
+                                           .scene_ref = "scene.start",
+                                           .center = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 2U,
+                                           .scene_ref = "scene.goal",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+    };
+    const std::vector<mirakana::NavigationNavmeshPortal> portals{
+        mirakana::NavigationNavmeshPortal{.from = 1U, .to = 2U, .cost = 1U, .bidirectional = true},
+    };
+    const std::vector<mirakana::NavigationNavmeshDynamicObstacle> obstacles{
+        mirakana::NavigationNavmeshDynamicObstacle{
+            .id = 7U, .blocked_polygon = 1U, .scene_ref = "scene.blocker", .enabled = true},
+    };
+    const std::vector<mirakana::NavigationCrowdAgentDesc> agents{
+        mirakana::NavigationCrowdAgentDesc{
+            .id = 10U,
+            .position = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+            .start_polygon = 1U,
+            .goal_polygon = 2U,
+            .radius = 0.5F,
+            .config =
+                mirakana::NavigationAgentConfig{.max_speed = 2.0F, .slowing_radius = 1.0F, .arrival_radius = 0.01F},
+            .desired_velocity = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+        },
+    };
+
+    const auto route_failed = mirakana::plan_navigation_navmesh_crowd(mirakana::NavigationCrowdPlanRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .dynamic_obstacles = obstacles,
+        .agents = agents,
+    });
+    MK_REQUIRE(route_failed.status == mirakana::NavigationCrowdPlanStatus::route_failed);
+    MK_REQUIRE(route_failed.diagnostic == mirakana::NavigationCrowdPlanDiagnostic::route_failed);
+    MK_REQUIRE(route_failed.rows.size() == 1U);
+    MK_REQUIRE(route_failed.rows[0].status == mirakana::NavigationCrowdPlanStatus::route_failed);
+    MK_REQUIRE(route_failed.rows[0].route_status == mirakana::NavigationNavmeshPathStatus::blocked_endpoint);
+    MK_REQUIRE(route_failed.rows[0].route_diagnostic == mirakana::NavigationNavmeshPathDiagnostic::blocked_start);
+    MK_REQUIRE(route_failed.rows[0].dynamic_obstacle_count == 1U);
+    MK_REQUIRE(route_failed.planned_agent_count == 0U);
+
+    const auto avoidance_failed = mirakana::plan_navigation_navmesh_crowd(mirakana::NavigationCrowdPlanRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .agents = agents,
+        .epsilon = 0.0F,
+    });
+    MK_REQUIRE(avoidance_failed.status == mirakana::NavigationCrowdPlanStatus::avoidance_failed);
+    MK_REQUIRE(avoidance_failed.diagnostic == mirakana::NavigationCrowdPlanDiagnostic::avoidance_failed);
+    MK_REQUIRE(avoidance_failed.rows.size() == 1U);
+    MK_REQUIRE(avoidance_failed.rows[0].status == mirakana::NavigationCrowdPlanStatus::avoidance_failed);
+    MK_REQUIRE(avoidance_failed.rows[0].route_status == mirakana::NavigationNavmeshPathStatus::success);
+    MK_REQUIRE(avoidance_failed.rows[0].avoidance_status == mirakana::NavigationLocalAvoidanceStatus::invalid_request);
+    MK_REQUIRE(avoidance_failed.rows[0].avoidance_diagnostic ==
+               mirakana::NavigationLocalAvoidanceDiagnostic::invalid_epsilon);
+    MK_REQUIRE(avoidance_failed.planned_agent_count == 0U);
+    MK_REQUIRE(avoidance_failed.route_success_count == 1U);
 }
 
 MK_TEST("navigation grid path smoothing preserves direct paths") {
