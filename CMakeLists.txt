@@ -599,6 +599,7 @@ if(BUILD_TESTING)
         target_include_directories(MK_d3d12_rhi_tests PRIVATE tests)
         MK_apply_common_target_options(MK_d3d12_rhi_tests)
         add_test(NAME MK_d3d12_rhi_tests COMMAND MK_d3d12_rhi_tests)
+        set_tests_properties(MK_d3d12_rhi_tests PROPERTIES RUN_SERIAL TRUE)
     endif()
 
     if((APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") OR (UNIX AND NOT APPLE))

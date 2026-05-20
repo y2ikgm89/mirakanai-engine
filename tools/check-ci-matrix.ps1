@@ -154,6 +154,11 @@ function Assert-ValidationTierSelection {
 
 $validateScript = Read-RequiredText "tools/validate.ps1"
 Assert-ContainsText $validateScript "check-ci-matrix.ps1" "tools/validate.ps1 default validation hook"
+Assert-ContainsAll $validateScript @(
+    "[switch]`$StaticOnly",
+    "[switch]`$SkipStaticChecks",
+    "validate: -StaticOnly and -SkipStaticChecks cannot be combined"
+) "tools/validate.ps1 static/build split contract"
 
 $cpp23EvaluationScript = Read-RequiredText "tools/evaluate-cpp23.ps1"
 Assert-ContainsAll $cpp23EvaluationScript @(
@@ -373,8 +378,8 @@ Assert-ContainsAll $windowsJob @(
     '${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-',
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
-    "run: ./tools/validate.ps1",
-    'if: ${{ always() && !cancelled() }}',
+    "run: ./tools/validate.ps1 -SkipStaticChecks",
+    'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: windows-test-logs",
     "retention-days: 14",
@@ -417,7 +422,7 @@ Assert-ContainsAll $windowsCpp23Job @(
     "restore-cpp23-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/evaluate-cpp23.ps1 -Release",
-    'if: ${{ always() && !cancelled() }}',
+    'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: windows-cpp23-test-logs",
     "retention-days: 14",
@@ -438,17 +443,15 @@ $agentStaticJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "
 Assert-ContainsAll $agentStaticJob @(
     "name: Agent Static Guards",
     "needs: changes",
-    "if: github.event_name == 'pull_request'",
-    "runs-on: ubuntu-latest",
+    "runs-on: windows-2025-vs2026",
     "timeout-minutes: 20",
     $checkoutActionRef,
     "persist-credentials: false",
     "fetch-depth: 0",
+    'if: ${{ github.event_name == ''pull_request'' }}',
     'git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}',
-    "run: ./tools/check-agents.ps1",
-    "run: ./tools/check-json-contracts.ps1",
-    "run: ./tools/check-ai-integration.ps1",
-    "run: ./tools/check-ci-matrix.ps1"
+    "Run static validation",
+    "run: ./tools/validate.ps1 -StaticOnly -StaticJobs 1"
 ) ".github/workflows/validate.yml agent-static job"
 
 $linuxJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux" -Label ".github/workflows/validate.yml"
@@ -487,6 +490,7 @@ Assert-ContainsAll $linuxJob @(
     "Show ccache stats",
     "ccache --show-stats",
     'if: ${{ always() && !cancelled() }}',
+    'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: linux-test-logs",
     "retention-days: 14",
@@ -531,6 +535,7 @@ Assert-ContainsAll $linuxCoverageJob @(
     "Show ccache stats",
     "ccache --show-stats",
     'if: ${{ always() && !cancelled() }}',
+    'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: linux-coverage",
     "retention-days: 14",
@@ -576,6 +581,7 @@ Assert-ContainsAll $sanitizerJob @(
     "Show ccache stats",
     "ccache --show-stats",
     'if: ${{ always() && !cancelled() }}',
+    'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: linux-sanitizer-test-logs",
     "retention-days: 14",
@@ -619,6 +625,7 @@ Assert-ContainsAll $macosJob @(
     "Show ccache stats",
     "ccache --show-stats",
     'if: ${{ always() && !cancelled() }}',
+    'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: macos-test-logs",
     "retention-days: 14",
@@ -670,6 +677,7 @@ Assert-ContainsAll $staticAnalysisJob @(
     "Show ccache stats",
     "ccache --show-stats",
     'if: ${{ always() && !cancelled() }}',
+    'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: static-analysis-tidy-logs",
     "retention-days: 14",
@@ -742,7 +750,7 @@ Assert-ContainsAll $iosJob @(
     "xcrun simctl list runtimes",
     "./tools/check-mobile-packaging.ps1 -RequireApple",
     "./tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug -BootTimeoutSeconds 420 -BootAttempts 2",
-    'if: ${{ always() && !cancelled() }}',
+    'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: ios-simulator-build",
     "retention-days: 14",

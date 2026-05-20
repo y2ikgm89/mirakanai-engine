@@ -57,8 +57,7 @@ jobs:
   agent-static:
     name: Agent Static Guards
     needs: changes
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: windows-2025-vs2026
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -68,24 +67,13 @@ jobs:
           persist-credentials: false
 
       - name: Check PR diff whitespace
+        if: ${{ github.event_name == 'pull_request' }}
         shell: pwsh
         run: git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}
 
-      - name: Check agent file contracts
+      - name: Run static validation
         shell: pwsh
-        run: ./tools/check-agents.ps1
-
-      - name: Check JSON contracts
-        shell: pwsh
-        run: ./tools/check-json-contracts.ps1
-
-      - name: Check AI integration
-        shell: pwsh
-        run: ./tools/check-ai-integration.ps1
-
-      - name: Check CI matrix contract
-        shell: pwsh
-        run: ./tools/check-ci-matrix.ps1
+        run: ./tools/validate.ps1 -StaticOnly -StaticJobs 1
 
   windows:
     name: Windows MSVC
@@ -195,10 +183,10 @@ jobs:
 
       - name: Validate
         shell: pwsh
-        run: ./tools/validate.ps1
+        run: ./tools/validate.ps1 -SkipStaticChecks
 
       - name: Upload Windows test logs
-        if: ${{ always() && !cancelled() }}
+        if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-test-logs
@@ -323,7 +311,7 @@ jobs:
         run: ./tools/evaluate-cpp23.ps1 -Release
 
       - name: Upload Windows C++23 test logs
-        if: ${{ always() && !cancelled() }}
+        if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: windows-cpp23-test-logs
@@ -412,7 +400,7 @@ jobs:
         run: ccache --show-stats
 
       - name: Upload Linux test logs
-        if: ${{ always() && !cancelled() }}
+        if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-test-logs
@@ -485,7 +473,7 @@ jobs:
         run: ccache --show-stats
 
       - name: Upload Linux coverage logs
-        if: ${{ always() && !cancelled() }}
+        if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-coverage
@@ -563,7 +551,7 @@ jobs:
         run: ccache --show-stats
 
       - name: Upload sanitizer test logs
-        if: ${{ always() && !cancelled() }}
+        if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: linux-sanitizer-test-logs
@@ -641,7 +629,7 @@ jobs:
         run: ccache --show-stats
 
       - name: Upload static analysis logs
-        if: ${{ always() && !cancelled() }}
+        if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: static-analysis-tidy-logs
@@ -718,7 +706,7 @@ jobs:
         run: ccache --show-stats
 
       - name: Upload macOS test logs
-        if: ${{ always() && !cancelled() }}
+        if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: macos-test-logs
