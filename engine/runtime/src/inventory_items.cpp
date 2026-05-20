@@ -4,6 +4,7 @@
 #include "mirakana/runtime/inventory_items.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <ranges>
 #include <string>
@@ -70,6 +71,19 @@ struct RuntimeInventoryItemCount {
     return &(*recipe);
 }
 
+[[nodiscard]] const RuntimeConstructionPlacementSurfaceDesc*
+find_surface(const std::span<const RuntimeConstructionPlacementSurfaceDesc> surfaces,
+             const std::string_view surface_id) noexcept {
+    const auto surface =
+        std::ranges::find_if(surfaces, [surface_id](const RuntimeConstructionPlacementSurfaceDesc& row) {
+            return std::string_view{row.id} == surface_id;
+        });
+    if (surface == surfaces.end()) {
+        return nullptr;
+    }
+    return &(*surface);
+}
+
 [[nodiscard]] RuntimeInventoryItemCount* find_count(std::vector<RuntimeInventoryItemCount>& counts,
                                                     const std::string_view item_id) noexcept {
     const auto count = std::ranges::find_if(counts, [item_id](const RuntimeInventoryItemCount& candidate) {
@@ -131,6 +145,11 @@ void add_state_diagnostic(std::vector<RuntimeInventoryStateDiagnostic>& diagnost
 
 void add_transition_diagnostic(std::vector<RuntimeInventoryTransitionDiagnostic>& diagnostics,
                                RuntimeInventoryTransitionDiagnostic diagnostic) {
+    diagnostics.push_back(std::move(diagnostic));
+}
+
+void add_placement_diagnostic(std::vector<RuntimeConstructionPlacementDiagnostic>& diagnostics,
+                              RuntimeConstructionPlacementDiagnostic diagnostic) {
     diagnostics.push_back(std::move(diagnostic));
 }
 
@@ -294,6 +313,30 @@ make_inventory_state_from_counts(const RuntimeItemCatalogDocument& catalog,
         return 0U;
     }
     return count->quantity;
+}
+
+[[nodiscard]] bool has_provided_cost(const std::vector<RuntimeItemCostDesc>& provided_costs,
+                                     const std::string_view item_id, const std::uint32_t required_quantity) noexcept {
+    const auto cost = std::ranges::find_if(provided_costs, [item_id](const RuntimeItemCostDesc& candidate) {
+        return std::string_view{candidate.item_id} == item_id;
+    });
+    return cost != provided_costs.end() && cost->quantity >= required_quantity;
+}
+
+[[nodiscard]] bool is_finite_position(const float x, const float y, const float z) noexcept {
+    return std::isfinite(x) && std::isfinite(y) && std::isfinite(z);
+}
+
+[[nodiscard]] const RuntimeConstructionPlacementCellDesc*
+find_duplicate_cell(const std::vector<RuntimeConstructionPlacementCellDesc>& cells) noexcept {
+    for (auto first = cells.begin(); first != cells.end(); ++first) {
+        for (auto second = std::next(first); second != cells.end(); ++second) {
+            if (*first == *second) {
+                return &(*second);
+            }
+        }
+    }
+    return nullptr;
 }
 
 void add_quantity(std::vector<RuntimeInventoryItemCount>& counts, const std::string& item_id,
@@ -547,6 +590,179 @@ RuntimeInventoryTransitionResult advance_runtime_inventory_state(const RuntimeIt
                             RuntimeInventoryTransitionDiagnostic{
                                 .code = RuntimeInventoryTransitionDiagnosticCode::invalid_recipe,
                             });
+    return result;
+}
+
+RuntimeConstructionPlacementValidationResult
+validate_runtime_construction_placement(const RuntimeItemCatalogDocument& catalog,
+                                        const std::span<const RuntimeConstructionPlacementCandidateDesc> candidates,
+                                        const RuntimeConstructionPlacementValidationContext& context) {
+    RuntimeConstructionPlacementValidationResult result;
+    if (!is_catalog_runtime_usable(catalog)) {
+        result.succeeded = false;
+        add_placement_diagnostic(result.diagnostics,
+                                 RuntimeConstructionPlacementDiagnostic{
+                                     .code = RuntimeConstructionPlacementDiagnosticCode::invalid_catalog,
+                                 });
+        return result;
+    }
+
+    for (std::size_t index = 0; index < candidates.size(); ++index) {
+        const auto candidate_index = static_cast<std::uint32_t>(index);
+        const auto& candidate = candidates[index];
+        const auto* item = find_item(catalog, candidate.item_id);
+        if (item == nullptr) {
+            add_placement_diagnostic(result.diagnostics,
+                                     RuntimeConstructionPlacementDiagnostic{
+                                         .code = RuntimeConstructionPlacementDiagnosticCode::missing_item_reference,
+                                         .candidate_index = candidate_index,
+                                         .item_id = candidate.item_id,
+                                     });
+            continue;
+        }
+        if (item->placement_id.empty()) {
+            add_placement_diagnostic(result.diagnostics,
+                                     RuntimeConstructionPlacementDiagnostic{
+                                         .code = RuntimeConstructionPlacementDiagnosticCode::item_not_placeable,
+                                         .candidate_index = candidate_index,
+                                         .item_id = item->id,
+                                     });
+            continue;
+        }
+        if (!contains_string(context.supported_placement_ids, item->placement_id)) {
+            add_placement_diagnostic(result.diagnostics,
+                                     RuntimeConstructionPlacementDiagnostic{
+                                         .code = RuntimeConstructionPlacementDiagnosticCode::unsupported_placement_id,
+                                         .candidate_index = candidate_index,
+                                         .item_id = item->id,
+                                         .placement_id = item->placement_id,
+                                     });
+            continue;
+        }
+
+        const auto* surface = find_surface(context.supported_surfaces, candidate.surface_id);
+        if (surface == nullptr) {
+            add_placement_diagnostic(result.diagnostics,
+                                     RuntimeConstructionPlacementDiagnostic{
+                                         .code = RuntimeConstructionPlacementDiagnosticCode::missing_surface,
+                                         .candidate_index = candidate_index,
+                                         .item_id = item->id,
+                                         .placement_id = item->placement_id,
+                                         .surface_id = candidate.surface_id,
+                                     });
+            continue;
+        }
+        if (surface->placement_id != item->placement_id ||
+            !contains_string(context.supported_placement_ids, surface->placement_id)) {
+            add_placement_diagnostic(
+                result.diagnostics,
+                RuntimeConstructionPlacementDiagnostic{
+                    .code = RuntimeConstructionPlacementDiagnosticCode::unsupported_placement_surface,
+                    .candidate_index = candidate_index,
+                    .item_id = item->id,
+                    .placement_id = item->placement_id,
+                    .surface_id = surface->id,
+                });
+            continue;
+        }
+
+        bool candidate_valid = true;
+        if (!is_finite_position(candidate.grid_x, candidate.grid_y, candidate.grid_z)) {
+            add_placement_diagnostic(result.diagnostics,
+                                     RuntimeConstructionPlacementDiagnostic{
+                                         .code = RuntimeConstructionPlacementDiagnosticCode::invalid_grid_position,
+                                         .candidate_index = candidate_index,
+                                         .item_id = item->id,
+                                         .placement_id = item->placement_id,
+                                         .surface_id = surface->id,
+                                     });
+            candidate_valid = false;
+        }
+        if (!is_finite_position(candidate.world_x, candidate.world_y, candidate.world_z)) {
+            add_placement_diagnostic(result.diagnostics,
+                                     RuntimeConstructionPlacementDiagnostic{
+                                         .code = RuntimeConstructionPlacementDiagnosticCode::invalid_world_position,
+                                         .candidate_index = candidate_index,
+                                         .item_id = item->id,
+                                         .placement_id = item->placement_id,
+                                         .surface_id = surface->id,
+                                     });
+            candidate_valid = false;
+        }
+        if (candidate.footprint_width == 0U || candidate.footprint_height == 0U || candidate.footprint_depth == 0U) {
+            add_placement_diagnostic(result.diagnostics,
+                                     RuntimeConstructionPlacementDiagnostic{
+                                         .code = RuntimeConstructionPlacementDiagnosticCode::invalid_footprint,
+                                         .candidate_index = candidate_index,
+                                         .item_id = item->id,
+                                         .placement_id = item->placement_id,
+                                         .surface_id = surface->id,
+                                     });
+            candidate_valid = false;
+        }
+        if (const auto* duplicate_cell = find_duplicate_cell(candidate.occupied_cells); duplicate_cell != nullptr) {
+            add_placement_diagnostic(result.diagnostics,
+                                     RuntimeConstructionPlacementDiagnostic{
+                                         .code = RuntimeConstructionPlacementDiagnosticCode::duplicate_occupied_cell,
+                                         .candidate_index = candidate_index,
+                                         .item_id = item->id,
+                                         .placement_id = item->placement_id,
+                                         .surface_id = surface->id,
+                                         .cell_x = duplicate_cell->x,
+                                         .cell_y = duplicate_cell->y,
+                                         .cell_z = duplicate_cell->z,
+                                     });
+            candidate_valid = false;
+        }
+        for (const auto& required_cost : item->placement_costs) {
+            if (has_provided_cost(candidate.provided_costs, required_cost.item_id, required_cost.quantity)) {
+                continue;
+            }
+            add_placement_diagnostic(result.diagnostics,
+                                     RuntimeConstructionPlacementDiagnostic{
+                                         .code = RuntimeConstructionPlacementDiagnosticCode::missing_cost,
+                                         .candidate_index = candidate_index,
+                                         .item_id = item->id,
+                                         .referenced_item_id = required_cost.item_id,
+                                         .placement_id = item->placement_id,
+                                         .surface_id = surface->id,
+                                         .required_quantity = required_cost.quantity,
+                                     });
+            candidate_valid = false;
+        }
+
+        if (!candidate_valid) {
+            continue;
+        }
+
+        result.rows.push_back(RuntimeConstructionPlacementValidationRow{
+            .kind = RuntimeConstructionPlacementValidationRowKind::candidate,
+            .candidate_index = candidate_index,
+            .item_id = item->id,
+            .placement_id = item->placement_id,
+            .surface_id = surface->id,
+            .footprint_width = candidate.footprint_width,
+            .footprint_height = candidate.footprint_height,
+            .footprint_depth = candidate.footprint_depth,
+        });
+        for (const auto& cell : candidate.occupied_cells) {
+            result.rows.push_back(RuntimeConstructionPlacementValidationRow{
+                .kind = RuntimeConstructionPlacementValidationRowKind::occupied_cell,
+                .candidate_index = candidate_index,
+                .item_id = item->id,
+                .placement_id = item->placement_id,
+                .surface_id = surface->id,
+                .cell_x = cell.x,
+                .cell_y = cell.y,
+                .cell_z = cell.z,
+            });
+        }
+    }
+
+    if (!result.diagnostics.empty()) {
+        result.succeeded = false;
+        result.rows.clear();
+    }
     return result;
 }
 

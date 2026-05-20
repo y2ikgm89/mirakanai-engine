@@ -39,7 +39,7 @@ Select this plan as the next active developer-owned gameplay-family capability a
 
 ## Phase 1: Placement Rule Validation Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -70,3 +70,8 @@ Add reviewed scene update intent rows so game-owned code can convert accepted pl
 ## Validation Evidence
 
 - Phase 0 pointer sync selected this plan after `engine-inventory-items-crafting-v1` completed Runtime Inventory Items Crafting v1 through PR #140, merge commit `8812d00ee158450aa46fff2d5bc8909532b66a9d`, hosted PR Gate success, and full local validation while `unsupportedProductionGaps = []` stayed empty.
+- Phase 1 RED test evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_inventory_items_tests` failed before implementation because `RuntimeConstructionPlacementSurfaceDesc`, `RuntimeConstructionPlacementCandidateDesc`, `RuntimeConstructionPlacementValidationContext`, `RuntimeConstructionPlacementDiagnosticCode`, `RuntimeConstructionPlacementValidationRowKind`, and `validate_runtime_construction_placement` were missing.
+- Phase 1 implementation adds `RuntimeConstructionPlacementSurfaceDesc`, `RuntimeConstructionPlacementCellDesc`, `RuntimeConstructionPlacementCandidateDesc`, `RuntimeConstructionPlacementValidationContext`, `RuntimeConstructionPlacementDiagnostic`, `RuntimeConstructionPlacementValidationRow`, `RuntimeConstructionPlacementValidationResult`, and `validate_runtime_construction_placement` in `MK_runtime`. The validator returns deterministic candidate and occupied-cell rows only when all candidates pass, and otherwise fails closed for invalid catalogs, missing item references, non-placeable items, unsupported placement ids, missing/unsupported surfaces, non-finite grid/world positions, invalid footprints, duplicate occupied cells, and missing placement costs without scene mutation.
+- Phase 1 focused GREEN evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_inventory_items_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_inventory_items_tests"` passed.
+- Phase 1 agent-surface/static evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/inventory_items.cpp,tests/unit/runtime_inventory_items_tests.cpp`, and `git diff --check` passed.
+- Phase 1 full slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `production-readiness-audit: unsupported_gaps=0`, all 67 tests passing, and only diagnostic/host-gated Apple/Metal blockers on this Windows host.

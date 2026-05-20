@@ -793,6 +793,13 @@ foreach ($inventoryItemGuidanceNeedle in @(
     "RuntimeInventoryTransitionRequest",
     "RuntimeInventoryTransitionStatus",
     "advance_runtime_inventory_state",
+    "RuntimeConstructionPlacementSurfaceDesc",
+    "RuntimeConstructionPlacementCandidateDesc",
+    "RuntimeConstructionPlacementValidationContext",
+    "RuntimeConstructionPlacementValidationResult",
+    "RuntimeConstructionPlacementDiagnostic",
+    "RuntimeConstructionPlacementValidationRow",
+    "validate_runtime_construction_placement",
     "accepted",
     "ignored",
     "blocked",
@@ -806,6 +813,10 @@ foreach ($inventoryItemGuidanceNeedle in @(
     "unsafe localization keys",
     "missing item references",
     "invalid cost quantities",
+    "finite grid/world positions",
+    "duplicate occupied cells",
+    "missing costs",
+    "unsupported placement surfaces",
     "game-owned"
 )) {
     Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInventoryItemCatalog) $inventoryItemGuidanceNeedle "inventory item catalog game guidance"
@@ -827,6 +838,8 @@ foreach ($inventoryItemSurface in @(
     Assert-ContainsText $inventoryItemSurfaceText "RuntimeCraftingRecipeDocument" $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "RuntimeInventoryTransitionRequest" $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "advance_runtime_inventory_state" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "RuntimeConstructionPlacementValidationContext" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "validate_runtime_construction_placement" $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "game-owned" $inventoryItemSurface
 }
 foreach ($inventoryItemPackageSurface in @(

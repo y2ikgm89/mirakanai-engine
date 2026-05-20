@@ -205,6 +205,101 @@ struct RuntimeInventoryTransitionResult {
     std::vector<RuntimeInventoryTransitionDiagnostic> diagnostics;
 };
 
+struct RuntimeConstructionPlacementSurfaceDesc {
+    std::string id;
+    std::string placement_id;
+
+    [[nodiscard]] bool operator==(const RuntimeConstructionPlacementSurfaceDesc&) const = default;
+};
+
+struct RuntimeConstructionPlacementCellDesc {
+    std::int32_t x{0};
+    std::int32_t y{0};
+    std::int32_t z{0};
+
+    [[nodiscard]] bool operator==(const RuntimeConstructionPlacementCellDesc&) const = default;
+};
+
+struct RuntimeConstructionPlacementCandidateDesc {
+    std::string item_id;
+    std::string surface_id;
+    float grid_x{0.0F};
+    float grid_y{0.0F};
+    float grid_z{0.0F};
+    float world_x{0.0F};
+    float world_y{0.0F};
+    float world_z{0.0F};
+    std::uint32_t footprint_width{1U};
+    std::uint32_t footprint_height{1U};
+    std::uint32_t footprint_depth{1U};
+    std::vector<RuntimeConstructionPlacementCellDesc> occupied_cells;
+    std::vector<RuntimeItemCostDesc> provided_costs;
+
+    [[nodiscard]] bool operator==(const RuntimeConstructionPlacementCandidateDesc&) const = default;
+};
+
+struct RuntimeConstructionPlacementValidationContext {
+    std::span<const std::string> supported_placement_ids;
+    std::span<const RuntimeConstructionPlacementSurfaceDesc> supported_surfaces;
+};
+
+enum class RuntimeConstructionPlacementDiagnosticCode : std::uint8_t {
+    none,
+    invalid_catalog,
+    missing_item_reference,
+    item_not_placeable,
+    unsupported_placement_id,
+    missing_surface,
+    unsupported_placement_surface,
+    invalid_grid_position,
+    invalid_world_position,
+    invalid_footprint,
+    duplicate_occupied_cell,
+    missing_cost,
+};
+
+struct RuntimeConstructionPlacementDiagnostic {
+    RuntimeConstructionPlacementDiagnosticCode code{RuntimeConstructionPlacementDiagnosticCode::none};
+    std::uint32_t candidate_index{0U};
+    std::string item_id;
+    std::string referenced_item_id;
+    std::string placement_id;
+    std::string surface_id;
+    std::int32_t cell_x{0};
+    std::int32_t cell_y{0};
+    std::int32_t cell_z{0};
+    std::uint32_t required_quantity{0U};
+
+    [[nodiscard]] bool operator==(const RuntimeConstructionPlacementDiagnostic&) const = default;
+};
+
+enum class RuntimeConstructionPlacementValidationRowKind : std::uint8_t {
+    candidate,
+    occupied_cell,
+};
+
+struct RuntimeConstructionPlacementValidationRow {
+    RuntimeConstructionPlacementValidationRowKind kind{RuntimeConstructionPlacementValidationRowKind::candidate};
+    std::uint32_t candidate_index{0U};
+    std::string item_id;
+    std::string placement_id;
+    std::string surface_id;
+    std::uint32_t footprint_width{0U};
+    std::uint32_t footprint_height{0U};
+    std::uint32_t footprint_depth{0U};
+    std::int32_t cell_x{0};
+    std::int32_t cell_y{0};
+    std::int32_t cell_z{0};
+
+    [[nodiscard]] bool operator==(const RuntimeConstructionPlacementValidationRow&) const = default;
+};
+
+struct RuntimeConstructionPlacementValidationResult {
+    bool succeeded{true};
+    std::vector<RuntimeConstructionPlacementDiagnostic> diagnostics;
+    std::vector<RuntimeConstructionPlacementValidationRow> rows;
+};
+
 [[nodiscard]] RuntimeItemCatalogValidationResult
 validate_runtime_item_catalog_document(const RuntimeItemCatalogDocument& document,
                                        const RuntimeItemCatalogValidationContext& context);
@@ -215,5 +310,10 @@ validate_runtime_inventory_state(const RuntimeItemCatalogDocument& catalog, cons
 [[nodiscard]] RuntimeInventoryTransitionResult
 advance_runtime_inventory_state(const RuntimeItemCatalogDocument& catalog, const RuntimeCraftingRecipeDocument& recipes,
                                 const RuntimeInventoryState& state, const RuntimeInventoryTransitionRequest& request);
+
+[[nodiscard]] RuntimeConstructionPlacementValidationResult
+validate_runtime_construction_placement(const RuntimeItemCatalogDocument& catalog,
+                                        std::span<const RuntimeConstructionPlacementCandidateDesc> candidates,
+                                        const RuntimeConstructionPlacementValidationContext& context);
 
 } // namespace mirakana::runtime
