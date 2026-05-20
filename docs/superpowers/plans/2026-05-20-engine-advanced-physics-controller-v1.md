@@ -37,7 +37,7 @@ Select this plan as the next active developer-owned gameplay/physics capability 
 
 ## Phase 1: Controller Movement Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -66,3 +66,6 @@ Adopt the controller movement contract in selected package paths so smokes can r
 ## Validation Evidence
 
 - Phase 0 pointer sync: this plan was selected after `engine-navmesh-crowd-v1` completed deterministic navmesh/crowd rows and package-visible `gameplay_systems_navigation_crowd_*` counters, while `unsupportedProductionGaps = []` stayed empty.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed before implementation because `PhysicsAdvancedController3DDesc`, `PhysicsMovingPlatform3DDesc`, `PhysicsAdvancedController3DStatus`, `PhysicsAdvancedController3DDiagnostic`, and `plan_physics_advanced_controller_3d` were missing.
+- Phase 1 focused validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/physics/src/physics3d.cpp,tests/unit/core_tests.cpp`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` passed.
+- Phase 1 gate validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on Windows; expected diagnostic-only host gates remain for Metal/iOS tooling on this Windows host, and `unsupportedProductionGaps = []` remained empty.
