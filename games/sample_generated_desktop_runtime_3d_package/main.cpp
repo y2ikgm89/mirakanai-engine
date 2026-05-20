@@ -858,6 +858,36 @@ physics_character_dynamic_policy_status_name(mirakana::PhysicsCharacterDynamicPo
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+physics_advanced_controller_status_name(mirakana::PhysicsAdvancedController3DStatus status) noexcept {
+    switch (status) {
+    case mirakana::PhysicsAdvancedController3DStatus::moved:
+        return "moved";
+    case mirakana::PhysicsAdvancedController3DStatus::constrained:
+        return "constrained";
+    case mirakana::PhysicsAdvancedController3DStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+physics_advanced_controller_diagnostic_name(mirakana::PhysicsAdvancedController3DDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::PhysicsAdvancedController3DDiagnostic::none:
+        return "none";
+    case mirakana::PhysicsAdvancedController3DDiagnostic::invalid_movement:
+        return "invalid_movement";
+    case mirakana::PhysicsAdvancedController3DDiagnostic::missing_controller_body:
+        return "missing_controller_body";
+    case mirakana::PhysicsAdvancedController3DDiagnostic::invalid_moving_platform:
+        return "invalid_moving_platform";
+    case mirakana::PhysicsAdvancedController3DDiagnostic::invalid_constraints:
+        return "invalid_constraints";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::string_view behavior_tree_status_name(mirakana::BehaviorTreeStatus status) noexcept {
     switch (status) {
     case mirakana::BehaviorTreeStatus::success:
@@ -983,6 +1013,7 @@ class GeneratedGameplaySystemsProbe final {
         build_navigation_navmesh_probe();
         build_navigation_crowd_probe();
         build_physics_movement_policy_probe();
+        build_physics_advanced_controller_probe();
         render_audio_stream_probe();
         (void)animation_.trigger("move");
         started_ = true;
@@ -1036,6 +1067,17 @@ class GeneratedGameplaySystemsProbe final {
                physics_policy_result_.diagnostic == mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic::none &&
                physics_policy_result_.rows.size() == 3U && physics_policy_dynamic_push_count_ == 1U &&
                physics_policy_solid_contact_count_ == 1U && physics_policy_trigger_overlap_count_ == 1U &&
+               advanced_controller_result_.status == mirakana::PhysicsAdvancedController3DStatus::moved &&
+               advanced_controller_result_.diagnostic == mirakana::PhysicsAdvancedController3DDiagnostic::none &&
+               advanced_controller_result_.movement.rows.size() == 3U &&
+               advanced_controller_result_.moving_platform_rows.size() == 1U &&
+               advanced_controller_platform_applied_count_ == 1U &&
+               advanced_controller_result_.constraints.status == mirakana::PhysicsJoint3DStatus::solved &&
+               advanced_controller_result_.constraints.rows.size() == 1U &&
+               advanced_controller_result_.replay_before.body_count == 5U &&
+               advanced_controller_result_.replay_after.body_count == 5U &&
+               advanced_controller_result_.replay_after.value != advanced_controller_result_.replay_before.value &&
+               gameplay_systems_near(advanced_controller_result_.position.x, 3.25F) &&
                navigation_agent_.status == mirakana::NavigationAgentStatus::reached_destination &&
                gameplay_systems_near(navigation_agent_.position.x, 1.5F) &&
                gameplay_systems_near(navigation_agent_.position.y, 0.5F) &&
@@ -1098,6 +1140,17 @@ class GeneratedGameplaySystemsProbe final {
             physics_policy_result_.rows.size() == 3U,
             physics_policy_dynamic_push_count_ == 1U && physics_policy_solid_contact_count_ == 1U &&
                 physics_policy_trigger_overlap_count_ == 1U,
+            advanced_controller_result_.status == mirakana::PhysicsAdvancedController3DStatus::moved,
+            advanced_controller_result_.diagnostic == mirakana::PhysicsAdvancedController3DDiagnostic::none,
+            advanced_controller_result_.movement.rows.size() == 3U,
+            advanced_controller_result_.moving_platform_rows.size() == 1U,
+            advanced_controller_platform_applied_count_ == 1U,
+            advanced_controller_result_.constraints.status == mirakana::PhysicsJoint3DStatus::solved,
+            advanced_controller_result_.constraints.rows.size() == 1U,
+            advanced_controller_result_.replay_before.body_count == 5U,
+            advanced_controller_result_.replay_after.body_count == 5U,
+            advanced_controller_result_.replay_after.value != advanced_controller_result_.replay_before.value,
+            gameplay_systems_near(advanced_controller_result_.position.x, 3.25F),
             navigation_agent_.status == mirakana::NavigationAgentStatus::reached_destination,
             gameplay_systems_near(navigation_agent_.position.x, 1.5F) &&
                 gameplay_systems_near(navigation_agent_.position.y, 0.5F),
@@ -1265,6 +1318,46 @@ class GeneratedGameplaySystemsProbe final {
 
     [[nodiscard]] std::size_t physics_policy_trigger_overlap_count() const noexcept {
         return physics_policy_trigger_overlap_count_;
+    }
+
+    [[nodiscard]] mirakana::PhysicsAdvancedController3DStatus advanced_controller_status() const noexcept {
+        return advanced_controller_result_.status;
+    }
+
+    [[nodiscard]] mirakana::PhysicsAdvancedController3DDiagnostic advanced_controller_diagnostic() const noexcept {
+        return advanced_controller_result_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t advanced_controller_movement_row_count() const noexcept {
+        return advanced_controller_result_.movement.rows.size();
+    }
+
+    [[nodiscard]] std::size_t advanced_controller_moving_platform_row_count() const noexcept {
+        return advanced_controller_result_.moving_platform_rows.size();
+    }
+
+    [[nodiscard]] std::size_t advanced_controller_platform_applied_count() const noexcept {
+        return advanced_controller_platform_applied_count_;
+    }
+
+    [[nodiscard]] std::size_t advanced_controller_constraint_row_count() const noexcept {
+        return advanced_controller_result_.constraints.rows.size();
+    }
+
+    [[nodiscard]] bool advanced_controller_replay_changed() const noexcept {
+        return advanced_controller_result_.replay_after.value != advanced_controller_result_.replay_before.value;
+    }
+
+    [[nodiscard]] std::uint64_t advanced_controller_replay_before_body_count() const noexcept {
+        return advanced_controller_result_.replay_before.body_count;
+    }
+
+    [[nodiscard]] std::uint64_t advanced_controller_replay_after_body_count() const noexcept {
+        return advanced_controller_result_.replay_after.body_count;
+    }
+
+    [[nodiscard]] float advanced_controller_final_x() const noexcept {
+        return advanced_controller_result_.position.x;
     }
 
     [[nodiscard]] float navigation_goal_x() const noexcept {
@@ -1614,6 +1707,121 @@ class GeneratedGameplaySystemsProbe final {
         }
     }
 
+    void build_physics_advanced_controller_probe() {
+        constexpr std::uint32_t character_layer = 1U << 0U;
+        constexpr std::uint32_t platform_layer = 1U << 1U;
+        constexpr std::uint32_t trigger_layer = 1U << 2U;
+        constexpr std::uint32_t dynamic_layer = 1U << 3U;
+
+        mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+        const auto platform = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 1.5F, .y = -0.5F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec3{.x = 4.0F, .y = 0.5F, .z = 4.0F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = platform_layer,
+            .collision_mask = character_layer,
+            .half_height = 0.5F,
+            .trigger = false,
+        });
+        (void)world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 1.2F, .y = 1.05F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 1.0F, .z = 1.0F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = trigger_layer,
+            .collision_mask = character_layer,
+            .half_height = 0.5F,
+            .trigger = true,
+        });
+        (void)world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 2.2F, .y = 1.05F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.25F, .y = 0.5F, .z = 0.5F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = dynamic_layer,
+            .collision_mask = character_layer,
+            .half_height = 0.5F,
+            .trigger = false,
+        });
+        const auto controller_proxy = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 0.0F, .y = 1.05F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = 1U,
+            .collision_mask = 0xFFFF'FFFFU,
+            .half_height = 0.5F,
+            .trigger = false,
+        });
+        const auto follower = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 4.9F, .y = 1.05F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = 1U,
+            .collision_mask = 0xFFFF'FFFFU,
+            .half_height = 0.5F,
+            .trigger = false,
+        });
+
+        mirakana::PhysicsAdvancedController3DDesc request;
+        request.movement.position = mirakana::Vec3{.x = 0.0F, .y = 1.05F, .z = 0.0F};
+        request.movement.displacement = mirakana::Vec3{.x = 3.0F, .y = 0.0F, .z = 0.0F};
+        request.movement.radius = 0.5F;
+        request.movement.half_height = 0.5F;
+        request.movement.character_layer = character_layer;
+        request.movement.collision_mask = platform_layer | trigger_layer | dynamic_layer;
+        request.movement.include_triggers = true;
+        request.movement.skin_width = 0.02F;
+        request.movement.ground_probe_distance = 0.2F;
+        request.movement.dynamic_push_distance = 0.25F;
+        request.moving_platforms.push_back(mirakana::PhysicsMovingPlatform3DDesc{
+            .body = platform,
+            .displacement = mirakana::Vec3{.x = 0.25F, .y = 0.0F, .z = 0.0F},
+        });
+        request.controller_body = controller_proxy;
+        request.constraints.config.iterations = 4U;
+        request.constraints.distance_joints.push_back(mirakana::PhysicsDistanceJoint3DDesc{
+            .first = controller_proxy,
+            .second = follower,
+            .rest_distance = 1.0F,
+        });
+
+        advanced_controller_result_ = mirakana::plan_physics_advanced_controller_3d(world, request);
+        advanced_controller_platform_applied_count_ = 0U;
+        for (const auto& row : advanced_controller_result_.moving_platform_rows) {
+            if (row.applied) {
+                ++advanced_controller_platform_applied_count_;
+            }
+        }
+    }
+
     void render_audio_stream_probe() {
         mirakana::AudioMixer mixer;
         const auto clip =
@@ -1845,6 +2053,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::PhysicsAuthoredCollisionScene3DBuildResult authored_collision_;
     mirakana::PhysicsCharacterController3DResult controller_result_;
     mirakana::PhysicsCharacterDynamicPolicy3DResult physics_policy_result_;
+    mirakana::PhysicsAdvancedController3DResult advanced_controller_result_;
     mirakana::NavigationNavmeshPathResult navigation_navmesh_result_;
     mirakana::NavigationCrowdPlanResult navigation_crowd_result_;
     mirakana::NavigationAgentState navigation_agent_;
@@ -1884,6 +2093,7 @@ class GeneratedGameplaySystemsProbe final {
     std::size_t physics_policy_dynamic_push_count_{0U};
     std::size_t physics_policy_solid_contact_count_{0U};
     std::size_t physics_policy_trigger_overlap_count_{0U};
+    std::size_t advanced_controller_platform_applied_count_{0U};
     std::size_t navigation_path_point_count_{0U};
     std::size_t last_perception_target_count_{0U};
     std::uint32_t audio_stream_frames_{0U};
@@ -2386,6 +2596,48 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t gameplay_systems_physics_policy_trigger_overlaps() const noexcept {
         return gameplay_systems_.physics_policy_trigger_overlap_count();
+    }
+
+    [[nodiscard]] mirakana::PhysicsAdvancedController3DStatus
+    gameplay_systems_advanced_controller_status() const noexcept {
+        return gameplay_systems_.advanced_controller_status();
+    }
+
+    [[nodiscard]] mirakana::PhysicsAdvancedController3DDiagnostic
+    gameplay_systems_advanced_controller_diagnostic() const noexcept {
+        return gameplay_systems_.advanced_controller_diagnostic();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_advanced_controller_movement_rows() const noexcept {
+        return gameplay_systems_.advanced_controller_movement_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_advanced_controller_platform_rows() const noexcept {
+        return gameplay_systems_.advanced_controller_moving_platform_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_advanced_controller_platform_applied() const noexcept {
+        return gameplay_systems_.advanced_controller_platform_applied_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_advanced_controller_constraint_rows() const noexcept {
+        return gameplay_systems_.advanced_controller_constraint_row_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_advanced_controller_replay_changed() const noexcept {
+        return gameplay_systems_.advanced_controller_replay_changed();
+    }
+
+    [[nodiscard]] std::uint64_t gameplay_systems_advanced_controller_replay_before_bodies() const noexcept {
+        return gameplay_systems_.advanced_controller_replay_before_body_count();
+    }
+
+    [[nodiscard]] std::uint64_t gameplay_systems_advanced_controller_replay_after_bodies() const noexcept {
+        return gameplay_systems_.advanced_controller_replay_after_body_count();
+    }
+
+    [[nodiscard]] float gameplay_systems_advanced_controller_final_x() const noexcept {
+        return gameplay_systems_.advanced_controller_final_x();
     }
 
     [[nodiscard]] float gameplay_systems_navigation_goal_x() const noexcept {
@@ -4940,7 +5192,25 @@ int main(int argc, char** argv) {
         << " gameplay_systems_physics_policy_dynamic_pushes=" << game.gameplay_systems_physics_policy_dynamic_pushes()
         << " gameplay_systems_physics_policy_solid_contacts=" << game.gameplay_systems_physics_policy_solid_contacts()
         << " gameplay_systems_physics_policy_trigger_overlaps="
-        << game.gameplay_systems_physics_policy_trigger_overlaps()
+        << game.gameplay_systems_physics_policy_trigger_overlaps() << " gameplay_systems_advanced_controller_status="
+        << physics_advanced_controller_status_name(game.gameplay_systems_advanced_controller_status())
+        << " gameplay_systems_advanced_controller_diagnostic="
+        << physics_advanced_controller_diagnostic_name(game.gameplay_systems_advanced_controller_diagnostic())
+        << " gameplay_systems_advanced_controller_movement_rows="
+        << game.gameplay_systems_advanced_controller_movement_rows()
+        << " gameplay_systems_advanced_controller_platform_rows="
+        << game.gameplay_systems_advanced_controller_platform_rows()
+        << " gameplay_systems_advanced_controller_platform_applied="
+        << game.gameplay_systems_advanced_controller_platform_applied()
+        << " gameplay_systems_advanced_controller_constraint_rows="
+        << game.gameplay_systems_advanced_controller_constraint_rows()
+        << " gameplay_systems_advanced_controller_replay_changed="
+        << (game.gameplay_systems_advanced_controller_replay_changed() ? 1 : 0)
+        << " gameplay_systems_advanced_controller_replay_before_bodies="
+        << game.gameplay_systems_advanced_controller_replay_before_bodies()
+        << " gameplay_systems_advanced_controller_replay_after_bodies="
+        << game.gameplay_systems_advanced_controller_replay_after_bodies()
+        << " gameplay_systems_advanced_controller_final_x=" << game.gameplay_systems_advanced_controller_final_x()
         << " gameplay_systems_navigation_goal_x=" << game.gameplay_systems_navigation_goal_x()
         << " gameplay_systems_navigation_goal_y=" << game.gameplay_systems_navigation_goal_y()
         << " gameplay_systems_navigation_final_x=" << game.gameplay_systems_navigation_final_x()
