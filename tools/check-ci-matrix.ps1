@@ -163,9 +163,23 @@ Assert-ContainsAll $validateScript @(
 
 $cpp23EvaluationScript = Read-RequiredText "tools/evaluate-cpp23.ps1"
 Assert-ContainsAll $cpp23EvaluationScript @(
+    "[switch]`$Debug",
+    "[ValidateRange(0, 1024)]",
+    "[int]`$Jobs = 0",
+    "Resolve-Cpp23EvaluationJobCount",
+    "`$effectiveJobs = Resolve-Cpp23EvaluationJobCount -Jobs `$Jobs",
+    "cpp23-verification: cmake/ctest parallel jobs=`$effectiveJobs",
+    "`$runDebug = `$Debug.IsPresent -or (-not `$Release.IsPresent -and -not `$Gui.IsPresent)",
+    "if (`$runDebug) {",
+    "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-eval --parallel `$effectiveJobs",
+    "Invoke-CheckedCommand `$tools.CTest --preset cpp23-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs",
     "release-package-artifacts.ps1",
     "Assert-ReleasePackageArtifacts",
-    "cpp23-release-preset-eval"
+    "cpp23-release-preset-eval",
+    "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-release-eval --parallel `$effectiveJobs",
+    "Invoke-CheckedCommand `$tools.CTest --preset cpp23-release-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs",
+    "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-desktop-gui-eval --parallel `$effectiveJobs",
+    "Invoke-CheckedCommand `$tools.CTest --preset cpp23-desktop-gui-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs"
 ) "tools/evaluate-cpp23.ps1 release artifact validation"
 $cpp23CpackCallIndex = $cpp23EvaluationScript.IndexOf('Invoke-CheckedCommand $tools.CPack --preset cpp23-release-eval', [System.StringComparison]::Ordinal)
 $cpp23ArtifactAssertIndex = $cpp23EvaluationScript.IndexOf('Assert-ReleasePackageArtifacts -BuildDir $releaseBuildDir', [System.StringComparison]::Ordinal)
@@ -425,7 +439,6 @@ Assert-ContainsAll $windowsCpp23Job @(
     "path: vcpkg_installed",
     "Restore Windows C++23 build cache",
     $cacheRestoreActionRef,
-    "out/build/cpp23-eval",
     "out/build/cpp23-release-preset-eval",
     "out/build/installed-consumer-cpp23-release-eval",
     "out/install/cpp23-release-eval",
@@ -444,7 +457,6 @@ Assert-ContainsAll $windowsCpp23Job @(
     "name: windows-cpp23-test-logs",
     "retention-days: 14",
     "include-hidden-files: false",
-    "out/build/cpp23-eval/Testing/**/*.log",
     "out/build/cpp23-release-preset-eval/Testing/**/*.log",
     "if-no-files-found: warn",
     "name: windows-packages",

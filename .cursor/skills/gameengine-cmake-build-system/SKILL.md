@@ -25,6 +25,8 @@ Full workflow lives in shared skills. Read these canonical files (ASCII paths):
 
 Validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`, `tools/cmake.ps1`, `tools/ctest.ps1`, and related wrappers in `AGENTS.md`.
 Use CTest `RUN_SERIAL` only for time-sensitive host-resource tests; keep suite-wide automatic CMake/CTest parallelism enabled.
+For C++23 evaluation, no switch or `-Debug` runs the Debug lane, `-Release` is release/package-only, and `-Debug -Release -Gui` is the full local confidence pass. The script uses automatic CMake/CTest parallelism by default; pass `-Jobs <N>` only to throttle a constrained host.
+Engine/library targets keep preset-level CMake module scanning; non-module executable targets such as tests, probes, samples, and games opt out through `MK_disable_module_scanning_for_non_module_executable`.
 
 MSVC targets use bounded `/MP2` plus `/Zf`, `COMPILE_PDB_OUTPUT_DIRECTORY` / `COMPILE_PDB_NAME` per target, and `/INCREMENTAL:NO` for linkable targets through `MK_apply_common_target_options`; `tools/cmake.ps1` clears stale `.tlog` directories with older aliased `.lastbuildstate` roots before Visual Studio builds to avoid MSB8028. See the canonical skills and `docs/building.md`.
 

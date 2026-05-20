@@ -58,11 +58,17 @@ Run explicit C++23 verification:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1
 ```
 
+`tools/evaluate-cpp23.ps1` with no lane switch runs the Debug C++23 evaluation. `-Debug` is the explicit spelling for that same Debug lane when combining lanes.
+
 For Release/package verification:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release
 ```
+
+The `-Release` lane is release-only: it configures/builds/tests `cpp23-release-eval`, validates the installed SDK consumer, runs CPack, and checks release package artifacts without also running the Debug `cpp23-eval` tree. The Windows C++23 Release Evaluation CI job uses this release-only lane so it does not duplicate the separate Windows MSVC Debug validation job. `tools/evaluate-cpp23.ps1` uses automatic CMake/CTest parallelism by default; pass `-Jobs <N>` only to throttle a constrained host.
+
+The C++23 presets keep CMake module scanning enabled for engine/library targets, but non-module executable targets such as tests, probes, samples, and games explicitly set `CXX_SCAN_FOR_MODULES OFF`. That follows CMake's target-level scan property and avoids unnecessary MSVC module dependency scan work in the Release lane without weakening module coverage for targets that can own `FILE_SET CXX_MODULES`.
 
 For the optional SDL3/Dear ImGui editor path:
 
@@ -73,7 +79,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Gui
 For full local confidence on Windows:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release -Gui
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Debug -Release -Gui
 ```
 
 ## Local Result
@@ -88,7 +94,7 @@ Evaluated on 2026-04-26 with:
 Results:
 
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: passed, 12/12 default tests.
-- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release -Gui`: passed, 12/12 Debug tests, 12/12 Release tests, generated `Mirakanai-0.1.0-Windows-AMD64.zip`, and passed 13/13 SDL3/Dear ImGui GUI tests.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release -Gui` passed before the 2026-05-20 explicit `-Debug` lane split: 12/12 Debug tests, 12/12 Release tests, generated `Mirakanai-0.1.0-Windows-AMD64.zip`, and passed 13/13 SDL3/Dear ImGui GUI tests. The current equivalent full command is `-Debug -Release -Gui`.
 - CMake generated Visual Studio projects with the configured `MK_MSVC_CXX23_STANDARD_OPTION` in target options, or an equivalent C++23-only Visual Studio `LanguageStandard` representation, and no `stdcpplatest` language standard entries in the checked default build.
 - MSVC targets explicitly use `/EHsc` so C++ exception unwinding stays enabled.
 

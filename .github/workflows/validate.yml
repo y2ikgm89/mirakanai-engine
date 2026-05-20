@@ -302,7 +302,6 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
-            out/build/cpp23-eval
             out/build/cpp23-release-preset-eval
             out/build/installed-consumer-cpp23-release-eval
             out/install/cpp23-release-eval
@@ -324,7 +323,6 @@ jobs:
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
-            out/build/cpp23-eval
             out/build/cpp23-release-preset-eval
             out/build/installed-consumer-cpp23-release-eval
             out/install/cpp23-release-eval
@@ -338,7 +336,6 @@ jobs:
           retention-days: 14
           include-hidden-files: false
           path: |
-            out/build/cpp23-eval/Testing/**/*.log
             out/build/cpp23-release-preset-eval/Testing/**/*.log
           if-no-files-found: warn
 
