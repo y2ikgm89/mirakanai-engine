@@ -188,6 +188,7 @@ jobs:
 
       - name: Save Windows dev build cache
         if: ${{ success() && !cancelled() && steps.restore-dev-build.outputs.cache-hit != 'true' }}
+        continue-on-error: true
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: out/build/dev
@@ -320,6 +321,7 @@ jobs:
 
       - name: Save Windows C++23 build cache
         if: ${{ success() && !cancelled() && steps.restore-cpp23-build.outputs.cache-hit != 'true' }}
+        continue-on-error: true
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
