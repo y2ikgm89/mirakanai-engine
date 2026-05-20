@@ -443,7 +443,7 @@ $agentStaticJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "
 Assert-ContainsAll $agentStaticJob @(
     "name: Agent Static Guards",
     "needs: changes",
-    "runs-on: ubuntu-latest",
+    "runs-on: windows-2025-vs2026",
     "timeout-minutes: 20",
     $checkoutActionRef,
     "persist-credentials: false",

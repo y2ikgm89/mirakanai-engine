@@ -35,6 +35,16 @@ $oldBinarySources = [Environment]::GetEnvironmentVariable("VCPKG_BINARY_SOURCES"
 $oldDisableMetrics = [Environment]::GetEnvironmentVariable("VCPKG_DISABLE_METRICS", "Process")
 $oldForceSystemBinaries = [Environment]::GetEnvironmentVariable("VCPKG_FORCE_SYSTEM_BINARIES", "Process")
 $oldPath = [Environment]::GetEnvironmentVariable("Path", "Process")
+$oldUpperPath = [Environment]::GetEnvironmentVariable("PATH", "Process")
+
+function Get-ProcessPathForCheck {
+    $pathValue = ConvertTo-ChildProcessPathValue
+    if ($null -eq $pathValue) {
+        return ""
+    }
+
+    return $pathValue
+}
 
 try {
     [Environment]::SetEnvironmentVariable("VCPKG_DOWNLOADS", $null, "Process")
@@ -79,7 +89,7 @@ try {
     }
     Set-MirakanaiVcpkgEnvironment -CacheRoot $cacheRoot | Out-Null
     Assert-Equal ([Environment]::GetEnvironmentVariable("VCPKG_FORCE_SYSTEM_BINARIES", "Process")) "1" "VCPKG_FORCE_SYSTEM_BINARIES"
-    $pathAfterToolDiscovery = [Environment]::GetEnvironmentVariable("Path", "Process")
+    $pathAfterToolDiscovery = Get-ProcessPathForCheck
     foreach ($directory in @($fake7zipDir, $fake7zrDir, $fakeCmakeDir, $fakeNinjaDir)) {
         if ($pathAfterToolDiscovery.IndexOf($directory, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
             Write-Error "Set-MirakanaiVcpkgEnvironment must add existing vcpkg tool directory to Path: $directory"
@@ -89,11 +99,15 @@ try {
     $pwsh = (Get-Process -Id $PID).Path
     $pathProbe = [System.IO.Path]::GetFullPath((Join-Path $cacheRoot "path-probe"))
     New-Item -ItemType Directory -Path $pathProbe -Force | Out-Null
-    [Environment]::SetEnvironmentVariable("Path", "$pathProbe;$oldPath", "Process")
+    Add-ProcessPathEntries -Entries @($pathProbe)
     $escapedPathProbe = $pathProbe.Replace("'", "''")
 Invoke-CheckedCommand $pwsh -NoProfile -Command @"
 `$pathValue = [Environment]::GetEnvironmentVariable('Path', 'Process')
-if (`$pathValue.IndexOf('$escapedPathProbe', [System.StringComparison]::OrdinalIgnoreCase) -lt 0) { exit 33 }
+if ([string]::IsNullOrWhiteSpace(`$pathValue)) {
+    `$pathValue = [Environment]::GetEnvironmentVariable('PATH', 'Process')
+}
+if ([string]::IsNullOrWhiteSpace(`$pathValue) -or
+    `$pathValue.IndexOf('$escapedPathProbe', [System.StringComparison]::OrdinalIgnoreCase) -lt 0) { exit 33 }
 "@
 
     $commonContent = Get-Content -LiteralPath (Join-Path $PSScriptRoot "common.ps1") -Raw
@@ -119,6 +133,7 @@ if (`$pathValue.IndexOf('$escapedPathProbe', [System.StringComparison]::OrdinalI
     [Environment]::SetEnvironmentVariable("VCPKG_DISABLE_METRICS", $oldDisableMetrics, "Process")
     [Environment]::SetEnvironmentVariable("VCPKG_FORCE_SYSTEM_BINARIES", $oldForceSystemBinaries, "Process")
     [Environment]::SetEnvironmentVariable("Path", $oldPath, "Process")
+    [Environment]::SetEnvironmentVariable("PATH", $oldUpperPath, "Process")
 }
 
 Write-Host "vcpkg-environment-check: ok"

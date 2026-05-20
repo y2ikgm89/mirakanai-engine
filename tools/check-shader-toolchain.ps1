@@ -113,11 +113,14 @@ function Find-ShaderTool($name) {
     }
 
     if ($name -eq "dxc") {
-        $windowsSdkDxc = Get-FirstExistingFile (Get-WindowsSdkDxcCandidates)
-        if ($null -ne $windowsSdkDxc) {
-            return [pscustomobject]@{
-                Path = $windowsSdkDxc
-                Source = "Windows SDK known-location"
+        $windowsSdkDxcCandidates = @(Get-WindowsSdkDxcCandidates)
+        if ($windowsSdkDxcCandidates.Count -gt 0) {
+            $windowsSdkDxc = Get-FirstExistingFile $windowsSdkDxcCandidates
+            if ($null -ne $windowsSdkDxc) {
+                return [pscustomobject]@{
+                    Path = $windowsSdkDxc
+                    Source = "Windows SDK known-location"
+                }
             }
         }
     }
