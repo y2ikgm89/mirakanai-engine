@@ -461,7 +461,16 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_physics_policy_rows",
             "gameplay_systems_physics_policy_dynamic_pushes",
             "gameplay_systems_physics_policy_solid_contacts",
-            "gameplay_systems_physics_policy_trigger_overlaps"
+            "gameplay_systems_physics_policy_trigger_overlaps",
+            "gameplay_systems_advanced_controller_status",
+            "gameplay_systems_advanced_controller_diagnostic",
+            "gameplay_systems_advanced_controller_movement_rows",
+            "gameplay_systems_advanced_controller_platform_rows",
+            "gameplay_systems_advanced_controller_platform_applied",
+            "gameplay_systems_advanced_controller_constraint_rows",
+            "gameplay_systems_advanced_controller_replay_changed",
+            "gameplay_systems_advanced_controller_replay_before_bodies",
+            "gameplay_systems_advanced_controller_replay_after_bodies"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not include gameplay systems field: $field"
@@ -547,6 +556,33 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_policy_trigger_overlaps=1\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay physics trigger overlap row."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_status=moved\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove moved advanced controller status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean advanced controller diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_movement_rows=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller movement rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_platform_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller platform rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_platform_applied=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove advanced controller moving-platform application."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_constraint_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller constraint rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_changed=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove changed advanced controller replay signature."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_before_bodies=5\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller replay-before body count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_after_bodies=5\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller replay-after body count."
     }
 }
 if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requiresNativeUiOverlay) {

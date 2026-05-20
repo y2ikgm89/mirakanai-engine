@@ -1313,6 +1313,25 @@ foreach ($physicsGuidance in @(
     Assert-ContainsText $physicsText "PhysicsReplaySignature3D" $physicsGuidance
     Assert-ContainsText $physicsText "evaluate_physics_determinism_gate_3d" $physicsGuidance
 }
+foreach ($advancedControllerPackageGuidance in @(
+    "docs/current-capabilities.md",
+    "docs/testing.md",
+    "docs/ai-game-development.md",
+    "engine/agent/manifest.json",
+    "games/sample_generated_desktop_runtime_3d_package/game.agent.json",
+    ".agents/skills/gameengine-game-development/SKILL.md",
+    ".agents/skills/gameengine-game-development/references/full-guidance.md",
+    ".claude/skills/gameengine-game-development/SKILL.md",
+    ".claude/skills/gameengine-game-development/references/full-guidance.md",
+    ".cursor/skills/gameengine-game-development/SKILL.md",
+    "tools/validate-installed-desktop-runtime.ps1"
+)) {
+    $advancedControllerPackageText = Get-AgentSurfaceText $advancedControllerPackageGuidance
+    Assert-ContainsText $advancedControllerPackageText "gameplay_systems_advanced_controller_status=moved" $advancedControllerPackageGuidance
+    Assert-ContainsText $advancedControllerPackageText "gameplay_systems_advanced_controller_platform_applied=1" $advancedControllerPackageGuidance
+    Assert-ContainsText $advancedControllerPackageText "gameplay_systems_advanced_controller_constraint_rows=1" $advancedControllerPackageGuidance
+    Assert-ContainsText $advancedControllerPackageText "gameplay_systems_advanced_controller_replay_changed=1" $advancedControllerPackageGuidance
+}
 foreach ($physicsUnsupportedGuidance in @(
     "docs/architecture.md",
     "docs/current-capabilities.md",

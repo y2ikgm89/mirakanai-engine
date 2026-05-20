@@ -77,6 +77,18 @@ Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorGameModuleDriverLoad") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorRuntimeScenePackageValidationExecution") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentSpriteAnimationFlipbook") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPackageSmoke") "engine manifest gameCodeGuidance"
+foreach ($needle in @(
+    "plan_physics_advanced_controller_3d",
+    "gameplay_systems_advanced_controller_status=moved",
+    "gameplay_systems_advanced_controller_platform_applied=1",
+    "gameplay_systems_advanced_controller_constraint_rows=1",
+    "gameplay_systems_advanced_controller_replay_changed=1"
+)) {
+    if (-not ([string]$engine.gameCodeGuidance.desktopRuntimeGameplaySystemsPackageSmoke).Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.desktopRuntimeGameplaySystemsPackageSmoke missing: $needle"
+    }
+}
 foreach ($needle in @(
     "RuntimeSpriteFlipbookClipDesc",
     "RuntimeSpriteFlipbookState",
