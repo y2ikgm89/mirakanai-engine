@@ -115,6 +115,12 @@ struct SceneShadowMapDesc {
     std::uint32_t directional_cascade_count{1};
 };
 
+struct SceneLightingShadowPolicyDesc {
+    std::uint32_t max_light_count{8};
+    std::uint32_t max_shadowed_light_count{1};
+    SceneShadowMapDesc shadow_map;
+};
+
 struct SceneShadowLightSpaceDesc {
     float minimum_focus_radius{1.0F};
     float depth_padding{1.0F};
@@ -287,6 +293,8 @@ struct SceneLightCommand {
 [[nodiscard]] Color resolve_scene_mesh_color(const SceneRenderMesh& mesh, const SceneRenderSubmitDesc& desc) noexcept;
 [[nodiscard]] SceneCameraMatrices make_scene_camera_matrices(const SceneRenderCamera& camera, float aspect_ratio);
 [[nodiscard]] SceneLightCommand make_scene_light_command(const SceneRenderLight& light) noexcept;
+[[nodiscard]] LightingShadowPolicyPlan plan_scene_lighting_shadow_policy(const SceneRenderPacket& packet,
+                                                                         SceneLightingShadowPolicyDesc desc);
 [[nodiscard]] ShadowMapPlan build_scene_shadow_map_plan(const SceneRenderPacket& packet, SceneShadowMapDesc desc);
 [[nodiscard]] DirectionalShadowLightSpacePlan
 build_scene_directional_shadow_light_space_plan(const SceneRenderPacket& packet, const ShadowMapPlan& shadow_map,

@@ -1873,13 +1873,12 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "recommended next plan reason"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "RHI Depth Attachment Contract v0" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "Stable Directional Light-Space Policy v0" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "DirectionalShadowLightSpacePlan" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "build_scene_directional_shadow_light_space_plan" "MK_scene_renderer module purpose"
-Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "sample_and_apply_runtime_scene_render_animation_float_clip" "MK_scene_renderer module purpose"
-Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "advance_runtime_sprite_flipbook" "MK_scene_renderer module purpose"
-Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) "sample_runtime_morph_mesh_cpu_animation_float_clip" "MK_scene_renderer module purpose"
+foreach ($needle in @("RHI Depth Attachment Contract v0", "Lighting Shadow Policy v1", "LightingShadowPolicyPlan", "plan_lighting_shadow_policy", "Stable Directional Light-Space Policy v0", "DirectionalShadowLightSpacePlan")) {
+    Assert-ContainsText ([string]$geRendererModule[0].purpose) $needle "MK_renderer module purpose"
+}
+foreach ($needle in @("plan_scene_lighting_shadow_policy", "build_scene_directional_shadow_light_space_plan", "sample_and_apply_runtime_scene_render_animation_float_clip", "advance_runtime_sprite_flipbook", "sample_runtime_morph_mesh_cpu_animation_float_clip")) {
+    Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) $needle "MK_scene_renderer module purpose"
+}
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRhi) "RHI Depth Attachment Contract v0" "RHI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRhi) "RenderPassDepthAttachment" "RHI game guidance"
 foreach ($depthGuidance in @(

@@ -245,6 +245,21 @@ select_runtime_sprite_flipbook_frame(const RuntimeSpriteFlipbookDesc& desc, cons
     return ShadowMapLightType::unknown;
 }
 
+[[nodiscard]] LightingShadowPolicyLightType
+lighting_shadow_policy_light_type_from_scene_light(LightType type) noexcept {
+    switch (type) {
+    case LightType::directional:
+        return LightingShadowPolicyLightType::directional;
+    case LightType::point:
+        return LightingShadowPolicyLightType::point;
+    case LightType::spot:
+        return LightingShadowPolicyLightType::spot;
+    case LightType::unknown:
+        return LightingShadowPolicyLightType::unknown;
+    }
+    return LightingShadowPolicyLightType::unknown;
+}
+
 [[nodiscard]] std::uint32_t count_to_shadow_uint32(std::size_t count) noexcept {
     if (count > static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())) {
         return std::numeric_limits<std::uint32_t>::max();
@@ -817,6 +832,35 @@ SceneLightCommand make_scene_light_command(const SceneRenderLight& light) noexce
         .outer_cone_radians = light.light.outer_cone_radians,
         .casts_shadows = light.light.casts_shadows,
     };
+}
+
+LightingShadowPolicyPlan plan_scene_lighting_shadow_policy(const SceneRenderPacket& packet,
+                                                           SceneLightingShadowPolicyDesc desc) {
+    std::vector<LightingShadowPolicyLightDesc> lights;
+    lights.reserve(packet.lights.size());
+    for (std::size_t index = 0; index < packet.lights.size(); ++index) {
+        const auto& light = packet.lights[index].light;
+        lights.push_back(LightingShadowPolicyLightDesc{
+            .type = lighting_shadow_policy_light_type_from_scene_light(light.type),
+            .color = light.color,
+            .intensity = light.intensity,
+            .range = light.range,
+            .inner_cone_radians = light.inner_cone_radians,
+            .outer_cone_radians = light.outer_cone_radians,
+            .casts_shadows = light.casts_shadows,
+            .source_index = count_to_shadow_uint32(index),
+        });
+    }
+    return plan_lighting_shadow_policy(LightingShadowPolicyDesc{
+        .lights = lights,
+        .max_light_count = desc.max_light_count,
+        .max_shadowed_light_count = desc.max_shadowed_light_count,
+        .shadow_tile_extent = desc.shadow_map.extent,
+        .shadow_depth_format = desc.shadow_map.depth_format,
+        .directional_cascade_count = desc.shadow_map.directional_cascade_count,
+        .caster_count = count_to_shadow_uint32(packet.meshes.size()),
+        .receiver_count = count_to_shadow_uint32(packet.meshes.size()),
+    });
 }
 
 ShadowMapPlan build_scene_shadow_map_plan(const SceneRenderPacket& packet, SceneShadowMapDesc desc) {

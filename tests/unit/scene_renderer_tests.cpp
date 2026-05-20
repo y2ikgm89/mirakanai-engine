@@ -561,6 +561,142 @@ MK_TEST("scene renderer builds light commands from scene lights") {
     MK_REQUIRE(command.casts_shadows);
 }
 
+MK_TEST("scene renderer plans deterministic light list and shadow policy rows") {
+    mirakana::Scene scene("lighting-policy");
+    const auto sun = scene.create_node("Sun");
+    const auto fill = scene.create_node("Fill");
+    const auto spot = scene.create_node("Spot");
+    const auto mesh = scene.create_node("Caster");
+
+    mirakana::SceneNodeComponents sun_components;
+    sun_components.light = mirakana::LightComponent{
+        .type = mirakana::LightType::directional,
+        .color = mirakana::Vec3{.x = 1.0F, .y = 0.95F, .z = 0.9F},
+        .intensity = 2.0F,
+        .range = 100.0F,
+        .casts_shadows = true,
+    };
+    scene.set_components(sun, sun_components);
+
+    mirakana::SceneNodeComponents fill_components;
+    fill_components.light = mirakana::LightComponent{
+        .type = mirakana::LightType::point,
+        .color = mirakana::Vec3{.x = 0.4F, .y = 0.7F, .z = 1.0F},
+        .intensity = 1.5F,
+        .range = 12.0F,
+    };
+    scene.set_components(fill, fill_components);
+
+    mirakana::SceneNodeComponents spot_components;
+    spot_components.light = mirakana::LightComponent{
+        .type = mirakana::LightType::spot,
+        .color = mirakana::Vec3{.x = 1.0F, .y = 0.8F, .z = 0.5F},
+        .intensity = 3.0F,
+        .range = 20.0F,
+        .inner_cone_radians = 0.25F,
+        .outer_cone_radians = 0.75F,
+    };
+    scene.set_components(spot, spot_components);
+
+    mirakana::SceneNodeComponents mesh_components;
+    mesh_components.mesh_renderer = mirakana::MeshRendererComponent{
+        .mesh = mirakana::AssetId::from_name("meshes/caster"),
+        .material = mirakana::AssetId::from_name("materials/caster"),
+        .visible = true,
+    };
+    scene.set_components(mesh, mesh_components);
+
+    const auto packet = mirakana::build_scene_render_packet(scene);
+    const auto plan = mirakana::plan_scene_lighting_shadow_policy(
+        packet, mirakana::SceneLightingShadowPolicyDesc{
+                    .max_light_count = 4,
+                    .max_shadowed_light_count = 1,
+                    .shadow_map =
+                        mirakana::SceneShadowMapDesc{
+                            .extent = mirakana::rhi::Extent2D{.width = 512, .height = 512},
+                            .depth_format = mirakana::rhi::Format::depth24_stencil8,
+                            .directional_cascade_count = 4,
+                        },
+                });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.light_count == 3);
+    MK_REQUIRE(plan.directional_light_count == 1);
+    MK_REQUIRE(plan.point_light_count == 1);
+    MK_REQUIRE(plan.spot_light_count == 1);
+    MK_REQUIRE(plan.shadowed_light_count == 1);
+    MK_REQUIRE(plan.shadow_tile_extent.width == 512);
+    MK_REQUIRE(plan.shadow_tile_extent.height == 512);
+    MK_REQUIRE(plan.shadow_atlas_extent.width == 2048);
+    MK_REQUIRE(plan.shadow_atlas_extent.height == 512);
+    MK_REQUIRE(plan.directional_cascade_count == 4);
+    MK_REQUIRE(plan.light_rows.size() == 3);
+    MK_REQUIRE(plan.light_rows[0].source_index == 0);
+    MK_REQUIRE(plan.light_rows[0].casts_shadows);
+    MK_REQUIRE(plan.light_rows[0].shadow_cascade_count == 4);
+    MK_REQUIRE(plan.light_rows[0].shadow_atlas_tile_offset_x == 0);
+    MK_REQUIRE(!plan.light_rows[1].casts_shadows);
+    MK_REQUIRE(plan.light_rows[1].shadow_cascade_count == 0);
+    MK_REQUIRE(plan.light_rows[2].type == mirakana::LightingShadowPolicyLightType::spot);
+}
+
+MK_TEST("scene renderer lighting shadow policy fails closed with deterministic diagnostics") {
+    mirakana::Scene scene("lighting-policy-invalid");
+    const auto point_shadow = scene.create_node("PointShadow");
+    const auto fill = scene.create_node("Fill");
+    const auto mesh = scene.create_node("Caster");
+
+    mirakana::SceneNodeComponents point_components;
+    point_components.light = mirakana::LightComponent{
+        .type = mirakana::LightType::point,
+        .intensity = 1.0F,
+        .range = 10.0F,
+        .casts_shadows = true,
+    };
+    scene.set_components(point_shadow, point_components);
+
+    mirakana::SceneNodeComponents fill_components;
+    fill_components.light = mirakana::LightComponent{
+        .type = mirakana::LightType::point,
+        .intensity = 1.0F,
+        .range = 10.0F,
+    };
+    scene.set_components(fill, fill_components);
+
+    mirakana::SceneNodeComponents mesh_components;
+    mesh_components.mesh_renderer = mirakana::MeshRendererComponent{
+        .mesh = mirakana::AssetId::from_name("meshes/caster"),
+        .material = mirakana::AssetId::from_name("materials/caster"),
+        .visible = true,
+    };
+    scene.set_components(mesh, mesh_components);
+
+    const auto packet = mirakana::build_scene_render_packet(scene);
+    const auto plan = mirakana::plan_scene_lighting_shadow_policy(
+        packet, mirakana::SceneLightingShadowPolicyDesc{
+                    .max_light_count = 1,
+                    .max_shadowed_light_count = 0,
+                    .shadow_map =
+                        mirakana::SceneShadowMapDesc{
+                            .extent = mirakana::rhi::Extent2D{.width = 0, .height = 512},
+                            .directional_cascade_count = 9,
+                        },
+                });
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.light_rows.empty());
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::too_many_lights));
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::too_many_shadowed_lights));
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::unsupported_shadow_light_type));
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::invalid_shadow_tile_extent));
+    MK_REQUIRE(mirakana::has_lighting_shadow_policy_diagnostic(
+        plan, mirakana::LightingShadowPolicyDiagnosticCode::invalid_directional_cascade_count));
+}
+
 MK_TEST("scene renderer builds a shadow map plan from the first directional shadow light") {
     mirakana::Scene scene("shadow-map");
     const auto light_node = scene.create_node("Sun");

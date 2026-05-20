@@ -1077,10 +1077,25 @@ if (-not (Test-Path $sample3dManifestFullPath)) {
     foreach ($needle in @(
         "SceneMeshDrawPlan",
         "SceneMeshDrawPlanDiagnosticCode",
-        "plan_scene_mesh_draws"
+        "plan_scene_mesh_draws",
+        "SceneLightingShadowPolicyDesc",
+        "LightingShadowPolicyPlan",
+        "plan_scene_lighting_shadow_policy"
     )) {
         if (-not $sceneRendererHeaderText.Contains($needle)) {
-            Write-Error "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp missing 3D scene mesh package telemetry API: $needle"
+            Write-Error "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp missing generated 3D scene renderer API: $needle"
+        }
+    }
+    $rendererShadowHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/renderer/include/mirakana/renderer/shadow_map.hpp") -Raw
+    foreach ($needle in @(
+        "LightingShadowPolicyDesc",
+        "LightingShadowPolicyPlan",
+        "LightingShadowPolicyLightRow",
+        "plan_lighting_shadow_policy",
+        "has_lighting_shadow_policy_diagnostic"
+    )) {
+        if (-not $rendererShadowHeaderText.Contains($needle)) {
+            Write-Error "engine/renderer/include/mirakana/renderer/shadow_map.hpp missing lighting shadow policy API: $needle"
         }
     }
     $installedDesktopRuntimeValidationText = Get-Content -LiteralPath (Join-Path $root "tools/validate-installed-desktop-runtime.ps1") -Raw
