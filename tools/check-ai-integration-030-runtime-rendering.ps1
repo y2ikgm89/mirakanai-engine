@@ -800,12 +800,20 @@ foreach ($inventoryItemGuidanceNeedle in @(
     "RuntimeConstructionPlacementDiagnostic",
     "RuntimeConstructionPlacementValidationRow",
     "validate_runtime_construction_placement",
+    "RuntimeSceneConstructionPlacementIntentDesc",
+    "RuntimeSceneConstructionPlacementIntentContext",
+    "RuntimeSceneConstructionPlacementIntentPlan",
+    "RuntimeSceneConstructionPlacementIntentStatus",
+    "plan_runtime_scene_construction_placement_intents",
+    "already_occupied",
     "accepted",
     "ignored",
     "blocked",
     "completed",
     "invalid",
     "gameplay_systems_inventory_items_transition_rows",
+    "gameplay_systems_construction_placement_validation_rows",
+    "gameplay_systems_construction_placement_intent_accepted_rows",
     "duplicate item ids",
     "invalid stack limits",
     "unsupported category ids",
@@ -814,6 +822,8 @@ foreach ($inventoryItemGuidanceNeedle in @(
     "missing item references",
     "invalid cost quantities",
     "finite grid/world positions",
+    "candidate row grid/world origins",
+    "same-batch occupied cells",
     "duplicate occupied cells",
     "missing costs",
     "unsupported placement surfaces",
@@ -824,6 +834,7 @@ foreach ($inventoryItemGuidanceNeedle in @(
 foreach ($inventoryItemSurface in @(
     "docs/current-capabilities.md",
     "docs/ai-game-development.md",
+    "docs/roadmap.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md",
     ".cursor/skills/gameengine-game-development/SKILL.md"
@@ -840,6 +851,9 @@ foreach ($inventoryItemSurface in @(
     Assert-ContainsText $inventoryItemSurfaceText "advance_runtime_inventory_state" $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "RuntimeConstructionPlacementValidationContext" $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "validate_runtime_construction_placement" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "RuntimeSceneConstructionPlacementIntentDesc" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "plan_runtime_scene_construction_placement_intents" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "candidate row grid/world origins" $inventoryItemSurface; Assert-ContainsText $inventoryItemSurfaceText "same-batch occupied-cell" $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "game-owned" $inventoryItemSurface
 }
 foreach ($inventoryItemPackageSurface in @(
@@ -849,6 +863,10 @@ foreach ($inventoryItemPackageSurface in @(
     $inventoryItemPackageText = Get-AgentSurfaceText $inventoryItemPackageSurface
     Assert-ContainsText $inventoryItemPackageText "gameplay_systems_inventory_items_transition_rows" $inventoryItemPackageSurface
     Assert-ContainsText $inventoryItemPackageText "gameplay_systems_inventory_items_final_workbench_quantity" $inventoryItemPackageSurface
+    Assert-ContainsText $inventoryItemPackageText "gameplay_systems_construction_placement_validation_rows" $inventoryItemPackageSurface
+    Assert-ContainsText $inventoryItemPackageText "gameplay_systems_construction_placement_intent_rows" $inventoryItemPackageSurface
+    Assert-ContainsText $inventoryItemPackageText "gameplay_systems_construction_placement_intent_accepted_rows" $inventoryItemPackageSurface
+    Assert-ContainsText $inventoryItemPackageText "gameplay_systems_construction_placement_intent_occupied_cells" $inventoryItemPackageSurface
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_accessibility_publish" "runtime UI game guidance"

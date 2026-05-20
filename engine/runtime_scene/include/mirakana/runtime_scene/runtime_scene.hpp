@@ -9,6 +9,7 @@
 #include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/inventory_items.hpp"
 #include "mirakana/scene/scene.hpp"
 
 #include <cstddef>
@@ -256,6 +257,81 @@ struct RuntimeSceneGameplayInteractionPlan {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+enum class RuntimeSceneConstructionPlacementIntentStatus : std::uint8_t {
+    accepted,
+    blocked,
+    invalid,
+    already_occupied,
+};
+
+enum class RuntimeSceneConstructionPlacementIntentDiagnosticCode : std::uint8_t {
+    none,
+    invalid_placement_validation,
+    missing_candidate,
+    placement_not_reviewed,
+    invalid_node_name,
+    duplicate_intent_node_name,
+    duplicate_scene_node_name,
+    invalid_components,
+    invalid_transform,
+    mismatched_transform_position,
+    already_occupied,
+};
+
+struct RuntimeSceneConstructionPlacementOccupiedCell {
+    runtime::RuntimeConstructionPlacementCellDesc cell;
+    SceneNodeId node{null_scene_node};
+    std::string node_name;
+};
+
+struct RuntimeSceneConstructionPlacementIntentContext {
+    std::span<const RuntimeSceneConstructionPlacementOccupiedCell> occupied_cells;
+    std::span<const std::string> existing_node_names;
+};
+
+struct RuntimeSceneConstructionPlacementIntentDesc {
+    std::uint32_t candidate_index{0U};
+    std::string node_name;
+    Transform3D transform;
+    SceneNodeComponents components;
+    bool reviewed{false};
+};
+
+struct RuntimeSceneConstructionPlacementIntentRow {
+    std::uint32_t candidate_index{0U};
+    RuntimeSceneConstructionPlacementIntentStatus status{RuntimeSceneConstructionPlacementIntentStatus::invalid};
+    std::string item_id;
+    std::string placement_id;
+    std::string surface_id;
+    std::string node_name;
+    Transform3D transform;
+    SceneNodeComponents components;
+    std::vector<runtime::RuntimeConstructionPlacementCellDesc> occupied_cells;
+};
+
+struct RuntimeSceneConstructionPlacementIntentDiagnostic {
+    RuntimeSceneConstructionPlacementIntentDiagnosticCode code{
+        RuntimeSceneConstructionPlacementIntentDiagnosticCode::none};
+    std::uint32_t candidate_index{0U};
+    std::string item_id;
+    std::string placement_id;
+    std::string surface_id;
+    std::string node_name;
+    SceneNodeId existing_node{null_scene_node};
+    std::string existing_node_name;
+    std::int32_t cell_x{0};
+    std::int32_t cell_y{0};
+    std::int32_t cell_z{0};
+    std::string message;
+};
+
+struct RuntimeSceneConstructionPlacementIntentPlan {
+    std::vector<RuntimeSceneConstructionPlacementIntentRow> rows;
+    std::vector<RuntimeSceneConstructionPlacementIntentDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 struct RuntimeSceneAnimationTransformApplyResult {
     bool succeeded{false};
     std::string diagnostic;
@@ -284,6 +360,11 @@ resolve_runtime_scene_gameplay_bindings(const RuntimeSceneInstance& instance,
 plan_runtime_scene_gameplay_interactions(std::span<const RuntimeSceneGameplayBindingRow> bindings,
                                          std::span<const RuntimeSceneGameplayInteractionSourceRow> source_rows,
                                          RuntimeSceneGameplayInteractionPlanRequest request = {});
+
+[[nodiscard]] RuntimeSceneConstructionPlacementIntentPlan plan_runtime_scene_construction_placement_intents(
+    const runtime::RuntimeConstructionPlacementValidationResult& placement,
+    std::span<const RuntimeSceneConstructionPlacementIntentDesc> source_rows,
+    RuntimeSceneConstructionPlacementIntentContext context = {});
 
 [[nodiscard]] RuntimeSceneAnimationTransformApplyResult
 apply_runtime_scene_animation_transform_samples(RuntimeSceneInstance& instance,

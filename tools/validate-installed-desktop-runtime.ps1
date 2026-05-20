@@ -375,13 +375,28 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "gameplay_systems_quest_dialogue_dialogue_nodes",
                 "gameplay_systems_quest_dialogue_action_ids",
                 "gameplay_systems_quest_dialogue_reward_ids",
-                "gameplay_systems_quest_dialogue_state_rows"
+                "gameplay_systems_quest_dialogue_state_rows",
+                "gameplay_systems_inventory_items_ready",
+                "gameplay_systems_inventory_items_diagnostics",
+                "gameplay_systems_inventory_items_catalog_rows",
+                "gameplay_systems_inventory_items_state_rows",
+                "gameplay_systems_inventory_items_transition_rows",
+                "gameplay_systems_inventory_items_accepted_rows",
+                "gameplay_systems_inventory_items_completed_rows",
+                "gameplay_systems_inventory_items_final_stacks",
+                "gameplay_systems_inventory_items_final_workbench_quantity",
+                "gameplay_systems_construction_placement_ready",
+                "gameplay_systems_construction_placement_diagnostics",
+                "gameplay_systems_construction_placement_validation_rows",
+                "gameplay_systems_construction_placement_intent_rows",
+                "gameplay_systems_construction_placement_intent_accepted_rows",
+                "gameplay_systems_construction_placement_intent_occupied_cells"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
             }
         }
-        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_quest_dialogue_ready")) {
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
@@ -463,6 +478,45 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_state_rows=3\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact quest dialogue save-state rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_inventory_items_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean inventory item diagnostics."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_inventory_items_catalog_rows=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact inventory item catalog rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_inventory_items_state_rows=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact inventory state rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_inventory_items_transition_rows=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact inventory item transition rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_inventory_items_accepted_rows=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact accepted inventory rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_inventory_items_completed_rows=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact completed inventory rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_inventory_items_final_stacks=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact final inventory stack count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_inventory_items_final_workbench_quantity=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact final workbench quantity."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_construction_placement_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean construction placement diagnostics."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_construction_placement_validation_rows=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact construction placement validation rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_construction_placement_intent_rows=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact construction placement intent rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_construction_placement_intent_accepted_rows=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact accepted construction placement intent rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_construction_placement_intent_occupied_cells=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact construction placement occupied cells."
         }
     }
 }

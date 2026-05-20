@@ -8,6 +8,7 @@
 #include "mirakana/runtime_scene/runtime_scene.hpp"
 
 #include <cmath>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -95,6 +96,86 @@ find_gameplay_interaction_diagnostic(const mirakana::runtime_scene::RuntimeScene
         }
     }
     return nullptr;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeItemCatalogDocument construction_item_catalog_document() {
+    using namespace mirakana::runtime;
+
+    return RuntimeItemCatalogDocument{
+        .items =
+            std::vector<RuntimeItemDesc>{
+                RuntimeItemDesc{.id = "wood",
+                                .localization_key = "item.wood",
+                                .category_id = "material",
+                                .tag_ids = {"crafting"},
+                                .max_stack = 99U,
+                                .placement_id = {},
+                                .placement_costs = {}},
+                RuntimeItemDesc{.id = "workbench",
+                                .localization_key = "item.workbench",
+                                .category_id = "station",
+                                .tag_ids = {"placeable"},
+                                .max_stack = 1U,
+                                .placement_id = "grid_2d",
+                                .placement_costs =
+                                    std::vector<RuntimeItemCostDesc>{
+                                        RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                                    }},
+            },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeConstructionPlacementValidationResult
+valid_construction_placement_validation() {
+    using namespace mirakana::runtime;
+
+    static const std::vector<std::string> placement_ids{"grid_2d"};
+    static const std::vector<RuntimeConstructionPlacementSurfaceDesc> surfaces{
+        RuntimeConstructionPlacementSurfaceDesc{.id = "floor", .placement_id = "grid_2d"},
+    };
+    const std::vector<RuntimeConstructionPlacementCandidateDesc> candidates{
+        RuntimeConstructionPlacementCandidateDesc{
+            .item_id = "workbench",
+            .surface_id = "floor",
+            .grid_x = 4.0F,
+            .grid_y = 7.0F,
+            .grid_z = 0.0F,
+            .world_x = 4.5F,
+            .world_y = 7.5F,
+            .world_z = 0.0F,
+            .footprint_width = 2U,
+            .footprint_height = 1U,
+            .footprint_depth = 1U,
+            .occupied_cells =
+                std::vector<RuntimeConstructionPlacementCellDesc>{
+                    RuntimeConstructionPlacementCellDesc{.x = 4, .y = 7, .z = 0},
+                    RuntimeConstructionPlacementCellDesc{.x = 5, .y = 7, .z = 0},
+                },
+            .provided_costs =
+                std::vector<RuntimeItemCostDesc>{
+                    RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                },
+        },
+    };
+
+    return validate_runtime_construction_placement(
+        construction_item_catalog_document(), candidates,
+        RuntimeConstructionPlacementValidationContext{
+            .supported_placement_ids = std::span<const std::string>{placement_ids},
+            .supported_surfaces = std::span<const RuntimeConstructionPlacementSurfaceDesc>{surfaces},
+        });
+}
+
+[[nodiscard]] mirakana::SceneNodeComponents placement_sprite_components() {
+    mirakana::SceneNodeComponents components;
+    components.sprite_renderer = mirakana::SpriteRendererComponent{
+        .sprite = mirakana::AssetId::from_name("sprites/workbench"),
+        .material = mirakana::AssetId::from_name("materials/workbench"),
+        .size = mirakana::Vec2{.x = 2.0F, .y = 1.0F},
+        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+        .visible = true,
+    };
+    return components;
 }
 
 [[nodiscard]] mirakana::runtime::RuntimeAssetPackage
@@ -990,6 +1071,205 @@ MK_TEST("runtime scene applies sampled quaternion pose rows to named nodes") {
     MK_REQUIRE(node->transform.position == (mirakana::Vec3{2.0F, 3.0F, 4.0F}));
     MK_REQUIRE(node->transform.scale == (mirakana::Vec3{1.0F, 2.0F, 3.0F}));
     MK_REQUIRE(std::abs(node->transform.rotation_radians.y - 1.57079637F) < 0.0001F);
+}
+
+MK_TEST("runtime scene construction placement intent plans reviewed scene creation rows") {
+    const auto placement = valid_construction_placement_validation();
+    const std::vector<mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "Workbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+        },
+    };
+
+    const auto first = mirakana::runtime_scene::plan_runtime_scene_construction_placement_intents(
+        placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+    const auto second = mirakana::runtime_scene::plan_runtime_scene_construction_placement_intents(
+        placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+
+    MK_REQUIRE(first.succeeded());
+    MK_REQUIRE(first.diagnostics.empty());
+    MK_REQUIRE(first.rows.size() == second.rows.size());
+    MK_REQUIRE(first.rows.size() == 1U);
+    MK_REQUIRE(first.rows[0].status ==
+               mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus::accepted);
+    MK_REQUIRE(first.rows[0].candidate_index == 0U);
+    MK_REQUIRE(first.rows[0].item_id == "workbench");
+    MK_REQUIRE(first.rows[0].placement_id == "grid_2d");
+    MK_REQUIRE(first.rows[0].surface_id == "floor");
+    MK_REQUIRE(first.rows[0].node_name == "Workbench");
+    MK_REQUIRE(first.rows[0].transform.position == (mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}));
+    MK_REQUIRE(first.rows[0].components.sprite_renderer.has_value());
+    MK_REQUIRE(first.rows[0].occupied_cells.size() == 2U);
+    MK_REQUIRE(first.rows[0].occupied_cells[0] ==
+               (mirakana::runtime::RuntimeConstructionPlacementCellDesc{.x = 4, .y = 7, .z = 0}));
+}
+
+MK_TEST("runtime scene construction placement intent classifies blocked invalid and occupied rows") {
+    using Code = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDiagnosticCode;
+    using Status = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    const auto placement = valid_construction_placement_validation();
+    auto invalid_components = placement_sprite_components();
+    invalid_components.sprite_renderer->material = mirakana::AssetId{};
+
+    const std::vector<mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "NeedsReview",
+            .transform = mirakana::Transform3D{},
+            .components = placement_sprite_components(),
+            .reviewed = false,
+        },
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "OccupiedWorkbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 9U,
+            .node_name = "MissingCandidate",
+            .transform = mirakana::Transform3D{},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "Bad\nName",
+            .transform = mirakana::Transform3D{},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "InvalidComponents",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = invalid_components,
+            .reviewed = true,
+        },
+    };
+    const std::vector<mirakana::runtime_scene::RuntimeSceneConstructionPlacementOccupiedCell> occupied_cells{
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementOccupiedCell{
+            .cell = mirakana::runtime::RuntimeConstructionPlacementCellDesc{.x = 4, .y = 7, .z = 0},
+            .node = mirakana::SceneNodeId{12},
+            .node_name = "ExistingWorkbench",
+        },
+    };
+
+    const auto plan = mirakana::runtime_scene::plan_runtime_scene_construction_placement_intents(
+        placement, intents,
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{
+            .occupied_cells =
+                std::span<const mirakana::runtime_scene::RuntimeSceneConstructionPlacementOccupiedCell>{occupied_cells},
+            .existing_node_names = {},
+        });
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.size() == 5U);
+    MK_REQUIRE(plan.diagnostics.size() == 5U);
+    MK_REQUIRE(plan.rows[0].status == Status::blocked);
+    MK_REQUIRE(plan.diagnostics[0].code == Code::placement_not_reviewed);
+    MK_REQUIRE(plan.rows[1].status == Status::already_occupied);
+    MK_REQUIRE(plan.diagnostics[1].code == Code::already_occupied);
+    MK_REQUIRE(plan.diagnostics[1].existing_node == mirakana::SceneNodeId{12});
+    MK_REQUIRE(plan.diagnostics[1].cell_x == 4);
+    MK_REQUIRE(plan.rows[2].status == Status::invalid);
+    MK_REQUIRE(plan.diagnostics[2].code == Code::missing_candidate);
+    MK_REQUIRE(plan.rows[3].status == Status::invalid);
+    MK_REQUIRE(plan.diagnostics[3].code == Code::invalid_node_name);
+    MK_REQUIRE(plan.rows[4].status == Status::invalid);
+    MK_REQUIRE(plan.diagnostics[4].code == Code::invalid_components);
+}
+
+MK_TEST("runtime scene construction placement intent rejects same batch occupied cells") {
+    using Code = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDiagnosticCode;
+    using Status = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    const auto placement = valid_construction_placement_validation();
+    const std::vector<mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "WorkbenchA",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "WorkbenchB",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+        },
+    };
+
+    const auto plan = mirakana::runtime_scene::plan_runtime_scene_construction_placement_intents(
+        placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.size() == 2U);
+    MK_REQUIRE(plan.diagnostics.size() == 1U);
+    MK_REQUIRE(plan.rows[0].status == Status::accepted);
+    MK_REQUIRE(plan.rows[1].status == Status::already_occupied);
+    MK_REQUIRE(plan.diagnostics[0].code == Code::already_occupied);
+    MK_REQUIRE(plan.diagnostics[0].existing_node == mirakana::null_scene_node);
+    MK_REQUIRE(plan.diagnostics[0].existing_node_name == "WorkbenchA");
+    MK_REQUIRE(plan.diagnostics[0].cell_x == 4);
+    MK_REQUIRE(plan.diagnostics[0].cell_y == 7);
+    MK_REQUIRE(plan.diagnostics[0].cell_z == 0);
+}
+
+MK_TEST("runtime scene construction placement intent rejects invalid and mismatched transforms") {
+    using Code = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDiagnosticCode;
+    using Status = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    const auto placement = valid_construction_placement_validation();
+    auto zero_scale = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}};
+    zero_scale.scale.x = 0.0F;
+    auto non_finite_position = mirakana::Transform3D{
+        .position = mirakana::Vec3{.x = std::numeric_limits<float>::quiet_NaN(), .y = 7.5F, .z = 0.0F},
+    };
+    const std::vector<mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "ZeroScaleWorkbench",
+            .transform = zero_scale,
+            .components = placement_sprite_components(),
+            .reviewed = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "NaNWorkbench",
+            .transform = non_finite_position,
+            .components = placement_sprite_components(),
+            .reviewed = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "WrongPositionWorkbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 99.0F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+        },
+    };
+
+    const auto plan = mirakana::runtime_scene::plan_runtime_scene_construction_placement_intents(
+        placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.size() == 3U);
+    MK_REQUIRE(plan.diagnostics.size() == 3U);
+    MK_REQUIRE(plan.rows[0].status == Status::invalid);
+    MK_REQUIRE(plan.diagnostics[0].code == Code::invalid_transform);
+    MK_REQUIRE(plan.rows[1].status == Status::invalid);
+    MK_REQUIRE(plan.diagnostics[1].code == Code::invalid_transform);
+    MK_REQUIRE(plan.rows[2].status == Status::invalid);
+    MK_REQUIRE(plan.diagnostics[2].code == Code::mismatched_transform_position);
 }
 
 int main() {

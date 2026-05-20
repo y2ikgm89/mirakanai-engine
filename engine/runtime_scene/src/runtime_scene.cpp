@@ -312,6 +312,111 @@ void append_animation_binding_diagnostic(std::vector<RuntimeSceneAnimationTransf
     return "unknown";
 }
 
+[[nodiscard]] bool is_line_text_value(const std::string_view value) noexcept {
+    return !value.empty() && value.find_first_of("\r\n=") == std::string_view::npos;
+}
+
+[[nodiscard]] bool contains_string(const std::span<const std::string> values, const std::string_view value) noexcept {
+    return std::ranges::find_if(values, [value](const std::string& candidate) {
+               return std::string_view{candidate} == value;
+           }) != values.end();
+}
+
+[[nodiscard]] bool same_cell(const runtime::RuntimeConstructionPlacementCellDesc& lhs,
+                             const runtime::RuntimeConstructionPlacementCellDesc& rhs) noexcept {
+    return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+[[nodiscard]] bool is_finite_vec3(const Vec3 value) noexcept {
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+}
+
+[[nodiscard]] bool is_valid_scene_transform(const Transform3D transform) noexcept {
+    return is_finite_vec3(transform.position) && is_finite_vec3(transform.rotation_radians) &&
+           is_finite_vec3(transform.scale) && transform.scale.x != 0.0F && transform.scale.y != 0.0F &&
+           transform.scale.z != 0.0F;
+}
+
+[[nodiscard]] bool nearly_equal(const float lhs, const float rhs) noexcept {
+    return std::abs(lhs - rhs) <= 0.0001F;
+}
+
+[[nodiscard]] bool
+matches_candidate_world_position(const Transform3D transform,
+                                 const runtime::RuntimeConstructionPlacementValidationRow& candidate) noexcept {
+    return nearly_equal(transform.position.x, candidate.world_x) &&
+           nearly_equal(transform.position.y, candidate.world_y) &&
+           nearly_equal(transform.position.z, candidate.world_z);
+}
+
+struct RuntimeScenePlacementCandidateRows {
+    bool found{false};
+    runtime::RuntimeConstructionPlacementValidationRow candidate;
+    std::vector<runtime::RuntimeConstructionPlacementCellDesc> occupied_cells;
+};
+
+[[nodiscard]] RuntimeScenePlacementCandidateRows
+find_construction_placement_candidate_rows(const runtime::RuntimeConstructionPlacementValidationResult& placement,
+                                           const std::uint32_t candidate_index) {
+    RuntimeScenePlacementCandidateRows result;
+    for (const auto& row : placement.rows) {
+        if (row.candidate_index != candidate_index) {
+            continue;
+        }
+        if (row.kind == runtime::RuntimeConstructionPlacementValidationRowKind::candidate) {
+            if (!result.found) {
+                result.found = true;
+                result.candidate = row;
+            }
+            continue;
+        }
+        if (row.kind == runtime::RuntimeConstructionPlacementValidationRowKind::occupied_cell) {
+            result.occupied_cells.push_back(runtime::RuntimeConstructionPlacementCellDesc{
+                .x = row.cell_x,
+                .y = row.cell_y,
+                .z = row.cell_z,
+            });
+        }
+    }
+    return result;
+}
+
+[[nodiscard]] const RuntimeSceneConstructionPlacementOccupiedCell*
+find_occupied_cell(const std::span<const RuntimeSceneConstructionPlacementOccupiedCell> occupied_cells,
+                   const std::vector<runtime::RuntimeConstructionPlacementCellDesc>& candidate_cells) noexcept {
+    for (const auto& cell : candidate_cells) {
+        const auto occupied = std::ranges::find_if(
+            occupied_cells, [&cell](const auto& existing) { return same_cell(existing.cell, cell); });
+        if (occupied != occupied_cells.end()) {
+            return &(*occupied);
+        }
+    }
+    return nullptr;
+}
+
+void append_construction_placement_intent_diagnostic(
+    RuntimeSceneConstructionPlacementIntentPlan& plan, const RuntimeSceneConstructionPlacementIntentDiagnosticCode code,
+    const RuntimeSceneConstructionPlacementIntentRow& row, std::string message,
+    const RuntimeSceneConstructionPlacementOccupiedCell* occupied_cell = nullptr) {
+    RuntimeSceneConstructionPlacementIntentDiagnostic diagnostic{
+        .code = code,
+        .candidate_index = row.candidate_index,
+        .item_id = row.item_id,
+        .placement_id = row.placement_id,
+        .surface_id = row.surface_id,
+        .node_name = row.node_name,
+        .message = std::move(message),
+    };
+    if (occupied_cell != nullptr) {
+        diagnostic.existing_node = occupied_cell->node;
+        diagnostic.existing_node_name = occupied_cell->node_name;
+        diagnostic.cell_x = occupied_cell->cell.x;
+        diagnostic.cell_y = occupied_cell->cell.y;
+        diagnostic.cell_z = occupied_cell->cell.z;
+    }
+    plan.diagnostics.push_back(std::move(diagnostic));
+}
+
 void append_gameplay_binding_diagnostic(std::vector<RuntimeSceneGameplayBindingDiagnostic>& diagnostics,
                                         RuntimeSceneGameplayBindingDiagnosticCode code,
                                         const RuntimeSceneGameplayBindingSourceRow& source_row, SceneNodeId node,
@@ -476,6 +581,10 @@ bool RuntimeSceneGameplayBindingResolution::succeeded() const noexcept {
 }
 
 bool RuntimeSceneGameplayInteractionPlan::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
+bool RuntimeSceneConstructionPlacementIntentPlan::succeeded() const noexcept {
     return diagnostics.empty();
 }
 
@@ -813,6 +922,134 @@ plan_runtime_scene_gameplay_interactions(std::span<const RuntimeSceneGameplayBin
         plan.rows.clear();
         plan.final_session_state = request.session_state;
     }
+    return plan;
+}
+
+RuntimeSceneConstructionPlacementIntentPlan plan_runtime_scene_construction_placement_intents(
+    const runtime::RuntimeConstructionPlacementValidationResult& placement,
+    const std::span<const RuntimeSceneConstructionPlacementIntentDesc> source_rows,
+    const RuntimeSceneConstructionPlacementIntentContext context) {
+    RuntimeSceneConstructionPlacementIntentPlan plan;
+    plan.rows.reserve(source_rows.size());
+
+    std::vector<std::string> seen_node_names;
+    seen_node_names.reserve(source_rows.size());
+    std::vector<RuntimeSceneConstructionPlacementOccupiedCell> planned_occupied_cells;
+
+    for (const auto& source_row : source_rows) {
+        RuntimeSceneConstructionPlacementIntentRow row{
+            .candidate_index = source_row.candidate_index,
+            .status = RuntimeSceneConstructionPlacementIntentStatus::invalid,
+            .node_name = source_row.node_name,
+            .transform = source_row.transform,
+            .components = source_row.components,
+        };
+
+        if (!placement.succeeded || !placement.diagnostics.empty()) {
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::invalid_placement_validation,
+                plan.rows.back(), "construction placement validation did not succeed");
+            continue;
+        }
+
+        auto candidate_rows = find_construction_placement_candidate_rows(placement, source_row.candidate_index);
+        if (!candidate_rows.found) {
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::missing_candidate, plan.rows.back(),
+                "construction placement candidate row is missing");
+            continue;
+        }
+        row.item_id = candidate_rows.candidate.item_id;
+        row.placement_id = candidate_rows.candidate.placement_id;
+        row.surface_id = candidate_rows.candidate.surface_id;
+        row.occupied_cells = std::move(candidate_rows.occupied_cells);
+
+        if (!source_row.reviewed) {
+            row.status = RuntimeSceneConstructionPlacementIntentStatus::blocked;
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::placement_not_reviewed, plan.rows.back(),
+                "construction placement scene intent was not reviewed");
+            continue;
+        }
+        if (!is_line_text_value(source_row.node_name)) {
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::invalid_node_name, plan.rows.back(),
+                "construction placement scene node name is invalid");
+            continue;
+        }
+        if (std::ranges::find(seen_node_names, source_row.node_name) != seen_node_names.end()) {
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::duplicate_intent_node_name,
+                plan.rows.back(), "construction placement scene node name is duplicated in the intent rows");
+            continue;
+        }
+        if (contains_string(context.existing_node_names, source_row.node_name)) {
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::duplicate_scene_node_name,
+                plan.rows.back(), "construction placement scene node name already exists");
+            continue;
+        }
+        seen_node_names.push_back(source_row.node_name);
+
+        if (!is_valid_scene_node_components(source_row.components)) {
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::invalid_components, plan.rows.back(),
+                "construction placement scene components are invalid");
+            continue;
+        }
+        if (!is_valid_scene_transform(source_row.transform)) {
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::invalid_transform, plan.rows.back(),
+                "construction placement scene transform is invalid");
+            continue;
+        }
+        if (!matches_candidate_world_position(source_row.transform, candidate_rows.candidate)) {
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::mismatched_transform_position,
+                plan.rows.back(),
+                "construction placement scene transform position does not match validation world position");
+            continue;
+        }
+        if (const auto* occupied_cell = find_occupied_cell(context.occupied_cells, row.occupied_cells);
+            occupied_cell != nullptr) {
+            row.status = RuntimeSceneConstructionPlacementIntentStatus::already_occupied;
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::already_occupied, plan.rows.back(),
+                "construction placement occupied cell already has a scene node", occupied_cell);
+            continue;
+        }
+        if (const auto* occupied_cell = find_occupied_cell(planned_occupied_cells, row.occupied_cells);
+            occupied_cell != nullptr) {
+            row.status = RuntimeSceneConstructionPlacementIntentStatus::already_occupied;
+            plan.rows.push_back(std::move(row));
+            append_construction_placement_intent_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::already_occupied, plan.rows.back(),
+                "construction placement occupied cell already has an accepted intent row", occupied_cell);
+            continue;
+        }
+
+        row.status = RuntimeSceneConstructionPlacementIntentStatus::accepted;
+        plan.rows.push_back(std::move(row));
+        const auto& accepted_row = plan.rows.back();
+        for (const auto& cell : accepted_row.occupied_cells) {
+            planned_occupied_cells.push_back(RuntimeSceneConstructionPlacementOccupiedCell{
+                .cell = cell,
+                .node = null_scene_node,
+                .node_name = accepted_row.node_name,
+            });
+        }
+    }
+
     return plan;
 }
 
