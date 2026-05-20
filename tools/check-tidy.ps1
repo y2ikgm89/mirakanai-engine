@@ -9,6 +9,7 @@ param(
     [int]$Jobs = 0,
     [int]$ShardCount = 1,
     [int]$ShardIndex = 0,
+    [switch]$ReuseExistingFileApiReply,
     [string[]]$Files = @()
 )
 
@@ -149,9 +150,7 @@ function Split-CompileCommandFragment {
 function New-FileApiCodemodelQuery {
     param([Parameter(Mandatory = $true)][string]$BuildDir)
 
-    $queryDir = Join-Path $BuildDir ".cmake/api/v1/query"
-    New-Item -ItemType Directory -Force -Path $queryDir | Out-Null
-    New-Item -ItemType File -Force -Path (Join-Path $queryDir "codemodel-v2") | Out-Null
+    New-CMakeFileApiCodemodelQuery -BuildDir $BuildDir
 }
 
 function Get-FileApiCodemodelReply {
@@ -291,6 +290,7 @@ function Ensure-ClangTidyCompileDatabase {
         [Parameter(Mandatory = $true)][string]$Configuration,
         [Parameter(Mandatory = $true)][string]$BuildDir,
         [Parameter(Mandatory = $true)][string]$CompileCommands,
+        [switch]$ReuseExistingFileApiReply,
         [switch]$RequireStrict
     )
 
@@ -300,6 +300,23 @@ function Ensure-ClangTidyCompileDatabase {
     }
 
     New-FileApiCodemodelQuery -BuildDir $BuildDir
+
+    if ($ReuseExistingFileApiReply.IsPresent) {
+        # try existing File API codemodel reply before reconfiguring
+        $existingReply = Get-FileApiCodemodelReply -BuildDir $BuildDir
+        if ($existingReply) {
+            $existingEntryCount = Convert-FileApiCodemodelToCompileDatabase `
+                -CodemodelReply $existingReply `
+                -SourceDir $root `
+                -BuildDir $BuildDir `
+                -Configuration $Configuration `
+                -OutputPath $CompileCommands
+            if ($existingEntryCount -gt 0) {
+                Write-Host "tidy-check: reused existing CMake File API reply for preset '$Preset' configuration '$Configuration' ($existingEntryCount files)"
+                return $true
+            }
+        }
+    }
 
     $cmake = Get-CMakeCommand
     if (-not $cmake) {
@@ -360,7 +377,7 @@ if (-not $configurePreset) {
 
 $buildDir = ([string]$configurePreset.binaryDir).Replace('${sourceDir}', $root)
 $compileCommands = Join-Path $buildDir "compile_commands.json"
-if (-not (Ensure-ClangTidyCompileDatabase -Preset $Preset -Configuration $Configuration -BuildDir $buildDir -CompileCommands $compileCommands -RequireStrict:$Strict)) {
+if (-not (Ensure-ClangTidyCompileDatabase -Preset $Preset -Configuration $Configuration -BuildDir $buildDir -CompileCommands $compileCommands -ReuseExistingFileApiReply:$ReuseExistingFileApiReply -RequireStrict:$Strict)) {
     Write-Host "tidy-check: config ok"
     exit 0
 }

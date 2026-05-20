@@ -42,7 +42,7 @@ paths:
 
 ## Static analysis
 
-- Prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` over raw `clang-tidy`. The wrapper verifies `.clang-tidy`, reuses native Makefile/Ninja `compile_commands.json` when present, or synthesizes `compile_commands.json` under the active preset `binaryDir` from CMake File API codemodel data on the default Windows Visual Studio `dev` lane. Missing CMake or `clang-tidy` is a host blocker, not an engine defect.
+- Prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` over raw `clang-tidy`. The wrapper verifies `.clang-tidy`, reuses native Makefile/Ninja `compile_commands.json` when present, or synthesizes `compile_commands.json` under the active preset `binaryDir` from CMake File API codemodel data on the default Windows Visual Studio `dev` lane. In full validation, `build.ps1` prepares that File API query before generation, then the tidy smoke reuses the reply. Missing CMake or `clang-tidy` is a host blocker, not an engine defect.
 - Noisy warnings in **`tests/unit/*.cpp`** and similar churn in **`editor/core`** production TUs: fix patterns first (complete designated initializers—including declaration order when the toolchain flags skipped members—C++23 **`std::string::contains` / `starts_with`** and the same on **`std::string_view`**, one anonymous namespace through test bodies with `int main()` outside for large TUs, `class` test doubles with private state and `const` getters instead of public counters, **Rule of Five** on file-local C API adapters when special-member clang-tidy checks fire). See **Unit tests** and production notes in `docs/cpp-style.md`. Use narrow NOLINT only after the pattern fix or for documented false positives.
 
 ## Do Not
