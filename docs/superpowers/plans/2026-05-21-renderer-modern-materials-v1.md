@@ -1,8 +1,8 @@
 # Renderer Modern Materials v1 (2026-05-21)
 
 **Plan ID:** `renderer-modern-materials-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is renderer 1.x developer-owned capability work, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** Historical. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` now points at the next active developer-owned renderer 1.x milestone. Keep `unsupportedProductionGaps = []`; this was renderer 1.x developer-owned capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
