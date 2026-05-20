@@ -1,7 +1,7 @@
 # Renderer Postprocess v1 (2026-05-21)
 
 **Plan ID:** `renderer-postprocess-v1`
-**Status:** Completed.
+**Status:** Active.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is renderer 1.x developer-owned capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -26,7 +26,7 @@ Add production postprocess building blocks so generated 3D games can request det
 
 ## Phase 0: Pointer Sync
 
-**Status:** Active.
+**Status:** Completed.
 
 ### Goal
 
@@ -41,7 +41,7 @@ Close the completed lighting/shadows active pointer and select `renderer-postpro
 
 ## Phase 1: Postprocess Chain Policy Diagnostics
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -86,3 +86,7 @@ Promote only backend-specific postprocess execution evidence with fresh official
 - Phase 0 started after `renderer-lighting-shadows-v1` completed through PR #151, merge commit `72c7539b71c34d4ed5a1865190b3cc92153167dc`, hosted PR Gate, Windows MSVC, Full Repository Static Analysis shards, Linux, CodeQL, iOS, and macOS Metal CMake checks, plus local full `tools/validate.ps1` evidence while `unsupportedProductionGaps = []` stayed empty.
 - Phase 0 pointer sync selected this plan in `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/superpowers/master-plans/production-completion-v1/01-one-dot-zero-readiness-ledger.md`, and `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`; composed `engine/agent/manifest.json` reports `currentActivePlan=docs/superpowers/plans/2026-05-21-renderer-postprocess-v1.md`, `recommendedNextPlan.id=renderer-postprocess-v1`, and `unsupportedProductionGaps = []`.
 - Phase 0 static evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` passed with `unsupported_gaps=0`.
+- Phase 1 RED evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` failed first with `fatal error C1083: Cannot open include file: 'mirakana/renderer/postprocess_policy.hpp'`.
+- Phase 1 implemented backend-neutral `PostprocessChainPolicyDesc`, `PostprocessEffectDesc`, `PostprocessChainPolicyPlan`, diagnostics, and `plan_postprocess_chain_policy` for tone/exposure/bloom/color/fog/AA classification, frame extent/resource/budget checks, host-gated backend shader evidence, and deterministic framegraph pass/barrier expectations without native backend handles.
+- Phase 1 focused evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_renderer_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/renderer/src/postprocess_policy.cpp,tests/unit/renderer_rhi_tests.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` passed; production readiness reported `unsupported_gaps=0`.
+- Phase 1 full gate evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 67/67 CTest tests, `unsupported_gaps=0`, and expected Windows host-gated Apple/Metal diagnostic-only blockers.

@@ -6,6 +6,7 @@
 #include "mirakana/assets/material.hpp"
 #include "mirakana/renderer/frame_graph.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
+#include "mirakana/renderer/postprocess_policy.hpp"
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
@@ -5889,6 +5890,99 @@ MK_TEST("rhi postprocess frame renderer records scene color and postprocess pass
     MK_REQUIRE(rhi_stats.resource_transitions == 2);
     MK_REQUIRE(rhi_stats.draw_calls == 2);
     MK_REQUIRE(rhi_stats.present_calls == 1);
+}
+
+MK_TEST("postprocess chain policy plans supported effects and fail-closed diagnostics") {
+    const std::array effects{
+        mirakana::PostprocessEffectDesc{.kind = mirakana::PostprocessEffectKind::tone_mapping, .source_index = 0},
+        mirakana::PostprocessEffectDesc{
+            .kind = mirakana::PostprocessEffectKind::exposure, .intensity = 1.25F, .source_index = 1},
+        mirakana::PostprocessEffectDesc{.kind = mirakana::PostprocessEffectKind::bloom,
+                                        .intensity = 0.6F,
+                                        .bloom_iterations = 4,
+                                        .source_index = 2},
+        mirakana::PostprocessEffectDesc{
+            .kind = mirakana::PostprocessEffectKind::fog, .intensity = 0.35F, .source_index = 3},
+        mirakana::PostprocessEffectDesc{.kind = mirakana::PostprocessEffectKind::anti_aliasing,
+                                        .anti_aliasing = mirakana::PostprocessAntiAliasingMode::fxaa,
+                                        .source_index = 4},
+    };
+
+    const auto plan = mirakana::plan_postprocess_chain_policy(mirakana::PostprocessChainPolicyDesc{
+        .effects = effects,
+        .frame_extent = mirakana::Extent2D{.width = 1280, .height = 720},
+        .scene_color_available = true,
+        .scene_depth_available = true,
+        .max_effect_count = 6,
+        .max_postprocess_pass_count = 2,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .require_backend_shader_evidence = true,
+        .backend_shader_evidence_ready = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.effect_count == effects.size());
+    MK_REQUIRE(plan.postprocess_pass_count == 2);
+    MK_REQUIRE(plan.frame_graph_pass_count == 3);
+    MK_REQUIRE(plan.frame_graph_barrier_step_budget == 4);
+    MK_REQUIRE(plan.scene_color_required);
+    MK_REQUIRE(plan.scene_depth_required);
+    MK_REQUIRE(plan.bloom_work_texture_required);
+    MK_REQUIRE(plan.backend_shader_evidence_ready);
+    MK_REQUIRE(mirakana::has_postprocess_chain_policy_effect(plan, mirakana::PostprocessEffectKind::tone_mapping));
+    MK_REQUIRE(mirakana::has_postprocess_chain_policy_effect(plan, mirakana::PostprocessEffectKind::bloom));
+    MK_REQUIRE(mirakana::has_postprocess_chain_policy_effect(plan, mirakana::PostprocessEffectKind::fog));
+    MK_REQUIRE(plan.effect_rows[2].pass_index == 0);
+    MK_REQUIRE(plan.effect_rows[4].pass_index == 1);
+
+    const std::array invalid_effects{
+        mirakana::PostprocessEffectDesc{
+            .kind = mirakana::PostprocessEffectKind::fog, .intensity = 0.5F, .source_index = 7},
+        mirakana::PostprocessEffectDesc{.kind = mirakana::PostprocessEffectKind::anti_aliasing,
+                                        .anti_aliasing = mirakana::PostprocessAntiAliasingMode::taa,
+                                        .source_index = 8},
+    };
+    const auto invalid = mirakana::plan_postprocess_chain_policy(mirakana::PostprocessChainPolicyDesc{
+        .effects = invalid_effects,
+        .frame_extent = mirakana::Extent2D{.width = 1280, .height = 720},
+        .scene_color_available = false,
+        .scene_depth_available = false,
+        .max_effect_count = 1,
+        .max_postprocess_pass_count = 1,
+        .backend = mirakana::rhi::BackendKind::vulkan,
+        .require_backend_shader_evidence = true,
+        .backend_shader_evidence_ready = false,
+    });
+
+    MK_REQUIRE(!invalid.succeeded());
+    MK_REQUIRE(mirakana::has_postprocess_chain_policy_diagnostic(
+        invalid, mirakana::PostprocessChainDiagnosticCode::missing_scene_color));
+    MK_REQUIRE(mirakana::has_postprocess_chain_policy_diagnostic(
+        invalid, mirakana::PostprocessChainDiagnosticCode::missing_scene_depth));
+    MK_REQUIRE(mirakana::has_postprocess_chain_policy_diagnostic(
+        invalid, mirakana::PostprocessChainDiagnosticCode::unsupported_anti_aliasing_mode));
+    MK_REQUIRE(mirakana::has_postprocess_chain_policy_diagnostic(
+        invalid, mirakana::PostprocessChainDiagnosticCode::too_many_effects));
+    MK_REQUIRE(mirakana::has_postprocess_chain_policy_diagnostic(
+        invalid, mirakana::PostprocessChainDiagnosticCode::missing_backend_shader_evidence));
+
+    const std::array disabled_effects{
+        mirakana::PostprocessEffectDesc{
+            .kind = mirakana::PostprocessEffectKind::tone_mapping, .enabled = false, .source_index = 9},
+    };
+    const auto disabled_only = mirakana::plan_postprocess_chain_policy(mirakana::PostprocessChainPolicyDesc{
+        .effects = disabled_effects,
+        .frame_extent = mirakana::Extent2D{.width = 640, .height = 360},
+        .scene_color_available = false,
+        .scene_depth_available = false,
+    });
+    MK_REQUIRE(!disabled_only.succeeded());
+    MK_REQUIRE(!disabled_only.scene_color_required);
+    MK_REQUIRE(disabled_only.effect_count == 0);
+    MK_REQUIRE(mirakana::has_postprocess_chain_policy_diagnostic(disabled_only,
+                                                                 mirakana::PostprocessChainDiagnosticCode::no_effects));
+    MK_REQUIRE(!mirakana::has_postprocess_chain_policy_diagnostic(
+        disabled_only, mirakana::PostprocessChainDiagnosticCode::missing_scene_color));
 }
 
 MK_TEST("rhi postprocess frame renderer records morph scene draws") {
