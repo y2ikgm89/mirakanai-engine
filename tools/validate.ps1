@@ -4,7 +4,11 @@
 [CmdletBinding()]
 param(
     [ValidateRange(0, 64)]
-    [int]$StaticJobs = 0
+    [int]$StaticJobs = 0,
+
+    [switch]$StaticOnly,
+
+    [switch]$SkipStaticChecks
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,6 +17,10 @@ $ErrorActionPreference = "Stop"
 
 # `tools/check-ai-integration.ps1` runs once below (equivalent to `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`).
 # `check-validation-recipe-runner.ps1` exercises DryRun/Execute rejection paths without duplicating that pass.
+
+if ($StaticOnly.IsPresent -and $SkipStaticChecks.IsPresent) {
+    Write-Error "validate: -StaticOnly and -SkipStaticChecks cannot be combined"
+}
 
 function Resolve-ValidateStaticJobCount {
     [CmdletBinding()]
@@ -219,7 +227,14 @@ $staticTasks = @(
     New-ValidateTask -ScriptFileName "check-public-api-boundaries.ps1"
 )
 
-Invoke-ValidateToolScriptBatch -Tasks $staticTasks -Jobs (Resolve-ValidateStaticJobCount -Jobs $StaticJobs)
+if (-not $SkipStaticChecks.IsPresent) {
+    Invoke-ValidateToolScriptBatch -Tasks $staticTasks -Jobs (Resolve-ValidateStaticJobCount -Jobs $StaticJobs)
+}
+
+if ($StaticOnly.IsPresent) {
+    Write-Host "validate: static ok"
+    exit 0
+}
 
 foreach ($scriptFileName in @(
         "build.ps1",

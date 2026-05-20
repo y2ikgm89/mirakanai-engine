@@ -57,7 +57,6 @@ jobs:
   agent-static:
     name: Agent Static Guards
     needs: changes
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -68,24 +67,13 @@ jobs:
           persist-credentials: false
 
       - name: Check PR diff whitespace
+        if: ${{ github.event_name == 'pull_request' }}
         shell: pwsh
         run: git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}
 
-      - name: Check agent file contracts
+      - name: Run static validation
         shell: pwsh
-        run: ./tools/check-agents.ps1
-
-      - name: Check JSON contracts
-        shell: pwsh
-        run: ./tools/check-json-contracts.ps1
-
-      - name: Check AI integration
-        shell: pwsh
-        run: ./tools/check-ai-integration.ps1
-
-      - name: Check CI matrix contract
-        shell: pwsh
-        run: ./tools/check-ci-matrix.ps1
+        run: ./tools/validate.ps1 -StaticOnly
 
   windows:
     name: Windows MSVC
@@ -195,7 +183,7 @@ jobs:
 
       - name: Validate
         shell: pwsh
-        run: ./tools/validate.ps1
+        run: ./tools/validate.ps1 -SkipStaticChecks
 
       - name: Upload Windows test logs
         if: ${{ always() && !cancelled() }}

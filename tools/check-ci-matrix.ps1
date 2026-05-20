@@ -154,6 +154,11 @@ function Assert-ValidationTierSelection {
 
 $validateScript = Read-RequiredText "tools/validate.ps1"
 Assert-ContainsText $validateScript "check-ci-matrix.ps1" "tools/validate.ps1 default validation hook"
+Assert-ContainsAll $validateScript @(
+    "[switch]`$StaticOnly",
+    "[switch]`$SkipStaticChecks",
+    "validate: -StaticOnly and -SkipStaticChecks cannot be combined"
+) "tools/validate.ps1 static/build split contract"
 
 $cpp23EvaluationScript = Read-RequiredText "tools/evaluate-cpp23.ps1"
 Assert-ContainsAll $cpp23EvaluationScript @(
@@ -373,7 +378,7 @@ Assert-ContainsAll $windowsJob @(
     '${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-',
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
-    "run: ./tools/validate.ps1",
+    "run: ./tools/validate.ps1 -SkipStaticChecks",
     'if: ${{ always() && !cancelled() }}',
     $uploadArtifactActionRef,
     "name: windows-test-logs",
@@ -438,17 +443,15 @@ $agentStaticJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "
 Assert-ContainsAll $agentStaticJob @(
     "name: Agent Static Guards",
     "needs: changes",
-    "if: github.event_name == 'pull_request'",
     "runs-on: ubuntu-latest",
     "timeout-minutes: 20",
     $checkoutActionRef,
     "persist-credentials: false",
     "fetch-depth: 0",
+    'if: ${{ github.event_name == ''pull_request'' }}',
     'git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}',
-    "run: ./tools/check-agents.ps1",
-    "run: ./tools/check-json-contracts.ps1",
-    "run: ./tools/check-ai-integration.ps1",
-    "run: ./tools/check-ci-matrix.ps1"
+    "Run static validation",
+    "run: ./tools/validate.ps1 -StaticOnly"
 ) ".github/workflows/validate.yml agent-static job"
 
 $linuxJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux" -Label ".github/workflows/validate.yml"
