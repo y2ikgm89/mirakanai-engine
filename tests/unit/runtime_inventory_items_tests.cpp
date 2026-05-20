@@ -122,6 +122,147 @@ MK_TEST("runtime item catalog reports invalid ids metadata and references determ
     MK_REQUIRE(first.diagnostics[9].referenced_item_id == "wood");
 }
 
+MK_TEST("runtime inventory state validates deterministic stack rows") {
+    using Code = mirakana::runtime::RuntimeInventoryStateDiagnosticCode;
+    using namespace mirakana::runtime;
+
+    const auto document = valid_item_catalog_document();
+    const RuntimeInventoryState valid_state{
+        .stacks =
+            std::vector<RuntimeInventoryStackDesc>{
+                RuntimeInventoryStackDesc{.item_id = "wood", .quantity = 99U},
+                RuntimeInventoryStackDesc{.item_id = "workbench", .quantity = 1U},
+            },
+    };
+
+    const auto valid_first = validate_runtime_inventory_state(document, valid_state);
+    const auto valid_second = validate_runtime_inventory_state(document, valid_state);
+
+    MK_REQUIRE(valid_first.succeeded);
+    MK_REQUIRE(valid_first.diagnostics.empty());
+    MK_REQUIRE(valid_first.rows == valid_second.rows);
+    MK_REQUIRE(valid_first.rows.size() == 2U);
+    MK_REQUIRE(valid_first.rows[0].item_id == "wood");
+    MK_REQUIRE(valid_first.rows[0].quantity == 99U);
+    MK_REQUIRE(valid_first.rows[1].item_id == "workbench");
+    MK_REQUIRE(valid_first.rows[1].quantity == 1U);
+
+    const RuntimeInventoryState invalid_state{
+        .stacks =
+            std::vector<RuntimeInventoryStackDesc>{
+                RuntimeInventoryStackDesc{.item_id = "wood", .quantity = 100U},
+                RuntimeInventoryStackDesc{.item_id = "missing", .quantity = 1U},
+                RuntimeInventoryStackDesc{.item_id = "workbench", .quantity = 0U},
+            },
+    };
+
+    const auto invalid_first = validate_runtime_inventory_state(document, invalid_state);
+    const auto invalid_second = validate_runtime_inventory_state(document, invalid_state);
+
+    MK_REQUIRE(!invalid_first.succeeded);
+    MK_REQUIRE(invalid_first.rows.empty());
+    MK_REQUIRE(invalid_first.diagnostics == invalid_second.diagnostics);
+    MK_REQUIRE(invalid_first.diagnostics.size() == 3U);
+    MK_REQUIRE(invalid_first.diagnostics[0].code == Code::stack_limit_exceeded);
+    MK_REQUIRE(invalid_first.diagnostics[0].item_id == "wood");
+    MK_REQUIRE(invalid_first.diagnostics[0].quantity == 100U);
+    MK_REQUIRE(invalid_first.diagnostics[1].code == Code::missing_item_reference);
+    MK_REQUIRE(invalid_first.diagnostics[1].item_id == "missing");
+    MK_REQUIRE(invalid_first.diagnostics[2].code == Code::invalid_quantity);
+    MK_REQUIRE(invalid_first.diagnostics[2].item_id == "workbench");
+}
+
+MK_TEST("runtime inventory transitions classify accepted ignored blocked completed and invalid rows") {
+    using Status = mirakana::runtime::RuntimeInventoryTransitionStatus;
+    using namespace mirakana::runtime;
+
+    const auto document = valid_item_catalog_document();
+    const RuntimeCraftingRecipeDocument recipes{
+        .recipes =
+            std::vector<RuntimeCraftingRecipeDesc>{
+                RuntimeCraftingRecipeDesc{
+                    .id = "recipe.workbench",
+                    .inputs =
+                        std::vector<RuntimeItemCostDesc>{
+                            RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                        },
+                    .outputs =
+                        std::vector<RuntimeItemCostDesc>{
+                            RuntimeItemCostDesc{.item_id = "workbench", .quantity = 1U},
+                        },
+                },
+            },
+    };
+    RuntimeInventoryState state{
+        .stacks =
+            std::vector<RuntimeInventoryStackDesc>{
+                RuntimeInventoryStackDesc{.item_id = "wood", .quantity = 2U},
+            },
+    };
+
+    const auto blocked_craft = advance_runtime_inventory_state(document, recipes, state,
+                                                               RuntimeInventoryTransitionRequest{
+                                                                   .kind = RuntimeInventoryTransitionKind::craft_recipe,
+                                                                   .recipe_id = "recipe.workbench",
+                                                               });
+    MK_REQUIRE(!blocked_craft.succeeded);
+    MK_REQUIRE(blocked_craft.rows.size() == 1U);
+    MK_REQUIRE(blocked_craft.rows[0].status == Status::blocked);
+    MK_REQUIRE(blocked_craft.state == state);
+
+    const auto ignored_add = advance_runtime_inventory_state(document, recipes, state,
+                                                             RuntimeInventoryTransitionRequest{
+                                                                 .kind = RuntimeInventoryTransitionKind::add_item,
+                                                                 .item_id = "wood",
+                                                                 .quantity = 0U,
+                                                             });
+    MK_REQUIRE(ignored_add.succeeded);
+    MK_REQUIRE(ignored_add.rows[0].status == Status::ignored);
+    MK_REQUIRE(ignored_add.state == state);
+
+    const auto accepted_add = advance_runtime_inventory_state(document, recipes, state,
+                                                              RuntimeInventoryTransitionRequest{
+                                                                  .kind = RuntimeInventoryTransitionKind::add_item,
+                                                                  .item_id = "wood",
+                                                                  .quantity = 120U,
+                                                              });
+    MK_REQUIRE(accepted_add.succeeded);
+    MK_REQUIRE(accepted_add.rows[0].status == Status::accepted);
+    MK_REQUIRE(accepted_add.state.stacks.size() == 2U);
+    MK_REQUIRE(accepted_add.state.stacks[0].item_id == "wood");
+    MK_REQUIRE(accepted_add.state.stacks[0].quantity == 99U);
+    MK_REQUIRE(accepted_add.state.stacks[1].item_id == "wood");
+    MK_REQUIRE(accepted_add.state.stacks[1].quantity == 23U);
+
+    state = RuntimeInventoryState{
+        .stacks =
+            std::vector<RuntimeInventoryStackDesc>{
+                RuntimeInventoryStackDesc{.item_id = "wood", .quantity = 3U},
+            },
+    };
+    const auto completed_craft =
+        advance_runtime_inventory_state(document, recipes, state,
+                                        RuntimeInventoryTransitionRequest{
+                                            .kind = RuntimeInventoryTransitionKind::craft_recipe,
+                                            .recipe_id = "recipe.workbench",
+                                        });
+    MK_REQUIRE(completed_craft.succeeded);
+    MK_REQUIRE(completed_craft.rows[0].status == Status::completed);
+    MK_REQUIRE(completed_craft.state.stacks.size() == 1U);
+    MK_REQUIRE(completed_craft.state.stacks[0].item_id == "workbench");
+    MK_REQUIRE(completed_craft.state.stacks[0].quantity == 1U);
+
+    const auto invalid_add = advance_runtime_inventory_state(document, recipes, state,
+                                                             RuntimeInventoryTransitionRequest{
+                                                                 .kind = RuntimeInventoryTransitionKind::add_item,
+                                                                 .item_id = "missing",
+                                                                 .quantity = 1U,
+                                                             });
+    MK_REQUIRE(!invalid_add.succeeded);
+    MK_REQUIRE(invalid_add.rows[0].status == Status::invalid);
+    MK_REQUIRE(invalid_add.state == state);
+}
+
 int main() {
     return mirakana::test::run_all();
 }

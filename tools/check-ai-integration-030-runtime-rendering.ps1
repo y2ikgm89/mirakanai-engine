@@ -786,6 +786,19 @@ foreach ($inventoryItemGuidanceNeedle in @(
     "RuntimeItemCatalogDiagnostic",
     "RuntimeItemCatalogValidationRow",
     "validate_runtime_item_catalog_document",
+    "RuntimeInventoryState",
+    "RuntimeInventoryStateValidationResult",
+    "validate_runtime_inventory_state",
+    "RuntimeCraftingRecipeDocument",
+    "RuntimeInventoryTransitionRequest",
+    "RuntimeInventoryTransitionStatus",
+    "advance_runtime_inventory_state",
+    "accepted",
+    "ignored",
+    "blocked",
+    "completed",
+    "invalid",
+    "gameplay_systems_inventory_items_transition_rows",
     "duplicate item ids",
     "invalid stack limits",
     "unsupported category ids",
@@ -809,7 +822,20 @@ foreach ($inventoryItemSurface in @(
     Assert-ContainsText $inventoryItemSurfaceText "RuntimeItemCatalogValidationContext" $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "RuntimeItemCatalogValidationResult" $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "validate_runtime_item_catalog_document" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "RuntimeInventoryState" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "validate_runtime_inventory_state" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "RuntimeCraftingRecipeDocument" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "RuntimeInventoryTransitionRequest" $inventoryItemSurface
+    Assert-ContainsText $inventoryItemSurfaceText "advance_runtime_inventory_state" $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "game-owned" $inventoryItemSurface
+}
+foreach ($inventoryItemPackageSurface in @(
+    "games/sample_2d_desktop_runtime_package/README.md",
+    "games/sample_2d_desktop_runtime_package/game.agent.json"
+)) {
+    $inventoryItemPackageText = Get-AgentSurfaceText $inventoryItemPackageSurface
+    Assert-ContainsText $inventoryItemPackageText "gameplay_systems_inventory_items_transition_rows" $inventoryItemPackageSurface
+    Assert-ContainsText $inventoryItemPackageText "gameplay_systems_inventory_items_final_workbench_quantity" $inventoryItemPackageSurface
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_accessibility_publish" "runtime UI game guidance"

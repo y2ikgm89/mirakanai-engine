@@ -15,6 +15,7 @@
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/renderer/sprite_batch.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/inventory_items.hpp"
 #include "mirakana/runtime/quest_dialogue.hpp"
 #include "mirakana/runtime/runtime_diagnostics.hpp"
 #include "mirakana/runtime/session_services.hpp"
@@ -301,6 +302,18 @@ struct Gameplay2DQuestDialogueProbeResult {
     std::size_t state_rows{0U};
 };
 
+struct Gameplay2DInventoryProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t catalog_rows{0U};
+    std::size_t state_rows{0U};
+    std::size_t transition_rows{0U};
+    std::size_t accepted_rows{0U};
+    std::size_t completed_rows{0U};
+    std::size_t final_stacks{0U};
+    std::uint32_t final_workbench_quantity{0U};
+};
+
 [[nodiscard]] mirakana::runtime::RuntimeQuestDialogueDocument gameplay_2d_quest_dialogue_document() {
     using namespace mirakana::runtime;
 
@@ -467,6 +480,151 @@ struct Gameplay2DQuestDialogueProbeResult {
     return result;
 }
 
+[[nodiscard]] mirakana::runtime::RuntimeItemCatalogDocument gameplay_2d_inventory_catalog_document() {
+    using namespace mirakana::runtime;
+
+    return RuntimeItemCatalogDocument{
+        .items =
+            std::vector<RuntimeItemDesc>{
+                RuntimeItemDesc{
+                    .id = "wood",
+                    .localization_key = "item.wood",
+                    .category_id = "material",
+                    .tag_ids = {"crafting", "pickup"},
+                    .max_stack = 99U,
+                    .placement_id = {},
+                    .placement_costs = {},
+                },
+                RuntimeItemDesc{
+                    .id = "workbench",
+                    .localization_key = "item.workbench",
+                    .category_id = "station",
+                    .tag_ids = {"crafting", "placeable"},
+                    .max_stack = 1U,
+                    .placement_id = "grid_2d",
+                    .placement_costs =
+                        std::vector<RuntimeItemCostDesc>{
+                            RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                        },
+                },
+            },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeItemCatalogValidationContext gameplay_2d_inventory_catalog_context() {
+    static const std::vector<std::string> localization_keys{"item.wood", "item.workbench"};
+    static const std::vector<std::string> category_ids{"material", "station"};
+    static const std::vector<std::string> tag_ids{"crafting", "pickup", "placeable"};
+    static const std::vector<std::string> placement_ids{"grid_2d"};
+
+    return mirakana::runtime::RuntimeItemCatalogValidationContext{
+        .localization_keys = std::span<const std::string>{localization_keys},
+        .supported_category_ids = std::span<const std::string>{category_ids},
+        .supported_tag_ids = std::span<const std::string>{tag_ids},
+        .supported_placement_ids = std::span<const std::string>{placement_ids},
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeCraftingRecipeDocument gameplay_2d_crafting_recipes() {
+    using namespace mirakana::runtime;
+
+    return RuntimeCraftingRecipeDocument{
+        .recipes =
+            std::vector<RuntimeCraftingRecipeDesc>{
+                RuntimeCraftingRecipeDesc{
+                    .id = "recipe.workbench",
+                    .inputs =
+                        std::vector<RuntimeItemCostDesc>{
+                            RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                        },
+                    .outputs =
+                        std::vector<RuntimeItemCostDesc>{
+                            RuntimeItemCostDesc{.item_id = "workbench", .quantity = 1U},
+                        },
+                },
+            },
+    };
+}
+
+[[nodiscard]] Gameplay2DInventoryProbeResult validate_gameplay_2d_inventory_items() {
+    using Kind = mirakana::runtime::RuntimeInventoryTransitionKind;
+    using Status = mirakana::runtime::RuntimeInventoryTransitionStatus;
+
+    Gameplay2DInventoryProbeResult result;
+    const auto catalog = gameplay_2d_inventory_catalog_document();
+    const auto catalog_validation =
+        mirakana::runtime::validate_runtime_item_catalog_document(catalog, gameplay_2d_inventory_catalog_context());
+    result.diagnostics += catalog_validation.diagnostics.size();
+    result.catalog_rows = catalog_validation.rows.size();
+    if (!catalog_validation.succeeded) {
+        return result;
+    }
+
+    mirakana::runtime::RuntimeInventoryState state{
+        .stacks =
+            std::vector<mirakana::runtime::RuntimeInventoryStackDesc>{
+                mirakana::runtime::RuntimeInventoryStackDesc{.item_id = "wood", .quantity = 2U},
+            },
+    };
+    const auto initial_state_validation = mirakana::runtime::validate_runtime_inventory_state(catalog, state);
+    result.diagnostics += initial_state_validation.diagnostics.size();
+    result.state_rows += initial_state_validation.rows.size();
+    if (!initial_state_validation.succeeded) {
+        return result;
+    }
+
+    const auto recipes = gameplay_2d_crafting_recipes();
+    const auto pickup =
+        mirakana::runtime::advance_runtime_inventory_state(catalog, recipes, state,
+                                                           mirakana::runtime::RuntimeInventoryTransitionRequest{
+                                                               .kind = Kind::add_item,
+                                                               .item_id = "wood",
+                                                               .quantity = 1U,
+                                                               .recipe_id = {},
+                                                           });
+    result.diagnostics += pickup.diagnostics.size();
+    result.transition_rows += pickup.rows.size();
+    if (!pickup.rows.empty() && pickup.rows.front().status == Status::accepted) {
+        ++result.accepted_rows;
+    }
+    if (!pickup.succeeded || pickup.rows.empty() || pickup.rows.front().status != Status::accepted) {
+        return result;
+    }
+    state = pickup.state;
+
+    const auto craft =
+        mirakana::runtime::advance_runtime_inventory_state(catalog, recipes, state,
+                                                           mirakana::runtime::RuntimeInventoryTransitionRequest{
+                                                               .kind = Kind::craft_recipe,
+                                                               .item_id = {},
+                                                               .quantity = 0U,
+                                                               .recipe_id = "recipe.workbench",
+                                                           });
+    result.diagnostics += craft.diagnostics.size();
+    result.transition_rows += craft.rows.size();
+    if (!craft.rows.empty() && craft.rows.front().status == Status::completed) {
+        ++result.completed_rows;
+    }
+    if (!craft.succeeded || craft.rows.empty() || craft.rows.front().status != Status::completed) {
+        return result;
+    }
+    state = craft.state;
+
+    const auto final_state_validation = mirakana::runtime::validate_runtime_inventory_state(catalog, state);
+    result.diagnostics += final_state_validation.diagnostics.size();
+    result.state_rows += final_state_validation.rows.size();
+    result.final_stacks = state.stacks.size();
+    for (const auto& stack : state.stacks) {
+        if (stack.item_id == "workbench") {
+            result.final_workbench_quantity += stack.quantity;
+        }
+    }
+    result.ready = final_state_validation.succeeded && result.diagnostics == 0U && result.catalog_rows == 2U &&
+                   result.state_rows == 2U && result.transition_rows == 2U && result.accepted_rows == 1U &&
+                   result.completed_rows == 1U && result.final_stacks == 1U && result.final_workbench_quantity == 1U;
+    return result;
+}
+
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
@@ -579,6 +737,17 @@ class Gameplay2DSystemsProbe final {
         quest_dialogue_reward_ids_ = quest_dialogue.reward_ids;
         quest_dialogue_state_rows_ = quest_dialogue.state_rows;
 
+        const auto inventory_items = validate_gameplay_2d_inventory_items();
+        inventory_items_ready_ = inventory_items.ready;
+        inventory_items_diagnostics_ = inventory_items.diagnostics;
+        inventory_items_catalog_rows_ = inventory_items.catalog_rows;
+        inventory_items_state_rows_ = inventory_items.state_rows;
+        inventory_items_transition_rows_ = inventory_items.transition_rows;
+        inventory_items_accepted_rows_ = inventory_items.accepted_rows;
+        inventory_items_completed_rows_ = inventory_items.completed_rows;
+        inventory_items_final_stacks_ = inventory_items.final_stacks;
+        inventory_items_final_workbench_quantity_ = inventory_items.final_workbench_quantity;
+
         started_ = true;
     }
 
@@ -621,7 +790,11 @@ class Gameplay2DSystemsProbe final {
                quest_dialogue_ready_ && quest_dialogue_diagnostics_ == 0U && quest_dialogue_transition_rows_ == 3U &&
                quest_dialogue_completed_objectives_ == 1U && quest_dialogue_flags_ == 1U &&
                quest_dialogue_dialogue_nodes_ == 1U && quest_dialogue_action_ids_ == 2U &&
-               quest_dialogue_reward_ids_ == 2U && quest_dialogue_state_rows_ == 3U;
+               quest_dialogue_reward_ids_ == 2U && quest_dialogue_state_rows_ == 3U && inventory_items_ready_ &&
+               inventory_items_diagnostics_ == 0U && inventory_items_catalog_rows_ == 2U &&
+               inventory_items_state_rows_ == 2U && inventory_items_transition_rows_ == 2U &&
+               inventory_items_accepted_rows_ == 1U && inventory_items_completed_rows_ == 1U &&
+               inventory_items_final_stacks_ == 1U && inventory_items_final_workbench_quantity_ == 1U;
     }
 
     [[nodiscard]] Gameplay2DSystemsStatus status(std::uint32_t expected_ticks) const {
@@ -755,6 +928,42 @@ class Gameplay2DSystemsProbe final {
         return quest_dialogue_state_rows_;
     }
 
+    [[nodiscard]] bool inventory_items_ready() const noexcept {
+        return inventory_items_ready_;
+    }
+
+    [[nodiscard]] std::size_t inventory_items_diagnostic_count() const noexcept {
+        return inventory_items_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t inventory_items_catalog_row_count() const noexcept {
+        return inventory_items_catalog_rows_;
+    }
+
+    [[nodiscard]] std::size_t inventory_items_state_row_count() const noexcept {
+        return inventory_items_state_rows_;
+    }
+
+    [[nodiscard]] std::size_t inventory_items_transition_row_count() const noexcept {
+        return inventory_items_transition_rows_;
+    }
+
+    [[nodiscard]] std::size_t inventory_items_accepted_row_count() const noexcept {
+        return inventory_items_accepted_rows_;
+    }
+
+    [[nodiscard]] std::size_t inventory_items_completed_row_count() const noexcept {
+        return inventory_items_completed_rows_;
+    }
+
+    [[nodiscard]] std::size_t inventory_items_final_stack_count() const noexcept {
+        return inventory_items_final_stacks_;
+    }
+
+    [[nodiscard]] std::uint32_t inventory_items_final_workbench_quantity() const noexcept {
+        return inventory_items_final_workbench_quantity_;
+    }
+
   private:
     void update_ai_navigation_composition() {
         if (navigation_plan_status_ != mirakana::NavigationGridAgentPathStatus::ready ||
@@ -877,6 +1086,14 @@ class Gameplay2DSystemsProbe final {
     std::size_t quest_dialogue_action_ids_{0U};
     std::size_t quest_dialogue_reward_ids_{0U};
     std::size_t quest_dialogue_state_rows_{0U};
+    std::size_t inventory_items_diagnostics_{0U};
+    std::size_t inventory_items_catalog_rows_{0U};
+    std::size_t inventory_items_state_rows_{0U};
+    std::size_t inventory_items_transition_rows_{0U};
+    std::size_t inventory_items_accepted_rows_{0U};
+    std::size_t inventory_items_completed_rows_{0U};
+    std::size_t inventory_items_final_stacks_{0U};
+    std::uint32_t inventory_items_final_workbench_quantity_{0U};
     std::uint32_t ticks_{0U};
     std::uint32_t physics_ticks_{0U};
     bool last_perception_has_primary_target_{false};
@@ -884,6 +1101,7 @@ class Gameplay2DSystemsProbe final {
     bool blackboard_needs_move_{false};
     bool behavior_authoring_ready_{false};
     bool quest_dialogue_ready_{false};
+    bool inventory_items_ready_{false};
     bool started_{false};
 };
 
@@ -1337,6 +1555,42 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t gameplay_systems_quest_dialogue_state_rows() const noexcept {
         return gameplay_systems_.quest_dialogue_state_row_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_inventory_items_ready() const noexcept {
+        return gameplay_systems_.inventory_items_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_inventory_items_diagnostics() const noexcept {
+        return gameplay_systems_.inventory_items_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_inventory_items_catalog_rows() const noexcept {
+        return gameplay_systems_.inventory_items_catalog_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_inventory_items_state_rows() const noexcept {
+        return gameplay_systems_.inventory_items_state_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_inventory_items_transition_rows() const noexcept {
+        return gameplay_systems_.inventory_items_transition_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_inventory_items_accepted_rows() const noexcept {
+        return gameplay_systems_.inventory_items_accepted_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_inventory_items_completed_rows() const noexcept {
+        return gameplay_systems_.inventory_items_completed_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_inventory_items_final_stacks() const noexcept {
+        return gameplay_systems_.inventory_items_final_stack_count();
+    }
+
+    [[nodiscard]] std::uint32_t gameplay_systems_inventory_items_final_workbench_quantity() const noexcept {
+        return gameplay_systems_.inventory_items_final_workbench_quantity();
     }
 
   private:
@@ -2058,6 +2312,17 @@ int main(int argc, char** argv) {
         << " gameplay_systems_quest_dialogue_action_ids=" << game.gameplay_systems_quest_dialogue_action_ids()
         << " gameplay_systems_quest_dialogue_reward_ids=" << game.gameplay_systems_quest_dialogue_reward_ids()
         << " gameplay_systems_quest_dialogue_state_rows=" << game.gameplay_systems_quest_dialogue_state_rows()
+        << " gameplay_systems_inventory_items_ready=" << (game.gameplay_systems_inventory_items_ready() ? 1 : 0)
+        << " gameplay_systems_inventory_items_diagnostics=" << game.gameplay_systems_inventory_items_diagnostics()
+        << " gameplay_systems_inventory_items_catalog_rows=" << game.gameplay_systems_inventory_items_catalog_rows()
+        << " gameplay_systems_inventory_items_state_rows=" << game.gameplay_systems_inventory_items_state_rows()
+        << " gameplay_systems_inventory_items_transition_rows="
+        << game.gameplay_systems_inventory_items_transition_rows()
+        << " gameplay_systems_inventory_items_accepted_rows=" << game.gameplay_systems_inventory_items_accepted_rows()
+        << " gameplay_systems_inventory_items_completed_rows=" << game.gameplay_systems_inventory_items_completed_rows()
+        << " gameplay_systems_inventory_items_final_stacks=" << game.gameplay_systems_inventory_items_final_stacks()
+        << " gameplay_systems_inventory_items_final_workbench_quantity="
+        << game.gameplay_systems_inventory_items_final_workbench_quantity()
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -2135,7 +2400,13 @@ int main(int argc, char** argv) {
                   << " gameplay_systems_quest_dialogue_diagnostics="
                   << game.gameplay_systems_quest_dialogue_diagnostics()
                   << " gameplay_systems_quest_dialogue_transition_rows="
-                  << game.gameplay_systems_quest_dialogue_transition_rows() << '\n';
+                  << game.gameplay_systems_quest_dialogue_transition_rows()
+                  << " gameplay_systems_inventory_items_ready="
+                  << (game.gameplay_systems_inventory_items_ready() ? 1 : 0)
+                  << " gameplay_systems_inventory_items_diagnostics="
+                  << game.gameplay_systems_inventory_items_diagnostics()
+                  << " gameplay_systems_inventory_items_transition_rows="
+                  << game.gameplay_systems_inventory_items_transition_rows() << '\n';
         return 12;
     }
 
