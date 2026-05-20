@@ -37,7 +37,7 @@ Select this plan as the next active developer-owned gameplay-family capability a
 
 ## Phase 1: Quest Dialogue Document Contract
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -68,3 +68,7 @@ Add value-only quest/dialogue state transition helpers over validated documents 
 ## Validation Evidence
 
 - Phase 0 pointer sync selected this plan after `engine-advanced-physics-controller-v1` completed deterministic advanced-controller package counters in `sample_generated_desktop_runtime_3d_package`, while `unsupportedProductionGaps = []` stayed empty.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_quest_dialogue_tests` failed before implementation because `mirakana/runtime/quest_dialogue.hpp` did not exist.
+- Phase 1 focused GREEN: `MK_runtime_quest_dialogue_tests` builds and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_tests|MK_runtime_quest_dialogue_tests"` passes, proving deterministic diagnostics and fail-closed invalid quest/dialogue documents.
+- Phase 1 static drift checks: `check-format`, focused `check-tidy.ps1 -Files engine/runtime/src/quest_dialogue.cpp`, `check-json-contracts`, `check-agents`, `check-ai-integration`, and `check-public-api-boundaries` pass after manifest fragment compose.
+- Phase 1 full gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-05-20 with 66/66 CTest tests passing and only expected diagnostic-only host gates for Apple/Metal on this Windows host.

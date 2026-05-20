@@ -188,6 +188,9 @@ if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentSp
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentGameplayDebugOverlay")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentGameplayDebugOverlay"
 }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentQuestDialogueState")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentQuestDialogueState"
+}
 $geUiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_ui" })
 if ($geUiModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_ui module"
@@ -247,6 +250,9 @@ if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-safe-point-control
 }
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") {
     Write-Error "engine/agent/manifest.json MK_runtime publicHeaders must include resource_runtime.hpp"
+}
+if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/quest_dialogue.hpp") {
+    Write-Error "engine/agent/manifest.json MK_runtime publicHeaders must include quest_dialogue.hpp"
 }
 if ($geAudioModule[0].status -ne "implemented-gameplay-audio-mix-planner") {
     Write-Error "engine/agent/manifest.json MK_audio status must advertise the gameplay audio mix planner honestly"
@@ -715,6 +721,35 @@ foreach ($gameplayDebugOverlayGuidanceNeedle in @(
     "does not render UI"
 )) {
     Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentGameplayDebugOverlay) $gameplayDebugOverlayGuidanceNeedle "gameplay debug overlay game guidance"
+}
+foreach ($questDialogueGuidanceNeedle in @(
+    "RuntimeQuestDialogueDocument",
+    "RuntimeQuestDesc",
+    "RuntimeQuestObjectiveDesc",
+    "RuntimeDialogueGraphDesc",
+    "RuntimeDialogueNodeDesc",
+    "RuntimeDialogueChoiceDesc",
+    "RuntimeQuestDialogueValidationContext",
+    "validate_runtime_quest_dialogue_document",
+    "RuntimeQuestDialogueDiagnostic",
+    "RuntimeQuestDialogueValidationRow",
+    "game-owned",
+    "unsupported reward ids",
+    "unsupported action ids",
+    "unsafe localization keys"
+)) {
+    Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentQuestDialogueState) $questDialogueGuidanceNeedle "quest dialogue game guidance"
+}
+foreach ($questDialogueSurface in @(
+    "docs/current-capabilities.md",
+    ".agents/skills/gameengine-game-development/SKILL.md",
+    ".claude/skills/gameengine-game-development/SKILL.md",
+    ".cursor/skills/gameengine-game-development/SKILL.md"
+)) {
+    $questDialogueSurfaceText = Get-AgentSurfaceText $questDialogueSurface
+    Assert-ContainsText $questDialogueSurfaceText "RuntimeQuestDialogueDocument" $questDialogueSurface
+    Assert-ContainsText $questDialogueSurfaceText "validate_runtime_quest_dialogue_document" $questDialogueSurface
+    Assert-ContainsText $questDialogueSurfaceText "game-owned" $questDialogueSurface
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_accessibility_publish" "runtime UI game guidance"
