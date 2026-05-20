@@ -2,6 +2,7 @@
 #requires -PSEdition Core
 
 param(
+    [switch]$Debug,
     [switch]$Gui,
     [switch]$Release
 )
@@ -13,9 +14,13 @@ $ErrorActionPreference = "Stop"
 
 $tools = Assert-CppBuildTools
 
-Invoke-CheckedCommand $tools.CMake --preset cpp23-eval
-Invoke-CheckedCommand $tools.CMake --build --preset cpp23-eval
-Invoke-CheckedCommand $tools.CTest --preset cpp23-eval --output-on-failure
+$runDebug = $Debug.IsPresent -or (-not $Release.IsPresent -and -not $Gui.IsPresent)
+
+if ($runDebug) {
+    Invoke-CheckedCommand $tools.CMake --preset cpp23-eval
+    Invoke-CheckedCommand $tools.CMake --build --preset cpp23-eval
+    Invoke-CheckedCommand $tools.CTest --preset cpp23-eval --output-on-failure
+}
 
 if ($Release) {
     if (-not $tools.CPack) {

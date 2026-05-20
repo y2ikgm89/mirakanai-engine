@@ -62,7 +62,7 @@
     "test": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/test.ps1",
     "dependencyCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1",
     "cppStandardCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1",
-    "evaluateCpp23": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1",
+    "evaluateCpp23": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 [-Debug|-Release|-Gui]",
     "agentContext": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1",
     "agentCheck": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1",
     "composeAgentManifest": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 [-Write|-Verify|-SplitFromCanonical]",

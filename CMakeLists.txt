@@ -130,6 +130,10 @@ function(MK_apply_common_target_options target_name)
     endif()
 endfunction()
 
+function(MK_disable_module_scanning_for_non_module_executable target_name)
+    set_target_properties(${target_name} PROPERTIES CXX_SCAN_FOR_MODULES OFF)
+endfunction()
+
 # Engine subdirectories use the mirakana_* target naming policy; forward to the shared implementation above.
 macro(mirakana_apply_common_target_options target_name)
     MK_apply_common_target_options(${target_name})
@@ -177,6 +181,7 @@ target_link_libraries(MK_sandbox PRIVATE
     MK_navigation
 )
 MK_apply_common_target_options(MK_sandbox)
+MK_disable_module_scanning_for_non_module_executable(MK_sandbox)
 
 function(MK_add_game target_name)
     cmake_parse_arguments(MK_GAME "" "" "SOURCES" ${ARGN})
@@ -205,6 +210,7 @@ function(MK_add_game target_name)
         MK_scene_renderer
     )
     MK_apply_common_target_options(${target_name})
+    MK_disable_module_scanning_for_non_module_executable(${target_name})
 
     if(BUILD_TESTING)
         add_test(NAME ${target_name} COMMAND ${target_name})
@@ -657,6 +663,13 @@ if(BUILD_TESTING)
         MK_apply_common_target_options(MK_runtime_host_sdl3_public_api_compile)
         add_test(NAME MK_runtime_host_sdl3_public_api_compile COMMAND MK_runtime_host_sdl3_public_api_compile)
     endif()
+
+    get_property(MK_CURRENT_DIRECTORY_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(MK_CURRENT_DIRECTORY_TARGET IN LISTS MK_CURRENT_DIRECTORY_TARGETS)
+        if(MK_CURRENT_DIRECTORY_TARGET MATCHES "^MK_.*(_tests|_probe|_public_api_compile)$")
+            MK_disable_module_scanning_for_non_module_executable(${MK_CURRENT_DIRECTORY_TARGET})
+        endif()
+    endforeach()
 endif()
 
 function(MK_set_export_name target_name export_name)

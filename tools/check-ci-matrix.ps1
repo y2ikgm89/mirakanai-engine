@@ -163,6 +163,9 @@ Assert-ContainsAll $validateScript @(
 
 $cpp23EvaluationScript = Read-RequiredText "tools/evaluate-cpp23.ps1"
 Assert-ContainsAll $cpp23EvaluationScript @(
+    "[switch]`$Debug",
+    "`$runDebug = `$Debug.IsPresent -or (-not `$Release.IsPresent -and -not `$Gui.IsPresent)",
+    "if (`$runDebug) {",
     "release-package-artifacts.ps1",
     "Assert-ReleasePackageArtifacts",
     "cpp23-release-preset-eval"
@@ -425,7 +428,6 @@ Assert-ContainsAll $windowsCpp23Job @(
     "path: vcpkg_installed",
     "Restore Windows C++23 build cache",
     $cacheRestoreActionRef,
-    "out/build/cpp23-eval",
     "out/build/cpp23-release-preset-eval",
     "out/build/installed-consumer-cpp23-release-eval",
     "out/install/cpp23-release-eval",
@@ -444,7 +446,6 @@ Assert-ContainsAll $windowsCpp23Job @(
     "name: windows-cpp23-test-logs",
     "retention-days: 14",
     "include-hidden-files: false",
-    "out/build/cpp23-eval/Testing/**/*.log",
     "out/build/cpp23-release-preset-eval/Testing/**/*.log",
     "if-no-files-found: warn",
     "name: windows-packages",

@@ -194,6 +194,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         )
 
         MK_apply_common_target_options(${target_name})
+        MK_disable_module_scanning_for_non_module_executable(${target_name})
         set_property(TARGET ${target_name} PROPERTY MK_DESKTOP_RUNTIME_GAME TRUE)
         set_property(TARGET ${target_name} PROPERTY MK_DESKTOP_RUNTIME_GAME_MANIFEST "${MK_DESKTOP_GAME_GAME_MANIFEST}")
         set_property(TARGET ${target_name} PROPERTY MK_DESKTOP_RUNTIME_SMOKE_ARGS "${MK_DESKTOP_GAME_SMOKE_ARGS}")
