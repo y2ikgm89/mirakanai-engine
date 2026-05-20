@@ -156,7 +156,8 @@ function Invoke-MobilePackagingProbe {
     param(
         [Parameter(Mandatory = $true)][string]$FilePath,
         [string[]]$ArgumentList = @(),
-        [int]$TimeoutSeconds = 5
+        [int]$TimeoutSeconds = 5,
+        [int]$OutputWaitMilliseconds = 1000
     )
 
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
@@ -201,13 +202,16 @@ function Invoke-MobilePackagingProbe {
             $childProcess.WaitForExit()
         }
 
-        $standardOutput = $standardOutputTask.GetAwaiter().GetResult()
-        $standardError = $standardErrorTask.GetAwaiter().GetResult()
+        $standardOutputCompleted = $standardOutputTask.Wait($OutputWaitMilliseconds)
+        $standardErrorCompleted = $standardErrorTask.Wait($OutputWaitMilliseconds)
+        $standardOutput = if ($standardOutputCompleted) { $standardOutputTask.Result } else { "" }
+        $standardError = if ($standardErrorCompleted) { $standardErrorTask.Result } else { "" }
+        $probeTimedOut = $timedOut -or -not $standardOutputCompleted -or -not $standardErrorCompleted
         $lines = @($standardOutput -split "\r?\n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 
         return [pscustomobject]@{
-            TimedOut  = $timedOut
-            ExitCode  = $(if ($timedOut) { $null } else { $childProcess.ExitCode })
+            TimedOut  = $probeTimedOut
+            ExitCode  = $(if ($probeTimedOut) { $null } else { $childProcess.ExitCode })
             Lines     = $lines
             ErrorText = $standardError
         }
