@@ -8,7 +8,9 @@ param(
 
     [switch]$StaticOnly,
 
-    [switch]$SkipStaticChecks
+    [switch]$SkipStaticChecks,
+
+    [switch]$SkipTidySmoke
 )
 
 $ErrorActionPreference = "Stop"
@@ -243,8 +245,13 @@ foreach ($scriptFileName in @(
     Invoke-ValidateToolScript -ScriptFileName $scriptFileName
 }
 
-Write-Host "validate: running check-tidy.ps1 -MaxFiles 1 -ReuseExistingFileApiReply"
-& (Join-Path $PSScriptRoot "check-tidy.ps1") -MaxFiles 1 -ReuseExistingFileApiReply
+if ($SkipTidySmoke.IsPresent) {
+    Write-Host "validate: skipping check-tidy.ps1 smoke"
+}
+else {
+    Write-Host "validate: running check-tidy.ps1 -MaxFiles 1 -ReuseExistingFileApiReply"
+    & (Join-Path $PSScriptRoot "check-tidy.ps1") -MaxFiles 1 -ReuseExistingFileApiReply
+}
 Write-Host "validate: running test.ps1 -SkipBuild"
 & (Join-Path $PSScriptRoot "test.ps1") -SkipBuild
 

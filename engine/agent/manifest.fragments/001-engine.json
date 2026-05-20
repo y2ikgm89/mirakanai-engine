@@ -15,6 +15,7 @@
       "requiredStandard": "C\u002B\u002B23",
       "msvcMode": "/std:c\u002B\u002B23preview",
       "msvcModeCacheVariable": "MK_MSVC_CXX23_STANDARD_OPTION",
+      "msvcCompileThroughput": "MSVC targets use bounded compiler-level parallelism through MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES default 2, emitting /MP2 plus /Zf from MK_apply_common_target_options while CMake/MSBuild owns target-level parallelism.",
       "msvcCompilePdbIsolation": "MSVC compiler PDB files are isolated per target through MK_apply_common_target_options COMPILE_PDB_OUTPUT_DIRECTORY and COMPILE_PDB_NAME; supported tools/*.ps1 CMake build entrypoints serialize overlapping CMake build invocations and clear stale Visual Studio .tlog directories with older aliased .lastbuildstate roots without adding /FS.",
       "msvcIncrementalLinking": "Disabled for linkable targets through MK_apply_common_target_options (/INCREMENTAL:NO) so validation builds do not depend on .ilk state.",
       "msvcLatestMode": "forbidden-by-default",

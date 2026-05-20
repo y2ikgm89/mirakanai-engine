@@ -250,11 +250,18 @@ Assert-ContainsText $buildingContent "tools/cmake.ps1 --preset dev" "docs/buildi
 Assert-ContainsText $buildingContent "tools/ctest.ps1 --preset dev --output-on-failure" "docs/building.md"
 Assert-ContainsText $agentsContent "/INCREMENTAL:NO" "AGENTS.md"
 Assert-ContainsText $agentsContent "COMPILE_PDB_OUTPUT_DIRECTORY" "AGENTS.md"
+Assert-ContainsText $agentsContent "/MP2" "AGENTS.md"
+Assert-ContainsText $agentsContent "/Zf" "AGENTS.md"
 Assert-ContainsText $agentsContent 'stale MSVC `.tlog` roots' "AGENTS.md"
 Assert-ContainsText $buildingContent "/INCREMENTAL:NO" "docs/building.md"
 Assert-ContainsText $buildingContent "COMPILE_PDB_OUTPUT_DIRECTORY" "docs/building.md"
+Assert-ContainsText $buildingContent "/MP2" "docs/building.md"
+Assert-ContainsText $buildingContent "/Zf" "docs/building.md"
 Assert-ContainsText $buildingContent "MSB8028" "docs/building.md"
 $cmakeListsContent = Get-AgentSurfaceText "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent '/MP${MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES}' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent '/Zf' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_NAME ${target_name}' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_OUTPUT_DIRECTORY' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'get_target_property(MK_TARGET_TYPE ${target_name} TYPE)' "CMakeLists.txt"
@@ -269,6 +276,8 @@ foreach ($cmakeSkillPath in @(
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/INCREMENTAL:NO" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "COMPILE_PDB_OUTPUT_DIRECTORY" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/MP2" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/Zf" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "-ShardCount" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "-ShardIndex" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "MSB8028" $cmakeSkillPath
@@ -286,6 +295,8 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
     Assert-ContainsText $buildFixerAgentText "CMakeCache.txt" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "C1041" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "COMPILE_PDB_OUTPUT_DIRECTORY" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "/MP2" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "/Zf" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText 'global `/FS`' $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "MSB8028" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText ".lastbuildstate" $buildFixerPath
@@ -295,9 +306,14 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
 }
 $cursorCmakeRuleText = Get-AgentSurfaceText ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "COMPILE_PDB_OUTPUT_DIRECTORY" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
+Assert-ContainsText $cursorCmakeRuleText "/MP2" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
+Assert-ContainsText $cursorCmakeRuleText "/Zf" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText 'global `/FS`' ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText ".lastbuildstate" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "/INCREMENTAL:NO" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "msvcCompileThroughput" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "/MP2" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "/Zf" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "msvcCompilePdbIsolation" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) ".lastbuildstate" "engine/agent/manifest.json"
 Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'ToolId "cmake-build"' "tools/common.ps1"
@@ -310,6 +326,7 @@ Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") "-ReuseExistingF
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '[int]$StaticJobs = 0' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '[switch]$StaticOnly' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '[switch]$SkipStaticChecks' "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '[switch]$SkipTidySmoke' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'validate: -StaticOnly and -SkipStaticChecks cannot be combined' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'Start-Job' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'independent static checks' "tools/validate.ps1"
@@ -320,12 +337,16 @@ Assert-ContainsText (Get-AgentSurfaceText "tools/test.ps1") '[switch]$SkipBuild'
 Assert-ContainsText (Get-AgentSurfaceText "tools/test.ps1") '[int]$Jobs = 0' "tools/test.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/test.ps1") '--parallel' "tools/test.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/check-tidy.ps1") 'try existing File API codemodel reply before reconfiguring' "tools/check-tidy.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/check-tidy.ps1") 'Test-ClangTidyIgnoredMsvcCompileOption' "tools/check-tidy.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/check-tidy.ps1") '^/MP(?:\d+)?$' "tools/check-tidy.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/check-tidy.ps1") 'Token -eq "/Zf"' "tools/check-tidy.ps1"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "test.ps1 -SkipBuild" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "automatic CMake/CTest parallelism" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "bounded parallel jobs" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "-StaticJobs" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "validate.ps1 -StaticOnly -StaticJobs 1" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "validate.ps1 -SkipStaticChecks" "engine/agent/manifest.json"
+Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "-SkipTidySmoke" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "actions/cache/restore" "engine/agent/manifest.json"
 Assert-ContainsText (Get-Content -LiteralPath $manifestPath -Raw) "actions/cache/save" "engine/agent/manifest.json"
 Assert-ContainsText (Get-AgentSurfaceText "tools/cmake.ps1") 'Invoke-CheckedCommand $tools.CMake @Arguments' "tools/cmake.ps1"
@@ -338,27 +359,32 @@ Assert-ContainsText $agentsContent "actions/cache/save" "AGENTS.md"
 Assert-ContainsText $testingContent "automatic CMake/CTest parallelism" "docs/testing.md"
 Assert-ContainsText $testingContent "bounded PowerShell background jobs" "docs/testing.md"
 Assert-ContainsText $testingContent "tools/validate.ps1 -SkipStaticChecks" "docs/testing.md"
+Assert-ContainsText $testingContent "-SkipTidySmoke" "docs/testing.md"
 Assert-ContainsText $testingContent "actions/cache/restore" "docs/testing.md"
 Assert-ContainsText $testingContent "actions/cache/save" "docs/testing.md"
 Assert-ContainsText (Get-AgentSurfaceText "docs/workflows.md") "automatic CMake/CTest parallelism" "docs/workflows.md"
 Assert-ContainsText (Get-AgentSurfaceText "docs/workflows.md") "bounded parallel group" "docs/workflows.md"
 Assert-ContainsText (Get-AgentSurfaceText "docs/workflows.md") "tools/validate.ps1 -StaticOnly -StaticJobs 1" "docs/workflows.md"
 Assert-ContainsText (Get-AgentSurfaceText "docs/workflows.md") "tools/validate.ps1 -SkipStaticChecks" "docs/workflows.md"
+Assert-ContainsText (Get-AgentSurfaceText "docs/workflows.md") "-SkipTidySmoke" "docs/workflows.md"
 Assert-ContainsText (Get-AgentSurfaceText "docs/workflows.md") "actions/cache/restore" "docs/workflows.md"
 Assert-ContainsText (Get-AgentSurfaceText "docs/workflows.md") "actions/cache/save" "docs/workflows.md"
 Assert-ContainsText (Get-AgentSurfaceText ".agents/skills/cmake-build-system/SKILL.md") "automatic CMake/CTest parallelism" ".agents/skills/cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".agents/skills/cmake-build-system/SKILL.md") "bounded parallel jobs" ".agents/skills/cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".agents/skills/cmake-build-system/SKILL.md") "-SkipStaticChecks" ".agents/skills/cmake-build-system/SKILL.md"
+Assert-ContainsText (Get-AgentSurfaceText ".agents/skills/cmake-build-system/SKILL.md") "-SkipTidySmoke" ".agents/skills/cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".agents/skills/cmake-build-system/SKILL.md") "actions/cache/restore" ".agents/skills/cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".agents/skills/cmake-build-system/SKILL.md") "actions/cache/save" ".agents/skills/cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".claude/skills/gameengine-cmake-build-system/SKILL.md") "automatic CMake/CTest parallelism" ".claude/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".claude/skills/gameengine-cmake-build-system/SKILL.md") "bounded parallel jobs" ".claude/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".claude/skills/gameengine-cmake-build-system/SKILL.md") "-SkipStaticChecks" ".claude/skills/gameengine-cmake-build-system/SKILL.md"
+Assert-ContainsText (Get-AgentSurfaceText ".claude/skills/gameengine-cmake-build-system/SKILL.md") "-SkipTidySmoke" ".claude/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".claude/skills/gameengine-cmake-build-system/SKILL.md") "actions/cache/restore" ".claude/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".claude/skills/gameengine-cmake-build-system/SKILL.md") "actions/cache/save" ".claude/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md") "automatic CMake/CTest parallelism" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md") "bounded parallel jobs" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md") "-SkipStaticChecks" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
+Assert-ContainsText (Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md") "-SkipTidySmoke" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md") "actions/cache/restore" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md") "actions/cache/save" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText (Get-AgentSurfaceText "tools/check-ci-matrix.ps1") "actions/cache/restore@" "tools/check-ci-matrix.ps1"
