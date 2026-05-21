@@ -1,8 +1,8 @@
 # Engine Networking Foundation v1 (2026-05-22)
 
 **Plan ID:** `engine-networking-foundation-v1`
-**Status:** Active.
-**Current pointer rule:** `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at this milestone while active. Keep `unsupportedProductionGaps = []`; this is a developer-owned optional-adapter foundation, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** Historical evidence only. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` now points at the next active milestone; keep this file as completed Engine Networking Foundation v1 evidence with `unsupportedProductionGaps = []`.
 
 ## Goal
 
@@ -79,3 +79,4 @@ Expose selected networking foundation counters in a package or sample lane and c
 - Phase 2 package evidence passed: `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` accepted the default installed D3D12/native package smoke with `--require-networking-foundation-policy`, and `tools/validate-installed-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -SmokeArgs @('--smoke','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-networking-foundation-policy')` proved `networking_foundation_status=planned`, session rows `2`, transport rows `4`, channel rows `3`, rejected unsafe transport rows `3`, replay prerequisite rows `2`, security diagnostics `2`, and clean reviewed-policy diagnostics `0`.
 - Phase 2 static/agent checks passed: `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-production-readiness-audit.ps1` (`unsupported_gaps=0`), `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files games/sample_2d_desktop_runtime_package/main.cpp`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
 - Phase 2 runtime/public-contract gate passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed successfully with 72 tests passed and `unsupported_gaps=0`.
+- Closeout publication: PR #171 completed hosted checks and merged to `main` as merge commit `987016f1`, leaving `unsupportedProductionGaps = []`.
