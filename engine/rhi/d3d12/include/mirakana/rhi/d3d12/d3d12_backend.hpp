@@ -253,9 +253,12 @@ struct DeviceContextStats {
     std::uint64_t index_buffer_bindings{0};
     std::uint64_t draw_calls{0};
     std::uint64_t indexed_draw_calls{0};
+    std::uint64_t instanced_draw_calls{0};
+    std::uint64_t instanced_indexed_draw_calls{0};
     std::uint64_t compute_dispatches{0};
     std::uint64_t vertices_submitted{0};
     std::uint64_t indices_submitted{0};
+    std::uint64_t instanced_instances_submitted{0};
     std::uint64_t compute_workgroups_x{0};
     std::uint64_t compute_workgroups_y{0};
     std::uint64_t compute_workgroups_z{0};

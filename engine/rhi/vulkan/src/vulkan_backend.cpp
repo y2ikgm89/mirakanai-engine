@@ -4995,6 +4995,10 @@ class VulkanRhiCommandList final : public IRhiCommandList {
 
         rendering_recorded_ = true;
         ++device_->stats_.draw_calls;
+        if (instance_count > 1) {
+            ++device_->stats_.instanced_draw_calls;
+            device_->stats_.instanced_instances_submitted += instance_count;
+        }
         device_->stats_.vertices_submitted += static_cast<std::uint64_t>(vertex_count) * instance_count;
     }
 
@@ -5079,6 +5083,11 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         rendering_recorded_ = true;
         ++device_->stats_.draw_calls;
         ++device_->stats_.indexed_draw_calls;
+        if (instance_count > 1) {
+            ++device_->stats_.instanced_draw_calls;
+            ++device_->stats_.instanced_indexed_draw_calls;
+            device_->stats_.instanced_instances_submitted += instance_count;
+        }
         device_->stats_.indices_submitted += static_cast<std::uint64_t>(index_count) * instance_count;
     }
 

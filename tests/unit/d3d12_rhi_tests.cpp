@@ -5796,6 +5796,7 @@ MK_TEST("d3d12 rhi frame renderer visibly draws uploaded runtime mesh vertices")
         .world_from_node = mirakana::Mat4::identity(),
         .mesh_binding = mirakana::runtime_rhi::make_runtime_mesh_gpu_binding(upload),
         .material_binding = mirakana::MaterialGpuBinding{},
+        .instance_count = 3,
     });
     renderer.end_frame();
 
@@ -5826,7 +5827,10 @@ MK_TEST("d3d12 rhi frame renderer visibly draws uploaded runtime mesh vertices")
     MK_REQUIRE(device->stats().vertex_buffer_bindings == 1);
     MK_REQUIRE(device->stats().index_buffer_bindings == 1);
     MK_REQUIRE(device->stats().indexed_draw_calls == 1);
-    MK_REQUIRE(device->stats().indices_submitted == 3);
+    MK_REQUIRE(device->stats().instanced_draw_calls == 1);
+    MK_REQUIRE(device->stats().instanced_indexed_draw_calls == 1);
+    MK_REQUIRE(device->stats().instanced_instances_submitted == 3);
+    MK_REQUIRE(device->stats().indices_submitted == 9);
     MK_REQUIRE(device->stats().texture_buffer_copies == 1);
 }
 

@@ -860,6 +860,10 @@ class NullRhiCommandList final : public IRhiCommandList {
             throw std::invalid_argument("rhi draw counts must be non-zero");
         }
         ++device_.stats_.draw_calls;
+        if (instance_count > 1) {
+            ++device_.stats_.instanced_draw_calls;
+            device_.stats_.instanced_instances_submitted += instance_count;
+        }
         device_.stats_.vertices_submitted += static_cast<std::uint64_t>(vertex_count) * instance_count;
     }
 
@@ -882,6 +886,11 @@ class NullRhiCommandList final : public IRhiCommandList {
         }
         ++device_.stats_.draw_calls;
         ++device_.stats_.indexed_draw_calls;
+        if (instance_count > 1) {
+            ++device_.stats_.instanced_draw_calls;
+            ++device_.stats_.instanced_indexed_draw_calls;
+            device_.stats_.instanced_instances_submitted += instance_count;
+        }
         device_.stats_.indices_submitted += static_cast<std::uint64_t>(index_count) * instance_count;
     }
 

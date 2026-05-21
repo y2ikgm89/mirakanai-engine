@@ -4381,6 +4381,7 @@ std::string_view SdlDesktopPresentation::backend_name() const noexcept {
 
 SdlDesktopPresentationReport SdlDesktopPresentation::report() const noexcept {
     const auto renderer_stats = impl_->renderer != nullptr ? impl_->renderer->stats() : RendererStats{};
+    const auto rhi_stats = impl_->device != nullptr ? impl_->device->stats() : rhi::RhiStats{};
     return SdlDesktopPresentationReport{
         .requested_backend = impl_->requested_backend,
         .selected_backend = impl_->backend,
@@ -4416,6 +4417,9 @@ SdlDesktopPresentationReport SdlDesktopPresentation::report() const noexcept {
         .native_ui_texture_overlay_sprites_submitted = renderer_stats.native_ui_overlay_textured_sprites_submitted,
         .native_ui_texture_overlay_texture_binds = renderer_stats.native_ui_overlay_texture_binds,
         .native_ui_texture_overlay_draws = renderer_stats.native_ui_overlay_textured_draws,
+        .rhi_instanced_draw_calls = rhi_stats.instanced_draw_calls,
+        .rhi_instanced_indexed_draw_calls = rhi_stats.instanced_indexed_draw_calls,
+        .rhi_instanced_instances_submitted = rhi_stats.instanced_instances_submitted,
         .framegraph_passes = impl_->framegraph_passes,
         .renderer_stats = renderer_stats,
         .backbuffer_extent = impl_->renderer != nullptr ? impl_->renderer->backbuffer_extent() : Extent2D{},
@@ -4722,6 +4726,19 @@ std::string_view sdl_desktop_presentation_d3d12_postprocess_execution_status_nam
     return "unknown";
 }
 
+std::string_view sdl_desktop_presentation_d3d12_instanced_draw_execution_status_name(
+    SdlDesktopPresentationD3d12InstancedDrawExecutionStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 SdlDesktopPresentationPostprocessPolicyReport
 evaluate_sdl_desktop_presentation_postprocess_policy(const SdlDesktopPresentationReport& report) {
     SdlDesktopPresentationPostprocessPolicyReport result;
@@ -4890,6 +4907,29 @@ evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(const SdlDesktopPr
                         ? SdlDesktopPresentationD3d12PostprocessExecutionStatus::ready
                         : SdlDesktopPresentationD3d12PostprocessExecutionStatus::blocked;
     result.ready = result.status == SdlDesktopPresentationD3d12PostprocessExecutionStatus::ready;
+    return result;
+}
+
+SdlDesktopPresentationD3d12InstancedDrawExecutionReport
+evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(const SdlDesktopPresentationReport& report,
+                                                                 std::uint64_t expected_instances_submitted) {
+    SdlDesktopPresentationD3d12InstancedDrawExecutionReport result;
+    result.expected_instances_submitted = expected_instances_submitted;
+    result.instanced_draw_calls = report.rhi_instanced_draw_calls;
+    result.instanced_indexed_draw_calls = report.rhi_instanced_indexed_draw_calls;
+    result.instanced_instances_submitted = report.rhi_instanced_instances_submitted;
+    if (expected_instances_submitted == 0) {
+        return result;
+    }
+
+    result.d3d12_backend_selected = report.selected_backend == SdlDesktopPresentationBackend::d3d12;
+    result.instanced_draws_current = report.rhi_instanced_draw_calls > 0 && report.rhi_instanced_indexed_draw_calls > 0;
+    result.instanced_instances_current = report.rhi_instanced_instances_submitted >= expected_instances_submitted;
+    result.status =
+        result.d3d12_backend_selected && result.instanced_draws_current && result.instanced_instances_current
+            ? SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::ready
+            : SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::blocked;
+    result.ready = result.status == SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::ready;
     return result;
 }
 

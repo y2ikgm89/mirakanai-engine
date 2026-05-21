@@ -205,6 +205,9 @@ struct SdlDesktopPresentationReport {
     std::uint64_t native_ui_texture_overlay_sprites_submitted{0};
     std::uint64_t native_ui_texture_overlay_texture_binds{0};
     std::uint64_t native_ui_texture_overlay_draws{0};
+    std::uint64_t rhi_instanced_draw_calls{0};
+    std::uint64_t rhi_instanced_indexed_draw_calls{0};
+    std::uint64_t rhi_instanced_instances_submitted{0};
     std::size_t framegraph_passes{0};
     RendererStats renderer_stats;
     Extent2D backbuffer_extent;
@@ -236,6 +239,12 @@ enum class SdlDesktopPresentationSceneScalePolicyStatus : std::uint8_t {
 };
 
 enum class SdlDesktopPresentationD3d12PostprocessExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class SdlDesktopPresentationD3d12InstancedDrawExecutionStatus : std::uint8_t {
     not_requested = 0,
     blocked,
     ready,
@@ -313,6 +322,19 @@ struct SdlDesktopPresentationD3d12PostprocessExecutionReport {
     std::uint64_t framegraph_render_passes_recorded{0};
     std::uint64_t framegraph_barrier_steps_executed{0};
     bool postprocess_passes_current{false};
+};
+
+struct SdlDesktopPresentationD3d12InstancedDrawExecutionReport {
+    SdlDesktopPresentationD3d12InstancedDrawExecutionStatus status{
+        SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::not_requested};
+    bool ready{false};
+    bool d3d12_backend_selected{false};
+    std::uint64_t expected_instances_submitted{0};
+    std::uint64_t instanced_draw_calls{0};
+    std::uint64_t instanced_indexed_draw_calls{0};
+    std::uint64_t instanced_instances_submitted{0};
+    bool instanced_draws_current{false};
+    bool instanced_instances_current{false};
 };
 
 struct SdlDesktopPresentationQualityGateDesc {
@@ -562,6 +584,11 @@ evaluate_sdl_desktop_presentation_scene_scale_policy(const SdlDesktopPresentatio
 [[nodiscard]] SdlDesktopPresentationD3d12PostprocessExecutionReport
 evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(const SdlDesktopPresentationReport& report,
                                                               std::uint64_t expected_postprocess_passes);
+[[nodiscard]] std::string_view sdl_desktop_presentation_d3d12_instanced_draw_execution_status_name(
+    SdlDesktopPresentationD3d12InstancedDrawExecutionStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationD3d12InstancedDrawExecutionReport
+evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(const SdlDesktopPresentationReport& report,
+                                                                 std::uint64_t expected_instances_submitted);
 [[nodiscard]] SdlDesktopPresentationQualityGateReport
 evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationReport& report,
                                                const SdlDesktopPresentationQualityGateDesc& desc) noexcept;

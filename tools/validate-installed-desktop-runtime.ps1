@@ -172,6 +172,7 @@ $requiresDirectionalShadowFiltering = @($SmokeArgs) -contains "--require-directi
 $requiresD3d12ShadowCascadePolicy = @($SmokeArgs) -contains "--require-d3d12-shadow-cascade-policy"
 $requiresLightingShadowPolicy = @($SmokeArgs) -contains "--require-lighting-shadow-policy"
 $requiresSceneScalePolicy = @($SmokeArgs) -contains "--require-scene-scale-policy"
+$requiresD3d12InstancedDrawEvidence = @($SmokeArgs) -contains "--require-d3d12-instanced-draw-evidence"
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
@@ -394,6 +395,7 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         }
     }
     if ($requiresSceneScalePolicy) {
+        $expectedSceneScaleBackendInstancingEvidence = if ($requiresD3d12InstancedDrawEvidence) { "1" } else { "0" }
         $expectedSceneScalePolicyFields = @{
             "scene_scale_policy_status" = "ready"
             "scene_scale_policy_ready" = "1"
@@ -407,8 +409,8 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "scene_scale_policy_instanced_visible_instances" = "0"
             "scene_scale_policy_lod_groups" = "0"
             "scene_scale_policy_cpu_culling_groups" = "0"
-            "scene_scale_policy_backend_instancing_evidence_required" = "0"
-            "scene_scale_policy_backend_instancing_evidence_ready" = "0"
+            "scene_scale_policy_backend_instancing_evidence_required" = $expectedSceneScaleBackendInstancingEvidence
+            "scene_scale_policy_backend_instancing_evidence_ready" = $expectedSceneScaleBackendInstancingEvidence
             "scene_scale_policy_performance_measurement_required" = "0"
             "scene_scale_policy_performance_measurement_ready" = "0"
         }
@@ -431,6 +433,35 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         if ($requiresGpuSkinning -and
             $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bscene_scale_policy_skinned_mesh_groups=1\b") {
             Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove scene-scale skinned mesh grouping."
+        }
+    }
+    if ($requiresD3d12InstancedDrawEvidence) {
+        $expectedD3d12InstancedInstances = [string]($expectedSmokeFrames * 3)
+        $expectedD3d12InstancedFields = @{
+            "d3d12_instanced_draw_execution_status" = "ready"
+            "d3d12_instanced_draw_execution_ready" = "1"
+            "d3d12_instanced_draw_execution_selected" = "1"
+            "d3d12_instanced_draw_execution_expected_instances" = $expectedD3d12InstancedInstances
+            "d3d12_instanced_draws_ok" = "1"
+            "d3d12_instanced_instances_ok" = "1"
+        }
+        foreach ($field in $expectedD3d12InstancedFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedD3d12InstancedFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove D3D12 instanced draw evidence field: $field=$($expectedD3d12InstancedFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "d3d12_instanced_draw_calls",
+                "d3d12_instanced_indexed_draw_calls",
+                "d3d12_instanced_instances_submitted",
+                "rhi_instanced_draw_calls",
+                "rhi_instanced_indexed_draw_calls",
+                "rhi_instanced_instances_submitted"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive D3D12 instanced draw evidence field: $field"
+            }
         }
     }
 }

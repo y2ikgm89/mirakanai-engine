@@ -3264,6 +3264,10 @@ bool DeviceContext::draw(NativeCommandListHandle commands, std::uint32_t vertex_
 
     command_record->list->DrawInstanced(vertex_count, instance_count, 0, 0);
     ++impl_->stats.draw_calls;
+    if (instance_count > 1) {
+        ++impl_->stats.instanced_draw_calls;
+        impl_->stats.instanced_instances_submitted += instance_count;
+    }
     impl_->stats.vertices_submitted += static_cast<std::uint64_t>(vertex_count) * instance_count;
     return true;
 }
@@ -3285,6 +3289,11 @@ bool DeviceContext::draw_indexed(NativeCommandListHandle commands, std::uint32_t
     command_record->list->DrawIndexedInstanced(index_count, instance_count, 0, 0, 0);
     ++impl_->stats.draw_calls;
     ++impl_->stats.indexed_draw_calls;
+    if (instance_count > 1) {
+        ++impl_->stats.instanced_draw_calls;
+        ++impl_->stats.instanced_indexed_draw_calls;
+        impl_->stats.instanced_instances_submitted += instance_count;
+    }
     impl_->stats.indices_submitted += static_cast<std::uint64_t>(index_count) * instance_count;
     return true;
 }
@@ -5211,6 +5220,10 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             throw std::logic_error("d3d12 rhi draw failed");
         }
         ++stats_->draw_calls;
+        if (instance_count > 1) {
+            ++stats_->instanced_draw_calls;
+            stats_->instanced_instances_submitted += instance_count;
+        }
         stats_->vertices_submitted += static_cast<std::uint64_t>(vertex_count) * instance_count;
     }
 
@@ -5230,6 +5243,11 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         }
         ++stats_->draw_calls;
         ++stats_->indexed_draw_calls;
+        if (instance_count > 1) {
+            ++stats_->instanced_draw_calls;
+            ++stats_->instanced_indexed_draw_calls;
+            stats_->instanced_instances_submitted += instance_count;
+        }
         stats_->indices_submitted += static_cast<std::uint64_t>(index_count) * instance_count;
     }
 

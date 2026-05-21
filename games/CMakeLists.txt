@@ -1480,6 +1480,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-d3d12-shadow-cascade-policy
             --require-lighting-shadow-policy
             --require-scene-scale-policy
+            --require-d3d12-instanced-draw-evidence
             --require-renderer-quality-gates
             --require-framegraph-multiqueue-evidence
             --require-native-ui-overlay
