@@ -3498,6 +3498,18 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
            desc.require_os_video_memory_budget || desc.declared_local_budget_bytes > 0;
 }
 
+[[nodiscard]] rhi::BackendKind postprocess_policy_backend(SdlDesktopPresentationBackend backend) noexcept {
+    switch (backend) {
+    case SdlDesktopPresentationBackend::null_renderer:
+        return rhi::BackendKind::null;
+    case SdlDesktopPresentationBackend::d3d12:
+        return rhi::BackendKind::d3d12;
+    case SdlDesktopPresentationBackend::vulkan:
+        return rhi::BackendKind::vulkan;
+    }
+    return rhi::BackendKind::null;
+}
+
 [[nodiscard]] bool
 debug_profiling_policy_requested(const SdlDesktopPresentationDebugProfilingPolicyDesc& desc) noexcept {
     return desc.require_scene_gpu_bindings || desc.require_backend_profiling_evidence;
@@ -3505,15 +3517,19 @@ debug_profiling_policy_requested(const SdlDesktopPresentationDebugProfilingPolic
 
 [[nodiscard]] bool debug_profiling_policy_backend_evidence_ready(const SdlDesktopPresentationReport& report,
                                                                  bool require_backend_profiling_evidence) noexcept {
-    if (!require_backend_profiling_evidence || report.selected_backend != SdlDesktopPresentationBackend::d3d12) {
+    if (!require_backend_profiling_evidence) {
         return false;
     }
 
-    const auto gpu_debug_ready = report.rhi_gpu_debug_scopes_begun > 0 || report.rhi_gpu_debug_scopes_ended > 0 ||
-                                 report.rhi_gpu_debug_markers_inserted > 0;
-    return report.rhi_gpu_timestamp_ticks_per_second > 0 && gpu_debug_ready &&
-           report.renderer_stats.framegraph_barrier_steps_executed > 0 &&
-           report.renderer_stats.framegraph_render_passes_recorded > 0;
+    return mirakana::debug_profiling_policy_backend_evidence_ready(mirakana::DebugProfilingBackendEvidenceDesc{
+        .backend = postprocess_policy_backend(report.selected_backend),
+        .gpu_timestamp_ticks_per_second = report.rhi_gpu_timestamp_ticks_per_second,
+        .gpu_debug_scopes_begun = report.rhi_gpu_debug_scopes_begun,
+        .gpu_debug_scopes_ended = report.rhi_gpu_debug_scopes_ended,
+        .gpu_debug_markers_inserted = report.rhi_gpu_debug_markers_inserted,
+        .framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed,
+        .framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded,
+    });
 }
 
 [[nodiscard]] std::uint64_t gpu_memory_policy_upload_bytes(const SdlDesktopPresentationReport& report) noexcept {
@@ -3538,18 +3554,6 @@ debug_profiling_policy_requested(const SdlDesktopPresentationDebugProfilingPolic
     return memory.committed_resources_byte_estimate_available && memory.committed_resources_byte_estimate > 0 &&
            gpu_memory_policy_upload_bytes(report) > 0 &&
            (memory.os_video_memory_budget_available || gpu_memory_policy_transient_pressure_ready(report));
-}
-
-[[nodiscard]] rhi::BackendKind postprocess_policy_backend(SdlDesktopPresentationBackend backend) noexcept {
-    switch (backend) {
-    case SdlDesktopPresentationBackend::null_renderer:
-        return rhi::BackendKind::null;
-    case SdlDesktopPresentationBackend::d3d12:
-        return rhi::BackendKind::d3d12;
-    case SdlDesktopPresentationBackend::vulkan:
-        return rhi::BackendKind::vulkan;
-    }
-    return rhi::BackendKind::null;
 }
 
 [[nodiscard]] std::uint32_t scene_scale_policy_count(std::uint64_t value) noexcept {
@@ -5200,6 +5204,15 @@ evaluate_sdl_desktop_presentation_debug_profiling_policy(const SdlDesktopPresent
             .scene_frame_resources_available = result.scene_resources_ready,
             .source_index = 0,
         };
+    } else if (desc.require_backend_profiling_evidence &&
+               report.selected_backend == SdlDesktopPresentationBackend::vulkan) {
+        requests[request_count++] = DebugProfilingRequestDesc{
+            .capture_kind = DebugProfilingCaptureKind::vulkan_debug_utils,
+            .require_gpu_debug_markers = true,
+            .require_capture_handoff_evidence = true,
+            .scene_frame_resources_available = result.scene_resources_ready,
+            .source_index = 0,
+        };
     } else if (result.scene_resources_ready) {
         requests[request_count++] = DebugProfilingRequestDesc{
             .capture_kind = DebugProfilingCaptureKind::none,
@@ -5278,6 +5291,48 @@ evaluate_sdl_desktop_presentation_d3d12_debug_profiling_execution(const SdlDeskt
             ? SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::ready
             : SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::blocked;
     result.ready = result.status == SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::ready;
+    return result;
+}
+
+std::string_view sdl_desktop_presentation_vulkan_debug_profiling_execution_status_name(
+    const SdlDesktopPresentationVulkanDebugProfilingExecutionStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationVulkanDebugProfilingExecutionStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationVulkanDebugProfilingExecutionStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationVulkanDebugProfilingExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+SdlDesktopPresentationVulkanDebugProfilingExecutionReport
+evaluate_sdl_desktop_presentation_vulkan_debug_profiling_execution(const SdlDesktopPresentationReport& report,
+                                                                   const bool requested) {
+    SdlDesktopPresentationVulkanDebugProfilingExecutionReport result;
+    result.gpu_timestamp_ticks_per_second = report.rhi_gpu_timestamp_ticks_per_second;
+    result.gpu_debug_scopes_begun = report.rhi_gpu_debug_scopes_begun;
+    result.gpu_debug_scopes_ended = report.rhi_gpu_debug_scopes_ended;
+    result.gpu_debug_markers_inserted = report.rhi_gpu_debug_markers_inserted;
+    result.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
+    result.framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded;
+
+    if (!requested) {
+        return result;
+    }
+
+    result.vulkan_backend_selected = report.selected_backend == SdlDesktopPresentationBackend::vulkan;
+    result.gpu_timestamps_current = result.vulkan_backend_selected && result.gpu_timestamp_ticks_per_second > 0;
+    result.gpu_debug_markers_current =
+        result.vulkan_backend_selected && (result.gpu_debug_scopes_begun > 0 || result.gpu_debug_scopes_ended > 0 ||
+                                           result.gpu_debug_markers_inserted > 0);
+    result.frame_diagnostics_current = result.vulkan_backend_selected && result.framegraph_barrier_steps_executed > 0 &&
+                                       result.framegraph_render_passes_recorded > 0;
+    result.status = result.gpu_debug_markers_current && result.frame_diagnostics_current
+                        ? SdlDesktopPresentationVulkanDebugProfilingExecutionStatus::ready
+                        : SdlDesktopPresentationVulkanDebugProfilingExecutionStatus::blocked;
+    result.ready = result.status == SdlDesktopPresentationVulkanDebugProfilingExecutionStatus::ready;
     return result;
 }
 

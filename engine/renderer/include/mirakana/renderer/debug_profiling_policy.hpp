@@ -107,4 +107,17 @@ struct DebugProfilingPolicyPlan {
 [[nodiscard]] bool has_debug_profiling_policy_diagnostic(const DebugProfilingPolicyPlan& plan,
                                                          DebugProfilingDiagnosticCode code) noexcept;
 
+struct DebugProfilingBackendEvidenceDesc {
+    rhi::BackendKind backend{rhi::BackendKind::null};
+    std::uint64_t gpu_timestamp_ticks_per_second{0};
+    std::uint64_t gpu_debug_scopes_begun{0};
+    std::uint64_t gpu_debug_scopes_ended{0};
+    std::uint64_t gpu_debug_markers_inserted{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
+    std::uint64_t framegraph_render_passes_recorded{0};
+};
+
+[[nodiscard]] bool
+debug_profiling_policy_backend_evidence_ready(const DebugProfilingBackendEvidenceDesc& desc) noexcept;
+
 } // namespace mirakana

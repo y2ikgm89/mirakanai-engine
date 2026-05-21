@@ -1485,6 +1485,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-d3d12-gpu-memory-evidence
             --require-debug-profiling-policy
             --require-d3d12-debug-profiling-evidence
+            # installed-vulkan-scene-gpu-smoke also accepts --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence
             --require-renderer-quality-gates
             --require-framegraph-multiqueue-evidence
             --require-native-ui-overlay

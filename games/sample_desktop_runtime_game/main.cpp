@@ -57,6 +57,7 @@ struct DesktopRuntimeGameOptions {
     bool require_d3d12_gpu_memory_evidence{false};
     bool require_debug_profiling_policy{false};
     bool require_d3d12_debug_profiling_evidence{false};
+    bool require_vulkan_debug_profiling_evidence{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_native_ui_overlay{false};
@@ -722,6 +723,7 @@ void print_usage() {
                  "[--require-scene-scale-policy] [--require-d3d12-instanced-draw-evidence] "
                  "[--require-gpu-memory-policy] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
+                 "[--require-vulkan-debug-profiling-evidence] "
                  "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
@@ -832,6 +834,13 @@ void print_usage() {
             options.require_scene_gpu_bindings = true;
             options.require_debug_profiling_policy = true;
             options.require_d3d12_debug_profiling_evidence = true;
+            continue;
+        }
+        if (arg == "--require-vulkan-debug-profiling-evidence") {
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_debug_profiling_policy = true;
+            options.require_vulkan_debug_profiling_evidence = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -968,7 +977,8 @@ make_debug_profiling_policy_desc(const DesktopRuntimeGameOptions& options) noexc
     if (options.require_debug_profiling_policy) {
         desc.require_scene_gpu_bindings = true;
         desc.expected_frames = options.max_frames;
-        desc.require_backend_profiling_evidence = options.require_d3d12_debug_profiling_evidence;
+        desc.require_backend_profiling_evidence =
+            options.require_d3d12_debug_profiling_evidence || options.require_vulkan_debug_profiling_evidence;
     }
     return desc;
 }
@@ -1841,6 +1851,9 @@ int main(int argc, char** argv) {
     const auto d3d12_debug_profiling_execution =
         mirakana::evaluate_sdl_desktop_presentation_d3d12_debug_profiling_execution(
             report, options.require_d3d12_debug_profiling_evidence);
+    const auto vulkan_debug_profiling_execution =
+        mirakana::evaluate_sdl_desktop_presentation_vulkan_debug_profiling_execution(
+            report, options.require_vulkan_debug_profiling_evidence);
     const auto debug_profiling_policy = mirakana::evaluate_sdl_desktop_presentation_debug_profiling_policy(
         report, make_debug_profiling_policy_desc(options));
     const auto renderer_quality =
@@ -2092,6 +2105,30 @@ int main(int argc, char** argv) {
         << (d3d12_debug_profiling_execution.gpu_debug_markers_current ? 1 : 0)
         << " d3d12_debug_profiling_execution_frame_diagnostics_ok="
         << (d3d12_debug_profiling_execution.frame_diagnostics_current ? 1 : 0)
+        << " vulkan_debug_profiling_execution_status="
+        << mirakana::sdl_desktop_presentation_vulkan_debug_profiling_execution_status_name(
+               vulkan_debug_profiling_execution.status)
+        << " vulkan_debug_profiling_execution_ready=" << (vulkan_debug_profiling_execution.ready ? 1 : 0)
+        << " vulkan_debug_profiling_execution_selected="
+        << (vulkan_debug_profiling_execution.vulkan_backend_selected ? 1 : 0)
+        << " vulkan_debug_profiling_execution_gpu_timestamp_ticks_per_second="
+        << vulkan_debug_profiling_execution.gpu_timestamp_ticks_per_second
+        << " vulkan_debug_profiling_execution_gpu_debug_scopes_begun="
+        << vulkan_debug_profiling_execution.gpu_debug_scopes_begun
+        << " vulkan_debug_profiling_execution_gpu_debug_scopes_ended="
+        << vulkan_debug_profiling_execution.gpu_debug_scopes_ended
+        << " vulkan_debug_profiling_execution_gpu_debug_markers_inserted="
+        << vulkan_debug_profiling_execution.gpu_debug_markers_inserted
+        << " vulkan_debug_profiling_execution_framegraph_barrier_steps_executed="
+        << vulkan_debug_profiling_execution.framegraph_barrier_steps_executed
+        << " vulkan_debug_profiling_execution_framegraph_render_passes_recorded="
+        << vulkan_debug_profiling_execution.framegraph_render_passes_recorded
+        << " vulkan_debug_profiling_execution_gpu_timestamps_ok="
+        << (vulkan_debug_profiling_execution.gpu_timestamps_current ? 1 : 0)
+        << " vulkan_debug_profiling_execution_gpu_debug_markers_ok="
+        << (vulkan_debug_profiling_execution.gpu_debug_markers_current ? 1 : 0)
+        << " vulkan_debug_profiling_execution_frame_diagnostics_ok="
+        << (vulkan_debug_profiling_execution.frame_diagnostics_current ? 1 : 0)
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -2278,6 +2315,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_d3d12_debug_profiling_evidence && !d3d12_debug_profiling_execution.ready) {
+            return 3;
+        }
+        if (options.require_vulkan_debug_profiling_evidence && !vulkan_debug_profiling_execution.ready) {
             return 3;
         }
         if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {

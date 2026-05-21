@@ -1015,6 +1015,45 @@ MK_TEST(
     MK_REQUIRE(execution.frame_diagnostics_current);
 }
 
+MK_TEST("sdl desktop presentation vulkan debug profiling execution report requires markers and frame counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
+    report.renderer_stats.framegraph_barrier_steps_executed = 4;
+    report.renderer_stats.framegraph_render_passes_recorded = 2;
+    report.rhi_gpu_debug_markers_inserted = 2;
+
+    const auto execution = mirakana::evaluate_sdl_desktop_presentation_vulkan_debug_profiling_execution(report, true);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationVulkanDebugProfilingExecutionStatus::ready);
+    MK_REQUIRE(execution.ready);
+    MK_REQUIRE(execution.vulkan_backend_selected);
+    MK_REQUIRE(execution.gpu_debug_markers_current);
+    MK_REQUIRE(execution.frame_diagnostics_current);
+    MK_REQUIRE(!execution.gpu_timestamps_current);
+}
+
+MK_TEST("sdl desktop presentation debug profiling policy exposes vulkan backend evidence counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
+    report.scene_gpu_status = mirakana::SdlDesktopPresentationSceneGpuBindingStatus::ready;
+    report.renderer_stats.frames_finished = 2;
+    report.renderer_stats.framegraph_barrier_steps_executed = 12;
+    report.renderer_stats.framegraph_render_passes_recorded = 6;
+    report.rhi_gpu_debug_markers_inserted = 2;
+
+    mirakana::SdlDesktopPresentationDebugProfilingPolicyDesc desc;
+    desc.require_scene_gpu_bindings = true;
+    desc.expected_frames = 2;
+    desc.require_backend_profiling_evidence = true;
+
+    const auto policy = mirakana::evaluate_sdl_desktop_presentation_debug_profiling_policy(report, desc);
+
+    MK_REQUIRE(policy.status == mirakana::SdlDesktopPresentationDebugProfilingPolicyStatus::ready);
+    MK_REQUIRE(policy.ready);
+    MK_REQUIRE(policy.backend_profiling_evidence_ready);
+    MK_REQUIRE(policy.gpu_debug_markers_inserted > 0);
+}
+
 MK_TEST("sdl desktop presentation d3d12 instanced draw execution report requires backend instanced counters") {
     mirakana::SdlDesktopPresentationReport report;
     report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;

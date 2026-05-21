@@ -4,6 +4,7 @@
 #include "test_framework.hpp"
 
 #include "mirakana/assets/material.hpp"
+#include "mirakana/renderer/backend_renderer_parity_policy.hpp"
 #include "mirakana/renderer/debug_profiling_policy.hpp"
 #include "mirakana/renderer/frame_graph.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
@@ -6241,6 +6242,33 @@ MK_TEST("debug profiling policy plans capture handoff timestamps markers and fai
         invalid, mirakana::DebugProfilingDiagnosticCode::missing_backend_profiling_evidence));
     MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
         invalid, mirakana::DebugProfilingDiagnosticCode::missing_frame_diagnostic_evidence));
+}
+
+MK_TEST("debug profiling backend evidence requires timestamps on d3d12 and markers on vulkan") {
+    MK_REQUIRE(mirakana::debug_profiling_policy_backend_evidence_ready(mirakana::DebugProfilingBackendEvidenceDesc{
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .gpu_timestamp_ticks_per_second = 10'000'000,
+        .gpu_debug_markers_inserted = 2,
+        .framegraph_barrier_steps_executed = 4,
+        .framegraph_render_passes_recorded = 2,
+    }));
+    MK_REQUIRE(mirakana::debug_profiling_policy_backend_evidence_ready(mirakana::DebugProfilingBackendEvidenceDesc{
+        .backend = mirakana::rhi::BackendKind::vulkan,
+        .gpu_debug_markers_inserted = 2,
+        .framegraph_barrier_steps_executed = 4,
+        .framegraph_render_passes_recorded = 2,
+    }));
+    MK_REQUIRE(!mirakana::debug_profiling_policy_backend_evidence_ready(mirakana::DebugProfilingBackendEvidenceDesc{
+        .backend = mirakana::rhi::BackendKind::vulkan,
+        .gpu_timestamp_ticks_per_second = 10'000'000,
+        .framegraph_barrier_steps_executed = 4,
+        .framegraph_render_passes_recorded = 2,
+    }));
+    MK_REQUIRE(
+        !mirakana::backend_renderer_parity_proof_matches_selected_backend(mirakana::BackendRendererParityProofDesc{
+            .selected_backend = mirakana::rhi::BackendKind::vulkan,
+            .proof_backend = mirakana::rhi::BackendKind::d3d12,
+        }));
 }
 
 MK_TEST("rhi postprocess frame renderer records morph scene draws") {
