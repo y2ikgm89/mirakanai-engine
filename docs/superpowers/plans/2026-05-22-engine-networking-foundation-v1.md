@@ -54,7 +54,7 @@ Add the smallest deterministic `MK_runtime` contract for reviewed network sessio
 
 ## Phase 2: Package Evidence and Agent Surface Closeout
 
-**Status:** Planned.
+**Status:** Completed.
 
 ### Goal
 
@@ -74,3 +74,8 @@ Expose selected networking foundation counters in a package or sample lane and c
 - Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_networking_foundation_tests`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure --tests-regex MK_runtime_networking_foundation_tests` passed after adding the value-only `MK_runtime` contract.
 - Phase 1 focused/static checks passed: `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files engine/runtime/src/networking_foundation.cpp,tests/unit/runtime_networking_foundation_tests.cpp`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-production-readiness-audit.ps1` (`unsupported_gaps=0`), `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
 - Phase 1 runtime/public-contract gate passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed successfully with 72 tests passed and `unsupported_gaps=0`.
+- Phase 2 RED: `sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-networking-foundation-policy` failed with `unknown argument: --require-networking-foundation-policy`.
+- Phase 2 focused GREEN: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package`, and `tools/ctest.ps1 --preset dev --output-on-failure --tests-regex sample_2d_desktop_runtime_package_smoke` passed after adding the package proof.
+- Phase 2 package evidence passed: `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` accepted the default installed D3D12/native package smoke with `--require-networking-foundation-policy`, and `tools/validate-installed-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -SmokeArgs @('--smoke','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-networking-foundation-policy')` proved `networking_foundation_status=planned`, session rows `2`, transport rows `4`, channel rows `3`, rejected unsafe transport rows `3`, replay prerequisite rows `2`, security diagnostics `2`, and clean reviewed-policy diagnostics `0`.
+- Phase 2 static/agent checks passed: `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-production-readiness-audit.ps1` (`unsupported_gaps=0`), `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files games/sample_2d_desktop_runtime_package/main.cpp`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
+- Phase 2 runtime/public-contract gate passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed successfully with 72 tests passed and `unsupported_gaps=0`.

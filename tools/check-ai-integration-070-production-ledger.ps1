@@ -808,6 +808,7 @@ foreach ($needle in @(
     "installed-2d-tilemap-runtime-ux-smoke",
     "installed-2d-entity-scale-culling-smoke",
     "installed-2d-scripting-sandbox-policy-smoke",
+    "installed-2d-networking-foundation-policy-smoke",
     "--require-native-2d-sprites",
     "--require-sprite-animation",
     "--require-tilemap-runtime-ux",
@@ -818,8 +819,11 @@ foreach ($needle in @(
     "--require-entity-scale-culling",
     "scripting sandbox policy proof",
     "--require-scripting-sandbox-policy",
+    "networking foundation policy proof",
+    "--require-networking-foundation-policy",
     "public native or RHI handle access remains unsupported",
     "broad scripting/mod runtime execution remains unsupported",
+    "broad multiplayer/networking readiness remains unsupported",
     "broad production sprite batching readiness remains unsupported",
     "general production renderer quality remains unsupported"
 )) {
@@ -831,11 +835,13 @@ foreach ($needle in @(
     "mirakana/runtime/runtime_diagnostics.hpp",
     "mirakana/runtime/entity_scale_culling.hpp",
     "mirakana/runtime/scripting_sandbox.hpp",
+    "mirakana/runtime/networking_foundation.hpp",
     "--require-native-2d-sprites",
     "--require-sprite-animation",
     "--require-tilemap-runtime-ux",
     "--require-entity-scale-culling",
     "--require-scripting-sandbox-policy",
+    "--require-networking-foundation-policy",
     "runtime_sprite_animation_payload",
     "runtime_tilemap_payload",
     "sample_runtime_tilemap_visible_cells",
@@ -883,6 +889,15 @@ foreach ($needle in @(
     "scripting_sandbox_budget_diagnostics=",
     "scripting_sandbox_replay_seed_rows=",
     "scripting_sandbox_diagnostics=",
+    "networking_foundation_status=",
+    "networking_foundation_session_rows=",
+    "networking_foundation_transport_rows=",
+    "networking_foundation_channel_rows=",
+    "networking_foundation_rejected_unsafe_transport_rows=",
+    "networking_foundation_replay_prerequisite_rows=",
+    "networking_foundation_security_diagnostics=",
+    "networking_foundation_diagnostics=",
+    "required_networking_foundation_policy_unavailable",
     "required_scripting_sandbox_policy_unavailable",
     "required_entity_scale_culling_unavailable",
     "required_native_2d_sprites_unavailable",
@@ -915,6 +930,7 @@ foreach ($needle in @(
     "gameplay_systems_behavior_authoring_trace_nodes",
     "--require-entity-scale-culling",
     "--require-scripting-sandbox-policy",
+    "--require-networking-foundation-policy",
     "entity_scale_culling_status",
     "entity_scale_culling_budget_diagnostics",
     "scripting_sandbox_status",
@@ -922,7 +938,15 @@ foreach ($needle in @(
     "scripting_sandbox_rejected_unsafe_capability_rows",
     "scripting_sandbox_budget_diagnostics",
     "scripting_sandbox_replay_seed_rows",
-    "scripting_sandbox_diagnostics"
+    "scripting_sandbox_diagnostics",
+    "networking_foundation_status",
+    "networking_foundation_session_rows",
+    "networking_foundation_transport_rows",
+    "networking_foundation_channel_rows",
+    "networking_foundation_rejected_unsafe_transport_rows",
+    "networking_foundation_replay_prerequisite_rows",
+    "networking_foundation_security_diagnostics",
+    "networking_foundation_diagnostics"
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
@@ -936,7 +960,8 @@ foreach ($needle in @(
     "--require-sprite-animation",
     "--require-tilemap-runtime-ux",
     "--require-entity-scale-culling",
-    "--require-scripting-sandbox-policy"
+    "--require-scripting-sandbox-policy",
+    "--require-networking-foundation-policy"
 )) {
     Assert-ContainsText $sample2dDesktopCMakeText $needle "games/CMakeLists.txt"
 }
