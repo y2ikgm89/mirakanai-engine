@@ -1529,6 +1529,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scripting-sandbox-policy
             --require-networking-foundation-policy
             --require-simulation-orchestration
+            --require-gameplay-authoring-review
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1549,6 +1550,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scripting-sandbox-policy
             --require-networking-foundation-policy
             --require-simulation-orchestration
+            --require-gameplay-authoring-review
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )
@@ -1564,6 +1566,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             MK_ai
             MK_navigation
             MK_physics
+            MK_tools
     )
     set_property(TARGET sample_2d_desktop_runtime_package PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
         "shaders/sample_2d_desktop_runtime_package_sprite.vs.dxil;shaders/sample_2d_desktop_runtime_package_sprite.ps.dxil;shaders/sample_2d_desktop_runtime_package_native_sprite_overlay.vs.dxil;shaders/sample_2d_desktop_runtime_package_native_sprite_overlay.ps.dxil"

@@ -33,6 +33,7 @@
 #include "mirakana/scene/render_packet.hpp"
 #include "mirakana/scene/scene.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
+#include "mirakana/tools/gameplay_authoring_tool.hpp"
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
@@ -73,6 +74,7 @@ struct DesktopRuntimeOptions {
     bool require_scripting_sandbox_policy{false};
     bool require_networking_foundation_policy{false};
     bool require_simulation_orchestration{false};
+    bool require_gameplay_authoring_review{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -205,6 +207,19 @@ struct SimulationOrchestrationProbeResult {
     bool ready{false};
 };
 
+struct GameplayAuthoringReviewProbeResult {
+    std::size_t feature_rows{0U};
+    std::size_t accepted_rows{0U};
+    std::size_t mutation_ledger_rows{0U};
+    std::size_t remediation_rows{0U};
+    std::size_t missing_required_capability_diagnostics{0U};
+    std::size_t missing_validation_recipe_diagnostics{0U};
+    std::size_t missing_package_evidence_diagnostics{0U};
+    std::size_t unsupported_claim_diagnostics{0U};
+    std::size_t diagnostics{0U};
+    bool ready{false};
+};
+
 [[nodiscard]] std::string_view gameplay_2d_systems_status_name(Gameplay2DSystemsStatus status) noexcept {
     switch (status) {
     case Gameplay2DSystemsStatus::not_started:
@@ -215,6 +230,11 @@ struct SimulationOrchestrationProbeResult {
         return "diagnostics";
     }
     return "unknown";
+}
+
+[[nodiscard]] std::string_view
+gameplay_authoring_review_status_name(const GameplayAuthoringReviewProbeResult& result) noexcept {
+    return result.ready ? "ready" : "diagnostics";
 }
 
 [[nodiscard]] std::string_view
@@ -1729,6 +1749,123 @@ count_simulation_orchestration_diagnostics(const mirakana::runtime::RuntimeSimul
     return result;
 }
 
+[[nodiscard]] std::size_t count_gameplay_authoring_diagnostics(const mirakana::GameplayAuthoringReviewResult& result,
+                                                               std::string_view code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : result.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] GameplayAuthoringReviewProbeResult validate_gameplay_authoring_review_package_evidence() {
+    const mirakana::GameplayAuthoringCapabilityProfile profile{
+        .supported_capability_ids = {"gameplay-authoring-foundation-v1", "engine-quest-dialogue-state-v1",
+                                     "engine-inventory-items-crafting-v1", "engine-construction-placement-v1",
+                                     "engine-procedural-generation-v1", "engine-world-region-streaming-v1",
+                                     "engine-entity-scale-and-culling-v1", "engine-scripting-sandbox-v1",
+                                     "engine-networking-foundation-v1", "gameplay-simulation-orchestration-v1"},
+        .validation_recipe_ids = {"headless-gameplay", "2d-desktop-runtime-package",
+                                  "installed-2d-gameplay-systems-smoke", "installed-2d-world-region-streaming-smoke",
+                                  "installed-2d-entity-scale-culling-smoke",
+                                  "installed-2d-scripting-sandbox-policy-smoke",
+                                  "installed-2d-networking-foundation-policy-smoke",
+                                  "installed-2d-simulation-orchestration-smoke",
+                                  "installed-2d-gameplay-authoring-review-smoke"},
+        .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+    };
+
+    const mirakana::GameplayAuthoringReviewRequest reviewed_request{
+        .profile = profile,
+        .features =
+            {
+                mirakana::GameplayAuthoringRequestedFeatureRow{
+                    .feature_id = "intro_quest",
+                    .gameplay_family = "narrative",
+                    .required_capability_ids = {"gameplay-authoring-foundation-v1", "engine-quest-dialogue-state-v1"},
+                    .validation_recipe_ids = {"headless-gameplay", "installed-2d-gameplay-systems-smoke"},
+                    .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+                    .claimed_scope_ids = {},
+                    .source_index = 1U,
+                },
+                mirakana::GameplayAuthoringRequestedFeatureRow{
+                    .feature_id = "settlement_crafting_loop",
+                    .gameplay_family = "progression",
+                    .required_capability_ids = {"engine-inventory-items-crafting-v1",
+                                                "engine-construction-placement-v1"},
+                    .validation_recipe_ids = {"2d-desktop-runtime-package", "installed-2d-gameplay-systems-smoke"},
+                    .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+                    .claimed_scope_ids = {},
+                    .source_index = 2U,
+                },
+                mirakana::GameplayAuthoringRequestedFeatureRow{
+                    .feature_id = "seeded_region_event",
+                    .gameplay_family = "world",
+                    .required_capability_ids = {"engine-procedural-generation-v1", "engine-world-region-streaming-v1",
+                                                "engine-entity-scale-and-culling-v1"},
+                    .validation_recipe_ids = {"installed-2d-world-region-streaming-smoke",
+                                              "installed-2d-entity-scale-culling-smoke"},
+                    .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+                    .claimed_scope_ids = {},
+                    .source_index = 3U,
+                },
+                mirakana::GameplayAuthoringRequestedFeatureRow{
+                    .feature_id = "networked_simulation_policy",
+                    .gameplay_family = "systems",
+                    .required_capability_ids = {"engine-scripting-sandbox-v1", "engine-networking-foundation-v1",
+                                                "gameplay-simulation-orchestration-v1"},
+                    .validation_recipe_ids = {"installed-2d-scripting-sandbox-policy-smoke",
+                                              "installed-2d-networking-foundation-policy-smoke",
+                                              "installed-2d-simulation-orchestration-smoke"},
+                    .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+                    .claimed_scope_ids = {},
+                    .source_index = 4U,
+                },
+            },
+    };
+    const auto reviewed_result = mirakana::review_gameplay_authoring_request(reviewed_request);
+
+    const mirakana::GameplayAuthoringReviewRequest invalid_request{
+        .profile = profile,
+        .features =
+            {
+                mirakana::GameplayAuthoringRequestedFeatureRow{
+                    .feature_id = "unreviewed_autonomy",
+                    .gameplay_family = "automation",
+                    .required_capability_ids = {"autonomous-commercial-game-design-v1"},
+                    .validation_recipe_ids = {"unreviewed-freeform-generation"},
+                    .package_evidence_ids = {"direct-cooked-package-mutation"},
+                    .claimed_scope_ids = {"autonomous-commercial-game-design"},
+                    .source_index = 99U,
+                },
+            },
+    };
+    const auto invalid_result = mirakana::review_gameplay_authoring_request(invalid_request);
+
+    GameplayAuthoringReviewProbeResult result;
+    result.feature_rows = reviewed_request.features.size();
+    result.accepted_rows = reviewed_result.accepted_features.size();
+    result.mutation_ledger_rows = reviewed_result.mutation_ledger_rows.size();
+    result.remediation_rows = invalid_result.remediation_rows.size();
+    result.missing_required_capability_diagnostics =
+        count_gameplay_authoring_diagnostics(invalid_result, "missing_required_capability");
+    result.missing_validation_recipe_diagnostics =
+        count_gameplay_authoring_diagnostics(invalid_result, "missing_validation_recipe");
+    result.missing_package_evidence_diagnostics =
+        count_gameplay_authoring_diagnostics(invalid_result, "missing_package_evidence");
+    result.unsupported_claim_diagnostics = count_gameplay_authoring_diagnostics(invalid_result, "unsupported_claim");
+    result.diagnostics = reviewed_result.diagnostics.size();
+    result.ready = reviewed_result.succeeded() && !invalid_result.succeeded() && result.feature_rows == 4U &&
+                   result.accepted_rows == 4U && result.mutation_ledger_rows == 4U && result.remediation_rows == 4U &&
+                   result.missing_required_capability_diagnostics == 1U &&
+                   result.missing_validation_recipe_diagnostics == 1U &&
+                   result.missing_package_evidence_diagnostics == 1U && result.unsupported_claim_diagnostics == 1U &&
+                   result.diagnostics == 0U;
+    return result;
+}
+
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
@@ -2979,7 +3116,8 @@ void print_usage() {
                  "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
-                 "[--require-networking-foundation-policy] [--require-simulation-orchestration]\n";
+                 "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
+                 "[--require-gameplay-authoring-review]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -3049,6 +3187,10 @@ void print_usage() {
         }
         if (arg == "--require-simulation-orchestration") {
             options.require_simulation_orchestration = true;
+            continue;
+        }
+        if (arg == "--require-gameplay-authoring-review") {
+            options.require_gameplay_authoring_review = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -3586,6 +3728,9 @@ int main(int argc, char** argv) {
     const auto simulation_orchestration_probe = options.require_simulation_orchestration
                                                     ? validate_simulation_orchestration_package_evidence()
                                                     : SimulationOrchestrationProbeResult{};
+    const auto gameplay_authoring_review_probe = options.require_gameplay_authoring_review
+                                                     ? validate_gameplay_authoring_review_package_evidence()
+                                                     : GameplayAuthoringReviewProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -3925,6 +4070,22 @@ int main(int argc, char** argv) {
         << " simulation_orchestration_invalid_command_diagnostics="
         << simulation_orchestration_probe.invalid_command_diagnostics
         << " simulation_orchestration_diagnostics=" << simulation_orchestration_probe.diagnostics
+        << " gameplay_authoring_review_status="
+        << gameplay_authoring_review_status_name(gameplay_authoring_review_probe)
+        << " gameplay_authoring_review_ready=" << (gameplay_authoring_review_probe.ready ? 1 : 0)
+        << " gameplay_authoring_review_feature_rows=" << gameplay_authoring_review_probe.feature_rows
+        << " gameplay_authoring_review_accepted_rows=" << gameplay_authoring_review_probe.accepted_rows
+        << " gameplay_authoring_review_mutation_ledger_rows=" << gameplay_authoring_review_probe.mutation_ledger_rows
+        << " gameplay_authoring_review_remediation_rows=" << gameplay_authoring_review_probe.remediation_rows
+        << " gameplay_authoring_review_missing_required_capability_diagnostics="
+        << gameplay_authoring_review_probe.missing_required_capability_diagnostics
+        << " gameplay_authoring_review_missing_validation_recipe_diagnostics="
+        << gameplay_authoring_review_probe.missing_validation_recipe_diagnostics
+        << " gameplay_authoring_review_missing_package_evidence_diagnostics="
+        << gameplay_authoring_review_probe.missing_package_evidence_diagnostics
+        << " gameplay_authoring_review_unsupported_claim_diagnostics="
+        << gameplay_authoring_review_probe.unsupported_claim_diagnostics
+        << " gameplay_authoring_review_diagnostics=" << gameplay_authoring_review_probe.diagnostics
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -4120,6 +4281,27 @@ int main(int argc, char** argv) {
                   << simulation_orchestration_probe.invalid_command_diagnostics
                   << " simulation_orchestration_diagnostics=" << simulation_orchestration_probe.diagnostics << '\n';
         return 18;
+    }
+
+    if (options.require_gameplay_authoring_review && !gameplay_authoring_review_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_gameplay_authoring_review_unavailable"
+                  << " gameplay_authoring_review_status="
+                  << gameplay_authoring_review_status_name(gameplay_authoring_review_probe)
+                  << " gameplay_authoring_review_feature_rows=" << gameplay_authoring_review_probe.feature_rows
+                  << " gameplay_authoring_review_accepted_rows=" << gameplay_authoring_review_probe.accepted_rows
+                  << " gameplay_authoring_review_mutation_ledger_rows="
+                  << gameplay_authoring_review_probe.mutation_ledger_rows
+                  << " gameplay_authoring_review_remediation_rows=" << gameplay_authoring_review_probe.remediation_rows
+                  << " gameplay_authoring_review_missing_required_capability_diagnostics="
+                  << gameplay_authoring_review_probe.missing_required_capability_diagnostics
+                  << " gameplay_authoring_review_missing_validation_recipe_diagnostics="
+                  << gameplay_authoring_review_probe.missing_validation_recipe_diagnostics
+                  << " gameplay_authoring_review_missing_package_evidence_diagnostics="
+                  << gameplay_authoring_review_probe.missing_package_evidence_diagnostics
+                  << " gameplay_authoring_review_unsupported_claim_diagnostics="
+                  << gameplay_authoring_review_probe.unsupported_claim_diagnostics
+                  << " gameplay_authoring_review_diagnostics=" << gameplay_authoring_review_probe.diagnostics << '\n';
+        return 19;
     }
 
     if (options.smoke &&

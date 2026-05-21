@@ -19,6 +19,8 @@ High-freedom game support must preserve the same AI-operable rules and remain ga
 
 Recommended high-freedom 1.x streams:
 
+As of PR #173 / merge commit `3b9e36f7`, `ai-gameplay-authoring-tools-v1` is the active developer-owned milestone selected from this track. It follows completed gameplay authoring, quest/inventory/construction/procedural/world/scripting/networking/simulation foundations and must keep the first phase value-only, reviewed, and non-mutating.
+
 | Stream | Goal | Official-practice evidence gate | Non-goals until separately planned |
 | --- | --- | --- | --- |
 | `gameplay-systems-framework-v1` | Add first-party gameplay systems for inventory, item definitions, interaction verbs, triggers, quest state, objectives, dialogue flags, and rule validation. | Schema/static checks, deterministic state-transition tests, generated 2D/3D examples, save/load rows, and package-visible gameplay counters. | Full genre toolkit parity, visual scripting, live content marketplace, arbitrary script execution. |

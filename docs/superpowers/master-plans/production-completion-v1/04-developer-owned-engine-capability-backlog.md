@@ -25,7 +25,7 @@ Priority tiers:
 
 Recommended developer-owned capability rows:
 
-As of PR #172 / merge commit `eb6a34b5`, the previously selected Gameplay Simulation Orchestration v1 row is completed and no single next row is automatically selected. Use these rows as historical capability evidence plus a selection pool; add or select a new dated milestone only when a concrete game handoff or roadmap decision identifies a reusable developer-owned capability that still needs implementation.
+As of PR #173 / merge commit `3b9e36f7`, the previously selected Gameplay Simulation Orchestration v1 row is completed and the active developer-owned selection has moved to `ai-gameplay-authoring-tools-v1` from the high-freedom game creation track. Use these rows as historical capability evidence plus a selection pool; add or select a new dated milestone only when a concrete game handoff or roadmap decision identifies a reusable developer-owned capability that still needs implementation.
 
 | Capability id | Tier | Why games need it | Developer implementation boundary | Evidence before game agents can use it |
 | --- | --- | --- | --- | --- |

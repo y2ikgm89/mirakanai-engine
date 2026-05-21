@@ -529,6 +529,14 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "simulation_orchestration_budget_limited_status=",
         "simulation_orchestration_invalid_command_diagnostics=",
         "simulation_orchestration_diagnostics=",
+        "gameplay_authoring_review_status=", "gameplay_authoring_review_ready=",
+        "gameplay_authoring_review_feature_rows=", "gameplay_authoring_review_accepted_rows=",
+        "gameplay_authoring_review_mutation_ledger_rows=", "gameplay_authoring_review_remediation_rows=",
+        "gameplay_authoring_review_missing_required_capability_diagnostics=",
+        "gameplay_authoring_review_missing_validation_recipe_diagnostics=",
+        "gameplay_authoring_review_missing_package_evidence_diagnostics=",
+        "gameplay_authoring_review_unsupported_claim_diagnostics=", "gameplay_authoring_review_diagnostics=",
+        "required_gameplay_authoring_review_unavailable",
         "required_simulation_orchestration_unavailable",
         "required_networking_foundation_policy_unavailable",
         "required_scripting_sandbox_policy_unavailable",
@@ -560,9 +568,11 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "--require-scripting-sandbox-policy",
         "--require-networking-foundation-policy",
         "--require-simulation-orchestration",
+        "--require-gameplay-authoring-review",
         "MK_ai",
         "MK_navigation",
         "MK_physics",
+        "MK_tools",
         "sample_2d_desktop_runtime_package_shaders",
         "sample_2d_desktop_runtime_package_vulkan_shaders",
         "REQUIRES_D3D12_SHADERS"
@@ -579,6 +589,7 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "--require-scripting-sandbox-policy",
         "--require-networking-foundation-policy",
         "--require-simulation-orchestration",
+        "--require-gameplay-authoring-review",
         "native_2d_sprites_status",
         "native_2d_textured_sprites_submitted",
         "native_2d_texture_binds",
@@ -639,7 +650,14 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "simulation_orchestration_budget_limited_planned_steps",
         "simulation_orchestration_budget_limited_remaining_time_us",
         "simulation_orchestration_invalid_command_diagnostics",
-        "simulation_orchestration_diagnostics"
+        "simulation_orchestration_diagnostics",
+        "gameplay_authoring_review_status", "gameplay_authoring_review_ready",
+        "gameplay_authoring_review_feature_rows", "gameplay_authoring_review_accepted_rows",
+        "gameplay_authoring_review_mutation_ledger_rows", "gameplay_authoring_review_remediation_rows",
+        "gameplay_authoring_review_missing_required_capability_diagnostics",
+        "gameplay_authoring_review_missing_validation_recipe_diagnostics",
+        "gameplay_authoring_review_missing_package_evidence_diagnostics",
+        "gameplay_authoring_review_unsupported_claim_diagnostics", "gameplay_authoring_review_diagnostics"
     )) {
         if (-not $installedDesktopRuntimeValidationText.Contains($needle)) {
             Write-Error "tools/validate-installed-desktop-runtime.ps1 missing 2D native sprite package validation field: $needle"

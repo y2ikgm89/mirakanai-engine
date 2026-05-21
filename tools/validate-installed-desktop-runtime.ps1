@@ -226,6 +226,7 @@ $requiresEntityScaleCulling = @($SmokeArgs) -contains "--require-entity-scale-cu
 $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-sandbox-policy"
 $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-networking-foundation-policy"
 $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation-orchestration"
+$requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
@@ -1675,6 +1676,44 @@ if ($requiresSimulationOrchestration) {
         $expectedValue = $expectedSimulationOrchestrationFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove simulation orchestration field $field=$expectedValue."
+        }
+    }
+}
+if ($requiresGameplayAuthoringReview) {
+    foreach ($field in @(
+            "gameplay_authoring_review_status",
+            "gameplay_authoring_review_ready",
+            "gameplay_authoring_review_feature_rows",
+            "gameplay_authoring_review_accepted_rows",
+            "gameplay_authoring_review_mutation_ledger_rows",
+            "gameplay_authoring_review_remediation_rows",
+            "gameplay_authoring_review_missing_required_capability_diagnostics",
+            "gameplay_authoring_review_missing_validation_recipe_diagnostics",
+            "gameplay_authoring_review_missing_package_evidence_diagnostics",
+            "gameplay_authoring_review_unsupported_claim_diagnostics",
+            "gameplay_authoring_review_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include gameplay authoring review field: $field"
+        }
+    }
+    $expectedGameplayAuthoringReviewFields = @{
+        "gameplay_authoring_review_status" = "ready"
+        "gameplay_authoring_review_ready" = "1"
+        "gameplay_authoring_review_feature_rows" = "4"
+        "gameplay_authoring_review_accepted_rows" = "4"
+        "gameplay_authoring_review_mutation_ledger_rows" = "4"
+        "gameplay_authoring_review_remediation_rows" = "4"
+        "gameplay_authoring_review_missing_required_capability_diagnostics" = "1"
+        "gameplay_authoring_review_missing_validation_recipe_diagnostics" = "1"
+        "gameplay_authoring_review_missing_package_evidence_diagnostics" = "1"
+        "gameplay_authoring_review_unsupported_claim_diagnostics" = "1"
+        "gameplay_authoring_review_diagnostics" = "0"
+    }
+    foreach ($field in $expectedGameplayAuthoringReviewFields.Keys) {
+        $expectedValue = $expectedGameplayAuthoringReviewFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove gameplay authoring review field $field=$expectedValue."
         }
     }
 }

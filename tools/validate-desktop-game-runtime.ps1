@@ -53,21 +53,21 @@ foreach ($requiredTarget in @(
 
 $desktopRuntimeTargets = @($registeredGames | ForEach-Object { $_.target })
 $buildTargets = @(
-    "mirakana_runtime_host_tests",
-    "mirakana_runtime_host_sdl3_public_api_compile",
-    "mirakana_runtime_host_sdl3_tests",
-    "mirakana_sdl3_platform_tests",
-    "mirakana_sdl3_audio_tests"
+    "MK_runtime_host_tests",
+    "MK_runtime_host_sdl3_public_api_compile",
+    "MK_runtime_host_sdl3_tests",
+    "MK_sdl3_platform_tests",
+    "MK_sdl3_audio_tests"
 ) + $desktopRuntimeTargets
 $buildArgs = @("--build", "--preset", "desktop-runtime", "--target") + $buildTargets
 Invoke-CheckedCommand $tools.CMake @buildArgs
 
 $testPatterns = @(
-    "mirakana_runtime_host_tests",
-    "mirakana_runtime_host_sdl3_public_api_compile",
-    "mirakana_runtime_host_sdl3_tests",
-    "mirakana_sdl3_platform_tests",
-    "mirakana_sdl3_audio_tests"
+    "MK_runtime_host_tests",
+    "MK_runtime_host_sdl3_public_api_compile",
+    "MK_runtime_host_sdl3_tests",
+    "MK_sdl3_platform_tests",
+    "MK_sdl3_audio_tests"
 ) + @($desktopRuntimeTargets | ForEach-Object {
     [System.Text.RegularExpressions.Regex]::Escape($_) + "(_shader_artifacts|_vulkan_shader_artifacts)?_smoke"
 })
