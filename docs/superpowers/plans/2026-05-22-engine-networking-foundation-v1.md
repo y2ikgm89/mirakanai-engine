@@ -40,7 +40,7 @@ Select this plan as the active developer-owned networking foundation after the m
 
 ## Phase 1: Network Session Policy and Threat Boundary Contract
 
-**Status:** Planned.
+**Status:** Completed.
 
 ### Goal
 
@@ -70,3 +70,7 @@ Expose selected networking foundation counters in a package or sample lane and c
 
 - Phase 0 starts from `main` at merge commit `d17ac0ac` after PR #170 merged Engine Scripting Sandbox v1. `currentActivePlan=docs/superpowers/plans/2026-05-21-engine-scripting-sandbox-v1.md`, `recommendedNextPlan.id=engine-scripting-sandbox-v1`, no open PRs, and `unsupportedProductionGaps = []`.
 - Phase 0 pointer sync composed `engine/agent/manifest.json` from fragments and passed `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-production-readiness-audit.ps1` (`unsupported_gaps=0`), `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
+- Phase 1 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_networking_foundation_tests` failed because `mirakana/runtime/networking_foundation.hpp` did not exist.
+- Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_networking_foundation_tests`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure --tests-regex MK_runtime_networking_foundation_tests` passed after adding the value-only `MK_runtime` contract.
+- Phase 1 focused/static checks passed: `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files engine/runtime/src/networking_foundation.cpp,tests/unit/runtime_networking_foundation_tests.cpp`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-production-readiness-audit.ps1` (`unsupported_gaps=0`), `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
+- Phase 1 runtime/public-contract gate passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed successfully with 72 tests passed and `unsupported_gaps=0`.

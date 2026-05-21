@@ -2,6 +2,7 @@ add_library(mirakana_runtime
     src/asset_runtime.cpp
     src/entity_scale_culling.cpp
     src/inventory_items.cpp
+    src/networking_foundation.cpp
     src/package_streaming.cpp
     src/physics_collision_runtime.cpp
     src/procedural_generation.cpp
