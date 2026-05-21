@@ -417,6 +417,122 @@ void append_construction_placement_intent_diagnostic(
     plan.diagnostics.push_back(std::move(diagnostic));
 }
 
+[[nodiscard]] bool
+supports_procedural_scene_placement_kind(const runtime::RuntimeProceduralGenerationContentKind kind) noexcept {
+    switch (kind) {
+    case runtime::RuntimeProceduralGenerationContentKind::encounter:
+    case runtime::RuntimeProceduralGenerationContentKind::loot:
+    case runtime::RuntimeProceduralGenerationContentKind::object:
+        return true;
+    case runtime::RuntimeProceduralGenerationContentKind::map_tile:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] const runtime::RuntimeProceduralGenerationOutputRow*
+find_procedural_output_row(const runtime::RuntimeProceduralGenerationPlan& generation,
+                           const std::string_view output_id) noexcept {
+    const auto found = std::ranges::find_if(
+        generation.rows, [output_id](const auto& row) { return std::string_view{row.id} == output_id; });
+    return found != generation.rows.end() ? &(*found) : nullptr;
+}
+
+[[nodiscard]] bool has_duplicate_procedural_output_id(const runtime::RuntimeProceduralGenerationPlan& generation,
+                                                      const std::string_view output_id) noexcept {
+    std::uint32_t matching_rows = 0U;
+    for (const auto& row : generation.rows) {
+        if (std::string_view{row.id} != output_id) {
+            continue;
+        }
+        ++matching_rows;
+        if (matching_rows > 1U) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] RuntimeSceneConstructionPlacementIntentRow
+make_procedural_construction_placement_row(const RuntimeSceneProceduralConstructionPlacementIntentDesc& source_row,
+                                           const runtime::RuntimeProceduralGenerationOutputRow* output_row) {
+    return RuntimeSceneConstructionPlacementIntentRow{
+        .candidate_index = source_row.candidate_index,
+        .status = RuntimeSceneConstructionPlacementIntentStatus::invalid,
+        .node_name = source_row.node_name,
+        .transform = source_row.transform,
+        .components = source_row.components,
+        .procedural_output_id = source_row.procedural_output_id,
+        .anchor_id = source_row.anchor_id,
+        .procedural_kind =
+            output_row != nullptr ? output_row->kind : runtime::RuntimeProceduralGenerationContentKind::object,
+        .package_visible = source_row.package_visible,
+    };
+}
+
+void append_procedural_construction_placement_diagnostic(
+    RuntimeSceneConstructionPlacementIntentPlan& plan, const RuntimeSceneConstructionPlacementIntentDiagnosticCode code,
+    const RuntimeSceneConstructionPlacementIntentRow& row, std::string message) {
+    plan.diagnostics.push_back(RuntimeSceneConstructionPlacementIntentDiagnostic{
+        .code = code,
+        .candidate_index = row.candidate_index,
+        .item_id = row.item_id,
+        .placement_id = row.placement_id,
+        .surface_id = row.surface_id,
+        .node_name = row.node_name,
+        .message = std::move(message),
+        .procedural_output_id = row.procedural_output_id,
+        .anchor_id = row.anchor_id,
+        .procedural_kind = row.procedural_kind,
+    });
+}
+
+[[nodiscard]] RuntimeSceneConstructionPlacementIntentDesc
+make_construction_placement_intent_desc(const RuntimeSceneProceduralConstructionPlacementIntentDesc& source_row) {
+    return RuntimeSceneConstructionPlacementIntentDesc{
+        .candidate_index = source_row.candidate_index,
+        .node_name = source_row.node_name,
+        .transform = source_row.transform,
+        .components = source_row.components,
+        .reviewed = source_row.reviewed,
+    };
+}
+
+void apply_procedural_construction_placement_metadata(
+    RuntimeSceneConstructionPlacementIntentPlan& plan,
+    const std::span<const RuntimeSceneProceduralConstructionPlacementIntentDesc> source_rows,
+    const std::span<const std::size_t> forwarded_source_indices,
+    const runtime::RuntimeProceduralGenerationPlan& generation) {
+    for (std::size_t index = 0; index < plan.rows.size() && index < forwarded_source_indices.size(); ++index) {
+        auto& row = plan.rows[index];
+        const auto& source_row = source_rows[forwarded_source_indices[index]];
+        const auto* output_row = find_procedural_output_row(generation, source_row.procedural_output_id);
+        row.procedural_output_id = source_row.procedural_output_id;
+        row.anchor_id = source_row.anchor_id;
+        row.procedural_kind =
+            output_row != nullptr ? output_row->kind : runtime::RuntimeProceduralGenerationContentKind::object;
+        row.package_visible = source_row.package_visible;
+    }
+
+    std::size_t diagnostic_row_index = 0U;
+    for (auto& diagnostic : plan.diagnostics) {
+        while (diagnostic_row_index < plan.rows.size() &&
+               plan.rows[diagnostic_row_index].status == RuntimeSceneConstructionPlacementIntentStatus::accepted) {
+            ++diagnostic_row_index;
+        }
+        if (diagnostic_row_index >= plan.rows.size() || diagnostic_row_index >= forwarded_source_indices.size()) {
+            continue;
+        }
+        const auto& source_row = source_rows[forwarded_source_indices[diagnostic_row_index]];
+        const auto* output_row = find_procedural_output_row(generation, source_row.procedural_output_id);
+        diagnostic.procedural_output_id = source_row.procedural_output_id;
+        diagnostic.anchor_id = source_row.anchor_id;
+        diagnostic.procedural_kind =
+            output_row != nullptr ? output_row->kind : runtime::RuntimeProceduralGenerationContentKind::object;
+        ++diagnostic_row_index;
+    }
+}
+
 void append_gameplay_binding_diagnostic(std::vector<RuntimeSceneGameplayBindingDiagnostic>& diagnostics,
                                         RuntimeSceneGameplayBindingDiagnosticCode code,
                                         const RuntimeSceneGameplayBindingSourceRow& source_row, SceneNodeId node,
@@ -1050,6 +1166,112 @@ RuntimeSceneConstructionPlacementIntentPlan plan_runtime_scene_construction_plac
         }
     }
 
+    return plan;
+}
+
+RuntimeSceneConstructionPlacementIntentPlan plan_runtime_scene_procedural_construction_placement_intents(
+    const runtime::RuntimeProceduralGenerationPlan& generation,
+    const runtime::RuntimeConstructionPlacementValidationResult& placement,
+    const std::span<const RuntimeSceneProceduralConstructionPlacementIntentDesc> source_rows,
+    const RuntimeSceneConstructionPlacementIntentContext context) {
+    RuntimeSceneConstructionPlacementIntentPlan plan;
+    std::vector<RuntimeSceneConstructionPlacementIntentRow> source_indexed_rows(source_rows.size());
+    std::vector<bool> source_indexed_row_written(source_rows.size(), false);
+    plan.rows.reserve(source_rows.size());
+
+    if (!generation.succeeded || !generation.diagnostics.empty()) {
+        for (const auto& source_row : source_rows) {
+            const auto* output_row = find_procedural_output_row(generation, source_row.procedural_output_id);
+            plan.rows.push_back(make_procedural_construction_placement_row(source_row, output_row));
+            append_procedural_construction_placement_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::invalid_procedural_generation,
+                plan.rows.back(), "procedural generation plan did not succeed");
+        }
+        return plan;
+    }
+
+    std::vector<std::string> seen_source_output_ids;
+    seen_source_output_ids.reserve(source_rows.size());
+    std::vector<RuntimeSceneConstructionPlacementIntentDesc> forwarded_rows;
+    forwarded_rows.reserve(source_rows.size());
+    std::vector<std::size_t> forwarded_source_indices;
+    forwarded_source_indices.reserve(source_rows.size());
+
+    for (std::size_t source_index = 0; source_index < source_rows.size(); ++source_index) {
+        const auto& source_row = source_rows[source_index];
+        const auto* output_row = find_procedural_output_row(generation, source_row.procedural_output_id);
+        auto row = make_procedural_construction_placement_row(source_row, output_row);
+        const auto duplicate_source_output =
+            std::ranges::find(seen_source_output_ids, source_row.procedural_output_id) != seen_source_output_ids.end();
+        seen_source_output_ids.push_back(source_row.procedural_output_id);
+
+        if (output_row == nullptr) {
+            source_indexed_rows[source_index] = std::move(row);
+            source_indexed_row_written[source_index] = true;
+            append_procedural_construction_placement_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::missing_procedural_output,
+                source_indexed_rows[source_index], "procedural output row is missing");
+            continue;
+        }
+        if (has_duplicate_procedural_output_id(generation, source_row.procedural_output_id) ||
+            duplicate_source_output) {
+            source_indexed_rows[source_index] = std::move(row);
+            source_indexed_row_written[source_index] = true;
+            append_procedural_construction_placement_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::duplicate_procedural_output,
+                source_indexed_rows[source_index], "procedural output id is duplicated");
+            continue;
+        }
+        if (!supports_procedural_scene_placement_kind(output_row->kind)) {
+            source_indexed_rows[source_index] = std::move(row);
+            source_indexed_row_written[source_index] = true;
+            append_procedural_construction_placement_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::unsupported_procedural_output_kind,
+                source_indexed_rows[source_index], "procedural output kind cannot become a scene placement intent");
+            continue;
+        }
+        if (source_row.anchor_id.empty()) {
+            source_indexed_rows[source_index] = std::move(row);
+            source_indexed_row_written[source_index] = true;
+            append_procedural_construction_placement_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::missing_procedural_anchor,
+                source_indexed_rows[source_index], "procedural placement anchor id is missing");
+            continue;
+        }
+        if (!source_row.package_visible) {
+            source_indexed_rows[source_index] = std::move(row);
+            source_indexed_row_written[source_index] = true;
+            append_procedural_construction_placement_diagnostic(
+                plan, RuntimeSceneConstructionPlacementIntentDiagnosticCode::package_invisible_procedural_output,
+                source_indexed_rows[source_index],
+                "procedural placement output is not visible in runtime package evidence");
+            continue;
+        }
+
+        forwarded_rows.push_back(make_construction_placement_intent_desc(source_row));
+        forwarded_source_indices.push_back(source_index);
+    }
+
+    if (!forwarded_rows.empty()) {
+        auto placement_plan = plan_runtime_scene_construction_placement_intents(placement, forwarded_rows, context);
+        apply_procedural_construction_placement_metadata(placement_plan, source_rows, forwarded_source_indices,
+                                                         generation);
+        for (std::size_t row_index = 0U;
+             row_index < placement_plan.rows.size() && row_index < forwarded_source_indices.size(); ++row_index) {
+            const auto source_index = forwarded_source_indices[row_index];
+            source_indexed_rows[source_index] = std::move(placement_plan.rows[row_index]);
+            source_indexed_row_written[source_index] = true;
+        }
+        for (auto& diagnostic : placement_plan.diagnostics) {
+            plan.diagnostics.push_back(std::move(diagnostic));
+        }
+    }
+
+    for (std::size_t source_index = 0; source_index < source_rows.size(); ++source_index) {
+        if (source_indexed_row_written[source_index]) {
+            plan.rows.push_back(std::move(source_indexed_rows[source_index]));
+        }
+    }
     return plan;
 }
 

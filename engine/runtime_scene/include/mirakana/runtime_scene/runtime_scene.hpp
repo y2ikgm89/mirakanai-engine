@@ -10,6 +10,7 @@
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/inventory_items.hpp"
+#include "mirakana/runtime/procedural_generation.hpp"
 #include "mirakana/scene/scene.hpp"
 
 #include <cstddef>
@@ -276,6 +277,12 @@ enum class RuntimeSceneConstructionPlacementIntentDiagnosticCode : std::uint8_t 
     invalid_transform,
     mismatched_transform_position,
     already_occupied,
+    invalid_procedural_generation,
+    missing_procedural_output,
+    duplicate_procedural_output,
+    missing_procedural_anchor,
+    unsupported_procedural_output_kind,
+    package_invisible_procedural_output,
 };
 
 struct RuntimeSceneConstructionPlacementOccupiedCell {
@@ -297,6 +304,17 @@ struct RuntimeSceneConstructionPlacementIntentDesc {
     bool reviewed{false};
 };
 
+struct RuntimeSceneProceduralConstructionPlacementIntentDesc {
+    std::string procedural_output_id;
+    std::string anchor_id;
+    std::uint32_t candidate_index{0U};
+    std::string node_name;
+    Transform3D transform;
+    SceneNodeComponents components;
+    bool reviewed{false};
+    bool package_visible{false};
+};
+
 struct RuntimeSceneConstructionPlacementIntentRow {
     std::uint32_t candidate_index{0U};
     RuntimeSceneConstructionPlacementIntentStatus status{RuntimeSceneConstructionPlacementIntentStatus::invalid};
@@ -307,6 +325,11 @@ struct RuntimeSceneConstructionPlacementIntentRow {
     Transform3D transform;
     SceneNodeComponents components;
     std::vector<runtime::RuntimeConstructionPlacementCellDesc> occupied_cells;
+    std::string procedural_output_id;
+    std::string anchor_id;
+    runtime::RuntimeProceduralGenerationContentKind procedural_kind{
+        runtime::RuntimeProceduralGenerationContentKind::object};
+    bool package_visible{false};
 };
 
 struct RuntimeSceneConstructionPlacementIntentDiagnostic {
@@ -323,6 +346,10 @@ struct RuntimeSceneConstructionPlacementIntentDiagnostic {
     std::int32_t cell_y{0};
     std::int32_t cell_z{0};
     std::string message;
+    std::string procedural_output_id;
+    std::string anchor_id;
+    runtime::RuntimeProceduralGenerationContentKind procedural_kind{
+        runtime::RuntimeProceduralGenerationContentKind::object};
 };
 
 struct RuntimeSceneConstructionPlacementIntentPlan {
@@ -364,6 +391,12 @@ plan_runtime_scene_gameplay_interactions(std::span<const RuntimeSceneGameplayBin
 [[nodiscard]] RuntimeSceneConstructionPlacementIntentPlan plan_runtime_scene_construction_placement_intents(
     const runtime::RuntimeConstructionPlacementValidationResult& placement,
     std::span<const RuntimeSceneConstructionPlacementIntentDesc> source_rows,
+    RuntimeSceneConstructionPlacementIntentContext context = {});
+
+[[nodiscard]] RuntimeSceneConstructionPlacementIntentPlan plan_runtime_scene_procedural_construction_placement_intents(
+    const runtime::RuntimeProceduralGenerationPlan& generation,
+    const runtime::RuntimeConstructionPlacementValidationResult& placement,
+    std::span<const RuntimeSceneProceduralConstructionPlacementIntentDesc> source_rows,
     RuntimeSceneConstructionPlacementIntentContext context = {});
 
 [[nodiscard]] RuntimeSceneAnimationTransformApplyResult
