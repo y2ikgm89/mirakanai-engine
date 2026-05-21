@@ -69,7 +69,7 @@ Expose deterministic postprocess policy and framegraph counters in the selected 
 
 ## Phase 3: Backend-Gated Shader and Pass Proof
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -80,6 +80,15 @@ Promote only backend-specific postprocess execution evidence with fresh official
 - D3D12 package evidence is backed by focused shader/toolchain/package validation and explicit resource-state/render-pass/load-store reasoning.
 - Vulkan and Metal rows remain host-gated unless their own strict validation evidence is recorded.
 - Full `tools/validate.ps1` passes at the coherent runtime/public-contract gate, with only explicit host-gated diagnostics where applicable.
+
+### Current Evidence
+
+- Official D3D12 guidance consulted through Context7 (`/websites/learn_microsoft_en-us_windows_win32_direct3d12`): selected postprocess execution must transition the rendered scene target from render-target use to pixel-shader resource use before sampling, and transition the presented back buffer to the present state before presentation. Phase 3 keeps those transitions backend-private and exposes only package-visible execution counters.
+- RED evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_sdl3_tests` failed first because `evaluate_sdl_desktop_presentation_d3d12_postprocess_execution` and `SdlDesktopPresentationD3d12PostprocessExecutionStatus` did not exist.
+- Implementation evidence: `SdlDesktopPresentationD3d12PostprocessExecutionReport` classifies D3D12-selected package postprocess execution from backend selection, policy readiness, shader evidence readiness, expected pass count, executed postprocess passes, framegraph pass/render-pass counters, barrier steps, and current pass counts. Vulkan/Metal-compatible counters do not satisfy D3D12 execution readiness by themselves.
+- Package evidence: selected `sample_desktop_runtime_game --require-d3d12-renderer --require-postprocess-depth` package smokes now emit `postprocess_d3d12_execution_status`, `postprocess_d3d12_execution_ready`, `postprocess_d3d12_execution_selected`, `postprocess_d3d12_execution_shader_evidence_ready`, `postprocess_d3d12_execution_expected_passes`, `postprocess_d3d12_execution_passes`, and `postprocess_d3d12_execution_passes_ok`; installed package validation requires them when both D3D12 renderer and postprocess depth are required.
+- Focused evidence before the full gate: targeted build/test, package smoke, tidy, format, JSON contract, AI integration, agent surface, production readiness audit, public API boundary, and C++ standard policy checks passed while `unsupported_gaps=0`.
+- Full gate evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 67/67 CTest tests, `unsupported_gaps=0`, and expected Windows host-gated Apple/Metal diagnostic-only blockers.
 
 ## Validation Evidence
 
@@ -95,3 +104,4 @@ Promote only backend-specific postprocess execution evidence with fresh official
 - Phase 2 implemented `SdlDesktopPresentationPostprocessPolicyReport`, `evaluate_sdl_desktop_presentation_postprocess_policy`, and sample/installed package smoke fields for `postprocess_policy_status=ready`, `postprocess_policy_ready=1`, diagnostics, effect/pass/framegraph/barrier counts, scene color/depth requirements, selected color-grading effect, and backend shader-evidence readiness over the existing selected package postprocess path.
 - Phase 2 focused evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_sdl3_tests sample_desktop_runtime_game`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_host_sdl3_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp,games/sample_desktop_runtime_game/main.cpp,tests/unit/runtime_host_sdl3_tests.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` passed; production readiness reported `unsupported_gaps=0`.
 - Phase 2 full gate evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 67/67 CTest tests, `unsupported_gaps=0`, and expected Windows host-gated Apple/Metal diagnostic-only blockers.
+- Phase 2 published through PR #153, merge commit `ee61b921cabad0898b0958a265146ed880470a0a`; hosted PR Gate, Windows MSVC, Full Repository Static Analysis shards, Linux, CodeQL, iOS, and macOS Metal CMake checks passed.
