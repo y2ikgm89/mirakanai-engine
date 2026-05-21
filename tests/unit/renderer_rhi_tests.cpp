@@ -6244,6 +6244,54 @@ MK_TEST("debug profiling policy plans capture handoff timestamps markers and fai
         invalid, mirakana::DebugProfilingDiagnosticCode::missing_frame_diagnostic_evidence));
 }
 
+MK_TEST("gpu memory backend evidence requires os budget on d3d12 and framegraph pressure on vulkan") {
+    MK_REQUIRE(mirakana::gpu_memory_policy_backend_evidence_ready(mirakana::GpuMemoryBackendEvidenceDesc{
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .committed_byte_estimate_available = true,
+        .committed_resources_byte_estimate = 4096,
+        .upload_bytes_written = 512,
+        .os_video_memory_budget_available = true,
+    }));
+    MK_REQUIRE(mirakana::gpu_memory_policy_backend_evidence_ready(mirakana::GpuMemoryBackendEvidenceDesc{
+        .backend = mirakana::rhi::BackendKind::vulkan,
+        .committed_byte_estimate_available = true,
+        .committed_resources_byte_estimate = 4096,
+        .upload_bytes_written = 512,
+        .framegraph_barrier_steps_executed = 4,
+    }));
+    MK_REQUIRE(!mirakana::gpu_memory_policy_backend_evidence_ready(mirakana::GpuMemoryBackendEvidenceDesc{
+        .backend = mirakana::rhi::BackendKind::vulkan,
+        .committed_byte_estimate_available = true,
+        .committed_resources_byte_estimate = 4096,
+        .upload_bytes_written = 512,
+        .os_video_memory_budget_available = true,
+    }));
+}
+
+MK_TEST("scene scale backend instancing evidence requires rhi instanced counters on d3d12 and vulkan") {
+    MK_REQUIRE(mirakana::scene_scale_policy_backend_instancing_evidence_ready(
+        mirakana::SceneScaleBackendInstancingEvidenceDesc{
+            .backend = mirakana::rhi::BackendKind::d3d12,
+            .instanced_draw_calls = 2,
+            .instanced_indexed_draw_calls = 2,
+            .instanced_instances_submitted = 6,
+        }));
+    MK_REQUIRE(mirakana::scene_scale_policy_backend_instancing_evidence_ready(
+        mirakana::SceneScaleBackendInstancingEvidenceDesc{
+            .backend = mirakana::rhi::BackendKind::vulkan,
+            .instanced_draw_calls = 2,
+            .instanced_indexed_draw_calls = 2,
+            .instanced_instances_submitted = 6,
+        }));
+    MK_REQUIRE(!mirakana::scene_scale_policy_backend_instancing_evidence_ready(
+        mirakana::SceneScaleBackendInstancingEvidenceDesc{
+            .backend = mirakana::rhi::BackendKind::vulkan,
+            .instanced_draw_calls = 2,
+            .instanced_indexed_draw_calls = 0,
+            .instanced_instances_submitted = 6,
+        }));
+}
+
 MK_TEST("debug profiling backend evidence requires timestamps on d3d12 and markers on vulkan") {
     MK_REQUIRE(mirakana::debug_profiling_policy_backend_evidence_ready(mirakana::DebugProfilingBackendEvidenceDesc{
         .backend = mirakana::rhi::BackendKind::d3d12,

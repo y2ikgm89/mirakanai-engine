@@ -1015,6 +1015,49 @@ MK_TEST(
     MK_REQUIRE(execution.frame_diagnostics_current);
 }
 
+MK_TEST("sdl desktop presentation vulkan gpu memory execution report requires budget and framegraph counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
+    report.scene_gpu_stats.uploaded_mesh_bytes = 1024;
+    report.rhi_memory_diagnostics.committed_resources_byte_estimate_available = true;
+    report.rhi_memory_diagnostics.committed_resources_byte_estimate = 4096;
+    report.renderer_stats.framegraph_barrier_steps_executed = 4;
+    report.rhi_bytes_written = 512;
+
+    const auto execution = mirakana::evaluate_sdl_desktop_presentation_vulkan_gpu_memory_execution(report, true);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationVulkanGpuMemoryExecutionStatus::ready);
+    MK_REQUIRE(execution.ready);
+    MK_REQUIRE(execution.vulkan_backend_selected);
+    MK_REQUIRE(execution.memory_budget_current);
+    MK_REQUIRE(execution.transient_heap_current);
+    MK_REQUIRE(execution.upload_bytes_written > 0);
+}
+
+MK_TEST("sdl desktop presentation vulkan gpu memory policy exposes backend evidence counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
+    report.scene_gpu_status = mirakana::SdlDesktopPresentationSceneGpuBindingStatus::ready;
+    report.renderer_stats.frames_finished = 2;
+    report.scene_gpu_stats.uploaded_texture_bytes = 1024;
+    report.rhi_memory_diagnostics.committed_resources_byte_estimate_available = true;
+    report.rhi_memory_diagnostics.committed_resources_byte_estimate = 16ULL * 1024ULL * 1024ULL;
+    report.renderer_stats.framegraph_barrier_steps_executed = 12;
+    report.rhi_bytes_written = 4096;
+
+    mirakana::SdlDesktopPresentationGpuMemoryPolicyDesc desc;
+    desc.require_scene_gpu_bindings = true;
+    desc.expected_frames = 2;
+    desc.require_backend_memory_evidence = true;
+
+    const auto policy = mirakana::evaluate_sdl_desktop_presentation_gpu_memory_policy(report, desc);
+
+    MK_REQUIRE(policy.status == mirakana::SdlDesktopPresentationGpuMemoryPolicyStatus::ready);
+    MK_REQUIRE(policy.ready);
+    MK_REQUIRE(policy.backend_memory_evidence_ready);
+    MK_REQUIRE(!policy.os_video_memory_budget_required);
+}
+
 MK_TEST("sdl desktop presentation vulkan debug profiling execution report requires markers and frame counters") {
     mirakana::SdlDesktopPresentationReport report;
     report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
@@ -1083,6 +1126,33 @@ MK_TEST("sdl desktop presentation d3d12 instanced draw execution report requires
     MK_REQUIRE(execution.instanced_instances_current);
 }
 
+MK_TEST("sdl desktop presentation vulkan instanced draw execution report requires backend instanced counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
+    report.rhi_instanced_draw_calls = 2;
+    report.rhi_instanced_indexed_draw_calls = 2;
+    report.rhi_instanced_instances_submitted = 6;
+
+    auto execution = mirakana::evaluate_sdl_desktop_presentation_vulkan_instanced_draw_execution(report, 6);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationVulkanInstancedDrawExecutionStatus::ready);
+    MK_REQUIRE(execution.ready);
+    MK_REQUIRE(execution.vulkan_backend_selected);
+    MK_REQUIRE(execution.expected_instances_submitted == 6);
+    MK_REQUIRE(execution.instanced_draw_calls == 2);
+    MK_REQUIRE(execution.instanced_indexed_draw_calls == 2);
+    MK_REQUIRE(execution.instanced_instances_submitted == 6);
+    MK_REQUIRE(execution.instanced_draws_current);
+    MK_REQUIRE(execution.instanced_instances_current);
+
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
+    execution = mirakana::evaluate_sdl_desktop_presentation_vulkan_instanced_draw_execution(report, 6);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationVulkanInstancedDrawExecutionStatus::blocked);
+    MK_REQUIRE(!execution.ready);
+    MK_REQUIRE(!execution.vulkan_backend_selected);
+}
+
 MK_TEST("sdl desktop presentation d3d12 postprocess execution report requires selected d3d12 pass evidence") {
     mirakana::SdlDesktopPresentationReport report;
     report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
@@ -1095,7 +1165,7 @@ MK_TEST("sdl desktop presentation d3d12 postprocess execution report requires se
     report.renderer_stats.framegraph_barrier_steps_executed = 9;
     report.renderer_stats.postprocess_passes_executed = 2;
 
-    auto execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(report, 2);
+    auto execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(report, 2, true);
 
     MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationD3d12PostprocessExecutionStatus::ready);
     MK_REQUIRE(execution.ready);
@@ -1110,12 +1180,53 @@ MK_TEST("sdl desktop presentation d3d12 postprocess execution report requires se
     MK_REQUIRE(execution.postprocess_passes_current);
 
     report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
-    execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(report, 2);
+    execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(report, 2, true);
 
     MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationD3d12PostprocessExecutionStatus::blocked);
     MK_REQUIRE(!execution.ready);
     MK_REQUIRE(!execution.d3d12_backend_selected);
     MK_REQUIRE(execution.postprocess_passes_current);
+
+    execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(report, 2, false);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationD3d12PostprocessExecutionStatus::not_requested);
+    MK_REQUIRE(!execution.ready);
+}
+
+MK_TEST("sdl desktop presentation vulkan postprocess execution report requires selected vulkan pass evidence") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
+    report.postprocess_status = mirakana::SdlDesktopPresentationPostprocessStatus::ready;
+    report.postprocess_depth_input_requested = true;
+    report.postprocess_depth_input_ready = true;
+    report.backbuffer_extent = mirakana::Extent2D{.width = 1280, .height = 720};
+    report.renderer_stats.framegraph_passes_executed = 4;
+    report.renderer_stats.framegraph_render_passes_recorded = 4;
+    report.renderer_stats.framegraph_barrier_steps_executed = 9;
+    report.renderer_stats.postprocess_passes_executed = 2;
+
+    auto execution = mirakana::evaluate_sdl_desktop_presentation_vulkan_postprocess_execution(report, 2, true);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationVulkanPostprocessExecutionStatus::ready);
+    MK_REQUIRE(execution.ready);
+    MK_REQUIRE(execution.vulkan_backend_selected);
+    MK_REQUIRE(execution.postprocess_ready);
+    MK_REQUIRE(execution.backend_shader_evidence_ready);
+    MK_REQUIRE(execution.expected_postprocess_passes == 2);
+    MK_REQUIRE(execution.postprocess_passes_executed == 2);
+    MK_REQUIRE(execution.postprocess_passes_current);
+
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
+    execution = mirakana::evaluate_sdl_desktop_presentation_vulkan_postprocess_execution(report, 2, true);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationVulkanPostprocessExecutionStatus::blocked);
+    MK_REQUIRE(!execution.ready);
+    MK_REQUIRE(!execution.vulkan_backend_selected);
+
+    execution = mirakana::evaluate_sdl_desktop_presentation_vulkan_postprocess_execution(report, 2, false);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationVulkanPostprocessExecutionStatus::not_requested);
+    MK_REQUIRE(!execution.ready);
 }
 
 MK_TEST("sdl desktop presentation quality gate expects postprocess framegraph scene target prep steps") {

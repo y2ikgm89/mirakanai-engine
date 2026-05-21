@@ -132,6 +132,7 @@
         "installed-d3d12-3d-shadow-morph-composition-smoke",
         "installed-d3d12-3d-native-ui-overlay-smoke",
         "installed-d3d12-3d-visible-production-proof-smoke",
+        "installed-d3d12-3d-entity-scale-culling-smoke",
         "installed-d3d12-3d-scene-collision-package-smoke",
         "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
         "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke"
@@ -249,6 +250,7 @@
         "installed-d3d12-3d-directional-shadow-smoke",
         "installed-d3d12-3d-native-ui-overlay-smoke",
         "installed-d3d12-3d-visible-production-proof-smoke",
+        "installed-d3d12-3d-entity-scale-culling-smoke",
         "installed-d3d12-3d-scene-collision-package-smoke",
         "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
         "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke"
@@ -313,6 +315,14 @@
     {
       "name": "installed-d3d12-3d-visible-production-proof-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-native-ui-overlay --require-visible-3d-production-proof"
+    },
+    {
+      "name": "desktop-runtime-release-target-vulkan-visible-production-proof-toolchain-gated",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/sample_generated_desktop_runtime_3d_package.config', '--require-scene-package', 'runtime/sample_generated_desktop_runtime_3d_package.geindex', '--require-primary-camera-controller', '--require-transform-animation', '--require-morph-package', '--require-compute-morph', '--require-compute-morph-normal-tangent', '--require-compute-morph-skin', '--require-compute-morph-async-telemetry', '--require-quaternion-animation', '--require-package-streaming-safe-point', '--require-gameplay-systems', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-postprocess-depth-input', '--require-renderer-quality-gates', '--require-playable-3d-slice', '--require-native-ui-overlay', '--require-vulkan-visible-3d-production-proof')"
+    },
+    {
+      "name": "installed-d3d12-3d-entity-scale-culling-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-entity-scale-culling"
     },
     {
       "name": "installed-d3d12-3d-scene-collision-package-smoke",

@@ -1475,6 +1475,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-gpu-bindings
             --require-postprocess
             --require-postprocess-depth-input
+            --require-d3d12-postprocess-evidence
             --require-directional-shadow
             --require-directional-shadow-filtering
             --require-d3d12-shadow-cascade-policy
@@ -1485,12 +1486,13 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-d3d12-gpu-memory-evidence
             --require-debug-profiling-policy
             --require-d3d12-debug-profiling-evidence
-            # installed-vulkan-scene-gpu-smoke also accepts --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence
+            # installed-d3d12-scene-gpu-smoke uses --require-d3d12-gpu-skinning-evidence; source-tree smokes may still use --require-gpu-skinning for counter-only checks
+            # installed-vulkan-scene-gpu-smoke also accepts --require-vulkan-instanced-draw-evidence --require-vulkan-postprocess-evidence --require-vulkan-shadow-cascade-policy --require-vulkan-framegraph-multiqueue-evidence --require-vulkan-gpu-skinning-evidence --require-gpu-memory-policy --require-vulkan-gpu-memory-evidence --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence
             --require-renderer-quality-gates
             --require-framegraph-multiqueue-evidence
             --require-native-ui-overlay
             --require-native-ui-textured-sprite-atlas
-            --require-gpu-skinning
+            --require-d3d12-gpu-skinning-evidence
             --require-quaternion-animation
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST

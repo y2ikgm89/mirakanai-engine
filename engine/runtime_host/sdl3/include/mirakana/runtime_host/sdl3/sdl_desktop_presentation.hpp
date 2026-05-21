@@ -333,11 +333,51 @@ struct SdlDesktopPresentationD3d12PostprocessExecutionReport {
     bool postprocess_passes_current{false};
 };
 
+enum class SdlDesktopPresentationVulkanPostprocessExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+struct SdlDesktopPresentationVulkanPostprocessExecutionReport {
+    SdlDesktopPresentationVulkanPostprocessExecutionStatus status{
+        SdlDesktopPresentationVulkanPostprocessExecutionStatus::not_requested};
+    bool ready{false};
+    bool vulkan_backend_selected{false};
+    bool postprocess_ready{false};
+    bool backend_shader_evidence_ready{false};
+    std::uint64_t expected_postprocess_passes{0};
+    std::uint64_t postprocess_passes_executed{0};
+    std::uint64_t framegraph_passes_executed{0};
+    std::uint64_t framegraph_render_passes_recorded{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
+    bool postprocess_passes_current{false};
+};
+
 struct SdlDesktopPresentationD3d12InstancedDrawExecutionReport {
     SdlDesktopPresentationD3d12InstancedDrawExecutionStatus status{
         SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::not_requested};
     bool ready{false};
     bool d3d12_backend_selected{false};
+    std::uint64_t expected_instances_submitted{0};
+    std::uint64_t instanced_draw_calls{0};
+    std::uint64_t instanced_indexed_draw_calls{0};
+    std::uint64_t instanced_instances_submitted{0};
+    bool instanced_draws_current{false};
+    bool instanced_instances_current{false};
+};
+
+enum class SdlDesktopPresentationVulkanInstancedDrawExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+struct SdlDesktopPresentationVulkanInstancedDrawExecutionReport {
+    SdlDesktopPresentationVulkanInstancedDrawExecutionStatus status{
+        SdlDesktopPresentationVulkanInstancedDrawExecutionStatus::not_requested};
+    bool ready{false};
+    bool vulkan_backend_selected{false};
     std::uint64_t expected_instances_submitted{0};
     std::uint64_t instanced_draw_calls{0};
     std::uint64_t instanced_indexed_draw_calls{0};
@@ -353,6 +393,12 @@ enum class SdlDesktopPresentationGpuMemoryPolicyStatus : std::uint8_t {
 };
 
 enum class SdlDesktopPresentationD3d12GpuMemoryExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class SdlDesktopPresentationVulkanGpuMemoryExecutionStatus : std::uint8_t {
     not_requested = 0,
     blocked,
     ready,
@@ -407,6 +453,22 @@ struct SdlDesktopPresentationD3d12GpuMemoryExecutionReport {
     std::uint64_t transient_placed_allocations{0};
     std::uint64_t transient_placed_resources_alive{0};
     std::uint64_t upload_bytes_written{0};
+    bool memory_budget_current{false};
+    bool transient_heap_current{false};
+};
+
+struct SdlDesktopPresentationVulkanGpuMemoryExecutionReport {
+    SdlDesktopPresentationVulkanGpuMemoryExecutionStatus status{
+        SdlDesktopPresentationVulkanGpuMemoryExecutionStatus::not_requested};
+    bool ready{false};
+    bool vulkan_backend_selected{false};
+    bool committed_byte_estimate_available{false};
+    std::uint64_t committed_resources_byte_estimate{0};
+    std::uint64_t transient_heap_allocations{0};
+    std::uint64_t transient_placed_allocations{0};
+    std::uint64_t transient_placed_resources_alive{0};
+    std::uint64_t upload_bytes_written{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
     bool memory_budget_current{false};
     bool transient_heap_current{false};
 };
@@ -737,12 +799,24 @@ evaluate_sdl_desktop_presentation_scene_scale_policy(const SdlDesktopPresentatio
     SdlDesktopPresentationD3d12PostprocessExecutionStatus status) noexcept;
 [[nodiscard]] SdlDesktopPresentationD3d12PostprocessExecutionReport
 evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(const SdlDesktopPresentationReport& report,
-                                                              std::uint64_t expected_postprocess_passes);
+                                                              std::uint64_t expected_postprocess_passes,
+                                                              bool requested);
+[[nodiscard]] std::string_view sdl_desktop_presentation_vulkan_postprocess_execution_status_name(
+    SdlDesktopPresentationVulkanPostprocessExecutionStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationVulkanPostprocessExecutionReport
+evaluate_sdl_desktop_presentation_vulkan_postprocess_execution(const SdlDesktopPresentationReport& report,
+                                                               std::uint64_t expected_postprocess_passes,
+                                                               bool requested);
 [[nodiscard]] std::string_view sdl_desktop_presentation_d3d12_instanced_draw_execution_status_name(
     SdlDesktopPresentationD3d12InstancedDrawExecutionStatus status) noexcept;
 [[nodiscard]] SdlDesktopPresentationD3d12InstancedDrawExecutionReport
 evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(const SdlDesktopPresentationReport& report,
                                                                  std::uint64_t expected_instances_submitted);
+[[nodiscard]] std::string_view sdl_desktop_presentation_vulkan_instanced_draw_execution_status_name(
+    SdlDesktopPresentationVulkanInstancedDrawExecutionStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationVulkanInstancedDrawExecutionReport
+evaluate_sdl_desktop_presentation_vulkan_instanced_draw_execution(const SdlDesktopPresentationReport& report,
+                                                                  std::uint64_t expected_instances_submitted);
 [[nodiscard]] std::string_view
 sdl_desktop_presentation_gpu_memory_policy_status_name(SdlDesktopPresentationGpuMemoryPolicyStatus status) noexcept;
 [[nodiscard]] SdlDesktopPresentationGpuMemoryPolicyReport
@@ -753,6 +827,11 @@ evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentation
 [[nodiscard]] SdlDesktopPresentationD3d12GpuMemoryExecutionReport
 evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(const SdlDesktopPresentationReport& report,
                                                              bool requested);
+[[nodiscard]] std::string_view sdl_desktop_presentation_vulkan_gpu_memory_execution_status_name(
+    SdlDesktopPresentationVulkanGpuMemoryExecutionStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationVulkanGpuMemoryExecutionReport
+evaluate_sdl_desktop_presentation_vulkan_gpu_memory_execution(const SdlDesktopPresentationReport& report,
+                                                              bool requested);
 [[nodiscard]] std::string_view sdl_desktop_presentation_debug_profiling_policy_status_name(
     SdlDesktopPresentationDebugProfilingPolicyStatus status) noexcept;
 [[nodiscard]] SdlDesktopPresentationDebugProfilingPolicyReport

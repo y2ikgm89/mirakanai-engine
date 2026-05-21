@@ -3546,14 +3546,22 @@ debug_profiling_policy_requested(const SdlDesktopPresentationDebugProfilingPolic
 
 [[nodiscard]] bool gpu_memory_policy_backend_memory_evidence_ready(const SdlDesktopPresentationReport& report,
                                                                    bool require_backend_memory_evidence) noexcept {
-    if (!require_backend_memory_evidence || report.selected_backend != SdlDesktopPresentationBackend::d3d12) {
+    if (!require_backend_memory_evidence) {
         return false;
     }
 
     const auto& memory = report.rhi_memory_diagnostics;
-    return memory.committed_resources_byte_estimate_available && memory.committed_resources_byte_estimate > 0 &&
-           gpu_memory_policy_upload_bytes(report) > 0 &&
-           (memory.os_video_memory_budget_available || gpu_memory_policy_transient_pressure_ready(report));
+    return mirakana::gpu_memory_policy_backend_evidence_ready(mirakana::GpuMemoryBackendEvidenceDesc{
+        .backend = postprocess_policy_backend(report.selected_backend),
+        .committed_byte_estimate_available = memory.committed_resources_byte_estimate_available,
+        .committed_resources_byte_estimate = memory.committed_resources_byte_estimate,
+        .upload_bytes_written = gpu_memory_policy_upload_bytes(report),
+        .transient_heap_allocations = report.rhi_transient_heap_allocations,
+        .transient_placed_allocations = report.rhi_transient_placed_allocations,
+        .transient_placed_resources_alive = report.rhi_transient_placed_resources_alive,
+        .framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed,
+        .os_video_memory_budget_available = memory.os_video_memory_budget_available,
+    });
 }
 
 [[nodiscard]] std::uint32_t scene_scale_policy_count(std::uint64_t value) noexcept {
@@ -4790,6 +4798,19 @@ std::string_view sdl_desktop_presentation_d3d12_postprocess_execution_status_nam
     return "unknown";
 }
 
+std::string_view sdl_desktop_presentation_vulkan_postprocess_execution_status_name(
+    SdlDesktopPresentationVulkanPostprocessExecutionStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationVulkanPostprocessExecutionStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationVulkanPostprocessExecutionStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationVulkanPostprocessExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 std::string_view sdl_desktop_presentation_d3d12_instanced_draw_execution_status_name(
     SdlDesktopPresentationD3d12InstancedDrawExecutionStatus status) noexcept {
     switch (status) {
@@ -4947,10 +4968,12 @@ evaluate_sdl_desktop_presentation_scene_scale_policy(const SdlDesktopPresentatio
     return result;
 }
 
-SdlDesktopPresentationD3d12PostprocessExecutionReport
-evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(const SdlDesktopPresentationReport& report,
-                                                              std::uint64_t expected_postprocess_passes) {
+SdlDesktopPresentationD3d12PostprocessExecutionReport evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(
+    const SdlDesktopPresentationReport& report, std::uint64_t expected_postprocess_passes, const bool requested) {
     SdlDesktopPresentationD3d12PostprocessExecutionReport result;
+    if (!requested) {
+        return result;
+    }
     if (!postprocess_policy_requested(report)) {
         return result;
     }
@@ -4974,6 +4997,35 @@ evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(const SdlDesktopPr
     return result;
 }
 
+SdlDesktopPresentationVulkanPostprocessExecutionReport evaluate_sdl_desktop_presentation_vulkan_postprocess_execution(
+    const SdlDesktopPresentationReport& report, const std::uint64_t expected_postprocess_passes, const bool requested) {
+    SdlDesktopPresentationVulkanPostprocessExecutionReport result;
+    if (!requested) {
+        return result;
+    }
+    if (!postprocess_policy_requested(report)) {
+        return result;
+    }
+
+    const auto policy = evaluate_sdl_desktop_presentation_postprocess_policy(report);
+    result.vulkan_backend_selected = report.selected_backend == SdlDesktopPresentationBackend::vulkan;
+    result.postprocess_ready = report.postprocess_status == SdlDesktopPresentationPostprocessStatus::ready;
+    result.backend_shader_evidence_ready = policy.backend_shader_evidence_ready;
+    result.expected_postprocess_passes = expected_postprocess_passes;
+    result.postprocess_passes_executed = report.renderer_stats.postprocess_passes_executed;
+    result.framegraph_passes_executed = report.renderer_stats.framegraph_passes_executed;
+    result.framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded;
+    result.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
+    result.postprocess_passes_current =
+        report.renderer_stats.postprocess_passes_executed == expected_postprocess_passes;
+    result.status = result.vulkan_backend_selected && result.postprocess_ready &&
+                            result.backend_shader_evidence_ready && result.postprocess_passes_current
+                        ? SdlDesktopPresentationVulkanPostprocessExecutionStatus::ready
+                        : SdlDesktopPresentationVulkanPostprocessExecutionStatus::blocked;
+    result.ready = result.status == SdlDesktopPresentationVulkanPostprocessExecutionStatus::ready;
+    return result;
+}
+
 SdlDesktopPresentationD3d12InstancedDrawExecutionReport
 evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(const SdlDesktopPresentationReport& report,
                                                                  std::uint64_t expected_instances_submitted) {
@@ -4994,6 +5046,42 @@ evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(const SdlDeskto
             ? SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::ready
             : SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::blocked;
     result.ready = result.status == SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::ready;
+    return result;
+}
+
+std::string_view sdl_desktop_presentation_vulkan_instanced_draw_execution_status_name(
+    const SdlDesktopPresentationVulkanInstancedDrawExecutionStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationVulkanInstancedDrawExecutionStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationVulkanInstancedDrawExecutionStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationVulkanInstancedDrawExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+SdlDesktopPresentationVulkanInstancedDrawExecutionReport
+evaluate_sdl_desktop_presentation_vulkan_instanced_draw_execution(const SdlDesktopPresentationReport& report,
+                                                                  const std::uint64_t expected_instances_submitted) {
+    SdlDesktopPresentationVulkanInstancedDrawExecutionReport result;
+    result.expected_instances_submitted = expected_instances_submitted;
+    result.instanced_draw_calls = report.rhi_instanced_draw_calls;
+    result.instanced_indexed_draw_calls = report.rhi_instanced_indexed_draw_calls;
+    result.instanced_instances_submitted = report.rhi_instanced_instances_submitted;
+    if (expected_instances_submitted == 0) {
+        return result;
+    }
+
+    result.vulkan_backend_selected = report.selected_backend == SdlDesktopPresentationBackend::vulkan;
+    result.instanced_draws_current = report.rhi_instanced_draw_calls > 0 && report.rhi_instanced_indexed_draw_calls > 0;
+    result.instanced_instances_current = report.rhi_instanced_instances_submitted >= expected_instances_submitted;
+    result.status =
+        result.vulkan_backend_selected && result.instanced_draws_current && result.instanced_instances_current
+            ? SdlDesktopPresentationVulkanInstancedDrawExecutionStatus::ready
+            : SdlDesktopPresentationVulkanInstancedDrawExecutionStatus::blocked;
+    result.ready = result.status == SdlDesktopPresentationVulkanInstancedDrawExecutionStatus::ready;
     return result;
 }
 
@@ -5153,6 +5241,47 @@ evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(const SdlDesktopPre
                         ? SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::ready
                         : SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::blocked;
     result.ready = result.status == SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::ready;
+    return result;
+}
+
+std::string_view sdl_desktop_presentation_vulkan_gpu_memory_execution_status_name(
+    const SdlDesktopPresentationVulkanGpuMemoryExecutionStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationVulkanGpuMemoryExecutionStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationVulkanGpuMemoryExecutionStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationVulkanGpuMemoryExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+SdlDesktopPresentationVulkanGpuMemoryExecutionReport
+evaluate_sdl_desktop_presentation_vulkan_gpu_memory_execution(const SdlDesktopPresentationReport& report,
+                                                              const bool requested) {
+    SdlDesktopPresentationVulkanGpuMemoryExecutionReport result;
+    result.committed_byte_estimate_available =
+        report.rhi_memory_diagnostics.committed_resources_byte_estimate_available;
+    result.committed_resources_byte_estimate = report.rhi_memory_diagnostics.committed_resources_byte_estimate;
+    result.transient_heap_allocations = report.rhi_transient_heap_allocations;
+    result.transient_placed_allocations = report.rhi_transient_placed_allocations;
+    result.transient_placed_resources_alive = report.rhi_transient_placed_resources_alive;
+    result.upload_bytes_written = gpu_memory_policy_upload_bytes(report);
+    result.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
+
+    if (!requested) {
+        return result;
+    }
+
+    result.vulkan_backend_selected = report.selected_backend == SdlDesktopPresentationBackend::vulkan;
+    result.transient_heap_current = gpu_memory_policy_transient_pressure_ready(report);
+    result.memory_budget_current = result.vulkan_backend_selected && result.committed_byte_estimate_available &&
+                                   result.committed_resources_byte_estimate > 0 && result.upload_bytes_written > 0 &&
+                                   result.transient_heap_current;
+    result.status = result.memory_budget_current ? SdlDesktopPresentationVulkanGpuMemoryExecutionStatus::ready
+                                                 : SdlDesktopPresentationVulkanGpuMemoryExecutionStatus::blocked;
+    result.ready = result.status == SdlDesktopPresentationVulkanGpuMemoryExecutionStatus::ready;
     return result;
 }
 

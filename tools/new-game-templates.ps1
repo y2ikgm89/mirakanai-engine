@@ -5844,7 +5844,7 @@ function New-DesktopRuntime3DManifest {
                 maxResidentPackages = 1
                 preloadAssetKeys = @("$assetKeyPrefix/scenes/packaged-3d-scene")
                 residentResourceKinds = @("texture", "mesh", "skinned_mesh", "morph_mesh_cpu", "material", "animation_float_clip", "animation_quaternion_clip", "ui_atlas", "scene", "physics_collision_scene")
-                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-3d-package-smoke", "installed-d3d12-3d-directional-shadow-smoke", "installed-d3d12-3d-shadow-morph-composition-smoke", "installed-d3d12-3d-native-ui-overlay-smoke", "installed-d3d12-3d-visible-production-proof-smoke", "installed-d3d12-3d-scene-collision-package-smoke", "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke", "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke")
+                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-3d-package-smoke", "installed-d3d12-3d-directional-shadow-smoke", "installed-d3d12-3d-shadow-morph-composition-smoke", "installed-d3d12-3d-native-ui-overlay-smoke", "installed-d3d12-3d-visible-production-proof-smoke", "installed-d3d12-3d-entity-scale-culling-smoke", "installed-d3d12-3d-scene-collision-package-smoke", "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke", "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke")
             }
         )
         materialShaderAuthoringTargets = @(
@@ -5959,6 +5959,7 @@ function New-DesktopRuntime3DManifest {
                     "installed-d3d12-3d-shadow-morph-composition-smoke",
                     "installed-d3d12-3d-native-ui-overlay-smoke",
                     "installed-d3d12-3d-visible-production-proof-smoke",
+                    "installed-d3d12-3d-entity-scale-culling-smoke",
                     "installed-d3d12-3d-scene-collision-package-smoke",
                     "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
                     "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke"
@@ -6021,6 +6022,10 @@ function New-DesktopRuntime3DManifest {
             [ordered]@{
                 name = "installed-d3d12-3d-visible-production-proof-smoke"
                 command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-native-ui-overlay --require-visible-3d-production-proof"
+            },
+            [ordered]@{
+                name = "installed-d3d12-3d-entity-scale-culling-smoke"
+                command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-entity-scale-culling"
             },
             [ordered]@{
                 name = "installed-d3d12-3d-scene-collision-package-smoke"

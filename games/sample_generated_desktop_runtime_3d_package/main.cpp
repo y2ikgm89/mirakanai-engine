@@ -22,6 +22,7 @@
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/entity_scale_culling.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/physics_collision_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
@@ -70,6 +71,7 @@ struct DesktopRuntimeOptions {
     bool require_renderer_quality_gates{false};
     bool require_playable_3d_slice{false};
     bool require_visible_3d_production_proof{false};
+    bool require_vulkan_visible_3d_production_proof{false};
     bool require_native_ui_overlay{false};
     bool require_native_ui_textured_sprite_atlas{false};
     bool require_native_ui_text_glyph_atlas{false};
@@ -85,6 +87,7 @@ struct DesktopRuntimeOptions {
     bool require_package_upload_staging{false};
     bool require_gameplay_systems{false};
     bool require_scene_collision_package{false};
+    bool require_entity_scale_culling{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -2908,6 +2911,7 @@ void print_usage() {
                  "[--require-shadow-morph-composition] "
                  "[--require-renderer-quality-gates] "
                  "[--require-playable-3d-slice] [--require-visible-3d-production-proof] "
+                 "[--require-vulkan-visible-3d-production-proof] "
                  "[--require-native-ui-overlay] "
                  "[--require-native-ui-textured-sprite-atlas] "
                  "[--require-native-ui-text-glyph-atlas] "
@@ -2916,7 +2920,8 @@ void print_usage() {
                  "[--require-compute-morph-skin] [--require-compute-morph-async-telemetry] "
                  "[--require-quaternion-animation] [--require-package-streaming-safe-point] "
                  "[--require-package-upload-staging] "
-                 "[--require-gameplay-systems] [--require-scene-collision-package]\n";
+                 "[--require-gameplay-systems] [--require-scene-collision-package] "
+                 "[--require-entity-scale-culling]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -3005,6 +3010,27 @@ void print_usage() {
             options.require_visible_3d_production_proof = true;
             options.require_d3d12_scene_shaders = true;
             options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_renderer_quality_gates = true;
+            options.require_playable_3d_slice = true;
+            options.require_native_ui_overlay = true;
+            options.require_primary_camera_controller = true;
+            options.require_transform_animation = true;
+            options.require_morph_package = true;
+            options.require_compute_morph = true;
+            options.require_compute_morph_skin = true;
+            options.require_compute_morph_async_telemetry = true;
+            options.require_quaternion_animation = true;
+            options.require_package_streaming_safe_point = true;
+            options.require_gameplay_systems = true;
+            continue;
+        }
+        if (arg == "--require-vulkan-visible-3d-production-proof") {
+            options.require_vulkan_visible_3d_production_proof = true;
+            options.require_vulkan_scene_shaders = true;
+            options.require_vulkan_renderer = true;
             options.require_scene_gpu_bindings = true;
             options.require_postprocess = true;
             options.require_postprocess_depth_input = true;
@@ -3116,6 +3142,10 @@ void print_usage() {
             options.require_gameplay_systems = true;
             continue;
         }
+        if (arg == "--require-entity-scale-culling") {
+            options.require_entity_scale_culling = true;
+            continue;
+        }
         if (arg == "--max-frames") {
             if (index + 1 >= argc || !parse_positive_uint32(argv[index + 1], options.max_frames)) {
                 std::cerr << "--max-frames requires a positive integer\n";
@@ -3206,6 +3236,1042 @@ make_renderer_quality_gate_desc(const DesktopRuntimeOptions& options) noexcept {
     return desc;
 }
 
+struct EntityScaleCullingProbeResult {
+    mirakana::runtime::RuntimeEntityScaleCullingPlanStatus status{
+        mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::invalid_request};
+    std::size_t rows{0U};
+    std::size_t visible_rows{0U};
+    std::size_t culled_rows{0U};
+    std::size_t lod_rows{0U};
+    std::size_t priority_update_rows{0U};
+    std::size_t normal_update_rows{0U};
+    std::size_t background_update_rows{0U};
+    std::uint64_t projected_draw_cost{0U};
+    std::uint64_t projected_update_cost{0U};
+    std::size_t budget_protected_rows{0U};
+    std::size_t diagnostics{0U};
+    std::size_t budget_diagnostics{0U};
+    bool ready{false};
+};
+
+[[nodiscard]] std::string_view gameplay_2d_systems_status_name(Gameplay2DSystemsStatus status) noexcept {
+    switch (status) {
+    case Gameplay2DSystemsStatus::not_started:
+        return "not_started";
+    case Gameplay2DSystemsStatus::ready:
+        return "ready";
+    case Gameplay2DSystemsStatus::diagnostics:
+        return "diagnostics";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+world_region_streaming_status_name(mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::invalid_plan:
+        return "invalid_plan";
+    case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::no_changes:
+        return "no_changes";
+    case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::failed:
+        return "failed";
+    case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::completed:
+        return "completed";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+entity_scale_culling_status_name(mirakana::runtime::RuntimeEntityScaleCullingPlanStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::planned:
+        return "planned";
+    case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::no_entities:
+        return "no_entities";
+    case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::budget_exceeded:
+        return "budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] bool gameplay_2d_near(float value, float expected, float epsilon = 0.001F) noexcept {
+    return std::abs(value - expected) <= epsilon;
+}
+
+[[nodiscard]] std::string_view
+navigation_grid_agent_path_status_name(mirakana::NavigationGridAgentPathStatus status) noexcept {
+    switch (status) {
+    case mirakana::NavigationGridAgentPathStatus::ready:
+        return "ready";
+    case mirakana::NavigationGridAgentPathStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::NavigationGridAgentPathStatus::invalid_mapping:
+        return "invalid_mapping";
+    case mirakana::NavigationGridAgentPathStatus::unsupported_adjacency:
+        return "unsupported_adjacency";
+    case mirakana::NavigationGridAgentPathStatus::invalid_endpoint:
+        return "invalid_endpoint";
+    case mirakana::NavigationGridAgentPathStatus::blocked_endpoint:
+        return "blocked_endpoint";
+    case mirakana::NavigationGridAgentPathStatus::no_path:
+        return "no_path";
+    case mirakana::NavigationGridAgentPathStatus::invalid_source_path:
+        return "invalid_source_path";
+    case mirakana::NavigationGridAgentPathStatus::agent_path_invalid:
+        return "agent_path_invalid";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+navigation_grid_agent_path_diagnostic_name(mirakana::NavigationGridAgentPathDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::NavigationGridAgentPathDiagnostic::none:
+        return "none";
+    case mirakana::NavigationGridAgentPathDiagnostic::invalid_mapping:
+        return "invalid_mapping";
+    case mirakana::NavigationGridAgentPathDiagnostic::unsupported_adjacency:
+        return "unsupported_adjacency";
+    case mirakana::NavigationGridAgentPathDiagnostic::path_invalid_endpoint:
+        return "path_invalid_endpoint";
+    case mirakana::NavigationGridAgentPathDiagnostic::path_blocked_endpoint:
+        return "path_blocked_endpoint";
+    case mirakana::NavigationGridAgentPathDiagnostic::path_not_found:
+        return "path_not_found";
+    case mirakana::NavigationGridAgentPathDiagnostic::smoothing_invalid_source_path:
+        return "smoothing_invalid_source_path";
+    case mirakana::NavigationGridAgentPathDiagnostic::smoothing_unsupported_adjacency:
+        return "smoothing_unsupported_adjacency";
+    case mirakana::NavigationGridAgentPathDiagnostic::point_mapping_failed:
+        return "point_mapping_failed";
+    case mirakana::NavigationGridAgentPathDiagnostic::agent_path_rejected:
+        return "agent_path_rejected";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view navigation_agent_status_name(mirakana::NavigationAgentStatus status) noexcept {
+    switch (status) {
+    case mirakana::NavigationAgentStatus::idle:
+        return "idle";
+    case mirakana::NavigationAgentStatus::moving:
+        return "moving";
+    case mirakana::NavigationAgentStatus::reached_destination:
+        return "reached_destination";
+    case mirakana::NavigationAgentStatus::cancelled:
+        return "cancelled";
+    case mirakana::NavigationAgentStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view ai_perception_status_name(mirakana::AiPerceptionStatus status) noexcept {
+    switch (status) {
+    case mirakana::AiPerceptionStatus::ready:
+        return "ready";
+    case mirakana::AiPerceptionStatus::invalid_agent:
+        return "invalid_agent";
+    case mirakana::AiPerceptionStatus::invalid_target:
+        return "invalid_target";
+    case mirakana::AiPerceptionStatus::duplicate_target_id:
+        return "duplicate_target_id";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+ai_perception_blackboard_status_name(mirakana::AiPerceptionBlackboardStatus status) noexcept {
+    switch (status) {
+    case mirakana::AiPerceptionBlackboardStatus::ready:
+        return "ready";
+    case mirakana::AiPerceptionBlackboardStatus::invalid_snapshot:
+        return "invalid_snapshot";
+    case mirakana::AiPerceptionBlackboardStatus::invalid_key:
+        return "invalid_key";
+    case mirakana::AiPerceptionBlackboardStatus::blackboard_write_failed:
+        return "blackboard_write_failed";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view behavior_tree_status_name(mirakana::BehaviorTreeStatus status) noexcept {
+    switch (status) {
+    case mirakana::BehaviorTreeStatus::success:
+        return "success";
+    case mirakana::BehaviorTreeStatus::failure:
+        return "failure";
+    case mirakana::BehaviorTreeStatus::running:
+        return "running";
+    case mirakana::BehaviorTreeStatus::invalid_tree:
+        return "invalid_tree";
+    case mirakana::BehaviorTreeStatus::missing_leaf_result:
+        return "missing_leaf_result";
+    case mirakana::BehaviorTreeStatus::invalid_leaf_result:
+        return "invalid_leaf_result";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] mirakana::BehaviorTreeDesc gameplay_2d_behavior_tree_desc() {
+    return mirakana::BehaviorTreeDesc{
+        .root_id = kGameplay2dRootNode,
+        .nodes =
+            {
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dRootNode,
+                    .kind = mirakana::BehaviorTreeNodeKind::sequence,
+                    .children = {kGameplay2dHasTargetNode, kGameplay2dNeedsMoveNode, kGameplay2dMoveActionNode}},
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dHasTargetNode, .kind = mirakana::BehaviorTreeNodeKind::condition, .children = {}},
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dNeedsMoveNode, .kind = mirakana::BehaviorTreeNodeKind::condition, .children = {}},
+                mirakana::BehaviorTreeNodeDesc{
+                    .id = kGameplay2dMoveActionNode, .kind = mirakana::BehaviorTreeNodeKind::action, .children = {}},
+            },
+    };
+}
+
+[[nodiscard]] std::vector<mirakana::BehaviorTreeBlackboardCondition> gameplay_2d_behavior_conditions() {
+    return std::vector<mirakana::BehaviorTreeBlackboardCondition>{
+        mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplay2dHasTargetNode,
+                                                  .key = kGameplay2dHasTargetKey,
+                                                  .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                                  .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+        mirakana::BehaviorTreeBlackboardCondition{.node_id = kGameplay2dNeedsMoveNode,
+                                                  .key = kGameplay2dNeedsMoveKey,
+                                                  .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                                  .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+    };
+}
+
+[[nodiscard]] mirakana::BehaviorAuthoringValidationResult validate_gameplay_2d_behavior_authoring() {
+    const std::vector<std::string> blackboard_keys{kGameplay2dHasTargetKey, kGameplay2dNeedsMoveKey};
+    const std::vector<std::string> supported_actions{kGameplay2dMoveActionId};
+    const auto conditions = gameplay_2d_behavior_conditions();
+    const mirakana::BehaviorAuthoringDocument document{
+        .behaviors =
+            std::vector<mirakana::BehaviorAuthoringBehaviorDesc>{
+                mirakana::BehaviorAuthoringBehaviorDesc{
+                    .id = kGameplay2dBehaviorId,
+                    .tree = gameplay_2d_behavior_tree_desc(),
+                    .blackboard_conditions = conditions,
+                    .actions =
+                        std::vector<mirakana::BehaviorAuthoringActionBinding>{
+                            mirakana::BehaviorAuthoringActionBinding{.node_id = kGameplay2dMoveActionNode,
+                                                                     .action_id = kGameplay2dMoveActionId},
+                        },
+                },
+            },
+    };
+    return mirakana::validate_behavior_authoring_document(
+        document, mirakana::BehaviorAuthoringValidationContext{
+                      .blackboard_keys = std::span<const std::string>{blackboard_keys},
+                      .supported_actions = std::span<const std::string>{supported_actions},
+                  });
+}
+
+struct Gameplay2DQuestDialogueProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t transition_rows{0U};
+    std::size_t completed_objectives{0U};
+    std::size_t flags{0U};
+    std::size_t dialogue_nodes{0U};
+    std::size_t action_ids{0U};
+    std::size_t reward_ids{0U};
+    std::size_t state_rows{0U};
+};
+
+struct Gameplay2DInventoryProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t catalog_rows{0U};
+    std::size_t state_rows{0U};
+    std::size_t transition_rows{0U};
+    std::size_t accepted_rows{0U};
+    std::size_t completed_rows{0U};
+    std::size_t final_stacks{0U};
+    std::uint32_t final_workbench_quantity{0U};
+};
+
+struct Gameplay2DConstructionPlacementProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t validation_rows{0U};
+    std::size_t intent_rows{0U};
+    std::size_t intent_accepted_rows{0U};
+    std::size_t intent_occupied_cells{0U};
+};
+
+struct Gameplay2DProceduralGenerationProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t rows{0U};
+    std::size_t object_rows{0U};
+    std::size_t encounter_rows{0U};
+    std::size_t loot_rows{0U};
+    std::uint64_t replay_hash{0ULL};
+    std::size_t package_visible_rows{0U};
+    std::size_t placement_intent_rows{0U};
+    std::size_t placement_intent_accepted_rows{0U};
+};
+
+[[nodiscard]] mirakana::AssetId packaged_sprite_texture_asset_id();
+
+[[nodiscard]] mirakana::runtime::RuntimeQuestDialogueDocument gameplay_2d_quest_dialogue_document() {
+    using namespace mirakana::runtime;
+
+    return RuntimeQuestDialogueDocument{
+        .flags = {"story.met_elder"},
+        .quests =
+            std::vector<RuntimeQuestDesc>{
+                RuntimeQuestDesc{
+                    .id = "quest.intro",
+                    .title_localization_key = "quest.intro.title",
+                    .prerequisites = {},
+                    .objectives =
+                        std::vector<RuntimeQuestObjectiveDesc>{
+                            RuntimeQuestObjectiveDesc{
+                                .id = "talk_elder",
+                                .localization_key = "quest.intro.objective.talk_elder",
+                                .prerequisites = {},
+                                .reward_ids = {"xp_small"},
+                            },
+                        },
+                    .reward_ids = {"story_unlock"},
+                },
+            },
+        .dialogues =
+            std::vector<RuntimeDialogueGraphDesc>{
+                RuntimeDialogueGraphDesc{
+                    .id = "dialogue.elder",
+                    .root_node_id = "start",
+                    .nodes =
+                        std::vector<RuntimeDialogueNodeDesc>{
+                            RuntimeDialogueNodeDesc{
+                                .id = "start",
+                                .localization_key = "dialogue.elder.start",
+                                .choices =
+                                    std::vector<RuntimeDialogueChoiceDesc>{
+                                        RuntimeDialogueChoiceDesc{
+                                            .id = "accept",
+                                            .localization_key = "dialogue.elder.accept",
+                                            .next_node_id = "accepted",
+                                            .prerequisites =
+                                                std::vector<RuntimeQuestPrerequisite>{
+                                                    RuntimeQuestPrerequisite{
+                                                        .kind = RuntimeQuestPrerequisiteKind::flag_set,
+                                                        .quest_id = {},
+                                                        .objective_id = {},
+                                                        .flag_id = "story.met_elder",
+                                                    },
+                                                },
+                                            .action_ids = {"open_quest_intro"},
+                                        },
+                                    },
+                                .action_ids = {},
+                            },
+                            RuntimeDialogueNodeDesc{
+                                .id = "accepted",
+                                .localization_key = "dialogue.elder.accepted",
+                                .choices = {},
+                                .action_ids = {"close_dialogue"},
+                            },
+                        },
+                },
+            },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeQuestDialogueValidationContext gameplay_2d_quest_dialogue_context() {
+    static const std::vector<std::string> localization_keys{
+        "quest.intro.title",     "quest.intro.objective.talk_elder", "dialogue.elder.start",
+        "dialogue.elder.accept", "dialogue.elder.accepted",
+    };
+    static const std::vector<std::string> reward_ids{"xp_small", "story_unlock"};
+    static const std::vector<std::string> action_ids{"open_quest_intro", "close_dialogue"};
+
+    return mirakana::runtime::RuntimeQuestDialogueValidationContext{
+        .localization_keys = std::span<const std::string>{localization_keys},
+        .supported_reward_ids = std::span<const std::string>{reward_ids},
+        .supported_action_ids = std::span<const std::string>{action_ids},
+    };
+}
+
+[[nodiscard]] Gameplay2DQuestDialogueProbeResult validate_gameplay_2d_quest_dialogue() {
+    using Kind = mirakana::runtime::RuntimeQuestDialogueTransitionKind;
+    using Status = mirakana::runtime::RuntimeQuestDialogueTransitionStatus;
+
+    Gameplay2DQuestDialogueProbeResult result;
+    const auto document = gameplay_2d_quest_dialogue_document();
+    const auto context = gameplay_2d_quest_dialogue_context();
+    const auto validation = mirakana::runtime::validate_runtime_quest_dialogue_document(document, context);
+    result.diagnostics += validation.diagnostics.size();
+    if (!validation.succeeded) {
+        return result;
+    }
+
+    mirakana::runtime::RuntimeQuestDialogueState state;
+    const auto completed_objective = mirakana::runtime::advance_runtime_quest_dialogue_state(
+        document, state,
+        mirakana::runtime::RuntimeQuestDialogueTransitionRequest{
+            .kind = Kind::complete_objective,
+            .flag_id = {},
+            .quest_id = "quest.intro",
+            .objective_id = "talk_elder",
+            .dialogue_id = {},
+            .dialogue_choice_id = {},
+        },
+        context);
+    result.transition_rows += completed_objective.rows.size();
+    result.diagnostics += completed_objective.diagnostics.size();
+    result.reward_ids += completed_objective.reward_ids.size();
+    if (!completed_objective.succeeded || completed_objective.rows.empty() ||
+        completed_objective.rows.front().status != Status::completed) {
+        return result;
+    }
+    state = completed_objective.state;
+
+    const auto accepted_flag = mirakana::runtime::advance_runtime_quest_dialogue_state(
+        document, state,
+        mirakana::runtime::RuntimeQuestDialogueTransitionRequest{
+            .kind = Kind::set_flag,
+            .flag_id = "story.met_elder",
+            .quest_id = {},
+            .objective_id = {},
+            .dialogue_id = {},
+            .dialogue_choice_id = {},
+        },
+        context);
+    result.transition_rows += accepted_flag.rows.size();
+    result.diagnostics += accepted_flag.diagnostics.size();
+    if (!accepted_flag.succeeded || accepted_flag.rows.empty() ||
+        accepted_flag.rows.front().status != Status::accepted) {
+        return result;
+    }
+    state = accepted_flag.state;
+
+    const auto accepted_choice = mirakana::runtime::advance_runtime_quest_dialogue_state(
+        document, state,
+        mirakana::runtime::RuntimeQuestDialogueTransitionRequest{
+            .kind = Kind::choose_dialogue,
+            .flag_id = {},
+            .quest_id = {},
+            .objective_id = {},
+            .dialogue_id = "dialogue.elder",
+            .dialogue_choice_id = "accept",
+        },
+        context);
+    result.transition_rows += accepted_choice.rows.size();
+    result.diagnostics += accepted_choice.diagnostics.size();
+    result.reward_ids += accepted_choice.reward_ids.size();
+    if (!accepted_choice.succeeded || accepted_choice.rows.empty() ||
+        accepted_choice.rows.front().status != Status::accepted) {
+        return result;
+    }
+    state = accepted_choice.state;
+
+    result.completed_objectives = state.completed_objectives.size();
+    result.flags = state.flags_set.size();
+    result.dialogue_nodes = state.dialogue_nodes.size();
+    result.action_ids = accepted_choice.action_ids.size();
+    const auto state_validation = mirakana::runtime::validate_runtime_quest_dialogue_state(document, state, context);
+    result.diagnostics += state_validation.diagnostics.size();
+    result.state_rows = state_validation.rows.size();
+    result.ready = result.diagnostics == 0U && result.transition_rows == 3U && result.completed_objectives == 1U &&
+                   result.flags == 1U && result.dialogue_nodes == 1U && result.action_ids == 2U &&
+                   result.reward_ids == 2U && result.state_rows == 3U && state_validation.succeeded;
+    return result;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeItemCatalogDocument gameplay_2d_inventory_catalog_document() {
+    using namespace mirakana::runtime;
+
+    return RuntimeItemCatalogDocument{
+        .items =
+            std::vector<RuntimeItemDesc>{
+                RuntimeItemDesc{
+                    .id = "wood",
+                    .localization_key = "item.wood",
+                    .category_id = "material",
+                    .tag_ids = {"crafting", "pickup"},
+                    .max_stack = 99U,
+                    .placement_id = {},
+                    .placement_costs = {},
+                },
+                RuntimeItemDesc{
+                    .id = "workbench",
+                    .localization_key = "item.workbench",
+                    .category_id = "station",
+                    .tag_ids = {"crafting", "placeable"},
+                    .max_stack = 1U,
+                    .placement_id = "grid_2d",
+                    .placement_costs =
+                        std::vector<RuntimeItemCostDesc>{
+                            RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                        },
+                },
+            },
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeItemCatalogValidationContext gameplay_2d_inventory_catalog_context() {
+    static const std::vector<std::string> localization_keys{"item.wood", "item.workbench"};
+    static const std::vector<std::string> category_ids{"material", "station"};
+    static const std::vector<std::string> tag_ids{"crafting", "pickup", "placeable"};
+    static const std::vector<std::string> placement_ids{"grid_2d"};
+
+    return mirakana::runtime::RuntimeItemCatalogValidationContext{
+        .localization_keys = std::span<const std::string>{localization_keys},
+        .supported_category_ids = std::span<const std::string>{category_ids},
+        .supported_tag_ids = std::span<const std::string>{tag_ids},
+        .supported_placement_ids = std::span<const std::string>{placement_ids},
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeCraftingRecipeDocument gameplay_2d_crafting_recipes() {
+    using namespace mirakana::runtime;
+
+    return RuntimeCraftingRecipeDocument{
+        .recipes =
+            std::vector<RuntimeCraftingRecipeDesc>{
+                RuntimeCraftingRecipeDesc{
+                    .id = "recipe.workbench",
+                    .inputs =
+                        std::vector<RuntimeItemCostDesc>{
+                            RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                        },
+                    .outputs =
+                        std::vector<RuntimeItemCostDesc>{
+                            RuntimeItemCostDesc{.item_id = "workbench", .quantity = 1U},
+                        },
+                },
+            },
+    };
+}
+
+[[nodiscard]] Gameplay2DInventoryProbeResult validate_gameplay_2d_inventory_items() {
+    using Kind = mirakana::runtime::RuntimeInventoryTransitionKind;
+    using Status = mirakana::runtime::RuntimeInventoryTransitionStatus;
+
+    Gameplay2DInventoryProbeResult result;
+    const auto catalog = gameplay_2d_inventory_catalog_document();
+    const auto catalog_validation =
+        mirakana::runtime::validate_runtime_item_catalog_document(catalog, gameplay_2d_inventory_catalog_context());
+    result.diagnostics += catalog_validation.diagnostics.size();
+    result.catalog_rows = catalog_validation.rows.size();
+    if (!catalog_validation.succeeded) {
+        return result;
+    }
+
+    mirakana::runtime::RuntimeInventoryState state{
+        .stacks =
+            std::vector<mirakana::runtime::RuntimeInventoryStackDesc>{
+                mirakana::runtime::RuntimeInventoryStackDesc{.item_id = "wood", .quantity = 2U},
+            },
+    };
+    const auto initial_state_validation = mirakana::runtime::validate_runtime_inventory_state(catalog, state);
+    result.diagnostics += initial_state_validation.diagnostics.size();
+    result.state_rows += initial_state_validation.rows.size();
+    if (!initial_state_validation.succeeded) {
+        return result;
+    }
+
+    const auto recipes = gameplay_2d_crafting_recipes();
+    const auto pickup =
+        mirakana::runtime::advance_runtime_inventory_state(catalog, recipes, state,
+                                                           mirakana::runtime::RuntimeInventoryTransitionRequest{
+                                                               .kind = Kind::add_item,
+                                                               .item_id = "wood",
+                                                               .quantity = 1U,
+                                                               .recipe_id = {},
+                                                           });
+    result.diagnostics += pickup.diagnostics.size();
+    result.transition_rows += pickup.rows.size();
+    if (!pickup.rows.empty() && pickup.rows.front().status == Status::accepted) {
+        ++result.accepted_rows;
+    }
+    if (!pickup.succeeded || pickup.rows.empty() || pickup.rows.front().status != Status::accepted) {
+        return result;
+    }
+    state = pickup.state;
+
+    const auto craft =
+        mirakana::runtime::advance_runtime_inventory_state(catalog, recipes, state,
+                                                           mirakana::runtime::RuntimeInventoryTransitionRequest{
+                                                               .kind = Kind::craft_recipe,
+                                                               .item_id = {},
+                                                               .quantity = 0U,
+                                                               .recipe_id = "recipe.workbench",
+                                                           });
+    result.diagnostics += craft.diagnostics.size();
+    result.transition_rows += craft.rows.size();
+    if (!craft.rows.empty() && craft.rows.front().status == Status::completed) {
+        ++result.completed_rows;
+    }
+    if (!craft.succeeded || craft.rows.empty() || craft.rows.front().status != Status::completed) {
+        return result;
+    }
+    state = craft.state;
+
+    const auto final_state_validation = mirakana::runtime::validate_runtime_inventory_state(catalog, state);
+    result.diagnostics += final_state_validation.diagnostics.size();
+    result.state_rows += final_state_validation.rows.size();
+    result.final_stacks = state.stacks.size();
+    for (const auto& stack : state.stacks) {
+        if (stack.item_id == "workbench") {
+            result.final_workbench_quantity += stack.quantity;
+        }
+    }
+    result.ready = final_state_validation.succeeded && result.diagnostics == 0U && result.catalog_rows == 2U &&
+                   result.state_rows == 2U && result.transition_rows == 2U && result.accepted_rows == 1U &&
+                   result.completed_rows == 1U && result.final_stacks == 1U && result.final_workbench_quantity == 1U;
+    return result;
+}
+
+[[nodiscard]] Gameplay2DConstructionPlacementProbeResult validate_gameplay_2d_construction_placement() {
+    using namespace mirakana::runtime;
+    using IntentStatus = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    Gameplay2DConstructionPlacementProbeResult result;
+    const auto catalog = gameplay_2d_inventory_catalog_document();
+    const std::vector<std::string> placement_ids{"grid_2d"};
+    const std::vector<RuntimeConstructionPlacementSurfaceDesc> surfaces{
+        RuntimeConstructionPlacementSurfaceDesc{.id = "floor", .placement_id = "grid_2d"},
+    };
+    const std::vector<RuntimeConstructionPlacementCandidateDesc> candidates{
+        RuntimeConstructionPlacementCandidateDesc{
+            .item_id = "workbench",
+            .surface_id = "floor",
+            .grid_x = 4.0F,
+            .grid_y = 7.0F,
+            .grid_z = 0.0F,
+            .world_x = 4.5F,
+            .world_y = 7.5F,
+            .world_z = 0.0F,
+            .footprint_width = 2U,
+            .footprint_height = 1U,
+            .footprint_depth = 1U,
+            .occupied_cells =
+                std::vector<RuntimeConstructionPlacementCellDesc>{
+                    RuntimeConstructionPlacementCellDesc{.x = 4, .y = 7, .z = 0},
+                    RuntimeConstructionPlacementCellDesc{.x = 5, .y = 7, .z = 0},
+                },
+            .provided_costs =
+                std::vector<RuntimeItemCostDesc>{
+                    RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                },
+        },
+    };
+
+    const auto placement = validate_runtime_construction_placement(
+        catalog, candidates,
+        RuntimeConstructionPlacementValidationContext{
+            .supported_placement_ids = std::span<const std::string>{placement_ids},
+            .supported_surfaces = std::span<const RuntimeConstructionPlacementSurfaceDesc>{surfaces},
+        });
+    result.diagnostics += placement.diagnostics.size();
+    result.validation_rows = placement.rows.size();
+    if (!placement.succeeded) {
+        return result;
+    }
+
+    mirakana::SceneNodeComponents components;
+    components.sprite_renderer = mirakana::SpriteRendererComponent{
+        .sprite = packaged_sprite_texture_asset_id(),
+        .material = mirakana::AssetId{11460315010553722633ULL},
+        .size = mirakana::Vec2{.x = 2.0F, .y = 1.0F},
+        .tint = {0.8F, 0.6F, 0.35F, 1.0F},
+        .visible = true,
+    };
+    const std::vector<mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDesc{
+            .candidate_index = 0U,
+            .node_name = "Workbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = components,
+            .reviewed = true,
+        },
+    };
+    const auto intent_plan = mirakana::runtime_scene::plan_runtime_scene_construction_placement_intents(
+        placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+    result.diagnostics += intent_plan.diagnostics.size();
+    result.intent_rows = intent_plan.rows.size();
+    for (const auto& row : intent_plan.rows) {
+        if (row.status == IntentStatus::accepted) {
+            ++result.intent_accepted_rows;
+            result.intent_occupied_cells += row.occupied_cells.size();
+        }
+    }
+    result.ready = intent_plan.succeeded() && result.diagnostics == 0U && result.validation_rows == 3U &&
+                   result.intent_rows == 1U && result.intent_accepted_rows == 1U && result.intent_occupied_cells == 2U;
+    return result;
+}
+
+[[nodiscard]] Gameplay2DProceduralGenerationProbeResult validate_gameplay_2d_procedural_generation() {
+    using Kind = mirakana::runtime::RuntimeProceduralGenerationContentKind;
+    using IntentStatus = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    Gameplay2DProceduralGenerationProbeResult result;
+    const std::vector<std::string> supported_content_ids{
+        "sample_2d.object.workbench",
+        "sample_2d.encounter.tutorial",
+        "sample_2d.loot.cache",
+    };
+    const auto generation = mirakana::runtime::plan_runtime_procedural_generation(
+        mirakana::runtime::RuntimeProceduralGenerationRequest{
+            .generator_id = "sample_2d.package.procedural.v1",
+            .seed = 0x2D20260521ULL,
+            .map_width = 8U,
+            .map_height = 6U,
+            .output_budget = 3U,
+            .content =
+                std::vector<mirakana::runtime::RuntimeProceduralGenerationContentRequest>{
+                    mirakana::runtime::RuntimeProceduralGenerationContentRequest{
+                        .content_id = "sample_2d.object.workbench",
+                        .kind = Kind::object,
+                        .count = 1U,
+                    },
+                    mirakana::runtime::RuntimeProceduralGenerationContentRequest{
+                        .content_id = "sample_2d.encounter.tutorial",
+                        .kind = Kind::encounter,
+                        .count = 1U,
+                    },
+                    mirakana::runtime::RuntimeProceduralGenerationContentRequest{
+                        .content_id = "sample_2d.loot.cache",
+                        .kind = Kind::loot,
+                        .count = 1U,
+                    },
+                },
+        },
+        mirakana::runtime::RuntimeProceduralGenerationContext{
+            .supported_content_ids = std::span<const std::string>{supported_content_ids},
+            .max_output_rows = 3U,
+        });
+
+    result.diagnostics += generation.diagnostics.size();
+    result.rows = generation.rows.size();
+    result.replay_hash = generation.replay_hash;
+    std::string object_output_id;
+    for (const auto& row : generation.rows) {
+        switch (row.kind) {
+        case Kind::map_tile:
+            break;
+        case Kind::encounter:
+            ++result.encounter_rows;
+            break;
+        case Kind::loot:
+            ++result.loot_rows;
+            break;
+        case Kind::object:
+            ++result.object_rows;
+            if (object_output_id.empty()) {
+                object_output_id = row.id;
+            }
+            break;
+        }
+    }
+    if (!generation.succeeded || object_output_id.empty() || result.rows != 3U || result.object_rows != 1U ||
+        result.encounter_rows != 1U || result.loot_rows != 1U || result.replay_hash == 0ULL) {
+        return result;
+    }
+
+    const auto catalog = gameplay_2d_inventory_catalog_document();
+    const std::vector<std::string> placement_ids{"grid_2d"};
+    const std::vector<mirakana::runtime::RuntimeConstructionPlacementSurfaceDesc> surfaces{
+        mirakana::runtime::RuntimeConstructionPlacementSurfaceDesc{.id = "procedural_floor", .placement_id = "grid_2d"},
+    };
+    const std::vector<mirakana::runtime::RuntimeConstructionPlacementCandidateDesc> candidates{
+        mirakana::runtime::RuntimeConstructionPlacementCandidateDesc{
+            .item_id = "workbench",
+            .surface_id = "procedural_floor",
+            .grid_x = 2.0F,
+            .grid_y = 3.0F,
+            .grid_z = 0.0F,
+            .world_x = 2.5F,
+            .world_y = 3.5F,
+            .world_z = 0.0F,
+            .footprint_width = 2U,
+            .footprint_height = 1U,
+            .footprint_depth = 1U,
+            .occupied_cells =
+                std::vector<mirakana::runtime::RuntimeConstructionPlacementCellDesc>{
+                    mirakana::runtime::RuntimeConstructionPlacementCellDesc{.x = 2, .y = 3, .z = 0},
+                    mirakana::runtime::RuntimeConstructionPlacementCellDesc{.x = 3, .y = 3, .z = 0},
+                },
+            .provided_costs =
+                std::vector<mirakana::runtime::RuntimeItemCostDesc>{
+                    mirakana::runtime::RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                },
+        },
+    };
+    const auto placement = mirakana::runtime::validate_runtime_construction_placement(
+        catalog, candidates,
+        mirakana::runtime::RuntimeConstructionPlacementValidationContext{
+            .supported_placement_ids = std::span<const std::string>{placement_ids},
+            .supported_surfaces = std::span<const mirakana::runtime::RuntimeConstructionPlacementSurfaceDesc>{surfaces},
+        });
+    result.diagnostics += placement.diagnostics.size();
+    if (!placement.succeeded) {
+        return result;
+    }
+
+    mirakana::SceneNodeComponents components;
+    components.sprite_renderer = mirakana::SpriteRendererComponent{
+        .sprite = packaged_sprite_texture_asset_id(),
+        .material = mirakana::AssetId{11460315010553722633ULL},
+        .size = mirakana::Vec2{.x = 2.0F, .y = 1.0F},
+        .tint = {0.7F, 0.78F, 0.42F, 1.0F},
+        .visible = true,
+    };
+    const std::vector<mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = object_output_id,
+            .anchor_id = "sample_2d.package.procedural.workbench_anchor",
+            .candidate_index = 0U,
+            .node_name = "ProceduralWorkbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 2.5F, .y = 3.5F, .z = 0.0F}},
+            .components = components,
+            .reviewed = true,
+            .package_visible = true,
+        },
+    };
+    const auto intent_plan = mirakana::runtime_scene::plan_runtime_scene_procedural_construction_placement_intents(
+        generation, placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+    result.diagnostics += intent_plan.diagnostics.size();
+    result.placement_intent_rows = intent_plan.rows.size();
+    for (const auto& row : intent_plan.rows) {
+        if (row.package_visible) {
+            ++result.package_visible_rows;
+        }
+        if (row.status == IntentStatus::accepted) {
+            ++result.placement_intent_accepted_rows;
+        }
+    }
+    result.ready = intent_plan.succeeded() && result.diagnostics == 0U && result.rows == 3U &&
+                   result.object_rows == 1U && result.encounter_rows == 1U && result.loot_rows == 1U &&
+                   result.replay_hash != 0ULL && result.package_visible_rows == 1U &&
+                   result.placement_intent_rows == 1U && result.placement_intent_accepted_rows == 1U;
+    return result;
+}
+
+[[nodiscard]] EntityScaleCullingProbeResult validate_entity_scale_culling_package_evidence() {
+    using BoundsKind = mirakana::runtime::RuntimeEntityScaleCullingBoundsKind;
+    using Code = mirakana::runtime::RuntimeEntityScaleCullingDiagnosticCode;
+    using DrawIntent = mirakana::runtime::RuntimeEntityScaleCullingDrawIntentKind;
+    using Entity = mirakana::runtime::RuntimeEntityScaleCullingEntityDesc;
+    using LodBand = mirakana::runtime::RuntimeEntityScaleCullingLodBandDesc;
+    using UpdateBucket = mirakana::runtime::RuntimeEntityScaleCullingUpdateBucket;
+
+    const auto empty_2d = mirakana::runtime::RuntimeEntityScaleCullingBounds2D{};
+    const auto empty_3d = mirakana::runtime::RuntimeEntityScaleCullingBounds3D{};
+
+    auto hero = Entity{
+        .entity_id = "hero",
+        .bounds_kind = BoundsKind::aabb_2d,
+        .bounds_2d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                .min_x = -1.0F,
+                .min_y = -1.0F,
+                .max_x = 1.0F,
+                .max_y = 1.0F,
+            },
+        .bounds_3d = empty_3d,
+        .layer_mask = 0x1U,
+        .update_bucket = UpdateBucket::priority,
+        .enabled = true,
+        .source_index = 2U,
+        .lod_bands =
+            std::vector<LodBand>{
+                LodBand{.lod_index = 3U,
+                        .max_view_distance = 4.0F,
+                        .draw_cost = 99U,
+                        .update_cost = 99U,
+                        .update_interval_frames = 9U,
+                        .draw_intent = DrawIntent::custom},
+                LodBand{.lod_index = 0U,
+                        .max_view_distance = 4.0F,
+                        .draw_cost = 2U,
+                        .update_cost = 1U,
+                        .update_interval_frames = 1U,
+                        .draw_intent = DrawIntent::sprite_2d},
+                LodBand{.lod_index = 1U,
+                        .max_view_distance = 12.0F,
+                        .draw_cost = 4U,
+                        .update_cost = 2U,
+                        .update_interval_frames = 3U,
+                        .draw_intent = DrawIntent::sprite_2d},
+            },
+        .budget_protected = true,
+    };
+    auto mesh = Entity{
+        .entity_id = "mesh",
+        .bounds_kind = BoundsKind::aabb_3d,
+        .bounds_2d = empty_2d,
+        .bounds_3d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds3D{
+                .min_x = 9.0F,
+                .min_y = -1.0F,
+                .min_z = -1.0F,
+                .max_x = 11.0F,
+                .max_y = 1.0F,
+                .max_z = 1.0F,
+            },
+        .layer_mask = 0x1U,
+        .update_bucket = UpdateBucket::normal,
+        .enabled = true,
+        .source_index = 1U,
+        .lod_bands =
+            std::vector<LodBand>{
+                LodBand{.lod_index = 1U,
+                        .max_view_distance = 20.0F,
+                        .draw_cost = 5U,
+                        .update_cost = 2U,
+                        .update_interval_frames = 4U,
+                        .draw_intent = DrawIntent::mesh_3d},
+                LodBand{.lod_index = 0U,
+                        .max_view_distance = 5.0F,
+                        .draw_cost = 9U,
+                        .update_cost = 4U,
+                        .update_interval_frames = 1U,
+                        .draw_intent = DrawIntent::mesh_3d},
+            },
+        .budget_protected = false,
+    };
+    auto disabled = Entity{
+        .entity_id = "sleeping",
+        .bounds_kind = BoundsKind::aabb_2d,
+        .bounds_2d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                .min_x = 0.0F,
+                .min_y = 0.0F,
+                .max_x = 1.0F,
+                .max_y = 1.0F,
+            },
+        .bounds_3d = empty_3d,
+        .layer_mask = 0x1U,
+        .update_bucket = UpdateBucket::background,
+        .enabled = false,
+        .source_index = 3U,
+        .lod_bands =
+            std::vector<LodBand>{
+                LodBand{.lod_index = 0U,
+                        .max_view_distance = 10.0F,
+                        .draw_cost = 20U,
+                        .update_cost = 20U,
+                        .update_interval_frames = 1U,
+                        .draw_intent = DrawIntent::sprite_2d},
+            },
+        .budget_protected = false,
+    };
+    const auto hidden = Entity{
+        .entity_id = "hidden",
+        .bounds_kind = BoundsKind::aabb_2d,
+        .bounds_2d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                .min_x = 2.0F,
+                .min_y = 2.0F,
+                .max_x = 3.0F,
+                .max_y = 3.0F,
+            },
+        .bounds_3d = empty_3d,
+        .layer_mask = 0x4U,
+        .update_bucket = UpdateBucket::normal,
+        .enabled = true,
+        .source_index = 4U,
+        .lod_bands = {},
+        .budget_protected = false,
+    };
+    const auto view = mirakana::runtime::RuntimeEntityScaleCullingViewDesc{
+        .bounds_kind = BoundsKind::aabb_3d,
+        .bounds_2d = empty_2d,
+        .bounds_3d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds3D{
+                .min_x = -16.0F,
+                .min_y = -16.0F,
+                .min_z = -8.0F,
+                .max_x = 16.0F,
+                .max_y = 16.0F,
+                .max_z = 8.0F,
+            },
+        .layer_mask = 0x1U,
+        .max_visible_entities = 8U,
+        .max_projected_draw_cost = 32U,
+        .max_projected_update_cost = 16U,
+    };
+
+    EntityScaleCullingProbeResult result;
+    const auto plan = mirakana::runtime::plan_runtime_entity_scale_culling(
+        mirakana::runtime::RuntimeEntityScaleCullingRequest{.entities = {mesh, disabled, hero, hidden}, .view = view});
+    result.status = plan.status;
+    result.rows = plan.rows.size();
+    result.projected_draw_cost = plan.projected_draw_cost;
+    result.projected_update_cost = plan.projected_update_cost;
+    result.diagnostics = plan.diagnostics.size();
+    for (const auto& row : plan.rows) {
+        if (row.visible) {
+            ++result.visible_rows;
+        } else {
+            ++result.culled_rows;
+        }
+        if (row.projected_draw_cost > 0U || row.projected_update_cost > 0U) {
+            ++result.lod_rows;
+        }
+        if (row.budget_protected) {
+            ++result.budget_protected_rows;
+        }
+        switch (row.update_bucket) {
+        case UpdateBucket::background:
+            ++result.background_update_rows;
+            break;
+        case UpdateBucket::normal:
+            ++result.normal_update_rows;
+            break;
+        case UpdateBucket::priority:
+            ++result.priority_update_rows;
+            break;
+        }
+    }
+
+    hero.lod_bands = {
+        LodBand{.lod_index = 0U,
+                .max_view_distance = 4.0F,
+                .draw_cost = 9U,
+                .update_cost = 5U,
+                .update_interval_frames = 1U,
+                .draw_intent = DrawIntent::sprite_2d},
+    };
+    mesh.lod_bands = {
+        LodBand{.lod_index = 0U,
+                .max_view_distance = 20.0F,
+                .draw_cost = 4U,
+                .update_cost = 2U,
+                .update_interval_frames = 2U,
+                .draw_intent = DrawIntent::mesh_3d},
+    };
+    auto budget_view = view;
+    budget_view.max_projected_draw_cost = 10U;
+    budget_view.max_projected_update_cost = 6U;
+    const auto budget_plan = mirakana::runtime::plan_runtime_entity_scale_culling(
+        mirakana::runtime::RuntimeEntityScaleCullingRequest{.entities = {mesh, hero}, .view = budget_view});
+    for (const auto& diagnostic : budget_plan.diagnostics) {
+        if (diagnostic.code == Code::draw_budget_exceeded || diagnostic.code == Code::update_budget_exceeded) {
+            ++result.budget_diagnostics;
+        }
+    }
+
+    result.ready =
+        plan.succeeded() && result.status == mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::planned &&
+        result.rows == 4U && result.visible_rows == 2U && result.culled_rows == 2U && result.lod_rows == 2U &&
+        result.priority_update_rows == 1U && result.normal_update_rows == 2U && result.background_update_rows == 1U &&
+        result.projected_draw_cost == 7U && result.projected_update_cost == 3U && result.budget_protected_rows == 1U &&
+        result.diagnostics == 0U && result.budget_diagnostics == 2U;
+    return result;
+}
+
 enum class Playable3dSliceStatus : std::uint8_t {
     not_requested,
     ready,
@@ -3275,6 +4341,7 @@ struct Visible3dProductionProofReport {
     std::uint32_t expected_frames{0};
     std::uint64_t presented_frames{0};
     bool d3d12_selected{false};
+    bool vulkan_selected{false};
     bool null_fallback_used{false};
     bool scene_gpu_ready{false};
     bool postprocess_ready{false};
@@ -3681,6 +4748,7 @@ evaluate_visible_3d_production_proof(const DesktopRuntimeOptions& options, const
     report.expected_frames = options.max_frames;
     report.presented_frames = presentation_report.renderer_stats.frames_finished;
     report.d3d12_selected = presentation_report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12;
+    report.vulkan_selected = presentation_report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan;
     report.null_fallback_used = presentation_report.used_null_fallback;
     report.scene_gpu_ready = scene_gpu_ready(presentation_report, options.max_frames);
     report.postprocess_ready = postprocess_ready(presentation_report, options.max_frames);
@@ -3692,9 +4760,12 @@ evaluate_visible_3d_production_proof(const DesktopRuntimeOptions& options, const
         presentation_report.native_ui_overlay_sprites_submitted >= static_cast<std::uint64_t>(options.max_frames) &&
         presentation_report.native_ui_overlay_draws == static_cast<std::uint64_t>(options.max_frames);
 
-    if (!options.require_visible_3d_production_proof) {
+    if (!options.require_visible_3d_production_proof && !options.require_vulkan_visible_3d_production_proof) {
         return report;
     }
+
+    const bool backend_selected =
+        options.require_visible_3d_production_proof ? report.d3d12_selected : report.vulkan_selected;
 
     const bool frame_run_exact =
         result.status == mirakana::DesktopRunStatus::completed && result.frames_run == options.max_frames;
@@ -3707,7 +4778,7 @@ evaluate_visible_3d_production_proof(const DesktopRuntimeOptions& options, const
     const bool required_checks[] = {
         frame_run_exact,
         frame_present_exact,
-        report.d3d12_selected,
+        backend_selected,
         !report.null_fallback_used,
         presentation_diagnostics_clean,
         report.scene_gpu_ready,
@@ -4926,6 +5997,9 @@ int main(int argc, char** argv) {
     const auto gameplay_systems_diagnostics = game.gameplay_systems_diagnostics_count(options.max_frames);
     const auto visible_3d = evaluate_visible_3d_production_proof(options, result, report, renderer_quality, playable_3d,
                                                                  gameplay_systems_ready);
+    const auto entity_scale_culling_probe = options.require_entity_scale_culling
+                                                ? validate_entity_scale_culling_package_evidence()
+                                                : EntityScaleCullingProbeResult{};
     const auto package_upload_staging = options.require_package_upload_staging
                                             ? run_package_upload_staging_evidence(host.presentation())
                                             : mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence{};
@@ -5133,12 +6207,27 @@ int main(int argc, char** argv) {
         << " visible_3d_expected_frames=" << visible_3d.expected_frames
         << " visible_3d_presented_frames=" << visible_3d.presented_frames
         << " visible_3d_d3d12_selected=" << (visible_3d.d3d12_selected ? 1 : 0)
+        << " visible_3d_vulkan_selected=" << (visible_3d.vulkan_selected ? 1 : 0)
         << " visible_3d_null_fallback_used=" << (visible_3d.null_fallback_used ? 1 : 0)
         << " visible_3d_scene_gpu_ready=" << (visible_3d.scene_gpu_ready ? 1 : 0)
         << " visible_3d_postprocess_ready=" << (visible_3d.postprocess_ready ? 1 : 0)
         << " visible_3d_renderer_quality_ready=" << (visible_3d.renderer_quality_ready ? 1 : 0)
         << " visible_3d_playable_ready=" << (visible_3d.playable_ready ? 1 : 0)
         << " visible_3d_ui_overlay_ready=" << (visible_3d.ui_overlay_ready ? 1 : 0)
+        << " entity_scale_culling_status=" << entity_scale_culling_status_name(entity_scale_culling_probe.status)
+        << " entity_scale_culling_ready=" << (entity_scale_culling_probe.ready ? 1 : 0)
+        << " entity_scale_culling_rows=" << entity_scale_culling_probe.rows
+        << " entity_scale_culling_visible_rows=" << entity_scale_culling_probe.visible_rows
+        << " entity_scale_culling_culled_rows=" << entity_scale_culling_probe.culled_rows
+        << " entity_scale_culling_lod_rows=" << entity_scale_culling_probe.lod_rows
+        << " entity_scale_culling_priority_update_rows=" << entity_scale_culling_probe.priority_update_rows
+        << " entity_scale_culling_normal_update_rows=" << entity_scale_culling_probe.normal_update_rows
+        << " entity_scale_culling_background_update_rows=" << entity_scale_culling_probe.background_update_rows
+        << " entity_scale_culling_projected_draw_cost=" << entity_scale_culling_probe.projected_draw_cost
+        << " entity_scale_culling_projected_update_cost=" << entity_scale_culling_probe.projected_update_cost
+        << " entity_scale_culling_budget_protected_rows=" << entity_scale_culling_probe.budget_protected_rows
+        << " entity_scale_culling_diagnostics=" << entity_scale_culling_probe.diagnostics
+        << " entity_scale_culling_budget_diagnostics=" << entity_scale_culling_probe.budget_diagnostics
         << " gameplay_systems_status=" << gameplay_systems_status_name(gameplay_systems_status)
         << " gameplay_systems_ready=" << (gameplay_systems_ready ? 1 : 0)
         << " gameplay_systems_diagnostics=" << gameplay_systems_diagnostics
@@ -5350,11 +6439,27 @@ int main(int argc, char** argv) {
         if (options.require_playable_3d_slice && !playable_3d.ready) {
             return 3;
         }
-        if (options.require_visible_3d_production_proof && !visible_3d.ready) {
+        if ((options.require_visible_3d_production_proof || options.require_vulkan_visible_3d_production_proof) &&
+            !visible_3d.ready) {
             return 3;
         }
         if (options.require_gameplay_systems && !gameplay_systems_ready) {
             return 3;
+        }
+        if (options.require_entity_scale_culling && !entity_scale_culling_probe.ready) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_entity_scale_culling_unavailable"
+                      << " entity_scale_culling_status="
+                      << entity_scale_culling_status_name(entity_scale_culling_probe.status)
+                      << " entity_scale_culling_rows=" << entity_scale_culling_probe.rows
+                      << " entity_scale_culling_visible_rows=" << entity_scale_culling_probe.visible_rows
+                      << " entity_scale_culling_culled_rows=" << entity_scale_culling_probe.culled_rows
+                      << " entity_scale_culling_lod_rows=" << entity_scale_culling_probe.lod_rows
+                      << " entity_scale_culling_projected_draw_cost=" << entity_scale_culling_probe.projected_draw_cost
+                      << " entity_scale_culling_projected_update_cost="
+                      << entity_scale_culling_probe.projected_update_cost
+                      << " entity_scale_culling_budget_diagnostics=" << entity_scale_culling_probe.budget_diagnostics
+                      << '\n';
+            return 15;
         }
         if (options.require_scene_collision_package && !collision_package.ready) {
             return 3;
