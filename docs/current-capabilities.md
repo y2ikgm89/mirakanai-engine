@@ -197,7 +197,7 @@ Frame Graph v1 is closed for the Engine 1.0 Windows-default ready surface by `do
 
 This section is historical capability evidence. The current active plan and recommended next plan are authoritative only in `engine/agent/manifest.json` and the plan registry.
 
-After Gameplay Simulation Orchestration v1 merged through PR #172 / commit `eb6a34b5` and the closeout pointer sync merged through PR #173 / commit `3b9e36f7`, the composed manifest selects `docs/superpowers/plans/2026-05-22-ai-gameplay-authoring-tools-v1.md` with `recommendedNextPlan.id = ai-gameplay-authoring-tools-v1` and `unsupportedProductionGaps = []`.
+After AI Gameplay Authoring Tools v1 merged through PR #174 / commit `9bffa2b8`, the composed manifest points `currentActivePlan` back to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md` with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`. The next developer-owned capability is intentionally unselected until a concrete game handoff or roadmap decision identifies a reusable engine capability that still needs implementation.
 
 `docs/superpowers/plans/2026-05-02-2d-packaged-playable-generation-loop-v1.md` completed the generated packaged 2D scaffold contract through `DesktopRuntime2DPackage`, cooked sprite/material/audio/orthographic scene payloads, manifest package files, manifest runtime scene validation targets, and focused static checks.
 

@@ -1,8 +1,8 @@
 # AI Gameplay Authoring Tools v1 (2026-05-22)
 
 **Plan ID:** `ai-gameplay-authoring-tools-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while active. Keep `unsupportedProductionGaps = []`; this is a post-1.0 developer-owned high-freedom game creation capability, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** Completed through PR #174 / merge commit `9bffa2b8`; `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` returns to the production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection`. Keep `unsupportedProductionGaps = []`; this is a post-1.0 developer-owned high-freedom game creation capability, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
@@ -130,3 +130,5 @@ Promote the review contract into generated-game guidance and selected package-vi
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+- Hosted closeout:
+  - PR #174 merged at `9bffa2b8` after `PR Gate`, `Windows MSVC`, `Linux CMake`, `Linux Coverage`, `Linux Clang ASan/UBSan`, `Full Repository Static Analysis (0-3)`, `Agent Static Guards`, `CodeQL`, `iOS Simulator smoke`, and `macOS Metal CMake` succeeded while `unsupportedProductionGaps = []`.
