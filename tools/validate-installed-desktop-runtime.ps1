@@ -957,7 +957,13 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_advanced_controller_constraint_rows",
             "gameplay_systems_advanced_controller_replay_changed",
             "gameplay_systems_advanced_controller_replay_before_bodies",
-            "gameplay_systems_advanced_controller_replay_after_bodies"
+            "gameplay_systems_advanced_controller_replay_after_bodies",
+            "gameplay_systems_physics_constraints_status",
+            "gameplay_systems_physics_constraints_diagnostic",
+            "gameplay_systems_physics_constraints_rows",
+            "gameplay_systems_physics_constraints_fixed_rows",
+            "gameplay_systems_physics_constraints_linear_axis_rows",
+            "gameplay_systems_physics_constraints_axis_limit_clamped"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not include gameplay systems field: $field"
@@ -1070,6 +1076,24 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_after_bodies=5\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller replay-after body count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_status=solved\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove solved physics constraints status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean physics constraints diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_rows=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact physics constraints row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_fixed_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact fixed physics constraint row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_linear_axis_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact linear-axis physics constraint row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_axis_limit_clamped=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clamped linear-axis physics constraint evidence."
     }
 }
 if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requiresNativeUiOverlay) {

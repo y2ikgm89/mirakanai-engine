@@ -465,6 +465,73 @@ struct PhysicsJointSolve3DResult {
     std::vector<PhysicsJointSolve3DRow> rows;
 };
 
+enum class PhysicsConstraint3DKind : std::uint8_t { distance, fixed, linear_axis };
+
+enum class PhysicsConstraint3DStatus : std::uint8_t { solved, invalid_request };
+
+enum class PhysicsConstraint3DDiagnostic : std::uint8_t {
+    none,
+    invalid_config,
+    invalid_constraint,
+    missing_body,
+    static_pair,
+    disabled_constraint,
+    invalid_axis,
+    invalid_limits,
+};
+
+struct PhysicsFixedConstraint3DDesc {
+    PhysicsBody3DId first;
+    PhysicsBody3DId second;
+    Vec3 local_anchor_first{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 local_anchor_second{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 target_offset{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    bool enabled{true};
+};
+
+struct PhysicsLinearAxisConstraint3DDesc {
+    PhysicsBody3DId first;
+    PhysicsBody3DId second;
+    Vec3 local_anchor_first{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 local_anchor_second{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 axis{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+    float min_axis_distance{0.0F};
+    float max_axis_distance{0.0F};
+    bool enabled{true};
+};
+
+struct PhysicsConstraintSolve3DConfig {
+    std::uint32_t iterations{1U};
+    float tolerance{0.0001F};
+};
+
+struct PhysicsConstraintSolve3DDesc {
+    PhysicsConstraintSolve3DConfig config{};
+    std::vector<PhysicsDistanceJoint3DDesc> distance_joints;
+    std::vector<PhysicsFixedConstraint3DDesc> fixed_constraints;
+    std::vector<PhysicsLinearAxisConstraint3DDesc> linear_axis_constraints;
+};
+
+struct PhysicsConstraintSolve3DRow {
+    std::size_t source_index{0};
+    PhysicsConstraint3DKind kind{PhysicsConstraint3DKind::distance};
+    PhysicsBody3DId first;
+    PhysicsBody3DId second;
+    Vec3 previous_delta{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 target_delta{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 residual_delta{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 first_correction{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 second_correction{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    bool axis_limit_clamped{false};
+    PhysicsConstraint3DDiagnostic diagnostic{PhysicsConstraint3DDiagnostic::none};
+};
+
+struct PhysicsConstraintSolve3DResult {
+    PhysicsConstraint3DStatus status{PhysicsConstraint3DStatus::invalid_request};
+    PhysicsConstraint3DDiagnostic diagnostic{PhysicsConstraint3DDiagnostic::none};
+    std::vector<PhysicsConstraintSolve3DRow> rows;
+};
+
 struct PhysicsReplaySignature3D {
     std::uint64_t value{0};
     std::uint64_t body_count{0};
@@ -635,6 +702,9 @@ evaluate_physics_character_dynamic_policy_3d(const PhysicsWorld3D& world,
 
 [[nodiscard]] PhysicsJointSolve3DResult solve_physics_joints_3d(PhysicsWorld3D& world,
                                                                 const PhysicsJointSolve3DDesc& desc);
+
+[[nodiscard]] PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& world,
+                                                                          const PhysicsConstraintSolve3DDesc& desc);
 
 [[nodiscard]] PhysicsReplaySignature3D make_physics_replay_signature_3d(const PhysicsWorld3D& world);
 

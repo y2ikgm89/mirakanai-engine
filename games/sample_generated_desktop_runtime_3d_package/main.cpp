@@ -891,6 +891,39 @@ physics_advanced_controller_diagnostic_name(mirakana::PhysicsAdvancedController3
     return "unknown";
 }
 
+[[nodiscard]] std::string_view physics_constraint_status_name(mirakana::PhysicsConstraint3DStatus status) noexcept {
+    switch (status) {
+    case mirakana::PhysicsConstraint3DStatus::solved:
+        return "solved";
+    case mirakana::PhysicsConstraint3DStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+physics_constraint_diagnostic_name(mirakana::PhysicsConstraint3DDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::PhysicsConstraint3DDiagnostic::none:
+        return "none";
+    case mirakana::PhysicsConstraint3DDiagnostic::invalid_config:
+        return "invalid_config";
+    case mirakana::PhysicsConstraint3DDiagnostic::invalid_constraint:
+        return "invalid_constraint";
+    case mirakana::PhysicsConstraint3DDiagnostic::missing_body:
+        return "missing_body";
+    case mirakana::PhysicsConstraint3DDiagnostic::static_pair:
+        return "static_pair";
+    case mirakana::PhysicsConstraint3DDiagnostic::disabled_constraint:
+        return "disabled_constraint";
+    case mirakana::PhysicsConstraint3DDiagnostic::invalid_axis:
+        return "invalid_axis";
+    case mirakana::PhysicsConstraint3DDiagnostic::invalid_limits:
+        return "invalid_limits";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::string_view behavior_tree_status_name(mirakana::BehaviorTreeStatus status) noexcept {
     switch (status) {
     case mirakana::BehaviorTreeStatus::success:
@@ -1017,6 +1050,7 @@ class GeneratedGameplaySystemsProbe final {
         build_navigation_crowd_probe();
         build_physics_movement_policy_probe();
         build_physics_advanced_controller_probe();
+        build_physics_constraints_probe();
         render_audio_stream_probe();
         (void)animation_.trigger("move");
         started_ = true;
@@ -1081,6 +1115,11 @@ class GeneratedGameplaySystemsProbe final {
                advanced_controller_result_.replay_after.body_count == 5U &&
                advanced_controller_result_.replay_after.value != advanced_controller_result_.replay_before.value &&
                gameplay_systems_near(advanced_controller_result_.position.x, 3.25F) &&
+               physics_constraints_result_.status == mirakana::PhysicsConstraint3DStatus::solved &&
+               physics_constraints_result_.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::none &&
+               physics_constraints_result_.rows.size() == 2U && physics_constraints_fixed_row_count() == 1U &&
+               physics_constraints_linear_axis_row_count() == 1U &&
+               physics_constraints_axis_limit_clamped_count() == 1U &&
                navigation_agent_.status == mirakana::NavigationAgentStatus::reached_destination &&
                gameplay_systems_near(navigation_agent_.position.x, 1.5F) &&
                gameplay_systems_near(navigation_agent_.position.y, 0.5F) &&
@@ -1154,6 +1193,12 @@ class GeneratedGameplaySystemsProbe final {
             advanced_controller_result_.replay_after.body_count == 5U,
             advanced_controller_result_.replay_after.value != advanced_controller_result_.replay_before.value,
             gameplay_systems_near(advanced_controller_result_.position.x, 3.25F),
+            physics_constraints_result_.status == mirakana::PhysicsConstraint3DStatus::solved,
+            physics_constraints_result_.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::none,
+            physics_constraints_result_.rows.size() == 2U,
+            physics_constraints_fixed_row_count() == 1U,
+            physics_constraints_linear_axis_row_count() == 1U,
+            physics_constraints_axis_limit_clamped_count() == 1U,
             navigation_agent_.status == mirakana::NavigationAgentStatus::reached_destination,
             gameplay_systems_near(navigation_agent_.position.x, 1.5F) &&
                 gameplay_systems_near(navigation_agent_.position.y, 0.5F),
@@ -1361,6 +1406,48 @@ class GeneratedGameplaySystemsProbe final {
 
     [[nodiscard]] float advanced_controller_final_x() const noexcept {
         return advanced_controller_result_.position.x;
+    }
+
+    [[nodiscard]] mirakana::PhysicsConstraint3DStatus physics_constraints_status() const noexcept {
+        return physics_constraints_result_.status;
+    }
+
+    [[nodiscard]] mirakana::PhysicsConstraint3DDiagnostic physics_constraints_diagnostic() const noexcept {
+        return physics_constraints_result_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t physics_constraints_row_count() const noexcept {
+        return physics_constraints_result_.rows.size();
+    }
+
+    [[nodiscard]] std::size_t physics_constraints_fixed_row_count() const noexcept {
+        std::size_t count = 0;
+        for (const auto& row : physics_constraints_result_.rows) {
+            if (row.kind == mirakana::PhysicsConstraint3DKind::fixed) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    [[nodiscard]] std::size_t physics_constraints_linear_axis_row_count() const noexcept {
+        std::size_t count = 0;
+        for (const auto& row : physics_constraints_result_.rows) {
+            if (row.kind == mirakana::PhysicsConstraint3DKind::linear_axis) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    [[nodiscard]] std::size_t physics_constraints_axis_limit_clamped_count() const noexcept {
+        std::size_t count = 0;
+        for (const auto& row : physics_constraints_result_.rows) {
+            if (row.axis_limit_clamped) {
+                ++count;
+            }
+        }
+        return count;
     }
 
     [[nodiscard]] float navigation_goal_x() const noexcept {
@@ -1825,6 +1912,70 @@ class GeneratedGameplaySystemsProbe final {
         }
     }
 
+    void build_physics_constraints_probe() {
+        mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+        const auto fixed_first = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+        });
+        const auto fixed_second = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 4.0F, .y = 0.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+        });
+        const auto linear_axis_first = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 10.0F, .y = 0.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+        });
+        const auto linear_axis_second = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 14.0F, .y = 3.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+        });
+
+        physics_constraints_result_ = mirakana::solve_physics_constraints_3d(
+            world, mirakana::PhysicsConstraintSolve3DDesc{
+                       .config = mirakana::PhysicsConstraintSolve3DConfig{.iterations = 1U, .tolerance = 0.0001F},
+                       .distance_joints = {},
+                       .fixed_constraints =
+                           std::vector<mirakana::PhysicsFixedConstraint3DDesc>{
+                               mirakana::PhysicsFixedConstraint3DDesc{
+                                   .first = fixed_first,
+                                   .second = fixed_second,
+                                   .target_offset = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+                               },
+                           },
+                       .linear_axis_constraints =
+                           std::vector<mirakana::PhysicsLinearAxisConstraint3DDesc>{
+                               mirakana::PhysicsLinearAxisConstraint3DDesc{
+                                   .first = linear_axis_first,
+                                   .second = linear_axis_second,
+                                   .axis = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                   .min_axis_distance = 0.0F,
+                                   .max_axis_distance = 2.0F,
+                               },
+                           },
+                   });
+    }
+
     void render_audio_stream_probe() {
         mirakana::AudioMixer mixer;
         const auto clip =
@@ -2057,6 +2208,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::PhysicsCharacterController3DResult controller_result_;
     mirakana::PhysicsCharacterDynamicPolicy3DResult physics_policy_result_;
     mirakana::PhysicsAdvancedController3DResult advanced_controller_result_;
+    mirakana::PhysicsConstraintSolve3DResult physics_constraints_result_;
     mirakana::NavigationNavmeshPathResult navigation_navmesh_result_;
     mirakana::NavigationCrowdPlanResult navigation_crowd_result_;
     mirakana::NavigationAgentState navigation_agent_;
@@ -2641,6 +2793,31 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] float gameplay_systems_advanced_controller_final_x() const noexcept {
         return gameplay_systems_.advanced_controller_final_x();
+    }
+
+    [[nodiscard]] mirakana::PhysicsConstraint3DStatus gameplay_systems_physics_constraints_status() const noexcept {
+        return gameplay_systems_.physics_constraints_status();
+    }
+
+    [[nodiscard]] mirakana::PhysicsConstraint3DDiagnostic
+    gameplay_systems_physics_constraints_diagnostic() const noexcept {
+        return gameplay_systems_.physics_constraints_diagnostic();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_constraints_rows() const noexcept {
+        return gameplay_systems_.physics_constraints_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_constraints_fixed_rows() const noexcept {
+        return gameplay_systems_.physics_constraints_fixed_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_constraints_linear_axis_rows() const noexcept {
+        return gameplay_systems_.physics_constraints_linear_axis_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_constraints_axis_limit_clamped() const noexcept {
+        return gameplay_systems_.physics_constraints_axis_limit_clamped_count();
     }
 
     [[nodiscard]] float gameplay_systems_navigation_goal_x() const noexcept {
@@ -5511,6 +5688,16 @@ int main(int argc, char** argv) {
         << " gameplay_systems_advanced_controller_replay_after_bodies="
         << game.gameplay_systems_advanced_controller_replay_after_bodies()
         << " gameplay_systems_advanced_controller_final_x=" << game.gameplay_systems_advanced_controller_final_x()
+        << " gameplay_systems_physics_constraints_status="
+        << physics_constraint_status_name(game.gameplay_systems_physics_constraints_status())
+        << " gameplay_systems_physics_constraints_diagnostic="
+        << physics_constraint_diagnostic_name(game.gameplay_systems_physics_constraints_diagnostic())
+        << " gameplay_systems_physics_constraints_rows=" << game.gameplay_systems_physics_constraints_rows()
+        << " gameplay_systems_physics_constraints_fixed_rows=" << game.gameplay_systems_physics_constraints_fixed_rows()
+        << " gameplay_systems_physics_constraints_linear_axis_rows="
+        << game.gameplay_systems_physics_constraints_linear_axis_rows()
+        << " gameplay_systems_physics_constraints_axis_limit_clamped="
+        << game.gameplay_systems_physics_constraints_axis_limit_clamped()
         << " gameplay_systems_navigation_goal_x=" << game.gameplay_systems_navigation_goal_x()
         << " gameplay_systems_navigation_goal_y=" << game.gameplay_systems_navigation_goal_y()
         << " gameplay_systems_navigation_final_x=" << game.gameplay_systems_navigation_final_x()

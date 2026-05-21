@@ -1492,6 +1492,73 @@ struct DistanceJointWorkItem3D {
     PhysicsBody3D* second{nullptr};
 };
 
+[[nodiscard]] bool valid_constraint_config(PhysicsConstraintSolve3DConfig config) noexcept {
+    return config.iterations > 0U && config.iterations <= 64U && finite(config.tolerance) && config.tolerance >= 0.0F;
+}
+
+[[nodiscard]] bool valid_fixed_constraint_desc(const PhysicsFixedConstraint3DDesc& desc) noexcept {
+    return !(desc.first == desc.second) && finite_vec(desc.local_anchor_first) &&
+           finite_vec(desc.local_anchor_second) && finite_vec(desc.target_offset);
+}
+
+[[nodiscard]] bool valid_linear_axis_constraint_common_desc(const PhysicsLinearAxisConstraint3DDesc& desc) noexcept {
+    return !(desc.first == desc.second) && finite_vec(desc.local_anchor_first) && finite_vec(desc.local_anchor_second);
+}
+
+[[nodiscard]] bool valid_linear_axis_constraint_axis(const PhysicsLinearAxisConstraint3DDesc& desc) noexcept {
+    return finite_vec(desc.axis) && length(desc.axis) > 0.000001F;
+}
+
+[[nodiscard]] bool valid_linear_axis_constraint_limits(const PhysicsLinearAxisConstraint3DDesc& desc) noexcept {
+    return finite(desc.min_axis_distance) && finite(desc.max_axis_distance) &&
+           desc.min_axis_distance <= desc.max_axis_distance;
+}
+
+[[nodiscard]] Vec3 constraint_anchor(const PhysicsBody3D& body, Vec3 local_anchor) noexcept {
+    return body.position + local_anchor;
+}
+
+struct ConstraintWorkItem3D {
+    std::size_t row_index{0};
+    PhysicsConstraint3DKind kind{PhysicsConstraint3DKind::distance};
+    const PhysicsDistanceJoint3DDesc* distance_joint{nullptr};
+    const PhysicsFixedConstraint3DDesc* fixed_constraint{nullptr};
+    const PhysicsLinearAxisConstraint3DDesc* linear_axis_constraint{nullptr};
+    Vec3 linear_axis{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+    PhysicsBody3D* first{nullptr};
+    PhysicsBody3D* second{nullptr};
+};
+
+void apply_constraint_error(PhysicsBody3D& first, PhysicsBody3D& second, Vec3 error,
+                            PhysicsConstraintSolve3DRow& row) noexcept {
+    const auto total_inverse_mass = first.inverse_mass + second.inverse_mass;
+    if (total_inverse_mass <= 0.0F) {
+        return;
+    }
+
+    const auto first_correction = error * (first.inverse_mass / total_inverse_mass);
+    const auto second_correction = error * (-second.inverse_mass / total_inverse_mass);
+    first.position = first.position + first_correction;
+    second.position = second.position + second_correction;
+    row.first_correction = row.first_correction + first_correction;
+    row.second_correction = row.second_correction + second_correction;
+}
+
+[[nodiscard]] Vec3 distance_constraint_target_delta(Vec3 delta, float rest_distance) noexcept {
+    return normalize_or_fallback(delta, Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}) * rest_distance;
+}
+
+[[nodiscard]] Vec3 linear_axis_constraint_target_delta(Vec3 delta, Vec3 axis,
+                                                       const PhysicsLinearAxisConstraint3DDesc& desc,
+                                                       bool& axis_limit_clamped) noexcept {
+    const auto axis_distance = dot(delta, axis);
+    const auto clamped_axis_distance = clamp_value(axis_distance, desc.min_axis_distance, desc.max_axis_distance);
+    axis_limit_clamped = std::fabs(axis_distance - clamped_axis_distance) > 0.000001F ||
+                         clamped_axis_distance <= desc.min_axis_distance + 0.000001F ||
+                         clamped_axis_distance >= desc.max_axis_distance - 0.000001F;
+    return axis * clamped_axis_distance;
+}
+
 [[nodiscard]] bool advanced_controller_requires_controller_body(const PhysicsAdvancedController3DDesc& desc) noexcept {
     return desc.controller_body != null_physics_body_3d || !desc.constraints.distance_joints.empty();
 }
@@ -2445,6 +2512,263 @@ PhysicsJointSolve3DResult solve_physics_joints_3d(PhysicsWorld3D& world, const P
 
     result.status = PhysicsJoint3DStatus::solved;
     result.diagnostic = PhysicsJoint3DDiagnostic::none;
+    return result;
+}
+
+PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& world,
+                                                            const PhysicsConstraintSolve3DDesc& desc) {
+    PhysicsConstraintSolve3DResult result;
+
+    if (!valid_constraint_config(desc.config)) {
+        result.status = PhysicsConstraint3DStatus::invalid_request;
+        result.diagnostic = PhysicsConstraint3DDiagnostic::invalid_config;
+        return result;
+    }
+
+    result.rows.reserve(desc.distance_joints.size() + desc.fixed_constraints.size() +
+                        desc.linear_axis_constraints.size());
+    std::vector<ConstraintWorkItem3D> work_items;
+    work_items.reserve(result.rows.capacity());
+    bool invalid_request = false;
+
+    auto reject = [&invalid_request, &result](PhysicsConstraint3DDiagnostic diagnostic) {
+        if (!invalid_request) {
+            invalid_request = true;
+            result.diagnostic = diagnostic;
+        }
+    };
+
+    auto validate_common_bodies = [&world, &reject, &result](PhysicsConstraintSolve3DRow& row, PhysicsBody3D*& first,
+                                                             PhysicsBody3D*& second) {
+        first = world.find_body(row.first);
+        second = world.find_body(row.second);
+        if (first == nullptr || second == nullptr) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::missing_body;
+            result.rows.push_back(row);
+            reject(PhysicsConstraint3DDiagnostic::missing_body);
+            return false;
+        }
+
+        row.previous_delta = constraint_anchor(*second, Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}) -
+                             constraint_anchor(*first, Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F});
+        if (first->inverse_mass <= 0.0F && second->inverse_mass <= 0.0F) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::static_pair;
+            result.rows.push_back(row);
+            reject(PhysicsConstraint3DDiagnostic::static_pair);
+            return false;
+        }
+
+        return true;
+    };
+
+    for (std::size_t index = 0; index < desc.distance_joints.size(); ++index) {
+        const auto& joint = desc.distance_joints[index];
+        const auto row_index = result.rows.size();
+        PhysicsConstraintSolve3DRow row;
+        row.source_index = index;
+        row.kind = PhysicsConstraint3DKind::distance;
+        row.first = joint.first;
+        row.second = joint.second;
+
+        if (!valid_distance_joint_desc(joint)) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::invalid_constraint;
+            result.rows.push_back(row);
+            reject(PhysicsConstraint3DDiagnostic::invalid_constraint);
+            continue;
+        }
+
+        PhysicsBody3D* first = nullptr;
+        PhysicsBody3D* second = nullptr;
+        if (!validate_common_bodies(row, first, second)) {
+            continue;
+        }
+
+        row.previous_delta =
+            constraint_anchor(*second, joint.local_anchor_second) - constraint_anchor(*first, joint.local_anchor_first);
+        row.target_delta = distance_constraint_target_delta(row.previous_delta, joint.rest_distance);
+        row.residual_delta = row.previous_delta - row.target_delta;
+
+        if (!joint.enabled) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::disabled_constraint;
+            result.rows.push_back(row);
+            continue;
+        }
+
+        result.rows.push_back(row);
+        work_items.push_back(ConstraintWorkItem3D{.row_index = row_index,
+                                                  .kind = PhysicsConstraint3DKind::distance,
+                                                  .distance_joint = &joint,
+                                                  .first = first,
+                                                  .second = second});
+    }
+
+    for (std::size_t index = 0; index < desc.fixed_constraints.size(); ++index) {
+        const auto& constraint = desc.fixed_constraints[index];
+        const auto row_index = result.rows.size();
+        PhysicsConstraintSolve3DRow row;
+        row.source_index = index;
+        row.kind = PhysicsConstraint3DKind::fixed;
+        row.first = constraint.first;
+        row.second = constraint.second;
+        row.target_delta = constraint.target_offset;
+
+        if (!valid_fixed_constraint_desc(constraint)) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::invalid_constraint;
+            result.rows.push_back(row);
+            reject(PhysicsConstraint3DDiagnostic::invalid_constraint);
+            continue;
+        }
+
+        PhysicsBody3D* first = nullptr;
+        PhysicsBody3D* second = nullptr;
+        if (!validate_common_bodies(row, first, second)) {
+            continue;
+        }
+
+        row.previous_delta = constraint_anchor(*second, constraint.local_anchor_second) -
+                             constraint_anchor(*first, constraint.local_anchor_first);
+        row.residual_delta = row.previous_delta - row.target_delta;
+
+        if (!constraint.enabled) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::disabled_constraint;
+            result.rows.push_back(row);
+            continue;
+        }
+
+        result.rows.push_back(row);
+        work_items.push_back(ConstraintWorkItem3D{.row_index = row_index,
+                                                  .kind = PhysicsConstraint3DKind::fixed,
+                                                  .fixed_constraint = &constraint,
+                                                  .first = first,
+                                                  .second = second});
+    }
+
+    for (std::size_t index = 0; index < desc.linear_axis_constraints.size(); ++index) {
+        const auto& constraint = desc.linear_axis_constraints[index];
+        const auto row_index = result.rows.size();
+        PhysicsConstraintSolve3DRow row;
+        row.source_index = index;
+        row.kind = PhysicsConstraint3DKind::linear_axis;
+        row.first = constraint.first;
+        row.second = constraint.second;
+
+        if (!valid_linear_axis_constraint_common_desc(constraint)) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::invalid_constraint;
+            result.rows.push_back(row);
+            reject(PhysicsConstraint3DDiagnostic::invalid_constraint);
+            continue;
+        }
+        if (!valid_linear_axis_constraint_axis(constraint)) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::invalid_axis;
+            result.rows.push_back(row);
+            reject(PhysicsConstraint3DDiagnostic::invalid_axis);
+            continue;
+        }
+        if (!valid_linear_axis_constraint_limits(constraint)) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::invalid_limits;
+            result.rows.push_back(row);
+            reject(PhysicsConstraint3DDiagnostic::invalid_limits);
+            continue;
+        }
+
+        PhysicsBody3D* first = nullptr;
+        PhysicsBody3D* second = nullptr;
+        if (!validate_common_bodies(row, first, second)) {
+            continue;
+        }
+
+        const auto axis = normalize_or_fallback(constraint.axis, Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F});
+        row.previous_delta = constraint_anchor(*second, constraint.local_anchor_second) -
+                             constraint_anchor(*first, constraint.local_anchor_first);
+        row.target_delta =
+            linear_axis_constraint_target_delta(row.previous_delta, axis, constraint, row.axis_limit_clamped);
+        row.residual_delta = row.previous_delta - row.target_delta;
+
+        if (!constraint.enabled) {
+            row.diagnostic = PhysicsConstraint3DDiagnostic::disabled_constraint;
+            result.rows.push_back(row);
+            continue;
+        }
+
+        result.rows.push_back(row);
+        work_items.push_back(ConstraintWorkItem3D{.row_index = row_index,
+                                                  .kind = PhysicsConstraint3DKind::linear_axis,
+                                                  .linear_axis_constraint = &constraint,
+                                                  .linear_axis = axis,
+                                                  .first = first,
+                                                  .second = second});
+    }
+
+    if (invalid_request) {
+        result.status = PhysicsConstraint3DStatus::invalid_request;
+        return result;
+    }
+
+    for (std::uint32_t iteration = 0; iteration < desc.config.iterations; ++iteration) {
+        for (const auto& item : work_items) {
+            auto& row = result.rows[item.row_index];
+            Vec3 error{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+
+            if (item.kind == PhysicsConstraint3DKind::distance) {
+                const auto& joint = *item.distance_joint;
+                const auto delta = constraint_anchor(*item.second, joint.local_anchor_second) -
+                                   constraint_anchor(*item.first, joint.local_anchor_first);
+                const auto current_distance = length(delta);
+                const auto scalar_error = current_distance - joint.rest_distance;
+                if (std::fabs(scalar_error) <= desc.config.tolerance) {
+                    continue;
+                }
+                error = normalize_or_fallback(delta, Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}) * scalar_error;
+            } else if (item.kind == PhysicsConstraint3DKind::fixed) {
+                const auto& constraint = *item.fixed_constraint;
+                const auto delta = constraint_anchor(*item.second, constraint.local_anchor_second) -
+                                   constraint_anchor(*item.first, constraint.local_anchor_first);
+                error = delta - constraint.target_offset;
+                if (length(error) <= desc.config.tolerance) {
+                    continue;
+                }
+            } else {
+                const auto& constraint = *item.linear_axis_constraint;
+                const auto delta = constraint_anchor(*item.second, constraint.local_anchor_second) -
+                                   constraint_anchor(*item.first, constraint.local_anchor_first);
+                bool ignored_axis_limit_clamped = false;
+                const auto target = linear_axis_constraint_target_delta(delta, item.linear_axis, constraint,
+                                                                        ignored_axis_limit_clamped);
+                error = delta - target;
+                if (length(error) <= desc.config.tolerance) {
+                    continue;
+                }
+            }
+
+            apply_constraint_error(*item.first, *item.second, error, row);
+        }
+    }
+
+    for (const auto& item : work_items) {
+        auto& row = result.rows[item.row_index];
+        if (item.kind == PhysicsConstraint3DKind::distance) {
+            const auto& joint = *item.distance_joint;
+            const auto delta = constraint_anchor(*item.second, joint.local_anchor_second) -
+                               constraint_anchor(*item.first, joint.local_anchor_first);
+            row.residual_delta = delta - distance_constraint_target_delta(delta, joint.rest_distance);
+        } else if (item.kind == PhysicsConstraint3DKind::fixed) {
+            const auto& constraint = *item.fixed_constraint;
+            const auto delta = constraint_anchor(*item.second, constraint.local_anchor_second) -
+                               constraint_anchor(*item.first, constraint.local_anchor_first);
+            row.residual_delta = delta - constraint.target_offset;
+        } else {
+            const auto& constraint = *item.linear_axis_constraint;
+            const auto delta = constraint_anchor(*item.second, constraint.local_anchor_second) -
+                               constraint_anchor(*item.first, constraint.local_anchor_first);
+            bool axis_limit_clamped = false;
+            row.residual_delta =
+                delta - linear_axis_constraint_target_delta(delta, item.linear_axis, constraint, axis_limit_clamped);
+            row.axis_limit_clamped = axis_limit_clamped;
+        }
+    }
+
+    result.status = PhysicsConstraint3DStatus::solved;
+    result.diagnostic = PhysicsConstraint3DDiagnostic::none;
     return result;
 }
 

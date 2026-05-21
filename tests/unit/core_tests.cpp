@@ -6892,6 +6892,312 @@ MK_TEST("3d physics distance joints cover static disabled and replay rows") {
     }
 }
 
+MK_TEST("3d physics constraints solve fixed and linear-axis rows deterministically") {
+    mirakana::PhysicsWorld3D fixed_world(
+        mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+    const auto fixed_first = fixed_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto fixed_second = fixed_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = -2.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+
+    const auto fixed = mirakana::solve_physics_constraints_3d(
+        fixed_world, mirakana::PhysicsConstraintSolve3DDesc{
+                         .config = mirakana::PhysicsConstraintSolve3DConfig{.iterations = 1U, .tolerance = 0.0001F},
+                         .distance_joints = {},
+                         .fixed_constraints =
+                             std::vector<mirakana::PhysicsFixedConstraint3DDesc>{
+                                 mirakana::PhysicsFixedConstraint3DDesc{
+                                     .first = fixed_first,
+                                     .second = fixed_second,
+                                     .target_offset = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+                                 },
+                             },
+                         .linear_axis_constraints = {},
+                     });
+
+    MK_REQUIRE(fixed.status == mirakana::PhysicsConstraint3DStatus::solved);
+    MK_REQUIRE(fixed.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::none);
+    MK_REQUIRE(fixed.rows.size() == 1);
+    MK_REQUIRE(fixed.rows[0].kind == mirakana::PhysicsConstraint3DKind::fixed);
+    MK_REQUIRE(fixed.rows[0].source_index == 0U);
+    MK_REQUIRE(fixed.rows[0].previous_delta == (mirakana::Vec3{4.0F, 0.0F, 0.0F}));
+    MK_REQUIRE(fixed.rows[0].target_delta == (mirakana::Vec3{2.0F, 0.0F, 0.0F}));
+    MK_REQUIRE(fixed.rows[0].residual_delta == (mirakana::Vec3{0.0F, 0.0F, 0.0F}));
+    MK_REQUIRE(fixed.rows[0].first_correction == (mirakana::Vec3{1.0F, 0.0F, 0.0F}));
+    MK_REQUIRE(fixed.rows[0].second_correction == (mirakana::Vec3{-1.0F, -0.0F, -0.0F}));
+    MK_REQUIRE(fixed_world.find_body(fixed_first)->position == (mirakana::Vec3{1.0F, 0.0F, 0.0F}));
+    MK_REQUIRE(fixed_world.find_body(fixed_second)->position == (mirakana::Vec3{3.0F, 0.0F, 0.0F}));
+    MK_REQUIRE(fixed_world.find_body(fixed_first)->velocity == (mirakana::Vec3{2.0F, 0.0F, 0.0F}));
+    MK_REQUIRE(fixed_world.find_body(fixed_second)->velocity == (mirakana::Vec3{-2.0F, 0.0F, 0.0F}));
+
+    mirakana::PhysicsWorld3D linear_axis_world(
+        mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+    const auto linear_axis_first = linear_axis_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 2.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto linear_axis_second = linear_axis_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 3.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = -2.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+
+    const auto linear_axis = mirakana::solve_physics_constraints_3d(
+        linear_axis_world,
+        mirakana::PhysicsConstraintSolve3DDesc{
+            .config = mirakana::PhysicsConstraintSolve3DConfig{.iterations = 1U, .tolerance = 0.0001F},
+            .distance_joints = {},
+            .fixed_constraints = {},
+            .linear_axis_constraints =
+                std::vector<mirakana::PhysicsLinearAxisConstraint3DDesc>{
+                    mirakana::PhysicsLinearAxisConstraint3DDesc{
+                        .first = linear_axis_first,
+                        .second = linear_axis_second,
+                        .axis = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                        .min_axis_distance = 0.0F,
+                        .max_axis_distance = 2.0F,
+                    },
+                },
+        });
+
+    MK_REQUIRE(linear_axis.status == mirakana::PhysicsConstraint3DStatus::solved);
+    MK_REQUIRE(linear_axis.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::none);
+    MK_REQUIRE(linear_axis.rows.size() == 1);
+    MK_REQUIRE(linear_axis.rows[0].kind == mirakana::PhysicsConstraint3DKind::linear_axis);
+    MK_REQUIRE(linear_axis.rows[0].previous_delta == (mirakana::Vec3{4.0F, 3.0F, 0.0F}));
+    MK_REQUIRE(linear_axis.rows[0].target_delta == (mirakana::Vec3{2.0F, 0.0F, 0.0F}));
+    MK_REQUIRE(linear_axis.rows[0].residual_delta == (mirakana::Vec3{0.0F, 0.0F, 0.0F}));
+    MK_REQUIRE(linear_axis.rows[0].axis_limit_clamped);
+    MK_REQUIRE(linear_axis.rows[0].first_correction == (mirakana::Vec3{1.0F, 1.5F, 0.0F}));
+    MK_REQUIRE(linear_axis.rows[0].second_correction == (mirakana::Vec3{-1.0F, -1.5F, -0.0F}));
+    MK_REQUIRE(linear_axis_world.find_body(linear_axis_first)->position == (mirakana::Vec3{1.0F, 1.5F, 0.0F}));
+    MK_REQUIRE(linear_axis_world.find_body(linear_axis_second)->position == (mirakana::Vec3{3.0F, 1.5F, 0.0F}));
+    MK_REQUIRE(linear_axis_world.find_body(linear_axis_first)->velocity == (mirakana::Vec3{0.0F, 2.0F, 0.0F}));
+    MK_REQUIRE(linear_axis_world.find_body(linear_axis_second)->velocity == (mirakana::Vec3{0.0F, -2.0F, 0.0F}));
+}
+
+MK_TEST("3d physics constraints preserve mixed row order and reject later invalid rows without mutation") {
+    mirakana::PhysicsWorld3D mixed_world(
+        mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+    const auto distance_first = mixed_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto distance_second = mixed_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto fixed_first = mixed_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 0.0F, .y = 4.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto fixed_second = mixed_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 4.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto axis_first = mixed_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 0.0F, .y = 8.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto axis_second = mixed_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 11.0F, .z = 0.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+
+    const auto mixed =
+        mirakana::solve_physics_constraints_3d(
+            mixed_world, mirakana::PhysicsConstraintSolve3DDesc{
+                             .config = mirakana::PhysicsConstraintSolve3DConfig{.iterations = 1U, .tolerance = 0.0001F},
+                             .distance_joints =
+                                 std::vector<mirakana::PhysicsDistanceJoint3DDesc>{
+                                     mirakana::PhysicsDistanceJoint3DDesc{
+                                         .first = distance_first,
+                                         .second = distance_second,
+                                         .rest_distance = 2.0F,
+                                     },
+                                 },
+                             .fixed_constraints =
+                                 std::vector<mirakana::PhysicsFixedConstraint3DDesc>{
+                                     mirakana::PhysicsFixedConstraint3DDesc{
+                                         .first = fixed_first,
+                                         .second = fixed_second,
+                                         .target_offset = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+                                     },
+                                 },
+                             .linear_axis_constraints =
+                                 std::vector<mirakana::PhysicsLinearAxisConstraint3DDesc>{
+                                     mirakana::PhysicsLinearAxisConstraint3DDesc{
+                                         .first = axis_first,
+                                         .second = axis_second,
+                                         .axis = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                         .min_axis_distance = 0.0F,
+                                         .max_axis_distance = 2.0F,
+                                     },
+                                 },
+                         });
+
+    MK_REQUIRE(mixed.status == mirakana::PhysicsConstraint3DStatus::solved);
+    MK_REQUIRE(mixed.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::none);
+    MK_REQUIRE(mixed.rows.size() == 3);
+    MK_REQUIRE(mixed.rows[0].kind == mirakana::PhysicsConstraint3DKind::distance);
+    MK_REQUIRE(mixed.rows[0].source_index == 0U);
+    MK_REQUIRE(mixed.rows[1].kind == mirakana::PhysicsConstraint3DKind::fixed);
+    MK_REQUIRE(mixed.rows[1].source_index == 0U);
+    MK_REQUIRE(mixed.rows[2].kind == mirakana::PhysicsConstraint3DKind::linear_axis);
+    MK_REQUIRE(mixed.rows[2].source_index == 0U);
+    MK_REQUIRE(mixed.rows[2].axis_limit_clamped);
+
+    mirakana::PhysicsWorld3D invalid_world(
+        mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+    const auto invalid_first = invalid_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 1.0F, .y = 2.0F, .z = 3.0F},
+        .velocity = mirakana::Vec3{.x = 4.0F, .y = 5.0F, .z = 6.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto invalid_second = invalid_world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 5.0F, .z = 6.0F},
+        .velocity = mirakana::Vec3{.x = 7.0F, .y = 8.0F, .z = 9.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    invalid_world.apply_force(invalid_first, mirakana::Vec3{.x = 0.25F, .y = 0.5F, .z = 0.75F});
+    const auto invalid_first_before = *invalid_world.find_body(invalid_first);
+    const auto invalid_second_before = *invalid_world.find_body(invalid_second);
+
+    const auto invalid = mirakana::solve_physics_constraints_3d(
+        invalid_world, mirakana::PhysicsConstraintSolve3DDesc{
+                           .config = mirakana::PhysicsConstraintSolve3DConfig{.iterations = 1U, .tolerance = 0.0001F},
+                           .distance_joints = {},
+                           .fixed_constraints =
+                               std::vector<mirakana::PhysicsFixedConstraint3DDesc>{
+                                   mirakana::PhysicsFixedConstraint3DDesc{
+                                       .first = invalid_first,
+                                       .second = invalid_second,
+                                       .target_offset = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                   },
+                               },
+                           .linear_axis_constraints =
+                               std::vector<mirakana::PhysicsLinearAxisConstraint3DDesc>{
+                                   mirakana::PhysicsLinearAxisConstraint3DDesc{
+                                       .first = invalid_first,
+                                       .second = invalid_second,
+                                       .axis = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                       .min_axis_distance = 0.0F,
+                                       .max_axis_distance = 1.0F,
+                                   },
+                               },
+                       });
+
+    MK_REQUIRE(invalid.status == mirakana::PhysicsConstraint3DStatus::invalid_request);
+    MK_REQUIRE(invalid.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::invalid_axis);
+    MK_REQUIRE(invalid.rows.size() == 2);
+    MK_REQUIRE(invalid.rows[0].kind == mirakana::PhysicsConstraint3DKind::fixed);
+    MK_REQUIRE(invalid.rows[1].kind == mirakana::PhysicsConstraint3DKind::linear_axis);
+    MK_REQUIRE(invalid.rows[1].diagnostic == mirakana::PhysicsConstraint3DDiagnostic::invalid_axis);
+    MK_REQUIRE(invalid_world.find_body(invalid_first)->position == invalid_first_before.position);
+    MK_REQUIRE(invalid_world.find_body(invalid_first)->velocity == invalid_first_before.velocity);
+    MK_REQUIRE(invalid_world.find_body(invalid_first)->accumulated_force == invalid_first_before.accumulated_force);
+    MK_REQUIRE(invalid_world.find_body(invalid_second)->position == invalid_second_before.position);
+    MK_REQUIRE(invalid_world.find_body(invalid_second)->velocity == invalid_second_before.velocity);
+    MK_REQUIRE(invalid_world.find_body(invalid_second)->accumulated_force == invalid_second_before.accumulated_force);
+}
+
+MK_TEST("3d physics constraints reject invalid axes and limits without mutation") {
+    mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+    const auto first = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 1.0F, .y = 2.0F, .z = 3.0F},
+        .velocity = mirakana::Vec3{.x = 4.0F, .y = 5.0F, .z = 6.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto second = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 5.0F, .z = 6.0F},
+        .velocity = mirakana::Vec3{.x = 7.0F, .y = 8.0F, .z = 9.0F},
+        .mass = 1.0F,
+        .linear_damping = 0.0F,
+        .dynamic = true,
+    });
+    const auto first_before = *world.find_body(first);
+    const auto second_before = *world.find_body(second);
+
+    const auto invalid_axis = mirakana::solve_physics_constraints_3d(
+        world, mirakana::PhysicsConstraintSolve3DDesc{
+                   .config = mirakana::PhysicsConstraintSolve3DConfig{.iterations = 1U, .tolerance = 0.0001F},
+                   .distance_joints = {},
+                   .fixed_constraints = {},
+                   .linear_axis_constraints =
+                       std::vector<mirakana::PhysicsLinearAxisConstraint3DDesc>{
+                           mirakana::PhysicsLinearAxisConstraint3DDesc{
+                               .first = first,
+                               .second = second,
+                               .axis = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                               .min_axis_distance = 0.0F,
+                               .max_axis_distance = 1.0F,
+                           },
+                       },
+               });
+    MK_REQUIRE(invalid_axis.status == mirakana::PhysicsConstraint3DStatus::invalid_request);
+    MK_REQUIRE(invalid_axis.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::invalid_axis);
+    MK_REQUIRE(invalid_axis.rows.size() == 1);
+    MK_REQUIRE(invalid_axis.rows[0].diagnostic == mirakana::PhysicsConstraint3DDiagnostic::invalid_axis);
+    MK_REQUIRE(world.find_body(first)->position == first_before.position);
+    MK_REQUIRE(world.find_body(second)->position == second_before.position);
+
+    const auto invalid_limits = mirakana::solve_physics_constraints_3d(
+        world, mirakana::PhysicsConstraintSolve3DDesc{
+                   .config = mirakana::PhysicsConstraintSolve3DConfig{.iterations = 1U, .tolerance = 0.0001F},
+                   .distance_joints = {},
+                   .fixed_constraints = {},
+                   .linear_axis_constraints =
+                       std::vector<mirakana::PhysicsLinearAxisConstraint3DDesc>{
+                           mirakana::PhysicsLinearAxisConstraint3DDesc{
+                               .first = first,
+                               .second = second,
+                               .axis = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                               .min_axis_distance = 2.0F,
+                               .max_axis_distance = 1.0F,
+                           },
+                       },
+               });
+    MK_REQUIRE(invalid_limits.status == mirakana::PhysicsConstraint3DStatus::invalid_request);
+    MK_REQUIRE(invalid_limits.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::invalid_limits);
+    MK_REQUIRE(invalid_limits.rows.size() == 1);
+    MK_REQUIRE(invalid_limits.rows[0].diagnostic == mirakana::PhysicsConstraint3DDiagnostic::invalid_limits);
+    MK_REQUIRE(world.find_body(first)->position == first_before.position);
+    MK_REQUIRE(world.find_body(second)->position == second_before.position);
+}
+
 MK_TEST("3d physics joints reject invalid requests without mutation") {
     mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
     const auto body = world.create_body(mirakana::PhysicsBody3DDesc{

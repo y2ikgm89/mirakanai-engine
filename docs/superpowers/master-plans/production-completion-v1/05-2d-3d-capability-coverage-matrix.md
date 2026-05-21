@@ -13,7 +13,7 @@ Coverage statuses:
 | Status | Meaning |
 | --- | --- |
 | `covered-foundation` | Current engine/plan already has a minimum supported or active closeout path. |
-| `active-gap` | Current 1.0 gap cluster must close before zero-gap ready claims. |
+| `active-gap` | Current 1.0 gap cluster must close before zero-gap ready claims. No current row uses this while `unsupportedProductionGaps = []`. |
 | `developer-backlog` | Game-creation agents may request this through handoff; developer implements separately. |
 | `advanced-track` | Post-1.0 / 1.x high-functionality stream. |
 | `host-gated` | Requires backend/platform host evidence before ready claim. |
@@ -51,9 +51,9 @@ Coverage statuses:
 | 3D game scaffold/package | `covered-foundation` | `3d-playable-vertical-slice`; `ai-game-generation-orchestrator-v1` | Generated 3D package recipe creates, validates, and packages scene/mesh/material/game-owned files without engine edits. |
 | Mesh/material/shader package path | `covered-foundation` + `advanced-track` | `3d-playable-vertical-slice`; `renderer-modern-materials-v1` | Current 3D proof is narrow; advanced material/PBR/IBL/shader graph claims require backend-specific evidence. |
 | Lighting/shadows/postprocess | `covered-foundation` + `advanced-track` | `renderer-lighting-shadows-v1`; `renderer-postprocess-v1` | D3D12 package proof is primary; Vulkan/Metal must prove separately through host gates. |
-| 3D camera/controller/movement | `active-gap` + `developer-backlog` | `physics-advanced-dynamics-follow-up`; `physics-character-dynamics-v1`; `engine-input-action-contexts-v1` | Character controller, slopes/steps/platforms, camera/input policy, and package counters required. |
-| 3D physics/collision queries | `active-gap` + `developer-backlog` | `physics-advanced-dynamics-follow-up`; `physics-collision-query-v1` | Deterministic sweeps/casts/layers/body interaction before production gameplay claims. |
-| 3D navigation / AI movement | `active-gap` + `advanced-track` | `navigation-navmesh-and-dynamic-obstacle-follow-up`; `navigation-navmesh-v1`; `navigation-crowd-local-avoidance-v1` | Scene-referenced navmesh/dynamic obstacles/local avoidance need 3D package evidence. |
+| 3D camera/controller/movement | `covered-foundation` + `advanced-track` | `gameplay-physics-navigation-ai-foundation-v1`; `engine-advanced-physics-controller-v1`; `physics-character-dynamics-v1`; `engine-input-action-contexts-v1` | Advanced controller foundations exist; broader character/controller policy, camera/input policy, and richer package counters remain post-1.0 follow-up evidence. |
+| 3D physics/collision queries | `covered-foundation` + `advanced-track` | `physics-collision-query-v1`; `physics-joints-foundation-v1`; `physics-constraints-and-joints-v1`; `physics-vehicles-and-kinematics-v1` | Deterministic query and distance-joint foundations exist; constraints, vehicles, and richer body interaction remain post-1.0 follow-up work. |
+| 3D navigation / AI movement | `covered-foundation` + `advanced-track` | `gameplay-physics-navigation-ai-foundation-v1`; `engine-navmesh-crowd-v1`; `navigation-hierarchical-world-v1` | Navmesh/crowd foundations exist; region/portal hierarchy, streaming-safe nav references, and larger-world package evidence remain post-1.0 follow-up work. |
 | Animation / skeletal / morph basics | `covered-foundation` + `advanced-track` | existing animation/gltf/skinning/morph closeout evidence; `renderer-modern-materials-v1`; `gameplay-systems-framework-v1` | Broad animation graph/retarget/cinematics remain future; current claim is package/proof-scoped. |
 | Runtime UI/audio/save | `covered-foundation` + `developer-backlog` | `engine-ui-game-menu-hud-v1`; `engine-audio-gameplay-mixer-v1`; `engine-save-settings-profile-v1` | Shared game-owned UI/audio/save foundations are implemented; richer 3D package-specific evidence remains follow-up work. |
 
@@ -68,7 +68,7 @@ Coverage statuses:
 | Effects / particles / feedback | `advanced-track` | `renderer-postprocess-v1`; `sprite-effects-particles-v1` for 2D-style effects; future 3D VFX rows if selected | Budgeted effect rows and renderer evidence required; no Niagara/VFX Graph parity claim. |
 | Multiplayer/networking | `optional-adapter` | `networking-and-multiplayer-v1`; `engine-networking-foundation-v1` | Separate architecture/security plan, replay/determinism prerequisites, and host/network gates required. |
 
-Coverage verdict: the master plan now covers the expected 2D and 3D **foundations and advanced directions**, and the composed manifest currently keeps `unsupportedProductionGaps = []`. Broader Unity/Unreal-like 2D/3D functionality is tracked as developer-owned or post-1.0/1.x work so game-creation agents do not mistake planned features for supported engine behavior.
+Coverage verdict: the master plan covers the expected 2D and 3D **foundations and advanced directions**, and the composed manifest currently keeps `unsupportedProductionGaps = []`. `post-1-0-capability-program-v1` is the active milestone for selected post-1.0 / 1.x implementation, starting with `physics-constraints-and-joints-v1`. Broader Unity/Unreal-like 2D/3D functionality remains tracked as developer-owned or post-1.0 / 1.x work so game-creation agents do not mistake planned features for supported engine behavior.
 
 When future reviews find a missing 2D/3D capability, first map it to this matrix. If an existing row owns it, update that row's dated plan when selected; if no row owns it, add one developer-owned capability row and one AI-operable evidence gate rather than scattering duplicate archetype-specific requirements.
 

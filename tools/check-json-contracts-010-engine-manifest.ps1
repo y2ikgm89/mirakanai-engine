@@ -83,7 +83,13 @@ foreach ($needle in @(
     "gameplay_systems_advanced_controller_status=moved",
     "gameplay_systems_advanced_controller_platform_applied=1",
     "gameplay_systems_advanced_controller_constraint_rows=1",
-    "gameplay_systems_advanced_controller_replay_changed=1"
+    "gameplay_systems_advanced_controller_replay_changed=1",
+    "gameplay_systems_physics_constraints_status=solved",
+    "gameplay_systems_physics_constraints_diagnostic=none",
+    "gameplay_systems_physics_constraints_rows=2",
+    "gameplay_systems_physics_constraints_fixed_rows=1",
+    "gameplay_systems_physics_constraints_linear_axis_rows=1",
+    "gameplay_systems_physics_constraints_axis_limit_clamped=1"
 )) {
     if (-not ([string]$engine.gameCodeGuidance.desktopRuntimeGameplaySystemsPackageSmoke).Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.desktopRuntimeGameplaySystemsPackageSmoke missing: $needle"
@@ -483,6 +489,13 @@ if (-not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterControl
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDistanceJoint3DDesc") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsJointSolve3DResult") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("solve_physics_joints_3d") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsConstraint3DStatus") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsConstraint3DDiagnostic") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsFixedConstraint3DDesc") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsLinearAxisConstraint3DDesc") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsConstraintSolve3DResult") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("solve_physics_constraints_3d") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("rotational rigid-body constraints") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDeterminismGate3DStatus") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDeterminismGate3DDiagnostic") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDeterminismGate3DConfig") -or
@@ -494,7 +507,7 @@ if (-not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterControl
     -not ([string]$gePhysicsModule[0].purpose).Contains("validated Physics 1.0 ready surface") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("explicit Jolt/native middleware exclusion") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsWorld3D::step remains discrete")) {
-    Write-Error "engine manifest MK_physics purpose must describe query batches, exact shape sweeps, contact manifold stability, CCD foundation, character/dynamic policy, advanced controller planning, joints foundation, and benchmark determinism gates honestly"
+    Write-Error "engine manifest MK_physics purpose must describe query batches, exact shape sweeps, contact manifold stability, CCD foundation, character/dynamic policy, advanced controller planning, joints/constraints foundation, and benchmark determinism gates honestly"
 }
 if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource v2") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("generation-checked") -or
