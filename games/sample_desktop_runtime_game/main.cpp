@@ -1209,6 +1209,7 @@ to_presentation_shader_bytecode(const mirakana::DesktopShaderBytecodeBlob& bytec
 
 void print_presentation_report(std::string_view prefix, const mirakana::SdlDesktopGameHost& host) {
     const auto report = host.presentation_report();
+    const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
     std::cout << prefix << " presentation_report=requested="
               << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
               << " selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
@@ -1238,7 +1239,20 @@ void print_presentation_report(std::string_view prefix, const mirakana::SdlDeskt
               << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
               << " postprocess_depth_input_requested=" << (report.postprocess_depth_input_requested ? 1 : 0)
               << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
-              << " directional_shadow_status="
+              << " postprocess_policy_status="
+              << mirakana::sdl_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
+              << " postprocess_policy_ready=" << (postprocess_policy.ready ? 1 : 0)
+              << " postprocess_policy_diagnostics=" << postprocess_policy.diagnostics_count
+              << " postprocess_policy_effects=" << postprocess_policy.effect_count
+              << " postprocess_policy_postprocess_passes=" << postprocess_policy.postprocess_pass_count
+              << " postprocess_policy_framegraph_passes=" << postprocess_policy.framegraph_pass_count
+              << " postprocess_policy_framegraph_barrier_step_budget="
+              << postprocess_policy.framegraph_barrier_step_budget
+              << " postprocess_policy_scene_color_required=" << (postprocess_policy.scene_color_required ? 1 : 0)
+              << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
+              << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
+              << " postprocess_policy_backend_shader_evidence_ready="
+              << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0) << " directional_shadow_status="
               << mirakana::sdl_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
               << " directional_shadow_requested=" << (report.directional_shadow_requested ? 1 : 0)
               << " directional_shadow_ready=" << (report.directional_shadow_ready ? 1 : 0)
@@ -1713,6 +1727,7 @@ int main(int argc, char** argv) {
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
+    const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
     const auto renderer_quality =
         mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const auto framegraph_multiqueue = options.require_framegraph_multiqueue_evidence
@@ -1769,7 +1784,19 @@ int main(int argc, char** argv) {
         << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
         << " postprocess_depth_input_requested=" << (report.postprocess_depth_input_requested ? 1 : 0)
         << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
-        << " directional_shadow_status="
+        << " postprocess_policy_status="
+        << mirakana::sdl_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
+        << " postprocess_policy_ready=" << (postprocess_policy.ready ? 1 : 0)
+        << " postprocess_policy_diagnostics=" << postprocess_policy.diagnostics_count
+        << " postprocess_policy_effects=" << postprocess_policy.effect_count
+        << " postprocess_policy_postprocess_passes=" << postprocess_policy.postprocess_pass_count
+        << " postprocess_policy_framegraph_passes=" << postprocess_policy.framegraph_pass_count
+        << " postprocess_policy_framegraph_barrier_step_budget=" << postprocess_policy.framegraph_barrier_step_budget
+        << " postprocess_policy_scene_color_required=" << (postprocess_policy.scene_color_required ? 1 : 0)
+        << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
+        << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
+        << " postprocess_policy_backend_shader_evidence_ready="
+        << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0) << " directional_shadow_status="
         << mirakana::sdl_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
         << " directional_shadow_requested=" << (report.directional_shadow_requested ? 1 : 0)
         << " directional_shadow_ready=" << (report.directional_shadow_ready ? 1 : 0)
@@ -1929,6 +1956,12 @@ int main(int argc, char** argv) {
                                                       : expected_frames * 2;
         if (options.require_postprocess &&
             (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
+             !postprocess_policy.ready || postprocess_policy.diagnostics_count != 0 ||
+             postprocess_policy.effect_count != 1 || postprocess_policy.postprocess_pass_count != 1 ||
+             postprocess_policy.framegraph_pass_count != 2 || postprocess_policy.framegraph_barrier_step_budget != 2 ||
+             !postprocess_policy.scene_color_required || !postprocess_policy.color_grading_effect ||
+             !postprocess_policy.backend_shader_evidence_ready ||
+             (options.require_postprocess_depth_input && !postprocess_policy.scene_depth_required) ||
              report.framegraph_passes != expected_framegraph_passes ||
              report.renderer_stats.framegraph_passes_executed !=
                  static_cast<std::uint64_t>(options.max_frames) * expected_framegraph_passes ||

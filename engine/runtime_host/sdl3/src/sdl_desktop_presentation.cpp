@@ -5,6 +5,7 @@
 
 #include "scene_gpu_binding_injecting_renderer.hpp"
 
+#include "mirakana/renderer/postprocess_policy.hpp"
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
@@ -3478,6 +3479,23 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
            desc.require_directional_shadow || desc.require_directional_shadow_filtering;
 }
 
+[[nodiscard]] bool postprocess_policy_requested(const SdlDesktopPresentationReport& report) noexcept {
+    return report.postprocess_status != SdlDesktopPresentationPostprocessStatus::not_requested ||
+           report.postprocess_depth_input_requested;
+}
+
+[[nodiscard]] rhi::BackendKind postprocess_policy_backend(SdlDesktopPresentationBackend backend) noexcept {
+    switch (backend) {
+    case SdlDesktopPresentationBackend::null_renderer:
+        return rhi::BackendKind::null;
+    case SdlDesktopPresentationBackend::d3d12:
+        return rhi::BackendKind::d3d12;
+    case SdlDesktopPresentationBackend::vulkan:
+        return rhi::BackendKind::vulkan;
+    }
+    return rhi::BackendKind::null;
+}
+
 [[nodiscard]] std::uint32_t
 quality_gate_expected_framegraph_passes(const SdlDesktopPresentationQualityGateDesc& desc) noexcept {
     if (desc.require_directional_shadow) {
@@ -4651,6 +4669,66 @@ sdl_desktop_presentation_quality_gate_status_name(SdlDesktopPresentationQualityG
         return "ready";
     }
     return "unknown";
+}
+
+std::string_view
+sdl_desktop_presentation_postprocess_policy_status_name(SdlDesktopPresentationPostprocessPolicyStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationPostprocessPolicyStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationPostprocessPolicyStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationPostprocessPolicyStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+SdlDesktopPresentationPostprocessPolicyReport
+evaluate_sdl_desktop_presentation_postprocess_policy(const SdlDesktopPresentationReport& report) {
+    SdlDesktopPresentationPostprocessPolicyReport result;
+    if (!postprocess_policy_requested(report)) {
+        return result;
+    }
+
+    const bool postprocess_ready = report.postprocess_status == SdlDesktopPresentationPostprocessStatus::ready;
+    const std::array effects{
+        PostprocessEffectDesc{
+            .kind = PostprocessEffectKind::color_grading,
+            .requires_scene_depth = report.postprocess_depth_input_requested,
+        },
+    };
+    const auto plan = plan_postprocess_chain_policy(PostprocessChainPolicyDesc{
+        .effects = effects,
+        .frame_extent = report.backbuffer_extent,
+        .scene_color_available = postprocess_ready,
+        .scene_depth_available = !report.postprocess_depth_input_requested || report.postprocess_depth_input_ready,
+        .max_effect_count = 1,
+        .max_postprocess_pass_count = 1,
+        .backend = postprocess_policy_backend(report.selected_backend),
+        .require_backend_shader_evidence = true,
+        .backend_shader_evidence_ready = postprocess_ready,
+    });
+
+    result.status = plan.succeeded() ? SdlDesktopPresentationPostprocessPolicyStatus::ready
+                                     : SdlDesktopPresentationPostprocessPolicyStatus::blocked;
+    result.ready = result.status == SdlDesktopPresentationPostprocessPolicyStatus::ready;
+    result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    result.effect_count = plan.effect_count;
+    result.postprocess_pass_count = plan.postprocess_pass_count;
+    result.framegraph_pass_count = plan.frame_graph_pass_count;
+    result.framegraph_barrier_step_budget = plan.frame_graph_barrier_step_budget;
+    result.scene_color_required = plan.scene_color_required;
+    result.scene_depth_required = plan.scene_depth_required;
+    result.bloom_work_texture_required = plan.bloom_work_texture_required;
+    result.tone_mapping_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::tone_mapping);
+    result.exposure_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::exposure);
+    result.bloom_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::bloom);
+    result.color_grading_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::color_grading);
+    result.fog_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::fog);
+    result.anti_aliasing_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::anti_aliasing);
+    result.backend_shader_evidence_ready = plan.backend_shader_evidence_ready;
+    return result;
 }
 
 SdlDesktopPresentationQualityGateReport

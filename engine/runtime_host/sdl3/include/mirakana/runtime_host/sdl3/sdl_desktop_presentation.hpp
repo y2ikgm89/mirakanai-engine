@@ -223,6 +223,32 @@ enum class SdlDesktopPresentationQualityGateStatus : std::uint8_t {
     ready,
 };
 
+enum class SdlDesktopPresentationPostprocessPolicyStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+struct SdlDesktopPresentationPostprocessPolicyReport {
+    SdlDesktopPresentationPostprocessPolicyStatus status{SdlDesktopPresentationPostprocessPolicyStatus::not_requested};
+    bool ready{false};
+    std::uint32_t diagnostics_count{0};
+    std::uint32_t effect_count{0};
+    std::uint32_t postprocess_pass_count{0};
+    std::uint32_t framegraph_pass_count{0};
+    std::uint32_t framegraph_barrier_step_budget{0};
+    bool scene_color_required{false};
+    bool scene_depth_required{false};
+    bool bloom_work_texture_required{false};
+    bool tone_mapping_effect{false};
+    bool exposure_effect{false};
+    bool bloom_effect{false};
+    bool color_grading_effect{false};
+    bool fog_effect{false};
+    bool anti_aliasing_effect{false};
+    bool backend_shader_evidence_ready{false};
+};
+
 struct SdlDesktopPresentationQualityGateDesc {
     bool require_scene_gpu_bindings{false};
     bool require_postprocess{false};
@@ -456,6 +482,10 @@ sdl_desktop_presentation_native_ui_overlay_status_name(SdlDesktopPresentationNat
     SdlDesktopPresentationNativeUiTextureOverlayStatus status) noexcept;
 [[nodiscard]] std::string_view
 sdl_desktop_presentation_quality_gate_status_name(SdlDesktopPresentationQualityGateStatus status) noexcept;
+[[nodiscard]] std::string_view
+sdl_desktop_presentation_postprocess_policy_status_name(SdlDesktopPresentationPostprocessPolicyStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationPostprocessPolicyReport
+evaluate_sdl_desktop_presentation_postprocess_policy(const SdlDesktopPresentationReport& report);
 [[nodiscard]] SdlDesktopPresentationQualityGateReport
 evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationReport& report,
                                                const SdlDesktopPresentationQualityGateDesc& desc) noexcept;

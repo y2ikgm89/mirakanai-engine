@@ -1876,6 +1876,7 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-pla
 foreach ($needle in @("RHI Depth Attachment Contract v0", "Postprocess Chain Policy v1", "PostprocessChainPolicyPlan", "plan_postprocess_chain_policy", "Lighting Shadow Policy v1", "LightingShadowPolicyPlan", "plan_lighting_shadow_policy", "Stable Directional Light-Space Policy v0", "DirectionalShadowLightSpacePlan")) {
     Assert-ContainsText ([string]$geRendererModule[0].purpose) $needle "MK_renderer module purpose"
 }
+if (@($geRendererModule[0].publicHeaders) -notcontains "engine/renderer/include/mirakana/renderer/postprocess_policy.hpp") { Write-Error "engine/agent/manifest.json MK_renderer publicHeaders must include postprocess_policy.hpp" }
 foreach ($needle in @("plan_scene_lighting_shadow_policy", "build_scene_directional_shadow_light_space_plan", "sample_and_apply_runtime_scene_render_animation_float_clip", "advance_runtime_sprite_flipbook", "sample_runtime_morph_mesh_cpu_animation_float_clip")) {
     Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) $needle "MK_scene_renderer module purpose"
 }
@@ -2215,6 +2216,8 @@ foreach ($postprocessDepthGuidance in @(
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Postprocess Depth Input Readback Foundation v0" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Postprocess Chain Policy v1" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "PostprocessChainPolicyPlan" "rendering game guidance"
+$postprocessPolicyNeedles = @("postprocess_policy_status=ready", "postprocess_policy_ready=1", "postprocess_policy_diagnostics=0", "postprocess_policy_effects=1", "postprocess_policy_framegraph_passes=2", "postprocess_policy_scene_depth_required=1")
+foreach ($needle in $postprocessPolicyNeedles) { Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) $needle "rendering game guidance"; Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) $needle "runtime game guidance" }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Sprite Batching Renderer v1 Phase 1" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "SpriteBatchPlanDesc" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "atlas_backed_batch_count" "rendering game guidance"
@@ -2234,29 +2237,14 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "generat
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentVulkan) "MK_VULKAN_TEST_POSTPROCESS_DEPTH_VERTEX_SPV" "Vulkan game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentVulkan) "MK_VULKAN_TEST_POSTPROCESS_DEPTH_FRAGMENT_SPV" "Vulkan game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentVulkan) "postprocess-depth readback" "Vulkan game guidance"
-foreach ($postprocessDepthReadyGuidance in @(
-    "docs/testing.md",
-    "docs/rhi.md",
-    "docs/architecture.md",
-    "docs/roadmap.md",
-    "docs/specs/2026-04-27-engine-essential-gap-analysis.md",
-    ".agents/skills/rendering-change/SKILL.md",
-    ".claude/skills/gameengine-rendering/SKILL.md",
-    "games/sample_desktop_runtime_game/README.md"
-)) {
-    $postprocessDepthReadyText = Get-AgentSurfaceText $postprocessDepthReadyGuidance
-    Assert-ContainsText $postprocessDepthReadyText "postprocess_depth_input_ready" $postprocessDepthReadyGuidance
-}
-foreach ($postprocessDepthPackageCommandGuidance in @(
-    "engine/agent/manifest.json",
-    "games/CMakeLists.txt",
-    "games/sample_desktop_runtime_game/game.agent.json",
-    "games/sample_desktop_runtime_game/README.md",
-    "tools/validate-installed-desktop-runtime.ps1"
-)) {
-    $postprocessDepthPackageCommandText = Get-AgentSurfaceText $postprocessDepthPackageCommandGuidance
-    Assert-ContainsText $postprocessDepthPackageCommandText "--require-postprocess-depth-input" $postprocessDepthPackageCommandGuidance
-}
+foreach ($postprocessDepthReadyGuidance in @("docs/testing.md", "docs/rhi.md", "docs/architecture.md", "docs/roadmap.md", "docs/specs/2026-04-27-engine-essential-gap-analysis.md", ".agents/skills/rendering-change/SKILL.md", ".claude/skills/gameengine-rendering/SKILL.md", "games/sample_desktop_runtime_game/README.md")) { Assert-ContainsText (Get-AgentSurfaceText $postprocessDepthReadyGuidance) "postprocess_depth_input_ready" $postprocessDepthReadyGuidance }
+foreach ($postprocessDepthPackageCommandGuidance in @("engine/agent/manifest.json", "games/CMakeLists.txt", "games/sample_desktop_runtime_game/game.agent.json", "games/sample_desktop_runtime_game/README.md", "tools/validate-installed-desktop-runtime.ps1")) { Assert-ContainsText (Get-AgentSurfaceText $postprocessDepthPackageCommandGuidance) "--require-postprocess-depth-input" $postprocessDepthPackageCommandGuidance }
+foreach ($postprocessPolicyGuidance in @("engine/agent/manifest.json", "games/sample_desktop_runtime_game/game.agent.json", "games/sample_desktop_runtime_game/README.md", "docs/ai-game-development.md", "docs/current-capabilities.md", ".agents/skills/rendering-change/references/full-guidance.md", ".claude/skills/gameengine-rendering/references/full-guidance.md")) { $postprocessPolicyText = Get-AgentSurfaceText $postprocessPolicyGuidance; foreach ($postprocessPolicyNeedle in $postprocessPolicyNeedles) { Assert-ContainsText $postprocessPolicyText $postprocessPolicyNeedle $postprocessPolicyGuidance } }
+$postprocessPolicyValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
+foreach ($postprocessPolicyExpectedField in @('"postprocess_policy_status" = "ready"', '"postprocess_policy_ready" = "1"', '"postprocess_policy_diagnostics" = "0"', '"postprocess_policy_effects" = "1"', '"postprocess_policy_framegraph_passes" = "2"', '"postprocess_policy_scene_depth_required" = $expectedPostprocessPolicySceneDepthRequired', '"postprocess_policy_backend_shader_evidence_ready" = "1"')) { Assert-ContainsText $postprocessPolicyValidationText $postprocessPolicyExpectedField "tools/validate-installed-desktop-runtime.ps1" }
+foreach ($postprocessPolicyCodeGuidance in @("engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp", "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp")) { $postprocessPolicyCodeText = Get-AgentSurfaceText $postprocessPolicyCodeGuidance; foreach ($needle in @("SdlDesktopPresentationPostprocessPolicyReport", "evaluate_sdl_desktop_presentation_postprocess_policy")) { Assert-ContainsText $postprocessPolicyCodeText $needle $postprocessPolicyCodeGuidance } }
+$sampleDesktopRuntimePostprocessPolicyText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/main.cpp"
+foreach ($needle in @("evaluate_sdl_desktop_presentation_postprocess_policy", "postprocess_policy_status")) { Assert-ContainsText $sampleDesktopRuntimePostprocessPolicyText $needle "games/sample_desktop_runtime_game/main.cpp" }
 foreach ($gameDevelopmentDepthGuidance in @(
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
