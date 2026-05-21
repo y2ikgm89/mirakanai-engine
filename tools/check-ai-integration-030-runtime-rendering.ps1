@@ -1873,10 +1873,11 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "recommended next plan reason"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "recommended next plan reason"
-foreach ($needle in @("RHI Depth Attachment Contract v0", "Postprocess Chain Policy v1", "PostprocessChainPolicyPlan", "plan_postprocess_chain_policy", "Lighting Shadow Policy v1", "LightingShadowPolicyPlan", "plan_lighting_shadow_policy", "Stable Directional Light-Space Policy v0", "DirectionalShadowLightSpacePlan")) {
+foreach ($needle in @("RHI Depth Attachment Contract v0", "Scene Scale Policy v1", "SceneScalePolicyPlan", "SceneScaleBatchingMode", "plan_scene_scale_policy", "Postprocess Chain Policy v1", "PostprocessChainPolicyPlan", "plan_postprocess_chain_policy", "Lighting Shadow Policy v1", "LightingShadowPolicyPlan", "plan_lighting_shadow_policy", "Stable Directional Light-Space Policy v0", "DirectionalShadowLightSpacePlan")) {
     Assert-ContainsText ([string]$geRendererModule[0].purpose) $needle "MK_renderer module purpose"
 }
 if (@($geRendererModule[0].publicHeaders) -notcontains "engine/renderer/include/mirakana/renderer/postprocess_policy.hpp") { Write-Error "engine/agent/manifest.json MK_renderer publicHeaders must include postprocess_policy.hpp" }
+if (@($geRendererModule[0].publicHeaders) -notcontains "engine/renderer/include/mirakana/renderer/scene_scale_policy.hpp") { Write-Error "engine/agent/manifest.json MK_renderer publicHeaders must include scene_scale_policy.hpp" }
 foreach ($needle in @("plan_scene_lighting_shadow_policy", "build_scene_directional_shadow_light_space_plan", "sample_and_apply_runtime_scene_render_animation_float_clip", "advance_runtime_sprite_flipbook", "sample_runtime_morph_mesh_cpu_animation_float_clip")) {
     Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) $needle "MK_scene_renderer module purpose"
 }
@@ -2287,6 +2288,8 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "direc
 foreach ($needle in @("directional_shadow_cascade_count=4", "directional_shadow_cascade_tile_width=225", "directional_shadow_atlas_width=900", "directional_shadow_atlas_height=225", "directional_shadow_light_space_cascades=4", "directional_shadow_cascade_splits=5", "framegraph_passes=3")) { Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) $needle "rendering game guidance" }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "Stable Directional Light-Space Policy v0" "rendering game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) "DirectionalShadowLightSpacePlan" "rendering game guidance"
+foreach ($sceneScaleNeedle in @("Scene Scale Policy v1", "SceneScalePolicyDesc", "SceneScalePolicyPlan", "SceneScaleBatchingMode", "plan_scene_scale_policy", "backend instancing-evidence", "performance-measurement")) { Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRendering) $sceneScaleNeedle "rendering game guidance" }
+foreach ($sceneScaleGuidance in @("engine/agent/manifest.json", "docs/ai-game-development.md", "docs/current-capabilities.md", ".agents/skills/rendering-change/references/full-guidance.md", ".claude/skills/gameengine-rendering/references/full-guidance.md")) { $sceneScaleText = Get-AgentSurfaceText $sceneScaleGuidance; foreach ($sceneScaleNeedle in @("Scene Scale Policy v1", "SceneScalePolicyDesc", "SceneScaleBatchingMode", "plan_scene_scale_policy")) { Assert-ContainsText $sceneScaleText $sceneScaleNeedle $sceneScaleGuidance } }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "--require-directional-shadow" "runtime game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "--require-directional-shadow-filtering" "runtime game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntime) "--require-d3d12-shadow-cascade-policy" "runtime game guidance"
