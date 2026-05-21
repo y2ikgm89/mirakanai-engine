@@ -19,7 +19,7 @@ High-freedom game support must preserve the same AI-operable rules and remain ga
 
 Recommended high-freedom 1.x streams:
 
-As of PR #173 / merge commit `3b9e36f7`, `ai-gameplay-authoring-tools-v1` is the active developer-owned milestone selected from this track. It follows completed gameplay authoring, quest/inventory/construction/procedural/world/scripting/networking/simulation foundations and must keep the first phase value-only, reviewed, and non-mutating.
+As of PR #174 / merge commit `9bffa2b8`, `ai-gameplay-authoring-tools-v1` is completed. It follows completed gameplay authoring, quest/inventory/construction/procedural/world/scripting/networking/simulation foundations and adds a value-only, reviewed, non-mutating gameplay authoring/remediation surface with selected package evidence. No follow-on high-freedom stream is active until a concrete game handoff or roadmap decision selects one.
 
 | Stream | Goal | Official-practice evidence gate | Non-goals until separately planned |
 | --- | --- | --- | --- |
