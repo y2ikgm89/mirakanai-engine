@@ -2,7 +2,7 @@
 
 **Plan ID:** `ai-gameplay-authoring-tools-v1`
 **Status:** Completed.
-**Current pointer rule:** Completed through PR #174 / merge commit `9bffa2b8`; `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` returns to the production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection`. Keep `unsupportedProductionGaps = []`; this is a post-1.0 developer-owned high-freedom game creation capability, not a reopened Engine 1.0 production gap.
+**Current pointer rule:** Implementation completed through PR #174 / merge commit `9bffa2b8`, and selection-gate closeout pointer sync completed through PR #175 / merge commit `f05136e2`; `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` returns to the production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection`. Keep `unsupportedProductionGaps = []`; this is a post-1.0 developer-owned high-freedom game creation capability, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
@@ -132,3 +132,4 @@ Promote the review contract into generated-game guidance and selected package-vi
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 - Hosted closeout:
   - PR #174 merged at `9bffa2b8` after `PR Gate`, `Windows MSVC`, `Linux CMake`, `Linux Coverage`, `Linux Clang ASan/UBSan`, `Full Repository Static Analysis (0-3)`, `Agent Static Guards`, `CodeQL`, `iOS Simulator smoke`, and `macOS Metal CMake` succeeded while `unsupportedProductionGaps = []`.
+  - Selection-gate closeout PR #175 merged at `f05136e2` after focused local docs/manifest checks and hosted `PR Gate`, `Windows MSVC`, `Linux CMake`, `Full Repository Static Analysis (0-3)`, `Agent Static Guards`, `CodeQL`, `iOS Simulator smoke`, and `macOS Metal CMake` succeeded while `unsupportedProductionGaps = []`.
