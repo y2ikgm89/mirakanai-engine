@@ -389,7 +389,7 @@ Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsJoint3DStatus"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsDistanceJoint3DDesc" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsJointSolve3DResult" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "solve_physics_joints_3d" "MK_physics module purpose"
-foreach ($needle in @("PhysicsConstraint3DStatus", "PhysicsConstraint3DDiagnostic", "PhysicsFixedConstraint3DDesc", "PhysicsLinearAxisConstraint3DDesc", "PhysicsConstraintSolve3DResult", "solve_physics_constraints_3d", "rotational rigid-body constraints")) { Assert-ContainsText ([string]$gePhysicsModule[0].purpose) $needle "MK_physics module purpose" }
+foreach ($needle in @("PhysicsConstraint3DStatus", "PhysicsConstraint3DDiagnostic", "PhysicsFixedConstraint3DDesc", "PhysicsLinearAxisConstraint3DDesc", "PhysicsConstraintSolve3DResult", "solve_physics_constraints_3d", "max_rows", "row_budget_exceeded", "rotational rigid-body constraints")) { Assert-ContainsText ([string]$gePhysicsModule[0].purpose) $needle "MK_physics module purpose" }
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsDeterminismGate3DStatus" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsDeterminismGate3DDiagnostic" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsDeterminismGate3DConfig" "MK_physics module purpose"
@@ -1423,7 +1423,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "Physics
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsDistanceJoint3DDesc" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsJointSolve3DResult" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "solve_physics_joints_3d" "physics game guidance"
-foreach ($needle in @("PhysicsConstraint3DStatus", "PhysicsConstraint3DDiagnostic", "PhysicsFixedConstraint3DDesc", "PhysicsLinearAxisConstraint3DDesc", "PhysicsConstraintSolve3DResult", "solve_physics_constraints_3d", "rotational rigid-body constraints")) { Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) $needle "physics game guidance" }
+foreach ($needle in @("PhysicsConstraint3DStatus", "PhysicsConstraint3DDiagnostic", "PhysicsFixedConstraint3DDesc", "PhysicsLinearAxisConstraint3DDesc", "PhysicsConstraintSolve3DResult", "solve_physics_constraints_3d", "max_rows", "row_budget_exceeded", "rotational rigid-body constraints")) { Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) $needle "physics game guidance" }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsReplaySignature3D" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsDeterminismGate3DResult" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "make_physics_replay_signature_3d" "physics game guidance"
@@ -1464,7 +1464,7 @@ foreach ($physicsGuidance in @(
     Assert-ContainsText $physicsText "plan_physics_advanced_controller_3d" $physicsGuidance
     Assert-ContainsText $physicsText "PhysicsJointSolve3DResult" $physicsGuidance
     Assert-ContainsText $physicsText "solve_physics_joints_3d" $physicsGuidance
-    foreach ($needle in @("PhysicsConstraintSolve3DResult", "solve_physics_constraints_3d", "rotational rigid-body constraints")) { Assert-ContainsText $physicsText $needle $physicsGuidance }
+    foreach ($needle in @("PhysicsConstraintSolve3DResult", "solve_physics_constraints_3d", "max_rows", "row_budget_exceeded", "rotational rigid-body constraints")) { Assert-ContainsText $physicsText $needle $physicsGuidance }
     Assert-ContainsText $physicsText "PhysicsReplaySignature3D" $physicsGuidance
     Assert-ContainsText $physicsText "evaluate_physics_determinism_gate_3d" $physicsGuidance
 }

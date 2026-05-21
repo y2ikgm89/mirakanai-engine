@@ -495,6 +495,8 @@ if (-not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterControl
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsLinearAxisConstraint3DDesc") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsConstraintSolve3DResult") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("solve_physics_constraints_3d") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("max_rows") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("row_budget_exceeded") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("rotational rigid-body constraints") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDeterminismGate3DStatus") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDeterminismGate3DDiagnostic") -or

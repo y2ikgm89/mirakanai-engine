@@ -2525,8 +2525,15 @@ PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& worl
         return result;
     }
 
-    result.rows.reserve(desc.distance_joints.size() + desc.fixed_constraints.size() +
-                        desc.linear_axis_constraints.size());
+    const auto requested_rows =
+        desc.distance_joints.size() + desc.fixed_constraints.size() + desc.linear_axis_constraints.size();
+    if (desc.config.max_rows == 0U || requested_rows > desc.config.max_rows) {
+        result.status = PhysicsConstraint3DStatus::invalid_request;
+        result.diagnostic = PhysicsConstraint3DDiagnostic::row_budget_exceeded;
+        return result;
+    }
+
+    result.rows.reserve(requested_rows);
     std::vector<ConstraintWorkItem3D> work_items;
     work_items.reserve(result.rows.capacity());
     bool invalid_request = false;

@@ -478,6 +478,7 @@ enum class PhysicsConstraint3DDiagnostic : std::uint8_t {
     disabled_constraint,
     invalid_axis,
     invalid_limits,
+    row_budget_exceeded,
 };
 
 struct PhysicsFixedConstraint3DDesc {
@@ -503,6 +504,8 @@ struct PhysicsLinearAxisConstraint3DDesc {
 struct PhysicsConstraintSolve3DConfig {
     std::uint32_t iterations{1U};
     float tolerance{0.0001F};
+    // The default is intentionally unbounded; set a positive cap to fail closed on unexpected row counts.
+    std::size_t max_rows{std::numeric_limits<std::size_t>::max()};
 };
 
 struct PhysicsConstraintSolve3DDesc {

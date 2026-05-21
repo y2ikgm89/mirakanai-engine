@@ -39,10 +39,12 @@
 #include <charconv>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <span>
 #include <string>
@@ -920,6 +922,8 @@ physics_constraint_diagnostic_name(mirakana::PhysicsConstraint3DDiagnostic diagn
         return "invalid_axis";
     case mirakana::PhysicsConstraint3DDiagnostic::invalid_limits:
         return "invalid_limits";
+    case mirakana::PhysicsConstraint3DDiagnostic::row_budget_exceeded:
+        return "row_budget_exceeded";
     }
     return "unknown";
 }
@@ -1953,7 +1957,12 @@ class GeneratedGameplaySystemsProbe final {
 
         physics_constraints_result_ = mirakana::solve_physics_constraints_3d(
             world, mirakana::PhysicsConstraintSolve3DDesc{
-                       .config = mirakana::PhysicsConstraintSolve3DConfig{.iterations = 1U, .tolerance = 0.0001F},
+                       .config =
+                           mirakana::PhysicsConstraintSolve3DConfig{
+                               .iterations = 1U,
+                               .tolerance = 0.0001F,
+                               .max_rows = std::numeric_limits<std::size_t>::max(),
+                           },
                        .distance_joints = {},
                        .fixed_constraints =
                            std::vector<mirakana::PhysicsFixedConstraint3DDesc>{

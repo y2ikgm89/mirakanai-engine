@@ -77,9 +77,10 @@ Advance the existing distance-joint foundation into a broader first-party constr
 - [x] Add RED tests for fixed/linear-axis constraint rows and invalid linear-axis axis/limit mutation safety.
 - [x] Add `PhysicsConstraint3DStatus`, `PhysicsConstraint3DDiagnostic`, `PhysicsConstraint3DKind`, `PhysicsFixedConstraint3DDesc`, `PhysicsLinearAxisConstraint3DDesc`, `PhysicsConstraintSolve3DConfig`, `PhysicsConstraintSolve3DDesc`, `PhysicsConstraintSolve3DRow`, `PhysicsConstraintSolve3DResult`, and `solve_physics_constraints_3d`.
 - [x] Add deterministic row order across distance, fixed, and linear-axis vectors; invalid-request validation happens before mutation.
+- [x] Add explicit `PhysicsConstraintSolve3DConfig::max_rows` row-count budget with `row_budget_exceeded` diagnostics, default-unbounded behavior, and no world mutation on budget failure.
 - [x] Add package-visible selected constraint counters to `sample_generated_desktop_runtime_3d_package`.
 - [x] Update docs, skills, manifest fragments/composed manifest, and static AI-contract guards.
-- [ ] Decide whether Phase 1 needs an explicit row-count budget API before moving to Phase 2; the first slice has no extensible unsupported-kind input and no persistent constraint assets.
+- [x] Decide whether Phase 1 needs an explicit row-count budget API before moving to Phase 2; Phase 1 now has explicit `max_rows` evidence, while unsupported constraint kinds remain a non-goal until an extensible constraint input surface exists.
 
 ### Done When
 
@@ -155,6 +156,8 @@ Use the stable engine contracts from earlier phases to strengthen generated-game
 | Phase 1 RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` before implementation | Expected failure on 2026-05-22: missing `solve_physics_constraints_3d` and `PhysicsConstraint*` public types. |
 | Phase 1 focused physics build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` | PASS on 2026-05-22 after implementation. |
 | Phase 1 focused physics test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_core_tests"` | PASS on 2026-05-22; `MK_core_tests` passed. |
+| Phase 1 row-budget RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` before row-budget implementation | Expected failure on 2026-05-22: missing `PhysicsConstraintSolve3DConfig::max_rows` and `PhysicsConstraint3DDiagnostic::row_budget_exceeded`. |
+| Phase 1 row-budget focused physics test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_core_tests"` | PASS on 2026-05-22 after row-budget implementation and review follow-up; `MK_core_tests` passed, including `requested_rows == max_rows` acceptance and explicit aggregate `max_rows` call sites. |
 | Phase 1 package build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_generated_desktop_runtime_3d_package` | PASS on 2026-05-22. |
 | Phase 1 package smoke | `out\build\dev\games\Debug\sample_generated_desktop_runtime_3d_package\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-gameplay-systems` | PASS on 2026-05-22; reports `gameplay_systems_physics_constraints_status=solved`, `gameplay_systems_physics_constraints_rows=2`, fixed rows `1`, linear-axis rows `1`, and axis-limit-clamped `1`. |
 | Phase 1 public API boundary | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS on 2026-05-22. |
