@@ -1,7 +1,7 @@
 # Renderer Postprocess v1 (2026-05-21)
 
 **Plan ID:** `renderer-postprocess-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is renderer 1.x developer-owned capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -105,3 +105,4 @@ Promote only backend-specific postprocess execution evidence with fresh official
 - Phase 2 focused evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_sdl3_tests sample_desktop_runtime_game`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_host_sdl3_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp,games/sample_desktop_runtime_game/main.cpp,tests/unit/runtime_host_sdl3_tests.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` passed; production readiness reported `unsupported_gaps=0`.
 - Phase 2 full gate evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 67/67 CTest tests, `unsupported_gaps=0`, and expected Windows host-gated Apple/Metal diagnostic-only blockers.
 - Phase 2 published through PR #153, merge commit `ee61b921cabad0898b0958a265146ed880470a0a`; hosted PR Gate, Windows MSVC, Full Repository Static Analysis shards, Linux, CodeQL, iOS, and macOS Metal CMake checks passed.
+- Phase 3 published through PR #155, merge commit `03f8326257e92d80f845a9e5a71c1a0231850589`; hosted PR Gate, Windows MSVC, Full Repository Static Analysis shards, Linux, CodeQL, iOS, and macOS Metal CMake checks passed while `unsupportedProductionGaps = []` stayed empty.
