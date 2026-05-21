@@ -8,6 +8,7 @@ add_library(mirakana_renderer
     src/rhi_native_ui_overlay.cpp
     src/rhi_postprocess_frame_renderer.cpp
     src/rhi_viewport_surface.cpp
+    src/debug_profiling_policy.cpp
     src/gpu_memory_policy.cpp
     src/scene_scale_policy.cpp
     src/shadow_map.cpp

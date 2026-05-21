@@ -350,6 +350,7 @@ void RhiFrameRenderer::begin_frame() {
         }
 
         commands = device_->begin_command_list(rhi::QueueKind::graphics);
+        commands->insert_gpu_debug_marker("mirakana.presentation");
 
         commands_ = std::move(commands);
         queued_primary_draws_.clear();

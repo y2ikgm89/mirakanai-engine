@@ -5,6 +5,7 @@
 
 #include "scene_gpu_binding_injecting_renderer.hpp"
 
+#include "mirakana/renderer/debug_profiling_policy.hpp"
 #include "mirakana/renderer/gpu_memory_policy.hpp"
 #include "mirakana/renderer/postprocess_policy.hpp"
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
@@ -3497,6 +3498,24 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
            desc.require_os_video_memory_budget || desc.declared_local_budget_bytes > 0;
 }
 
+[[nodiscard]] bool
+debug_profiling_policy_requested(const SdlDesktopPresentationDebugProfilingPolicyDesc& desc) noexcept {
+    return desc.require_scene_gpu_bindings || desc.require_backend_profiling_evidence;
+}
+
+[[nodiscard]] bool debug_profiling_policy_backend_evidence_ready(const SdlDesktopPresentationReport& report,
+                                                                 bool require_backend_profiling_evidence) noexcept {
+    if (!require_backend_profiling_evidence || report.selected_backend != SdlDesktopPresentationBackend::d3d12) {
+        return false;
+    }
+
+    const auto gpu_debug_ready = report.rhi_gpu_debug_scopes_begun > 0 || report.rhi_gpu_debug_scopes_ended > 0 ||
+                                 report.rhi_gpu_debug_markers_inserted > 0;
+    return report.rhi_gpu_timestamp_ticks_per_second > 0 && gpu_debug_ready &&
+           report.renderer_stats.framegraph_barrier_steps_executed > 0 &&
+           report.renderer_stats.framegraph_render_passes_recorded > 0;
+}
+
 [[nodiscard]] std::uint64_t gpu_memory_policy_upload_bytes(const SdlDesktopPresentationReport& report) noexcept {
     return report.rhi_bytes_written + report.scene_gpu_stats.uploaded_texture_bytes +
            report.scene_gpu_stats.uploaded_mesh_bytes + report.scene_gpu_stats.uploaded_morph_bytes +
@@ -4456,6 +4475,11 @@ SdlDesktopPresentationReport SdlDesktopPresentation::report() const noexcept {
         .rhi_transient_placed_allocations = rhi_stats.transient_texture_placed_allocations,
         .rhi_transient_placed_resources_alive = rhi_stats.transient_texture_placed_resources_alive,
         .rhi_bytes_written = rhi_stats.bytes_written,
+        .rhi_gpu_timestamp_ticks_per_second =
+            impl_->device != nullptr ? impl_->device->gpu_timestamp_ticks_per_second() : 0,
+        .rhi_gpu_debug_scopes_begun = rhi_stats.gpu_debug_scopes_begun,
+        .rhi_gpu_debug_scopes_ended = rhi_stats.gpu_debug_scopes_ended,
+        .rhi_gpu_debug_markers_inserted = rhi_stats.gpu_debug_markers_inserted,
         .framegraph_passes = impl_->framegraph_passes,
         .renderer_stats = renderer_stats,
         .backbuffer_extent = impl_->renderer != nullptr ? impl_->renderer->backbuffer_extent() : Extent2D{},
@@ -5125,6 +5149,135 @@ evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(const SdlDesktopPre
                         ? SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::ready
                         : SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::blocked;
     result.ready = result.status == SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::ready;
+    return result;
+}
+
+std::string_view sdl_desktop_presentation_debug_profiling_policy_status_name(
+    const SdlDesktopPresentationDebugProfilingPolicyStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationDebugProfilingPolicyStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationDebugProfilingPolicyStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationDebugProfilingPolicyStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+SdlDesktopPresentationDebugProfilingPolicyReport
+evaluate_sdl_desktop_presentation_debug_profiling_policy(const SdlDesktopPresentationReport& report,
+                                                         const SdlDesktopPresentationDebugProfilingPolicyDesc& desc) {
+    SdlDesktopPresentationDebugProfilingPolicyReport result;
+    result.backend_profiling_evidence_required = desc.require_backend_profiling_evidence;
+    result.expected_frames = desc.expected_frames;
+    result.frames_finished = report.renderer_stats.frames_finished;
+    result.frames_current = desc.expected_frames == 0 || report.renderer_stats.frames_finished == desc.expected_frames;
+    if (!debug_profiling_policy_requested(desc)) {
+        return result;
+    }
+
+    result.scene_resources_ready = !desc.require_scene_gpu_bindings ||
+                                   report.scene_gpu_status == SdlDesktopPresentationSceneGpuBindingStatus::ready;
+    result.gpu_timestamp_ticks_per_second = report.rhi_gpu_timestamp_ticks_per_second;
+    result.gpu_debug_scopes_begun = report.rhi_gpu_debug_scopes_begun;
+    result.gpu_debug_scopes_ended = report.rhi_gpu_debug_scopes_ended;
+    result.gpu_debug_markers_inserted = report.rhi_gpu_debug_markers_inserted;
+    result.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
+    result.framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded;
+
+    const auto backend_evidence_ready =
+        debug_profiling_policy_backend_evidence_ready(report, desc.require_backend_profiling_evidence);
+
+    std::array<DebugProfilingRequestDesc, 2> requests{};
+    std::size_t request_count = 0;
+    if (desc.require_backend_profiling_evidence && report.selected_backend == SdlDesktopPresentationBackend::d3d12) {
+        requests[request_count++] = DebugProfilingRequestDesc{
+            .capture_kind = DebugProfilingCaptureKind::pix_gpu_handoff,
+            .require_gpu_timestamps = true,
+            .require_gpu_debug_markers = true,
+            .require_capture_handoff_evidence = true,
+            .scene_frame_resources_available = result.scene_resources_ready,
+            .source_index = 0,
+        };
+    } else if (result.scene_resources_ready) {
+        requests[request_count++] = DebugProfilingRequestDesc{
+            .capture_kind = DebugProfilingCaptureKind::none,
+            .scene_frame_resources_available = true,
+            .source_index = 0,
+        };
+    }
+
+    const auto plan = plan_debug_profiling_policy(DebugProfilingPolicyDesc{
+        .requests = std::span<const DebugProfilingRequestDesc>{requests.data(), request_count},
+        .expected_frames = desc.expected_frames,
+        .frames_finished = report.renderer_stats.frames_finished,
+        .gpu_timestamp_ticks_per_second = report.rhi_gpu_timestamp_ticks_per_second,
+        .gpu_debug_scopes_begun = report.rhi_gpu_debug_scopes_begun,
+        .gpu_debug_scopes_ended = report.rhi_gpu_debug_scopes_ended,
+        .gpu_debug_markers_inserted = report.rhi_gpu_debug_markers_inserted,
+        .framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed,
+        .framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded,
+        .backend = postprocess_policy_backend(report.selected_backend),
+        .require_backend_profiling_evidence = desc.require_backend_profiling_evidence,
+        .backend_profiling_evidence_ready = backend_evidence_ready,
+    });
+
+    result.backend_profiling_evidence_ready = backend_evidence_ready;
+    result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!result.frames_current) {
+        ++result.diagnostics_count;
+    }
+    result.request_count = plan.request_count;
+    result.gpu_timestamp_request_count = plan.gpu_timestamp_request_count;
+    result.gpu_debug_marker_request_count = plan.gpu_debug_marker_request_count;
+    result.capture_handoff_request_count = plan.capture_handoff_request_count;
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? SdlDesktopPresentationDebugProfilingPolicyStatus::ready
+                                 : SdlDesktopPresentationDebugProfilingPolicyStatus::blocked;
+    return result;
+}
+
+std::string_view sdl_desktop_presentation_d3d12_debug_profiling_execution_status_name(
+    const SdlDesktopPresentationD3d12DebugProfilingExecutionStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+SdlDesktopPresentationD3d12DebugProfilingExecutionReport
+evaluate_sdl_desktop_presentation_d3d12_debug_profiling_execution(const SdlDesktopPresentationReport& report,
+                                                                  const bool requested) {
+    SdlDesktopPresentationD3d12DebugProfilingExecutionReport result;
+    result.gpu_timestamp_ticks_per_second = report.rhi_gpu_timestamp_ticks_per_second;
+    result.gpu_debug_scopes_begun = report.rhi_gpu_debug_scopes_begun;
+    result.gpu_debug_scopes_ended = report.rhi_gpu_debug_scopes_ended;
+    result.gpu_debug_markers_inserted = report.rhi_gpu_debug_markers_inserted;
+    result.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
+    result.framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded;
+
+    if (!requested) {
+        return result;
+    }
+
+    result.d3d12_backend_selected = report.selected_backend == SdlDesktopPresentationBackend::d3d12;
+    result.gpu_timestamps_current = result.d3d12_backend_selected && result.gpu_timestamp_ticks_per_second > 0;
+    result.gpu_debug_markers_current =
+        result.d3d12_backend_selected && (result.gpu_debug_scopes_begun > 0 || result.gpu_debug_scopes_ended > 0 ||
+                                          result.gpu_debug_markers_inserted > 0);
+    result.frame_diagnostics_current = result.d3d12_backend_selected && result.framegraph_barrier_steps_executed > 0 &&
+                                       result.framegraph_render_passes_recorded > 0;
+    result.status =
+        result.gpu_timestamps_current && result.gpu_debug_markers_current && result.frame_diagnostics_current
+            ? SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::ready
+            : SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::blocked;
+    result.ready = result.status == SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::ready;
     return result;
 }
 

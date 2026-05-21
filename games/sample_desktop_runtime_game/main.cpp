@@ -55,6 +55,8 @@ struct DesktopRuntimeGameOptions {
     bool require_d3d12_instanced_draw_evidence{false};
     bool require_gpu_memory_policy{false};
     bool require_d3d12_gpu_memory_evidence{false};
+    bool require_debug_profiling_policy{false};
+    bool require_d3d12_debug_profiling_evidence{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_native_ui_overlay{false};
@@ -719,6 +721,7 @@ void print_usage() {
                  "[--require-d3d12-shadow-cascade-policy] [--require-lighting-shadow-policy] "
                  "[--require-scene-scale-policy] [--require-d3d12-instanced-draw-evidence] "
                  "[--require-gpu-memory-policy] [--require-d3d12-gpu-memory-evidence] "
+                 "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
                  "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
@@ -817,6 +820,18 @@ void print_usage() {
             options.require_scene_gpu_bindings = true;
             options.require_gpu_memory_policy = true;
             options.require_d3d12_gpu_memory_evidence = true;
+            continue;
+        }
+        if (arg == "--require-debug-profiling-policy") {
+            options.require_scene_gpu_bindings = true;
+            options.require_debug_profiling_policy = true;
+            continue;
+        }
+        if (arg == "--require-d3d12-debug-profiling-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_debug_profiling_policy = true;
+            options.require_d3d12_debug_profiling_evidence = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -943,6 +958,17 @@ make_gpu_memory_policy_desc(const DesktopRuntimeGameOptions& options) noexcept {
         desc.expected_frames = options.max_frames;
         desc.require_backend_memory_evidence = options.require_d3d12_gpu_memory_evidence;
         desc.require_os_video_memory_budget = options.require_d3d12_gpu_memory_evidence;
+    }
+    return desc;
+}
+
+[[nodiscard]] mirakana::SdlDesktopPresentationDebugProfilingPolicyDesc
+make_debug_profiling_policy_desc(const DesktopRuntimeGameOptions& options) noexcept {
+    mirakana::SdlDesktopPresentationDebugProfilingPolicyDesc desc;
+    if (options.require_debug_profiling_policy) {
+        desc.require_scene_gpu_bindings = true;
+        desc.expected_frames = options.max_frames;
+        desc.require_backend_profiling_evidence = options.require_d3d12_debug_profiling_evidence;
     }
     return desc;
 }
@@ -1812,6 +1838,11 @@ int main(int argc, char** argv) {
         report, options.require_d3d12_gpu_memory_evidence);
     const auto gpu_memory_policy =
         mirakana::evaluate_sdl_desktop_presentation_gpu_memory_policy(report, make_gpu_memory_policy_desc(options));
+    const auto d3d12_debug_profiling_execution =
+        mirakana::evaluate_sdl_desktop_presentation_d3d12_debug_profiling_execution(
+            report, options.require_d3d12_debug_profiling_evidence);
+    const auto debug_profiling_policy = mirakana::evaluate_sdl_desktop_presentation_debug_profiling_policy(
+        report, make_debug_profiling_policy_desc(options));
     const auto renderer_quality =
         mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const auto framegraph_multiqueue = options.require_framegraph_multiqueue_evidence
@@ -2012,7 +2043,55 @@ int main(int argc, char** argv) {
         << " d3d12_gpu_memory_execution_upload_bytes_written=" << d3d12_gpu_memory_execution.upload_bytes_written
         << " d3d12_gpu_memory_execution_budget_ok=" << (d3d12_gpu_memory_execution.memory_budget_current ? 1 : 0)
         << " d3d12_gpu_memory_execution_transient_heap_ok="
-        << (d3d12_gpu_memory_execution.transient_heap_current ? 1 : 0)
+        << (d3d12_gpu_memory_execution.transient_heap_current ? 1 : 0) << " debug_profiling_policy_status="
+        << mirakana::sdl_desktop_presentation_debug_profiling_policy_status_name(debug_profiling_policy.status)
+        << " debug_profiling_policy_ready=" << (debug_profiling_policy.ready ? 1 : 0)
+        << " debug_profiling_policy_diagnostics=" << debug_profiling_policy.diagnostics_count
+        << " debug_profiling_policy_scene_resources_ready=" << (debug_profiling_policy.scene_resources_ready ? 1 : 0)
+        << " debug_profiling_policy_expected_frames=" << debug_profiling_policy.expected_frames
+        << " debug_profiling_policy_frames_finished=" << debug_profiling_policy.frames_finished
+        << " debug_profiling_policy_frames_current=" << (debug_profiling_policy.frames_current ? 1 : 0)
+        << " debug_profiling_policy_requests=" << debug_profiling_policy.request_count
+        << " debug_profiling_policy_gpu_timestamp_ticks_per_second="
+        << debug_profiling_policy.gpu_timestamp_ticks_per_second
+        << " debug_profiling_policy_gpu_debug_scopes_begun=" << debug_profiling_policy.gpu_debug_scopes_begun
+        << " debug_profiling_policy_gpu_debug_scopes_ended=" << debug_profiling_policy.gpu_debug_scopes_ended
+        << " debug_profiling_policy_gpu_debug_markers_inserted=" << debug_profiling_policy.gpu_debug_markers_inserted
+        << " debug_profiling_policy_framegraph_barrier_steps_executed="
+        << debug_profiling_policy.framegraph_barrier_steps_executed
+        << " debug_profiling_policy_framegraph_render_passes_recorded="
+        << debug_profiling_policy.framegraph_render_passes_recorded
+        << " debug_profiling_policy_gpu_timestamp_requests=" << debug_profiling_policy.gpu_timestamp_request_count
+        << " debug_profiling_policy_gpu_debug_marker_requests=" << debug_profiling_policy.gpu_debug_marker_request_count
+        << " debug_profiling_policy_capture_handoff_requests=" << debug_profiling_policy.capture_handoff_request_count
+        << " debug_profiling_policy_backend_profiling_evidence_required="
+        << (debug_profiling_policy.backend_profiling_evidence_required ? 1 : 0)
+        << " debug_profiling_policy_backend_profiling_evidence_ready="
+        << (debug_profiling_policy.backend_profiling_evidence_ready ? 1 : 0)
+        << " d3d12_debug_profiling_execution_status="
+        << mirakana::sdl_desktop_presentation_d3d12_debug_profiling_execution_status_name(
+               d3d12_debug_profiling_execution.status)
+        << " d3d12_debug_profiling_execution_ready=" << (d3d12_debug_profiling_execution.ready ? 1 : 0)
+        << " d3d12_debug_profiling_execution_selected="
+        << (d3d12_debug_profiling_execution.d3d12_backend_selected ? 1 : 0)
+        << " d3d12_debug_profiling_execution_gpu_timestamp_ticks_per_second="
+        << d3d12_debug_profiling_execution.gpu_timestamp_ticks_per_second
+        << " d3d12_debug_profiling_execution_gpu_debug_scopes_begun="
+        << d3d12_debug_profiling_execution.gpu_debug_scopes_begun
+        << " d3d12_debug_profiling_execution_gpu_debug_scopes_ended="
+        << d3d12_debug_profiling_execution.gpu_debug_scopes_ended
+        << " d3d12_debug_profiling_execution_gpu_debug_markers_inserted="
+        << d3d12_debug_profiling_execution.gpu_debug_markers_inserted
+        << " d3d12_debug_profiling_execution_framegraph_barrier_steps_executed="
+        << d3d12_debug_profiling_execution.framegraph_barrier_steps_executed
+        << " d3d12_debug_profiling_execution_framegraph_render_passes_recorded="
+        << d3d12_debug_profiling_execution.framegraph_render_passes_recorded
+        << " d3d12_debug_profiling_execution_gpu_timestamps_ok="
+        << (d3d12_debug_profiling_execution.gpu_timestamps_current ? 1 : 0)
+        << " d3d12_debug_profiling_execution_gpu_debug_markers_ok="
+        << (d3d12_debug_profiling_execution.gpu_debug_markers_current ? 1 : 0)
+        << " d3d12_debug_profiling_execution_frame_diagnostics_ok="
+        << (d3d12_debug_profiling_execution.frame_diagnostics_current ? 1 : 0)
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -2193,6 +2272,12 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_d3d12_gpu_memory_evidence && !d3d12_gpu_memory_execution.ready) {
+            return 3;
+        }
+        if (options.require_debug_profiling_policy && !debug_profiling_policy.ready) {
+            return 3;
+        }
+        if (options.require_d3d12_debug_profiling_evidence && !d3d12_debug_profiling_execution.ready) {
             return 3;
         }
         if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {

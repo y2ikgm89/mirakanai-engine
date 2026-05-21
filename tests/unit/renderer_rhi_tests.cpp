@@ -4,6 +4,7 @@
 #include "test_framework.hpp"
 
 #include "mirakana/assets/material.hpp"
+#include "mirakana/renderer/debug_profiling_policy.hpp"
 #include "mirakana/renderer/frame_graph.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/renderer/gpu_memory_policy.hpp"
@@ -6173,6 +6174,73 @@ MK_TEST("gpu memory policy plans budgets residency transient heap and fail-close
         invalid, mirakana::GpuMemoryDiagnosticCode::missing_backend_memory_evidence));
     MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(
         invalid, mirakana::GpuMemoryDiagnosticCode::missing_os_video_memory_budget));
+}
+
+MK_TEST("debug profiling policy plans capture handoff timestamps markers and fail-closed diagnostics") {
+    const std::array requests{
+        mirakana::DebugProfilingRequestDesc{.capture_kind = mirakana::DebugProfilingCaptureKind::pix_gpu_handoff,
+                                            .require_gpu_timestamps = true,
+                                            .require_gpu_debug_markers = true,
+                                            .require_capture_handoff_evidence = true,
+                                            .scene_frame_resources_available = true,
+                                            .source_index = 0},
+    };
+
+    const auto plan = mirakana::plan_debug_profiling_policy(mirakana::DebugProfilingPolicyDesc{
+        .requests = requests,
+        .expected_frames = 2,
+        .frames_finished = 2,
+        .gpu_timestamp_ticks_per_second = 10'000'000,
+        .gpu_debug_scopes_begun = 2,
+        .gpu_debug_scopes_ended = 2,
+        .gpu_debug_markers_inserted = 2,
+        .framegraph_barrier_steps_executed = 12,
+        .framegraph_render_passes_recorded = 6,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .require_backend_profiling_evidence = true,
+        .backend_profiling_evidence_ready = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.request_count == 1);
+    MK_REQUIRE(plan.gpu_timestamp_request_count == 1);
+    MK_REQUIRE(plan.gpu_debug_marker_request_count == 1);
+    MK_REQUIRE(plan.capture_handoff_request_count == 1);
+    MK_REQUIRE(plan.frame_diagnostics_ready);
+    MK_REQUIRE(plan.request_rows[0].gpu_timestamps_ready);
+    MK_REQUIRE(plan.request_rows[0].gpu_debug_markers_ready);
+    MK_REQUIRE(plan.request_rows[0].capture_handoff_ready);
+
+    const std::array invalid_requests{
+        mirakana::DebugProfilingRequestDesc{.capture_kind = mirakana::DebugProfilingCaptureKind::pix_gpu_handoff,
+                                            .require_gpu_timestamps = true,
+                                            .require_gpu_debug_markers = true,
+                                            .scene_frame_resources_available = false,
+                                            .request_automatic_capture_execution = true,
+                                            .request_production_flame_graph = true,
+                                            .request_crash_telemetry_export = true,
+                                            .source_index = 4},
+    };
+    const auto invalid = mirakana::plan_debug_profiling_policy(mirakana::DebugProfilingPolicyDesc{
+        .requests = invalid_requests,
+        .backend = mirakana::rhi::BackendKind::vulkan,
+        .require_backend_profiling_evidence = true,
+        .backend_profiling_evidence_ready = false,
+    });
+
+    MK_REQUIRE(!invalid.succeeded());
+    MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
+        invalid, mirakana::DebugProfilingDiagnosticCode::missing_scene_frame_resources));
+    MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
+        invalid, mirakana::DebugProfilingDiagnosticCode::unsupported_automatic_capture_execution));
+    MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
+        invalid, mirakana::DebugProfilingDiagnosticCode::unsupported_production_flame_graph));
+    MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
+        invalid, mirakana::DebugProfilingDiagnosticCode::unsupported_crash_telemetry_export));
+    MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
+        invalid, mirakana::DebugProfilingDiagnosticCode::missing_backend_profiling_evidence));
+    MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
+        invalid, mirakana::DebugProfilingDiagnosticCode::missing_frame_diagnostic_evidence));
 }
 
 MK_TEST("rhi postprocess frame renderer records morph scene draws") {
