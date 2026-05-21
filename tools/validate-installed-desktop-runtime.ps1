@@ -177,6 +177,7 @@ $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
 $requiresDebugProfilingPolicy = @($SmokeArgs) -contains "--require-debug-profiling-policy"
 $requiresD3d12DebugProfilingEvidence = @($SmokeArgs) -contains "--require-d3d12-debug-profiling-evidence"
+$requiresVulkanDebugProfilingEvidence = @($SmokeArgs) -contains "--require-vulkan-debug-profiling-evidence"
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
@@ -529,11 +530,12 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             }
         }
     }
-    if ($requiresD3d12DebugProfilingEvidence) {
+    if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) {
         $requiresDebugProfilingPolicy = $true
     }
     if ($requiresDebugProfilingPolicy) {
-        $expectedDebugProfilingBackendEvidence = if ($requiresD3d12DebugProfilingEvidence) { "1" } else { "0" }
+        $expectedDebugProfilingBackendEvidence =
+            if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) { "1" } else { "0" }
         $expectedDebugProfilingPolicyFields = @{
             "debug_profiling_policy_status" = "ready"
             "debug_profiling_policy_ready" = "1"
@@ -553,13 +555,17 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         }
         foreach ($field in @(
                 "debug_profiling_policy_requests",
-                "debug_profiling_policy_gpu_timestamp_ticks_per_second",
                 "debug_profiling_policy_gpu_debug_markers_inserted",
                 "debug_profiling_policy_framegraph_barrier_steps_executed",
                 "debug_profiling_policy_framegraph_render_passes_recorded"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive debug profiling policy field: $field"
+            }
+        }
+        if ($requiresD3d12DebugProfilingEvidence) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bdebug_profiling_policy_gpu_timestamp_ticks_per_second=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive debug profiling policy field: debug_profiling_policy_gpu_timestamp_ticks_per_second"
             }
         }
     }
@@ -586,6 +592,30 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive D3D12 debug profiling evidence field: $field"
+            }
+        }
+    }
+    if ($requiresVulkanDebugProfilingEvidence) {
+        $expectedVulkanDebugProfilingFields = @{
+            "vulkan_debug_profiling_execution_status" = "ready"
+            "vulkan_debug_profiling_execution_ready" = "1"
+            "vulkan_debug_profiling_execution_selected" = "1"
+            "vulkan_debug_profiling_execution_gpu_debug_markers_ok" = "1"
+            "vulkan_debug_profiling_execution_frame_diagnostics_ok" = "1"
+        }
+        foreach ($field in $expectedVulkanDebugProfilingFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedVulkanDebugProfilingFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove Vulkan debug profiling evidence field: $field=$($expectedVulkanDebugProfilingFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "vulkan_debug_profiling_execution_gpu_debug_markers_inserted",
+                "vulkan_debug_profiling_execution_framegraph_barrier_steps_executed",
+                "vulkan_debug_profiling_execution_framegraph_render_passes_recorded"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive Vulkan debug profiling evidence field: $field"
             }
         }
     }

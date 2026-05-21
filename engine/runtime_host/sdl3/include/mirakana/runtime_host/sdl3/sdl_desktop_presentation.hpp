@@ -423,6 +423,12 @@ enum class SdlDesktopPresentationD3d12DebugProfilingExecutionStatus : std::uint8
     ready,
 };
 
+enum class SdlDesktopPresentationVulkanDebugProfilingExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
 struct SdlDesktopPresentationDebugProfilingPolicyDesc {
     bool require_scene_gpu_bindings{false};
     bool require_backend_profiling_evidence{false};
@@ -458,6 +464,22 @@ struct SdlDesktopPresentationD3d12DebugProfilingExecutionReport {
         SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::not_requested};
     bool ready{false};
     bool d3d12_backend_selected{false};
+    std::uint64_t gpu_timestamp_ticks_per_second{0};
+    std::uint64_t gpu_debug_scopes_begun{0};
+    std::uint64_t gpu_debug_scopes_ended{0};
+    std::uint64_t gpu_debug_markers_inserted{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
+    std::uint64_t framegraph_render_passes_recorded{0};
+    bool gpu_timestamps_current{false};
+    bool gpu_debug_markers_current{false};
+    bool frame_diagnostics_current{false};
+};
+
+struct SdlDesktopPresentationVulkanDebugProfilingExecutionReport {
+    SdlDesktopPresentationVulkanDebugProfilingExecutionStatus status{
+        SdlDesktopPresentationVulkanDebugProfilingExecutionStatus::not_requested};
+    bool ready{false};
+    bool vulkan_backend_selected{false};
     std::uint64_t gpu_timestamp_ticks_per_second{0};
     std::uint64_t gpu_debug_scopes_begun{0};
     std::uint64_t gpu_debug_scopes_ended{0};
@@ -741,6 +763,11 @@ evaluate_sdl_desktop_presentation_debug_profiling_policy(const SdlDesktopPresent
 [[nodiscard]] SdlDesktopPresentationD3d12DebugProfilingExecutionReport
 evaluate_sdl_desktop_presentation_d3d12_debug_profiling_execution(const SdlDesktopPresentationReport& report,
                                                                   bool requested);
+[[nodiscard]] std::string_view sdl_desktop_presentation_vulkan_debug_profiling_execution_status_name(
+    SdlDesktopPresentationVulkanDebugProfilingExecutionStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationVulkanDebugProfilingExecutionReport
+evaluate_sdl_desktop_presentation_vulkan_debug_profiling_execution(const SdlDesktopPresentationReport& report,
+                                                                   bool requested);
 [[nodiscard]] SdlDesktopPresentationQualityGateReport
 evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationReport& report,
                                                const SdlDesktopPresentationQualityGateDesc& desc) noexcept;

@@ -207,4 +207,21 @@ bool has_debug_profiling_policy_diagnostic(const DebugProfilingPolicyPlan& plan,
     return false;
 }
 
+bool debug_profiling_policy_backend_evidence_ready(const DebugProfilingBackendEvidenceDesc& desc) noexcept {
+    const auto gpu_debug_ready =
+        desc.gpu_debug_scopes_begun > 0 || desc.gpu_debug_scopes_ended > 0 || desc.gpu_debug_markers_inserted > 0;
+    const auto frame_diagnostics_ready =
+        desc.framegraph_barrier_steps_executed > 0 && desc.framegraph_render_passes_recorded > 0;
+    switch (desc.backend) {
+    case rhi::BackendKind::d3d12:
+        return desc.gpu_timestamp_ticks_per_second > 0 && gpu_debug_ready && frame_diagnostics_ready;
+    case rhi::BackendKind::vulkan:
+        return gpu_debug_ready && frame_diagnostics_ready;
+    case rhi::BackendKind::null:
+    case rhi::BackendKind::metal:
+        return false;
+    }
+    return false;
+}
+
 } // namespace mirakana
