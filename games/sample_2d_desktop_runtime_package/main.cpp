@@ -16,6 +16,7 @@
 #include "mirakana/renderer/sprite_batch.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/inventory_items.hpp"
+#include "mirakana/runtime/procedural_generation.hpp"
 #include "mirakana/runtime/quest_dialogue.hpp"
 #include "mirakana/runtime/runtime_diagnostics.hpp"
 #include "mirakana/runtime/session_services.hpp"
@@ -61,6 +62,7 @@ struct DesktopRuntimeOptions {
     bool require_sprite_animation{false};
     bool require_tilemap_runtime_ux{false};
     bool require_gameplay_systems{false};
+    bool require_procedural_generation{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -322,6 +324,19 @@ struct Gameplay2DConstructionPlacementProbeResult {
     std::size_t intent_rows{0U};
     std::size_t intent_accepted_rows{0U};
     std::size_t intent_occupied_cells{0U};
+};
+
+struct Gameplay2DProceduralGenerationProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t rows{0U};
+    std::size_t object_rows{0U};
+    std::size_t encounter_rows{0U};
+    std::size_t loot_rows{0U};
+    std::uint64_t replay_hash{0ULL};
+    std::size_t package_visible_rows{0U};
+    std::size_t placement_intent_rows{0U};
+    std::size_t placement_intent_accepted_rows{0U};
 };
 
 [[nodiscard]] mirakana::AssetId packaged_sprite_texture_asset_id();
@@ -716,6 +731,153 @@ struct Gameplay2DConstructionPlacementProbeResult {
     return result;
 }
 
+[[nodiscard]] Gameplay2DProceduralGenerationProbeResult validate_gameplay_2d_procedural_generation() {
+    using Kind = mirakana::runtime::RuntimeProceduralGenerationContentKind;
+    using IntentStatus = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    Gameplay2DProceduralGenerationProbeResult result;
+    const std::vector<std::string> supported_content_ids{
+        "sample_2d.object.workbench",
+        "sample_2d.encounter.tutorial",
+        "sample_2d.loot.cache",
+    };
+    const auto generation = mirakana::runtime::plan_runtime_procedural_generation(
+        mirakana::runtime::RuntimeProceduralGenerationRequest{
+            .generator_id = "sample_2d.package.procedural.v1",
+            .seed = 0x2D20260521ULL,
+            .map_width = 8U,
+            .map_height = 6U,
+            .output_budget = 3U,
+            .content =
+                std::vector<mirakana::runtime::RuntimeProceduralGenerationContentRequest>{
+                    mirakana::runtime::RuntimeProceduralGenerationContentRequest{
+                        .content_id = "sample_2d.object.workbench",
+                        .kind = Kind::object,
+                        .count = 1U,
+                    },
+                    mirakana::runtime::RuntimeProceduralGenerationContentRequest{
+                        .content_id = "sample_2d.encounter.tutorial",
+                        .kind = Kind::encounter,
+                        .count = 1U,
+                    },
+                    mirakana::runtime::RuntimeProceduralGenerationContentRequest{
+                        .content_id = "sample_2d.loot.cache",
+                        .kind = Kind::loot,
+                        .count = 1U,
+                    },
+                },
+        },
+        mirakana::runtime::RuntimeProceduralGenerationContext{
+            .supported_content_ids = std::span<const std::string>{supported_content_ids},
+            .max_output_rows = 3U,
+        });
+
+    result.diagnostics += generation.diagnostics.size();
+    result.rows = generation.rows.size();
+    result.replay_hash = generation.replay_hash;
+    std::string object_output_id;
+    for (const auto& row : generation.rows) {
+        switch (row.kind) {
+        case Kind::map_tile:
+            break;
+        case Kind::encounter:
+            ++result.encounter_rows;
+            break;
+        case Kind::loot:
+            ++result.loot_rows;
+            break;
+        case Kind::object:
+            ++result.object_rows;
+            if (object_output_id.empty()) {
+                object_output_id = row.id;
+            }
+            break;
+        }
+    }
+    if (!generation.succeeded || object_output_id.empty() || result.rows != 3U || result.object_rows != 1U ||
+        result.encounter_rows != 1U || result.loot_rows != 1U || result.replay_hash == 0ULL) {
+        return result;
+    }
+
+    const auto catalog = gameplay_2d_inventory_catalog_document();
+    const std::vector<std::string> placement_ids{"grid_2d"};
+    const std::vector<mirakana::runtime::RuntimeConstructionPlacementSurfaceDesc> surfaces{
+        mirakana::runtime::RuntimeConstructionPlacementSurfaceDesc{.id = "procedural_floor", .placement_id = "grid_2d"},
+    };
+    const std::vector<mirakana::runtime::RuntimeConstructionPlacementCandidateDesc> candidates{
+        mirakana::runtime::RuntimeConstructionPlacementCandidateDesc{
+            .item_id = "workbench",
+            .surface_id = "procedural_floor",
+            .grid_x = 2.0F,
+            .grid_y = 3.0F,
+            .grid_z = 0.0F,
+            .world_x = 2.5F,
+            .world_y = 3.5F,
+            .world_z = 0.0F,
+            .footprint_width = 2U,
+            .footprint_height = 1U,
+            .footprint_depth = 1U,
+            .occupied_cells =
+                std::vector<mirakana::runtime::RuntimeConstructionPlacementCellDesc>{
+                    mirakana::runtime::RuntimeConstructionPlacementCellDesc{.x = 2, .y = 3, .z = 0},
+                    mirakana::runtime::RuntimeConstructionPlacementCellDesc{.x = 3, .y = 3, .z = 0},
+                },
+            .provided_costs =
+                std::vector<mirakana::runtime::RuntimeItemCostDesc>{
+                    mirakana::runtime::RuntimeItemCostDesc{.item_id = "wood", .quantity = 3U},
+                },
+        },
+    };
+    const auto placement = mirakana::runtime::validate_runtime_construction_placement(
+        catalog, candidates,
+        mirakana::runtime::RuntimeConstructionPlacementValidationContext{
+            .supported_placement_ids = std::span<const std::string>{placement_ids},
+            .supported_surfaces = std::span<const mirakana::runtime::RuntimeConstructionPlacementSurfaceDesc>{surfaces},
+        });
+    result.diagnostics += placement.diagnostics.size();
+    if (!placement.succeeded) {
+        return result;
+    }
+
+    mirakana::SceneNodeComponents components;
+    components.sprite_renderer = mirakana::SpriteRendererComponent{
+        .sprite = packaged_sprite_texture_asset_id(),
+        .material = mirakana::AssetId{11460315010553722633ULL},
+        .size = mirakana::Vec2{.x = 2.0F, .y = 1.0F},
+        .tint = {0.7F, 0.78F, 0.42F, 1.0F},
+        .visible = true,
+    };
+    const std::vector<mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = object_output_id,
+            .anchor_id = "sample_2d.package.procedural.workbench_anchor",
+            .candidate_index = 0U,
+            .node_name = "ProceduralWorkbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 2.5F, .y = 3.5F, .z = 0.0F}},
+            .components = components,
+            .reviewed = true,
+            .package_visible = true,
+        },
+    };
+    const auto intent_plan = mirakana::runtime_scene::plan_runtime_scene_procedural_construction_placement_intents(
+        generation, placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+    result.diagnostics += intent_plan.diagnostics.size();
+    result.placement_intent_rows = intent_plan.rows.size();
+    for (const auto& row : intent_plan.rows) {
+        if (row.package_visible) {
+            ++result.package_visible_rows;
+        }
+        if (row.status == IntentStatus::accepted) {
+            ++result.placement_intent_accepted_rows;
+        }
+    }
+    result.ready = intent_plan.succeeded() && result.diagnostics == 0U && result.rows == 3U &&
+                   result.object_rows == 1U && result.encounter_rows == 1U && result.loot_rows == 1U &&
+                   result.replay_hash != 0ULL && result.package_visible_rows == 1U &&
+                   result.placement_intent_rows == 1U && result.placement_intent_accepted_rows == 1U;
+    return result;
+}
+
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
@@ -847,6 +1009,18 @@ class Gameplay2DSystemsProbe final {
         construction_placement_intent_accepted_rows_ = construction_placement.intent_accepted_rows;
         construction_placement_intent_occupied_cells_ = construction_placement.intent_occupied_cells;
 
+        const auto procedural_generation = validate_gameplay_2d_procedural_generation();
+        procedural_generation_ready_ = procedural_generation.ready;
+        procedural_generation_diagnostics_ = procedural_generation.diagnostics;
+        procedural_generation_rows_ = procedural_generation.rows;
+        procedural_generation_object_rows_ = procedural_generation.object_rows;
+        procedural_generation_encounter_rows_ = procedural_generation.encounter_rows;
+        procedural_generation_loot_rows_ = procedural_generation.loot_rows;
+        procedural_generation_replay_hash_ = procedural_generation.replay_hash;
+        procedural_generation_package_visible_rows_ = procedural_generation.package_visible_rows;
+        procedural_generation_placement_intent_rows_ = procedural_generation.placement_intent_rows;
+        procedural_generation_placement_intent_accepted_rows_ = procedural_generation.placement_intent_accepted_rows;
+
         started_ = true;
     }
 
@@ -897,7 +1071,13 @@ class Gameplay2DSystemsProbe final {
                construction_placement_ready_ && construction_placement_diagnostics_ == 0U &&
                construction_placement_validation_rows_ == 3U && construction_placement_intent_rows_ == 1U &&
                construction_placement_intent_accepted_rows_ == 1U &&
-               construction_placement_intent_occupied_cells_ == 2U;
+               construction_placement_intent_occupied_cells_ == 2U && procedural_generation_ready_ &&
+               procedural_generation_diagnostics_ == 0U && procedural_generation_rows_ == 3U &&
+               procedural_generation_object_rows_ == 1U && procedural_generation_encounter_rows_ == 1U &&
+               procedural_generation_loot_rows_ == 1U && procedural_generation_replay_hash_ != 0ULL &&
+               procedural_generation_package_visible_rows_ == 1U &&
+               procedural_generation_placement_intent_rows_ == 1U &&
+               procedural_generation_placement_intent_accepted_rows_ == 1U;
     }
 
     [[nodiscard]] Gameplay2DSystemsStatus status(std::uint32_t expected_ticks) const {
@@ -1091,6 +1271,46 @@ class Gameplay2DSystemsProbe final {
         return construction_placement_intent_occupied_cells_;
     }
 
+    [[nodiscard]] bool procedural_generation_ready() const noexcept {
+        return procedural_generation_ready_;
+    }
+
+    [[nodiscard]] std::size_t procedural_generation_diagnostic_count() const noexcept {
+        return procedural_generation_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t procedural_generation_row_count() const noexcept {
+        return procedural_generation_rows_;
+    }
+
+    [[nodiscard]] std::size_t procedural_generation_object_row_count() const noexcept {
+        return procedural_generation_object_rows_;
+    }
+
+    [[nodiscard]] std::size_t procedural_generation_encounter_row_count() const noexcept {
+        return procedural_generation_encounter_rows_;
+    }
+
+    [[nodiscard]] std::size_t procedural_generation_loot_row_count() const noexcept {
+        return procedural_generation_loot_rows_;
+    }
+
+    [[nodiscard]] std::uint64_t procedural_generation_replay_hash() const noexcept {
+        return procedural_generation_replay_hash_;
+    }
+
+    [[nodiscard]] std::size_t procedural_generation_package_visible_row_count() const noexcept {
+        return procedural_generation_package_visible_rows_;
+    }
+
+    [[nodiscard]] std::size_t procedural_generation_placement_intent_row_count() const noexcept {
+        return procedural_generation_placement_intent_rows_;
+    }
+
+    [[nodiscard]] std::size_t procedural_generation_placement_intent_accepted_row_count() const noexcept {
+        return procedural_generation_placement_intent_accepted_rows_;
+    }
+
   private:
     void update_ai_navigation_composition() {
         if (navigation_plan_status_ != mirakana::NavigationGridAgentPathStatus::ready ||
@@ -1225,6 +1445,15 @@ class Gameplay2DSystemsProbe final {
     std::size_t construction_placement_intent_rows_{0U};
     std::size_t construction_placement_intent_accepted_rows_{0U};
     std::size_t construction_placement_intent_occupied_cells_{0U};
+    std::size_t procedural_generation_diagnostics_{0U};
+    std::size_t procedural_generation_rows_{0U};
+    std::size_t procedural_generation_object_rows_{0U};
+    std::size_t procedural_generation_encounter_rows_{0U};
+    std::size_t procedural_generation_loot_rows_{0U};
+    std::size_t procedural_generation_package_visible_rows_{0U};
+    std::size_t procedural_generation_placement_intent_rows_{0U};
+    std::size_t procedural_generation_placement_intent_accepted_rows_{0U};
+    std::uint64_t procedural_generation_replay_hash_{0ULL};
     std::uint32_t inventory_items_final_workbench_quantity_{0U};
     std::uint32_t ticks_{0U};
     std::uint32_t physics_ticks_{0U};
@@ -1235,6 +1464,7 @@ class Gameplay2DSystemsProbe final {
     bool quest_dialogue_ready_{false};
     bool inventory_items_ready_{false};
     bool construction_placement_ready_{false};
+    bool procedural_generation_ready_{false};
     bool started_{false};
 };
 
@@ -1750,6 +1980,46 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         return gameplay_systems_.construction_placement_intent_occupied_cell_count();
     }
 
+    [[nodiscard]] bool gameplay_systems_procedural_generation_ready() const noexcept {
+        return gameplay_systems_.procedural_generation_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_procedural_generation_diagnostics() const noexcept {
+        return gameplay_systems_.procedural_generation_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_procedural_generation_rows() const noexcept {
+        return gameplay_systems_.procedural_generation_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_procedural_generation_object_rows() const noexcept {
+        return gameplay_systems_.procedural_generation_object_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_procedural_generation_encounter_rows() const noexcept {
+        return gameplay_systems_.procedural_generation_encounter_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_procedural_generation_loot_rows() const noexcept {
+        return gameplay_systems_.procedural_generation_loot_row_count();
+    }
+
+    [[nodiscard]] std::uint64_t gameplay_systems_procedural_generation_replay_hash() const noexcept {
+        return gameplay_systems_.procedural_generation_replay_hash();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_procedural_generation_package_visible_rows() const noexcept {
+        return gameplay_systems_.procedural_generation_package_visible_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_procedural_generation_placement_intent_rows() const noexcept {
+        return gameplay_systems_.procedural_generation_placement_intent_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_procedural_generation_placement_intent_accepted_rows() const noexcept {
+        return gameplay_systems_.procedural_generation_placement_intent_accepted_row_count();
+    }
+
   private:
     [[nodiscard]] bool build_hud() {
         mirakana::ui::ElementDesc root;
@@ -1855,7 +2125,8 @@ void print_usage() {
                  "[--require-config PATH] --require-scene-package PATH "
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
-                 "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems]\n";
+                 "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems] "
+                 "[--require-procedural-generation]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -1901,6 +2172,10 @@ void print_usage() {
         }
         if (arg == "--require-gameplay-systems") {
             options.require_gameplay_systems = true;
+            continue;
+        }
+        if (arg == "--require-procedural-generation") {
+            options.require_procedural_generation = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -2492,6 +2767,25 @@ int main(int argc, char** argv) {
         << game.gameplay_systems_construction_placement_intent_accepted_rows()
         << " gameplay_systems_construction_placement_intent_occupied_cells="
         << game.gameplay_systems_construction_placement_intent_occupied_cells()
+        << " gameplay_systems_procedural_generation_ready="
+        << (game.gameplay_systems_procedural_generation_ready() ? 1 : 0)
+        << " gameplay_systems_procedural_generation_diagnostics="
+        << game.gameplay_systems_procedural_generation_diagnostics()
+        << " gameplay_systems_procedural_generation_rows=" << game.gameplay_systems_procedural_generation_rows()
+        << " gameplay_systems_procedural_generation_object_rows="
+        << game.gameplay_systems_procedural_generation_object_rows()
+        << " gameplay_systems_procedural_generation_encounter_rows="
+        << game.gameplay_systems_procedural_generation_encounter_rows()
+        << " gameplay_systems_procedural_generation_loot_rows="
+        << game.gameplay_systems_procedural_generation_loot_rows()
+        << " gameplay_systems_procedural_generation_replay_hash="
+        << game.gameplay_systems_procedural_generation_replay_hash()
+        << " gameplay_systems_procedural_generation_package_visible_rows="
+        << game.gameplay_systems_procedural_generation_package_visible_rows()
+        << " gameplay_systems_procedural_generation_placement_intent_rows="
+        << game.gameplay_systems_procedural_generation_placement_intent_rows()
+        << " gameplay_systems_procedural_generation_placement_intent_accepted_rows="
+        << game.gameplay_systems_procedural_generation_placement_intent_accepted_rows()
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -2550,38 +2844,64 @@ int main(int argc, char** argv) {
         return 11;
     }
 
+    if (options.require_procedural_generation && !game.gameplay_systems_procedural_generation_ready()) {
+        std::cout << "sample_2d_desktop_runtime_package required_procedural_generation_unavailable"
+                  << " gameplay_systems_procedural_generation_diagnostics="
+                  << game.gameplay_systems_procedural_generation_diagnostics()
+                  << " gameplay_systems_procedural_generation_rows="
+                  << game.gameplay_systems_procedural_generation_rows()
+                  << " gameplay_systems_procedural_generation_object_rows="
+                  << game.gameplay_systems_procedural_generation_object_rows()
+                  << " gameplay_systems_procedural_generation_encounter_rows="
+                  << game.gameplay_systems_procedural_generation_encounter_rows()
+                  << " gameplay_systems_procedural_generation_loot_rows="
+                  << game.gameplay_systems_procedural_generation_loot_rows()
+                  << " gameplay_systems_procedural_generation_replay_hash="
+                  << game.gameplay_systems_procedural_generation_replay_hash()
+                  << " gameplay_systems_procedural_generation_package_visible_rows="
+                  << game.gameplay_systems_procedural_generation_package_visible_rows()
+                  << " gameplay_systems_procedural_generation_placement_intent_rows="
+                  << game.gameplay_systems_procedural_generation_placement_intent_rows() << '\n';
+        return 13;
+    }
+
     if (options.require_gameplay_systems && !game.gameplay_systems_passed(options.max_frames)) {
-        std::cout << "sample_2d_desktop_runtime_package required_gameplay_systems_unavailable"
-                  << " gameplay_systems_status="
-                  << gameplay_2d_systems_status_name(game.gameplay_systems_status(options.max_frames))
-                  << " gameplay_systems_physics_contacts=" << game.gameplay_systems_physics_contacts()
-                  << " gameplay_systems_navigation_plan_status="
-                  << navigation_grid_agent_path_status_name(game.gameplay_systems_navigation_plan_status())
-                  << " gameplay_systems_behavior_status="
-                  << behavior_tree_status_name(game.gameplay_systems_behavior_status())
-                  << " gameplay_systems_behavior_authoring_ready="
-                  << (game.gameplay_systems_behavior_authoring_ready() ? 1 : 0)
-                  << " gameplay_systems_behavior_authoring_diagnostics="
-                  << game.gameplay_systems_behavior_authoring_diagnostics()
-                  << " gameplay_systems_behavior_authoring_trace_nodes="
-                  << game.gameplay_systems_behavior_authoring_trace_nodes()
-                  << " gameplay_systems_quest_dialogue_ready=" << (game.gameplay_systems_quest_dialogue_ready() ? 1 : 0)
-                  << " gameplay_systems_quest_dialogue_diagnostics="
-                  << game.gameplay_systems_quest_dialogue_diagnostics()
-                  << " gameplay_systems_quest_dialogue_transition_rows="
-                  << game.gameplay_systems_quest_dialogue_transition_rows()
-                  << " gameplay_systems_inventory_items_ready="
-                  << (game.gameplay_systems_inventory_items_ready() ? 1 : 0)
-                  << " gameplay_systems_inventory_items_diagnostics="
-                  << game.gameplay_systems_inventory_items_diagnostics()
-                  << " gameplay_systems_inventory_items_transition_rows="
-                  << game.gameplay_systems_inventory_items_transition_rows()
-                  << " gameplay_systems_construction_placement_ready="
-                  << (game.gameplay_systems_construction_placement_ready() ? 1 : 0)
-                  << " gameplay_systems_construction_placement_diagnostics="
-                  << game.gameplay_systems_construction_placement_diagnostics()
-                  << " gameplay_systems_construction_placement_intent_rows="
-                  << game.gameplay_systems_construction_placement_intent_rows() << '\n';
+        std::cout
+            << "sample_2d_desktop_runtime_package required_gameplay_systems_unavailable"
+            << " gameplay_systems_status="
+            << gameplay_2d_systems_status_name(game.gameplay_systems_status(options.max_frames))
+            << " gameplay_systems_physics_contacts=" << game.gameplay_systems_physics_contacts()
+            << " gameplay_systems_navigation_plan_status="
+            << navigation_grid_agent_path_status_name(game.gameplay_systems_navigation_plan_status())
+            << " gameplay_systems_behavior_status="
+            << behavior_tree_status_name(game.gameplay_systems_behavior_status())
+            << " gameplay_systems_behavior_authoring_ready="
+            << (game.gameplay_systems_behavior_authoring_ready() ? 1 : 0)
+            << " gameplay_systems_behavior_authoring_diagnostics="
+            << game.gameplay_systems_behavior_authoring_diagnostics()
+            << " gameplay_systems_behavior_authoring_trace_nodes="
+            << game.gameplay_systems_behavior_authoring_trace_nodes()
+            << " gameplay_systems_quest_dialogue_ready=" << (game.gameplay_systems_quest_dialogue_ready() ? 1 : 0)
+            << " gameplay_systems_quest_dialogue_diagnostics=" << game.gameplay_systems_quest_dialogue_diagnostics()
+            << " gameplay_systems_quest_dialogue_transition_rows="
+            << game.gameplay_systems_quest_dialogue_transition_rows()
+            << " gameplay_systems_inventory_items_ready=" << (game.gameplay_systems_inventory_items_ready() ? 1 : 0)
+            << " gameplay_systems_inventory_items_diagnostics=" << game.gameplay_systems_inventory_items_diagnostics()
+            << " gameplay_systems_inventory_items_transition_rows="
+            << game.gameplay_systems_inventory_items_transition_rows()
+            << " gameplay_systems_construction_placement_ready="
+            << (game.gameplay_systems_construction_placement_ready() ? 1 : 0)
+            << " gameplay_systems_construction_placement_diagnostics="
+            << game.gameplay_systems_construction_placement_diagnostics()
+            << " gameplay_systems_construction_placement_intent_rows="
+            << game.gameplay_systems_construction_placement_intent_rows()
+            << " gameplay_systems_procedural_generation_ready="
+            << (game.gameplay_systems_procedural_generation_ready() ? 1 : 0)
+            << " gameplay_systems_procedural_generation_diagnostics="
+            << game.gameplay_systems_procedural_generation_diagnostics()
+            << " gameplay_systems_procedural_generation_rows=" << game.gameplay_systems_procedural_generation_rows()
+            << " gameplay_systems_procedural_generation_package_visible_rows="
+            << game.gameplay_systems_procedural_generation_package_visible_rows() << '\n';
         return 12;
     }
 

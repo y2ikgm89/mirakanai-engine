@@ -286,6 +286,7 @@ The supported path is:
 - sprite batch preflight through `mirakana::plan_scene_sprite_batches` and `mirakana::SpriteBatchPlanDesc` so atlas-backed repeated runs can report deterministic batch counters while unsupported reordering and required-atlas mismatches fail closed before native/RHI-specific code
 - device-independent cooked audio playback through `mirakana::AudioMixer`
 - AI behavior authoring validation through `mirakana::BehaviorAuthoringDocument` and `mirakana::validate_behavior_authoring_document`, with `gameplay_systems_behavior_authoring_*` counters emitted by the selected package smoke
+- deterministic procedural generation proof through `mirakana::runtime::plan_runtime_procedural_generation` and `mirakana::runtime_scene::plan_runtime_scene_procedural_construction_placement_intents`, with `--require-procedural-generation` emitting object/encounter/loot row counts, replay hash evidence, package-visible adoption rows, and procedural placement intent counters
 - package files declared by `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`
 - package validation inputs declared by `game.agent.json.runtimeSceneValidationTargets`
 - source atlas authoring inputs declared by `game.agent.json.spriteAtlasSourceAuthoringTargets`; `source/assets/package.geassets` and `source/sprites/player_atlas.texture_source` stay out of `runtimePackageFiles` and use reviewed RGBA8 frame rows for `plan_sprite_atlas_source_authoring`

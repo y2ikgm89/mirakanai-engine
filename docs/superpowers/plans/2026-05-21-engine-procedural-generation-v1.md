@@ -1,8 +1,8 @@
 # Engine Procedural Generation v1 (2026-05-21)
 
 **Plan ID:** `engine-procedural-generation-v1`
-**Status:** Active.
-**Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is gameplay-family-enabler developer-owned capability work, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** Historical. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` now points back to the production completion master plan after this milestone completed. Keep `unsupportedProductionGaps = []`; this was gameplay-family-enabler developer-owned capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
@@ -70,7 +70,7 @@ Connect procedural output rows to existing scene/runtime-scene and construction-
 
 ## Phase 3: Package Evidence and Agent Surface Closeout
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -95,3 +95,7 @@ Expose selected procedural generation counters in a desktop runtime package lane
 - Phase 2 focused/static evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_scene_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_scene_tests|MK_runtime_procedural_generation_tests"`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime_scene/src/runtime_scene.cpp,tests/unit/runtime_scene_tests.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1`, and `git diff --check` passed with `unsupported_gaps=0`.
 - Phase 2 review-hardening evidence: additional RED tests failed first for mixed procedural batches that should preserve valid placement rows and for duplicate-node diagnostics that must keep the second row's procedural output metadata; the bridge now merges procedural prevalidation rows with forwarded construction-placement results by source index instead of guessing by `(candidate_index,node_name)`.
 - Phase 2 full gate evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with CTest 68/68 and `production-readiness-audit: unsupported_gaps=0`; Apple/Metal checks remained host-gated or diagnostic-only on this Windows host.
+- Phase 3 RED evidence: after adding `--require-procedural-generation` to the selected `sample_2d_desktop_runtime_package` source/package smoke args, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R sample_2d_desktop_runtime_package_smoke` failed first with `unknown argument: --require-procedural-generation`.
+- Phase 3 implementation evidence: `sample_2d_desktop_runtime_package` now runs `plan_runtime_procedural_generation` for deterministic object, encounter, and loot rows and bridges the reviewed object row through `plan_runtime_scene_procedural_construction_placement_intents` with package-visible anchor evidence. The selected smoke reports `gameplay_systems_procedural_generation_ready=1`, diagnostics, total/object/encounter/loot row counts, a non-zero replay hash, package-visible adoption rows, and procedural placement intent counters through `--require-procedural-generation` without mutating packages or adding game-specific generator rules to the engine.
+- Phase 3 focused evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R sample_2d_desktop_runtime_package_smoke`, and direct source-tree smoke from `out/build/dev/games/Debug/sample_2d_desktop_runtime_package` with `--require-gameplay-systems --require-procedural-generation` passed and reported `gameplay_systems_procedural_generation_rows=3`, `gameplay_systems_procedural_generation_object_rows=1`, `gameplay_systems_procedural_generation_encounter_rows=1`, `gameplay_systems_procedural_generation_loot_rows=1`, `gameplay_systems_procedural_generation_replay_hash=14589289479427294103`, `gameplay_systems_procedural_generation_package_visible_rows=1`, and `gameplay_systems_procedural_generation_placement_intent_accepted_rows=1`.
+- Phase 3 full gate evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with CTest 68/68, package-visible `sample_2d_desktop_runtime_package_smoke` coverage for `--require-procedural-generation`, and `production-readiness-audit: unsupported_gaps=0`; Apple/Metal checks remained host-gated or diagnostic-only on this Windows host.
