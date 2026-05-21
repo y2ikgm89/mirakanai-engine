@@ -70,11 +70,19 @@ Add a small `MK_tools` public contract that reviews AI-authored gameplay feature
 
 ## Phase 2: Generated Package Guidance and Evidence Promotion
 
-**Status:** Planned.
+**Status:** Completed.
 
 ### Goal
 
 Promote the review contract into generated-game guidance and selected package-visible evidence so future game agents can see which authoring rows were reviewed and which remediation recipes remain required.
+
+### Completed Surface
+
+- `sample_2d_desktop_runtime_package` accepts `--require-gameplay-authoring-review` and reports package-visible `gameplay_authoring_review_*` fields.
+- The package proof reviews four representative feature rows across narrative, progression, world, and systems capability families, then reports accepted rows and mutation-ledger rows without applying authoring fixes.
+- The same proof includes fail-closed remediation evidence for unsupported capability, validation recipe, package evidence, and broad autonomous authoring claims.
+- `games/sample_2d_desktop_runtime_package/game.agent.json`, generated-game guidance, docs, manifest fragments, and static checks expose the new package evidence while preserving the no autonomous commercial game-design claim.
+- `tools/validate-desktop-game-runtime.ps1` now tracks the generated `MK_*` target names for its runtime-host and SDL3 focused validation lane.
 
 ### Done When
 
@@ -104,4 +112,21 @@ Promote the review contract into generated-game guidance and selected package-vi
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+- Phase 2 generated package guidance and evidence promotion:
+  - RED: `out/build/dev/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-gameplay-authoring-review` failed with `unknown argument: --require-gameplay-authoring-review`.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R sample_2d_desktop_runtime_package`
+  - `out/build/dev/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-gameplay-authoring-review`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` passed with `unsupported_gaps=0`.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
