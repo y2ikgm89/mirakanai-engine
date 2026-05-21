@@ -229,6 +229,12 @@ enum class SdlDesktopPresentationPostprocessPolicyStatus : std::uint8_t {
     ready,
 };
 
+enum class SdlDesktopPresentationSceneScalePolicyStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
 enum class SdlDesktopPresentationD3d12PostprocessExecutionStatus : std::uint8_t {
     not_requested = 0,
     blocked,
@@ -253,6 +259,45 @@ struct SdlDesktopPresentationPostprocessPolicyReport {
     bool fog_effect{false};
     bool anti_aliasing_effect{false};
     bool backend_shader_evidence_ready{false};
+};
+
+struct SdlDesktopPresentationSceneScalePolicyDesc {
+    bool require_scene_gpu_bindings{false};
+    bool require_backend_instancing_evidence{false};
+    bool backend_instancing_evidence_ready{false};
+    bool require_performance_measurement{false};
+    bool performance_measurement_ready{false};
+    std::uint64_t expected_frames{0};
+    std::uint32_t max_draw_group_count{128};
+    std::uint32_t max_visible_instance_count{16'384};
+    std::uint32_t max_draw_call_count{4'096};
+};
+
+struct SdlDesktopPresentationSceneScalePolicyReport {
+    SdlDesktopPresentationSceneScalePolicyStatus status{SdlDesktopPresentationSceneScalePolicyStatus::not_requested};
+    bool ready{false};
+    bool scene_resources_ready{false};
+    bool frames_current{false};
+    bool backend_instancing_evidence_required{false};
+    bool backend_instancing_evidence_ready{false};
+    bool performance_measurement_required{false};
+    bool performance_measurement_ready{false};
+    std::uint64_t expected_frames{0};
+    std::uint64_t frames_finished{0};
+    std::uint32_t diagnostics_count{0};
+    std::uint32_t draw_group_count{0};
+    std::uint32_t static_mesh_draw_groups{0};
+    std::uint32_t skinned_mesh_draw_groups{0};
+    std::uint32_t morph_mesh_draw_groups{0};
+    std::uint32_t sprite_draw_groups{0};
+    std::uint64_t requested_instance_count{0};
+    std::uint64_t visible_instance_count{0};
+    std::uint64_t culled_instance_count{0};
+    std::uint32_t draw_call_count{0};
+    std::uint32_t instanced_draw_call_count{0};
+    std::uint64_t instanced_visible_instance_count{0};
+    std::uint32_t lod_group_count{0};
+    std::uint32_t cpu_culling_group_count{0};
 };
 
 struct SdlDesktopPresentationD3d12PostprocessExecutionReport {
@@ -505,8 +550,13 @@ sdl_desktop_presentation_native_ui_overlay_status_name(SdlDesktopPresentationNat
 sdl_desktop_presentation_quality_gate_status_name(SdlDesktopPresentationQualityGateStatus status) noexcept;
 [[nodiscard]] std::string_view
 sdl_desktop_presentation_postprocess_policy_status_name(SdlDesktopPresentationPostprocessPolicyStatus status) noexcept;
+[[nodiscard]] std::string_view
+sdl_desktop_presentation_scene_scale_policy_status_name(SdlDesktopPresentationSceneScalePolicyStatus status) noexcept;
 [[nodiscard]] SdlDesktopPresentationPostprocessPolicyReport
 evaluate_sdl_desktop_presentation_postprocess_policy(const SdlDesktopPresentationReport& report);
+[[nodiscard]] SdlDesktopPresentationSceneScalePolicyReport
+evaluate_sdl_desktop_presentation_scene_scale_policy(const SdlDesktopPresentationReport& report,
+                                                     const SdlDesktopPresentationSceneScalePolicyDesc& desc);
 [[nodiscard]] std::string_view sdl_desktop_presentation_d3d12_postprocess_execution_status_name(
     SdlDesktopPresentationD3d12PostprocessExecutionStatus status) noexcept;
 [[nodiscard]] SdlDesktopPresentationD3d12PostprocessExecutionReport

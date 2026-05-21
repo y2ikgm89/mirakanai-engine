@@ -73,6 +73,11 @@ int main() {
     quality_desc.require_directional_shadow_filtering = true;
     quality_desc.expected_frames = 1;
     const auto quality_report = mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, quality_desc);
+    mirakana::SdlDesktopPresentationSceneScalePolicyDesc scene_scale_desc;
+    scene_scale_desc.require_scene_gpu_bindings = true;
+    scene_scale_desc.require_backend_instancing_evidence = true;
+    const auto scene_scale_report =
+        mirakana::evaluate_sdl_desktop_presentation_scene_scale_policy(report, scene_scale_desc);
 
     mirakana::SdlDesktopPresentationBackendReport backend_report;
     backend_report.backend = mirakana::SdlDesktopPresentationBackend::vulkan;
@@ -151,16 +156,20 @@ int main() {
                    mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status) ==
                        "ready" &&
                    mirakana::sdl_desktop_presentation_quality_gate_status_name(quality_report.status) == "blocked" &&
+                   mirakana::sdl_desktop_presentation_scene_scale_policy_status_name(scene_scale_report.status) ==
+                       "blocked" &&
                    quality_report.status == mirakana::SdlDesktopPresentationQualityGateStatus::blocked &&
-                   !quality_report.ready && quality_report.diagnostics_count > 0 && stats.mesh_bindings == 1 &&
-                   stats.material_bindings == 1 && stats.mesh_uploads == 1 && stats.morph_mesh_bindings == 1 &&
-                   stats.texture_uploads == 1 && stats.material_uploads == 1 && stats.material_pipeline_layouts == 1 &&
-                   stats.morph_mesh_uploads == 1 && stats.uploaded_texture_bytes == 512 &&
-                   stats.uploaded_mesh_bytes == 48 && stats.uploaded_morph_bytes == 292 &&
-                   stats.uploaded_material_factor_bytes == 64 && stats.morph_mesh_bindings_resolved == 1 &&
-                   stats.compute_morph_mesh_bindings == 1 && stats.compute_morph_mesh_dispatches == 1 &&
-                   stats.compute_morph_mesh_draws == 1 && stats.compute_morph_queue_waits == 1 &&
-                   stats.compute_morph_async_compute_queue_submits == 1 &&
+                   scene_scale_report.status == mirakana::SdlDesktopPresentationSceneScalePolicyStatus::blocked &&
+                   !quality_report.ready && !scene_scale_report.ready &&
+                   scene_scale_report.backend_instancing_evidence_required && quality_report.diagnostics_count > 0 &&
+                   stats.mesh_bindings == 1 && stats.material_bindings == 1 && stats.mesh_uploads == 1 &&
+                   stats.morph_mesh_bindings == 1 && stats.texture_uploads == 1 && stats.material_uploads == 1 &&
+                   stats.material_pipeline_layouts == 1 && stats.morph_mesh_uploads == 1 &&
+                   stats.uploaded_texture_bytes == 512 && stats.uploaded_mesh_bytes == 48 &&
+                   stats.uploaded_morph_bytes == 292 && stats.uploaded_material_factor_bytes == 64 &&
+                   stats.morph_mesh_bindings_resolved == 1 && stats.compute_morph_mesh_bindings == 1 &&
+                   stats.compute_morph_mesh_dispatches == 1 && stats.compute_morph_mesh_draws == 1 &&
+                   stats.compute_morph_queue_waits == 1 && stats.compute_morph_async_compute_queue_submits == 1 &&
                    stats.compute_morph_async_graphics_queue_submits == 1 &&
                    stats.compute_morph_async_graphics_queue_waits == 1 &&
                    stats.compute_morph_async_last_compute_submitted_fence_value == 11 &&
