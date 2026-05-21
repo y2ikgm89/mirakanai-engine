@@ -22,6 +22,7 @@
 #include "mirakana/tools/asset_import_adapters.hpp"
 #include "mirakana/tools/asset_import_tool.hpp"
 #include "mirakana/tools/asset_package_tool.hpp"
+#include "mirakana/tools/gameplay_authoring_tool.hpp"
 #include "mirakana/tools/gltf_mesh_inspect.hpp"
 #include "mirakana/tools/gltf_morph_animation_import.hpp"
 #include "mirakana/tools/gltf_node_animation_import.hpp"
@@ -4370,6 +4371,95 @@ MK_TEST("source asset registration validates dependency targets and canonical dr
     const auto self_result = mirakana::plan_source_asset_registration(self_dependency);
     MK_REQUIRE(!self_result.succeeded());
     MK_REQUIRE(failures_contain(self_result.diagnostics, "dependency target kind does not match dependency kind"));
+}
+
+MK_TEST("gameplay authoring review accepts supported features and records mutation ledger rows") {
+    mirakana::GameplayAuthoringCapabilityProfile profile;
+    profile.supported_capability_ids = {"gameplay-authoring-foundation-v1", "engine-quest-dialogue-state-v1",
+                                        "engine-procedural-generation-v1"};
+    profile.validation_recipe_ids = {"headless-gameplay", "2d-desktop-runtime-package"};
+    profile.package_evidence_ids = {"sample_2d_desktop_runtime_package"};
+
+    mirakana::GameplayAuthoringReviewRequest request;
+    request.profile = profile;
+    request.features.push_back(mirakana::GameplayAuthoringRequestedFeatureRow{
+        .feature_id = "intro_quest",
+        .gameplay_family = "narrative",
+        .required_capability_ids = {"gameplay-authoring-foundation-v1", "engine-quest-dialogue-state-v1"},
+        .validation_recipe_ids = {"headless-gameplay"},
+        .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+        .source_index = 4,
+    });
+    request.features.push_back(mirakana::GameplayAuthoringRequestedFeatureRow{
+        .feature_id = "seeded_encounter",
+        .gameplay_family = "procedural",
+        .required_capability_ids = {"engine-procedural-generation-v1"},
+        .validation_recipe_ids = {"2d-desktop-runtime-package"},
+        .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+        .source_index = 7,
+    });
+
+    const auto result = mirakana::review_gameplay_authoring_request(request);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.accepted_features.size() == 2U);
+    MK_REQUIRE(result.accepted_features[0].feature_id == "intro_quest");
+    MK_REQUIRE(result.accepted_features[0].required_capability_ids.size() == 2U);
+    MK_REQUIRE(result.accepted_features[1].feature_id == "seeded_encounter");
+    MK_REQUIRE(result.remediation_rows.empty());
+    MK_REQUIRE(result.mutation_ledger_rows.size() == 2U);
+    MK_REQUIRE(result.mutation_ledger_rows[0].ledger_id == "gameplay-authoring:intro_quest");
+    MK_REQUIRE(result.mutation_ledger_rows[0].action == "reviewed-authoring-plan");
+    MK_REQUIRE(result.mutation_ledger_rows[1].validation_recipe_ids[0] == "2d-desktop-runtime-package");
+}
+
+MK_TEST("gameplay authoring review fails closed on duplicates missing evidence and unsupported claims") {
+    mirakana::GameplayAuthoringCapabilityProfile profile;
+    profile.supported_capability_ids = {"gameplay-authoring-foundation-v1"};
+    profile.validation_recipe_ids = {"headless-gameplay"};
+
+    mirakana::GameplayAuthoringReviewRequest request;
+    request.profile = profile;
+    request.features.push_back(mirakana::GameplayAuthoringRequestedFeatureRow{
+        .feature_id = "duplicate",
+        .gameplay_family = "narrative",
+        .required_capability_ids = {"gameplay-authoring-foundation-v1"},
+        .validation_recipe_ids = {"headless-gameplay"},
+        .source_index = 1,
+    });
+    request.features.push_back(mirakana::GameplayAuthoringRequestedFeatureRow{
+        .feature_id = "duplicate",
+        .gameplay_family = "progression",
+        .required_capability_ids = {"engine-inventory-items-crafting-v1"},
+        .validation_recipe_ids = {"2d-desktop-runtime-package"},
+        .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+        .claimed_scope_ids = {"autonomous-commercial-game-design"},
+        .source_index = 2,
+    });
+    request.features.push_back(mirakana::GameplayAuthoringRequestedFeatureRow{
+        .feature_id = {},
+        .gameplay_family = "regions",
+        .required_capability_ids = {"gameplay-authoring-foundation-v1"},
+        .validation_recipe_ids = {"headless-gameplay"},
+        .source_index = 3,
+    });
+
+    const auto result = mirakana::review_gameplay_authoring_request(request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.accepted_features.empty());
+    MK_REQUIRE(result.mutation_ledger_rows.empty());
+    MK_REQUIRE(result.remediation_rows.size() == 4U);
+    const auto has_diagnostic = [&result](std::string_view code) {
+        return std::ranges::any_of(result.diagnostics,
+                                   [code](const auto& diagnostic) { return diagnostic.code == code; });
+    };
+    MK_REQUIRE(has_diagnostic("duplicate_feature_id"));
+    MK_REQUIRE(has_diagnostic("missing_feature_id"));
+    MK_REQUIRE(has_diagnostic("missing_required_capability"));
+    MK_REQUIRE(has_diagnostic("missing_validation_recipe"));
+    MK_REQUIRE(has_diagnostic("missing_package_evidence"));
+    MK_REQUIRE(has_diagnostic("unsupported_claim"));
 }
 
 MK_TEST("registered source asset cook package rejects empty selected asset keys") {

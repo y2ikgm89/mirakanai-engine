@@ -40,7 +40,7 @@ Make the plan registry, master-plan ledger, backlog/high-freedom track, and mani
 
 ## Phase 1: Gameplay Authoring Capability Review Contract
 
-**Status:** Planned.
+**Status:** Completed.
 
 ### Goal
 
@@ -53,6 +53,13 @@ Add a small `MK_tools` public contract that reviews AI-authored gameplay feature
 - `GameplayAuthoringReviewRequest`: profile plus requested feature rows.
 - `GameplayAuthoringReviewResult`: accepted feature rows, remediation rows, mutation ledger rows, diagnostics, and `succeeded()`.
 - `review_gameplay_authoring_request`: fail-closed review helper over the value rows above.
+
+### Completed Surface
+
+- `engine/tools/include/mirakana/tools/gameplay_authoring_tool.hpp` exposes the value rows and `review_gameplay_authoring_request` under `MK_tools`.
+- Valid rows return accepted feature rows and `gameplay-authoring:<feature_id>` mutation ledger rows in input order.
+- Invalid rows return no accepted features and no mutation ledger rows; diagnostics/remediation cover duplicate or missing feature ids, missing gameplay families, missing or unsupported required capabilities, unsupported validation recipes, unsupported package evidence, and broad unreviewed authoring claims.
+- The helper does not mutate files or cooked packages, execute commands, evaluate scripts, call external services, depend on editor/runtime hosts, or expose renderer/RHI/native handles.
 
 ### Done When
 
@@ -85,3 +92,16 @@ Promote the review contract into generated-game guidance and selected package-vi
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` passed with `unsupported_gaps=0`.
+- Phase 1 gameplay authoring review contract:
+  - RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests` failed on the new tests because `mirakana/tools/gameplay_authoring_tool.hpp` did not exist.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_tests`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` passed with `unsupported_gaps=0`.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`

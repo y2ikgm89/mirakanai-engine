@@ -11,6 +11,7 @@ add_library(MK_tools_asset OBJECT
     sprite_atlas_tool.cpp
     material_tool.cpp
     tilemap_tool.cpp
+    gameplay_authoring_tool.cpp
     placeholder_asset_tool.cpp
     ui_atlas_tool.cpp
 )
