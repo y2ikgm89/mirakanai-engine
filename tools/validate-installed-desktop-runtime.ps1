@@ -170,18 +170,33 @@ $requiresPostprocessDepthInput = @($SmokeArgs) -contains "--require-postprocess-
 $requiresDirectionalShadow = @($SmokeArgs) -contains "--require-directional-shadow"
 $requiresDirectionalShadowFiltering = @($SmokeArgs) -contains "--require-directional-shadow-filtering"
 $requiresD3d12ShadowCascadePolicy = @($SmokeArgs) -contains "--require-d3d12-shadow-cascade-policy"
+$requiresVulkanShadowCascadePolicy = @($SmokeArgs) -contains "--require-vulkan-shadow-cascade-policy"
 $requiresLightingShadowPolicy = @($SmokeArgs) -contains "--require-lighting-shadow-policy"
 $requiresSceneScalePolicy = @($SmokeArgs) -contains "--require-scene-scale-policy"
 $requiresD3d12InstancedDrawEvidence = @($SmokeArgs) -contains "--require-d3d12-instanced-draw-evidence"
+$requiresVulkanInstancedDrawEvidence = @($SmokeArgs) -contains "--require-vulkan-instanced-draw-evidence"
+$requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-postprocess-evidence"
+$requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
+$requiresVulkanGpuMemoryEvidence = @($SmokeArgs) -contains "--require-vulkan-gpu-memory-evidence"
 $requiresDebugProfilingPolicy = @($SmokeArgs) -contains "--require-debug-profiling-policy"
 $requiresD3d12DebugProfilingEvidence = @($SmokeArgs) -contains "--require-d3d12-debug-profiling-evidence"
 $requiresVulkanDebugProfilingEvidence = @($SmokeArgs) -contains "--require-vulkan-debug-profiling-evidence"
+if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) {
+    $requiresSceneScalePolicy = $true
+}
+if ($requiresD3d12GpuMemoryEvidence -or $requiresVulkanGpuMemoryEvidence) {
+    $requiresGpuMemoryPolicy = $true
+}
+if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) {
+    $requiresDebugProfilingPolicy = $true
+}
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
 $requiresVisible3dProductionProof = @($SmokeArgs) -contains "--require-visible-3d-production-proof"
+$requiresVulkanVisible3dProductionProof = @($SmokeArgs) -contains "--require-vulkan-visible-3d-production-proof"
 $requiresComputeMorphNormalTangent = @($SmokeArgs) -contains "--require-compute-morph-normal-tangent"
 $requiresComputeMorphSkin = @($SmokeArgs) -contains "--require-compute-morph-skin"
 $requiresComputeMorphAsyncTelemetry = @($SmokeArgs) -contains "--require-compute-morph-async-telemetry"
@@ -190,7 +205,16 @@ $requiresNativeUiOverlay = @($SmokeArgs) -contains "--require-native-ui-overlay"
 $requiresNativeUiTexturedSpriteAtlas = @($SmokeArgs) -contains "--require-native-ui-textured-sprite-atlas"
 $requiresNativeUiTextGlyphAtlas = @($SmokeArgs) -contains "--require-native-ui-text-glyph-atlas"
 $requiresGpuSkinning = @($SmokeArgs) -contains "--require-gpu-skinning"
+$requiresD3d12GpuSkinningEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-skinning-evidence"
+$requiresVulkanGpuSkinningEvidence = @($SmokeArgs) -contains "--require-vulkan-gpu-skinning-evidence"
+if ($requiresD3d12GpuSkinningEvidence) {
+    $requiresGpuSkinning = $true
+}
+if ($requiresVulkanGpuSkinningEvidence) {
+    $requiresGpuSkinning = $true
+}
 $requiresFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-framegraph-multiqueue-evidence"
+$requiresVulkanFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-vulkan-framegraph-multiqueue-evidence"
 $requiresPackageUploadStaging = @($SmokeArgs) -contains "--require-package-upload-staging"
 $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
@@ -258,6 +282,17 @@ if ($requiresShadowMorphComposition) {
 }
 if ($requiresPostprocessDepthInput) {
     $requiresPostprocess = $true
+}
+if ($requiresD3d12PostprocessEvidence) {
+    $requiresPostprocess = $true
+    $requiresD3d12Renderer = $true
+}
+if ($requiresVulkanPostprocessEvidence) {
+    $requiresPostprocess = $true
+}
+if ($requiresVulkanShadowCascadePolicy) {
+    $requiresDirectionalShadow = $true
+    $requiresDirectionalShadowFiltering = $true
 }
 if ($requiresDirectionalShadowFiltering) {
     $requiresDirectionalShadow = $true
@@ -402,7 +437,8 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         }
     }
     if ($requiresSceneScalePolicy) {
-        $expectedSceneScaleBackendInstancingEvidence = if ($requiresD3d12InstancedDrawEvidence) { "1" } else { "0" }
+        $expectedSceneScaleBackendInstancingEvidence =
+            if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) { "1" } else { "0" }
         $expectedSceneScalePolicyFields = @{
             "scene_scale_policy_status" = "ready"
             "scene_scale_policy_ready" = "1"
@@ -471,11 +507,39 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             }
         }
     }
-    if ($requiresD3d12GpuMemoryEvidence) {
-        $requiresGpuMemoryPolicy = $true
+    if ($requiresVulkanInstancedDrawEvidence) {
+        $expectedVulkanInstancedInstances = [string]($expectedSmokeFrames * 3)
+        $expectedVulkanInstancedFields = @{
+            "vulkan_instanced_draw_execution_status" = "ready"
+            "vulkan_instanced_draw_execution_ready" = "1"
+            "vulkan_instanced_draw_execution_selected" = "1"
+            "vulkan_instanced_draw_execution_expected_instances" = $expectedVulkanInstancedInstances
+            "vulkan_instanced_draws_ok" = "1"
+            "vulkan_instanced_instances_ok" = "1"
+        }
+        foreach ($field in $expectedVulkanInstancedFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedVulkanInstancedFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove Vulkan instanced draw evidence field: $field=$($expectedVulkanInstancedFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "vulkan_instanced_draw_calls",
+                "vulkan_instanced_indexed_draw_calls",
+                "vulkan_instanced_instances_submitted",
+                "rhi_instanced_draw_calls",
+                "rhi_instanced_indexed_draw_calls",
+                "rhi_instanced_instances_submitted"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive Vulkan instanced draw evidence field: $field"
+            }
+        }
     }
     if ($requiresGpuMemoryPolicy) {
-        $expectedGpuMemoryBackendEvidence = if ($requiresD3d12GpuMemoryEvidence) { "1" } else { "0" }
+        $expectedGpuMemoryBackendEvidence =
+            if ($requiresD3d12GpuMemoryEvidence -or $requiresVulkanGpuMemoryEvidence) { "1" } else { "0" }
+        $expectedGpuMemoryOsVideoBudgetRequired = if ($requiresD3d12GpuMemoryEvidence) { "1" } else { "0" }
         $expectedGpuMemoryPolicyFields = @{
             "gpu_memory_policy_status" = "ready"
             "gpu_memory_policy_ready" = "1"
@@ -486,7 +550,7 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "gpu_memory_policy_frames_current" = "1"
             "gpu_memory_policy_backend_memory_evidence_required" = $expectedGpuMemoryBackendEvidence
             "gpu_memory_policy_backend_memory_evidence_ready" = $expectedGpuMemoryBackendEvidence
-            "gpu_memory_policy_os_video_memory_budget_required" = $expectedGpuMemoryBackendEvidence
+            "gpu_memory_policy_os_video_memory_budget_required" = $expectedGpuMemoryOsVideoBudgetRequired
         }
         foreach ($field in $expectedGpuMemoryPolicyFields.Keys) {
             $expectedValue = [regex]::Escape($expectedGpuMemoryPolicyFields[$field])
@@ -530,8 +594,30 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             }
         }
     }
-    if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) {
-        $requiresDebugProfilingPolicy = $true
+    if ($requiresVulkanGpuMemoryEvidence) {
+        $expectedVulkanGpuMemoryFields = @{
+            "vulkan_gpu_memory_execution_status" = "ready"
+            "vulkan_gpu_memory_execution_ready" = "1"
+            "vulkan_gpu_memory_execution_selected" = "1"
+            "vulkan_gpu_memory_execution_committed_byte_estimate_available" = "1"
+            "vulkan_gpu_memory_execution_budget_ok" = "1"
+            "vulkan_gpu_memory_execution_transient_heap_ok" = "1"
+        }
+        foreach ($field in $expectedVulkanGpuMemoryFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedVulkanGpuMemoryFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove Vulkan GPU memory evidence field: $field=$($expectedVulkanGpuMemoryFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "vulkan_gpu_memory_execution_committed_resources_byte_estimate",
+                "vulkan_gpu_memory_execution_upload_bytes_written",
+                "vulkan_gpu_memory_execution_framegraph_barrier_steps_executed"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive Vulkan GPU memory evidence field: $field"
+            }
+        }
     }
     if ($requiresDebugProfilingPolicy) {
         $expectedDebugProfilingBackendEvidence =
@@ -1081,7 +1167,8 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove frame-exact native UI overlay draw output."
     }
 }
-if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requiresVisible3dProductionProof) {
+if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and
+    ($requiresVisible3dProductionProof -or $requiresVulkanVisible3dProductionProof)) {
     foreach ($field in @(
             "visible_3d_status",
             "visible_3d_ready",
@@ -1089,6 +1176,7 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "visible_3d_expected_frames",
             "visible_3d_presented_frames",
             "visible_3d_d3d12_selected",
+            "visible_3d_vulkan_selected",
             "visible_3d_null_fallback_used",
             "visible_3d_scene_gpu_ready",
             "visible_3d_postprocess_ready",
@@ -1100,15 +1188,21 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not include visible 3D production proof field: $field"
         }
     }
-    foreach ($field in @(
-            "visible_3d_ready",
-            "visible_3d_d3d12_selected",
-            "visible_3d_scene_gpu_ready",
-            "visible_3d_postprocess_ready",
-            "visible_3d_renderer_quality_ready",
-            "visible_3d_playable_ready",
-            "visible_3d_ui_overlay_ready"
-        )) {
+    $visible3dReadyFields = @(
+        "visible_3d_ready",
+        "visible_3d_scene_gpu_ready",
+        "visible_3d_postprocess_ready",
+        "visible_3d_renderer_quality_ready",
+        "visible_3d_playable_ready",
+        "visible_3d_ui_overlay_ready"
+    )
+    if ($requiresVisible3dProductionProof) {
+        $visible3dReadyFields += "visible_3d_d3d12_selected"
+    }
+    if ($requiresVulkanVisible3dProductionProof) {
+        $visible3dReadyFields += "visible_3d_vulkan_selected"
+    }
+    foreach ($field in $visible3dReadyFields) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
             Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready visible 3D field: $field"
         }
@@ -1548,7 +1642,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 Write-Error "Installed desktop runtime smoke status line did not prove postprocess policy field: $field=$($expectedPostprocessPolicyFields[$field])"
             }
         }
-        if ($requiresD3d12Renderer) {
+        if ($requiresD3d12PostprocessEvidence) {
             $expectedD3d12PostprocessExecutionFields = @{
                 "postprocess_d3d12_execution_status" = "ready"
                 "postprocess_d3d12_execution_ready" = "1"
@@ -1562,6 +1656,23 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedD3d12PostprocessExecutionFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove D3D12 postprocess execution field: $field=$($expectedD3d12PostprocessExecutionFields[$field])"
+                }
+            }
+        }
+        if ($requiresVulkanPostprocessEvidence) {
+            $expectedVulkanPostprocessExecutionFields = @{
+                "vulkan_postprocess_execution_status" = "ready"
+                "vulkan_postprocess_execution_ready" = "1"
+                "vulkan_postprocess_execution_selected" = "1"
+                "vulkan_postprocess_execution_shader_evidence_ready" = "1"
+                "vulkan_postprocess_execution_expected_passes" = [string]$expectedSmokeFrames
+                "vulkan_postprocess_execution_passes" = [string]$expectedSmokeFrames
+                "vulkan_postprocess_execution_passes_ok" = "1"
+            }
+            foreach ($field in $expectedVulkanPostprocessExecutionFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedVulkanPostprocessExecutionFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove Vulkan postprocess execution field: $field=$($expectedVulkanPostprocessExecutionFields[$field])"
                 }
             }
         }
@@ -1606,19 +1717,47 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 Write-Error "Installed desktop runtime smoke status line did not prove directional shadow filter radius."
             }
         }
+        $expectedShadowCascadeFields = @{
+            "directional_shadow_cascade_count" = "4"
+            "directional_shadow_cascade_tile_width" = "225"
+            "directional_shadow_atlas_width" = "900"
+            "directional_shadow_atlas_height" = "225"
+            "directional_shadow_light_space_cascades" = "4"
+            "directional_shadow_cascade_splits" = "5"
+        }
         if ($requiresD3d12ShadowCascadePolicy) {
-            $expectedD3d12ShadowCascadeFields = @{
-                "directional_shadow_cascade_count" = "4"
-                "directional_shadow_cascade_tile_width" = "225"
-                "directional_shadow_atlas_width" = "900"
-                "directional_shadow_atlas_height" = "225"
-                "directional_shadow_light_space_cascades" = "4"
-                "directional_shadow_cascade_splits" = "5"
+            $expectedD3d12ShadowCascadePolicyFields = @{
+                "d3d12_shadow_cascade_policy_ready" = "1"
+                "d3d12_shadow_cascade_policy_selected" = "1"
             }
-            foreach ($field in $expectedD3d12ShadowCascadeFields.Keys) {
-                $expectedValue = [regex]::Escape($expectedD3d12ShadowCascadeFields[$field])
+            foreach ($field in $expectedD3d12ShadowCascadePolicyFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedD3d12ShadowCascadePolicyFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
-                    Write-Error "Installed desktop runtime smoke status line did not prove D3D12 shadow cascade field: $field=$($expectedD3d12ShadowCascadeFields[$field])"
+                    Write-Error "Installed desktop runtime smoke status line did not prove D3D12 shadow cascade policy field: $field=$($expectedD3d12ShadowCascadePolicyFields[$field])"
+                }
+            }
+            foreach ($field in $expectedShadowCascadeFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedShadowCascadeFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove D3D12 shadow cascade field: $field=$($expectedShadowCascadeFields[$field])"
+                }
+            }
+        }
+        if ($requiresVulkanShadowCascadePolicy) {
+            $expectedVulkanShadowCascadePolicyFields = @{
+                "vulkan_shadow_cascade_policy_ready" = "1"
+                "vulkan_shadow_cascade_policy_selected" = "1"
+            }
+            foreach ($field in $expectedVulkanShadowCascadePolicyFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedVulkanShadowCascadePolicyFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove Vulkan shadow cascade policy field: $field=$($expectedVulkanShadowCascadePolicyFields[$field])"
+                }
+            }
+            foreach ($field in $expectedShadowCascadeFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedShadowCascadeFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove Vulkan shadow cascade field: $field=$($expectedShadowCascadeFields[$field])"
                 }
             }
         }
@@ -1711,6 +1850,30 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
     }
+    if ($requiresD3d12GpuSkinningEvidence) {
+        $expectedD3d12GpuSkinningFields = @{
+            "d3d12_gpu_skinning_evidence_ready" = "1"
+            "d3d12_gpu_skinning_evidence_selected" = "1"
+        }
+        foreach ($field in $expectedD3d12GpuSkinningFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedD3d12GpuSkinningFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove D3D12 GPU skinning field: $field=$($expectedD3d12GpuSkinningFields[$field])"
+            }
+        }
+    }
+    if ($requiresVulkanGpuSkinningEvidence) {
+        $expectedVulkanGpuSkinningFields = @{
+            "vulkan_gpu_skinning_evidence_ready" = "1"
+            "vulkan_gpu_skinning_evidence_selected" = "1"
+        }
+        foreach ($field in $expectedVulkanGpuSkinningFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedVulkanGpuSkinningFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove Vulkan GPU skinning field: $field=$($expectedVulkanGpuSkinningFields[$field])"
+            }
+        }
+    }
 }
 if ($requiresRendererQualityGates) {
     $expectedRendererQualityFramegraphPasses = if ($requiresDirectionalShadow) { "3" } else { "2" }
@@ -1748,7 +1911,7 @@ if ($requiresRendererQualityGates) {
         }
     }
 }
-if ($requiresFrameGraphMultiQueueEvidence) {
+if ($requiresFrameGraphMultiQueueEvidence -or $requiresVulkanFrameGraphMultiQueueEvidence) {
     $expectedFrameGraphMultiQueueFields = @{
         "framegraph_multiqueue_status" = "ready"
         "framegraph_multiqueue_ready" = "1"
@@ -1774,6 +1937,30 @@ if ($requiresFrameGraphMultiQueueEvidence) {
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove positive Frame Graph multi-queue field: $field"
+        }
+    }
+}
+if ($requiresFrameGraphMultiQueueEvidence) {
+    $expectedD3d12FrameGraphMultiQueueFields = @{
+        "d3d12_framegraph_multiqueue_evidence_ready" = "1"
+        "d3d12_framegraph_multiqueue_evidence_selected" = "1"
+    }
+    foreach ($field in $expectedD3d12FrameGraphMultiQueueFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedD3d12FrameGraphMultiQueueFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove D3D12 Frame Graph multi-queue field: $field=$($expectedD3d12FrameGraphMultiQueueFields[$field])"
+        }
+    }
+}
+if ($requiresVulkanFrameGraphMultiQueueEvidence) {
+    $expectedVulkanFrameGraphMultiQueueFields = @{
+        "vulkan_framegraph_multiqueue_evidence_ready" = "1"
+        "vulkan_framegraph_multiqueue_evidence_selected" = "1"
+    }
+    foreach ($field in $expectedVulkanFrameGraphMultiQueueFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedVulkanFrameGraphMultiQueueFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove Vulkan Frame Graph multi-queue field: $field=$($expectedVulkanFrameGraphMultiQueueFields[$field])"
         }
     }
 }

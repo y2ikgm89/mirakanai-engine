@@ -228,4 +228,22 @@ bool has_gpu_memory_policy_diagnostic(const GpuMemoryPolicyPlan& plan, GpuMemory
                                [code](const GpuMemoryDiagnostic& diagnostic) { return diagnostic.code == code; });
 }
 
+bool gpu_memory_policy_backend_evidence_ready(const GpuMemoryBackendEvidenceDesc& desc) noexcept {
+    const auto transient_pressure_ready =
+        desc.transient_heap_allocations > 0 || desc.transient_placed_allocations > 0 ||
+        desc.transient_placed_resources_alive > 0 || desc.framegraph_barrier_steps_executed > 0;
+    const auto committed_ready = desc.committed_byte_estimate_available && desc.committed_resources_byte_estimate > 0;
+    const auto upload_ready = desc.upload_bytes_written > 0;
+    switch (desc.backend) {
+    case rhi::BackendKind::d3d12:
+        return committed_ready && upload_ready && (desc.os_video_memory_budget_available || transient_pressure_ready);
+    case rhi::BackendKind::vulkan:
+        return committed_ready && upload_ready && transient_pressure_ready;
+    case rhi::BackendKind::null:
+    case rhi::BackendKind::metal:
+        return false;
+    }
+    return false;
+}
+
 } // namespace mirakana

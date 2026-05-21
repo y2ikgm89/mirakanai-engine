@@ -133,4 +133,18 @@ struct GpuMemoryPolicyPlan {
 [[nodiscard]] bool has_gpu_memory_policy_diagnostic(const GpuMemoryPolicyPlan& plan,
                                                     GpuMemoryDiagnosticCode code) noexcept;
 
+struct GpuMemoryBackendEvidenceDesc {
+    rhi::BackendKind backend{rhi::BackendKind::null};
+    bool committed_byte_estimate_available{false};
+    std::uint64_t committed_resources_byte_estimate{0};
+    std::uint64_t upload_bytes_written{0};
+    std::uint64_t transient_heap_allocations{0};
+    std::uint64_t transient_placed_allocations{0};
+    std::uint64_t transient_placed_resources_alive{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
+    bool os_video_memory_budget_available{false};
+};
+
+[[nodiscard]] bool gpu_memory_policy_backend_evidence_ready(const GpuMemoryBackendEvidenceDesc& desc) noexcept;
+
 } // namespace mirakana

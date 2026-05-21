@@ -134,4 +134,14 @@ struct SceneScalePolicyPlan {
 [[nodiscard]] bool has_scene_scale_policy_diagnostic(const SceneScalePolicyPlan& plan,
                                                      SceneScaleDiagnosticCode code) noexcept;
 
+struct SceneScaleBackendInstancingEvidenceDesc {
+    rhi::BackendKind backend{rhi::BackendKind::null};
+    std::uint64_t instanced_draw_calls{0};
+    std::uint64_t instanced_indexed_draw_calls{0};
+    std::uint64_t instanced_instances_submitted{0};
+};
+
+[[nodiscard]] bool
+scene_scale_policy_backend_instancing_evidence_ready(const SceneScaleBackendInstancingEvidenceDesc& desc) noexcept;
+
 } // namespace mirakana

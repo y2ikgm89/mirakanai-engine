@@ -1168,7 +1168,7 @@ try {
         @("desktop-3d-package-game/materials/lit") `
         "registered_source_registry_closure" `
         "registry_closure"
-    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-3d-package-smoke", "installed-d3d12-3d-directional-shadow-smoke", "installed-d3d12-3d-shadow-morph-composition-smoke", "installed-d3d12-3d-native-ui-overlay-smoke", "installed-d3d12-3d-visible-production-proof-smoke", "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke", "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke", "installed-d3d12-3d-scene-collision-package-smoke", "desktop-runtime-release-target-vulkan-toolchain-gated", "desktop-runtime-release-target-vulkan-directional-shadow-toolchain-gated")) {
+    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-3d-package-smoke", "installed-d3d12-3d-directional-shadow-smoke", "installed-d3d12-3d-shadow-morph-composition-smoke", "installed-d3d12-3d-native-ui-overlay-smoke", "installed-d3d12-3d-visible-production-proof-smoke", "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke", "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke", "installed-d3d12-3d-entity-scale-culling-smoke", "installed-d3d12-3d-scene-collision-package-smoke", "desktop-runtime-release-target-vulkan-toolchain-gated", "desktop-runtime-release-target-vulkan-directional-shadow-toolchain-gated")) {
         if (@($desktop3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
             Write-Error "Desktop runtime 3D package scaffold manifest validationRecipes missing $recipe"
         }
@@ -1177,7 +1177,8 @@ try {
         $isDesktop3dShadowRecipe = [string]$recipe.command -match "--require-directional-shadow"
         $isDesktop3dShadowMorphRecipe = [string]$recipe.command -match "--require-shadow-morph-composition"
         $isDesktop3dSceneCollisionPackageRecipe = [string]$recipe.command -match "--require-scene-collision-package"
-        $isDesktop3dBroadPackageRecipe = $recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowRecipe -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe
+        $isDesktop3dEntityScaleCullingRecipe = [string]$recipe.command -match "--require-entity-scale-culling"
+        $isDesktop3dBroadPackageRecipe = $recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowRecipe -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe -and -not $isDesktop3dEntityScaleCullingRecipe
         if ($isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-morph-package") {
             Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-morph-package: $($recipe.name)"
         }
@@ -1202,10 +1203,10 @@ try {
         if ($isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-package-streaming-safe-point") {
             Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-package-streaming-safe-point: $($recipe.name)"
         }
-        if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe -and [string]$recipe.command -notmatch "--require-renderer-quality-gates") {
+        if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe -and -not $isDesktop3dEntityScaleCullingRecipe -and [string]$recipe.command -notmatch "--require-renderer-quality-gates") {
             Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-renderer-quality-gates: $($recipe.name)"
         }
-        if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe -and [string]$recipe.command -notmatch "--require-postprocess-depth-input") {
+        if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe -and -not $isDesktop3dEntityScaleCullingRecipe -and [string]$recipe.command -notmatch "--require-postprocess-depth-input") {
             Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-postprocess-depth-input: $($recipe.name)"
         }
         if ($isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-playable-3d-slice") {
@@ -1226,8 +1227,15 @@ try {
         if ($recipe.name -match "native-ui-overlay" -and [string]$recipe.command -notmatch "--require-native-ui-overlay") {
             Write-Error "Desktop runtime 3D package scaffold native UI overlay recipe missing --require-native-ui-overlay: $($recipe.name)"
         }
-        if ($recipe.name -match "visible-production-proof" -and [string]$recipe.command -notmatch "--require-visible-3d-production-proof") {
-            Write-Error "Desktop runtime 3D package scaffold visible production proof recipe missing --require-visible-3d-production-proof: $($recipe.name)"
+        if ($recipe.name -match "visible-production-proof") {
+            if ($recipe.name -match "vulkan") {
+                if ([string]$recipe.command -notmatch "--require-vulkan-visible-3d-production-proof") {
+                    Write-Error "Desktop runtime 3D package scaffold Vulkan visible production proof recipe missing --require-vulkan-visible-3d-production-proof: $($recipe.name)"
+                }
+            }
+            elseif ([string]$recipe.command -notmatch "--require-visible-3d-production-proof") {
+                Write-Error "Desktop runtime 3D package scaffold visible production proof recipe missing --require-visible-3d-production-proof: $($recipe.name)"
+            }
         }
         if ($recipe.name -match "native-ui-textured-sprite-atlas" -and [string]$recipe.command -notmatch "--require-native-ui-textured-sprite-atlas") {
             Write-Error "Desktop runtime 3D package scaffold textured UI atlas recipe missing --require-native-ui-textured-sprite-atlas: $($recipe.name)"
@@ -1345,6 +1353,7 @@ try {
     Assert-ContainsText $desktop3dMain "visible_3d_status=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "visible_3d_presented_frames=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "visible_3d_d3d12_selected=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "visible_3d_vulkan_selected=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "load_packaged_d3d12_native_ui_overlay_shaders" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "enable_native_ui_overlay" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "enable_native_ui_overlay_textures" "Desktop 3D scaffold main.cpp"
@@ -1739,7 +1748,7 @@ Assert-RegisteredSourceAssetCookTarget `
     @("sample-generated-desktop-runtime-3d-package/materials/lit") `
     "registered_source_registry_closure" `
     "registry_closure"
-foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-3d-package-smoke", "installed-d3d12-3d-directional-shadow-smoke", "installed-d3d12-3d-shadow-morph-composition-smoke", "installed-d3d12-3d-native-ui-overlay-smoke", "installed-d3d12-3d-visible-production-proof-smoke", "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke", "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke", "installed-d3d12-3d-scene-collision-package-smoke", "desktop-runtime-release-target-vulkan-toolchain-gated", "desktop-runtime-release-target-vulkan-directional-shadow-toolchain-gated")) {
+foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-3d-package-smoke", "installed-d3d12-3d-directional-shadow-smoke", "installed-d3d12-3d-shadow-morph-composition-smoke", "installed-d3d12-3d-native-ui-overlay-smoke", "installed-d3d12-3d-visible-production-proof-smoke", "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke", "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke", "installed-d3d12-3d-entity-scale-culling-smoke", "installed-d3d12-3d-scene-collision-package-smoke", "desktop-runtime-release-target-vulkan-toolchain-gated", "desktop-runtime-release-target-vulkan-directional-shadow-toolchain-gated")) {
     if (@($committedDesktop3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
         Write-Error "$committedDesktop3dManifestPath validationRecipes missing $recipe"
     }
@@ -1748,14 +1757,15 @@ foreach ($recipe in @($committedDesktop3dManifest.validationRecipes)) {
     $isCommittedDesktop3dShadowRecipe = [string]$recipe.command -match "--require-directional-shadow"
     $isCommittedDesktop3dShadowMorphRecipe = [string]$recipe.command -match "--require-shadow-morph-composition"
     $isCommittedDesktop3dSceneCollisionPackageRecipe = [string]$recipe.command -match "--require-scene-collision-package"
-    $isCommittedDesktop3dBroadPackageRecipe = $recipe.name -match "installed-d3d12|vulkan" -and -not $isCommittedDesktop3dShadowRecipe -and -not $isCommittedDesktop3dShadowMorphRecipe -and -not $isCommittedDesktop3dSceneCollisionPackageRecipe
+    $isCommittedDesktop3dEntityScaleCullingRecipe = [string]$recipe.command -match "--require-entity-scale-culling"
+    $isCommittedDesktop3dBroadPackageRecipe = $recipe.name -match "installed-d3d12|vulkan" -and -not $isCommittedDesktop3dShadowRecipe -and -not $isCommittedDesktop3dShadowMorphRecipe -and -not $isCommittedDesktop3dSceneCollisionPackageRecipe -and -not $isCommittedDesktop3dEntityScaleCullingRecipe
     if ($isCommittedDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-package-streaming-safe-point") {
         Write-Error "$committedDesktop3dManifestPath package validation recipe missing --require-package-streaming-safe-point: $($recipe.name)"
     }
-    if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isCommittedDesktop3dShadowMorphRecipe -and -not $isCommittedDesktop3dSceneCollisionPackageRecipe -and [string]$recipe.command -notmatch "--require-renderer-quality-gates") {
+    if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isCommittedDesktop3dShadowMorphRecipe -and -not $isCommittedDesktop3dSceneCollisionPackageRecipe -and -not $isCommittedDesktop3dEntityScaleCullingRecipe -and [string]$recipe.command -notmatch "--require-renderer-quality-gates") {
         Write-Error "$committedDesktop3dManifestPath package validation recipe missing --require-renderer-quality-gates: $($recipe.name)"
     }
-    if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isCommittedDesktop3dShadowMorphRecipe -and -not $isCommittedDesktop3dSceneCollisionPackageRecipe -and [string]$recipe.command -notmatch "--require-postprocess-depth-input") {
+    if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isCommittedDesktop3dShadowMorphRecipe -and -not $isCommittedDesktop3dSceneCollisionPackageRecipe -and -not $isCommittedDesktop3dEntityScaleCullingRecipe -and [string]$recipe.command -notmatch "--require-postprocess-depth-input") {
         Write-Error "$committedDesktop3dManifestPath package validation recipe missing --require-postprocess-depth-input: $($recipe.name)"
     }
     if ($isCommittedDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-playable-3d-slice") {
@@ -1782,8 +1792,15 @@ foreach ($recipe in @($committedDesktop3dManifest.validationRecipes)) {
     if ($recipe.name -match "native-ui-overlay" -and [string]$recipe.command -notmatch "--require-native-ui-overlay") {
         Write-Error "$committedDesktop3dManifestPath native UI overlay recipe missing --require-native-ui-overlay: $($recipe.name)"
     }
-    if ($recipe.name -match "visible-production-proof" -and [string]$recipe.command -notmatch "--require-visible-3d-production-proof") {
-        Write-Error "$committedDesktop3dManifestPath visible production proof recipe missing --require-visible-3d-production-proof: $($recipe.name)"
+    if ($recipe.name -match "visible-production-proof") {
+        if ($recipe.name -match "vulkan") {
+            if ([string]$recipe.command -notmatch "--require-vulkan-visible-3d-production-proof") {
+                Write-Error "$committedDesktop3dManifestPath Vulkan visible production proof recipe missing --require-vulkan-visible-3d-production-proof: $($recipe.name)"
+            }
+        }
+        elseif ([string]$recipe.command -notmatch "--require-visible-3d-production-proof") {
+            Write-Error "$committedDesktop3dManifestPath visible production proof recipe missing --require-visible-3d-production-proof: $($recipe.name)"
+        }
     }
     if ($recipe.name -match "native-ui-textured-sprite-atlas" -and [string]$recipe.command -notmatch "--require-native-ui-textured-sprite-atlas") {
         Write-Error "$committedDesktop3dManifestPath textured UI atlas recipe missing --require-native-ui-textured-sprite-atlas: $($recipe.name)"
@@ -1962,6 +1979,7 @@ foreach ($needle in @(
     "--require-scene-collision-package",
     "require_native_ui_overlay",
     "require_visible_3d_production_proof",
+    "require_vulkan_visible_3d_production_proof",
     "require_native_ui_textured_sprite_atlas",
     "require_native_ui_text_glyph_atlas",
     "mirakana/ui/ui.hpp",
@@ -1984,6 +2002,7 @@ foreach ($needle in @(
     "visible_3d_status=",
     "visible_3d_presented_frames=",
     "visible_3d_d3d12_selected=",
+    "visible_3d_vulkan_selected=",
     "collision_package_status=",
     "collision_package_bodies=",
     "collision_package_trigger_overlaps=",
@@ -2080,6 +2099,8 @@ Assert-ContainsText $committedDesktop3dReadmeText "--require-visible-3d-producti
 Assert-ContainsText $committedDesktop3dReadmeText "--require-native-ui-textured-sprite-atlas" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-native-ui-text-glyph-atlas" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-scene-collision-package" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "--require-entity-scale-culling" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "plan_runtime_entity_scale_culling" "committed generated 3D sample README"
 Assert-ContainsText $engineManifestText "desktopRuntime3dPackageStreamingSafePointSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-package-streaming-safe-point" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "package_streaming_status" "engine/agent/manifest.json"
@@ -2107,6 +2128,8 @@ Assert-ContainsText $engineManifestText "framegraph_render_passes_recorded=6" "e
 Assert-ContainsText $engineManifestText "desktopRuntime3dNativeUiOverlayPackageSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-native-ui-overlay" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "ui_overlay_ready=1" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "desktopRuntime3dEntityScaleCullingPackageSmoke" "engine/agent/manifest.json"
+Assert-ContainsText $engineManifestText "installed-d3d12-3d-entity-scale-culling-smoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "desktopRuntime3dVisibleProductionPackageProof" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-visible-3d-production-proof" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "visible_3d_status=ready" "engine/agent/manifest.json"
@@ -2123,6 +2146,8 @@ Assert-ContainsText $planRegistryText "Generated 3D Postprocess Depth Package Sm
 Assert-ContainsText $planRegistryText "Generated 3D Directional Shadow Package Smoke v1" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "Generated 3D Shadow Morph Composition Package Smoke v1" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "Generated 3D Native UI Overlay Package Smoke v1" "docs/superpowers/plans/README.md"
+Assert-ContainsText $planRegistryText "Generated 3D Entity Scale Culling Package Evidence v1" "docs/superpowers/plans/README.md"
+Assert-ContainsText $planRegistryText "Generated 3D Vulkan Visible Production Proof v1" "docs/superpowers/plans/README.md"
 Assert-ContainsText $planRegistryText "Generated 3D Visible Production Game Proof v1" "docs/superpowers/plans/README.md"
 Assert-ContainsText $roadmapText "Generated 3D Committed Package Sample v1" "docs/roadmap.md"
 Assert-ContainsText $roadmapText "Generated 3D Renderer Quality Package Smoke v1" "docs/roadmap.md"

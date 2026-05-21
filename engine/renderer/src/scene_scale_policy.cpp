@@ -253,4 +253,19 @@ bool has_scene_scale_policy_diagnostic(const SceneScalePolicyPlan& plan, SceneSc
                                [code](const SceneScaleDiagnostic& diagnostic) { return diagnostic.code == code; });
 }
 
+bool scene_scale_policy_backend_instancing_evidence_ready(
+    const SceneScaleBackendInstancingEvidenceDesc& desc) noexcept {
+    const auto instanced_draws_ready = desc.instanced_draw_calls > 0 && desc.instanced_indexed_draw_calls > 0;
+    const auto instances_ready = desc.instanced_instances_submitted > 0;
+    switch (desc.backend) {
+    case rhi::BackendKind::d3d12:
+    case rhi::BackendKind::vulkan:
+        return instanced_draws_ready && instances_ready;
+    case rhi::BackendKind::null:
+    case rhi::BackendKind::metal:
+        return false;
+    }
+    return false;
+}
+
 } // namespace mirakana

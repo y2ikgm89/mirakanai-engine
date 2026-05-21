@@ -50,19 +50,27 @@ struct DesktopRuntimeGameOptions {
     bool require_directional_shadow{false};
     bool require_directional_shadow_filtering{false};
     bool require_d3d12_shadow_cascade_policy{false};
+    bool require_vulkan_shadow_cascade_policy{false};
     bool require_lighting_shadow_policy{false};
     bool require_scene_scale_policy{false};
     bool require_d3d12_instanced_draw_evidence{false};
+    bool require_vulkan_instanced_draw_evidence{false};
+    bool require_d3d12_postprocess_evidence{false};
+    bool require_vulkan_postprocess_evidence{false};
     bool require_gpu_memory_policy{false};
     bool require_d3d12_gpu_memory_evidence{false};
+    bool require_vulkan_gpu_memory_evidence{false};
     bool require_debug_profiling_policy{false};
     bool require_d3d12_debug_profiling_evidence{false};
     bool require_vulkan_debug_profiling_evidence{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
+    bool require_vulkan_framegraph_multiqueue_evidence{false};
     bool require_native_ui_overlay{false};
     bool require_native_ui_textured_sprite_atlas{false};
     bool require_gpu_skinning{false};
+    bool require_d3d12_gpu_skinning_evidence{false};
+    bool require_vulkan_gpu_skinning_evidence{false};
     bool require_quaternion_animation{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
@@ -719,16 +727,23 @@ void print_usage() {
                  "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
                  "[--require-directional-shadow] [--require-directional-shadow-filtering] "
-                 "[--require-d3d12-shadow-cascade-policy] [--require-lighting-shadow-policy] "
+                 "[--require-d3d12-shadow-cascade-policy] [--require-vulkan-shadow-cascade-policy] "
+                 "[--require-lighting-shadow-policy] "
                  "[--require-scene-scale-policy] [--require-d3d12-instanced-draw-evidence] "
+                 "[--require-vulkan-instanced-draw-evidence] "
+                 "[--require-d3d12-postprocess-evidence] "
+                 "[--require-vulkan-postprocess-evidence] "
                  "[--require-gpu-memory-policy] [--require-d3d12-gpu-memory-evidence] "
+                 "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
                  "[--require-vulkan-debug-profiling-evidence] "
                  "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
                  "[--require-native-ui-textured-sprite-atlas] "
-                 "[--require-gpu-skinning] [--require-quaternion-animation]\n";
+                 "[--require-gpu-skinning] [--require-d3d12-gpu-skinning-evidence] "
+                 "[--require-vulkan-gpu-skinning-evidence] "
+                 "[--require-quaternion-animation]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeGameOptions& options) {
@@ -796,6 +811,16 @@ void print_usage() {
             options.require_d3d12_shadow_cascade_policy = true;
             continue;
         }
+        if (arg == "--require-vulkan-shadow-cascade-policy") {
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_directional_shadow = true;
+            options.require_directional_shadow_filtering = true;
+            options.require_vulkan_shadow_cascade_policy = true;
+            continue;
+        }
         if (arg == "--require-lighting-shadow-policy") {
             options.require_lighting_shadow_policy = true;
             continue;
@@ -812,6 +837,27 @@ void print_usage() {
             options.require_d3d12_instanced_draw_evidence = true;
             continue;
         }
+        if (arg == "--require-vulkan-instanced-draw-evidence") {
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_scene_scale_policy = true;
+            options.require_vulkan_instanced_draw_evidence = true;
+            continue;
+        }
+        if (arg == "--require-d3d12-postprocess-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_d3d12_postprocess_evidence = true;
+            continue;
+        }
+        if (arg == "--require-vulkan-postprocess-evidence") {
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_vulkan_postprocess_evidence = true;
+            continue;
+        }
         if (arg == "--require-gpu-memory-policy") {
             options.require_scene_gpu_bindings = true;
             options.require_gpu_memory_policy = true;
@@ -822,6 +868,13 @@ void print_usage() {
             options.require_scene_gpu_bindings = true;
             options.require_gpu_memory_policy = true;
             options.require_d3d12_gpu_memory_evidence = true;
+            continue;
+        }
+        if (arg == "--require-vulkan-gpu-memory-evidence") {
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_gpu_memory_policy = true;
+            options.require_vulkan_gpu_memory_evidence = true;
             continue;
         }
         if (arg == "--require-debug-profiling-policy") {
@@ -856,6 +909,12 @@ void print_usage() {
             options.require_framegraph_multiqueue_evidence = true;
             continue;
         }
+        if (arg == "--require-vulkan-framegraph-multiqueue-evidence") {
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_vulkan_framegraph_multiqueue_evidence = true;
+            continue;
+        }
         if (arg == "--require-native-ui-overlay") {
             options.require_scene_gpu_bindings = true;
             options.require_postprocess = true;
@@ -872,6 +931,19 @@ void print_usage() {
         if (arg == "--require-gpu-skinning") {
             options.require_scene_gpu_bindings = true;
             options.require_gpu_skinning = true;
+            continue;
+        }
+        if (arg == "--require-d3d12-gpu-skinning-evidence") {
+            options.require_scene_gpu_bindings = true;
+            options.require_gpu_skinning = true;
+            options.require_d3d12_gpu_skinning_evidence = true;
+            continue;
+        }
+        if (arg == "--require-vulkan-gpu-skinning-evidence") {
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_gpu_skinning = true;
+            options.require_vulkan_gpu_skinning_evidence = true;
             continue;
         }
         if (arg == "--require-quaternion-animation") {
@@ -942,7 +1014,8 @@ make_scene_scale_policy_desc(const DesktopRuntimeGameOptions& options,
     if (options.require_scene_scale_policy) {
         desc.require_scene_gpu_bindings = true;
         desc.expected_frames = options.max_frames;
-        desc.require_backend_instancing_evidence = options.require_d3d12_instanced_draw_evidence;
+        desc.require_backend_instancing_evidence =
+            options.require_d3d12_instanced_draw_evidence || options.require_vulkan_instanced_draw_evidence;
         desc.backend_instancing_evidence_ready = backend_instancing_evidence_ready;
     }
     return desc;
@@ -955,8 +1028,71 @@ make_scene_scale_policy_desc(const DesktopRuntimeGameOptions& options,
     return static_cast<std::uint64_t>(options.max_frames) * 3U;
 }
 
+[[nodiscard]] std::uint64_t
+expected_vulkan_instanced_draw_instances(const DesktopRuntimeGameOptions& options) noexcept {
+    if (!options.require_vulkan_instanced_draw_evidence) {
+        return 0;
+    }
+    return static_cast<std::uint64_t>(options.max_frames) * 3U;
+}
+
 [[nodiscard]] std::uint32_t scene_mesh_instance_count(const DesktopRuntimeGameOptions& options) noexcept {
-    return options.require_d3d12_instanced_draw_evidence ? 3U : 1U;
+    return (options.require_d3d12_instanced_draw_evidence || options.require_vulkan_instanced_draw_evidence) ? 3U : 1U;
+}
+
+[[nodiscard]] bool
+directional_shadow_cascade_policy_matches(const mirakana::SdlDesktopPresentationReport& report) noexcept {
+    const bool atlas_matches =
+        report.directional_shadow_cascade_tile_width > 0 &&
+        report.directional_shadow_atlas_width ==
+            report.directional_shadow_cascade_count * report.directional_shadow_cascade_tile_width &&
+        report.directional_shadow_atlas_height == report.directional_shadow_cascade_tile_width;
+    return report.directional_shadow_cascade_count == 4 && atlas_matches &&
+           report.directional_shadow_light_space_cascades == report.directional_shadow_cascade_count &&
+           report.directional_shadow_cascade_splits == report.directional_shadow_cascade_count + 1U;
+}
+
+[[nodiscard]] bool d3d12_shadow_cascade_policy_ready(const mirakana::SdlDesktopPresentationReport& report) noexcept {
+    return report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12 &&
+           directional_shadow_cascade_policy_matches(report);
+}
+
+[[nodiscard]] bool vulkan_shadow_cascade_policy_ready(const mirakana::SdlDesktopPresentationReport& report) noexcept {
+    return report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan &&
+           directional_shadow_cascade_policy_matches(report);
+}
+
+[[nodiscard]] bool
+d3d12_framegraph_multiqueue_evidence_ready(const mirakana::SdlDesktopPresentationReport& report,
+                                           const mirakana::FrameGraphRhiMultiQueuePackageEvidence& evidence) noexcept {
+    return report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12 && evidence.ready;
+}
+
+[[nodiscard]] bool
+vulkan_framegraph_multiqueue_evidence_ready(const mirakana::SdlDesktopPresentationReport& report,
+                                            const mirakana::FrameGraphRhiMultiQueuePackageEvidence& evidence) noexcept {
+    return report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan && evidence.ready;
+}
+
+[[nodiscard]] bool gpu_skinning_evidence_matches(const mirakana::SdlDesktopPresentationReport& report,
+                                                 std::uint32_t max_frames) noexcept {
+    const auto expected_frames = static_cast<std::uint64_t>(max_frames);
+    return report.renderer_stats.gpu_skinning_draws == expected_frames &&
+           report.renderer_stats.skinned_palette_descriptor_binds == expected_frames &&
+           report.scene_gpu_stats.skinned_mesh_uploads >= 1 && report.scene_gpu_stats.skinned_mesh_bindings >= 1 &&
+           report.scene_gpu_stats.skinned_mesh_bindings_resolved == static_cast<std::size_t>(max_frames);
+}
+
+[[nodiscard]] bool d3d12_gpu_skinning_evidence_ready(const mirakana::SdlDesktopPresentationReport& report,
+                                                     std::uint32_t max_frames) noexcept {
+    return report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12 &&
+           gpu_skinning_evidence_matches(report, max_frames);
+}
+
+[[nodiscard]] bool vulkan_gpu_skinning_evidence_ready(const mirakana::SdlDesktopPresentationReport& report,
+                                                      std::uint32_t max_frames) noexcept {
+    return report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan &&
+           gpu_skinning_evidence_matches(report, max_frames);
 }
 
 [[nodiscard]] mirakana::SdlDesktopPresentationGpuMemoryPolicyDesc
@@ -965,7 +1101,8 @@ make_gpu_memory_policy_desc(const DesktopRuntimeGameOptions& options) noexcept {
     if (options.require_gpu_memory_policy) {
         desc.require_scene_gpu_bindings = true;
         desc.expected_frames = options.max_frames;
-        desc.require_backend_memory_evidence = options.require_d3d12_gpu_memory_evidence;
+        desc.require_backend_memory_evidence =
+            options.require_d3d12_gpu_memory_evidence || options.require_vulkan_gpu_memory_evidence;
         desc.require_os_video_memory_budget = options.require_d3d12_gpu_memory_evidence;
     }
     return desc;
@@ -1775,17 +1912,23 @@ int main(int argc, char** argv) {
     }
     if (options.require_d3d12_shadow_cascade_policy) {
         const auto report = host.presentation_report();
-        const bool atlas_matches =
-            report.directional_shadow_cascade_tile_width > 0 &&
-            report.directional_shadow_atlas_width ==
-                report.directional_shadow_cascade_count * report.directional_shadow_cascade_tile_width &&
-            report.directional_shadow_atlas_height == report.directional_shadow_cascade_tile_width;
-        const bool cascade_policy_matches =
-            report.directional_shadow_cascade_count == 4 && atlas_matches &&
-            report.directional_shadow_light_space_cascades == report.directional_shadow_cascade_count &&
-            report.directional_shadow_cascade_splits == report.directional_shadow_cascade_count + 1U;
-        if (!cascade_policy_matches) {
+        if (!directional_shadow_cascade_policy_matches(report)) {
             std::cout << "sample_desktop_runtime_game required_d3d12_shadow_cascade_policy_unavailable"
+                      << " cascades=" << report.directional_shadow_cascade_count
+                      << " tile_width=" << report.directional_shadow_cascade_tile_width
+                      << " atlas_width=" << report.directional_shadow_atlas_width
+                      << " atlas_height=" << report.directional_shadow_atlas_height
+                      << " light_space_cascades=" << report.directional_shadow_light_space_cascades
+                      << " cascade_splits=" << report.directional_shadow_cascade_splits << '\n';
+            print_presentation_report("sample_desktop_runtime_game", host);
+            return 9;
+        }
+    }
+    if (options.require_vulkan_shadow_cascade_policy) {
+        const auto report = host.presentation_report();
+        if (!vulkan_shadow_cascade_policy_ready(report)) {
+            std::cout << "sample_desktop_runtime_game required_vulkan_shadow_cascade_policy_unavailable"
+                      << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
                       << " cascades=" << report.directional_shadow_cascade_count
                       << " tile_width=" << report.directional_shadow_cascade_tile_width
                       << " atlas_width=" << report.directional_shadow_atlas_width
@@ -1838,14 +1981,22 @@ int main(int argc, char** argv) {
     const auto scene_gpu_stats = report.scene_gpu_stats;
     const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
     const auto d3d12_postprocess_execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(
-        report, static_cast<std::uint64_t>(options.max_frames));
+        report, static_cast<std::uint64_t>(options.max_frames), options.require_d3d12_postprocess_evidence);
+    const auto vulkan_postprocess_execution = mirakana::evaluate_sdl_desktop_presentation_vulkan_postprocess_execution(
+        report, static_cast<std::uint64_t>(options.max_frames), options.require_vulkan_postprocess_evidence);
     const auto d3d12_instanced_draw_execution =
         mirakana::evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(
             report, expected_d3d12_instanced_draw_instances(options));
+    const auto vulkan_instanced_draw_execution =
+        mirakana::evaluate_sdl_desktop_presentation_vulkan_instanced_draw_execution(
+            report, expected_vulkan_instanced_draw_instances(options));
     const auto scene_scale_policy = mirakana::evaluate_sdl_desktop_presentation_scene_scale_policy(
-        report, make_scene_scale_policy_desc(options, d3d12_instanced_draw_execution.ready));
+        report, make_scene_scale_policy_desc(options, d3d12_instanced_draw_execution.ready ||
+                                                          vulkan_instanced_draw_execution.ready));
     const auto d3d12_gpu_memory_execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(
         report, options.require_d3d12_gpu_memory_evidence);
+    const auto vulkan_gpu_memory_execution = mirakana::evaluate_sdl_desktop_presentation_vulkan_gpu_memory_execution(
+        report, options.require_vulkan_gpu_memory_evidence);
     const auto gpu_memory_policy =
         mirakana::evaluate_sdl_desktop_presentation_gpu_memory_policy(report, make_gpu_memory_policy_desc(options));
     const auto d3d12_debug_profiling_execution =
@@ -1858,7 +2009,9 @@ int main(int argc, char** argv) {
         report, make_debug_profiling_policy_desc(options));
     const auto renderer_quality =
         mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
-    const auto framegraph_multiqueue = options.require_framegraph_multiqueue_evidence
+    const bool framegraph_multiqueue_requested =
+        options.require_framegraph_multiqueue_evidence || options.require_vulkan_framegraph_multiqueue_evidence;
+    const auto framegraph_multiqueue = framegraph_multiqueue_requested
                                            ? run_frame_graph_multi_queue_package_evidence(host.presentation())
                                            : mirakana::FrameGraphRhiMultiQueuePackageEvidence{};
     const bool lighting_shadow_policy_ready = game.lighting_shadow_policy_passed(options.max_frames);
@@ -1934,6 +2087,17 @@ int main(int argc, char** argv) {
         << " postprocess_d3d12_execution_expected_passes=" << d3d12_postprocess_execution.expected_postprocess_passes
         << " postprocess_d3d12_execution_passes=" << d3d12_postprocess_execution.postprocess_passes_executed
         << " postprocess_d3d12_execution_passes_ok=" << (d3d12_postprocess_execution.postprocess_passes_current ? 1 : 0)
+        << " vulkan_postprocess_execution_status="
+        << mirakana::sdl_desktop_presentation_vulkan_postprocess_execution_status_name(
+               vulkan_postprocess_execution.status)
+        << " vulkan_postprocess_execution_ready=" << (vulkan_postprocess_execution.ready ? 1 : 0)
+        << " vulkan_postprocess_execution_selected=" << (vulkan_postprocess_execution.vulkan_backend_selected ? 1 : 0)
+        << " vulkan_postprocess_execution_shader_evidence_ready="
+        << (vulkan_postprocess_execution.backend_shader_evidence_ready ? 1 : 0)
+        << " vulkan_postprocess_execution_expected_passes=" << vulkan_postprocess_execution.expected_postprocess_passes
+        << " vulkan_postprocess_execution_passes=" << vulkan_postprocess_execution.postprocess_passes_executed
+        << " vulkan_postprocess_execution_passes_ok="
+        << (vulkan_postprocess_execution.postprocess_passes_current ? 1 : 0)
         << " d3d12_instanced_draw_execution_status="
         << mirakana::sdl_desktop_presentation_d3d12_instanced_draw_execution_status_name(
                d3d12_instanced_draw_execution.status)
@@ -1947,6 +2111,19 @@ int main(int argc, char** argv) {
         << " d3d12_instanced_instances_submitted=" << d3d12_instanced_draw_execution.instanced_instances_submitted
         << " d3d12_instanced_draws_ok=" << (d3d12_instanced_draw_execution.instanced_draws_current ? 1 : 0)
         << " d3d12_instanced_instances_ok=" << (d3d12_instanced_draw_execution.instanced_instances_current ? 1 : 0)
+        << " vulkan_instanced_draw_execution_status="
+        << mirakana::sdl_desktop_presentation_vulkan_instanced_draw_execution_status_name(
+               vulkan_instanced_draw_execution.status)
+        << " vulkan_instanced_draw_execution_ready=" << (vulkan_instanced_draw_execution.ready ? 1 : 0)
+        << " vulkan_instanced_draw_execution_selected="
+        << (vulkan_instanced_draw_execution.vulkan_backend_selected ? 1 : 0)
+        << " vulkan_instanced_draw_execution_expected_instances="
+        << vulkan_instanced_draw_execution.expected_instances_submitted
+        << " vulkan_instanced_draw_calls=" << vulkan_instanced_draw_execution.instanced_draw_calls
+        << " vulkan_instanced_indexed_draw_calls=" << vulkan_instanced_draw_execution.instanced_indexed_draw_calls
+        << " vulkan_instanced_instances_submitted=" << vulkan_instanced_draw_execution.instanced_instances_submitted
+        << " vulkan_instanced_draws_ok=" << (vulkan_instanced_draw_execution.instanced_draws_current ? 1 : 0)
+        << " vulkan_instanced_instances_ok=" << (vulkan_instanced_draw_execution.instanced_instances_current ? 1 : 0)
         << " rhi_instanced_draw_calls=" << report.rhi_instanced_draw_calls
         << " rhi_instanced_indexed_draw_calls=" << report.rhi_instanced_indexed_draw_calls
         << " rhi_instanced_instances_submitted=" << report.rhi_instanced_instances_submitted
@@ -1964,6 +2141,20 @@ int main(int argc, char** argv) {
         << " directional_shadow_atlas_height=" << report.directional_shadow_atlas_height
         << " directional_shadow_light_space_cascades=" << report.directional_shadow_light_space_cascades
         << " directional_shadow_cascade_splits=" << report.directional_shadow_cascade_splits
+        << " d3d12_shadow_cascade_policy_ready="
+        << (options.require_d3d12_shadow_cascade_policy && d3d12_shadow_cascade_policy_ready(report) ? 1 : 0)
+        << " d3d12_shadow_cascade_policy_selected="
+        << (options.require_d3d12_shadow_cascade_policy &&
+                    report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12
+                ? 1
+                : 0)
+        << " vulkan_shadow_cascade_policy_ready="
+        << (options.require_vulkan_shadow_cascade_policy && vulkan_shadow_cascade_policy_ready(report) ? 1 : 0)
+        << " vulkan_shadow_cascade_policy_selected="
+        << (options.require_vulkan_shadow_cascade_policy &&
+                    report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan
+                ? 1
+                : 0)
         << " lighting_shadow_policy_status="
         << lighting_shadow_policy_status_name(options.require_lighting_shadow_policy, lighting_shadow_policy_ready)
         << " lighting_shadow_policy_ready=" << (lighting_shadow_policy_ready ? 1 : 0)
@@ -2056,7 +2247,27 @@ int main(int argc, char** argv) {
         << " d3d12_gpu_memory_execution_upload_bytes_written=" << d3d12_gpu_memory_execution.upload_bytes_written
         << " d3d12_gpu_memory_execution_budget_ok=" << (d3d12_gpu_memory_execution.memory_budget_current ? 1 : 0)
         << " d3d12_gpu_memory_execution_transient_heap_ok="
-        << (d3d12_gpu_memory_execution.transient_heap_current ? 1 : 0) << " debug_profiling_policy_status="
+        << (d3d12_gpu_memory_execution.transient_heap_current ? 1 : 0) << " vulkan_gpu_memory_execution_status="
+        << mirakana::sdl_desktop_presentation_vulkan_gpu_memory_execution_status_name(
+               vulkan_gpu_memory_execution.status)
+        << " vulkan_gpu_memory_execution_ready=" << (vulkan_gpu_memory_execution.ready ? 1 : 0)
+        << " vulkan_gpu_memory_execution_selected=" << (vulkan_gpu_memory_execution.vulkan_backend_selected ? 1 : 0)
+        << " vulkan_gpu_memory_execution_committed_byte_estimate_available="
+        << (vulkan_gpu_memory_execution.committed_byte_estimate_available ? 1 : 0)
+        << " vulkan_gpu_memory_execution_committed_resources_byte_estimate="
+        << vulkan_gpu_memory_execution.committed_resources_byte_estimate
+        << " vulkan_gpu_memory_execution_transient_heap_allocations="
+        << vulkan_gpu_memory_execution.transient_heap_allocations
+        << " vulkan_gpu_memory_execution_transient_placed_allocations="
+        << vulkan_gpu_memory_execution.transient_placed_allocations
+        << " vulkan_gpu_memory_execution_transient_placed_resources_alive="
+        << vulkan_gpu_memory_execution.transient_placed_resources_alive
+        << " vulkan_gpu_memory_execution_upload_bytes_written=" << vulkan_gpu_memory_execution.upload_bytes_written
+        << " vulkan_gpu_memory_execution_framegraph_barrier_steps_executed="
+        << vulkan_gpu_memory_execution.framegraph_barrier_steps_executed
+        << " vulkan_gpu_memory_execution_budget_ok=" << (vulkan_gpu_memory_execution.memory_budget_current ? 1 : 0)
+        << " vulkan_gpu_memory_execution_transient_heap_ok="
+        << (vulkan_gpu_memory_execution.transient_heap_current ? 1 : 0) << " debug_profiling_policy_status="
         << mirakana::sdl_desktop_presentation_debug_profiling_policy_status_name(debug_profiling_policy.status)
         << " debug_profiling_policy_ready=" << (debug_profiling_policy.ready ? 1 : 0)
         << " debug_profiling_policy_diagnostics=" << debug_profiling_policy.diagnostics_count
@@ -2151,7 +2362,27 @@ int main(int argc, char** argv) {
         << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
         << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
         << " framegraph_multiqueue_status="
-        << frame_graph_multi_queue_status_name(options.require_framegraph_multiqueue_evidence, framegraph_multiqueue)
+        << frame_graph_multi_queue_status_name(framegraph_multiqueue_requested, framegraph_multiqueue)
+        << " d3d12_framegraph_multiqueue_evidence_ready="
+        << (options.require_framegraph_multiqueue_evidence &&
+                    d3d12_framegraph_multiqueue_evidence_ready(report, framegraph_multiqueue)
+                ? 1
+                : 0)
+        << " d3d12_framegraph_multiqueue_evidence_selected="
+        << (options.require_framegraph_multiqueue_evidence &&
+                    report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12
+                ? 1
+                : 0)
+        << " vulkan_framegraph_multiqueue_evidence_ready="
+        << (options.require_vulkan_framegraph_multiqueue_evidence &&
+                    vulkan_framegraph_multiqueue_evidence_ready(report, framegraph_multiqueue)
+                ? 1
+                : 0)
+        << " vulkan_framegraph_multiqueue_evidence_selected="
+        << (options.require_vulkan_framegraph_multiqueue_evidence &&
+                    report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan
+                ? 1
+                : 0)
         << " framegraph_multiqueue_ready=" << (framegraph_multiqueue.ready ? 1 : 0)
         << " framegraph_multiqueue_diagnostics=" << framegraph_multiqueue.diagnostics.size()
         << " framegraph_multiqueue_command_lists_submitted=" << framegraph_multiqueue.command_lists_submitted
@@ -2187,6 +2418,25 @@ int main(int argc, char** argv) {
         << (renderer_quality.directional_shadow_filter_ready ? 1 : 0)
         << " renderer_gpu_skinning_draws=" << report.renderer_stats.gpu_skinning_draws
         << " renderer_skinned_palette_descriptor_binds=" << report.renderer_stats.skinned_palette_descriptor_binds
+        << " d3d12_gpu_skinning_evidence_ready="
+        << (options.require_d3d12_gpu_skinning_evidence && d3d12_gpu_skinning_evidence_ready(report, options.max_frames)
+                ? 1
+                : 0)
+        << " d3d12_gpu_skinning_evidence_selected="
+        << (options.require_d3d12_gpu_skinning_evidence &&
+                    report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12
+                ? 1
+                : 0)
+        << " vulkan_gpu_skinning_evidence_ready="
+        << (options.require_vulkan_gpu_skinning_evidence &&
+                    vulkan_gpu_skinning_evidence_ready(report, options.max_frames)
+                ? 1
+                : 0)
+        << " vulkan_gpu_skinning_evidence_selected="
+        << (options.require_vulkan_gpu_skinning_evidence &&
+                    report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan
+                ? 1
+                : 0)
         << '\n';
     print_presentation_report("sample_desktop_runtime_game", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -2245,11 +2495,15 @@ int main(int argc, char** argv) {
              scene_gpu_stats.material_bindings_resolved != static_cast<std::size_t>(options.max_frames))) {
             return 3;
         }
-        if (options.require_gpu_skinning &&
-            (report.renderer_stats.gpu_skinning_draws != static_cast<std::uint64_t>(options.max_frames) ||
-             report.renderer_stats.skinned_palette_descriptor_binds != static_cast<std::uint64_t>(options.max_frames) ||
-             scene_gpu_stats.skinned_mesh_uploads < 1 || scene_gpu_stats.skinned_mesh_bindings < 1 ||
-             scene_gpu_stats.skinned_mesh_bindings_resolved != static_cast<std::size_t>(options.max_frames))) {
+        if (options.require_gpu_skinning && !gpu_skinning_evidence_matches(report, options.max_frames)) {
+            return 3;
+        }
+        if (options.require_d3d12_gpu_skinning_evidence &&
+            !d3d12_gpu_skinning_evidence_ready(report, options.max_frames)) {
+            return 3;
+        }
+        if (options.require_vulkan_gpu_skinning_evidence &&
+            !vulkan_gpu_skinning_evidence_ready(report, options.max_frames)) {
             return 3;
         }
         const std::uint32_t expected_framegraph_passes = options.require_directional_shadow ? 3U : 2U;
@@ -2290,13 +2544,10 @@ int main(int argc, char** argv) {
              report.directional_shadow_filter_radius_texels != 1.0F)) {
             return 3;
         }
-        if (options.require_d3d12_shadow_cascade_policy &&
-            (report.directional_shadow_cascade_count != 4 || report.directional_shadow_cascade_tile_width == 0 ||
-             report.directional_shadow_atlas_width !=
-                 report.directional_shadow_cascade_count * report.directional_shadow_cascade_tile_width ||
-             report.directional_shadow_atlas_height != report.directional_shadow_cascade_tile_width ||
-             report.directional_shadow_light_space_cascades != report.directional_shadow_cascade_count ||
-             report.directional_shadow_cascade_splits != report.directional_shadow_cascade_count + 1U)) {
+        if (options.require_d3d12_shadow_cascade_policy && !d3d12_shadow_cascade_policy_ready(report)) {
+            return 3;
+        }
+        if (options.require_vulkan_shadow_cascade_policy && !vulkan_shadow_cascade_policy_ready(report)) {
             return 3;
         }
         if (options.require_lighting_shadow_policy && !lighting_shadow_policy_ready) {
@@ -2311,6 +2562,9 @@ int main(int argc, char** argv) {
         if (options.require_d3d12_gpu_memory_evidence && !d3d12_gpu_memory_execution.ready) {
             return 3;
         }
+        if (options.require_vulkan_gpu_memory_evidence && !vulkan_gpu_memory_execution.ready) {
+            return 3;
+        }
         if (options.require_debug_profiling_policy && !debug_profiling_policy.ready) {
             return 3;
         }
@@ -2323,10 +2577,24 @@ int main(int argc, char** argv) {
         if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {
             return 3;
         }
+        if (options.require_vulkan_instanced_draw_evidence && !vulkan_instanced_draw_execution.ready) {
+            return 3;
+        }
+        if (options.require_d3d12_postprocess_evidence && !d3d12_postprocess_execution.ready) {
+            return 3;
+        }
+        if (options.require_vulkan_postprocess_evidence && !vulkan_postprocess_execution.ready) {
+            return 3;
+        }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {
             return 3;
         }
-        if (options.require_framegraph_multiqueue_evidence && !framegraph_multiqueue.ready) {
+        if (options.require_framegraph_multiqueue_evidence &&
+            !d3d12_framegraph_multiqueue_evidence_ready(report, framegraph_multiqueue)) {
+            return 3;
+        }
+        if (options.require_vulkan_framegraph_multiqueue_evidence &&
+            !vulkan_framegraph_multiqueue_evidence_ready(report, framegraph_multiqueue)) {
             return 3;
         }
         const auto expected_ui_overlay_sprites =

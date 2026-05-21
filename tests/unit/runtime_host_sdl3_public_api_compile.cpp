@@ -85,6 +85,12 @@ int main() {
         mirakana::evaluate_sdl_desktop_presentation_gpu_memory_policy(report, gpu_memory_desc);
     const auto d3d12_gpu_memory_report =
         mirakana::evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(report, true);
+    const auto vulkan_gpu_memory_report =
+        mirakana::evaluate_sdl_desktop_presentation_vulkan_gpu_memory_execution(report, true);
+    const auto vulkan_instanced_draw_report =
+        mirakana::evaluate_sdl_desktop_presentation_vulkan_instanced_draw_execution(report, 6);
+    const auto vulkan_postprocess_report =
+        mirakana::evaluate_sdl_desktop_presentation_vulkan_postprocess_execution(report, 2, true);
 
     mirakana::SdlDesktopPresentationBackendReport backend_report;
     backend_report.backend = mirakana::SdlDesktopPresentationBackend::vulkan;
@@ -210,7 +216,9 @@ int main() {
                    d3d12_scene_renderer.enable_compute_morph_tangent_frame_output &&
                    d3d12_scene_renderer.compute_morph_mesh_bindings.size() == 1 &&
                    d3d12_scene_renderer.compute_morph_skinned_mesh_bindings.size() == 1 &&
-                   scene_renderer.vertex_attributes.front().semantic == mirakana::rhi::VertexSemantic::position
+                   scene_renderer.vertex_attributes.front().semantic == mirakana::rhi::VertexSemantic::position &&
+                   vulkan_instanced_draw_report.expected_instances_submitted == 6 &&
+                   vulkan_postprocess_report.expected_postprocess_passes == 2
                ? 0
                : 1;
 }

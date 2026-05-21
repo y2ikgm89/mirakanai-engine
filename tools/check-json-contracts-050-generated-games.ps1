@@ -1243,7 +1243,8 @@ if (-not (Test-Path -LiteralPath $generated3dPackageManifestFullPath)) {
         $isDirectionalShadowRecipe = [string]$recipe.command -match "--require-directional-shadow"
         $isShadowMorphRecipe = [string]$recipe.command -match "--require-shadow-morph-composition"
         $isSceneCollisionPackageRecipe = [string]$recipe.command -match "--require-scene-collision-package"
-        if ($isGenerated3dPackageRecipe -and -not $isDirectionalShadowRecipe -and -not $isShadowMorphRecipe -and -not $isSceneCollisionPackageRecipe -and [string]$recipe.command -notmatch "--require-gameplay-systems") {
+        $isEntityScaleCullingRecipe = [string]$recipe.command -match "--require-entity-scale-culling"
+        if ($isGenerated3dPackageRecipe -and -not $isDirectionalShadowRecipe -and -not $isShadowMorphRecipe -and -not $isSceneCollisionPackageRecipe -and -not $isEntityScaleCullingRecipe -and [string]$recipe.command -notmatch "--require-gameplay-systems") {
             Write-Error "$generated3dPackageManifestPath package validation recipe missing --require-gameplay-systems: $($recipe.name)"
         }
         if ($recipe.name -match "scene-collision-package" -and [string]$recipe.command -notmatch "--require-scene-collision-package") {
@@ -1255,12 +1256,23 @@ if (-not (Test-Path -LiteralPath $generated3dPackageManifestFullPath)) {
         if ($recipe.name -match "native-ui-overlay" -and [string]$recipe.command -notmatch "--require-native-ui-overlay") {
             Write-Error "$generated3dPackageManifestPath native UI overlay recipe missing --require-native-ui-overlay: $($recipe.name)"
         }
-        if ($recipe.name -match "visible-production-proof" -and [string]$recipe.command -notmatch "--require-visible-3d-production-proof") {
-            Write-Error "$generated3dPackageManifestPath visible production proof recipe missing --require-visible-3d-production-proof: $($recipe.name)"
+        if ($recipe.name -match "visible-production-proof") {
+            if ($recipe.name -match "vulkan") {
+                if ([string]$recipe.command -notmatch "--require-vulkan-visible-3d-production-proof") {
+                    Write-Error "$generated3dPackageManifestPath Vulkan visible production proof recipe missing --require-vulkan-visible-3d-production-proof: $($recipe.name)"
+                }
+            }
+            elseif ([string]$recipe.command -notmatch "--require-visible-3d-production-proof") {
+                Write-Error "$generated3dPackageManifestPath visible production proof recipe missing --require-visible-3d-production-proof: $($recipe.name)"
+            }
+        }
+        if ($recipe.name -match "entity-scale-culling" -and [string]$recipe.command -notmatch "--require-entity-scale-culling") {
+            Write-Error "$generated3dPackageManifestPath entity scale/culling recipe missing --require-entity-scale-culling: $($recipe.name)"
         }
     }
     Assert-ContainsText $generated3dPackageManifestText "installed-d3d12-3d-shadow-morph-composition-smoke" $generated3dPackageManifestPath
     Assert-ContainsText $generated3dPackageManifestText "installed-d3d12-3d-native-ui-overlay-smoke" $generated3dPackageManifestPath
+    Assert-ContainsText $generated3dPackageManifestText "installed-d3d12-3d-entity-scale-culling-smoke" $generated3dPackageManifestPath
     Assert-ContainsText $generated3dPackageManifestText "installed-d3d12-3d-visible-production-proof-smoke" $generated3dPackageManifestPath
     Assert-ContainsText $generated3dPackageManifestText "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke" $generated3dPackageManifestPath
     Assert-ContainsText $generated3dPackageManifestText "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke" $generated3dPackageManifestPath
