@@ -20,6 +20,7 @@
 #include "mirakana/runtime/procedural_generation.hpp"
 #include "mirakana/runtime/quest_dialogue.hpp"
 #include "mirakana/runtime/runtime_diagnostics.hpp"
+#include "mirakana/runtime/scripting_sandbox.hpp"
 #include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
@@ -67,6 +68,7 @@ struct DesktopRuntimeOptions {
     bool require_procedural_generation{false};
     bool require_world_region_streaming{false};
     bool require_entity_scale_culling{false};
+    bool require_scripting_sandbox_policy{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -144,6 +146,25 @@ struct EntityScaleCullingProbeResult {
     bool ready{false};
 };
 
+struct ScriptingSandboxProbeResult {
+    mirakana::runtime::RuntimeScriptSandboxPlanStatus status{
+        mirakana::runtime::RuntimeScriptSandboxPlanStatus::invalid_request};
+    std::size_t entrypoint_rows{0U};
+    std::size_t permission_rows{0U};
+    std::size_t allowed_permission_rows{0U};
+    std::size_t denied_permission_rows{0U};
+    std::size_t rejected_unsafe_capability_rows{0U};
+    std::size_t unsupported_host_api_diagnostics{0U};
+    std::size_t budget_rows{0U};
+    std::uint64_t projected_instruction_budget{0U};
+    std::uint64_t projected_memory_budget_bytes{0U};
+    std::size_t budget_diagnostics{0U};
+    std::size_t replay_seed_rows{0U};
+    std::uint64_t replay_seed_sum{0U};
+    std::size_t diagnostics{0U};
+    bool ready{false};
+};
+
 [[nodiscard]] std::string_view gameplay_2d_systems_status_name(Gameplay2DSystemsStatus status) noexcept {
     switch (status) {
     case Gameplay2DSystemsStatus::not_started:
@@ -181,6 +202,21 @@ entity_scale_culling_status_name(mirakana::runtime::RuntimeEntityScaleCullingPla
     case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::invalid_request:
         return "invalid_request";
     case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::budget_exceeded:
+        return "budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+scripting_sandbox_status_name(mirakana::runtime::RuntimeScriptSandboxPlanStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeScriptSandboxPlanStatus::planned:
+        return "planned";
+    case mirakana::runtime::RuntimeScriptSandboxPlanStatus::no_modules:
+        return "no_modules";
+    case mirakana::runtime::RuntimeScriptSandboxPlanStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::runtime::RuntimeScriptSandboxPlanStatus::budget_exceeded:
         return "budget_exceeded";
     }
     return "unknown";
@@ -1159,6 +1195,201 @@ struct Gameplay2DProceduralGenerationProbeResult {
         result.priority_update_rows == 1U && result.normal_update_rows == 2U && result.background_update_rows == 1U &&
         result.projected_draw_cost == 7U && result.projected_update_cost == 3U && result.budget_protected_rows == 1U &&
         result.diagnostics == 0U && result.budget_diagnostics == 2U;
+    return result;
+}
+
+[[nodiscard]] std::size_t
+count_scripting_sandbox_diagnostics(const mirakana::runtime::RuntimeScriptSandboxPlan& plan,
+                                    mirakana::runtime::RuntimeScriptSandboxDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] ScriptingSandboxProbeResult validate_scripting_sandbox_package_evidence() {
+    using Code = mirakana::runtime::RuntimeScriptSandboxDiagnosticCode;
+    using EntryKind = mirakana::runtime::RuntimeScriptSandboxEntrypointKind;
+    using PermissionKind = mirakana::runtime::RuntimeScriptSandboxPermissionKind;
+    using Status = mirakana::runtime::RuntimeScriptSandboxPlanStatus;
+
+    const auto reviewed_policy =
+        mirakana::runtime::RuntimeScriptSandboxPolicyDesc{
+            .modules =
+                std::vector<mirakana::runtime::RuntimeScriptSandboxModuleDesc>{
+                    mirakana::runtime::RuntimeScriptSandboxModuleDesc{
+                        .module_id = "gameplay",
+                        .source_uri = "scripts/gameplay.reviewed",
+                        .source_index = 1U,
+                        .entrypoints =
+                            std::vector<mirakana::runtime::RuntimeScriptSandboxEntrypointDesc>{
+                                mirakana::runtime::RuntimeScriptSandboxEntrypointDesc{
+                                    .entrypoint_id = "tick",
+                                    .kind = EntryKind::update,
+                                    .instruction_budget = 1200U,
+                                    .memory_budget_bytes = 4096U,
+                                    .replay_seed = 1001U,
+                                    .permissions =
+                                        std::vector<mirakana::runtime::RuntimeScriptSandboxPermissionDesc>{
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::read_runtime_state, .source_index = 1U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::write_runtime_state, .source_index = 2U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::host_api,
+                                                .host_api_id = "sample2d.quest",
+                                                .source_index = 3U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::emit_diagnostic, .source_index = 4U},
+                                        },
+                                    .source_index = 10U,
+                                },
+                            },
+                    },
+                    mirakana::runtime::RuntimeScriptSandboxModuleDesc{
+                        .module_id = "ui",
+                        .source_uri = "scripts/ui.reviewed",
+                        .source_index = 2U,
+                        .entrypoints =
+                            std::vector<mirakana::runtime::RuntimeScriptSandboxEntrypointDesc>{
+                                mirakana::runtime::RuntimeScriptSandboxEntrypointDesc{
+                                    .entrypoint_id = "render_hud",
+                                    .kind = EntryKind::event,
+                                    .instruction_budget = 600U,
+                                    .memory_budget_bytes = 2048U,
+                                    .replay_seed = 2002U,
+                                    .permissions =
+                                        std::vector<mirakana::runtime::RuntimeScriptSandboxPermissionDesc>{
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::read_runtime_state, .source_index = 1U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::host_api,
+                                                .host_api_id = "sample2d.hud",
+                                                .source_index = 2U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::emit_diagnostic, .source_index = 3U},
+                                        },
+                                    .source_index = 20U,
+                                },
+                            },
+                    },
+                },
+            .allowed_host_apis = {"sample2d.hud", "sample2d.quest"},
+            .max_instruction_budget_per_entrypoint = 2000U,
+            .max_memory_budget_bytes_per_entrypoint = 8192U,
+        };
+
+    ScriptingSandboxProbeResult result;
+    const auto reviewed_plan = mirakana::runtime::plan_runtime_script_sandbox(reviewed_policy);
+    result.status = reviewed_plan.status;
+    result.entrypoint_rows = reviewed_plan.entrypoints.size();
+    result.permission_rows = reviewed_plan.permissions.size();
+    result.projected_instruction_budget = reviewed_plan.projected_instruction_budget;
+    result.projected_memory_budget_bytes = reviewed_plan.projected_memory_budget_bytes;
+    result.diagnostics = reviewed_plan.diagnostics.size();
+    for (const auto& row : reviewed_plan.entrypoints) {
+        result.allowed_permission_rows += row.allowed_permission_count;
+        if (row.instruction_budget > 0U && row.memory_budget_bytes > 0U) {
+            ++result.budget_rows;
+        }
+        if (row.replay_seed != 0U) {
+            ++result.replay_seed_rows;
+            result.replay_seed_sum += row.replay_seed;
+        }
+    }
+
+    const auto unsafe_policy =
+        mirakana::runtime::RuntimeScriptSandboxPolicyDesc{
+            .modules =
+                std::vector<mirakana::runtime::RuntimeScriptSandboxModuleDesc>{
+                    mirakana::runtime::RuntimeScriptSandboxModuleDesc{
+                        .module_id = "unsafe",
+                        .source_uri = "scripts/unsafe.reviewed",
+                        .source_index = 3U,
+                        .entrypoints =
+                            std::vector<mirakana::runtime::RuntimeScriptSandboxEntrypointDesc>{
+                                mirakana::runtime::RuntimeScriptSandboxEntrypointDesc{
+                                    .entrypoint_id = "tick",
+                                    .kind = EntryKind::update,
+                                    .instruction_budget = 100U,
+                                    .memory_budget_bytes = 512U,
+                                    .replay_seed = 3003U,
+                                    .permissions =
+                                        std::vector<mirakana::runtime::RuntimeScriptSandboxPermissionDesc>{
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::filesystem_read, .source_index = 1U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::filesystem_write, .source_index = 2U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::network, .source_index = 3U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::process, .source_index = 4U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::native_plugin, .source_index = 5U},
+                                            mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                                .kind = PermissionKind::host_api,
+                                                .host_api_id = "sample2d.unreviewed",
+                                                .source_index = 6U},
+                                        },
+                                    .source_index = 30U,
+                                },
+                            },
+                    },
+                },
+            .allowed_host_apis = {"sample2d.quest"},
+            .max_instruction_budget_per_entrypoint = 2000U,
+            .max_memory_budget_bytes_per_entrypoint = 8192U,
+        };
+    const auto unsafe_plan = mirakana::runtime::plan_runtime_script_sandbox(unsafe_policy);
+    result.denied_permission_rows = count_scripting_sandbox_diagnostics(unsafe_plan, Code::default_denied_permission);
+    result.unsupported_host_api_diagnostics =
+        count_scripting_sandbox_diagnostics(unsafe_plan, Code::unsupported_host_api_id);
+    result.rejected_unsafe_capability_rows = result.denied_permission_rows + result.unsupported_host_api_diagnostics;
+
+    const auto budget_policy = mirakana::runtime::RuntimeScriptSandboxPolicyDesc{
+        .modules =
+            std::vector<mirakana::runtime::RuntimeScriptSandboxModuleDesc>{
+                mirakana::runtime::RuntimeScriptSandboxModuleDesc{
+                    .module_id = "budget",
+                    .source_uri = "scripts/budget.reviewed",
+                    .source_index = 4U,
+                    .entrypoints =
+                        std::vector<mirakana::runtime::RuntimeScriptSandboxEntrypointDesc>{
+                            mirakana::runtime::RuntimeScriptSandboxEntrypointDesc{
+                                .entrypoint_id = "tick",
+                                .kind = EntryKind::update,
+                                .instruction_budget = 2001U,
+                                .memory_budget_bytes = 8193U,
+                                .replay_seed = 4004U,
+                                .permissions =
+                                    std::vector<mirakana::runtime::RuntimeScriptSandboxPermissionDesc>{
+                                        mirakana::runtime::RuntimeScriptSandboxPermissionDesc{
+                                            .kind = PermissionKind::emit_diagnostic, .source_index = 1U},
+                                    },
+                                .source_index = 40U,
+                            },
+                        },
+                },
+            },
+        .allowed_host_apis = {},
+        .max_instruction_budget_per_entrypoint = 2000U,
+        .max_memory_budget_bytes_per_entrypoint = 8192U,
+    };
+    const auto budget_plan = mirakana::runtime::plan_runtime_script_sandbox(budget_policy);
+    result.budget_diagnostics = count_scripting_sandbox_diagnostics(budget_plan, Code::instruction_budget_exceeded) +
+                                count_scripting_sandbox_diagnostics(budget_plan, Code::memory_budget_exceeded);
+
+    result.ready = reviewed_plan.status == Status::planned && reviewed_plan.succeeded() &&
+                   result.entrypoint_rows == 2U && result.permission_rows == 7U &&
+                   result.allowed_permission_rows == 7U && result.denied_permission_rows == 5U &&
+                   result.rejected_unsafe_capability_rows == 6U && result.unsupported_host_api_diagnostics == 1U &&
+                   result.budget_rows == 2U && result.projected_instruction_budget == 1800U &&
+                   result.projected_memory_budget_bytes == 6144U && result.budget_diagnostics == 2U &&
+                   result.replay_seed_rows == 2U && result.replay_seed_sum == 3003U && result.diagnostics == 0U &&
+                   unsafe_plan.status == Status::invalid_request && budget_plan.status == Status::budget_exceeded;
     return result;
 }
 
@@ -2411,7 +2642,7 @@ void print_usage() {
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
                  "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
-                 "[--require-entity-scale-culling]\n";
+                 "[--require-entity-scale-culling] [--require-scripting-sandbox-policy]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -2469,6 +2700,10 @@ void print_usage() {
         }
         if (arg == "--require-entity-scale-culling") {
             options.require_entity_scale_culling = true;
+            continue;
+        }
+        if (arg == "--require-scripting-sandbox-policy") {
+            options.require_scripting_sandbox_policy = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -2997,6 +3232,9 @@ int main(int argc, char** argv) {
     const auto entity_scale_culling_probe = options.require_entity_scale_culling
                                                 ? validate_entity_scale_culling_package_evidence()
                                                 : EntityScaleCullingProbeResult{};
+    const auto scripting_sandbox_probe = options.require_scripting_sandbox_policy
+                                             ? validate_scripting_sandbox_package_evidence()
+                                             : ScriptingSandboxProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -3284,6 +3522,23 @@ int main(int argc, char** argv) {
         << " entity_scale_culling_budget_protected_rows=" << entity_scale_culling_probe.budget_protected_rows
         << " entity_scale_culling_diagnostics=" << entity_scale_culling_probe.diagnostics
         << " entity_scale_culling_budget_diagnostics=" << entity_scale_culling_probe.budget_diagnostics
+        << " scripting_sandbox_status=" << scripting_sandbox_status_name(scripting_sandbox_probe.status)
+        << " scripting_sandbox_ready=" << (scripting_sandbox_probe.ready ? 1 : 0)
+        << " scripting_sandbox_entrypoint_rows=" << scripting_sandbox_probe.entrypoint_rows
+        << " scripting_sandbox_permission_rows=" << scripting_sandbox_probe.permission_rows
+        << " scripting_sandbox_allowed_permission_rows=" << scripting_sandbox_probe.allowed_permission_rows
+        << " scripting_sandbox_denied_permission_rows=" << scripting_sandbox_probe.denied_permission_rows
+        << " scripting_sandbox_rejected_unsafe_capability_rows="
+        << scripting_sandbox_probe.rejected_unsafe_capability_rows
+        << " scripting_sandbox_unsupported_host_api_diagnostics="
+        << scripting_sandbox_probe.unsupported_host_api_diagnostics
+        << " scripting_sandbox_budget_rows=" << scripting_sandbox_probe.budget_rows
+        << " scripting_sandbox_projected_instruction_budget=" << scripting_sandbox_probe.projected_instruction_budget
+        << " scripting_sandbox_projected_memory_budget_bytes=" << scripting_sandbox_probe.projected_memory_budget_bytes
+        << " scripting_sandbox_budget_diagnostics=" << scripting_sandbox_probe.budget_diagnostics
+        << " scripting_sandbox_replay_seed_rows=" << scripting_sandbox_probe.replay_seed_rows
+        << " scripting_sandbox_replay_seed_sum=" << scripting_sandbox_probe.replay_seed_sum
+        << " scripting_sandbox_diagnostics=" << scripting_sandbox_probe.diagnostics
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -3432,6 +3687,20 @@ int main(int argc, char** argv) {
                   << " entity_scale_culling_budget_diagnostics=" << entity_scale_culling_probe.budget_diagnostics
                   << '\n';
         return 15;
+    }
+
+    if (options.require_scripting_sandbox_policy && !scripting_sandbox_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_scripting_sandbox_policy_unavailable"
+                  << " scripting_sandbox_status=" << scripting_sandbox_status_name(scripting_sandbox_probe.status)
+                  << " scripting_sandbox_entrypoint_rows=" << scripting_sandbox_probe.entrypoint_rows
+                  << " scripting_sandbox_permission_rows=" << scripting_sandbox_probe.permission_rows
+                  << " scripting_sandbox_denied_permission_rows=" << scripting_sandbox_probe.denied_permission_rows
+                  << " scripting_sandbox_rejected_unsafe_capability_rows="
+                  << scripting_sandbox_probe.rejected_unsafe_capability_rows
+                  << " scripting_sandbox_budget_diagnostics=" << scripting_sandbox_probe.budget_diagnostics
+                  << " scripting_sandbox_replay_seed_rows=" << scripting_sandbox_probe.replay_seed_rows
+                  << " scripting_sandbox_diagnostics=" << scripting_sandbox_probe.diagnostics << '\n';
+        return 16;
     }
 
     if (options.smoke &&

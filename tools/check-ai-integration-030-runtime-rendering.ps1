@@ -862,8 +862,7 @@ foreach ($inventoryItemPackageSurface in @(
     "games/sample_2d_desktop_runtime_package/game.agent.json"
 )) {
     $inventoryItemPackageText = Get-AgentSurfaceText $inventoryItemPackageSurface
-    Assert-ContainsText $inventoryItemPackageText "gameplay_systems_inventory_items_transition_rows" $inventoryItemPackageSurface
-    Assert-ContainsText $inventoryItemPackageText "gameplay_systems_inventory_items_final_workbench_quantity" $inventoryItemPackageSurface
+    Assert-ContainsText $inventoryItemPackageText "gameplay_systems_inventory_items_transition_rows" $inventoryItemPackageSurface; Assert-ContainsText $inventoryItemPackageText "gameplay_systems_inventory_items_final_workbench_quantity" $inventoryItemPackageSurface
     Assert-ContainsText $inventoryItemPackageText "gameplay_systems_construction_placement_validation_rows" $inventoryItemPackageSurface
     Assert-ContainsText $inventoryItemPackageText "gameplay_systems_construction_placement_intent_rows" $inventoryItemPackageSurface
     Assert-ContainsText $inventoryItemPackageText "gameplay_systems_construction_placement_intent_accepted_rows" $inventoryItemPackageSurface
