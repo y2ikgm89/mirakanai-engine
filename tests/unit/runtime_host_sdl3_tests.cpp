@@ -910,6 +910,35 @@ MK_TEST("sdl desktop presentation scene scale policy blocks missing backend inst
     MK_REQUIRE(!policy.backend_instancing_evidence_ready);
 }
 
+MK_TEST("sdl desktop presentation d3d12 instanced draw execution report requires backend instanced counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
+    report.rhi_instanced_draw_calls = 2;
+    report.rhi_instanced_indexed_draw_calls = 2;
+    report.rhi_instanced_instances_submitted = 6;
+
+    auto execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(report, 6);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::ready);
+    MK_REQUIRE(execution.ready);
+    MK_REQUIRE(execution.d3d12_backend_selected);
+    MK_REQUIRE(execution.expected_instances_submitted == 6);
+    MK_REQUIRE(execution.instanced_draw_calls == 2);
+    MK_REQUIRE(execution.instanced_indexed_draw_calls == 2);
+    MK_REQUIRE(execution.instanced_instances_submitted == 6);
+    MK_REQUIRE(execution.instanced_draws_current);
+    MK_REQUIRE(execution.instanced_instances_current);
+
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
+    execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(report, 6);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::blocked);
+    MK_REQUIRE(!execution.ready);
+    MK_REQUIRE(!execution.d3d12_backend_selected);
+    MK_REQUIRE(execution.instanced_draws_current);
+    MK_REQUIRE(execution.instanced_instances_current);
+}
+
 MK_TEST("sdl desktop presentation d3d12 postprocess execution report requires selected d3d12 pass evidence") {
     mirakana::SdlDesktopPresentationReport report;
     report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;

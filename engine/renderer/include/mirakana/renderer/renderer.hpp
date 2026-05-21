@@ -153,6 +153,7 @@ struct MeshCommand {
     Mat4 world_from_node{Mat4::identity()};
     MeshGpuBinding mesh_binding;
     MaterialGpuBinding material_binding;
+    std::uint32_t instance_count{1};
     /// When true, `skinned_mesh` carries vertex/index buffers plus joint palette; static path uses `mesh_binding`
     /// only.
     bool gpu_skinning{false};

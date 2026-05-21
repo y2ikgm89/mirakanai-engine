@@ -914,10 +914,10 @@ void RhiDirectionalShadowSmokeFrameRenderer::record_shadow_mesh_draw(const MeshC
             .offset = command.mesh_binding.index_offset,
             .format = command.mesh_binding.index_format,
         });
-        commands_->draw_indexed(command.mesh_binding.index_count, 1);
+        commands_->draw_indexed(command.mesh_binding.index_count, command.instance_count);
         return;
     }
-    commands_->draw(3, 1);
+    commands_->draw(3, command.instance_count);
 }
 
 void RhiDirectionalShadowSmokeFrameRenderer::record_scene_mesh_draw(const MeshCommand& command) {
@@ -938,7 +938,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::record_scene_mesh_draw(const MeshCo
             .offset = command.skinned_mesh.mesh.index_offset,
             .format = command.skinned_mesh.mesh.index_format,
         });
-        commands_->draw_indexed(command.skinned_mesh.mesh.index_count, 1);
+        commands_->draw_indexed(command.skinned_mesh.mesh.index_count, command.instance_count);
         ++stats_.gpu_skinning_draws;
         ++stats_.skinned_palette_descriptor_binds;
         commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
@@ -963,7 +963,7 @@ void RhiDirectionalShadowSmokeFrameRenderer::record_scene_mesh_draw(const MeshCo
             .offset = command.mesh_binding.index_offset,
             .format = command.mesh_binding.index_format,
         });
-        commands_->draw_indexed(command.mesh_binding.index_count, 1);
+        commands_->draw_indexed(command.mesh_binding.index_count, command.instance_count);
         ++stats_.gpu_morph_draws;
         ++stats_.morph_descriptor_binds;
         commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
@@ -981,10 +981,10 @@ void RhiDirectionalShadowSmokeFrameRenderer::record_scene_mesh_draw(const MeshCo
             .offset = command.mesh_binding.index_offset,
             .format = command.mesh_binding.index_format,
         });
-        commands_->draw_indexed(command.mesh_binding.index_count, 1);
+        commands_->draw_indexed(command.mesh_binding.index_count, command.instance_count);
         return;
     }
-    commands_->draw(3, 1);
+    commands_->draw(3, command.instance_count);
 }
 
 } // namespace mirakana

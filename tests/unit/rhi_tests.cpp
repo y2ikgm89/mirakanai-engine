@@ -1994,7 +1994,7 @@ MK_TEST("null rhi binds vertex and index buffers before indexed draw") {
     commands->bind_vertex_buffer(mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 32});
     commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
         .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint32});
-    commands->draw_indexed(3, 1);
+    commands->draw_indexed(3, 4);
     commands->end_render_pass();
     commands->close();
     (void)device.submit(*commands);
@@ -2004,7 +2004,10 @@ MK_TEST("null rhi binds vertex and index buffers before indexed draw") {
     MK_REQUIRE(stats.index_buffer_bindings == 1);
     MK_REQUIRE(stats.indexed_draw_calls == 1);
     MK_REQUIRE(stats.draw_calls == 1);
-    MK_REQUIRE(stats.indices_submitted == 3);
+    MK_REQUIRE(stats.instanced_draw_calls == 1);
+    MK_REQUIRE(stats.instanced_indexed_draw_calls == 1);
+    MK_REQUIRE(stats.instanced_instances_submitted == 4);
+    MK_REQUIRE(stats.indices_submitted == 12);
 }
 
 MK_TEST("null rhi rejects invalid shader and pipeline descriptions") {

@@ -52,6 +52,7 @@ struct DesktopRuntimeGameOptions {
     bool require_d3d12_shadow_cascade_policy{false};
     bool require_lighting_shadow_policy{false};
     bool require_scene_scale_policy{false};
+    bool require_d3d12_instanced_draw_evidence{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_native_ui_overlay{false};
@@ -273,13 +274,13 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
                              std::optional<mirakana::RuntimeSceneRenderInstance> scene, bool scene_gpu_mode,
                              std::vector<mirakana::AnimationJointTrack3dDesc> quaternion_animation_tracks,
                              bool lighting_shadow_policy_mode, bool textured_ui_atlas_mode,
-                             mirakana::UiRendererImagePalette image_palette,
+                             mirakana::UiRendererImagePalette image_palette, std::uint32_t scene_mesh_instance_count,
                              mirakana::SdlDesktopPresentation* presentation = nullptr)
         : input_(input), renderer_(renderer), throttle_(throttle), scene_(std::move(scene)),
           quaternion_animation_tracks_(std::move(quaternion_animation_tracks)),
           image_palette_(std::move(image_palette)), scene_gpu_mode_(scene_gpu_mode),
           lighting_shadow_policy_mode_(lighting_shadow_policy_mode), textured_ui_atlas_mode_(textured_ui_atlas_mode),
-          presentation_(presentation) {}
+          scene_mesh_instance_count_(scene_mesh_instance_count), presentation_(presentation) {}
 
     void on_start(mirakana::EngineContext&) override {
         input_.press(mirakana::Key::right);
@@ -405,6 +406,7 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
                     .fallback_mesh_color = mirakana::Color{.r = 0.8F, .g = 0.35F, .b = 0.15F, .a = 1.0F},
                     .material_palette = &scene_->material_palette,
                     .pbr_gpu = pbr_ptr,
+                    .mesh_instance_count = scene_mesh_instance_count_,
                 });
             scene_meshes_submitted_ += scene_submit.meshes_submitted;
             scene_materials_resolved_ += scene_submit.material_colors_resolved;
@@ -654,6 +656,7 @@ class SampleDesktopRuntimeGame final : public mirakana::GameApp {
     bool scene_gpu_mode_{false};
     bool lighting_shadow_policy_mode_{false};
     bool textured_ui_atlas_mode_{false};
+    std::uint32_t scene_mesh_instance_count_{1};
     mirakana::SdlDesktopPresentation* presentation_{nullptr};
     std::uint32_t frames_{0};
     std::size_t scene_meshes_submitted_{0};
@@ -712,7 +715,8 @@ void print_usage() {
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
                  "[--require-directional-shadow] [--require-directional-shadow-filtering] "
                  "[--require-d3d12-shadow-cascade-policy] [--require-lighting-shadow-policy] "
-                 "[--require-scene-scale-policy] [--require-renderer-quality-gates] "
+                 "[--require-scene-scale-policy] [--require-d3d12-instanced-draw-evidence] "
+                 "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
                  "[--require-native-ui-textured-sprite-atlas] "
@@ -791,6 +795,13 @@ void print_usage() {
         if (arg == "--require-scene-scale-policy") {
             options.require_scene_gpu_bindings = true;
             options.require_scene_scale_policy = true;
+            continue;
+        }
+        if (arg == "--require-d3d12-instanced-draw-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_scene_scale_policy = true;
+            options.require_d3d12_instanced_draw_evidence = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -886,13 +897,27 @@ void print_usage() {
 }
 
 [[nodiscard]] mirakana::SdlDesktopPresentationSceneScalePolicyDesc
-make_scene_scale_policy_desc(const DesktopRuntimeGameOptions& options) noexcept {
+make_scene_scale_policy_desc(const DesktopRuntimeGameOptions& options,
+                             bool backend_instancing_evidence_ready) noexcept {
     mirakana::SdlDesktopPresentationSceneScalePolicyDesc desc;
     if (options.require_scene_scale_policy) {
         desc.require_scene_gpu_bindings = true;
         desc.expected_frames = options.max_frames;
+        desc.require_backend_instancing_evidence = options.require_d3d12_instanced_draw_evidence;
+        desc.backend_instancing_evidence_ready = backend_instancing_evidence_ready;
     }
     return desc;
+}
+
+[[nodiscard]] std::uint64_t expected_d3d12_instanced_draw_instances(const DesktopRuntimeGameOptions& options) noexcept {
+    if (!options.require_d3d12_instanced_draw_evidence) {
+        return 0;
+    }
+    return static_cast<std::uint64_t>(options.max_frames) * 3U;
+}
+
+[[nodiscard]] std::uint32_t scene_mesh_instance_count(const DesktopRuntimeGameOptions& options) noexcept {
+    return options.require_d3d12_instanced_draw_evidence ? 3U : 1U;
 }
 
 [[nodiscard]] mirakana::SdlDesktopPresentationQualityGateDesc
@@ -1303,6 +1328,9 @@ void print_presentation_report(std::string_view prefix, const mirakana::SdlDeskt
               << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
               << " renderer_gpu_skinning_draws=" << report.renderer_stats.gpu_skinning_draws
               << " renderer_skinned_palette_descriptor_binds=" << report.renderer_stats.skinned_palette_descriptor_binds
+              << " rhi_instanced_draw_calls=" << report.rhi_instanced_draw_calls
+              << " rhi_instanced_indexed_draw_calls=" << report.rhi_instanced_indexed_draw_calls
+              << " rhi_instanced_instances_submitted=" << report.rhi_instanced_instances_submitted
               << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
     for (const auto& backend_report : host.presentation_backend_reports()) {
         std::cout << prefix << " presentation_backend_report="
@@ -1737,18 +1765,22 @@ int main(int argc, char** argv) {
         }
     }
 
-    SampleDesktopRuntimeGame game(
-        host.input(), host.renderer(), options.throttle, std::move(packaged_scene), host.scene_gpu_bindings_ready(),
-        std::move(packaged_quaternion_animation_tracks), options.require_lighting_shadow_policy,
-        options.require_native_ui_textured_sprite_atlas, std::move(ui_atlas_metadata.palette), &host.presentation());
+    SampleDesktopRuntimeGame game(host.input(), host.renderer(), options.throttle, std::move(packaged_scene),
+                                  host.scene_gpu_bindings_ready(), std::move(packaged_quaternion_animation_tracks),
+                                  options.require_lighting_shadow_policy,
+                                  options.require_native_ui_textured_sprite_atlas, std::move(ui_atlas_metadata.palette),
+                                  scene_mesh_instance_count(options), &host.presentation());
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
     const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
     const auto d3d12_postprocess_execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(
         report, static_cast<std::uint64_t>(options.max_frames));
-    const auto scene_scale_policy =
-        mirakana::evaluate_sdl_desktop_presentation_scene_scale_policy(report, make_scene_scale_policy_desc(options));
+    const auto d3d12_instanced_draw_execution =
+        mirakana::evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(
+            report, expected_d3d12_instanced_draw_instances(options));
+    const auto scene_scale_policy = mirakana::evaluate_sdl_desktop_presentation_scene_scale_policy(
+        report, make_scene_scale_policy_desc(options, d3d12_instanced_draw_execution.ready));
     const auto renderer_quality =
         mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const auto framegraph_multiqueue = options.require_framegraph_multiqueue_evidence
@@ -1827,6 +1859,22 @@ int main(int argc, char** argv) {
         << " postprocess_d3d12_execution_expected_passes=" << d3d12_postprocess_execution.expected_postprocess_passes
         << " postprocess_d3d12_execution_passes=" << d3d12_postprocess_execution.postprocess_passes_executed
         << " postprocess_d3d12_execution_passes_ok=" << (d3d12_postprocess_execution.postprocess_passes_current ? 1 : 0)
+        << " d3d12_instanced_draw_execution_status="
+        << mirakana::sdl_desktop_presentation_d3d12_instanced_draw_execution_status_name(
+               d3d12_instanced_draw_execution.status)
+        << " d3d12_instanced_draw_execution_ready=" << (d3d12_instanced_draw_execution.ready ? 1 : 0)
+        << " d3d12_instanced_draw_execution_selected="
+        << (d3d12_instanced_draw_execution.d3d12_backend_selected ? 1 : 0)
+        << " d3d12_instanced_draw_execution_expected_instances="
+        << d3d12_instanced_draw_execution.expected_instances_submitted
+        << " d3d12_instanced_draw_calls=" << d3d12_instanced_draw_execution.instanced_draw_calls
+        << " d3d12_instanced_indexed_draw_calls=" << d3d12_instanced_draw_execution.instanced_indexed_draw_calls
+        << " d3d12_instanced_instances_submitted=" << d3d12_instanced_draw_execution.instanced_instances_submitted
+        << " d3d12_instanced_draws_ok=" << (d3d12_instanced_draw_execution.instanced_draws_current ? 1 : 0)
+        << " d3d12_instanced_instances_ok=" << (d3d12_instanced_draw_execution.instanced_instances_current ? 1 : 0)
+        << " rhi_instanced_draw_calls=" << report.rhi_instanced_draw_calls
+        << " rhi_instanced_indexed_draw_calls=" << report.rhi_instanced_indexed_draw_calls
+        << " rhi_instanced_instances_submitted=" << report.rhi_instanced_instances_submitted
         << " directional_shadow_status="
         << mirakana::sdl_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
         << " directional_shadow_requested=" << (report.directional_shadow_requested ? 1 : 0)
@@ -2058,6 +2106,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_scene_scale_policy && !scene_scale_policy.ready) {
+            return 3;
+        }
+        if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {
             return 3;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {

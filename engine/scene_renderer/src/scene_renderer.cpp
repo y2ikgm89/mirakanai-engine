@@ -923,6 +923,7 @@ MeshCommand make_scene_mesh_command(const SceneRenderMesh& mesh, Color color) no
 
 MeshCommand make_scene_mesh_command(const SceneRenderMesh& mesh, const SceneRenderSubmitDesc& desc) noexcept {
     auto command = make_scene_mesh_command(mesh, resolve_scene_mesh_color(mesh, desc));
+    command.instance_count = desc.mesh_instance_count;
     if (desc.gpu_bindings != nullptr) {
         if (const auto* mesh_binding = desc.gpu_bindings->find_mesh(mesh.renderer.mesh); mesh_binding != nullptr) {
             command.mesh_binding = *mesh_binding;

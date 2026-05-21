@@ -275,6 +275,7 @@ struct SceneRenderSubmitDesc {
     const SceneGpuBindingPalette* gpu_bindings{nullptr};
     const SceneSkinnedGpuBindingPalette* skinned_gpu_bindings{nullptr};
     const ScenePbrGpuSubmitContext* pbr_gpu{nullptr};
+    std::uint32_t mesh_instance_count{1};
 };
 
 struct SceneLightCommand {
