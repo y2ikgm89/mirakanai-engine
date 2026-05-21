@@ -3,6 +3,7 @@ add_library(mirakana_runtime
     src/inventory_items.cpp
     src/package_streaming.cpp
     src/physics_collision_runtime.cpp
+    src/procedural_generation.cpp
     src/quest_dialogue.cpp
     src/resource_runtime.cpp
     src/runtime_diagnostics.cpp

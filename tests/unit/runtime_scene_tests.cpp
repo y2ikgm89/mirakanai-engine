@@ -5,6 +5,7 @@
 
 #include "mirakana/animation/skeleton.hpp"
 #include "mirakana/assets/asset_identity.hpp"
+#include "mirakana/runtime/procedural_generation.hpp"
 #include "mirakana/runtime_scene/runtime_scene.hpp"
 
 #include <cmath>
@@ -98,6 +99,19 @@ find_gameplay_interaction_diagnostic(const mirakana::runtime_scene::RuntimeScene
     return nullptr;
 }
 
+[[nodiscard]] const mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDiagnostic*
+find_construction_placement_intent_diagnostic(
+    const mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentPlan& plan,
+    mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDiagnosticCode code,
+    std::string_view procedural_output_id) {
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code && diagnostic.procedural_output_id == procedural_output_id) {
+            return &diagnostic;
+        }
+    }
+    return nullptr;
+}
+
 [[nodiscard]] mirakana::runtime::RuntimeItemCatalogDocument construction_item_catalog_document() {
     using namespace mirakana::runtime;
 
@@ -176,6 +190,71 @@ valid_construction_placement_validation() {
         .visible = true,
     };
     return components;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeProceduralGenerationPlan valid_procedural_generation_plan() {
+    using namespace mirakana::runtime;
+
+    return RuntimeProceduralGenerationPlan{
+        .succeeded = true,
+        .diagnostics = {},
+        .rows =
+            std::vector<RuntimeProceduralGenerationOutputRow>{
+                RuntimeProceduralGenerationOutputRow{
+                    .id = "prop:0",
+                    .content_id = "prop",
+                    .kind = RuntimeProceduralGenerationContentKind::object,
+                    .index = 0U,
+                    .x = 4U,
+                    .y = 7U,
+                    .stable_value = 0x1111ULL,
+                },
+                RuntimeProceduralGenerationOutputRow{
+                    .id = "prop:1",
+                    .content_id = "prop",
+                    .kind = RuntimeProceduralGenerationContentKind::object,
+                    .index = 1U,
+                    .x = 4U,
+                    .y = 7U,
+                    .stable_value = 0x2222ULL,
+                },
+                RuntimeProceduralGenerationOutputRow{
+                    .id = "prop:2",
+                    .content_id = "prop",
+                    .kind = RuntimeProceduralGenerationContentKind::object,
+                    .index = 2U,
+                    .x = 4U,
+                    .y = 7U,
+                    .stable_value = 0x3333ULL,
+                },
+            },
+        .replay_hash = 0x4444ULL,
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeProceduralGenerationPlan invalid_procedural_generation_bridge_plan() {
+    using namespace mirakana::runtime;
+
+    auto plan = valid_procedural_generation_plan();
+    plan.rows.push_back(RuntimeProceduralGenerationOutputRow{
+        .id = "tile:0",
+        .content_id = "terrain",
+        .kind = RuntimeProceduralGenerationContentKind::map_tile,
+        .index = 0U,
+        .x = 1U,
+        .y = 1U,
+        .stable_value = 0x5555ULL,
+    });
+    plan.rows.push_back(RuntimeProceduralGenerationOutputRow{
+        .id = "loot:0",
+        .content_id = "loot",
+        .kind = RuntimeProceduralGenerationContentKind::loot,
+        .index = 0U,
+        .x = 2U,
+        .y = 3U,
+        .stable_value = 0x6666ULL,
+    });
+    return plan;
 }
 
 [[nodiscard]] mirakana::runtime::RuntimeAssetPackage
@@ -1270,6 +1349,279 @@ MK_TEST("runtime scene construction placement intent rejects invalid and mismatc
     MK_REQUIRE(plan.diagnostics[1].code == Code::invalid_transform);
     MK_REQUIRE(plan.rows[2].status == Status::invalid);
     MK_REQUIRE(plan.diagnostics[2].code == Code::mismatched_transform_position);
+}
+
+MK_TEST("runtime scene procedural construction placement bridges reviewed output rows") {
+    const auto generation = valid_procedural_generation_plan();
+    const auto placement = valid_construction_placement_validation();
+    const std::vector<mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:0",
+            .anchor_id = "grid:4:7",
+            .candidate_index = 0U,
+            .node_name = "GeneratedWorkbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+    };
+
+    const auto first = mirakana::runtime_scene::plan_runtime_scene_procedural_construction_placement_intents(
+        generation, placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+    const auto second = mirakana::runtime_scene::plan_runtime_scene_procedural_construction_placement_intents(
+        generation, placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+
+    MK_REQUIRE(first.succeeded());
+    MK_REQUIRE(first.diagnostics.empty());
+    MK_REQUIRE(first.rows.size() == second.rows.size());
+    MK_REQUIRE(first.rows.size() == 1U);
+    MK_REQUIRE(first.rows[0].status ==
+               mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus::accepted);
+    MK_REQUIRE(first.rows[0].node_name == "GeneratedWorkbench");
+    MK_REQUIRE(first.rows[0].procedural_output_id == "prop:0");
+    MK_REQUIRE(first.rows[0].anchor_id == "grid:4:7");
+    MK_REQUIRE(first.rows[0].procedural_kind == mirakana::runtime::RuntimeProceduralGenerationContentKind::object);
+    MK_REQUIRE(first.rows[0].package_visible);
+    MK_REQUIRE(first.rows[0].item_id == "workbench");
+    MK_REQUIRE(first.rows[0].occupied_cells.size() == 2U);
+}
+
+MK_TEST("runtime scene procedural construction placement rejects unsafe output evidence before placement") {
+    using Code = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDiagnosticCode;
+    using Status = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    const auto generation = invalid_procedural_generation_bridge_plan();
+    const auto placement = valid_construction_placement_validation();
+    const std::vector<mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "missing:0",
+            .anchor_id = "grid:missing",
+            .candidate_index = 0U,
+            .node_name = "MissingOutput",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "tile:0",
+            .anchor_id = "grid:tile",
+            .candidate_index = 0U,
+            .node_name = "TileOutput",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:0",
+            .anchor_id = {},
+            .candidate_index = 0U,
+            .node_name = "MissingAnchor",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:0",
+            .anchor_id = "grid:duplicate",
+            .candidate_index = 0U,
+            .node_name = "DuplicateOutput",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "loot:0",
+            .anchor_id = "grid:loot",
+            .candidate_index = 0U,
+            .node_name = "PackageInvisibleLoot",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = false,
+        },
+    };
+
+    const auto plan = mirakana::runtime_scene::plan_runtime_scene_procedural_construction_placement_intents(
+        generation, placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.size() == 5U);
+    MK_REQUIRE(plan.diagnostics.size() == 5U);
+    MK_REQUIRE(plan.rows[0].status == Status::invalid);
+    MK_REQUIRE(plan.diagnostics[0].code == Code::missing_procedural_output);
+    MK_REQUIRE(plan.diagnostics[0].procedural_output_id == "missing:0");
+    MK_REQUIRE(plan.diagnostics[1].code == Code::unsupported_procedural_output_kind);
+    MK_REQUIRE(plan.diagnostics[1].procedural_output_id == "tile:0");
+    MK_REQUIRE(plan.diagnostics[2].code == Code::missing_procedural_anchor);
+    MK_REQUIRE(plan.diagnostics[2].anchor_id.empty());
+    MK_REQUIRE(plan.diagnostics[3].code == Code::duplicate_procedural_output);
+    MK_REQUIRE(plan.diagnostics[3].procedural_output_id == "prop:0");
+    MK_REQUIRE(plan.diagnostics[4].code == Code::package_invisible_procedural_output);
+    MK_REQUIRE(plan.diagnostics[4].procedural_output_id == "loot:0");
+}
+
+MK_TEST("runtime scene procedural construction placement preserves placement diagnostics") {
+    using Code = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDiagnosticCode;
+    using Status = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    const auto generation = valid_procedural_generation_plan();
+    const auto placement = valid_construction_placement_validation();
+    auto invalid_transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}};
+    invalid_transform.scale.x = 0.0F;
+    const std::vector<mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:0",
+            .anchor_id = "grid:first",
+            .candidate_index = 0U,
+            .node_name = "GeneratedWorkbenchA",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:1",
+            .anchor_id = "grid:occupied",
+            .candidate_index = 0U,
+            .node_name = "GeneratedWorkbenchB",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:2",
+            .anchor_id = "grid:invalid-transform",
+            .candidate_index = 0U,
+            .node_name = "GeneratedWorkbenchC",
+            .transform = invalid_transform,
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+    };
+
+    const auto plan = mirakana::runtime_scene::plan_runtime_scene_procedural_construction_placement_intents(
+        generation, placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.size() == 3U);
+    MK_REQUIRE(plan.diagnostics.size() == 2U);
+    MK_REQUIRE(plan.rows[0].status == Status::accepted);
+    MK_REQUIRE(plan.rows[1].status == Status::already_occupied);
+    MK_REQUIRE(plan.rows[1].procedural_output_id == "prop:1");
+    MK_REQUIRE(plan.rows[2].status == Status::invalid);
+    MK_REQUIRE(plan.rows[2].procedural_output_id == "prop:2");
+    MK_REQUIRE(plan.diagnostics[0].code == Code::already_occupied);
+    MK_REQUIRE(plan.diagnostics[0].procedural_output_id == "prop:1");
+    MK_REQUIRE(plan.diagnostics[1].code == Code::invalid_transform);
+    MK_REQUIRE(plan.diagnostics[1].procedural_output_id == "prop:2");
+}
+
+MK_TEST("runtime scene procedural construction placement preserves valid rows in mixed batches") {
+    using Code = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDiagnosticCode;
+    using Status = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    const auto generation = valid_procedural_generation_plan();
+    const auto placement = valid_construction_placement_validation();
+    const std::vector<mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:0",
+            .anchor_id = "grid:first",
+            .candidate_index = 0U,
+            .node_name = "MixedWorkbenchA",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "missing:0",
+            .anchor_id = "grid:missing",
+            .candidate_index = 0U,
+            .node_name = "MixedMissing",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:1",
+            .anchor_id = "grid:occupied",
+            .candidate_index = 0U,
+            .node_name = "MixedWorkbenchB",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+    };
+
+    const auto plan = mirakana::runtime_scene::plan_runtime_scene_procedural_construction_placement_intents(
+        generation, placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.size() == 3U);
+    MK_REQUIRE(plan.rows[0].status == Status::accepted);
+    MK_REQUIRE(plan.rows[0].procedural_output_id == "prop:0");
+    MK_REQUIRE(plan.rows[1].status == Status::invalid);
+    MK_REQUIRE(plan.rows[1].procedural_output_id == "missing:0");
+    MK_REQUIRE(plan.rows[2].status == Status::already_occupied);
+    MK_REQUIRE(plan.rows[2].procedural_output_id == "prop:1");
+    const auto* missing =
+        find_construction_placement_intent_diagnostic(plan, Code::missing_procedural_output, "missing:0");
+    const auto* occupied = find_construction_placement_intent_diagnostic(plan, Code::already_occupied, "prop:1");
+    MK_REQUIRE(missing != nullptr);
+    MK_REQUIRE(occupied != nullptr);
+    MK_REQUIRE(occupied->anchor_id == "grid:occupied");
+}
+
+MK_TEST("runtime scene procedural construction placement keeps diagnostics on duplicate node rows") {
+    using Code = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentDiagnosticCode;
+    using Status = mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentStatus;
+
+    const auto generation = valid_procedural_generation_plan();
+    const auto placement = valid_construction_placement_validation();
+    const std::vector<mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc> intents{
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:0",
+            .anchor_id = "grid:duplicate-name-a",
+            .candidate_index = 0U,
+            .node_name = "DuplicateGeneratedWorkbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+        mirakana::runtime_scene::RuntimeSceneProceduralConstructionPlacementIntentDesc{
+            .procedural_output_id = "prop:1",
+            .anchor_id = "grid:duplicate-name-b",
+            .candidate_index = 0U,
+            .node_name = "DuplicateGeneratedWorkbench",
+            .transform = mirakana::Transform3D{.position = mirakana::Vec3{.x = 4.5F, .y = 7.5F, .z = 0.0F}},
+            .components = placement_sprite_components(),
+            .reviewed = true,
+            .package_visible = true,
+        },
+    };
+
+    const auto plan = mirakana::runtime_scene::plan_runtime_scene_procedural_construction_placement_intents(
+        generation, placement, intents, mirakana::runtime_scene::RuntimeSceneConstructionPlacementIntentContext{});
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.rows.size() == 2U);
+    MK_REQUIRE(plan.rows[0].status == Status::accepted);
+    MK_REQUIRE(plan.rows[1].status == Status::invalid);
+    MK_REQUIRE(plan.rows[1].procedural_output_id == "prop:1");
+    const auto* duplicate =
+        find_construction_placement_intent_diagnostic(plan, Code::duplicate_intent_node_name, "prop:1");
+    MK_REQUIRE(duplicate != nullptr);
+    MK_REQUIRE(duplicate->anchor_id == "grid:duplicate-name-b");
 }
 
 int main() {
