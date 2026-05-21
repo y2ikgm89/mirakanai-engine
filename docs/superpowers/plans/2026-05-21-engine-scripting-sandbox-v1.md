@@ -1,7 +1,7 @@
 # Engine Scripting Sandbox v1 (2026-05-21)
 
 **Plan ID:** `engine-scripting-sandbox-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at this milestone while active. Keep `unsupportedProductionGaps = []`; this is a developer-owned optional-adapter foundation, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -83,3 +83,4 @@ Expose selected scripting sandbox policy counters in a desktop runtime package l
 - Phase 2 package evidence GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed and the installed package smoke reported `scripting_sandbox_status=planned`, `scripting_sandbox_ready=1`, `scripting_sandbox_entrypoint_rows=2`, `scripting_sandbox_allowed_permission_rows=7`, `scripting_sandbox_denied_permission_rows=5`, `scripting_sandbox_rejected_unsafe_capability_rows=6`, `scripting_sandbox_budget_diagnostics=2`, `scripting_sandbox_replay_seed_rows=2`, and `scripting_sandbox_diagnostics=0`.
 - Phase 2 focused static GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files games/sample_2d_desktop_runtime_package/main.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` passed with `unsupportedProductionGaps = []`.
 - Phase 2 full gate GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after code, package evidence, docs, manifest fragments, static checks, skills, and composed manifest updates, including `production-readiness-audit: unsupported_gaps=0` and `71/71` CTest entries.
+- Hosted GREEN: PR #170 passed PR Gate, Windows MSVC, Linux CMake, Linux Coverage, Linux Clang ASan/UBSan, Full Repository Static Analysis shards 0-3, CodeQL, iOS Simulator smoke, and macOS Metal CMake, then merged into `main` as `d17ac0ac`.
