@@ -23,6 +23,7 @@
 #include "mirakana/runtime/runtime_diagnostics.hpp"
 #include "mirakana/runtime/scripting_sandbox.hpp"
 #include "mirakana/runtime/session_services.hpp"
+#include "mirakana/runtime/simulation_orchestration.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
@@ -71,6 +72,7 @@ struct DesktopRuntimeOptions {
     bool require_entity_scale_culling{false};
     bool require_scripting_sandbox_policy{false};
     bool require_networking_foundation_policy{false};
+    bool require_simulation_orchestration{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -183,6 +185,26 @@ struct NetworkingFoundationProbeResult {
     bool ready{false};
 };
 
+struct SimulationOrchestrationProbeResult {
+    mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus status{
+        mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus::invalid_request};
+    mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus budget_limited_status{
+        mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus::invalid_request};
+    std::size_t available_steps{0U};
+    std::size_t planned_steps{0U};
+    std::size_t step_rows{0U};
+    std::size_t command_rows{0U};
+    std::size_t command_playback_rows{0U};
+    std::uint64_t consumed_time_us{0U};
+    std::uint64_t remaining_time_us{0U};
+    std::size_t budget_limited_available_steps{0U};
+    std::size_t budget_limited_planned_steps{0U};
+    std::uint64_t budget_limited_remaining_time_us{0U};
+    std::size_t invalid_command_diagnostics{0U};
+    std::size_t diagnostics{0U};
+    bool ready{false};
+};
+
 [[nodiscard]] std::string_view gameplay_2d_systems_status_name(Gameplay2DSystemsStatus status) noexcept {
     switch (status) {
     case Gameplay2DSystemsStatus::not_started:
@@ -248,6 +270,21 @@ networking_foundation_status_name(mirakana::runtime::RuntimeNetworkFoundationPla
     case mirakana::runtime::RuntimeNetworkFoundationPlanStatus::no_sessions:
         return "no_sessions";
     case mirakana::runtime::RuntimeNetworkFoundationPlanStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+simulation_orchestration_status_name(mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus::planned:
+        return "planned";
+    case mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus::no_steps:
+        return "no_steps";
+    case mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus::budget_limited:
+        return "budget_limited";
+    case mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus::invalid_request:
         return "invalid_request";
     }
     return "unknown";
@@ -1603,6 +1640,95 @@ count_networking_foundation_diagnostics(const mirakana::runtime::RuntimeNetworkF
     return result;
 }
 
+[[nodiscard]] std::size_t
+count_simulation_orchestration_diagnostics(const mirakana::runtime::RuntimeSimulationOrchestrationPlan& plan,
+                                           mirakana::runtime::RuntimeSimulationOrchestrationDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] SimulationOrchestrationProbeResult validate_simulation_orchestration_package_evidence() {
+    using Code = mirakana::runtime::RuntimeSimulationOrchestrationDiagnosticCode;
+    using Command = mirakana::runtime::RuntimeSimulationInputCommandDesc;
+    using Request = mirakana::runtime::RuntimeSimulationOrchestrationRequest;
+    using Status = mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus;
+
+    const auto reviewed_plan = mirakana::runtime::plan_runtime_simulation_orchestration(Request{
+        .simulation_id = "sample2d.loop",
+        .next_tick = 120U,
+        .fixed_tick_rate_hz = 60U,
+        .accumulated_time_us = 50'000U,
+        .max_steps_per_frame = 4U,
+        .input_commands =
+            std::vector<Command>{
+                Command{.command_id = "cmd.jump", .action_id = "jump", .target_tick = 120U, .source_index = 2U},
+                Command{.command_id = "cmd.fire", .action_id = "fire", .target_tick = 121U, .source_index = 1U},
+                Command{.command_id = "cmd.move", .action_id = "move_right", .target_tick = 121U, .source_index = 3U},
+            },
+    });
+
+    const auto budget_plan = mirakana::runtime::plan_runtime_simulation_orchestration(Request{
+        .simulation_id = "sample2d.budget",
+        .next_tick = 200U,
+        .fixed_tick_rate_hz = 30U,
+        .accumulated_time_us = 200'000U,
+        .max_steps_per_frame = 2U,
+    });
+
+    const auto invalid_plan = mirakana::runtime::plan_runtime_simulation_orchestration(Request{
+        .simulation_id = "sample2d.invalid",
+        .next_tick = 10U,
+        .fixed_tick_rate_hz = 60U,
+        .accumulated_time_us = 33'333U,
+        .max_steps_per_frame = 2U,
+        .input_commands =
+            std::vector<Command>{
+                Command{.command_id = "", .action_id = "move", .target_tick = 10U, .source_index = 1U},
+                Command{.command_id = "cmd.dupe", .action_id = "jump", .target_tick = 10U, .source_index = 2U},
+                Command{.command_id = "cmd.dupe", .action_id = "jump", .target_tick = 10U, .source_index = 3U},
+                Command{.command_id = "cmd.past", .action_id = "dash", .target_tick = 9U, .source_index = 4U},
+                Command{.command_id = "cmd.future", .action_id = "fire", .target_tick = 14U, .source_index = 5U},
+            },
+    });
+
+    SimulationOrchestrationProbeResult result;
+    result.status = reviewed_plan.status;
+    result.budget_limited_status = budget_plan.status;
+    result.available_steps = reviewed_plan.available_step_count;
+    result.planned_steps = reviewed_plan.planned_step_count;
+    result.step_rows = reviewed_plan.steps.size();
+    result.command_rows = reviewed_plan.commands.size();
+    for (const auto& step : reviewed_plan.steps) {
+        result.command_playback_rows += step.command_count;
+    }
+    result.consumed_time_us = reviewed_plan.consumed_time_us;
+    result.remaining_time_us = reviewed_plan.remaining_time_us;
+    result.budget_limited_available_steps = budget_plan.available_step_count;
+    result.budget_limited_planned_steps = budget_plan.planned_step_count;
+    result.budget_limited_remaining_time_us = budget_plan.remaining_time_us;
+    result.diagnostics = reviewed_plan.diagnostics.size();
+    result.invalid_command_diagnostics =
+        count_simulation_orchestration_diagnostics(invalid_plan, Code::missing_command_id) +
+        count_simulation_orchestration_diagnostics(invalid_plan, Code::duplicate_command_id) +
+        count_simulation_orchestration_diagnostics(invalid_plan, Code::command_before_next_tick) +
+        count_simulation_orchestration_diagnostics(invalid_plan, Code::command_after_planned_window);
+
+    result.ready = reviewed_plan.status == Status::planned && reviewed_plan.succeeded() &&
+                   budget_plan.status == Status::budget_limited && budget_plan.succeeded() &&
+                   invalid_plan.status == Status::invalid_request && result.available_steps == 3U &&
+                   result.planned_steps == 3U && result.step_rows == 3U && result.command_rows == 3U &&
+                   result.command_playback_rows == 3U && result.consumed_time_us == 49'998U &&
+                   result.remaining_time_us == 2U && result.budget_limited_available_steps == 6U &&
+                   result.budget_limited_planned_steps == 2U && result.budget_limited_remaining_time_us == 133'334U &&
+                   result.invalid_command_diagnostics == 4U && result.diagnostics == 0U;
+    return result;
+}
+
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
@@ -2853,7 +2979,7 @@ void print_usage() {
                  "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
-                 "[--require-networking-foundation-policy]\n";
+                 "[--require-networking-foundation-policy] [--require-simulation-orchestration]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -2919,6 +3045,10 @@ void print_usage() {
         }
         if (arg == "--require-networking-foundation-policy") {
             options.require_networking_foundation_policy = true;
+            continue;
+        }
+        if (arg == "--require-simulation-orchestration") {
+            options.require_simulation_orchestration = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -3453,6 +3583,9 @@ int main(int argc, char** argv) {
     const auto networking_foundation_probe = options.require_networking_foundation_policy
                                                  ? validate_networking_foundation_package_evidence()
                                                  : NetworkingFoundationProbeResult{};
+    const auto simulation_orchestration_probe = options.require_simulation_orchestration
+                                                    ? validate_simulation_orchestration_package_evidence()
+                                                    : SimulationOrchestrationProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -3771,6 +3904,27 @@ int main(int argc, char** argv) {
         << networking_foundation_probe.secure_remote_session_rows
         << " networking_foundation_security_diagnostics=" << networking_foundation_probe.security_diagnostics
         << " networking_foundation_diagnostics=" << networking_foundation_probe.diagnostics
+        << " simulation_orchestration_status="
+        << simulation_orchestration_status_name(simulation_orchestration_probe.status)
+        << " simulation_orchestration_ready=" << (simulation_orchestration_probe.ready ? 1 : 0)
+        << " simulation_orchestration_available_steps=" << simulation_orchestration_probe.available_steps
+        << " simulation_orchestration_planned_steps=" << simulation_orchestration_probe.planned_steps
+        << " simulation_orchestration_step_rows=" << simulation_orchestration_probe.step_rows
+        << " simulation_orchestration_command_rows=" << simulation_orchestration_probe.command_rows
+        << " simulation_orchestration_command_playback_rows=" << simulation_orchestration_probe.command_playback_rows
+        << " simulation_orchestration_consumed_time_us=" << simulation_orchestration_probe.consumed_time_us
+        << " simulation_orchestration_remaining_time_us=" << simulation_orchestration_probe.remaining_time_us
+        << " simulation_orchestration_budget_limited_status="
+        << simulation_orchestration_status_name(simulation_orchestration_probe.budget_limited_status)
+        << " simulation_orchestration_budget_limited_available_steps="
+        << simulation_orchestration_probe.budget_limited_available_steps
+        << " simulation_orchestration_budget_limited_planned_steps="
+        << simulation_orchestration_probe.budget_limited_planned_steps
+        << " simulation_orchestration_budget_limited_remaining_time_us="
+        << simulation_orchestration_probe.budget_limited_remaining_time_us
+        << " simulation_orchestration_invalid_command_diagnostics="
+        << simulation_orchestration_probe.invalid_command_diagnostics
+        << " simulation_orchestration_diagnostics=" << simulation_orchestration_probe.diagnostics
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -3949,6 +4103,23 @@ int main(int argc, char** argv) {
                   << " networking_foundation_security_diagnostics=" << networking_foundation_probe.security_diagnostics
                   << " networking_foundation_diagnostics=" << networking_foundation_probe.diagnostics << '\n';
         return 17;
+    }
+
+    if (options.require_simulation_orchestration && !simulation_orchestration_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_simulation_orchestration_unavailable"
+                  << " simulation_orchestration_status="
+                  << simulation_orchestration_status_name(simulation_orchestration_probe.status)
+                  << " simulation_orchestration_planned_steps=" << simulation_orchestration_probe.planned_steps
+                  << " simulation_orchestration_step_rows=" << simulation_orchestration_probe.step_rows
+                  << " simulation_orchestration_command_rows=" << simulation_orchestration_probe.command_rows
+                  << " simulation_orchestration_command_playback_rows="
+                  << simulation_orchestration_probe.command_playback_rows
+                  << " simulation_orchestration_budget_limited_status="
+                  << simulation_orchestration_status_name(simulation_orchestration_probe.budget_limited_status)
+                  << " simulation_orchestration_invalid_command_diagnostics="
+                  << simulation_orchestration_probe.invalid_command_diagnostics
+                  << " simulation_orchestration_diagnostics=" << simulation_orchestration_probe.diagnostics << '\n';
+        return 18;
     }
 
     if (options.smoke &&

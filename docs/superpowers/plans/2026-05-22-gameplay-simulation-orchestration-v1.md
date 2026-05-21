@@ -60,7 +60,7 @@ Add the smallest `MK_runtime` public contract that plans fixed-timestep simulati
 
 ## Phase 2: Package Evidence and Closeout
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -79,3 +79,8 @@ Promote the simulation orchestration contract into selected package-visible evid
 - Phase 1 focused GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_simulation_orchestration_tests`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure --tests-regex MK_runtime_simulation_orchestration_tests` passed after adding the value-only `MK_runtime` contract.
 - Phase 1 focused/static checks passed: `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-production-readiness-audit.ps1` (`unsupported_gaps=0`), `tools/check-public-api-boundaries.ps1`, `tools/check-tidy.ps1 -Files engine/runtime/src/simulation_orchestration.cpp,tests/unit/runtime_simulation_orchestration_tests.cpp`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
 - Phase 1 runtime/public-contract gate passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed successfully with 73 tests passed and `unsupported_gaps=0`.
+- Phase 2 RED: `out/build/dev/games/Debug/sample_2d_desktop_runtime_package/sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-simulation-orchestration` failed before implementation with `unknown argument: --require-simulation-orchestration`.
+- Phase 2 focused GREEN: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package`, source-tree `sample_2d_desktop_runtime_package --smoke --require-simulation-orchestration`, `tools/ctest.ps1 --preset dev --output-on-failure --tests-regex sample_2d_desktop_runtime_package_smoke`, and `tools/check-tidy.ps1 -Files games/sample_2d_desktop_runtime_package/main.cpp` passed after adding selected package counters.
+- Phase 2 agent/static checks passed: `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, and `tools/check-production-readiness-audit.ps1` (`unsupported_gaps=0`).
+- Phase 2 installed package evidence passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` completed with installed `sample_2d_desktop_runtime_package --require-simulation-orchestration` counters (`simulation_orchestration_status=planned`, `simulation_orchestration_planned_steps=3`, `simulation_orchestration_command_playback_rows=3`, `simulation_orchestration_budget_limited_status=budget_limited`, `simulation_orchestration_invalid_command_diagnostics=4`, `simulation_orchestration_diagnostics=0`) and `installed-desktop-runtime-validation: ok`.
+- Phase 2 full validation gate passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed successfully with 73 tests passed and `production-readiness-audit: unsupported_gaps=0`.

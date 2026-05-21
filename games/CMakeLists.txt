@@ -1528,6 +1528,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-entity-scale-culling
             --require-scripting-sandbox-policy
             --require-networking-foundation-policy
+            --require-simulation-orchestration
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1547,6 +1548,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-entity-scale-culling
             --require-scripting-sandbox-policy
             --require-networking-foundation-policy
+            --require-simulation-orchestration
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )

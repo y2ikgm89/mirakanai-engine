@@ -225,6 +225,7 @@ $requiresWorldRegionStreaming = @($SmokeArgs) -contains "--require-world-region-
 $requiresEntityScaleCulling = @($SmokeArgs) -contains "--require-entity-scale-culling"
 $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-sandbox-policy"
 $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-networking-foundation-policy"
+$requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation-orchestration"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
@@ -1628,6 +1629,52 @@ if ($requiresNetworkingFoundationPolicy) {
         $expectedValue = $expectedNetworkingFoundationFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove networking foundation field $field=$expectedValue."
+        }
+    }
+}
+if ($requiresSimulationOrchestration) {
+    foreach ($field in @(
+            "simulation_orchestration_status",
+            "simulation_orchestration_ready",
+            "simulation_orchestration_available_steps",
+            "simulation_orchestration_planned_steps",
+            "simulation_orchestration_step_rows",
+            "simulation_orchestration_command_rows",
+            "simulation_orchestration_command_playback_rows",
+            "simulation_orchestration_consumed_time_us",
+            "simulation_orchestration_remaining_time_us",
+            "simulation_orchestration_budget_limited_status",
+            "simulation_orchestration_budget_limited_available_steps",
+            "simulation_orchestration_budget_limited_planned_steps",
+            "simulation_orchestration_budget_limited_remaining_time_us",
+            "simulation_orchestration_invalid_command_diagnostics",
+            "simulation_orchestration_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include simulation orchestration field: $field"
+        }
+    }
+    $expectedSimulationOrchestrationFields = @{
+        "simulation_orchestration_status" = "planned"
+        "simulation_orchestration_ready" = "1"
+        "simulation_orchestration_available_steps" = "3"
+        "simulation_orchestration_planned_steps" = "3"
+        "simulation_orchestration_step_rows" = "3"
+        "simulation_orchestration_command_rows" = "3"
+        "simulation_orchestration_command_playback_rows" = "3"
+        "simulation_orchestration_consumed_time_us" = "49998"
+        "simulation_orchestration_remaining_time_us" = "2"
+        "simulation_orchestration_budget_limited_status" = "budget_limited"
+        "simulation_orchestration_budget_limited_available_steps" = "6"
+        "simulation_orchestration_budget_limited_planned_steps" = "2"
+        "simulation_orchestration_budget_limited_remaining_time_us" = "133334"
+        "simulation_orchestration_invalid_command_diagnostics" = "4"
+        "simulation_orchestration_diagnostics" = "0"
+    }
+    foreach ($field in $expectedSimulationOrchestrationFields.Keys) {
+        $expectedValue = $expectedSimulationOrchestrationFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove simulation orchestration field $field=$expectedValue."
         }
     }
 }
