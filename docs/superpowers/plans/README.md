@@ -60,7 +60,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Status | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | Select the next narrow production gap from `recommendedNextPlan`; `unsupportedProductionGaps = []`. |
+| Active slice (`currentActivePlan`) | [2026-05-21-engine-scripting-sandbox-v1.md](2026-05-21-engine-scripting-sandbox-v1.md) | Starts the optional-adapter scripting sandbox foundation from the developer-owned backlog; `unsupportedProductionGaps = []`. |
 | Completed | [2026-05-21-renderer-d3d12-gpu-skinning-package-evidence-v1.md](2026-05-21-renderer-d3d12-gpu-skinning-package-evidence-v1.md) | D3D12 GPU skinning package evidence, `--require-d3d12-gpu-skinning-evidence`, and installed-d3d12-scene-gpu-smoke promotion without Vulkan cross-backend claims. |
 | Completed | [2026-05-21-renderer-d3d12-framegraph-multiqueue-package-evidence-v1.md](2026-05-21-renderer-d3d12-framegraph-multiqueue-package-evidence-v1.md) | D3D12 Frame Graph multi-queue package evidence, `d3d12_framegraph_multiqueue_evidence_ready/selected`, and validate-installed-desktop-runtime D3D12 field gating without Vulkan cross-backend claims. |
 | Completed | [2026-05-21-renderer-d3d12-shadow-cascade-package-evidence-v1.md](2026-05-21-renderer-d3d12-shadow-cascade-package-evidence-v1.md) | D3D12 shadow cascade package evidence, `d3d12_shadow_cascade_policy_ready/selected`, and validate-installed-desktop-runtime D3D12 field gating without Vulkan cross-backend claims. |

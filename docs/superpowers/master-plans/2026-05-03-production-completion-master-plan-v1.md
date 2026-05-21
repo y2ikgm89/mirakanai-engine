@@ -15,8 +15,8 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`; no narrow child plan or developer-owned milestone is selected.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `next-production-gap-selection`. Recent developer-owned capability evidence is completed and discoverable through the plan registry, with the latest closeout recorded in the composed manifest's `recommendedNextPlan.latestCloseoutEvidence`.
+- Current active plan: `docs/superpowers/plans/2026-05-21-engine-scripting-sandbox-v1.md`, a developer-owned optional-adapter foundation milestone selected from the backlog.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `engine-scripting-sandbox-v1`. Recent developer-owned capability evidence remains discoverable through the plan registry, with closeout context recorded in the composed manifest's `recommendedNextPlan` fields.
 - Current gap cluster: none selected after the 2026-05-19 gameplay/physics/navigation/AI foundation closeout.
 
 ## Plan map

@@ -8,6 +8,7 @@ add_library(mirakana_runtime
     src/quest_dialogue.cpp
     src/resource_runtime.cpp
     src/runtime_diagnostics.cpp
+    src/scripting_sandbox.cpp
     src/session_services.cpp
     src/world_region_streaming.cpp
 )
