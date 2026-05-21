@@ -856,6 +856,41 @@ MK_TEST("sdl desktop presentation postprocess policy exposes package-visible cha
     MK_REQUIRE(policy.backend_shader_evidence_ready);
 }
 
+MK_TEST("sdl desktop presentation d3d12 postprocess execution report requires selected d3d12 pass evidence") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
+    report.postprocess_status = mirakana::SdlDesktopPresentationPostprocessStatus::ready;
+    report.postprocess_depth_input_requested = true;
+    report.postprocess_depth_input_ready = true;
+    report.backbuffer_extent = mirakana::Extent2D{.width = 1280, .height = 720};
+    report.renderer_stats.framegraph_passes_executed = 4;
+    report.renderer_stats.framegraph_render_passes_recorded = 4;
+    report.renderer_stats.framegraph_barrier_steps_executed = 9;
+    report.renderer_stats.postprocess_passes_executed = 2;
+
+    auto execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(report, 2);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationD3d12PostprocessExecutionStatus::ready);
+    MK_REQUIRE(execution.ready);
+    MK_REQUIRE(execution.d3d12_backend_selected);
+    MK_REQUIRE(execution.postprocess_ready);
+    MK_REQUIRE(execution.backend_shader_evidence_ready);
+    MK_REQUIRE(execution.expected_postprocess_passes == 2);
+    MK_REQUIRE(execution.postprocess_passes_executed == 2);
+    MK_REQUIRE(execution.framegraph_passes_executed == 4);
+    MK_REQUIRE(execution.framegraph_render_passes_recorded == 4);
+    MK_REQUIRE(execution.framegraph_barrier_steps_executed == 9);
+    MK_REQUIRE(execution.postprocess_passes_current);
+
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::vulkan;
+    execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(report, 2);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationD3d12PostprocessExecutionStatus::blocked);
+    MK_REQUIRE(!execution.ready);
+    MK_REQUIRE(!execution.d3d12_backend_selected);
+    MK_REQUIRE(execution.postprocess_passes_current);
+}
+
 MK_TEST("sdl desktop presentation quality gate expects postprocess framegraph scene target prep steps") {
     mirakana::SdlDesktopPresentationReport report;
     report.postprocess_status = mirakana::SdlDesktopPresentationPostprocessStatus::ready;

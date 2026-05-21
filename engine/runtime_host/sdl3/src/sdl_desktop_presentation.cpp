@@ -4684,6 +4684,19 @@ sdl_desktop_presentation_postprocess_policy_status_name(SdlDesktopPresentationPo
     return "unknown";
 }
 
+std::string_view sdl_desktop_presentation_d3d12_postprocess_execution_status_name(
+    SdlDesktopPresentationD3d12PostprocessExecutionStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationD3d12PostprocessExecutionStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationD3d12PostprocessExecutionStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationD3d12PostprocessExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 SdlDesktopPresentationPostprocessPolicyReport
 evaluate_sdl_desktop_presentation_postprocess_policy(const SdlDesktopPresentationReport& report) {
     SdlDesktopPresentationPostprocessPolicyReport result;
@@ -4728,6 +4741,33 @@ evaluate_sdl_desktop_presentation_postprocess_policy(const SdlDesktopPresentatio
     result.fog_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::fog);
     result.anti_aliasing_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::anti_aliasing);
     result.backend_shader_evidence_ready = plan.backend_shader_evidence_ready;
+    return result;
+}
+
+SdlDesktopPresentationD3d12PostprocessExecutionReport
+evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(const SdlDesktopPresentationReport& report,
+                                                              std::uint64_t expected_postprocess_passes) {
+    SdlDesktopPresentationD3d12PostprocessExecutionReport result;
+    if (!postprocess_policy_requested(report)) {
+        return result;
+    }
+
+    const auto policy = evaluate_sdl_desktop_presentation_postprocess_policy(report);
+    result.d3d12_backend_selected = report.selected_backend == SdlDesktopPresentationBackend::d3d12;
+    result.postprocess_ready = report.postprocess_status == SdlDesktopPresentationPostprocessStatus::ready;
+    result.backend_shader_evidence_ready = policy.backend_shader_evidence_ready;
+    result.expected_postprocess_passes = expected_postprocess_passes;
+    result.postprocess_passes_executed = report.renderer_stats.postprocess_passes_executed;
+    result.framegraph_passes_executed = report.renderer_stats.framegraph_passes_executed;
+    result.framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded;
+    result.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
+    result.postprocess_passes_current =
+        report.renderer_stats.postprocess_passes_executed == expected_postprocess_passes;
+    result.status = result.d3d12_backend_selected && result.postprocess_ready && result.backend_shader_evidence_ready &&
+                            result.postprocess_passes_current
+                        ? SdlDesktopPresentationD3d12PostprocessExecutionStatus::ready
+                        : SdlDesktopPresentationD3d12PostprocessExecutionStatus::blocked;
+    result.ready = result.status == SdlDesktopPresentationD3d12PostprocessExecutionStatus::ready;
     return result;
 }
 

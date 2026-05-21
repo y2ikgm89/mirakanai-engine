@@ -188,6 +188,7 @@ $requiresPackageUploadStaging = @($SmokeArgs) -contains "--require-package-uploa
 $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
+$requiresD3d12Renderer = @($SmokeArgs) -contains "--require-d3d12-renderer"
 $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
@@ -1222,6 +1223,23 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             $expectedValue = [regex]::Escape($expectedPostprocessPolicyFields[$field])
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                 Write-Error "Installed desktop runtime smoke status line did not prove postprocess policy field: $field=$($expectedPostprocessPolicyFields[$field])"
+            }
+        }
+        if ($requiresD3d12Renderer) {
+            $expectedD3d12PostprocessExecutionFields = @{
+                "postprocess_d3d12_execution_status" = "ready"
+                "postprocess_d3d12_execution_ready" = "1"
+                "postprocess_d3d12_execution_selected" = "1"
+                "postprocess_d3d12_execution_shader_evidence_ready" = "1"
+                "postprocess_d3d12_execution_expected_passes" = [string]$expectedSmokeFrames
+                "postprocess_d3d12_execution_passes" = [string]$expectedSmokeFrames
+                "postprocess_d3d12_execution_passes_ok" = "1"
+            }
+            foreach ($field in $expectedD3d12PostprocessExecutionFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedD3d12PostprocessExecutionFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove D3D12 postprocess execution field: $field=$($expectedD3d12PostprocessExecutionFields[$field])"
+                }
             }
         }
     }

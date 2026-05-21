@@ -1728,6 +1728,8 @@ int main(int argc, char** argv) {
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
     const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
+    const auto d3d12_postprocess_execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(
+        report, static_cast<std::uint64_t>(options.max_frames));
     const auto renderer_quality =
         mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const auto framegraph_multiqueue = options.require_framegraph_multiqueue_evidence
@@ -1796,7 +1798,17 @@ int main(int argc, char** argv) {
         << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
         << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
         << " postprocess_policy_backend_shader_evidence_ready="
-        << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0) << " directional_shadow_status="
+        << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0) << " postprocess_d3d12_execution_status="
+        << mirakana::sdl_desktop_presentation_d3d12_postprocess_execution_status_name(
+               d3d12_postprocess_execution.status)
+        << " postprocess_d3d12_execution_ready=" << (d3d12_postprocess_execution.ready ? 1 : 0)
+        << " postprocess_d3d12_execution_selected=" << (d3d12_postprocess_execution.d3d12_backend_selected ? 1 : 0)
+        << " postprocess_d3d12_execution_shader_evidence_ready="
+        << (d3d12_postprocess_execution.backend_shader_evidence_ready ? 1 : 0)
+        << " postprocess_d3d12_execution_expected_passes=" << d3d12_postprocess_execution.expected_postprocess_passes
+        << " postprocess_d3d12_execution_passes=" << d3d12_postprocess_execution.postprocess_passes_executed
+        << " postprocess_d3d12_execution_passes_ok=" << (d3d12_postprocess_execution.postprocess_passes_current ? 1 : 0)
+        << " directional_shadow_status="
         << mirakana::sdl_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
         << " directional_shadow_requested=" << (report.directional_shadow_requested ? 1 : 0)
         << " directional_shadow_ready=" << (report.directional_shadow_ready ? 1 : 0)

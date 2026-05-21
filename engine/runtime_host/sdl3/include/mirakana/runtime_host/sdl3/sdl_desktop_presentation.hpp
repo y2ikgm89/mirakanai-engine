@@ -229,6 +229,12 @@ enum class SdlDesktopPresentationPostprocessPolicyStatus : std::uint8_t {
     ready,
 };
 
+enum class SdlDesktopPresentationD3d12PostprocessExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
 struct SdlDesktopPresentationPostprocessPolicyReport {
     SdlDesktopPresentationPostprocessPolicyStatus status{SdlDesktopPresentationPostprocessPolicyStatus::not_requested};
     bool ready{false};
@@ -247,6 +253,21 @@ struct SdlDesktopPresentationPostprocessPolicyReport {
     bool fog_effect{false};
     bool anti_aliasing_effect{false};
     bool backend_shader_evidence_ready{false};
+};
+
+struct SdlDesktopPresentationD3d12PostprocessExecutionReport {
+    SdlDesktopPresentationD3d12PostprocessExecutionStatus status{
+        SdlDesktopPresentationD3d12PostprocessExecutionStatus::not_requested};
+    bool ready{false};
+    bool d3d12_backend_selected{false};
+    bool postprocess_ready{false};
+    bool backend_shader_evidence_ready{false};
+    std::uint64_t expected_postprocess_passes{0};
+    std::uint64_t postprocess_passes_executed{0};
+    std::uint64_t framegraph_passes_executed{0};
+    std::uint64_t framegraph_render_passes_recorded{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
+    bool postprocess_passes_current{false};
 };
 
 struct SdlDesktopPresentationQualityGateDesc {
@@ -486,6 +507,11 @@ sdl_desktop_presentation_quality_gate_status_name(SdlDesktopPresentationQualityG
 sdl_desktop_presentation_postprocess_policy_status_name(SdlDesktopPresentationPostprocessPolicyStatus status) noexcept;
 [[nodiscard]] SdlDesktopPresentationPostprocessPolicyReport
 evaluate_sdl_desktop_presentation_postprocess_policy(const SdlDesktopPresentationReport& report);
+[[nodiscard]] std::string_view sdl_desktop_presentation_d3d12_postprocess_execution_status_name(
+    SdlDesktopPresentationD3d12PostprocessExecutionStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationD3d12PostprocessExecutionReport
+evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(const SdlDesktopPresentationReport& report,
+                                                              std::uint64_t expected_postprocess_passes);
 [[nodiscard]] SdlDesktopPresentationQualityGateReport
 evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationReport& report,
                                                const SdlDesktopPresentationQualityGateDesc& desc) noexcept;
