@@ -193,6 +193,7 @@ $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-u
 $requiresD3d12Renderer = @($SmokeArgs) -contains "--require-d3d12-renderer"
 $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
 $requiresWorldRegionStreaming = @($SmokeArgs) -contains "--require-world-region-streaming"
+$requiresEntityScaleCulling = @($SmokeArgs) -contains "--require-entity-scale-culling"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
@@ -1247,6 +1248,52 @@ if ($requiresWorldRegionStreaming) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_safe_point_diagnostics=0\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove clean world-region streaming safe-point diagnostics."
+    }
+}
+if ($requiresEntityScaleCulling) {
+    foreach ($field in @(
+            "entity_scale_culling_status",
+            "entity_scale_culling_ready",
+            "entity_scale_culling_rows",
+            "entity_scale_culling_visible_rows",
+            "entity_scale_culling_culled_rows",
+            "entity_scale_culling_lod_rows",
+            "entity_scale_culling_priority_update_rows",
+            "entity_scale_culling_normal_update_rows",
+            "entity_scale_culling_background_update_rows",
+            "entity_scale_culling_projected_draw_cost",
+            "entity_scale_culling_projected_update_cost",
+            "entity_scale_culling_budget_protected_rows",
+            "entity_scale_culling_diagnostics",
+            "entity_scale_culling_budget_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include entity scale/culling field: $field"
+        }
+    }
+    foreach ($field in @(
+            "entity_scale_culling_ready",
+            "entity_scale_culling_rows",
+            "entity_scale_culling_visible_rows",
+            "entity_scale_culling_culled_rows",
+            "entity_scale_culling_lod_rows",
+            "entity_scale_culling_priority_update_rows",
+            "entity_scale_culling_normal_update_rows",
+            "entity_scale_culling_background_update_rows",
+            "entity_scale_culling_projected_draw_cost",
+            "entity_scale_culling_projected_update_cost",
+            "entity_scale_culling_budget_protected_rows",
+            "entity_scale_culling_budget_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove positive entity scale/culling field: $field"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bentity_scale_culling_status=planned\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove planned entity scale/culling status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bentity_scale_culling_diagnostics=0\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove clean entity scale/culling diagnostics."
     }
 }
 if ($requiresPackageUploadStaging) {

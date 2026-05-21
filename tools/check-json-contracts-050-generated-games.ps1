@@ -419,8 +419,11 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "--require-native-2d-sprites",
         "--require-gameplay-systems",
         "--require-world-region-streaming",
+        "--require-entity-scale-culling",
         "gameplay systems package proof",
         "world-region streaming package proof",
+        "entity scale/culling package proof",
+        "installed-2d-entity-scale-culling-smoke",
         "public native or RHI handle access remains unsupported",
         "broad production sprite batching readiness remains unsupported",
         "general production renderer quality remains unsupported"
@@ -445,6 +448,7 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "--require-gameplay-systems",
         "--require-world-region-streaming",
         "mirakana/runtime/world_region_streaming.hpp",
+        "mirakana/runtime/entity_scale_culling.hpp",
         "sample_2d_desktop_runtime_package_sprite.vs.dxil",
         "sample_2d_desktop_runtime_package_sprite.ps.dxil",
         "sample_2d_desktop_runtime_package_sprite.vs.spv",
@@ -482,6 +486,11 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "world_region_streaming_reviewed_package_adoptions=",
         "world_region_streaming_missing_region_diagnostics=",
         "world_region_streaming_safe_point_diagnostics=",
+        "entity_scale_culling_status=",
+        "entity_scale_culling_rows=",
+        "entity_scale_culling_lod_rows=",
+        "entity_scale_culling_budget_diagnostics=",
+        "required_entity_scale_culling_unavailable",
         "required_world_region_streaming_unavailable",
         "required_gameplay_systems_unavailable",
         "required_native_2d_sprites_unavailable",
@@ -505,6 +514,7 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "--require-native-2d-sprites",
         "--require-gameplay-systems",
         "--require-world-region-streaming",
+        "--require-entity-scale-culling",
         "MK_ai",
         "MK_navigation",
         "MK_physics",
@@ -520,6 +530,7 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
     foreach ($needle in @(
         "--require-native-2d-sprites",
         "--require-world-region-streaming",
+        "--require-entity-scale-culling",
         "native_2d_sprites_status",
         "native_2d_textured_sprites_submitted",
         "native_2d_texture_binds",
@@ -546,7 +557,11 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "world_region_streaming_unload_rows",
         "world_region_streaming_reviewed_package_adoptions",
         "world_region_streaming_missing_region_diagnostics",
-        "world_region_streaming_safe_point_diagnostics"
+        "world_region_streaming_safe_point_diagnostics",
+        "entity_scale_culling_status",
+        "entity_scale_culling_rows",
+        "entity_scale_culling_lod_rows",
+        "entity_scale_culling_budget_diagnostics"
     )) {
         if (-not $installedDesktopRuntimeValidationText.Contains($needle)) {
             Write-Error "tools/validate-installed-desktop-runtime.ps1 missing 2D native sprite package validation field: $needle"
@@ -558,7 +573,9 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
     foreach ($needle in @(
         "shaders/runtime_2d_sprite.hlsl",
         "installed-native-2d-sprite-smoke",
+        "installed-2d-entity-scale-culling-smoke",
         "--require-native-2d-sprites",
+        "--require-entity-scale-culling",
         "MK_configure_desktop_runtime_2d_sprite_shader_artifacts"
     )) {
         if (-not $newGameText.Contains($needle)) {
