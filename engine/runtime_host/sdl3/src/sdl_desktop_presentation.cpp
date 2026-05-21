@@ -9,6 +9,7 @@
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
+#include "mirakana/renderer/scene_scale_policy.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
@@ -29,6 +30,7 @@
 #include <array>
 #include <cstdint>
 #include <exception>
+#include <limits>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -3484,6 +3486,11 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
            report.postprocess_depth_input_requested;
 }
 
+[[nodiscard]] bool scene_scale_policy_requested(const SdlDesktopPresentationSceneScalePolicyDesc& desc) noexcept {
+    return desc.require_scene_gpu_bindings || desc.require_backend_instancing_evidence ||
+           desc.require_performance_measurement;
+}
+
 [[nodiscard]] rhi::BackendKind postprocess_policy_backend(SdlDesktopPresentationBackend backend) noexcept {
     switch (backend) {
     case SdlDesktopPresentationBackend::null_renderer:
@@ -3494,6 +3501,11 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         return rhi::BackendKind::vulkan;
     }
     return rhi::BackendKind::null;
+}
+
+[[nodiscard]] std::uint32_t scene_scale_policy_count(std::uint64_t value) noexcept {
+    constexpr auto max_value = static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max());
+    return static_cast<std::uint32_t>(std::min(value, max_value));
 }
 
 [[nodiscard]] std::uint32_t
@@ -4684,6 +4696,19 @@ sdl_desktop_presentation_postprocess_policy_status_name(SdlDesktopPresentationPo
     return "unknown";
 }
 
+std::string_view
+sdl_desktop_presentation_scene_scale_policy_status_name(SdlDesktopPresentationSceneScalePolicyStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationSceneScalePolicyStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationSceneScalePolicyStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationSceneScalePolicyStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 std::string_view sdl_desktop_presentation_d3d12_postprocess_execution_status_name(
     SdlDesktopPresentationD3d12PostprocessExecutionStatus status) noexcept {
     switch (status) {
@@ -4741,6 +4766,103 @@ evaluate_sdl_desktop_presentation_postprocess_policy(const SdlDesktopPresentatio
     result.fog_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::fog);
     result.anti_aliasing_effect = has_postprocess_chain_policy_effect(plan, PostprocessEffectKind::anti_aliasing);
     result.backend_shader_evidence_ready = plan.backend_shader_evidence_ready;
+    return result;
+}
+
+SdlDesktopPresentationSceneScalePolicyReport
+evaluate_sdl_desktop_presentation_scene_scale_policy(const SdlDesktopPresentationReport& report,
+                                                     const SdlDesktopPresentationSceneScalePolicyDesc& desc) {
+    SdlDesktopPresentationSceneScalePolicyReport result;
+    result.backend_instancing_evidence_required = desc.require_backend_instancing_evidence;
+    result.performance_measurement_required = desc.require_performance_measurement;
+    result.expected_frames = desc.expected_frames;
+    result.frames_finished = report.renderer_stats.frames_finished;
+    result.frames_current = desc.expected_frames == 0 || report.renderer_stats.frames_finished == desc.expected_frames;
+    if (!scene_scale_policy_requested(desc)) {
+        return result;
+    }
+
+    result.scene_resources_ready = !desc.require_scene_gpu_bindings ||
+                                   report.scene_gpu_status == SdlDesktopPresentationSceneGpuBindingStatus::ready;
+
+    std::array<SceneScaleDrawGroupDesc, 4> draw_groups{};
+    std::size_t draw_group_count = 0;
+    auto add_draw_group = [&](SceneScaleDrawGroupKind kind, std::uint64_t instances) {
+        if (instances == 0) {
+            return;
+        }
+        draw_groups[draw_group_count] = SceneScaleDrawGroupDesc{
+            .kind = kind,
+            .instance_count = scene_scale_policy_count(instances),
+            .visible_instance_count = scene_scale_policy_count(instances),
+            .culling = SceneScaleCullingMode::none,
+            .batching = SceneScaleBatchingMode::none,
+            .lod = SceneScaleLodMode::none,
+            .lod_count = 1,
+            .scene_resources_available = result.scene_resources_ready,
+            .source_index = static_cast<std::uint32_t>(draw_group_count),
+        };
+        ++draw_group_count;
+    };
+
+    const auto deformed_mesh_draws = report.renderer_stats.gpu_skinning_draws + report.renderer_stats.gpu_morph_draws;
+    const auto static_mesh_draws = report.renderer_stats.meshes_submitted > deformed_mesh_draws
+                                       ? report.renderer_stats.meshes_submitted - deformed_mesh_draws
+                                       : 0U;
+    add_draw_group(SceneScaleDrawGroupKind::static_mesh, static_mesh_draws);
+    add_draw_group(SceneScaleDrawGroupKind::skinned_mesh, report.renderer_stats.gpu_skinning_draws);
+    add_draw_group(SceneScaleDrawGroupKind::morph_mesh, report.renderer_stats.gpu_morph_draws);
+    add_draw_group(SceneScaleDrawGroupKind::sprite, report.renderer_stats.sprites_submitted);
+
+    const auto plan = plan_scene_scale_policy(SceneScalePolicyDesc{
+        .draw_groups = std::span<const SceneScaleDrawGroupDesc>{draw_groups.data(), draw_group_count},
+        .frame_extent = report.backbuffer_extent,
+        .max_draw_group_count = desc.max_draw_group_count,
+        .max_visible_instance_count = desc.max_visible_instance_count,
+        .max_draw_call_count = desc.max_draw_call_count,
+        .backend = postprocess_policy_backend(report.selected_backend),
+        .require_backend_instancing_evidence = desc.require_backend_instancing_evidence,
+        .backend_instancing_evidence_ready = desc.backend_instancing_evidence_ready,
+        .require_performance_measurement = desc.require_performance_measurement,
+        .performance_measurement_ready = desc.performance_measurement_ready,
+    });
+
+    result.backend_instancing_evidence_ready = plan.backend_instancing_evidence_ready;
+    result.performance_measurement_ready = plan.performance_measurement_ready;
+    result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!result.frames_current) {
+        ++result.diagnostics_count;
+    }
+    result.draw_group_count = plan.draw_group_count;
+    result.requested_instance_count = plan.requested_instance_count;
+    result.visible_instance_count = plan.visible_instance_count;
+    result.culled_instance_count = plan.culled_instance_count;
+    result.draw_call_count = plan.draw_call_count;
+    result.instanced_draw_call_count = plan.instanced_draw_call_count;
+    result.instanced_visible_instance_count = plan.instanced_visible_instance_count;
+    result.lod_group_count = plan.lod_group_count;
+    result.cpu_culling_group_count = plan.cpu_culling_group_count;
+    for (const auto& row : plan.draw_group_rows) {
+        switch (row.kind) {
+        case SceneScaleDrawGroupKind::static_mesh:
+            ++result.static_mesh_draw_groups;
+            break;
+        case SceneScaleDrawGroupKind::skinned_mesh:
+            ++result.skinned_mesh_draw_groups;
+            break;
+        case SceneScaleDrawGroupKind::morph_mesh:
+            ++result.morph_mesh_draw_groups;
+            break;
+        case SceneScaleDrawGroupKind::sprite:
+            ++result.sprite_draw_groups;
+            break;
+        case SceneScaleDrawGroupKind::unknown:
+            break;
+        }
+    }
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? SdlDesktopPresentationSceneScalePolicyStatus::ready
+                                 : SdlDesktopPresentationSceneScalePolicyStatus::blocked;
     return result;
 }
 

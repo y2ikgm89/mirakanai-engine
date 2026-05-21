@@ -856,6 +856,60 @@ MK_TEST("sdl desktop presentation postprocess policy exposes package-visible cha
     MK_REQUIRE(policy.backend_shader_evidence_ready);
 }
 
+MK_TEST("sdl desktop presentation scene scale policy exposes package-visible draw counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
+    report.scene_gpu_status = mirakana::SdlDesktopPresentationSceneGpuBindingStatus::ready;
+    report.renderer_stats.frames_finished = 2;
+    report.renderer_stats.meshes_submitted = 6;
+    report.renderer_stats.gpu_skinning_draws = 2;
+    report.backbuffer_extent = mirakana::Extent2D{.width = 1280, .height = 720};
+
+    mirakana::SdlDesktopPresentationSceneScalePolicyDesc desc;
+    desc.require_scene_gpu_bindings = true;
+    desc.expected_frames = 2;
+
+    const auto policy = mirakana::evaluate_sdl_desktop_presentation_scene_scale_policy(report, desc);
+
+    MK_REQUIRE(policy.status == mirakana::SdlDesktopPresentationSceneScalePolicyStatus::ready);
+    MK_REQUIRE(policy.ready);
+    MK_REQUIRE(policy.diagnostics_count == 0);
+    MK_REQUIRE(policy.frames_current);
+    MK_REQUIRE(policy.draw_group_count == 2);
+    MK_REQUIRE(policy.static_mesh_draw_groups == 1);
+    MK_REQUIRE(policy.skinned_mesh_draw_groups == 1);
+    MK_REQUIRE(policy.requested_instance_count == 6);
+    MK_REQUIRE(policy.visible_instance_count == 6);
+    MK_REQUIRE(policy.culled_instance_count == 0);
+    MK_REQUIRE(policy.draw_call_count == 6);
+    MK_REQUIRE(policy.instanced_draw_call_count == 0);
+    MK_REQUIRE(policy.instanced_visible_instance_count == 0);
+    MK_REQUIRE(policy.lod_group_count == 0);
+    MK_REQUIRE(policy.cpu_culling_group_count == 0);
+    MK_REQUIRE(!policy.backend_instancing_evidence_required);
+    MK_REQUIRE(!policy.backend_instancing_evidence_ready);
+}
+
+MK_TEST("sdl desktop presentation scene scale policy blocks missing backend instancing evidence") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
+    report.scene_gpu_status = mirakana::SdlDesktopPresentationSceneGpuBindingStatus::ready;
+    report.renderer_stats.meshes_submitted = 1;
+    report.backbuffer_extent = mirakana::Extent2D{.width = 1280, .height = 720};
+
+    mirakana::SdlDesktopPresentationSceneScalePolicyDesc desc;
+    desc.require_scene_gpu_bindings = true;
+    desc.require_backend_instancing_evidence = true;
+
+    const auto policy = mirakana::evaluate_sdl_desktop_presentation_scene_scale_policy(report, desc);
+
+    MK_REQUIRE(policy.status == mirakana::SdlDesktopPresentationSceneScalePolicyStatus::blocked);
+    MK_REQUIRE(!policy.ready);
+    MK_REQUIRE(policy.diagnostics_count > 0);
+    MK_REQUIRE(policy.backend_instancing_evidence_required);
+    MK_REQUIRE(!policy.backend_instancing_evidence_ready);
+}
+
 MK_TEST("sdl desktop presentation d3d12 postprocess execution report requires selected d3d12 pass evidence") {
     mirakana::SdlDesktopPresentationReport report;
     report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;

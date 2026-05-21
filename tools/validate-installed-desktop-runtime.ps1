@@ -171,6 +171,7 @@ $requiresDirectionalShadow = @($SmokeArgs) -contains "--require-directional-shad
 $requiresDirectionalShadowFiltering = @($SmokeArgs) -contains "--require-directional-shadow-filtering"
 $requiresD3d12ShadowCascadePolicy = @($SmokeArgs) -contains "--require-d3d12-shadow-cascade-policy"
 $requiresLightingShadowPolicy = @($SmokeArgs) -contains "--require-lighting-shadow-policy"
+$requiresSceneScalePolicy = @($SmokeArgs) -contains "--require-scene-scale-policy"
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
@@ -390,6 +391,46 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove lighting shadow policy field: $field=$($expectedLightingShadowPolicyFields[$field])"
             }
+        }
+    }
+    if ($requiresSceneScalePolicy) {
+        $expectedSceneScalePolicyFields = @{
+            "scene_scale_policy_status" = "ready"
+            "scene_scale_policy_ready" = "1"
+            "scene_scale_policy_diagnostics" = "0"
+            "scene_scale_policy_scene_resources_ready" = "1"
+            "scene_scale_policy_expected_frames" = [string]$expectedSmokeFrames
+            "scene_scale_policy_frames_finished" = [string]$expectedSmokeFrames
+            "scene_scale_policy_frames_current" = "1"
+            "scene_scale_policy_culled_instances" = "0"
+            "scene_scale_policy_instanced_draw_calls" = "0"
+            "scene_scale_policy_instanced_visible_instances" = "0"
+            "scene_scale_policy_lod_groups" = "0"
+            "scene_scale_policy_cpu_culling_groups" = "0"
+            "scene_scale_policy_backend_instancing_evidence_required" = "0"
+            "scene_scale_policy_backend_instancing_evidence_ready" = "0"
+            "scene_scale_policy_performance_measurement_required" = "0"
+            "scene_scale_policy_performance_measurement_ready" = "0"
+        }
+        foreach ($field in $expectedSceneScalePolicyFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedSceneScalePolicyFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove scene-scale policy field: $field=$($expectedSceneScalePolicyFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "scene_scale_policy_draw_groups",
+                "scene_scale_policy_requested_instances",
+                "scene_scale_policy_visible_instances",
+                "scene_scale_policy_draw_calls"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive scene-scale policy field: $field"
+            }
+        }
+        if ($requiresGpuSkinning -and
+            $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bscene_scale_policy_skinned_mesh_groups=1\b") {
+            Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove scene-scale skinned mesh grouping."
         }
     }
 }

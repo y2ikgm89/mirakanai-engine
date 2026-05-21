@@ -1479,6 +1479,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-directional-shadow-filtering
             --require-d3d12-shadow-cascade-policy
             --require-lighting-shadow-policy
+            --require-scene-scale-policy
             --require-renderer-quality-gates
             --require-framegraph-multiqueue-evidence
             --require-native-ui-overlay

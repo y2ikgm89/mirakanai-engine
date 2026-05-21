@@ -51,6 +51,7 @@ struct DesktopRuntimeGameOptions {
     bool require_directional_shadow_filtering{false};
     bool require_d3d12_shadow_cascade_policy{false};
     bool require_lighting_shadow_policy{false};
+    bool require_scene_scale_policy{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_native_ui_overlay{false};
@@ -711,7 +712,8 @@ void print_usage() {
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
                  "[--require-directional-shadow] [--require-directional-shadow-filtering] "
                  "[--require-d3d12-shadow-cascade-policy] [--require-lighting-shadow-policy] "
-                 "[--require-renderer-quality-gates] [--require-framegraph-multiqueue-evidence] "
+                 "[--require-scene-scale-policy] [--require-renderer-quality-gates] "
+                 "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
                  "[--require-native-ui-textured-sprite-atlas] "
                  "[--require-gpu-skinning] [--require-quaternion-animation]\n";
@@ -784,6 +786,11 @@ void print_usage() {
         }
         if (arg == "--require-lighting-shadow-policy") {
             options.require_lighting_shadow_policy = true;
+            continue;
+        }
+        if (arg == "--require-scene-scale-policy") {
+            options.require_scene_gpu_bindings = true;
+            options.require_scene_scale_policy = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -876,6 +883,16 @@ void print_usage() {
         options.throttle = false;
     }
     return true;
+}
+
+[[nodiscard]] mirakana::SdlDesktopPresentationSceneScalePolicyDesc
+make_scene_scale_policy_desc(const DesktopRuntimeGameOptions& options) noexcept {
+    mirakana::SdlDesktopPresentationSceneScalePolicyDesc desc;
+    if (options.require_scene_scale_policy) {
+        desc.require_scene_gpu_bindings = true;
+        desc.expected_frames = options.max_frames;
+    }
+    return desc;
 }
 
 [[nodiscard]] mirakana::SdlDesktopPresentationQualityGateDesc
@@ -1730,6 +1747,8 @@ int main(int argc, char** argv) {
     const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
     const auto d3d12_postprocess_execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(
         report, static_cast<std::uint64_t>(options.max_frames));
+    const auto scene_scale_policy =
+        mirakana::evaluate_sdl_desktop_presentation_scene_scale_policy(report, make_scene_scale_policy_desc(options));
     const auto renderer_quality =
         mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const auto framegraph_multiqueue = options.require_framegraph_multiqueue_evidence
@@ -1836,6 +1855,35 @@ int main(int argc, char** argv) {
         << " lighting_shadow_policy_shadow_atlas_height=" << game.lighting_shadow_policy_shadow_atlas_height()
         << " lighting_shadow_policy_light_rows=" << game.lighting_shadow_policy_light_rows()
         << " lighting_shadow_policy_ready_frames=" << game.lighting_shadow_policy_ready_frames()
+        << " scene_scale_policy_status="
+        << mirakana::sdl_desktop_presentation_scene_scale_policy_status_name(scene_scale_policy.status)
+        << " scene_scale_policy_ready=" << (scene_scale_policy.ready ? 1 : 0)
+        << " scene_scale_policy_diagnostics=" << scene_scale_policy.diagnostics_count
+        << " scene_scale_policy_scene_resources_ready=" << (scene_scale_policy.scene_resources_ready ? 1 : 0)
+        << " scene_scale_policy_expected_frames=" << scene_scale_policy.expected_frames
+        << " scene_scale_policy_frames_finished=" << scene_scale_policy.frames_finished
+        << " scene_scale_policy_frames_current=" << (scene_scale_policy.frames_current ? 1 : 0)
+        << " scene_scale_policy_draw_groups=" << scene_scale_policy.draw_group_count
+        << " scene_scale_policy_static_mesh_groups=" << scene_scale_policy.static_mesh_draw_groups
+        << " scene_scale_policy_skinned_mesh_groups=" << scene_scale_policy.skinned_mesh_draw_groups
+        << " scene_scale_policy_morph_mesh_groups=" << scene_scale_policy.morph_mesh_draw_groups
+        << " scene_scale_policy_sprite_groups=" << scene_scale_policy.sprite_draw_groups
+        << " scene_scale_policy_requested_instances=" << scene_scale_policy.requested_instance_count
+        << " scene_scale_policy_visible_instances=" << scene_scale_policy.visible_instance_count
+        << " scene_scale_policy_culled_instances=" << scene_scale_policy.culled_instance_count
+        << " scene_scale_policy_draw_calls=" << scene_scale_policy.draw_call_count
+        << " scene_scale_policy_instanced_draw_calls=" << scene_scale_policy.instanced_draw_call_count
+        << " scene_scale_policy_instanced_visible_instances=" << scene_scale_policy.instanced_visible_instance_count
+        << " scene_scale_policy_lod_groups=" << scene_scale_policy.lod_group_count
+        << " scene_scale_policy_cpu_culling_groups=" << scene_scale_policy.cpu_culling_group_count
+        << " scene_scale_policy_backend_instancing_evidence_required="
+        << (scene_scale_policy.backend_instancing_evidence_required ? 1 : 0)
+        << " scene_scale_policy_backend_instancing_evidence_ready="
+        << (scene_scale_policy.backend_instancing_evidence_ready ? 1 : 0)
+        << " scene_scale_policy_performance_measurement_required="
+        << (scene_scale_policy.performance_measurement_required ? 1 : 0)
+        << " scene_scale_policy_performance_measurement_ready="
+        << (scene_scale_policy.performance_measurement_ready ? 1 : 0)
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -2007,6 +2055,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_lighting_shadow_policy && !lighting_shadow_policy_ready) {
+            return 3;
+        }
+        if (options.require_scene_scale_policy && !scene_scale_policy.ready) {
             return 3;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {
