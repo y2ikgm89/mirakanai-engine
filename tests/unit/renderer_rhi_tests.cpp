@@ -11,6 +11,7 @@
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_viewport_surface.hpp"
+#include "mirakana/renderer/scene_scale_policy.hpp"
 #include "mirakana/renderer/shadow_map.hpp"
 #include "mirakana/renderer/sprite_batch.hpp"
 #include "mirakana/rhi/rhi.hpp"
@@ -5983,6 +5984,112 @@ MK_TEST("postprocess chain policy plans supported effects and fail-closed diagno
                                                                  mirakana::PostprocessChainDiagnosticCode::no_effects));
     MK_REQUIRE(!mirakana::has_postprocess_chain_policy_diagnostic(
         disabled_only, mirakana::PostprocessChainDiagnosticCode::missing_scene_color));
+}
+
+MK_TEST("scene scale policy plans instancing culling lod and fail-closed diagnostics") {
+    const std::array groups{
+        mirakana::SceneScaleDrawGroupDesc{.kind = mirakana::SceneScaleDrawGroupKind::static_mesh,
+                                          .instance_count = 120,
+                                          .visible_instance_count = 96,
+                                          .culling = mirakana::SceneScaleCullingMode::cpu_frustum,
+                                          .batching = mirakana::SceneScaleBatchingMode::instanced_draw,
+                                          .lod = mirakana::SceneScaleLodMode::distance_band,
+                                          .lod_count = 3,
+                                          .scene_resources_available = true,
+                                          .source_index = 11},
+        mirakana::SceneScaleDrawGroupDesc{.kind = mirakana::SceneScaleDrawGroupKind::sprite,
+                                          .instance_count = 24,
+                                          .visible_instance_count = 24,
+                                          .culling = mirakana::SceneScaleCullingMode::none,
+                                          .batching = mirakana::SceneScaleBatchingMode::none,
+                                          .lod = mirakana::SceneScaleLodMode::none,
+                                          .lod_count = 1,
+                                          .scene_resources_available = true,
+                                          .source_index = 12},
+    };
+
+    const auto plan = mirakana::plan_scene_scale_policy(mirakana::SceneScalePolicyDesc{
+        .draw_groups = groups,
+        .frame_extent = mirakana::Extent2D{.width = 1920, .height = 1080},
+        .max_draw_group_count = 8,
+        .max_visible_instance_count = 200,
+        .max_draw_call_count = 64,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .require_backend_instancing_evidence = true,
+        .backend_instancing_evidence_ready = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.draw_group_count == 2);
+    MK_REQUIRE(plan.requested_instance_count == 144);
+    MK_REQUIRE(plan.visible_instance_count == 120);
+    MK_REQUIRE(plan.culled_instance_count == 24);
+    MK_REQUIRE(plan.draw_call_count == 25);
+    MK_REQUIRE(plan.instanced_draw_call_count == 1);
+    MK_REQUIRE(plan.instanced_visible_instance_count == 96);
+    MK_REQUIRE(plan.lod_group_count == 1);
+    MK_REQUIRE(plan.cpu_culling_group_count == 1);
+    MK_REQUIRE(plan.backend_instancing_evidence_ready);
+    MK_REQUIRE(plan.draw_group_rows[0].uses_instancing);
+    MK_REQUIRE(plan.draw_group_rows[0].draw_call_count == 1);
+    MK_REQUIRE(plan.draw_group_rows[0].instanced_visible_instance_count == 96);
+    MK_REQUIRE(plan.draw_group_rows[0].culled_instance_count == 24);
+    MK_REQUIRE(!plan.draw_group_rows[1].uses_instancing);
+    MK_REQUIRE(plan.draw_group_rows[1].draw_call_count == 24);
+
+    const std::array invalid_groups{
+        mirakana::SceneScaleDrawGroupDesc{.kind = mirakana::SceneScaleDrawGroupKind::unknown,
+                                          .instance_count = 0,
+                                          .visible_instance_count = 3,
+                                          .culling = mirakana::SceneScaleCullingMode::gpu_indirect,
+                                          .batching = mirakana::SceneScaleBatchingMode::gpu_indirect,
+                                          .lod = mirakana::SceneScaleLodMode::gpu_driven,
+                                          .lod_count = 0,
+                                          .scene_resources_available = false,
+                                          .source_index = 21},
+    };
+    const auto invalid = mirakana::plan_scene_scale_policy(mirakana::SceneScalePolicyDesc{
+        .draw_groups = invalid_groups,
+        .frame_extent = mirakana::Extent2D{.width = 0, .height = 720},
+        .max_draw_group_count = 0,
+        .max_visible_instance_count = 1,
+        .max_draw_call_count = 1,
+        .backend = mirakana::rhi::BackendKind::vulkan,
+        .require_backend_instancing_evidence = true,
+        .backend_instancing_evidence_ready = false,
+        .require_performance_measurement = true,
+        .performance_measurement_ready = false,
+    });
+
+    MK_REQUIRE(!invalid.succeeded());
+    MK_REQUIRE(
+        mirakana::has_scene_scale_policy_diagnostic(invalid, mirakana::SceneScaleDiagnosticCode::invalid_frame_extent));
+    MK_REQUIRE(
+        mirakana::has_scene_scale_policy_diagnostic(invalid, mirakana::SceneScaleDiagnosticCode::invalid_draw_group));
+    MK_REQUIRE(
+        mirakana::has_scene_scale_policy_diagnostic(invalid, mirakana::SceneScaleDiagnosticCode::zero_instance_count));
+    MK_REQUIRE(mirakana::has_scene_scale_policy_diagnostic(
+        invalid, mirakana::SceneScaleDiagnosticCode::invalid_visible_instance_count));
+    MK_REQUIRE(mirakana::has_scene_scale_policy_diagnostic(
+        invalid, mirakana::SceneScaleDiagnosticCode::missing_scene_resources));
+    MK_REQUIRE(mirakana::has_scene_scale_policy_diagnostic(
+        invalid, mirakana::SceneScaleDiagnosticCode::unsupported_batching_mode));
+    MK_REQUIRE(mirakana::has_scene_scale_policy_diagnostic(
+        invalid, mirakana::SceneScaleDiagnosticCode::unsupported_culling_mode));
+    MK_REQUIRE(
+        mirakana::has_scene_scale_policy_diagnostic(invalid, mirakana::SceneScaleDiagnosticCode::unsupported_lod_mode));
+    MK_REQUIRE(
+        mirakana::has_scene_scale_policy_diagnostic(invalid, mirakana::SceneScaleDiagnosticCode::invalid_lod_count));
+    MK_REQUIRE(
+        mirakana::has_scene_scale_policy_diagnostic(invalid, mirakana::SceneScaleDiagnosticCode::too_many_draw_groups));
+    MK_REQUIRE(mirakana::has_scene_scale_policy_diagnostic(
+        invalid, mirakana::SceneScaleDiagnosticCode::too_many_visible_instances));
+    MK_REQUIRE(
+        mirakana::has_scene_scale_policy_diagnostic(invalid, mirakana::SceneScaleDiagnosticCode::too_many_draw_calls));
+    MK_REQUIRE(mirakana::has_scene_scale_policy_diagnostic(
+        invalid, mirakana::SceneScaleDiagnosticCode::missing_backend_instancing_evidence));
+    MK_REQUIRE(mirakana::has_scene_scale_policy_diagnostic(
+        invalid, mirakana::SceneScaleDiagnosticCode::missing_performance_measurement));
 }
 
 MK_TEST("rhi postprocess frame renderer records morph scene draws") {
