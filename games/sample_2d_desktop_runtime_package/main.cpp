@@ -17,6 +17,7 @@
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/entity_scale_culling.hpp"
 #include "mirakana/runtime/inventory_items.hpp"
+#include "mirakana/runtime/networking_foundation.hpp"
 #include "mirakana/runtime/procedural_generation.hpp"
 #include "mirakana/runtime/quest_dialogue.hpp"
 #include "mirakana/runtime/runtime_diagnostics.hpp"
@@ -69,6 +70,7 @@ struct DesktopRuntimeOptions {
     bool require_world_region_streaming{false};
     bool require_entity_scale_culling{false};
     bool require_scripting_sandbox_policy{false};
+    bool require_networking_foundation_policy{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -165,6 +167,22 @@ struct ScriptingSandboxProbeResult {
     bool ready{false};
 };
 
+struct NetworkingFoundationProbeResult {
+    mirakana::runtime::RuntimeNetworkFoundationPlanStatus status{
+        mirakana::runtime::RuntimeNetworkFoundationPlanStatus::invalid_request};
+    std::size_t session_rows{0U};
+    std::size_t transport_rows{0U};
+    std::size_t channel_rows{0U};
+    std::size_t rejected_unsafe_transport_rows{0U};
+    std::size_t replay_prerequisite_rows{0U};
+    std::uint64_t replay_seed_sum{0U};
+    std::size_t remote_session_rows{0U};
+    std::size_t secure_remote_session_rows{0U};
+    std::size_t security_diagnostics{0U};
+    std::size_t diagnostics{0U};
+    bool ready{false};
+};
+
 [[nodiscard]] std::string_view gameplay_2d_systems_status_name(Gameplay2DSystemsStatus status) noexcept {
     switch (status) {
     case Gameplay2DSystemsStatus::not_started:
@@ -218,6 +236,19 @@ scripting_sandbox_status_name(mirakana::runtime::RuntimeScriptSandboxPlanStatus 
         return "invalid_request";
     case mirakana::runtime::RuntimeScriptSandboxPlanStatus::budget_exceeded:
         return "budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+networking_foundation_status_name(mirakana::runtime::RuntimeNetworkFoundationPlanStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeNetworkFoundationPlanStatus::planned:
+        return "planned";
+    case mirakana::runtime::RuntimeNetworkFoundationPlanStatus::no_sessions:
+        return "no_sessions";
+    case mirakana::runtime::RuntimeNetworkFoundationPlanStatus::invalid_request:
+        return "invalid_request";
     }
     return "unknown";
 }
@@ -1390,6 +1421,185 @@ count_scripting_sandbox_diagnostics(const mirakana::runtime::RuntimeScriptSandbo
                    result.projected_memory_budget_bytes == 6144U && result.budget_diagnostics == 2U &&
                    result.replay_seed_rows == 2U && result.replay_seed_sum == 3003U && result.diagnostics == 0U &&
                    unsafe_plan.status == Status::invalid_request && budget_plan.status == Status::budget_exceeded;
+    return result;
+}
+
+[[nodiscard]] std::size_t
+count_networking_foundation_diagnostics(const mirakana::runtime::RuntimeNetworkFoundationPlan& plan,
+                                        mirakana::runtime::RuntimeNetworkDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] NetworkingFoundationProbeResult validate_networking_foundation_package_evidence() {
+    using Authority = mirakana::runtime::RuntimeNetworkReplicationAuthority;
+    using Capability = mirakana::runtime::RuntimeNetworkTransportCapabilityKind;
+    using Code = mirakana::runtime::RuntimeNetworkDiagnosticCode;
+    using Delivery = mirakana::runtime::RuntimeNetworkReplicationDelivery;
+    using Role = mirakana::runtime::RuntimeNetworkLocalRole;
+    using Status = mirakana::runtime::RuntimeNetworkFoundationPlanStatus;
+    using Topology = mirakana::runtime::RuntimeNetworkSessionTopology;
+    using Trust = mirakana::runtime::RuntimeNetworkTrustBoundary;
+
+    const auto reviewed_policy =
+        mirakana::runtime::RuntimeNetworkFoundationPolicyDesc{
+            .sessions =
+                std::vector<mirakana::runtime::RuntimeNetworkSessionDesc>{
+                    mirakana::runtime::RuntimeNetworkSessionDesc{
+                        .session_id = "arena",
+                        .topology = Topology::listen_server,
+                        .local_role = Role::host,
+                        .trust_boundary = Trust::untrusted_remote_peers,
+                        .transports =
+                            std::vector<mirakana::runtime::RuntimeNetworkTransportRequirementDesc>{
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::authenticated_peer, .source_index = 1U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::encrypted_transport, .source_index = 2U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::reliable_ordered, .source_index = 3U},
+                            },
+                        .channels =
+                            std::vector<mirakana::runtime::RuntimeNetworkReplicationChannelDesc>{
+                                mirakana::runtime::RuntimeNetworkReplicationChannelDesc{
+                                    .channel_id = "input",
+                                    .authority = Authority::client,
+                                    .delivery = Delivery::unreliable_unordered,
+                                    .tick_rate_hz = 60U,
+                                    .source_index = 6U,
+                                },
+                                mirakana::runtime::RuntimeNetworkReplicationChannelDesc{
+                                    .channel_id = "state",
+                                    .authority = Authority::server,
+                                    .delivery = Delivery::state_snapshot,
+                                    .tick_rate_hz = 30U,
+                                    .source_index = 7U,
+                                },
+                            },
+                        .replay =
+                            mirakana::runtime::RuntimeNetworkReplayPrerequisiteDesc{
+                                .replay_seed = 42U,
+                                .fixed_tick_rate_hz = 60U,
+                                .deterministic_simulation = true,
+                                .ordered_inputs = true,
+                                .source_index = 9U,
+                            },
+                        .source_index = 4U,
+                    },
+                    mirakana::runtime::RuntimeNetworkSessionDesc{
+                        .session_id = "local",
+                        .topology = Topology::local_only,
+                        .local_role = Role::offline,
+                        .trust_boundary = Trust::trusted_local,
+                        .transports =
+                            std::vector<mirakana::runtime::RuntimeNetworkTransportRequirementDesc>{
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::reliable_ordered, .source_index = 12U},
+                            },
+                        .channels =
+                            std::vector<mirakana::runtime::RuntimeNetworkReplicationChannelDesc>{
+                                mirakana::runtime::RuntimeNetworkReplicationChannelDesc{
+                                    .channel_id = "solo_state",
+                                    .authority = Authority::host,
+                                    .delivery = Delivery::reliable_ordered,
+                                    .tick_rate_hz = 30U,
+                                    .source_index = 13U,
+                                },
+                            },
+                        .replay =
+                            mirakana::runtime::RuntimeNetworkReplayPrerequisiteDesc{
+                                .replay_seed = 7U,
+                                .fixed_tick_rate_hz = 30U,
+                                .deterministic_simulation = true,
+                                .ordered_inputs = true,
+                                .source_index = 14U,
+                            },
+                        .source_index = 10U,
+                    },
+                },
+            .reviewed_transport_capabilities =
+                {
+                    Capability::authenticated_peer,
+                    Capability::encrypted_transport,
+                    Capability::reliable_ordered,
+                    Capability::unreliable_unordered,
+                },
+        };
+
+    NetworkingFoundationProbeResult result;
+    const auto reviewed_plan = mirakana::runtime::plan_runtime_network_foundation(reviewed_policy);
+    result.status = reviewed_plan.status;
+    result.session_rows = reviewed_plan.sessions.size();
+    result.transport_rows = reviewed_plan.transports.size();
+    result.channel_rows = reviewed_plan.channels.size();
+    result.replay_prerequisite_rows = reviewed_plan.replay_prerequisites.size();
+    result.remote_session_rows = reviewed_plan.remote_session_count;
+    result.secure_remote_session_rows = reviewed_plan.secure_remote_session_count;
+    result.diagnostics = reviewed_plan.diagnostics.size();
+    for (const auto& replay : reviewed_plan.replay_prerequisites) {
+        result.replay_seed_sum += replay.replay_seed;
+    }
+
+    const auto unsafe_policy =
+        mirakana::runtime::RuntimeNetworkFoundationPolicyDesc{
+            .sessions =
+                std::vector<mirakana::runtime::RuntimeNetworkSessionDesc>{
+                    mirakana::runtime::RuntimeNetworkSessionDesc{
+                        .session_id = "unsafe_remote",
+                        .topology = Topology::listen_server,
+                        .local_role = Role::host,
+                        .trust_boundary = Trust::untrusted_remote_peers,
+                        .transports =
+                            std::vector<mirakana::runtime::RuntimeNetworkTransportRequirementDesc>{
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::reliable_ordered, .source_index = 1U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::nat_traversal, .source_index = 2U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::platform_socket, .source_index = 3U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::native_transport_handle, .source_index = 4U},
+                            },
+                        .channels =
+                            std::vector<mirakana::runtime::RuntimeNetworkReplicationChannelDesc>{
+                                mirakana::runtime::RuntimeNetworkReplicationChannelDesc{
+                                    .channel_id = "state",
+                                    .authority = Authority::server,
+                                    .delivery = Delivery::state_snapshot,
+                                    .tick_rate_hz = 30U,
+                                    .source_index = 5U,
+                                },
+                            },
+                        .replay =
+                            mirakana::runtime::RuntimeNetworkReplayPrerequisiteDesc{
+                                .replay_seed = 90U,
+                                .fixed_tick_rate_hz = 30U,
+                                .deterministic_simulation = true,
+                                .ordered_inputs = true,
+                                .source_index = 6U,
+                            },
+                        .source_index = 7U,
+                    },
+                },
+            .reviewed_transport_capabilities = {Capability::reliable_ordered},
+        };
+    const auto unsafe_plan = mirakana::runtime::plan_runtime_network_foundation(unsafe_policy);
+    result.rejected_unsafe_transport_rows =
+        count_networking_foundation_diagnostics(unsafe_plan, Code::unsupported_transport_capability) +
+        count_networking_foundation_diagnostics(unsafe_plan, Code::native_transport_capability_requested);
+    result.security_diagnostics = count_networking_foundation_diagnostics(unsafe_plan, Code::insecure_remote_transport);
+
+    result.ready = reviewed_plan.status == Status::planned && reviewed_plan.succeeded() && result.session_rows == 2U &&
+                   result.transport_rows == 4U && result.channel_rows == 3U &&
+                   result.rejected_unsafe_transport_rows == 3U && result.replay_prerequisite_rows == 2U &&
+                   result.replay_seed_sum == 49U && result.remote_session_rows == 1U &&
+                   result.secure_remote_session_rows == 1U && result.security_diagnostics == 2U &&
+                   result.diagnostics == 0U && unsafe_plan.status == Status::invalid_request;
     return result;
 }
 
@@ -2642,7 +2852,8 @@ void print_usage() {
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
                  "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
-                 "[--require-entity-scale-culling] [--require-scripting-sandbox-policy]\n";
+                 "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
+                 "[--require-networking-foundation-policy]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -2704,6 +2915,10 @@ void print_usage() {
         }
         if (arg == "--require-scripting-sandbox-policy") {
             options.require_scripting_sandbox_policy = true;
+            continue;
+        }
+        if (arg == "--require-networking-foundation-policy") {
+            options.require_networking_foundation_policy = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -3235,6 +3450,9 @@ int main(int argc, char** argv) {
     const auto scripting_sandbox_probe = options.require_scripting_sandbox_policy
                                              ? validate_scripting_sandbox_package_evidence()
                                              : ScriptingSandboxProbeResult{};
+    const auto networking_foundation_probe = options.require_networking_foundation_policy
+                                                 ? validate_networking_foundation_package_evidence()
+                                                 : NetworkingFoundationProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -3539,6 +3757,20 @@ int main(int argc, char** argv) {
         << " scripting_sandbox_replay_seed_rows=" << scripting_sandbox_probe.replay_seed_rows
         << " scripting_sandbox_replay_seed_sum=" << scripting_sandbox_probe.replay_seed_sum
         << " scripting_sandbox_diagnostics=" << scripting_sandbox_probe.diagnostics
+        << " networking_foundation_status=" << networking_foundation_status_name(networking_foundation_probe.status)
+        << " networking_foundation_ready=" << (networking_foundation_probe.ready ? 1 : 0)
+        << " networking_foundation_session_rows=" << networking_foundation_probe.session_rows
+        << " networking_foundation_transport_rows=" << networking_foundation_probe.transport_rows
+        << " networking_foundation_channel_rows=" << networking_foundation_probe.channel_rows
+        << " networking_foundation_rejected_unsafe_transport_rows="
+        << networking_foundation_probe.rejected_unsafe_transport_rows
+        << " networking_foundation_replay_prerequisite_rows=" << networking_foundation_probe.replay_prerequisite_rows
+        << " networking_foundation_replay_seed_sum=" << networking_foundation_probe.replay_seed_sum
+        << " networking_foundation_remote_session_rows=" << networking_foundation_probe.remote_session_rows
+        << " networking_foundation_secure_remote_session_rows="
+        << networking_foundation_probe.secure_remote_session_rows
+        << " networking_foundation_security_diagnostics=" << networking_foundation_probe.security_diagnostics
+        << " networking_foundation_diagnostics=" << networking_foundation_probe.diagnostics
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -3701,6 +3933,22 @@ int main(int argc, char** argv) {
                   << " scripting_sandbox_replay_seed_rows=" << scripting_sandbox_probe.replay_seed_rows
                   << " scripting_sandbox_diagnostics=" << scripting_sandbox_probe.diagnostics << '\n';
         return 16;
+    }
+
+    if (options.require_networking_foundation_policy && !networking_foundation_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_networking_foundation_policy_unavailable"
+                  << " networking_foundation_status="
+                  << networking_foundation_status_name(networking_foundation_probe.status)
+                  << " networking_foundation_session_rows=" << networking_foundation_probe.session_rows
+                  << " networking_foundation_transport_rows=" << networking_foundation_probe.transport_rows
+                  << " networking_foundation_channel_rows=" << networking_foundation_probe.channel_rows
+                  << " networking_foundation_rejected_unsafe_transport_rows="
+                  << networking_foundation_probe.rejected_unsafe_transport_rows
+                  << " networking_foundation_replay_prerequisite_rows="
+                  << networking_foundation_probe.replay_prerequisite_rows
+                  << " networking_foundation_security_diagnostics=" << networking_foundation_probe.security_diagnostics
+                  << " networking_foundation_diagnostics=" << networking_foundation_probe.diagnostics << '\n';
+        return 17;
     }
 
     if (options.smoke &&

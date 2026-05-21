@@ -224,6 +224,7 @@ $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
 $requiresWorldRegionStreaming = @($SmokeArgs) -contains "--require-world-region-streaming"
 $requiresEntityScaleCulling = @($SmokeArgs) -contains "--require-entity-scale-culling"
 $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-sandbox-policy"
+$requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-networking-foundation-policy"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
@@ -1587,6 +1588,46 @@ if ($requiresScriptingSandboxPolicy) {
         $expectedValue = $expectedScriptingSandboxFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove scripting sandbox field $field=$expectedValue."
+        }
+    }
+}
+if ($requiresNetworkingFoundationPolicy) {
+    foreach ($field in @(
+            "networking_foundation_status",
+            "networking_foundation_ready",
+            "networking_foundation_session_rows",
+            "networking_foundation_transport_rows",
+            "networking_foundation_channel_rows",
+            "networking_foundation_rejected_unsafe_transport_rows",
+            "networking_foundation_replay_prerequisite_rows",
+            "networking_foundation_replay_seed_sum",
+            "networking_foundation_remote_session_rows",
+            "networking_foundation_secure_remote_session_rows",
+            "networking_foundation_security_diagnostics",
+            "networking_foundation_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include networking foundation field: $field"
+        }
+    }
+    $expectedNetworkingFoundationFields = @{
+        "networking_foundation_status" = "planned"
+        "networking_foundation_ready" = "1"
+        "networking_foundation_session_rows" = "2"
+        "networking_foundation_transport_rows" = "4"
+        "networking_foundation_channel_rows" = "3"
+        "networking_foundation_rejected_unsafe_transport_rows" = "3"
+        "networking_foundation_replay_prerequisite_rows" = "2"
+        "networking_foundation_replay_seed_sum" = "49"
+        "networking_foundation_remote_session_rows" = "1"
+        "networking_foundation_secure_remote_session_rows" = "1"
+        "networking_foundation_security_diagnostics" = "2"
+        "networking_foundation_diagnostics" = "0"
+    }
+    foreach ($field in $expectedNetworkingFoundationFields.Keys) {
+        $expectedValue = $expectedNetworkingFoundationFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove networking foundation field $field=$expectedValue."
         }
     }
 }
