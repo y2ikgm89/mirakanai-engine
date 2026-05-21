@@ -8,6 +8,7 @@ vcpkg_installed/
 .vscode/
 .worktrees/
 .claude/worktrees/
+.cursor/hooks/
 compile_commands.json
 CMakeUserPresets.json
 imgui.ini
