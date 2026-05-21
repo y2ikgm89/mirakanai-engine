@@ -345,6 +345,8 @@ Frame Graph v1 is closed for the Engine 1.0 Windows-default ready surface by `do
 
 `docs/superpowers/plans/2026-05-04-shader-graph-and-generation-pipeline-v1.md` completed Shader Graph and Generation Pipeline v1: `GameEngine.MaterialGraphShaderExport.v0` text IO, `emit_material_graph_reviewed_hlsl_v0`, and `MK_tools::plan_material_graph_shader_pipeline` building reviewed DXC `ShaderCompileExecutionRequest` rows (D3D12 DXIL plus Vulkan SPIR-V when DXC reports SPIR-V codegen). Full shader graph IR, editor graph UX, manifest readiness promotion, and renderer binding changes remain follow-up work.
 
+`docs/superpowers/plans/2026-05-21-engine-entity-scale-and-culling-v1.md` Phase 1 adds the host-independent entity scale/culling value contract: `MK_runtime` exposes `RuntimeEntityScaleCullingRequest`, `RuntimeEntityScaleCullingEntityDesc`, `RuntimeEntityScaleCullingViewDesc`, `RuntimeEntityScaleCullingPlan`, and `plan_runtime_entity_scale_culling` for deterministic stable-id sorted visibility/update-bucket rows over 2D/3D AABB bounds, layer masks, disabled rows, projected counters, and fail-closed diagnostics. This is not scene mutation, gameplay scheduling execution, package evidence, renderer/RHI residency, GPU/occlusion culling, native handles, or broad high-object-count performance readiness.
+
 ## Explicit Non-Ready Claims
 
 Do not claim these as ready unless a focused plan implements them and validation evidence lands:
