@@ -418,7 +418,9 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "--require-vulkan-renderer",
         "--require-native-2d-sprites",
         "--require-gameplay-systems",
+        "--require-world-region-streaming",
         "gameplay systems package proof",
+        "world-region streaming package proof",
         "public native or RHI handle access remains unsupported",
         "broad production sprite batching readiness remains unsupported",
         "general production renderer quality remains unsupported"
@@ -441,6 +443,8 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "--require-vulkan-renderer",
         "--require-native-2d-sprites",
         "--require-gameplay-systems",
+        "--require-world-region-streaming",
+        "mirakana/runtime/world_region_streaming.hpp",
         "sample_2d_desktop_runtime_package_sprite.vs.dxil",
         "sample_2d_desktop_runtime_package_sprite.ps.dxil",
         "sample_2d_desktop_runtime_package_sprite.vs.spv",
@@ -472,6 +476,13 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "gameplay_systems_behavior_authoring_ready=",
         "gameplay_systems_behavior_authoring_diagnostics=",
         "gameplay_systems_behavior_authoring_trace_nodes=",
+        "world_region_streaming_status=",
+        "world_region_streaming_load_rows=",
+        "world_region_streaming_unload_rows=",
+        "world_region_streaming_reviewed_package_adoptions=",
+        "world_region_streaming_missing_region_diagnostics=",
+        "world_region_streaming_safe_point_diagnostics=",
+        "required_world_region_streaming_unavailable",
         "required_gameplay_systems_unavailable",
         "required_native_2d_sprites_unavailable",
         "required_d3d12_renderer_unavailable",
@@ -493,6 +504,7 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv",
         "--require-native-2d-sprites",
         "--require-gameplay-systems",
+        "--require-world-region-streaming",
         "MK_ai",
         "MK_navigation",
         "MK_physics",
@@ -507,6 +519,7 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
     $installedDesktopRuntimeValidationText = Get-Content -LiteralPath (Join-Path $root "tools/validate-installed-desktop-runtime.ps1") -Raw
     foreach ($needle in @(
         "--require-native-2d-sprites",
+        "--require-world-region-streaming",
         "native_2d_sprites_status",
         "native_2d_textured_sprites_submitted",
         "native_2d_texture_binds",
@@ -527,7 +540,13 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
         "gameplay_systems_behavior_status",
         "gameplay_systems_behavior_authoring_ready",
         "gameplay_systems_behavior_authoring_diagnostics",
-        "gameplay_systems_behavior_authoring_trace_nodes"
+        "gameplay_systems_behavior_authoring_trace_nodes",
+        "world_region_streaming_status",
+        "world_region_streaming_load_rows",
+        "world_region_streaming_unload_rows",
+        "world_region_streaming_reviewed_package_adoptions",
+        "world_region_streaming_missing_region_diagnostics",
+        "world_region_streaming_safe_point_diagnostics"
     )) {
         if (-not $installedDesktopRuntimeValidationText.Contains($needle)) {
             Write-Error "tools/validate-installed-desktop-runtime.ps1 missing 2D native sprite package validation field: $needle"

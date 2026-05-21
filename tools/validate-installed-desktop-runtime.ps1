@@ -192,6 +192,7 @@ $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
 $requiresD3d12Renderer = @($SmokeArgs) -contains "--require-d3d12-renderer"
 $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
+$requiresWorldRegionStreaming = @($SmokeArgs) -contains "--require-world-region-streaming"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
@@ -1196,6 +1197,56 @@ if ($requiresPackageStreamingSafePoint) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpackage_streaming_diagnostics=0\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove clean package streaming diagnostics."
+    }
+}
+if ($requiresWorldRegionStreaming) {
+    foreach ($field in @(
+            "world_region_streaming_status",
+            "world_region_streaming_ready",
+            "world_region_streaming_plan_rows",
+            "world_region_streaming_load_rows",
+            "world_region_streaming_keep_rows",
+            "world_region_streaming_unload_rows",
+            "world_region_streaming_safe_point_rows",
+            "world_region_streaming_committed",
+            "world_region_streaming_committed_rows",
+            "world_region_streaming_reviewed_package_adoptions",
+            "world_region_streaming_projected_regions",
+            "world_region_streaming_projected_bytes",
+            "world_region_streaming_budget_bytes",
+            "world_region_streaming_missing_region_diagnostics",
+            "world_region_streaming_safe_point_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include world-region streaming field: $field"
+        }
+    }
+    foreach ($field in @(
+            "world_region_streaming_ready",
+            "world_region_streaming_committed",
+            "world_region_streaming_reviewed_package_adoptions",
+            "world_region_streaming_plan_rows",
+            "world_region_streaming_safe_point_rows",
+            "world_region_streaming_projected_regions",
+            "world_region_streaming_projected_bytes",
+            "world_region_streaming_budget_bytes",
+            "world_region_streaming_missing_region_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove positive world-region streaming field: $field"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_status=completed\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove completed world-region streaming status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_load_rows=1\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove exact world-region load row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_unload_rows=1\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove exact world-region unload row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_safe_point_diagnostics=0\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove clean world-region streaming safe-point diagnostics."
     }
 }
 if ($requiresPackageUploadStaging) {
