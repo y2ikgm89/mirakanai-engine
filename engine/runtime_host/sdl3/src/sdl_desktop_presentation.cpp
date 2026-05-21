@@ -5,6 +5,7 @@
 
 #include "scene_gpu_binding_injecting_renderer.hpp"
 
+#include "mirakana/renderer/gpu_memory_policy.hpp"
 #include "mirakana/renderer/postprocess_policy.hpp"
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
@@ -3491,6 +3492,35 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
            desc.require_performance_measurement;
 }
 
+[[nodiscard]] bool gpu_memory_policy_requested(const SdlDesktopPresentationGpuMemoryPolicyDesc& desc) noexcept {
+    return desc.require_scene_gpu_bindings || desc.require_backend_memory_evidence ||
+           desc.require_os_video_memory_budget || desc.declared_local_budget_bytes > 0;
+}
+
+[[nodiscard]] std::uint64_t gpu_memory_policy_upload_bytes(const SdlDesktopPresentationReport& report) noexcept {
+    return report.rhi_bytes_written + report.scene_gpu_stats.uploaded_texture_bytes +
+           report.scene_gpu_stats.uploaded_mesh_bytes + report.scene_gpu_stats.uploaded_morph_bytes +
+           report.scene_gpu_stats.uploaded_material_factor_bytes;
+}
+
+[[nodiscard]] bool gpu_memory_policy_transient_pressure_ready(const SdlDesktopPresentationReport& report) noexcept {
+    return report.rhi_transient_heap_allocations > 0 || report.rhi_transient_placed_allocations > 0 ||
+           report.rhi_transient_placed_resources_alive > 0 ||
+           report.renderer_stats.framegraph_barrier_steps_executed > 0;
+}
+
+[[nodiscard]] bool gpu_memory_policy_backend_memory_evidence_ready(const SdlDesktopPresentationReport& report,
+                                                                   bool require_backend_memory_evidence) noexcept {
+    if (!require_backend_memory_evidence || report.selected_backend != SdlDesktopPresentationBackend::d3d12) {
+        return false;
+    }
+
+    const auto& memory = report.rhi_memory_diagnostics;
+    return memory.committed_resources_byte_estimate_available && memory.committed_resources_byte_estimate > 0 &&
+           gpu_memory_policy_upload_bytes(report) > 0 &&
+           (memory.os_video_memory_budget_available || gpu_memory_policy_transient_pressure_ready(report));
+}
+
 [[nodiscard]] rhi::BackendKind postprocess_policy_backend(SdlDesktopPresentationBackend backend) noexcept {
     switch (backend) {
     case SdlDesktopPresentationBackend::null_renderer:
@@ -4420,6 +4450,12 @@ SdlDesktopPresentationReport SdlDesktopPresentation::report() const noexcept {
         .rhi_instanced_draw_calls = rhi_stats.instanced_draw_calls,
         .rhi_instanced_indexed_draw_calls = rhi_stats.instanced_indexed_draw_calls,
         .rhi_instanced_instances_submitted = rhi_stats.instanced_instances_submitted,
+        .rhi_memory_diagnostics =
+            impl_->device != nullptr ? impl_->device->memory_diagnostics() : rhi::RhiDeviceMemoryDiagnostics{},
+        .rhi_transient_heap_allocations = rhi_stats.transient_texture_heap_allocations,
+        .rhi_transient_placed_allocations = rhi_stats.transient_texture_placed_allocations,
+        .rhi_transient_placed_resources_alive = rhi_stats.transient_texture_placed_resources_alive,
+        .rhi_bytes_written = rhi_stats.bytes_written,
         .framegraph_passes = impl_->framegraph_passes,
         .renderer_stats = renderer_stats,
         .backbuffer_extent = impl_->renderer != nullptr ? impl_->renderer->backbuffer_extent() : Extent2D{},
@@ -4930,6 +4966,165 @@ evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(const SdlDeskto
             ? SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::ready
             : SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::blocked;
     result.ready = result.status == SdlDesktopPresentationD3d12InstancedDrawExecutionStatus::ready;
+    return result;
+}
+
+std::string_view
+sdl_desktop_presentation_gpu_memory_policy_status_name(SdlDesktopPresentationGpuMemoryPolicyStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationGpuMemoryPolicyStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationGpuMemoryPolicyStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationGpuMemoryPolicyStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view sdl_desktop_presentation_d3d12_gpu_memory_execution_status_name(
+    SdlDesktopPresentationD3d12GpuMemoryExecutionStatus status) noexcept {
+    switch (status) {
+    case SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::not_requested:
+        return "not_requested";
+    case SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::blocked:
+        return "blocked";
+    case SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+SdlDesktopPresentationGpuMemoryPolicyReport
+evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentationReport& report,
+                                                    const SdlDesktopPresentationGpuMemoryPolicyDesc& desc) {
+    SdlDesktopPresentationGpuMemoryPolicyReport result;
+    result.backend_memory_evidence_required = desc.require_backend_memory_evidence;
+    result.os_video_memory_budget_required = desc.require_os_video_memory_budget;
+    result.expected_frames = desc.expected_frames;
+    result.frames_finished = report.renderer_stats.frames_finished;
+    result.frames_current = desc.expected_frames == 0 || report.renderer_stats.frames_finished == desc.expected_frames;
+    if (!gpu_memory_policy_requested(desc)) {
+        return result;
+    }
+
+    result.scene_resources_ready = !desc.require_scene_gpu_bindings ||
+                                   report.scene_gpu_status == SdlDesktopPresentationSceneGpuBindingStatus::ready;
+
+    const auto& memory = report.rhi_memory_diagnostics;
+    const auto upload_bytes = gpu_memory_policy_upload_bytes(report);
+
+    std::array<GpuMemoryRequestDesc, 3> requests{};
+    std::size_t request_count = 0;
+    if (memory.committed_resources_byte_estimate_available && memory.committed_resources_byte_estimate > 0) {
+        requests[request_count++] = GpuMemoryRequestDesc{
+            .residency = GpuMemoryResidencyClass::committed,
+            .requested_bytes = memory.committed_resources_byte_estimate,
+            .scene_resources_available = result.scene_resources_ready,
+            .source_index = 0,
+        };
+    }
+    if (report.rhi_transient_heap_allocations > 0 || report.rhi_transient_placed_allocations > 0) {
+        const auto transient_bytes = report.rhi_transient_heap_allocations > 0
+                                         ? report.rhi_transient_heap_allocations * 1024ULL * 1024ULL
+                                         : 1ULL;
+        requests[request_count++] = GpuMemoryRequestDesc{
+            .residency = GpuMemoryResidencyClass::transient,
+            .requested_bytes = transient_bytes,
+            .transient_heap = report.rhi_transient_placed_allocations > 0
+                                  ? GpuMemoryTransientHeapPolicy::alias_group_heap
+                                  : GpuMemoryTransientHeapPolicy::per_resource_heap,
+            .scene_resources_available = result.scene_resources_ready,
+            .source_index = 1,
+        };
+    }
+    if (upload_bytes > 0) {
+        requests[request_count++] = GpuMemoryRequestDesc{
+            .residency = GpuMemoryResidencyClass::placed,
+            .requested_bytes = upload_bytes,
+            .upload_pressure = GpuMemoryUploadPressureKind::ring_buffer,
+            .scene_resources_available = result.scene_resources_ready,
+            .source_index = 2,
+        };
+    }
+
+    const auto plan = plan_gpu_memory_policy(GpuMemoryPolicyDesc{
+        .requests = std::span<const GpuMemoryRequestDesc>{requests.data(), request_count},
+        .declared_local_budget_bytes = desc.declared_local_budget_bytes,
+        .os_video_memory_budget_available = memory.os_video_memory_budget_available,
+        .os_local_budget_bytes = memory.local_video_memory_budget_bytes,
+        .os_local_usage_bytes = memory.local_video_memory_usage_bytes,
+        .os_non_local_budget_bytes = memory.non_local_video_memory_budget_bytes,
+        .os_non_local_usage_bytes = memory.non_local_video_memory_usage_bytes,
+        .committed_byte_estimate_available = memory.committed_resources_byte_estimate_available,
+        .committed_byte_estimate = memory.committed_resources_byte_estimate,
+        .transient_heap_allocations = report.rhi_transient_heap_allocations,
+        .transient_placed_allocations = report.rhi_transient_placed_allocations,
+        .transient_placed_resources_alive = report.rhi_transient_placed_resources_alive,
+        .upload_bytes_written = upload_bytes,
+        .backend = postprocess_policy_backend(report.selected_backend),
+        .require_backend_memory_evidence = desc.require_backend_memory_evidence,
+        .backend_memory_evidence_ready =
+            gpu_memory_policy_backend_memory_evidence_ready(report, desc.require_backend_memory_evidence),
+        .require_os_video_memory_budget =
+            desc.require_os_video_memory_budget && memory.os_video_memory_budget_available,
+    });
+
+    result.backend_memory_evidence_ready = plan.backend_memory_evidence_ready;
+    result.os_video_memory_budget_available = plan.os_video_memory_budget_available;
+    result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!result.frames_current) {
+        ++result.diagnostics_count;
+    }
+    result.request_count = plan.request_count;
+    result.total_requested_bytes = plan.total_requested_bytes;
+    result.total_counted_bytes = plan.total_counted_bytes;
+    result.os_local_budget_bytes = plan.os_local_budget_bytes;
+    result.os_local_usage_bytes = plan.os_local_usage_bytes;
+    result.committed_byte_estimate = plan.committed_byte_estimate;
+    result.transient_heap_allocations = plan.transient_heap_allocations;
+    result.transient_placed_allocations = plan.transient_placed_allocations;
+    result.transient_placed_resources_alive = plan.transient_placed_resources_alive;
+    result.upload_bytes_written = plan.upload_bytes_written;
+    result.transient_heap_request_count = plan.transient_heap_request_count;
+    result.upload_pressure_request_count = plan.upload_pressure_request_count;
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? SdlDesktopPresentationGpuMemoryPolicyStatus::ready
+                                 : SdlDesktopPresentationGpuMemoryPolicyStatus::blocked;
+    return result;
+}
+
+SdlDesktopPresentationD3d12GpuMemoryExecutionReport
+evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(const SdlDesktopPresentationReport& report,
+                                                             const bool requested) {
+    SdlDesktopPresentationD3d12GpuMemoryExecutionReport result;
+    const auto& memory = report.rhi_memory_diagnostics;
+    result.local_video_memory_budget_bytes = memory.local_video_memory_budget_bytes;
+    result.local_video_memory_usage_bytes = memory.local_video_memory_usage_bytes;
+    result.committed_resources_byte_estimate = memory.committed_resources_byte_estimate;
+    result.transient_heap_allocations = report.rhi_transient_heap_allocations;
+    result.transient_placed_allocations = report.rhi_transient_placed_allocations;
+    result.transient_placed_resources_alive = report.rhi_transient_placed_resources_alive;
+    result.upload_bytes_written = gpu_memory_policy_upload_bytes(report);
+
+    if (!requested) {
+        return result;
+    }
+
+    result.d3d12_backend_selected = report.selected_backend == SdlDesktopPresentationBackend::d3d12;
+    result.os_video_memory_budget_available = memory.os_video_memory_budget_available;
+    result.committed_byte_estimate_available = memory.committed_resources_byte_estimate_available;
+    result.memory_budget_current =
+        result.d3d12_backend_selected && result.committed_byte_estimate_available &&
+        result.committed_resources_byte_estimate > 0 &&
+        (result.os_video_memory_budget_available && result.local_video_memory_budget_bytes > 0 ||
+         !result.os_video_memory_budget_available);
+    result.transient_heap_current = gpu_memory_policy_transient_pressure_ready(report);
+    result.status = result.d3d12_backend_selected && result.memory_budget_current && result.transient_heap_current &&
+                            result.upload_bytes_written > 0
+                        ? SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::ready
+                        : SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::blocked;
+    result.ready = result.status == SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::ready;
     return result;
 }
 

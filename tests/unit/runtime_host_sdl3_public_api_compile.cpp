@@ -78,6 +78,13 @@ int main() {
     scene_scale_desc.require_backend_instancing_evidence = true;
     const auto scene_scale_report =
         mirakana::evaluate_sdl_desktop_presentation_scene_scale_policy(report, scene_scale_desc);
+    mirakana::SdlDesktopPresentationGpuMemoryPolicyDesc gpu_memory_desc;
+    gpu_memory_desc.require_scene_gpu_bindings = true;
+    gpu_memory_desc.require_backend_memory_evidence = true;
+    const auto gpu_memory_report =
+        mirakana::evaluate_sdl_desktop_presentation_gpu_memory_policy(report, gpu_memory_desc);
+    const auto d3d12_gpu_memory_report =
+        mirakana::evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(report, true);
 
     mirakana::SdlDesktopPresentationBackendReport backend_report;
     backend_report.backend = mirakana::SdlDesktopPresentationBackend::vulkan;

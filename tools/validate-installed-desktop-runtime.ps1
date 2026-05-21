@@ -173,6 +173,8 @@ $requiresD3d12ShadowCascadePolicy = @($SmokeArgs) -contains "--require-d3d12-sha
 $requiresLightingShadowPolicy = @($SmokeArgs) -contains "--require-lighting-shadow-policy"
 $requiresSceneScalePolicy = @($SmokeArgs) -contains "--require-scene-scale-policy"
 $requiresD3d12InstancedDrawEvidence = @($SmokeArgs) -contains "--require-d3d12-instanced-draw-evidence"
+$requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
+$requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
@@ -463,6 +465,65 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive D3D12 instanced draw evidence field: $field"
+            }
+        }
+    }
+    if ($requiresD3d12GpuMemoryEvidence) {
+        $requiresGpuMemoryPolicy = $true
+    }
+    if ($requiresGpuMemoryPolicy) {
+        $expectedGpuMemoryBackendEvidence = if ($requiresD3d12GpuMemoryEvidence) { "1" } else { "0" }
+        $expectedGpuMemoryPolicyFields = @{
+            "gpu_memory_policy_status" = "ready"
+            "gpu_memory_policy_ready" = "1"
+            "gpu_memory_policy_diagnostics" = "0"
+            "gpu_memory_policy_scene_resources_ready" = "1"
+            "gpu_memory_policy_expected_frames" = [string]$expectedSmokeFrames
+            "gpu_memory_policy_frames_finished" = [string]$expectedSmokeFrames
+            "gpu_memory_policy_frames_current" = "1"
+            "gpu_memory_policy_backend_memory_evidence_required" = $expectedGpuMemoryBackendEvidence
+            "gpu_memory_policy_backend_memory_evidence_ready" = $expectedGpuMemoryBackendEvidence
+            "gpu_memory_policy_os_video_memory_budget_required" = $expectedGpuMemoryBackendEvidence
+        }
+        foreach ($field in $expectedGpuMemoryPolicyFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedGpuMemoryPolicyFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove GPU memory policy field: $field=$($expectedGpuMemoryPolicyFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "gpu_memory_policy_requests",
+                "gpu_memory_policy_requested_bytes",
+                "gpu_memory_policy_counted_bytes",
+                "gpu_memory_policy_committed_byte_estimate",
+                "gpu_memory_policy_upload_bytes_written"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive GPU memory policy field: $field"
+            }
+        }
+    }
+    if ($requiresD3d12GpuMemoryEvidence) {
+        $expectedD3d12GpuMemoryFields = @{
+            "d3d12_gpu_memory_execution_status" = "ready"
+            "d3d12_gpu_memory_execution_ready" = "1"
+            "d3d12_gpu_memory_execution_selected" = "1"
+            "d3d12_gpu_memory_execution_committed_byte_estimate_available" = "1"
+            "d3d12_gpu_memory_execution_budget_ok" = "1"
+            "d3d12_gpu_memory_execution_transient_heap_ok" = "1"
+        }
+        foreach ($field in $expectedD3d12GpuMemoryFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedD3d12GpuMemoryFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove D3D12 GPU memory evidence field: $field=$($expectedD3d12GpuMemoryFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "d3d12_gpu_memory_execution_committed_resources_byte_estimate",
+                "d3d12_gpu_memory_execution_upload_bytes_written"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive D3D12 GPU memory evidence field: $field"
             }
         }
     }
