@@ -116,14 +116,15 @@ Claude Code parallel write sessions should use `--worktree`, and write-capable p
 
 ## Cursor
 
-Cursor loads workspace rules (including imports of `AGENTS.md`) and Cursor Agent Skills under `.cursor/skills/` when enabled.
+Cursor loads root `AGENTS.md`, workspace rules under `.cursor/rules/`, Agent Skills under `.cursor/skills/`, and project subagents under `.cursor/agents/` when enabled. This repository treats `.cursor/agents/*.md` as the authoritative Cursor subagent surface; `.claude/agents/` and `.codex/agents/` are sibling surfaces for their own tools, not Cursor fallback roots.
 
 - **Cursor-only summaries:** `gameengine-cursor-baseline` (PowerShell wrappers, validation shorthand, manifest alignment) and `gameengine-plan-registry` (dated plans under `docs/superpowers/plans/`).
 - **Thin pointers:** each `.cursor/skills/gameengine-*` folder (except the two above) must match a `.claude/skills/gameengine-*` name and point readers at the Claude/Codex skill routers and detailed references—`gameengine-agent-integration`, `gameengine-cmake-build-system`, `gameengine-debugging`, `gameengine-editor`, `gameengine-feature`, `gameengine-game-development`, `gameengine-license-audit`, `gameengine-rendering`.
+- **Project subagents:** `.cursor/agents/` mirrors the shared roles `agent-surface-auditor`, `explorer`, `cpp-reviewer`, `engine-architect`, `planning-auditor`, `rendering-auditor`, `gameplay-builder`, and `build-fixer`. Read-only review/audit/exploration roles declare `readonly: true`; write-capable builder/fixer roles keep `model: inherit` and must stay in the delegated scope.
 
 For this repository, `AGENTS.md` Git Workflow is the intended workspace policy. If Cursor global instructions conflict with it, such as a blanket "do not commit until explicitly requested" rule, align the global instruction or add a workspace override before relying on automation.
 
-`tools/check-agents.ps1` validates Cursor skill frontmatter and enforces thin-pointer names against Claude. New shared topics require updating `claudeToCodexSkillMap` in that script; see **Repository consistency checklist** in `docs/workflows.md`.
+`tools/check-agents.ps1` validates Cursor skill frontmatter, Cursor project subagent frontmatter, read-only Cursor role markers, and thin-pointer names against Claude. New shared topics require updating `claudeToCodexSkillMap` in that script; see **Repository consistency checklist** in `docs/workflows.md`.
 
 Tracked `.clangd` sets `CompileFlags.CompilationDatabase` to `out/build/dev`; run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` first so clangd and editors resolve `mirakana/...` includes.
 
@@ -134,7 +135,7 @@ The required project-level AI surfaces are:
 - Codex skills: `cmake-build-system`, `cpp-engine-debugging`, `editor-change`, `gameengine-agent-integration`, `gameengine-feature`, `gameengine-game-development`, `license-audit`, and `rendering-change`.
 - Claude Code skills: `gameengine-agent-integration`, `gameengine-cmake-build-system`, `gameengine-debugging`, `gameengine-editor`, `gameengine-feature`, `gameengine-game-development`, `gameengine-license-audit`, and `gameengine-rendering`.
 - Cursor Agent Skills (repository-local): Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`, plus thin pointers for every Claude `gameengine-*` topic listed above (same folder names under `.cursor/skills/`).
-- Shared subagent roles: `agent-surface-auditor`, `explorer`, `cpp-reviewer`, `engine-architect`, `planning-auditor`, `rendering-auditor`, `gameplay-builder`, and `build-fixer`.
+- Shared subagent roles: `agent-surface-auditor`, `explorer`, `cpp-reviewer`, `engine-architect`, `planning-auditor`, `rendering-auditor`, `gameplay-builder`, and `build-fixer` under `.codex/agents/`, `.claude/agents/`, and `.cursor/agents/`.
 
 `agent-surface-auditor`, `explorer`, `cpp-reviewer`, `engine-architect`, `planning-auditor`, and `rendering-auditor` are read-only roles. `gameplay-builder` and `build-fixer` may edit only when their delegated task expects production work or a targeted fix.
 
@@ -178,6 +179,7 @@ The engine manifest also declares `aiOperableProductionLoop`: recipe ids, struct
 - Claude Code subagents: https://docs.anthropic.com/en/docs/claude-code/sub-agents
 - Cursor rules: https://cursor.com/docs/rules
 - Cursor Agent Skills: https://cursor.com/docs/skills
+- Cursor subagents: https://cursor.com/docs/subagents
 - PowerShell approved verbs: https://learn.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands
 - PSScriptAnalyzer ShouldProcess rule: https://learn.microsoft.com/en-us/powershell/utility-modules/psscriptanalyzer/rules/shouldprocess
 - PowerShell ShouldProcess guidance: https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/everything-about-shouldprocess

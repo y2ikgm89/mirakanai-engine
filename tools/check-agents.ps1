@@ -185,6 +185,7 @@ $claudeSettingsPath = Join-Path $root ".claude/settings.json"
 $claudeSkillRoot = Join-Path $root ".claude/skills"
 $claudeAgentRoot = Join-Path $root ".claude/agents"
 $cursorSkillRoot = Join-Path $root ".cursor/skills"
+$cursorAgentRoot = Join-Path $root ".cursor/agents"
 
 if (Test-Path $skillRoot) {
     Get-ChildItem -Path $skillRoot -Directory | ForEach-Object {
@@ -333,6 +334,48 @@ function Get-FrontmatterPathsSection {
     return ($out -join "`n").TrimEnd()
 }
 
+function Get-AgentFrontmatterBlock {
+    param([Parameter(Mandatory)][string]$AgentPath)
+    $lines = Get-Content -LiteralPath $AgentPath
+    if ($lines.Length -lt 2 -or $lines[0].Trim() -ne "---") {
+        Write-Error "Agent must start with YAML frontmatter (---): $AgentPath"
+    }
+    $end = 1
+    for (; $end -lt $lines.Length; $end++) {
+        if ($lines[$end].Trim() -eq "---") {
+            break
+        }
+    }
+    if ($end -ge $lines.Length) {
+        Write-Error "Agent frontmatter missing closing --- : $AgentPath"
+    }
+    return ($lines[1..($end - 1)] -join "`n")
+}
+
+function Test-CursorAgentFrontmatter {
+    param(
+        [Parameter(Mandatory)][string]$AgentPath,
+        [Parameter(Mandatory)][string]$ExpectedName,
+        [Parameter(Mandatory)][string[]]$ReadOnlyAgentNames
+    )
+
+    $fm = Get-AgentFrontmatterBlock -AgentPath $AgentPath
+    $nameMatch = [System.Text.RegularExpressions.Regex]::Match($fm, '(?m)^name:\s*([a-z0-9-]+)\s*$')
+    if (-not $nameMatch.Success) {
+        Write-Error "Cursor agent frontmatter must include 'name:' (lowercase letters, digits, hyphens only): $AgentPath"
+    }
+    $parsedName = $nameMatch.Groups[1].Value.Trim()
+    if ($parsedName -ne $ExpectedName) {
+        Write-Error "Cursor agent 'name:' ($parsedName) must match file base name '$ExpectedName': $AgentPath"
+    }
+    if ($fm -notmatch '(?m)^description:\s*\S') {
+        Write-Error "Cursor agent frontmatter must include non-empty 'description:': $AgentPath"
+    }
+    if ($ReadOnlyAgentNames -contains $ExpectedName -and $fm -notmatch '(?m)^readonly:\s*true\s*$') {
+        Write-Error "Cursor read-only agent must declare readonly: true: $AgentPath"
+    }
+}
+
 if ((Test-Path -LiteralPath $claudeSkillRoot) -and (Test-Path -LiteralPath $skillRoot)) {
     Get-ChildItem -LiteralPath $claudeSkillRoot -Directory | ForEach-Object {
         $claudeFolderName = $_.Name
@@ -414,6 +457,65 @@ if (Test-Path $claudeAgentRoot) {
         $head = (Get-Content -LiteralPath $_.FullName -TotalCount 8) -join "`n"
         if ($head -notmatch "---\s*\nname:\s*[a-z0-9-]+" -or $head -notmatch "description:\s*.+") {
             Write-Error "Claude agent frontmatter must include name and description: $($_.FullName)"
+        }
+    }
+}
+
+$requiredCursorAgents = @(
+    "agent-surface-auditor",
+    "build-fixer",
+    "cpp-reviewer",
+    "engine-architect",
+    "explorer",
+    "gameplay-builder",
+    "planning-auditor",
+    "rendering-auditor"
+)
+$cursorReadOnlyAgents = @(
+    "agent-surface-auditor",
+    "cpp-reviewer",
+    "engine-architect",
+    "explorer",
+    "planning-auditor",
+    "rendering-auditor"
+)
+if (-not (Test-Path -LiteralPath $cursorAgentRoot)) {
+    Write-Error "Cursor project subagents must live under .cursor/agents per Cursor Subagents documentation."
+}
+foreach ($agentName in $requiredCursorAgents) {
+    $codexAgentPath = Join-Path $agentRoot "$agentName.toml"
+    if (-not (Test-Path -LiteralPath $codexAgentPath)) {
+        Write-Error "Shared agent missing required Codex project subagent: .codex/agents/$agentName.toml"
+    }
+    $claudeAgentPath = Join-Path $claudeAgentRoot "$agentName.md"
+    if (-not (Test-Path -LiteralPath $claudeAgentPath)) {
+        Write-Error "Shared agent missing required Claude project subagent: .claude/agents/$agentName.md"
+    }
+    $cursorAgentPath = Join-Path $cursorAgentRoot "$agentName.md"
+    if (-not (Test-Path -LiteralPath $cursorAgentPath)) {
+        Write-Error "Cursor agent missing required project subagent: .cursor/agents/$agentName.md"
+    }
+}
+if (Test-Path -LiteralPath $cursorAgentRoot) {
+    Get-ChildItem -LiteralPath $cursorAgentRoot -Filter "*.md" | ForEach-Object {
+        $agentName = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+        Test-AgentFileSizeBudget `
+            -Path $_.FullName `
+            -MaxBytes (16 * 1024) `
+            -Label ".cursor/agents/$($_.Name)" `
+            -Guidance "Keep Cursor subagents narrowly scoped and move reusable procedures to skills/docs."
+        Test-CursorAgentFrontmatter -AgentPath $_.FullName -ExpectedName $agentName -ReadOnlyAgentNames $cursorReadOnlyAgents
+        if (Test-Path -LiteralPath $claudeAgentRoot) {
+            $pairedClaudeAgentPath = Join-Path $claudeAgentRoot "$agentName.md"
+            if (-not (Test-Path -LiteralPath $pairedClaudeAgentPath)) {
+                Write-Error "Cursor agent '$agentName' must have a matching .claude/agents/$agentName.md role for cross-tool parity."
+            }
+        }
+        if (Test-Path -LiteralPath $agentRoot) {
+            $pairedCodexAgentPath = Join-Path $agentRoot "$agentName.toml"
+            if (-not (Test-Path -LiteralPath $pairedCodexAgentPath)) {
+                Write-Error "Cursor agent '$agentName' must have a matching .codex/agents/$agentName.toml role for cross-tool parity."
+            }
         }
     }
 }

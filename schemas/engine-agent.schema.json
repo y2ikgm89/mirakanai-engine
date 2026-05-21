@@ -111,7 +111,7 @@
     },
     "aiSurfaces": {
       "type": "object",
-      "required": ["codex", "claudeCode"]
+      "required": ["codex", "claudeCode", "cursor"]
     },
     "documentationPolicy": {
       "type": "object",

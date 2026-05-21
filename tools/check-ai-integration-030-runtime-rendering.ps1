@@ -86,7 +86,7 @@ if ($metalGate.Count -ne 1 -or $metalGate[0].status -ne "host-gated") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must keep metal-apple host-gated"
 }
 
-foreach ($surface in @("codex", "claudeCode")) {
+foreach ($surface in @("codex", "claudeCode", "cursor")) {
     if (-not $manifest.aiSurfaces.PSObject.Properties.Name.Contains($surface)) {
         Write-Error "engine/agent/manifest.json aiSurfaces missing required field: $surface"
     }
@@ -96,30 +96,31 @@ foreach ($surface in @("codex", "claudeCode")) {
         }
     }
 }
-foreach ($skillName in @("cmake-build-system", "cpp-engine-debugging", "editor-change", "gameengine-agent-integration", "gameengine-feature", "gameengine-game-development", "license-audit", "rendering-change")) {
-    if (@($manifest.aiSurfaces.codex.requiredSkills) -notcontains $skillName) {
-        Write-Error "engine/agent/manifest.json aiSurfaces.codex.requiredSkills missing $skillName"
-    }
+$requiredSurfaceSkills = @{
+    codex      = @("cmake-build-system", "cpp-engine-debugging", "editor-change", "gameengine-agent-integration", "gameengine-feature", "gameengine-game-development", "license-audit", "rendering-change")
+    claudeCode = @("gameengine-agent-integration", "gameengine-cmake-build-system", "gameengine-debugging", "gameengine-editor", "gameengine-feature", "gameengine-game-development", "gameengine-license-audit", "gameengine-rendering")
+    cursor     = @("gameengine-agent-integration", "gameengine-cmake-build-system", "gameengine-cursor-baseline", "gameengine-debugging", "gameengine-editor", "gameengine-feature", "gameengine-game-development", "gameengine-license-audit", "gameengine-plan-registry", "gameengine-rendering")
 }
-foreach ($skillName in @("gameengine-agent-integration", "gameengine-cmake-build-system", "gameengine-debugging", "gameengine-editor", "gameengine-feature", "gameengine-game-development", "gameengine-license-audit", "gameengine-rendering")) {
-    if (@($manifest.aiSurfaces.claudeCode.requiredSkills) -notcontains $skillName) {
-        Write-Error "engine/agent/manifest.json aiSurfaces.claudeCode.requiredSkills missing $skillName"
+foreach ($surfaceSkills in $requiredSurfaceSkills.GetEnumerator()) {
+    $surfaceName = $surfaceSkills.Key
+    foreach ($skillName in $surfaceSkills.Value) {
+        if (@($manifest.aiSurfaces.$surfaceName.requiredSkills) -notcontains $skillName) {
+            Write-Error "engine/agent/manifest.json aiSurfaces.$surfaceName.requiredSkills missing $skillName"
+        }
     }
 }
 foreach ($agentName in @("agent-surface-auditor", "build-fixer", "cpp-reviewer", "engine-architect", "explorer", "gameplay-builder", "planning-auditor", "rendering-auditor")) {
-    if (@($manifest.aiSurfaces.codex.requiredAgents) -notcontains $agentName) {
-        Write-Error "engine/agent/manifest.json aiSurfaces.codex.requiredAgents missing $agentName"
-    }
-    if (@($manifest.aiSurfaces.claudeCode.requiredAgents) -notcontains $agentName) {
-        Write-Error "engine/agent/manifest.json aiSurfaces.claudeCode.requiredAgents missing $agentName"
+    foreach ($surface in @("codex", "claudeCode", "cursor")) {
+        if (@($manifest.aiSurfaces.$surface.requiredAgents) -notcontains $agentName) {
+            Write-Error "engine/agent/manifest.json aiSurfaces.$surface.requiredAgents missing $agentName"
+        }
     }
 }
 foreach ($agentName in @("agent-surface-auditor", "cpp-reviewer", "engine-architect", "explorer", "planning-auditor", "rendering-auditor")) {
-    if (@($manifest.aiSurfaces.codex.readOnlyAgents) -notcontains $agentName) {
-        Write-Error "engine/agent/manifest.json aiSurfaces.codex.readOnlyAgents missing $agentName"
-    }
-    if (@($manifest.aiSurfaces.claudeCode.readOnlyAgents) -notcontains $agentName) {
-        Write-Error "engine/agent/manifest.json aiSurfaces.claudeCode.readOnlyAgents missing $agentName"
+    foreach ($surface in @("codex", "claudeCode", "cursor")) {
+        if (@($manifest.aiSurfaces.$surface.readOnlyAgents) -notcontains $agentName) {
+            Write-Error "engine/agent/manifest.json aiSurfaces.$surface.readOnlyAgents missing $agentName"
+        }
     }
 }
 

@@ -668,6 +668,15 @@ if ($manifest.aiSurfaces.codex.rules -ne ".codex/rules") {
 if ($manifest.aiSurfaces.claudeCode.settings -ne ".claude/settings.json") {
     Write-Error "engine/agent/manifest.json aiSurfaces.claudeCode.settings must be .claude/settings.json"
 }
+if ($manifest.aiSurfaces.cursor.rules -ne ".cursor/rules") {
+    Write-Error "engine/agent/manifest.json aiSurfaces.cursor.rules must be .cursor/rules"
+}
+if ($manifest.aiSurfaces.cursor.agents -ne ".cursor/agents") {
+    Write-Error "engine/agent/manifest.json aiSurfaces.cursor.agents must be .cursor/agents"
+}
+if ($manifest.aiSurfaces.cursor.PSObject.Properties.Name.Contains("compatibleAgentRoots")) {
+    Write-Error "engine/agent/manifest.json aiSurfaces.cursor must not rely on compatibleAgentRoots; keep Cursor project subagents native under .cursor/agents"
+}
 foreach ($importPath in @("AGENTS.md", ".claude/rules/ai-agent-integration.md", ".claude/rules/cpp-engine.md")) {
     if (@($manifest.aiSurfaces.claudeCode.memoryImports) -notcontains $importPath) {
         Write-Error "engine/agent/manifest.json aiSurfaces.claudeCode.memoryImports missing $importPath"
