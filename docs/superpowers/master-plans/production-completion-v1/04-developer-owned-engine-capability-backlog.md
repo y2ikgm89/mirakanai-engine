@@ -25,7 +25,7 @@ Priority tiers:
 
 Recommended developer-owned capability rows:
 
-As of PR #174 / merge commit `9bffa2b8`, `ai-gameplay-authoring-tools-v1` from the high-freedom game creation track is completed and no developer-owned capability is currently selected. Use these rows as historical capability evidence plus a selection pool; add or select a new dated milestone only when a concrete game handoff or roadmap decision identifies a reusable developer-owned capability that still needs implementation.
+As of PR #175 / merge commit `f05136e2`, `ai-gameplay-authoring-tools-v1` from the high-freedom game creation track is completed and no developer-owned capability is currently selected. Use these rows as historical capability evidence plus a selection pool; add or select a new dated milestone only when a concrete game handoff or roadmap decision identifies a reusable developer-owned capability that still needs implementation.
 
 | Capability id | Tier | Why games need it | Developer implementation boundary | Evidence before game agents can use it |
 | --- | --- | --- | --- | --- |
