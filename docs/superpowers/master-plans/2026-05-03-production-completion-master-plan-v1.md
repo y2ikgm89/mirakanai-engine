@@ -15,8 +15,8 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: `docs/superpowers/plans/2026-05-21-renderer-postprocess-v1.md`.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `renderer-postprocess-v1` as the current developer-owned renderer 1.x capability, not a reopened Engine 1.0 production gap. `renderer-lighting-shadows-v1` is completed for backend-neutral lighting/shadow policy diagnostics, package-visible lighting/shadow counters, selected D3D12 shadow cascade/atlas/light-space package evidence, PR #151, hosted checks, and full validation evidence.
+- Current active plan: `docs/superpowers/plans/2026-05-21-renderer-scene-scale-v1.md`.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan` points at `renderer-scene-scale-v1` as the current developer-owned renderer 1.x capability, not a reopened Engine 1.0 production gap. `renderer-postprocess-v1` is completed for backend-neutral postprocess policy diagnostics, package-visible postprocess counters, selected D3D12 postprocess execution evidence, PR #155, hosted checks, and full validation evidence.
 - Current gap cluster: none selected after the 2026-05-19 gameplay/physics/navigation/AI foundation closeout.
 
 ## Plan map
