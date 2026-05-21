@@ -175,6 +175,8 @@ $requiresSceneScalePolicy = @($SmokeArgs) -contains "--require-scene-scale-polic
 $requiresD3d12InstancedDrawEvidence = @($SmokeArgs) -contains "--require-d3d12-instanced-draw-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
+$requiresDebugProfilingPolicy = @($SmokeArgs) -contains "--require-debug-profiling-policy"
+$requiresD3d12DebugProfilingEvidence = @($SmokeArgs) -contains "--require-d3d12-debug-profiling-evidence"
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
@@ -524,6 +526,66 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive D3D12 GPU memory evidence field: $field"
+            }
+        }
+    }
+    if ($requiresD3d12DebugProfilingEvidence) {
+        $requiresDebugProfilingPolicy = $true
+    }
+    if ($requiresDebugProfilingPolicy) {
+        $expectedDebugProfilingBackendEvidence = if ($requiresD3d12DebugProfilingEvidence) { "1" } else { "0" }
+        $expectedDebugProfilingPolicyFields = @{
+            "debug_profiling_policy_status" = "ready"
+            "debug_profiling_policy_ready" = "1"
+            "debug_profiling_policy_diagnostics" = "0"
+            "debug_profiling_policy_scene_resources_ready" = "1"
+            "debug_profiling_policy_expected_frames" = [string]$expectedSmokeFrames
+            "debug_profiling_policy_frames_finished" = [string]$expectedSmokeFrames
+            "debug_profiling_policy_frames_current" = "1"
+            "debug_profiling_policy_backend_profiling_evidence_required" = $expectedDebugProfilingBackendEvidence
+            "debug_profiling_policy_backend_profiling_evidence_ready" = $expectedDebugProfilingBackendEvidence
+        }
+        foreach ($field in $expectedDebugProfilingPolicyFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedDebugProfilingPolicyFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove debug profiling policy field: $field=$($expectedDebugProfilingPolicyFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "debug_profiling_policy_requests",
+                "debug_profiling_policy_gpu_timestamp_ticks_per_second",
+                "debug_profiling_policy_gpu_debug_markers_inserted",
+                "debug_profiling_policy_framegraph_barrier_steps_executed",
+                "debug_profiling_policy_framegraph_render_passes_recorded"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive debug profiling policy field: $field"
+            }
+        }
+    }
+    if ($requiresD3d12DebugProfilingEvidence) {
+        $expectedD3d12DebugProfilingFields = @{
+            "d3d12_debug_profiling_execution_status" = "ready"
+            "d3d12_debug_profiling_execution_ready" = "1"
+            "d3d12_debug_profiling_execution_selected" = "1"
+            "d3d12_debug_profiling_execution_gpu_timestamps_ok" = "1"
+            "d3d12_debug_profiling_execution_gpu_debug_markers_ok" = "1"
+            "d3d12_debug_profiling_execution_frame_diagnostics_ok" = "1"
+        }
+        foreach ($field in $expectedD3d12DebugProfilingFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedD3d12DebugProfilingFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove D3D12 debug profiling evidence field: $field=$($expectedD3d12DebugProfilingFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "d3d12_debug_profiling_execution_gpu_timestamp_ticks_per_second",
+                "d3d12_debug_profiling_execution_gpu_debug_markers_inserted",
+                "d3d12_debug_profiling_execution_framegraph_barrier_steps_executed",
+                "d3d12_debug_profiling_execution_framegraph_render_passes_recorded"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive D3D12 debug profiling evidence field: $field"
             }
         }
     }

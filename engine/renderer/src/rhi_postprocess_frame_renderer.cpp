@@ -465,6 +465,7 @@ void RhiPostprocessFrameRenderer::begin_frame() {
     try {
         swapchain_frame_ = device_->acquire_swapchain_frame(swapchain_);
         commands = device_->begin_command_list(rhi::QueueKind::graphics);
+        commands->insert_gpu_debug_marker("mirakana.presentation");
 
         commands_ = std::move(commands);
         frame_active_ = true;

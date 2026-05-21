@@ -213,6 +213,10 @@ struct SdlDesktopPresentationReport {
     std::uint64_t rhi_transient_placed_allocations{0};
     std::uint64_t rhi_transient_placed_resources_alive{0};
     std::uint64_t rhi_bytes_written{0};
+    std::uint64_t rhi_gpu_timestamp_ticks_per_second{0};
+    std::uint64_t rhi_gpu_debug_scopes_begun{0};
+    std::uint64_t rhi_gpu_debug_scopes_ended{0};
+    std::uint64_t rhi_gpu_debug_markers_inserted{0};
     std::size_t framegraph_passes{0};
     RendererStats renderer_stats;
     Extent2D backbuffer_extent;
@@ -405,6 +409,64 @@ struct SdlDesktopPresentationD3d12GpuMemoryExecutionReport {
     std::uint64_t upload_bytes_written{0};
     bool memory_budget_current{false};
     bool transient_heap_current{false};
+};
+
+enum class SdlDesktopPresentationDebugProfilingPolicyStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class SdlDesktopPresentationD3d12DebugProfilingExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+struct SdlDesktopPresentationDebugProfilingPolicyDesc {
+    bool require_scene_gpu_bindings{false};
+    bool require_backend_profiling_evidence{false};
+    bool backend_profiling_evidence_ready{false};
+    std::uint64_t expected_frames{0};
+};
+
+struct SdlDesktopPresentationDebugProfilingPolicyReport {
+    SdlDesktopPresentationDebugProfilingPolicyStatus status{
+        SdlDesktopPresentationDebugProfilingPolicyStatus::not_requested};
+    bool ready{false};
+    bool scene_resources_ready{false};
+    bool frames_current{false};
+    bool backend_profiling_evidence_required{false};
+    bool backend_profiling_evidence_ready{false};
+    std::uint64_t expected_frames{0};
+    std::uint64_t frames_finished{0};
+    std::uint32_t diagnostics_count{0};
+    std::uint32_t request_count{0};
+    std::uint64_t gpu_timestamp_ticks_per_second{0};
+    std::uint64_t gpu_debug_scopes_begun{0};
+    std::uint64_t gpu_debug_scopes_ended{0};
+    std::uint64_t gpu_debug_markers_inserted{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
+    std::uint64_t framegraph_render_passes_recorded{0};
+    std::uint32_t gpu_timestamp_request_count{0};
+    std::uint32_t gpu_debug_marker_request_count{0};
+    std::uint32_t capture_handoff_request_count{0};
+};
+
+struct SdlDesktopPresentationD3d12DebugProfilingExecutionReport {
+    SdlDesktopPresentationD3d12DebugProfilingExecutionStatus status{
+        SdlDesktopPresentationD3d12DebugProfilingExecutionStatus::not_requested};
+    bool ready{false};
+    bool d3d12_backend_selected{false};
+    std::uint64_t gpu_timestamp_ticks_per_second{0};
+    std::uint64_t gpu_debug_scopes_begun{0};
+    std::uint64_t gpu_debug_scopes_ended{0};
+    std::uint64_t gpu_debug_markers_inserted{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
+    std::uint64_t framegraph_render_passes_recorded{0};
+    bool gpu_timestamps_current{false};
+    bool gpu_debug_markers_current{false};
+    bool frame_diagnostics_current{false};
 };
 
 struct SdlDesktopPresentationQualityGateDesc {
@@ -669,6 +731,16 @@ evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentation
 [[nodiscard]] SdlDesktopPresentationD3d12GpuMemoryExecutionReport
 evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(const SdlDesktopPresentationReport& report,
                                                              bool requested);
+[[nodiscard]] std::string_view sdl_desktop_presentation_debug_profiling_policy_status_name(
+    SdlDesktopPresentationDebugProfilingPolicyStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationDebugProfilingPolicyReport
+evaluate_sdl_desktop_presentation_debug_profiling_policy(const SdlDesktopPresentationReport& report,
+                                                         const SdlDesktopPresentationDebugProfilingPolicyDesc& desc);
+[[nodiscard]] std::string_view sdl_desktop_presentation_d3d12_debug_profiling_execution_status_name(
+    SdlDesktopPresentationD3d12DebugProfilingExecutionStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationD3d12DebugProfilingExecutionReport
+evaluate_sdl_desktop_presentation_d3d12_debug_profiling_execution(const SdlDesktopPresentationReport& report,
+                                                                  bool requested);
 [[nodiscard]] SdlDesktopPresentationQualityGateReport
 evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationReport& report,
                                                const SdlDesktopPresentationQualityGateDesc& desc) noexcept;
