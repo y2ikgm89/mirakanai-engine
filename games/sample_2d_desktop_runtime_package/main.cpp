@@ -20,6 +20,7 @@
 #include "mirakana/runtime/quest_dialogue.hpp"
 #include "mirakana/runtime/runtime_diagnostics.hpp"
 #include "mirakana/runtime/session_services.hpp"
+#include "mirakana/runtime/world_region_streaming.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
@@ -63,6 +64,7 @@ struct DesktopRuntimeOptions {
     bool require_tilemap_runtime_ux{false};
     bool require_gameplay_systems{false};
     bool require_procedural_generation{false};
+    bool require_world_region_streaming{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -104,6 +106,24 @@ enum class Gameplay2DSystemsStatus : std::uint8_t {
     diagnostics,
 };
 
+struct WorldRegionStreamingProbeResult {
+    mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus status{
+        mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::invalid_plan};
+    std::size_t plan_rows{0U};
+    std::size_t load_rows{0U};
+    std::size_t keep_rows{0U};
+    std::size_t unload_rows{0U};
+    std::size_t safe_point_rows{0U};
+    std::size_t committed_rows{0U};
+    std::size_t reviewed_package_adoptions{0U};
+    std::size_t projected_regions{0U};
+    std::uint64_t projected_bytes{0U};
+    std::uint64_t budget_bytes{0U};
+    std::size_t missing_region_diagnostics{0U};
+    std::size_t safe_point_diagnostics{0U};
+    bool ready{false};
+};
+
 [[nodiscard]] std::string_view gameplay_2d_systems_status_name(Gameplay2DSystemsStatus status) noexcept {
     switch (status) {
     case Gameplay2DSystemsStatus::not_started:
@@ -112,6 +132,21 @@ enum class Gameplay2DSystemsStatus : std::uint8_t {
         return "ready";
     case Gameplay2DSystemsStatus::diagnostics:
         return "diagnostics";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+world_region_streaming_status_name(mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::invalid_plan:
+        return "invalid_plan";
+    case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::no_changes:
+        return "no_changes";
+    case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::failed:
+        return "failed";
+    case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::completed:
+        return "completed";
     }
     return "unknown";
 }
@@ -2126,7 +2161,7 @@ void print_usage() {
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
                  "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems] "
-                 "[--require-procedural-generation]\n";
+                 "[--require-procedural-generation] [--require-world-region-streaming]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -2176,6 +2211,10 @@ void print_usage() {
         }
         if (arg == "--require-procedural-generation") {
             options.require_procedural_generation = true;
+            continue;
+        }
+        if (arg == "--require-world-region-streaming") {
+            options.require_world_region_streaming = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -2362,6 +2401,172 @@ make_audio_samples(const mirakana::runtime::RuntimeAudioPayload& payload) {
     };
 }
 
+[[nodiscard]] mirakana::runtime::RuntimeWorldRegionPackageDesc
+make_world_region_desc(std::string region_id, std::uint32_t mount_id, std::string package_path,
+                       std::uint64_t resident_bytes, std::size_t asset_records) {
+    return mirakana::runtime::RuntimeWorldRegionPackageDesc{
+        .region_id = std::move(region_id),
+        .candidate =
+            mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+                .package_index_path = std::move(package_path),
+                .content_root = {},
+                .label = "sample-2d-world-region",
+            },
+        .mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = mount_id},
+        .estimated_resident_bytes = resident_bytes,
+        .estimated_asset_records = asset_records,
+        .required_preload_assets = {packaged_scene_asset_id(), packaged_tilemap_asset_id(),
+                                    packaged_sprite_animation_asset_id()},
+        .resident_resource_kinds =
+            {
+                mirakana::AssetKind::texture,
+                mirakana::AssetKind::material,
+                mirakana::AssetKind::scene,
+                mirakana::AssetKind::audio,
+                mirakana::AssetKind::tilemap,
+                mirakana::AssetKind::sprite_animation,
+            },
+    };
+}
+
+[[nodiscard]] std::size_t
+count_world_region_plan_diagnostics(const mirakana::runtime::RuntimeWorldRegionStreamingPlan& plan,
+                                    mirakana::runtime::RuntimeWorldRegionStreamingDiagnosticCode code) noexcept {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] WorldRegionStreamingProbeResult
+run_world_region_streaming_probe(const char* executable_path, std::string_view package_path,
+                                 const mirakana::runtime::RuntimeAssetPackage& runtime_package) {
+    WorldRegionStreamingProbeResult probe;
+    if (package_path.empty() || runtime_package.empty()) {
+        return probe;
+    }
+
+    const auto package_bytes = mirakana::runtime::estimate_runtime_asset_package_resident_bytes(runtime_package);
+    const auto package_records = runtime_package.records().size();
+    if (package_bytes == 0U || package_records == 0U) {
+        return probe;
+    }
+
+    const auto budget_bytes = (package_bytes * 2U) + 1U;
+    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 budget{
+        .max_resident_content_bytes = budget_bytes,
+        .max_resident_asset_records = (package_records * 2U) + 1U,
+    };
+    probe.budget_bytes = budget_bytes;
+
+    std::vector<mirakana::runtime::RuntimeWorldRegionPackageDesc> regions;
+    regions.push_back(make_world_region_desc("town", 1U, std::string{package_path}, package_bytes, package_records));
+    regions.push_back(make_world_region_desc("field", 2U, std::string{package_path}, package_bytes, package_records));
+
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    if (!mount_set
+             .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                 .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                 .label = "town",
+                 .package = runtime_package,
+             })
+             .succeeded()) {
+        return probe;
+    }
+
+    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    if (!catalog_cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, budget)
+             .succeeded()) {
+        return probe;
+    }
+
+    try {
+        mirakana::RootedFileSystem filesystem(executable_directory(executable_path));
+        const mirakana::runtime::RuntimeWorldRegionStreamingPlanRequest load_request{
+            .regions = regions,
+            .active_region_ids = {"town"},
+            .desired_region_ids = {"field", "town"},
+            .protected_region_ids = {"town"},
+            .budget = budget,
+            .max_resident_regions = 2U,
+        };
+        const auto load_plan = mirakana::runtime::plan_runtime_world_region_streaming(load_request);
+
+        auto missing_request = load_request;
+        missing_request.desired_region_ids.push_back("missing");
+        const auto missing_plan = mirakana::runtime::plan_runtime_world_region_streaming(missing_request);
+        probe.missing_region_diagnostics = count_world_region_plan_diagnostics(
+            missing_plan, mirakana::runtime::RuntimeWorldRegionStreamingDiagnosticCode::missing_desired_region);
+
+        const mirakana::runtime::RuntimeWorldRegionStreamingSafePointDesc load_desc{
+            .plan = load_plan,
+            .regions = regions,
+            .target_id = "sample-2d-world-region-streaming",
+            .runtime_scene_validation_target_id = "packaged-2d-scene",
+            .overlay = mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins,
+            .budget = budget,
+            .max_resident_packages = 2U,
+            .safe_point_required = true,
+            .runtime_scene_validation_succeeded = true,
+            .eviction_candidate_unmount_order = {},
+            .protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U}},
+        };
+        const auto load_result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(
+            filesystem, mount_set, catalog_cache, load_desc);
+
+        const mirakana::runtime::RuntimeWorldRegionStreamingPlanRequest unload_request{
+            .regions = regions,
+            .active_region_ids = {"field", "town"},
+            .desired_region_ids = {"field"},
+            .protected_region_ids = {"field"},
+            .budget = budget,
+            .max_resident_regions = 2U,
+        };
+        const auto unload_plan = mirakana::runtime::plan_runtime_world_region_streaming(unload_request);
+        const mirakana::runtime::RuntimeWorldRegionStreamingSafePointDesc unload_desc{
+            .plan = unload_plan,
+            .regions = regions,
+            .target_id = "sample-2d-world-region-streaming",
+            .runtime_scene_validation_target_id = "packaged-2d-scene",
+            .overlay = mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins,
+            .budget = budget,
+            .max_resident_packages = 2U,
+            .safe_point_required = true,
+            .runtime_scene_validation_succeeded = true,
+            .eviction_candidate_unmount_order = {},
+            .protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2U}},
+        };
+        const auto unload_result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(
+            filesystem, mount_set, catalog_cache, unload_desc);
+
+        probe.status = load_result.succeeded() && unload_result.succeeded()
+                           ? mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::completed
+                           : mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::failed;
+        probe.plan_rows = load_plan.rows.size() + unload_plan.rows.size();
+        probe.load_rows = load_plan.load_count + unload_plan.load_count;
+        probe.keep_rows = load_plan.keep_count + unload_plan.keep_count;
+        probe.unload_rows = load_plan.unload_count + unload_plan.unload_count;
+        probe.safe_point_rows = load_result.rows.size() + unload_result.rows.size();
+        probe.committed_rows = load_result.committed_count + unload_result.committed_count;
+        probe.reviewed_package_adoptions = load_result.committed_count;
+        probe.projected_regions = load_plan.projected_resident_region_count;
+        probe.projected_bytes = load_plan.projected_resident_bytes;
+        probe.safe_point_diagnostics = load_result.diagnostics.size() + unload_result.diagnostics.size();
+        probe.ready = load_plan.succeeded() && unload_plan.succeeded() && load_result.succeeded() &&
+                      unload_result.succeeded() && probe.load_rows == 1U && probe.unload_rows == 1U &&
+                      probe.reviewed_package_adoptions > 0U && probe.missing_region_diagnostics > 0U &&
+                      probe.safe_point_diagnostics == 0U;
+    } catch (const std::exception&) {
+        probe.status = mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::failed;
+        probe.ready = false;
+    }
+
+    return probe;
+}
+
 [[nodiscard]] bool
 load_required_2d_package(const char* executable_path, std::string_view package_path,
                          std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package,
@@ -2530,6 +2735,11 @@ int main(int argc, char** argv) {
                                   packaged_scene, audio_samples, sprite_animation, tilemap)) {
         return 4;
     }
+    const auto world_region_streaming_probe =
+        runtime_package.has_value()
+            ? run_world_region_streaming_probe(argc > 0 ? argv[0] : nullptr, options.required_scene_package_path,
+                                               *runtime_package)
+            : WorldRegionStreamingProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -2786,6 +2996,23 @@ int main(int argc, char** argv) {
         << game.gameplay_systems_procedural_generation_placement_intent_rows()
         << " gameplay_systems_procedural_generation_placement_intent_accepted_rows="
         << game.gameplay_systems_procedural_generation_placement_intent_accepted_rows()
+        << " world_region_streaming_status=" << world_region_streaming_status_name(world_region_streaming_probe.status)
+        << " world_region_streaming_ready=" << (world_region_streaming_probe.ready ? 1 : 0)
+        << " world_region_streaming_plan_rows=" << world_region_streaming_probe.plan_rows
+        << " world_region_streaming_load_rows=" << world_region_streaming_probe.load_rows
+        << " world_region_streaming_keep_rows=" << world_region_streaming_probe.keep_rows
+        << " world_region_streaming_unload_rows=" << world_region_streaming_probe.unload_rows
+        << " world_region_streaming_safe_point_rows=" << world_region_streaming_probe.safe_point_rows
+        << " world_region_streaming_committed=" << (world_region_streaming_probe.committed_rows > 0U ? 1 : 0)
+        << " world_region_streaming_committed_rows=" << world_region_streaming_probe.committed_rows
+        << " world_region_streaming_reviewed_package_adoptions="
+        << world_region_streaming_probe.reviewed_package_adoptions
+        << " world_region_streaming_projected_regions=" << world_region_streaming_probe.projected_regions
+        << " world_region_streaming_projected_bytes=" << world_region_streaming_probe.projected_bytes
+        << " world_region_streaming_budget_bytes=" << world_region_streaming_probe.budget_bytes
+        << " world_region_streaming_missing_region_diagnostics="
+        << world_region_streaming_probe.missing_region_diagnostics
+        << " world_region_streaming_safe_point_diagnostics=" << world_region_streaming_probe.safe_point_diagnostics
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -2903,6 +3130,22 @@ int main(int argc, char** argv) {
             << " gameplay_systems_procedural_generation_package_visible_rows="
             << game.gameplay_systems_procedural_generation_package_visible_rows() << '\n';
         return 12;
+    }
+
+    if (options.require_world_region_streaming && !world_region_streaming_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_world_region_streaming_unavailable"
+                  << " world_region_streaming_status="
+                  << world_region_streaming_status_name(world_region_streaming_probe.status)
+                  << " world_region_streaming_plan_rows=" << world_region_streaming_probe.plan_rows
+                  << " world_region_streaming_load_rows=" << world_region_streaming_probe.load_rows
+                  << " world_region_streaming_unload_rows=" << world_region_streaming_probe.unload_rows
+                  << " world_region_streaming_reviewed_package_adoptions="
+                  << world_region_streaming_probe.reviewed_package_adoptions
+                  << " world_region_streaming_missing_region_diagnostics="
+                  << world_region_streaming_probe.missing_region_diagnostics
+                  << " world_region_streaming_safe_point_diagnostics="
+                  << world_region_streaming_probe.safe_point_diagnostics << '\n';
+        return 14;
     }
 
     if (options.smoke &&
