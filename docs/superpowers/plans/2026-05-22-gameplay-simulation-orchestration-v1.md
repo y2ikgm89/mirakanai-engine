@@ -1,7 +1,7 @@
 # Gameplay Simulation Orchestration v1 (2026-05-22)
 
 **Plan ID:** `gameplay-simulation-orchestration-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at this milestone while active. Keep `unsupportedProductionGaps = []`; this is a post-1.0 developer-owned gameplay capability, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -84,3 +84,4 @@ Promote the simulation orchestration contract into selected package-visible evid
 - Phase 2 agent/static checks passed: `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, and `tools/check-production-readiness-audit.ps1` (`unsupported_gaps=0`).
 - Phase 2 installed package evidence passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` completed with installed `sample_2d_desktop_runtime_package --require-simulation-orchestration` counters (`simulation_orchestration_status=planned`, `simulation_orchestration_planned_steps=3`, `simulation_orchestration_command_playback_rows=3`, `simulation_orchestration_budget_limited_status=budget_limited`, `simulation_orchestration_invalid_command_diagnostics=4`, `simulation_orchestration_diagnostics=0`) and `installed-desktop-runtime-validation: ok`.
 - Phase 2 full validation gate passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed successfully with 73 tests passed and `production-readiness-audit: unsupported_gaps=0`.
+- PR #172 closeout passed hosted `PR Gate`, `Windows MSVC`, `Linux CMake`, `Linux Coverage`, `Linux Clang ASan/UBSan`, `Full Repository Static Analysis (0-3)`, `CodeQL`, `iOS Simulator smoke`, and `macOS Metal CMake`, then merged as commit `eb6a34b5` while keeping `unsupportedProductionGaps = []`.
