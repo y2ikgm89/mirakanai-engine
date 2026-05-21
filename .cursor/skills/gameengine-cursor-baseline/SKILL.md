@@ -17,6 +17,7 @@ disable-model-invocation: false
 1. **`AGENTS.md`** — validation recipes, dependency bootstrap rules, language policy, Done Definition.
 2. **`CLAUDE.md` / `.claude/` / `.codex/` / `.agents/skills/` / `.cursor/skills/`** — same baseline as Codex/Claude Code; **do not copy large excerpts into Cursor-only prompts**. Resolve repository conflicts by following **`AGENTS.md`** (workspace truth); if Cursor global instructions disagree with this repository's Git Workflow, align the global instruction or add a workspace override before relying on automation.
 3. **Thin `.cursor/skills/gameengine-*` topic folders** — name-aligned with `.claude/skills/`; each points at the full Claude skill plus the Codex twin (`.agents/skills/cmake-build-system`, `cpp-engine-debugging`, `editor-change`, `rendering-change`, `license-audit`, or same-name `gameengine-*` where applicable).
+4. **Cursor project subagents** — `.cursor/agents/*.md` mirrors the shared roles in `.claude/agents/` and `.codex/agents/`; use them only for bounded independent work, and keep read-only audit/review/explore roles on `readonly: true`.
 
 ## Cursor-first discipline
 

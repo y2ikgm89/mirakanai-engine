@@ -73,6 +73,42 @@
         "planning-auditor",
         "rendering-auditor"
       ]
+    },
+    "cursor": {
+      "instructions": "AGENTS.md",
+      "rules": ".cursor/rules",
+      "skills": ".cursor/skills",
+      "agents": ".cursor/agents",
+      "requiredSkills": [
+        "gameengine-agent-integration",
+        "gameengine-cmake-build-system",
+        "gameengine-cursor-baseline",
+        "gameengine-debugging",
+        "gameengine-editor",
+        "gameengine-feature",
+        "gameengine-game-development",
+        "gameengine-license-audit",
+        "gameengine-plan-registry",
+        "gameengine-rendering"
+      ],
+      "requiredAgents": [
+        "agent-surface-auditor",
+        "build-fixer",
+        "cpp-reviewer",
+        "engine-architect",
+        "explorer",
+        "gameplay-builder",
+        "planning-auditor",
+        "rendering-auditor"
+      ],
+      "readOnlyAgents": [
+        "agent-surface-auditor",
+        "cpp-reviewer",
+        "engine-architect",
+        "explorer",
+        "planning-auditor",
+        "rendering-auditor"
+      ]
     }
   }
 }
