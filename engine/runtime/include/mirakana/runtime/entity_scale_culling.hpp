@@ -28,6 +28,13 @@ enum class RuntimeEntityScaleCullingUpdateBucket : std::uint8_t {
     priority,
 };
 
+enum class RuntimeEntityScaleCullingDrawIntentKind : std::uint8_t {
+    none = 0,
+    sprite_2d,
+    mesh_3d,
+    custom,
+};
+
 enum class RuntimeEntityScaleCullingPlanStatus : std::uint8_t {
     planned = 0,
     no_entities,
@@ -42,6 +49,9 @@ enum class RuntimeEntityScaleCullingDiagnosticCode : std::uint8_t {
     zero_layer_mask,
     invalid_view_bounds,
     visible_entity_budget_exceeded,
+    invalid_lod_band,
+    draw_budget_exceeded,
+    update_budget_exceeded,
 };
 
 struct RuntimeEntityScaleCullingBounds2D {
@@ -60,6 +70,15 @@ struct RuntimeEntityScaleCullingBounds3D {
     float max_z{0.0F};
 };
 
+struct RuntimeEntityScaleCullingLodBandDesc {
+    std::uint32_t lod_index{0U};
+    float max_view_distance{0.0F};
+    std::uint32_t draw_cost{1U};
+    std::uint32_t update_cost{1U};
+    std::uint32_t update_interval_frames{1U};
+    RuntimeEntityScaleCullingDrawIntentKind draw_intent{RuntimeEntityScaleCullingDrawIntentKind::custom};
+};
+
 struct RuntimeEntityScaleCullingEntityDesc {
     std::string entity_id;
     RuntimeEntityScaleCullingBoundsKind bounds_kind{RuntimeEntityScaleCullingBoundsKind::aabb_2d};
@@ -69,6 +88,8 @@ struct RuntimeEntityScaleCullingEntityDesc {
     RuntimeEntityScaleCullingUpdateBucket update_bucket{RuntimeEntityScaleCullingUpdateBucket::normal};
     bool enabled{true};
     std::uint32_t source_index{0U};
+    std::vector<RuntimeEntityScaleCullingLodBandDesc> lod_bands;
+    bool budget_protected{false};
 };
 
 struct RuntimeEntityScaleCullingViewDesc {
@@ -77,6 +98,8 @@ struct RuntimeEntityScaleCullingViewDesc {
     RuntimeEntityScaleCullingBounds3D bounds_3d;
     std::uint32_t layer_mask{0xFFFF'FFFFU};
     std::size_t max_visible_entities{0U};
+    std::uint64_t max_projected_draw_cost{0U};
+    std::uint64_t max_projected_update_cost{0U};
 };
 
 struct RuntimeEntityScaleCullingRequest {
@@ -98,6 +121,12 @@ struct RuntimeEntityScaleCullingRow {
     RuntimeEntityScaleCullingBoundsKind bounds_kind{RuntimeEntityScaleCullingBoundsKind::aabb_2d};
     std::uint32_t layer_mask{0U};
     std::uint32_t source_index{0U};
+    std::uint32_t lod_index{0U};
+    RuntimeEntityScaleCullingDrawIntentKind draw_intent{RuntimeEntityScaleCullingDrawIntentKind::none};
+    std::uint32_t projected_draw_cost{0U};
+    std::uint32_t projected_update_cost{0U};
+    std::uint32_t update_interval_frames{0U};
+    bool budget_protected{false};
     bool visible{false};
 };
 
@@ -110,6 +139,9 @@ struct RuntimeEntityScaleCullingPlan {
     std::size_t projected_disabled_count{0U};
     std::size_t projected_layer_culled_count{0U};
     std::size_t projected_outside_view_culled_count{0U};
+    std::uint64_t projected_draw_cost{0U};
+    std::uint64_t projected_update_cost{0U};
+    std::size_t projected_protected_visible_count{0U};
 
     [[nodiscard]] bool succeeded() const noexcept;
 };
