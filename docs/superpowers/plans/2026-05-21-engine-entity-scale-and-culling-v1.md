@@ -1,8 +1,8 @@
 # Engine Entity Scale and Culling v1 (2026-05-21)
 
 **Plan ID:** `engine-entity-scale-and-culling-v1`
-**Status:** Active.
-**Current pointer rule:** `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at this milestone while active. Keep `unsupportedProductionGaps = []`; this is a developer-owned scale-enabler capability, not a reopened Engine 1.0 production gap.
+**Status:** Completed.
+**Current pointer rule:** Historical closeout evidence. After completion, `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points back to the production-completion master plan until the next dated child plan is selected. Keep `unsupportedProductionGaps = []`; this was a developer-owned scale-enabler capability, not a reopened Engine 1.0 production gap.
 
 ## Goal
 
@@ -69,7 +69,7 @@ Extend the host-independent contract with LOD, update frequency, draw intent, an
 
 ## Phase 3: Selected Package Evidence and Agent Surface Closeout
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -96,3 +96,8 @@ Expose selected entity scale/culling counters in an existing desktop runtime pac
 - Phase 2 focused validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_entity_scale_culling_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_entity_scale_culling_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/entity_scale_culling.cpp,tests/unit/runtime_entity_scale_culling_tests.cpp`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`.
 - Phase 2 agent-surface drift updated `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/014-gameCodeGuidance.json`, composed `engine/agent/manifest.json`, `docs/ai-game-development.md`, and `docs/current-capabilities.md`; no durable workflow, permission, rule, or subagent behavior changed, so `AGENTS.md`, skills, rules, and subagents did not need edits.
 - Phase 2 gate validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (70/70 tests passed, `production-readiness-audit: unsupported_gaps=0`; shader-toolchain Apple/Metal and Apple host checks remained diagnostic-only host-gated on this Windows host).
+- Phase 3 RED evidence: selected `sample_2d_desktop_runtime_package` package validation first failed after adding `--require-entity-scale-culling` to the registered smoke args because the sample did not yet recognize the flag.
+- Phase 3 implementation adds `sample_2d_desktop_runtime_package --require-entity-scale-culling` package evidence over `plan_runtime_entity_scale_culling`, reporting deterministic `entity_scale_culling_*` fields for planned rows, visible/culled rows, LOD rows, update buckets, projected draw/update costs, budget-protected rows, clean diagnostics, and budget diagnostic evidence.
+- Phase 3 focused validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files games/sample_2d_desktop_runtime_package/main.cpp`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`.
+- Phase 3 agent-surface drift updated the selected sample manifest/README, generated `DesktopRuntime2DPackage` template guidance, static guard needles, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/014-gameCodeGuidance.json`, composed `engine/agent/manifest.json`, `docs/ai-game-development.md`, and `docs/current-capabilities.md`; no durable workflow, permission, rule, or subagent role behavior changed, so `AGENTS.md`, skills, rules, and subagents did not need edits.
+- Phase 3 gate validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (70/70 tests passed, `production-readiness-audit: unsupported_gaps=0`; Apple/Metal checks remained diagnostic-only host-gated on this Windows host).

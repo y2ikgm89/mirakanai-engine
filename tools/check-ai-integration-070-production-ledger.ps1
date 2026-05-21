@@ -806,12 +806,15 @@ foreach ($needle in @(
     "installed-native-2d-sprite-smoke",
     "installed-2d-sprite-animation-smoke",
     "installed-2d-tilemap-runtime-ux-smoke",
+    "installed-2d-entity-scale-culling-smoke",
     "--require-native-2d-sprites",
     "--require-sprite-animation",
     "--require-tilemap-runtime-ux",
     "sprite_animation_frames_sampled",
     "sprite_flipbook_frames_sampled",
     "tilemap_cells_sampled",
+    "entity scale/culling package proof",
+    "--require-entity-scale-culling",
     "public native or RHI handle access remains unsupported",
     "broad production sprite batching readiness remains unsupported",
     "general production renderer quality remains unsupported"
@@ -822,9 +825,11 @@ $sample2dDesktopMainText = Get-Content -LiteralPath (Join-Path $root "games/samp
 foreach ($needle in @(
     "mirakana/renderer/sprite_batch.hpp",
     "mirakana/runtime/runtime_diagnostics.hpp",
+    "mirakana/runtime/entity_scale_culling.hpp",
     "--require-native-2d-sprites",
     "--require-sprite-animation",
     "--require-tilemap-runtime-ux",
+    "--require-entity-scale-culling",
     "runtime_sprite_animation_payload",
     "runtime_tilemap_payload",
     "sample_runtime_tilemap_visible_cells",
@@ -862,6 +867,10 @@ foreach ($needle in @(
     "gameplay_systems_behavior_authoring_ready",
     "gameplay_systems_behavior_authoring_diagnostics",
     "gameplay_systems_behavior_authoring_trace_nodes",
+    "entity_scale_culling_status=",
+    "entity_scale_culling_lod_rows=",
+    "entity_scale_culling_budget_diagnostics=",
+    "required_entity_scale_culling_unavailable",
     "required_native_2d_sprites_unavailable",
     "required_sprite_animation_unavailable",
     "required_tilemap_runtime_ux_unavailable"
@@ -889,7 +898,10 @@ foreach ($needle in @(
     "tilemap_diagnostics",
     "gameplay_systems_behavior_authoring_ready",
     "gameplay_systems_behavior_authoring_diagnostics",
-    "gameplay_systems_behavior_authoring_trace_nodes"
+    "gameplay_systems_behavior_authoring_trace_nodes",
+    "--require-entity-scale-culling",
+    "entity_scale_culling_status",
+    "entity_scale_culling_budget_diagnostics"
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
@@ -901,7 +913,8 @@ foreach ($needle in @(
     "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv",
     "--require-native-2d-sprites",
     "--require-sprite-animation",
-    "--require-tilemap-runtime-ux"
+    "--require-tilemap-runtime-ux",
+    "--require-entity-scale-culling"
 )) {
     Assert-ContainsText $sample2dDesktopCMakeText $needle "games/CMakeLists.txt"
 }

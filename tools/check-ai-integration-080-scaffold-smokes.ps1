@@ -361,7 +361,7 @@ try {
         "runtime/assets/2d/player.texture.geasset" `
         "desktop-2d-package-game/textures/player" `
         "runtime/desktop_2d_package_game.geindex"
-    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")) {
+    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-2d-entity-scale-culling-smoke", "installed-native-2d-sprite-smoke")) {
         if (@($desktop2dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
             Write-Error "Desktop runtime 2D package scaffold manifest validationRecipes missing $recipe"
         }
@@ -395,6 +395,7 @@ try {
     Assert-ContainsText $desktop2dCmake "--require-sprite-animation" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-tilemap-runtime-ux" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-gameplay-systems" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "--require-entity-scale-culling" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "REQUIRES_D3D12_SHADERS" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "MK_configure_desktop_runtime_2d_sprite_shader_artifacts" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "runtime_2d_sprite.hlsl" "Desktop 2D scaffold CMake"
@@ -406,6 +407,7 @@ try {
     Assert-ContainsText $desktop2dMain "mirakana/ai/behavior_tree.hpp" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "mirakana/navigation/navigation_path_planner.hpp" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "mirakana/physics/physics2d.hpp" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "mirakana/runtime/entity_scale_culling.hpp" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "RuntimeInputActionMap" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "validate_playable_2d_scene" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "submit_ui_renderer_submission" "Desktop 2D scaffold main.cpp"
@@ -424,6 +426,7 @@ try {
     Assert-ContainsText $desktop2dMain "--require-sprite-animation" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "--require-tilemap-runtime-ux" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "--require-gameplay-systems" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "--require-entity-scale-culling" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "native_2d_sprites_status" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "sprite_batch_plan_atlas_backed_batches" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "sprite_batch_plan_repeated_atlas_batches" "Desktop 2D scaffold main.cpp"
@@ -441,12 +444,16 @@ try {
     Assert-ContainsText $desktop2dMain "gameplay_systems_behavior_authoring_ready=" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "gameplay_systems_behavior_authoring_diagnostics=" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "gameplay_systems_behavior_authoring_trace_nodes=" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "entity_scale_culling_status=" "Desktop 2D scaffold main.cpp"
+    Assert-ContainsText $desktop2dMain "entity_scale_culling_budget_diagnostics=" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dReadme "--require-native-2d-sprites" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "--require-sprite-animation" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "advance_runtime_sprite_flipbook" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "sprite_flipbook_frames_sampled" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "--require-tilemap-runtime-ux" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "--require-gameplay-systems" "Desktop 2D scaffold README"
+    Assert-ContainsText $desktop2dReadme "--require-entity-scale-culling" "Desktop 2D scaffold README"
+    Assert-ContainsText $desktop2dReadme "plan_runtime_entity_scale_culling" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "production sprite batching" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dShader "vs_native_sprite_overlay" "Desktop 2D scaffold shader"
     Assert-ContainsText $desktop2dShader "ps_native_sprite_overlay" "Desktop 2D scaffold shader"

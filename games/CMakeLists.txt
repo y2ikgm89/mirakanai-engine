@@ -1518,6 +1518,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-gameplay-systems
             --require-procedural-generation
             --require-world-region-streaming
+            --require-entity-scale-culling
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1534,6 +1535,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-gameplay-systems
             --require-procedural-generation
             --require-world-region-streaming
+            --require-entity-scale-culling
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )

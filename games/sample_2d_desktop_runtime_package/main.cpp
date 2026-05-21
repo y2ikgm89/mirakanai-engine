@@ -15,6 +15,7 @@
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/renderer/sprite_batch.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/entity_scale_culling.hpp"
 #include "mirakana/runtime/inventory_items.hpp"
 #include "mirakana/runtime/procedural_generation.hpp"
 #include "mirakana/runtime/quest_dialogue.hpp"
@@ -65,6 +66,7 @@ struct DesktopRuntimeOptions {
     bool require_gameplay_systems{false};
     bool require_procedural_generation{false};
     bool require_world_region_streaming{false};
+    bool require_entity_scale_culling{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -124,6 +126,24 @@ struct WorldRegionStreamingProbeResult {
     bool ready{false};
 };
 
+struct EntityScaleCullingProbeResult {
+    mirakana::runtime::RuntimeEntityScaleCullingPlanStatus status{
+        mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::invalid_request};
+    std::size_t rows{0U};
+    std::size_t visible_rows{0U};
+    std::size_t culled_rows{0U};
+    std::size_t lod_rows{0U};
+    std::size_t priority_update_rows{0U};
+    std::size_t normal_update_rows{0U};
+    std::size_t background_update_rows{0U};
+    std::uint64_t projected_draw_cost{0U};
+    std::uint64_t projected_update_cost{0U};
+    std::size_t budget_protected_rows{0U};
+    std::size_t diagnostics{0U};
+    std::size_t budget_diagnostics{0U};
+    bool ready{false};
+};
+
 [[nodiscard]] std::string_view gameplay_2d_systems_status_name(Gameplay2DSystemsStatus status) noexcept {
     switch (status) {
     case Gameplay2DSystemsStatus::not_started:
@@ -147,6 +167,21 @@ world_region_streaming_status_name(mirakana::runtime::RuntimeWorldRegionStreamin
         return "failed";
     case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::completed:
         return "completed";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+entity_scale_culling_status_name(mirakana::runtime::RuntimeEntityScaleCullingPlanStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::planned:
+        return "planned";
+    case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::no_entities:
+        return "no_entities";
+    case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::budget_exceeded:
+        return "budget_exceeded";
     }
     return "unknown";
 }
@@ -910,6 +945,220 @@ struct Gameplay2DProceduralGenerationProbeResult {
                    result.object_rows == 1U && result.encounter_rows == 1U && result.loot_rows == 1U &&
                    result.replay_hash != 0ULL && result.package_visible_rows == 1U &&
                    result.placement_intent_rows == 1U && result.placement_intent_accepted_rows == 1U;
+    return result;
+}
+
+[[nodiscard]] EntityScaleCullingProbeResult validate_entity_scale_culling_package_evidence() {
+    using BoundsKind = mirakana::runtime::RuntimeEntityScaleCullingBoundsKind;
+    using Code = mirakana::runtime::RuntimeEntityScaleCullingDiagnosticCode;
+    using DrawIntent = mirakana::runtime::RuntimeEntityScaleCullingDrawIntentKind;
+    using Entity = mirakana::runtime::RuntimeEntityScaleCullingEntityDesc;
+    using LodBand = mirakana::runtime::RuntimeEntityScaleCullingLodBandDesc;
+    using UpdateBucket = mirakana::runtime::RuntimeEntityScaleCullingUpdateBucket;
+
+    const auto empty_2d = mirakana::runtime::RuntimeEntityScaleCullingBounds2D{};
+    const auto empty_3d = mirakana::runtime::RuntimeEntityScaleCullingBounds3D{};
+
+    auto hero = Entity{
+        .entity_id = "hero",
+        .bounds_kind = BoundsKind::aabb_2d,
+        .bounds_2d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                .min_x = -1.0F,
+                .min_y = -1.0F,
+                .max_x = 1.0F,
+                .max_y = 1.0F,
+            },
+        .bounds_3d = empty_3d,
+        .layer_mask = 0x1U,
+        .update_bucket = UpdateBucket::priority,
+        .enabled = true,
+        .source_index = 2U,
+        .lod_bands =
+            std::vector<LodBand>{
+                LodBand{.lod_index = 3U,
+                        .max_view_distance = 4.0F,
+                        .draw_cost = 99U,
+                        .update_cost = 99U,
+                        .update_interval_frames = 9U,
+                        .draw_intent = DrawIntent::custom},
+                LodBand{.lod_index = 0U,
+                        .max_view_distance = 4.0F,
+                        .draw_cost = 2U,
+                        .update_cost = 1U,
+                        .update_interval_frames = 1U,
+                        .draw_intent = DrawIntent::sprite_2d},
+                LodBand{.lod_index = 1U,
+                        .max_view_distance = 12.0F,
+                        .draw_cost = 4U,
+                        .update_cost = 2U,
+                        .update_interval_frames = 3U,
+                        .draw_intent = DrawIntent::sprite_2d},
+            },
+        .budget_protected = true,
+    };
+    auto mesh = Entity{
+        .entity_id = "mesh",
+        .bounds_kind = BoundsKind::aabb_3d,
+        .bounds_2d = empty_2d,
+        .bounds_3d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds3D{
+                .min_x = 9.0F,
+                .min_y = -1.0F,
+                .min_z = -1.0F,
+                .max_x = 11.0F,
+                .max_y = 1.0F,
+                .max_z = 1.0F,
+            },
+        .layer_mask = 0x1U,
+        .update_bucket = UpdateBucket::normal,
+        .enabled = true,
+        .source_index = 1U,
+        .lod_bands =
+            std::vector<LodBand>{
+                LodBand{.lod_index = 1U,
+                        .max_view_distance = 20.0F,
+                        .draw_cost = 5U,
+                        .update_cost = 2U,
+                        .update_interval_frames = 4U,
+                        .draw_intent = DrawIntent::mesh_3d},
+                LodBand{.lod_index = 0U,
+                        .max_view_distance = 5.0F,
+                        .draw_cost = 9U,
+                        .update_cost = 4U,
+                        .update_interval_frames = 1U,
+                        .draw_intent = DrawIntent::mesh_3d},
+            },
+        .budget_protected = false,
+    };
+    auto disabled = Entity{
+        .entity_id = "sleeping",
+        .bounds_kind = BoundsKind::aabb_2d,
+        .bounds_2d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                .min_x = 0.0F,
+                .min_y = 0.0F,
+                .max_x = 1.0F,
+                .max_y = 1.0F,
+            },
+        .bounds_3d = empty_3d,
+        .layer_mask = 0x1U,
+        .update_bucket = UpdateBucket::background,
+        .enabled = false,
+        .source_index = 3U,
+        .lod_bands =
+            std::vector<LodBand>{
+                LodBand{.lod_index = 0U,
+                        .max_view_distance = 10.0F,
+                        .draw_cost = 20U,
+                        .update_cost = 20U,
+                        .update_interval_frames = 1U,
+                        .draw_intent = DrawIntent::sprite_2d},
+            },
+        .budget_protected = false,
+    };
+    const auto hidden = Entity{
+        .entity_id = "hidden",
+        .bounds_kind = BoundsKind::aabb_2d,
+        .bounds_2d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds2D{
+                .min_x = 2.0F,
+                .min_y = 2.0F,
+                .max_x = 3.0F,
+                .max_y = 3.0F,
+            },
+        .bounds_3d = empty_3d,
+        .layer_mask = 0x4U,
+        .update_bucket = UpdateBucket::normal,
+        .enabled = true,
+        .source_index = 4U,
+        .lod_bands = {},
+        .budget_protected = false,
+    };
+    const auto view = mirakana::runtime::RuntimeEntityScaleCullingViewDesc{
+        .bounds_kind = BoundsKind::aabb_3d,
+        .bounds_2d = empty_2d,
+        .bounds_3d =
+            mirakana::runtime::RuntimeEntityScaleCullingBounds3D{
+                .min_x = -16.0F,
+                .min_y = -16.0F,
+                .min_z = -8.0F,
+                .max_x = 16.0F,
+                .max_y = 16.0F,
+                .max_z = 8.0F,
+            },
+        .layer_mask = 0x1U,
+        .max_visible_entities = 8U,
+        .max_projected_draw_cost = 32U,
+        .max_projected_update_cost = 16U,
+    };
+
+    EntityScaleCullingProbeResult result;
+    const auto plan = mirakana::runtime::plan_runtime_entity_scale_culling(
+        mirakana::runtime::RuntimeEntityScaleCullingRequest{.entities = {mesh, disabled, hero, hidden}, .view = view});
+    result.status = plan.status;
+    result.rows = plan.rows.size();
+    result.projected_draw_cost = plan.projected_draw_cost;
+    result.projected_update_cost = plan.projected_update_cost;
+    result.diagnostics = plan.diagnostics.size();
+    for (const auto& row : plan.rows) {
+        if (row.visible) {
+            ++result.visible_rows;
+        } else {
+            ++result.culled_rows;
+        }
+        if (row.projected_draw_cost > 0U || row.projected_update_cost > 0U) {
+            ++result.lod_rows;
+        }
+        if (row.budget_protected) {
+            ++result.budget_protected_rows;
+        }
+        switch (row.update_bucket) {
+        case UpdateBucket::background:
+            ++result.background_update_rows;
+            break;
+        case UpdateBucket::normal:
+            ++result.normal_update_rows;
+            break;
+        case UpdateBucket::priority:
+            ++result.priority_update_rows;
+            break;
+        }
+    }
+
+    hero.lod_bands = {
+        LodBand{.lod_index = 0U,
+                .max_view_distance = 4.0F,
+                .draw_cost = 9U,
+                .update_cost = 5U,
+                .update_interval_frames = 1U,
+                .draw_intent = DrawIntent::sprite_2d},
+    };
+    mesh.lod_bands = {
+        LodBand{.lod_index = 0U,
+                .max_view_distance = 20.0F,
+                .draw_cost = 4U,
+                .update_cost = 2U,
+                .update_interval_frames = 2U,
+                .draw_intent = DrawIntent::mesh_3d},
+    };
+    auto budget_view = view;
+    budget_view.max_projected_draw_cost = 10U;
+    budget_view.max_projected_update_cost = 6U;
+    const auto budget_plan = mirakana::runtime::plan_runtime_entity_scale_culling(
+        mirakana::runtime::RuntimeEntityScaleCullingRequest{.entities = {mesh, hero}, .view = budget_view});
+    for (const auto& diagnostic : budget_plan.diagnostics) {
+        if (diagnostic.code == Code::draw_budget_exceeded || diagnostic.code == Code::update_budget_exceeded) {
+            ++result.budget_diagnostics;
+        }
+    }
+
+    result.ready =
+        plan.succeeded() && result.status == mirakana::runtime::RuntimeEntityScaleCullingPlanStatus::planned &&
+        result.rows == 4U && result.visible_rows == 2U && result.culled_rows == 2U && result.lod_rows == 2U &&
+        result.priority_update_rows == 1U && result.normal_update_rows == 2U && result.background_update_rows == 1U &&
+        result.projected_draw_cost == 7U && result.projected_update_cost == 3U && result.budget_protected_rows == 1U &&
+        result.diagnostics == 0U && result.budget_diagnostics == 2U;
     return result;
 }
 
@@ -2161,7 +2410,8 @@ void print_usage() {
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
                  "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems] "
-                 "[--require-procedural-generation] [--require-world-region-streaming]\n";
+                 "[--require-procedural-generation] [--require-world-region-streaming] "
+                 "[--require-entity-scale-culling]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -2215,6 +2465,10 @@ void print_usage() {
         }
         if (arg == "--require-world-region-streaming") {
             options.require_world_region_streaming = true;
+            continue;
+        }
+        if (arg == "--require-entity-scale-culling") {
+            options.require_entity_scale_culling = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -2740,6 +2994,9 @@ int main(int argc, char** argv) {
             ? run_world_region_streaming_probe(argc > 0 ? argv[0] : nullptr, options.required_scene_package_path,
                                                *runtime_package)
             : WorldRegionStreamingProbeResult{};
+    const auto entity_scale_culling_probe = options.require_entity_scale_culling
+                                                ? validate_entity_scale_culling_package_evidence()
+                                                : EntityScaleCullingProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -3013,6 +3270,20 @@ int main(int argc, char** argv) {
         << " world_region_streaming_missing_region_diagnostics="
         << world_region_streaming_probe.missing_region_diagnostics
         << " world_region_streaming_safe_point_diagnostics=" << world_region_streaming_probe.safe_point_diagnostics
+        << " entity_scale_culling_status=" << entity_scale_culling_status_name(entity_scale_culling_probe.status)
+        << " entity_scale_culling_ready=" << (entity_scale_culling_probe.ready ? 1 : 0)
+        << " entity_scale_culling_rows=" << entity_scale_culling_probe.rows
+        << " entity_scale_culling_visible_rows=" << entity_scale_culling_probe.visible_rows
+        << " entity_scale_culling_culled_rows=" << entity_scale_culling_probe.culled_rows
+        << " entity_scale_culling_lod_rows=" << entity_scale_culling_probe.lod_rows
+        << " entity_scale_culling_priority_update_rows=" << entity_scale_culling_probe.priority_update_rows
+        << " entity_scale_culling_normal_update_rows=" << entity_scale_culling_probe.normal_update_rows
+        << " entity_scale_culling_background_update_rows=" << entity_scale_culling_probe.background_update_rows
+        << " entity_scale_culling_projected_draw_cost=" << entity_scale_culling_probe.projected_draw_cost
+        << " entity_scale_culling_projected_update_cost=" << entity_scale_culling_probe.projected_update_cost
+        << " entity_scale_culling_budget_protected_rows=" << entity_scale_culling_probe.budget_protected_rows
+        << " entity_scale_culling_diagnostics=" << entity_scale_culling_probe.diagnostics
+        << " entity_scale_culling_budget_diagnostics=" << entity_scale_culling_probe.budget_diagnostics
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns() << " package_records=" << package_records
         << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
@@ -3146,6 +3417,21 @@ int main(int argc, char** argv) {
                   << " world_region_streaming_safe_point_diagnostics="
                   << world_region_streaming_probe.safe_point_diagnostics << '\n';
         return 14;
+    }
+
+    if (options.require_entity_scale_culling && !entity_scale_culling_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_entity_scale_culling_unavailable"
+                  << " entity_scale_culling_status="
+                  << entity_scale_culling_status_name(entity_scale_culling_probe.status)
+                  << " entity_scale_culling_rows=" << entity_scale_culling_probe.rows
+                  << " entity_scale_culling_visible_rows=" << entity_scale_culling_probe.visible_rows
+                  << " entity_scale_culling_culled_rows=" << entity_scale_culling_probe.culled_rows
+                  << " entity_scale_culling_lod_rows=" << entity_scale_culling_probe.lod_rows
+                  << " entity_scale_culling_projected_draw_cost=" << entity_scale_culling_probe.projected_draw_cost
+                  << " entity_scale_culling_projected_update_cost=" << entity_scale_culling_probe.projected_update_cost
+                  << " entity_scale_culling_budget_diagnostics=" << entity_scale_culling_probe.budget_diagnostics
+                  << '\n';
+        return 15;
     }
 
     if (options.smoke &&
