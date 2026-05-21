@@ -3,14 +3,67 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/assets/asset_registry.hpp"
+#include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
+
+class CountingFileSystem final : public mirakana::IFileSystem {
+  public:
+    [[nodiscard]] bool exists(std::string_view path) const override {
+        return filesystem_.exists(path);
+    }
+
+    [[nodiscard]] bool is_directory(std::string_view path) const override {
+        return filesystem_.is_directory(path);
+    }
+
+    [[nodiscard]] std::string read_text(std::string_view path) const override {
+        ++read_text_count_;
+        if (fail_read_text_) {
+            throw std::runtime_error("read failed");
+        }
+        return filesystem_.read_text(path);
+    }
+
+    [[nodiscard]] std::vector<std::string> list_files(std::string_view root) const override {
+        return filesystem_.list_files(root);
+    }
+
+    void write_text(std::string_view path, std::string_view text) override {
+        filesystem_.write_text(path, text);
+    }
+
+    void remove(std::string_view path) override {
+        filesystem_.remove(path);
+    }
+
+    void remove_empty_directory(std::string_view path) override {
+        filesystem_.remove_empty_directory(path);
+    }
+
+    [[nodiscard]] int read_text_count() const noexcept {
+        return read_text_count_;
+    }
+
+    void fail_read_text(bool value) noexcept {
+        fail_read_text_ = value;
+    }
+
+  private:
+    mirakana::MemoryFileSystem filesystem_;
+    mutable int read_text_count_{0};
+    bool fail_read_text_{false};
+};
 
 [[nodiscard]] mirakana::runtime::RuntimeWorldRegionPackageDesc
 make_region(std::string region_id, std::uint32_t mount_id, std::uint64_t resident_bytes, std::size_t asset_records) {
@@ -32,6 +85,51 @@ make_region(std::string region_id, std::uint32_t mount_id, std::uint64_t residen
     };
 }
 
+[[nodiscard]] mirakana::runtime::RuntimeAssetRecord make_record(mirakana::AssetId asset, mirakana::AssetKind kind,
+                                                                mirakana::runtime::RuntimeAssetHandle handle,
+                                                                std::string content) {
+    return mirakana::runtime::RuntimeAssetRecord{
+        .handle = handle,
+        .asset = asset,
+        .kind = kind,
+        .path = "assets/" + std::to_string(asset.value) + ".geasset",
+        .content_hash = asset.value + handle.value,
+        .source_revision = handle.value,
+        .dependencies = {},
+        .content = std::move(content),
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeAssetPackage make_package(mirakana::runtime::RuntimeAssetRecord record) {
+    return mirakana::runtime::RuntimeAssetPackage({std::move(record)});
+}
+
+void write_region_package(CountingFileSystem& filesystem, std::string_view region_id, mirakana::AssetId asset,
+                          mirakana::AssetKind kind, std::string_view path, std::string_view payload,
+                          std::uint64_t source_revision = 11) {
+    const auto index = mirakana::build_asset_cooked_package_index({mirakana::AssetCookedArtifact{
+                                                                      .asset = asset,
+                                                                      .kind = kind,
+                                                                      .path = std::string(path),
+                                                                      .content = std::string(payload),
+                                                                      .source_revision = source_revision,
+                                                                      .dependencies = {},
+                                                                  }},
+                                                                  {});
+    filesystem.write_text("runtime/regions/" + std::string(region_id) + ".geindex",
+                          mirakana::serialize_asset_cooked_package_index(index));
+    filesystem.write_text("runtime/" + std::string(path), payload);
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeResidentCatalogCacheV2
+make_refreshed_cache(const mirakana::runtime::RuntimeResidentPackageMountSetV2& mount_set,
+                     mirakana::runtime::RuntimeResourceResidencyBudgetV2 budget = {}) {
+    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    MK_REQUIRE(catalog_cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, budget)
+                   .succeeded());
+    return catalog_cache;
+}
+
 [[nodiscard]] mirakana::runtime::RuntimeWorldRegionStreamingPlanRequest streaming_request() {
     return mirakana::runtime::RuntimeWorldRegionStreamingPlanRequest{
         .regions =
@@ -49,6 +147,25 @@ make_region(std::string region_id, std::uint32_t mount_id, std::uint64_t residen
                 .max_resident_asset_records = 8U,
             },
         .max_resident_regions = 2U,
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeWorldRegionStreamingSafePointDesc
+make_safe_point_desc(mirakana::runtime::RuntimeWorldRegionStreamingPlan plan,
+                     std::vector<mirakana::runtime::RuntimeWorldRegionPackageDesc> regions) {
+    return mirakana::runtime::RuntimeWorldRegionStreamingSafePointDesc{
+        .plan = std::move(plan),
+        .regions = std::move(regions),
+        .target_id = "world-region-streaming",
+        .runtime_scene_validation_target_id = "runtime-world-region-scene",
+        .overlay = mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins,
+        .budget =
+            mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                .max_resident_content_bytes = 96U,
+                .max_resident_asset_records = 8U,
+            },
+        .max_resident_packages = 2U,
+        .runtime_scene_validation_succeeded = true,
     };
 }
 
@@ -200,6 +317,240 @@ MK_TEST("runtime world region streaming plan reports no changes and unload rows"
     MK_REQUIRE(empty_plan.status == Status::no_changes);
     MK_REQUIRE(empty_plan.succeeded());
     MK_REQUIRE(empty_plan.rows.empty());
+}
+
+MK_TEST("runtime world region streaming safe point loads reviewed region packages atomically") {
+    using Action = mirakana::runtime::RuntimeWorldRegionStreamingActionKind;
+    using Status = mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus;
+
+    CountingFileSystem filesystem;
+    const auto town_scene = mirakana::AssetId::from_name("town/scene");
+    const auto forest_scene = mirakana::AssetId::from_name("forest/scene");
+    write_region_package(filesystem, "forest", forest_scene, mirakana::AssetKind::scene, "regions/forest/scene.scene",
+                         "forest scene");
+
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                .label = "town",
+                .package = make_package(make_record(town_scene, mirakana::AssetKind::scene,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1U}, "town scene")),
+            })
+            .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+
+    const auto request = streaming_request();
+    const auto plan = mirakana::runtime::plan_runtime_world_region_streaming(request);
+    auto desc = make_safe_point_desc(plan, request.regions);
+
+    const auto result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(filesystem, mount_set,
+                                                                                             catalog_cache, desc);
+
+    MK_REQUIRE(result.status == Status::completed);
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.rows.size() == 2U);
+    MK_REQUIRE(result.load_count == 1U);
+    MK_REQUIRE(result.keep_count == 1U);
+    MK_REQUIRE(result.unload_count == 0U);
+    MK_REQUIRE(result.committed_count == 1U);
+    MK_REQUIRE(result.committed);
+    MK_REQUIRE(result.rows[0].action == Action::load_region);
+    MK_REQUIRE(result.rows[0].region_id == "forest");
+    MK_REQUIRE(result.rows[0].streaming.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::committed);
+    MK_REQUIRE(result.rows[0].streaming.committed);
+    MK_REQUIRE(result.rows[1].action == Action::keep_resident);
+    MK_REQUIRE(mount_set.generation() != previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 2U);
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), town_scene).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), forest_scene).has_value());
+    MK_REQUIRE(filesystem.read_text_count() == 2);
+}
+
+MK_TEST("runtime world region streaming safe point fails preflight without package reads or live mutation") {
+    using Status = mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus;
+
+    CountingFileSystem filesystem;
+    const auto town_scene = mirakana::AssetId::from_name("town/scene");
+    const auto forest_scene = mirakana::AssetId::from_name("forest/scene");
+    write_region_package(filesystem, "forest", forest_scene, mirakana::AssetKind::scene, "regions/forest/scene.scene",
+                         "forest scene");
+
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                .label = "town",
+                .package = make_package(make_record(town_scene, mirakana::AssetKind::scene,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1U}, "town scene")),
+            })
+            .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    const auto request = streaming_request();
+    auto desc = make_safe_point_desc(mirakana::runtime::plan_runtime_world_region_streaming(request), request.regions);
+    desc.runtime_scene_validation_succeeded = false;
+
+    const auto result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(filesystem, mount_set,
+                                                                                             catalog_cache, desc);
+
+    MK_REQUIRE(result.status == Status::failed);
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.rows.size() == 1U);
+    MK_REQUIRE(result.rows[0].streaming.status ==
+               mirakana::runtime::RuntimePackageStreamingExecutionStatus::validation_preflight_required);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(filesystem.read_text_count() == 0);
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1U);
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+}
+
+MK_TEST("runtime world region streaming safe point rejects missing package candidates before reads") {
+    using Code = mirakana::runtime::RuntimeWorldRegionStreamingDiagnosticCode;
+    using Status = mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus;
+
+    CountingFileSystem filesystem;
+    const auto town_scene = mirakana::AssetId::from_name("town/scene");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                .label = "town",
+                .package = make_package(make_record(town_scene, mirakana::AssetKind::scene,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1U}, "town scene")),
+            })
+            .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+
+    const auto request = streaming_request();
+    auto desc =
+        make_safe_point_desc(mirakana::runtime::plan_runtime_world_region_streaming(request), {request.regions[0]});
+
+    const auto result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(filesystem, mount_set,
+                                                                                             catalog_cache, desc);
+
+    MK_REQUIRE(result.status == Status::invalid_plan);
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.diagnostics.size() == 1U);
+    MK_REQUIRE(result.diagnostics[0].code == Code::missing_package_candidate);
+    MK_REQUIRE(result.diagnostics[0].region_id == "forest");
+    MK_REQUIRE(result.rows.empty());
+    MK_REQUIRE(filesystem.read_text_count() == 0);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1U);
+}
+
+MK_TEST("runtime world region streaming safe point preserves live state when reviewed evictions are insufficient") {
+    using Status = mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus;
+
+    CountingFileSystem filesystem;
+    const auto town_scene = mirakana::AssetId::from_name("town/scene");
+    const auto forest_scene = mirakana::AssetId::from_name("forest/scene");
+    write_region_package(filesystem, "forest", forest_scene, mirakana::AssetKind::scene, "regions/forest/scene.scene",
+                         "forest scene");
+
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                       .label = "town",
+                       .package = make_package(make_record(town_scene, mirakana::AssetKind::scene,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 1U},
+                                                           "town scene payload")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+    const auto previous_catalog_generation = catalog_cache.catalog().generation();
+
+    const auto request = streaming_request();
+    auto desc = make_safe_point_desc(mirakana::runtime::plan_runtime_world_region_streaming(request), request.regions);
+    desc.budget.max_resident_content_bytes = 12U;
+    desc.max_resident_packages = 2U;
+
+    const auto result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(filesystem, mount_set,
+                                                                                             catalog_cache, desc);
+
+    MK_REQUIRE(result.status == Status::failed);
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.rows.size() == 1U);
+    MK_REQUIRE(result.rows[0].streaming.status ==
+               mirakana::runtime::RuntimePackageStreamingExecutionStatus::over_budget_intent);
+    MK_REQUIRE(result.rows[0].streaming.eviction_plan.status ==
+               mirakana::runtime::RuntimeResidentPackageEvictionPlanStatusV2::budget_unreachable);
+    MK_REQUIRE(!result.rows[0].streaming.committed);
+    MK_REQUIRE(!result.committed);
+    MK_REQUIRE(mount_set.generation() == previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1U);
+    MK_REQUIRE(mount_set.mounts()[0].package.records()[0].content == "town scene payload");
+    MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), forest_scene).has_value());
+}
+
+MK_TEST("runtime world region streaming safe point unloads reviewed inactive regions") {
+    using Action = mirakana::runtime::RuntimeWorldRegionStreamingActionKind;
+    using Status = mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus;
+
+    CountingFileSystem filesystem;
+    const auto town_scene = mirakana::AssetId::from_name("town/scene");
+    const auto forest_scene = mirakana::AssetId::from_name("forest/scene");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                .label = "town",
+                .package = make_package(make_record(town_scene, mirakana::AssetKind::scene,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1U}, "town scene")),
+            })
+            .succeeded());
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2U},
+                       .label = "forest",
+                       .package = make_package(make_record(forest_scene, mirakana::AssetKind::scene,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 2U},
+                                                           "forest scene")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto previous_mount_generation = mount_set.generation();
+
+    auto request = streaming_request();
+    request.active_region_ids = {"forest", "town"};
+    request.desired_region_ids = {"town"};
+    const auto plan = mirakana::runtime::plan_runtime_world_region_streaming(request);
+    auto desc = make_safe_point_desc(plan, request.regions);
+
+    const auto result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(filesystem, mount_set,
+                                                                                             catalog_cache, desc);
+
+    MK_REQUIRE(result.status == Status::completed);
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.rows.size() == 2U);
+    MK_REQUIRE(result.rows[0].action == Action::unload_region);
+    MK_REQUIRE(result.rows[0].region_id == "forest");
+    MK_REQUIRE(result.rows[0].streaming.status == mirakana::runtime::RuntimePackageStreamingExecutionStatus::committed);
+    MK_REQUIRE(result.rows[1].action == Action::keep_resident);
+    MK_REQUIRE(result.unload_count == 1U);
+    MK_REQUIRE(result.keep_count == 1U);
+    MK_REQUIRE(result.committed_count == 1U);
+    MK_REQUIRE(result.committed);
+    MK_REQUIRE(filesystem.read_text_count() == 0);
+    MK_REQUIRE(mount_set.generation() != previous_mount_generation);
+    MK_REQUIRE(mount_set.mounts().size() == 1U);
+    MK_REQUIRE(mount_set.mounts()[0].id == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U});
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), town_scene).has_value());
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), forest_scene).has_value());
 }
 
 int main() {

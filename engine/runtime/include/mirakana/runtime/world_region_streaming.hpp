@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
 
 #include <cstddef>
@@ -41,6 +42,8 @@ enum class RuntimeWorldRegionStreamingDiagnosticCode : std::uint8_t {
     resident_region_count_exceeded,
     resident_content_budget_exceeded,
     resident_asset_record_budget_exceeded,
+    missing_package_candidate,
+    package_streaming_execution_failed,
 };
 
 struct RuntimeWorldRegionPackageDesc {
@@ -101,5 +104,56 @@ struct RuntimeWorldRegionStreamingPlan {
 /// background, own renderer/RHI resources, or touch native handles.
 [[nodiscard]] RuntimeWorldRegionStreamingPlan
 plan_runtime_world_region_streaming(const RuntimeWorldRegionStreamingPlanRequest& request);
+
+enum class RuntimeWorldRegionStreamingSafePointStatus : std::uint8_t {
+    invalid_plan = 0,
+    no_changes,
+    failed,
+    completed,
+};
+
+struct RuntimeWorldRegionStreamingSafePointDesc {
+    RuntimeWorldRegionStreamingPlan plan;
+    std::vector<RuntimeWorldRegionPackageDesc> regions;
+    std::string target_id;
+    std::string runtime_scene_validation_target_id;
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    RuntimeResourceResidencyBudgetV2 budget;
+    std::uint32_t max_resident_packages{0};
+    bool safe_point_required{true};
+    bool runtime_scene_validation_succeeded{false};
+    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+};
+
+struct RuntimeWorldRegionStreamingSafePointRowResult {
+    RuntimeWorldRegionStreamingActionKind action{RuntimeWorldRegionStreamingActionKind::keep_resident};
+    std::string region_id;
+    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimePackageStreamingExecutionResult streaming;
+    bool committed{false};
+};
+
+struct RuntimeWorldRegionStreamingSafePointResult {
+    RuntimeWorldRegionStreamingSafePointStatus status{RuntimeWorldRegionStreamingSafePointStatus::invalid_plan};
+    std::vector<RuntimeWorldRegionStreamingDiagnostic> diagnostics;
+    std::vector<RuntimeWorldRegionStreamingSafePointRowResult> rows;
+    std::size_t load_count{0};
+    std::size_t keep_count{0};
+    std::size_t unload_count{0};
+    std::size_t committed_count{0};
+    bool committed{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Executes reviewed world-region load/unload plan rows through the existing package streaming safe-point primitives.
+/// The live mount set and catalog cache are updated only after every row succeeds on a projected view. The helper does
+/// not discover packages, infer eviction policy, stream in the background, upload renderer resources, or touch native
+/// handles.
+[[nodiscard]] RuntimeWorldRegionStreamingSafePointResult
+execute_runtime_world_region_streaming_safe_point(IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set,
+                                                  RuntimeResidentCatalogCacheV2& catalog_cache,
+                                                  const RuntimeWorldRegionStreamingSafePointDesc& desc);
 
 } // namespace mirakana::runtime
