@@ -208,6 +208,11 @@ struct SdlDesktopPresentationReport {
     std::uint64_t rhi_instanced_draw_calls{0};
     std::uint64_t rhi_instanced_indexed_draw_calls{0};
     std::uint64_t rhi_instanced_instances_submitted{0};
+    rhi::RhiDeviceMemoryDiagnostics rhi_memory_diagnostics;
+    std::uint64_t rhi_transient_heap_allocations{0};
+    std::uint64_t rhi_transient_placed_allocations{0};
+    std::uint64_t rhi_transient_placed_resources_alive{0};
+    std::uint64_t rhi_bytes_written{0};
     std::size_t framegraph_passes{0};
     RendererStats renderer_stats;
     Extent2D backbuffer_extent;
@@ -335,6 +340,71 @@ struct SdlDesktopPresentationD3d12InstancedDrawExecutionReport {
     std::uint64_t instanced_instances_submitted{0};
     bool instanced_draws_current{false};
     bool instanced_instances_current{false};
+};
+
+enum class SdlDesktopPresentationGpuMemoryPolicyStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class SdlDesktopPresentationD3d12GpuMemoryExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+struct SdlDesktopPresentationGpuMemoryPolicyDesc {
+    bool require_scene_gpu_bindings{false};
+    bool require_backend_memory_evidence{false};
+    bool backend_memory_evidence_ready{false};
+    bool require_os_video_memory_budget{false};
+    std::uint64_t expected_frames{0};
+    std::uint64_t declared_local_budget_bytes{0};
+};
+
+struct SdlDesktopPresentationGpuMemoryPolicyReport {
+    SdlDesktopPresentationGpuMemoryPolicyStatus status{SdlDesktopPresentationGpuMemoryPolicyStatus::not_requested};
+    bool ready{false};
+    bool scene_resources_ready{false};
+    bool frames_current{false};
+    bool backend_memory_evidence_required{false};
+    bool backend_memory_evidence_ready{false};
+    bool os_video_memory_budget_required{false};
+    bool os_video_memory_budget_available{false};
+    std::uint64_t expected_frames{0};
+    std::uint64_t frames_finished{0};
+    std::uint32_t diagnostics_count{0};
+    std::uint32_t request_count{0};
+    std::uint64_t total_requested_bytes{0};
+    std::uint64_t total_counted_bytes{0};
+    std::uint64_t os_local_budget_bytes{0};
+    std::uint64_t os_local_usage_bytes{0};
+    std::uint64_t committed_byte_estimate{0};
+    std::uint64_t transient_heap_allocations{0};
+    std::uint64_t transient_placed_allocations{0};
+    std::uint64_t transient_placed_resources_alive{0};
+    std::uint64_t upload_bytes_written{0};
+    std::uint32_t transient_heap_request_count{0};
+    std::uint32_t upload_pressure_request_count{0};
+};
+
+struct SdlDesktopPresentationD3d12GpuMemoryExecutionReport {
+    SdlDesktopPresentationD3d12GpuMemoryExecutionStatus status{
+        SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::not_requested};
+    bool ready{false};
+    bool d3d12_backend_selected{false};
+    bool os_video_memory_budget_available{false};
+    bool committed_byte_estimate_available{false};
+    std::uint64_t local_video_memory_budget_bytes{0};
+    std::uint64_t local_video_memory_usage_bytes{0};
+    std::uint64_t committed_resources_byte_estimate{0};
+    std::uint64_t transient_heap_allocations{0};
+    std::uint64_t transient_placed_allocations{0};
+    std::uint64_t transient_placed_resources_alive{0};
+    std::uint64_t upload_bytes_written{0};
+    bool memory_budget_current{false};
+    bool transient_heap_current{false};
 };
 
 struct SdlDesktopPresentationQualityGateDesc {
@@ -589,6 +659,16 @@ evaluate_sdl_desktop_presentation_d3d12_postprocess_execution(const SdlDesktopPr
 [[nodiscard]] SdlDesktopPresentationD3d12InstancedDrawExecutionReport
 evaluate_sdl_desktop_presentation_d3d12_instanced_draw_execution(const SdlDesktopPresentationReport& report,
                                                                  std::uint64_t expected_instances_submitted);
+[[nodiscard]] std::string_view
+sdl_desktop_presentation_gpu_memory_policy_status_name(SdlDesktopPresentationGpuMemoryPolicyStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationGpuMemoryPolicyReport
+evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentationReport& report,
+                                                    const SdlDesktopPresentationGpuMemoryPolicyDesc& desc);
+[[nodiscard]] std::string_view sdl_desktop_presentation_d3d12_gpu_memory_execution_status_name(
+    SdlDesktopPresentationD3d12GpuMemoryExecutionStatus status) noexcept;
+[[nodiscard]] SdlDesktopPresentationD3d12GpuMemoryExecutionReport
+evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(const SdlDesktopPresentationReport& report,
+                                                             bool requested);
 [[nodiscard]] SdlDesktopPresentationQualityGateReport
 evaluate_sdl_desktop_presentation_quality_gate(const SdlDesktopPresentationReport& report,
                                                const SdlDesktopPresentationQualityGateDesc& desc) noexcept;

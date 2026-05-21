@@ -6,6 +6,7 @@
 #include "mirakana/assets/material.hpp"
 #include "mirakana/renderer/frame_graph.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
+#include "mirakana/renderer/gpu_memory_policy.hpp"
 #include "mirakana/renderer/postprocess_policy.hpp"
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
@@ -6090,6 +6091,88 @@ MK_TEST("scene scale policy plans instancing culling lod and fail-closed diagnos
         invalid, mirakana::SceneScaleDiagnosticCode::missing_backend_instancing_evidence));
     MK_REQUIRE(mirakana::has_scene_scale_policy_diagnostic(
         invalid, mirakana::SceneScaleDiagnosticCode::missing_performance_measurement));
+}
+
+MK_TEST("gpu memory policy plans budgets residency transient heap and fail-closed diagnostics") {
+    const std::array requests{
+        mirakana::GpuMemoryRequestDesc{.residency = mirakana::GpuMemoryResidencyClass::committed,
+                                       .requested_bytes = 64ULL * 1024ULL * 1024ULL,
+                                       .scene_resources_available = true,
+                                       .source_index = 1},
+        mirakana::GpuMemoryRequestDesc{.residency = mirakana::GpuMemoryResidencyClass::transient,
+                                       .requested_bytes = 16ULL * 1024ULL * 1024ULL,
+                                       .transient_heap = mirakana::GpuMemoryTransientHeapPolicy::alias_group_heap,
+                                       .scene_resources_available = true,
+                                       .source_index = 2},
+        mirakana::GpuMemoryRequestDesc{.residency = mirakana::GpuMemoryResidencyClass::placed,
+                                       .requested_bytes = 0,
+                                       .upload_pressure = mirakana::GpuMemoryUploadPressureKind::ring_buffer,
+                                       .scene_resources_available = true,
+                                       .source_index = 3},
+    };
+
+    const auto plan = mirakana::plan_gpu_memory_policy(mirakana::GpuMemoryPolicyDesc{
+        .requests = requests,
+        .declared_local_budget_bytes = 128ULL * 1024ULL * 1024ULL,
+        .os_video_memory_budget_available = true,
+        .os_local_budget_bytes = 8ULL * 1024ULL * 1024ULL * 1024ULL,
+        .os_local_usage_bytes = 256ULL * 1024ULL * 1024ULL,
+        .committed_byte_estimate_available = true,
+        .committed_byte_estimate = 80ULL * 1024ULL * 1024ULL,
+        .transient_heap_allocations = 2,
+        .transient_placed_allocations = 1,
+        .transient_placed_resources_alive = 1,
+        .upload_bytes_written = 4ULL * 1024ULL * 1024ULL,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .require_backend_memory_evidence = true,
+        .backend_memory_evidence_ready = true,
+        .require_os_video_memory_budget = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.request_count == 3);
+    MK_REQUIRE(plan.total_requested_bytes == 80ULL * 1024ULL * 1024ULL);
+    MK_REQUIRE(plan.total_counted_bytes == 80ULL * 1024ULL * 1024ULL + 1);
+    MK_REQUIRE(plan.transient_heap_request_count == 1);
+    MK_REQUIRE(plan.upload_pressure_request_count == 1);
+    MK_REQUIRE(plan.backend_memory_evidence_ready);
+    MK_REQUIRE(plan.request_rows[1].uses_transient_heap);
+    MK_REQUIRE(plan.request_rows[2].uses_upload_pressure);
+
+    const std::array invalid_requests{
+        mirakana::GpuMemoryRequestDesc{.residency = mirakana::GpuMemoryResidencyClass::unknown,
+                                       .requested_bytes = 0,
+                                       .transient_heap = mirakana::GpuMemoryTransientHeapPolicy::none,
+                                       .upload_pressure = mirakana::GpuMemoryUploadPressureKind::none,
+                                       .scene_resources_available = false,
+                                       .request_background_streaming = true,
+                                       .request_automatic_eviction = true,
+                                       .source_index = 9},
+    };
+    const auto invalid = mirakana::plan_gpu_memory_policy(mirakana::GpuMemoryPolicyDesc{
+        .requests = invalid_requests,
+        .declared_local_budget_bytes = 1,
+        .backend = mirakana::rhi::BackendKind::vulkan,
+        .require_backend_memory_evidence = true,
+        .backend_memory_evidence_ready = false,
+        .require_os_video_memory_budget = true,
+    });
+
+    MK_REQUIRE(!invalid.succeeded());
+    MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(
+        invalid, mirakana::GpuMemoryDiagnosticCode::unsupported_residency_class));
+    MK_REQUIRE(
+        mirakana::has_gpu_memory_policy_diagnostic(invalid, mirakana::GpuMemoryDiagnosticCode::zero_byte_budget));
+    MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(invalid,
+                                                          mirakana::GpuMemoryDiagnosticCode::missing_scene_resources));
+    MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(
+        invalid, mirakana::GpuMemoryDiagnosticCode::unsupported_background_streaming));
+    MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(
+        invalid, mirakana::GpuMemoryDiagnosticCode::unsupported_automatic_eviction));
+    MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(
+        invalid, mirakana::GpuMemoryDiagnosticCode::missing_backend_memory_evidence));
+    MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(
+        invalid, mirakana::GpuMemoryDiagnosticCode::missing_os_video_memory_budget));
 }
 
 MK_TEST("rhi postprocess frame renderer records morph scene draws") {

@@ -1,7 +1,7 @@
 # Renderer GPU Memory v1 (2026-05-21)
 
 **Plan ID:** `renderer-gpu-memory-v1`
-**Status:** Active.
+**Status:** Completed.
 **Current pointer rule:** Set `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` to this plan while the milestone is active. Keep `unsupportedProductionGaps = []`; this is renderer 1.x developer-owned capability work, not a reopened Engine 1.0 production gap.
 
 ## Goal
@@ -45,7 +45,7 @@ Close the completed scene-scale active pointer and select `renderer-gpu-memory-v
 
 ## Phase 1: GPU Memory Policy Diagnostics
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -59,7 +59,7 @@ Add the smallest backend-neutral value contract that classifies GPU memory reque
 
 ## Phase 2: Package-Visible GPU Memory Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -73,7 +73,7 @@ Expose deterministic GPU memory policy and budget/used-byte/transient/upload-pre
 
 ## Phase 3: Backend-Gated GPU Memory Evidence
 
-**Status:** Pending.
+**Status:** Completed.
 
 ### Goal
 
@@ -90,3 +90,7 @@ Promote only backend-specific GPU memory budget/residency evidence with fresh of
 - Phase 0 started after `renderer-scene-scale-v1` completed through PR #159, merge commit `e459ef612b7ce34146ed9dad3369428647791038`, hosted PR Gate, Windows MSVC, Full Repository Static Analysis shards, Linux, CodeQL, iOS, and macOS Metal CMake checks, plus local full `tools/validate.ps1` evidence while `unsupportedProductionGaps = []` stayed empty.
 - Phase 0 pointer sync selected this plan in `docs/superpowers/plans/README.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `docs/superpowers/master-plans/production-completion-v1/01-one-dot-zero-readiness-ledger.md`, `docs/roadmap.md`, and `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`; composed `engine/agent/manifest.json` reports `currentActivePlan=docs/superpowers/plans/2026-05-21-renderer-gpu-memory-v1.md`, `recommendedNextPlan.id=renderer-gpu-memory-v1`, and `unsupportedProductionGaps = []`.
 - Phase 0 static evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1`, and `git diff --check` passed with `unsupported_gaps=0`.
+- Phase 1 focused evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_renderer_tests` passed after adding `GpuMemoryPolicyDesc`, `GpuMemoryRequestDesc`, `GpuMemoryResidencyClass`, `GpuMemoryPolicyPlan`, and `plan_gpu_memory_policy` with fail-closed diagnostics for unsupported residency, zero-byte budgets, missing scene resources, automatic eviction, and background streaming.
+- Phase 2 focused evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_sdl3_tests sample_desktop_runtime_game`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_host_sdl3_(tests|public_api_compile)"`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game` passed. Installed validation reported `gpu_memory_policy_status=ready`, `gpu_memory_policy_ready=1`, `gpu_memory_policy_diagnostics=0`, positive `gpu_memory_policy_requests`, positive `gpu_memory_policy_committed_byte_estimate`, positive `gpu_memory_policy_upload_bytes_written`, `gpu_memory_policy_backend_memory_evidence_required=1`, and `gpu_memory_policy_backend_memory_evidence_ready=1`.
+- Phase 3 focused evidence: selected D3D12 package smoke with `--require-d3d12-gpu-memory-evidence` reported `d3d12_gpu_memory_execution_status=ready`, `d3d12_gpu_memory_execution_ready=1`, `d3d12_gpu_memory_execution_selected=1`, `d3d12_gpu_memory_execution_budget_ok=1`, and `d3d12_gpu_memory_execution_transient_heap_ok=1` using committed-byte-estimate plus upload-byte structural evidence when DXGI OS video-memory budget queries are unavailable on the host.
+- Closeout agent-surface evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed with `unsupportedProductionGaps = []`.

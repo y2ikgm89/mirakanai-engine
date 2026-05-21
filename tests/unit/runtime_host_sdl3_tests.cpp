@@ -910,6 +910,63 @@ MK_TEST("sdl desktop presentation scene scale policy blocks missing backend inst
     MK_REQUIRE(!policy.backend_instancing_evidence_ready);
 }
 
+MK_TEST("sdl desktop presentation gpu memory policy exposes package-visible budget counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
+    report.scene_gpu_status = mirakana::SdlDesktopPresentationSceneGpuBindingStatus::ready;
+    report.renderer_stats.frames_finished = 2;
+    report.scene_gpu_stats.uploaded_texture_bytes = 1024;
+    report.scene_gpu_stats.uploaded_mesh_bytes = 2048;
+    report.rhi_memory_diagnostics.os_video_memory_budget_available = true;
+    report.rhi_memory_diagnostics.local_video_memory_budget_bytes = 8ULL * 1024ULL * 1024ULL * 1024ULL;
+    report.rhi_memory_diagnostics.local_video_memory_usage_bytes = 128ULL * 1024ULL * 1024ULL;
+    report.rhi_memory_diagnostics.committed_resources_byte_estimate_available = true;
+    report.rhi_memory_diagnostics.committed_resources_byte_estimate = 16ULL * 1024ULL * 1024ULL;
+    report.rhi_transient_heap_allocations = 2;
+    report.rhi_transient_placed_allocations = 1;
+    report.rhi_bytes_written = 4096;
+
+    mirakana::SdlDesktopPresentationGpuMemoryPolicyDesc desc;
+    desc.require_scene_gpu_bindings = true;
+    desc.expected_frames = 2;
+    desc.require_backend_memory_evidence = true;
+    desc.backend_memory_evidence_ready = true;
+    desc.require_os_video_memory_budget = true;
+
+    const auto policy = mirakana::evaluate_sdl_desktop_presentation_gpu_memory_policy(report, desc);
+
+    MK_REQUIRE(policy.status == mirakana::SdlDesktopPresentationGpuMemoryPolicyStatus::ready);
+    MK_REQUIRE(policy.ready);
+    MK_REQUIRE(policy.diagnostics_count == 0);
+    MK_REQUIRE(policy.frames_current);
+    MK_REQUIRE(policy.request_count >= 2);
+    MK_REQUIRE(policy.committed_byte_estimate > 0);
+    MK_REQUIRE(policy.upload_bytes_written > 0);
+    MK_REQUIRE(policy.backend_memory_evidence_ready);
+    MK_REQUIRE(policy.os_video_memory_budget_available);
+}
+
+MK_TEST("sdl desktop presentation d3d12 gpu memory execution report requires budget and transient counters") {
+    mirakana::SdlDesktopPresentationReport report;
+    report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
+    report.scene_gpu_stats.uploaded_mesh_bytes = 1024;
+    report.rhi_memory_diagnostics.os_video_memory_budget_available = true;
+    report.rhi_memory_diagnostics.local_video_memory_budget_bytes = 1024ULL * 1024ULL * 1024ULL;
+    report.rhi_memory_diagnostics.committed_resources_byte_estimate_available = true;
+    report.rhi_memory_diagnostics.committed_resources_byte_estimate = 4096;
+    report.rhi_transient_heap_allocations = 1;
+    report.rhi_bytes_written = 512;
+
+    const auto execution = mirakana::evaluate_sdl_desktop_presentation_d3d12_gpu_memory_execution(report, true);
+
+    MK_REQUIRE(execution.status == mirakana::SdlDesktopPresentationD3d12GpuMemoryExecutionStatus::ready);
+    MK_REQUIRE(execution.ready);
+    MK_REQUIRE(execution.d3d12_backend_selected);
+    MK_REQUIRE(execution.memory_budget_current);
+    MK_REQUIRE(execution.transient_heap_current);
+    MK_REQUIRE(execution.upload_bytes_written > 0);
+}
+
 MK_TEST("sdl desktop presentation d3d12 instanced draw execution report requires backend instanced counters") {
     mirakana::SdlDesktopPresentationReport report;
     report.selected_backend = mirakana::SdlDesktopPresentationBackend::d3d12;
