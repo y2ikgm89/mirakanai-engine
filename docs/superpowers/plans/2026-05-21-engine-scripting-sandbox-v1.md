@@ -53,7 +53,7 @@ Add the smallest deterministic `MK_runtime` contract for reviewed script module 
 
 ## Phase 2: Package Evidence and Agent Surface Closeout
 
-**Status:** Planned.
+**Status:** Completed.
 
 ### Goal
 
@@ -78,3 +78,8 @@ Expose selected scripting sandbox policy counters in a desktop runtime package l
 - Review GREEN: after saturating aggregate budget totals and sorting diagnostics by module, entrypoint, source, diagnostic code, permission, and host API id, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_scripting_sandbox_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_scripting_sandbox_tests` passed.
 - Review GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/scripting_sandbox.cpp,tests/unit/runtime_scripting_sandbox_tests.cpp` passed after review fixes.
 - Full gate GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after Phase 1, including `production-readiness-audit: unsupported_gaps=0`, static checks, dev build, tidy smoke, and `71/71` CTest entries.
+- Phase 2 RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R sample_2d_desktop_runtime_package_smoke` failed after adding `--require-scripting-sandbox-policy` to the smoke arguments before the package executable recognized the flag.
+- Phase 2 GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R sample_2d_desktop_runtime_package_smoke` passed after adding selected scripting sandbox policy counters to `sample_2d_desktop_runtime_package`.
+- Phase 2 package evidence GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed and the installed package smoke reported `scripting_sandbox_status=planned`, `scripting_sandbox_ready=1`, `scripting_sandbox_entrypoint_rows=2`, `scripting_sandbox_allowed_permission_rows=7`, `scripting_sandbox_denied_permission_rows=5`, `scripting_sandbox_rejected_unsafe_capability_rows=6`, `scripting_sandbox_budget_diagnostics=2`, `scripting_sandbox_replay_seed_rows=2`, and `scripting_sandbox_diagnostics=0`.
+- Phase 2 focused static GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files games/sample_2d_desktop_runtime_package/main.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` passed with `unsupportedProductionGaps = []`.
+- Phase 2 full gate GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after code, package evidence, docs, manifest fragments, static checks, skills, and composed manifest updates, including `production-readiness-audit: unsupported_gaps=0` and `71/71` CTest entries.

@@ -223,6 +223,7 @@ $requiresD3d12Renderer = @($SmokeArgs) -contains "--require-d3d12-renderer"
 $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
 $requiresWorldRegionStreaming = @($SmokeArgs) -contains "--require-world-region-streaming"
 $requiresEntityScaleCulling = @($SmokeArgs) -contains "--require-entity-scale-culling"
+$requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-sandbox-policy"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
@@ -1541,6 +1542,52 @@ if ($requiresEntityScaleCulling) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bentity_scale_culling_diagnostics=0\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove clean entity scale/culling diagnostics."
+    }
+}
+if ($requiresScriptingSandboxPolicy) {
+    foreach ($field in @(
+            "scripting_sandbox_status",
+            "scripting_sandbox_ready",
+            "scripting_sandbox_entrypoint_rows",
+            "scripting_sandbox_permission_rows",
+            "scripting_sandbox_allowed_permission_rows",
+            "scripting_sandbox_denied_permission_rows",
+            "scripting_sandbox_rejected_unsafe_capability_rows",
+            "scripting_sandbox_unsupported_host_api_diagnostics",
+            "scripting_sandbox_budget_rows",
+            "scripting_sandbox_projected_instruction_budget",
+            "scripting_sandbox_projected_memory_budget_bytes",
+            "scripting_sandbox_budget_diagnostics",
+            "scripting_sandbox_replay_seed_rows",
+            "scripting_sandbox_replay_seed_sum",
+            "scripting_sandbox_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include scripting sandbox field: $field"
+        }
+    }
+    $expectedScriptingSandboxFields = @{
+        "scripting_sandbox_status" = "planned"
+        "scripting_sandbox_ready" = "1"
+        "scripting_sandbox_entrypoint_rows" = "2"
+        "scripting_sandbox_permission_rows" = "7"
+        "scripting_sandbox_allowed_permission_rows" = "7"
+        "scripting_sandbox_denied_permission_rows" = "5"
+        "scripting_sandbox_rejected_unsafe_capability_rows" = "6"
+        "scripting_sandbox_unsupported_host_api_diagnostics" = "1"
+        "scripting_sandbox_budget_rows" = "2"
+        "scripting_sandbox_projected_instruction_budget" = "1800"
+        "scripting_sandbox_projected_memory_budget_bytes" = "6144"
+        "scripting_sandbox_budget_diagnostics" = "2"
+        "scripting_sandbox_replay_seed_rows" = "2"
+        "scripting_sandbox_replay_seed_sum" = "3003"
+        "scripting_sandbox_diagnostics" = "0"
+    }
+    foreach ($field in $expectedScriptingSandboxFields.Keys) {
+        $expectedValue = $expectedScriptingSandboxFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove scripting sandbox field $field=$expectedValue."
+        }
     }
 }
 if ($requiresPackageUploadStaging) {
