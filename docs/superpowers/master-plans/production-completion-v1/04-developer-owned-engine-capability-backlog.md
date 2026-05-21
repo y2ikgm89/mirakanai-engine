@@ -25,6 +25,8 @@ Priority tiers:
 
 Recommended developer-owned capability rows:
 
+As of PR #172 / merge commit `eb6a34b5`, the previously selected Gameplay Simulation Orchestration v1 row is completed and no single next row is automatically selected. Use these rows as historical capability evidence plus a selection pool; add or select a new dated milestone only when a concrete game handoff or roadmap decision identifies a reusable developer-owned capability that still needs implementation.
+
 | Capability id | Tier | Why games need it | Developer implementation boundary | Evidence before game agents can use it |
 | --- | --- | --- | --- | --- |
 | `engine-gameplay-interaction-framework-v1` | `foundational-unblocker` | Most games need interactions, triggers, damage/heal, pickups, objectives, and restart/win/loss rules. | First-party gameplay data/contracts and game-local authoring helpers; no engine-specific game logic. | Unit tests, sample 2D/3D usage, package counters, manifest recipe rows, quality-rubric integration. |

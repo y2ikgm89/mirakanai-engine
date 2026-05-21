@@ -196,6 +196,8 @@ Frame Graph v1 is closed for the Engine 1.0 Windows-default ready surface by `do
 
 This section is historical capability evidence. The current active plan and recommended next plan are authoritative only in `engine/agent/manifest.json` and the plan registry.
 
+After Gameplay Simulation Orchestration v1 merged through PR #172 / commit `eb6a34b5`, no dated capability plan is active; the composed manifest points back to the production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`.
+
 `docs/superpowers/plans/2026-05-02-2d-packaged-playable-generation-loop-v1.md` completed the generated packaged 2D scaffold contract through `DesktopRuntime2DPackage`, cooked sprite/material/audio/orthographic scene payloads, manifest package files, manifest runtime scene validation targets, and focused static checks.
 
 `docs/superpowers/plans/2026-05-03-ai-cook-package-command-surface-v1.md` completed AI Cook Package Command Surface v1 through `game.agent.json.registeredSourceAssetCookTargets` descriptors, JSON schema, `check-json-contracts` / `check-ai-integration` validation, `DesktopRuntime3DPackage` template and `sample_desktop_runtime_game` manifest rows, manifest review-loop `requiredManifestFields`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` evidence while keeping shell commands, runtime source parsing, and broad out-of-registry cooking out of scope.
