@@ -1083,6 +1083,12 @@ vulkan_framegraph_multiqueue_evidence_ready(const mirakana::SdlDesktopPresentati
            report.scene_gpu_stats.skinned_mesh_bindings_resolved == static_cast<std::size_t>(max_frames);
 }
 
+[[nodiscard]] bool d3d12_gpu_skinning_evidence_ready(const mirakana::SdlDesktopPresentationReport& report,
+                                                     std::uint32_t max_frames) noexcept {
+    return report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12 &&
+           gpu_skinning_evidence_matches(report, max_frames);
+}
+
 [[nodiscard]] bool vulkan_gpu_skinning_evidence_ready(const mirakana::SdlDesktopPresentationReport& report,
                                                       std::uint32_t max_frames) noexcept {
     return report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan &&
