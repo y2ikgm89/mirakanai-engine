@@ -31,7 +31,142 @@
     "allowedEditRoots": [
       "games/sample_2d_desktop_runtime_package",
       "tests"
-    ]
+    ],
+    "gameDesignSpec": {
+      "schemaVersion": 1,
+      "capabilityId": "ai-game-design-spec-v1",
+      "designId": "sample-2d-desktop-runtime-package",
+      "gameplayFamily": "2d-desktop-runtime-package",
+      "template": "DesktopRuntime2DPackage",
+      "camera": {
+        "mode": "fixed-2d",
+        "primary": "packaged-2d-scene-camera",
+        "notes": "Orthographic package smoke camera over the cooked 2D scene."
+      },
+      "inputMap": [
+        {
+          "action": "move-left",
+          "defaultBinding": "Left Arrow",
+          "purpose": "Move the player sprite through deterministic 2D gameplay smoke rows."
+        },
+        {
+          "action": "jump",
+          "defaultBinding": "Space",
+          "purpose": "Exercise audio, contact, and animation feedback in the package proof."
+        }
+      ],
+      "coreLoop": {
+        "objective": "Move the cooked player sprite through the packaged scene while package-visible systems report deterministic gameplay counters.",
+        "playerActions": [
+          "move-left-right",
+          "jump",
+          "trigger-audio-cue",
+          "restart-smoke"
+        ],
+        "feedback": "Sprite animation, HUD submission, audio cue, physics contacts, navigation, AI, and simulation counters are emitted by selected package recipes.",
+        "winState": "Installed package recipes report clean 2D package, gameplay systems, native sprite, and simulation evidence.",
+        "failState": "Missing package files, invalid scene references, or unsupported broad claims fail schema/static/package validation.",
+        "restart": "Rerun the package smoke from the manifest-derived runtime package files without mutating cooked payloads."
+      },
+      "sceneList": [
+        {
+          "id": "runtime-config",
+          "kind": "config",
+          "path": "runtime/sample_2d_desktop_runtime_package.config",
+          "purpose": "Desktop runtime configuration shipped through runtimePackageFiles."
+        },
+        {
+          "id": "runtime-package-index",
+          "kind": "package-index",
+          "path": "runtime/sample_2d_desktop_runtime_package.geindex",
+          "purpose": "Package index used by installed validation and runtime scene loading."
+        },
+        {
+          "id": "playable-scene",
+          "kind": "scene",
+          "path": "runtime/assets/2d/playable.scene",
+          "purpose": "Cooked 2D scene validated by runtimeSceneValidationTargets."
+        }
+      ],
+      "assetRequests": [
+        {
+          "id": "player-sprite-atlas",
+          "kind": "sprite-atlas",
+          "purpose": "Reviewed RGBA8 source frames feed first-party sprite atlas authoring before cooked runtime consumption.",
+          "delivery": "reviewed-source-authoring"
+        },
+        {
+          "id": "level-tilemap",
+          "kind": "tilemap",
+          "purpose": "First-party tilemap metadata drives deterministic visible tile counters.",
+          "delivery": "runtime-package-file"
+        },
+        {
+          "id": "jump-audio",
+          "kind": "audio",
+          "purpose": "Cooked audio cue proves device-independent audio feedback.",
+          "delivery": "runtime-package-file"
+        }
+      ],
+      "systems": [
+        "sdl3-desktop-host",
+        "scene-rendering",
+        "runtime-ui",
+        "audio-mix",
+        "physics-2d",
+        "navigation-grid",
+        "behavior-ai",
+        "simulation-orchestration"
+      ],
+      "packageTargets": [
+        "desktop-game-runtime",
+        "desktop-runtime-release"
+      ],
+      "validationRecipeIds": [
+        "desktop-game-runtime",
+        "desktop-runtime-release-target",
+        "installed-2d-package-smoke",
+        "installed-2d-gameplay-systems-smoke",
+        "installed-2d-simulation-orchestration-smoke",
+        "installed-native-2d-sprite-smoke"
+      ],
+      "qualityGates": [
+        {
+          "id": "package-loads",
+          "evidence": "Installed package validation loads manifest-derived config, package index, and cooked scene payloads.",
+          "recipeIds": [
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke"
+          ]
+        },
+        {
+          "id": "playable-feedback",
+          "evidence": "Gameplay systems, native sprite, UI, audio, physics, navigation, and AI counters are selected package evidence.",
+          "recipeIds": [
+            "installed-2d-gameplay-systems-smoke",
+            "installed-native-2d-sprite-smoke"
+          ]
+        },
+        {
+          "id": "deterministic-loop",
+          "evidence": "Simulation orchestration smoke reports fixed-step command playback and clean diagnostics without running broad game rules.",
+          "recipeIds": [
+            "installed-2d-simulation-orchestration-smoke"
+          ]
+        }
+      ],
+      "unsupportedClaims": [
+        "engine-internal-edits",
+        "native-handles",
+        "middleware-contracts",
+        "unreviewed-external-assets",
+        "arbitrary-shell",
+        "broad-commercial-quality",
+        "runtime-source-parsing",
+        "renderer-rhi-residency",
+        "metal-readiness"
+      ]
+    }
   },
   "gameplayContract": {
     "productionRecipe": "2d-desktop-runtime-package",

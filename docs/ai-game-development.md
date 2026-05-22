@@ -351,6 +351,8 @@ For shader hot-reload/cache metadata, use `mirakana::build_shader_pipeline_cache
 
 ## AI Workflow
 
+`game.agent.json.aiWorkflow.gameDesignSpec` is the fail-closed structured design contract for `ai-game-design-spec-v1`. Generated or sample 2D/3D package manifests use it to record gameplay family, template, camera, input map, core loop, scene list, asset requests, systems, package targets, validation recipes, quality gates, and explicit unsupported claims before game code or package rows are expanded. The descriptor must reference only package targets and validation recipe ids declared by the same manifest; schema/static checks reject missing rows, undeclared references, native-handle claims, engine-internal edits, arbitrary shell claims, and unreviewed external asset claims.
+
 Agents should follow this sequence:
 
 1. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1`.
@@ -358,7 +360,7 @@ Agents should follow this sequence:
 3. Select a recipe id and verify its `status`, `validationRecipes`, `hostGates`, `unsupportedClaims`, and `followUpCapability`.
 4. Inspect `aiCommandSurfaces` before making manifest, package, scene, prefab, material, or asset changes; use only ready request modes, and report planned/blocked command surfaces as unsupported diagnostics.
 5. Read the target game's `game.agent.json`.
-6. Write or update a short game spec in the game README or `docs/specs/`.
+6. For generated 2D/3D package work, write or update `game.agent.json.aiWorkflow.gameDesignSpec` before implementation, then mirror human-readable intent in the game README or `docs/specs/`.
 7. Implement gameplay only through public engine APIs.
 8. Add tests or an executable sample result that proves the behavior.
 9. Run the recipe's validation commands, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` before reporting completion.
@@ -373,7 +375,7 @@ Agents should follow this sequence:
 - `validationRecipes`: repository commands that prove a selected capability.
 - `aiOperableProductionLoop`: recipe ids, AI command descriptor surfaces, authoring/package surfaces, unsupported production gaps, host gates, and validation recipe mapping for generated-game and engine-production work.
 
-Each `games/<game_name>/game.agent.json` must mirror the selected subset through `backendReadiness`, `importerRequirements`, `packagingTargets`, optional `runtimePackageFiles`, and `validationRecipes`. Do not select a backend, importer, or package target whose status is only `planned`, `blocked`, or not validated for the chosen host unless the task is explicitly implementing that engine capability. A game that selects `desktop-runtime-release` must also select `desktop-game-runtime`, be registered through `MK_add_desktop_runtime_game` with a matching `GAME_MANIFEST`, declare finite smoke metadata, declare runtime package files in `runtimePackageFiles` and register them with `PACKAGE_FILES_FROM_MANIFEST` unless a literal `PACKAGE_FILES` registration intentionally mirrors the manifest, and include a package validation recipe for the selected target.
+Each `games/<game_name>/game.agent.json` must mirror the selected subset through `backendReadiness`, `importerRequirements`, `packagingTargets`, optional `runtimePackageFiles`, and `validationRecipes`. Generated or sample manifests that select `2d-desktop-runtime-package` or `3d-playable-desktop-package` must also include `aiWorkflow.gameDesignSpec` rows whose `packageTargets`, `validationRecipeIds`, and quality-gate `recipeIds` point at same-manifest declarations. Do not select a backend, importer, or package target whose status is only `planned`, `blocked`, or not validated for the chosen host unless the task is explicitly implementing that engine capability. A game that selects `desktop-runtime-release` must also select `desktop-game-runtime`, be registered through `MK_add_desktop_runtime_game` with a matching `GAME_MANIFEST`, declare finite smoke metadata, declare runtime package files in `runtimePackageFiles` and register them with `PACKAGE_FILES_FROM_MANIFEST` unless a literal `PACKAGE_FILES` registration intentionally mirrors the manifest, and include a package validation recipe for the selected target.
 
 ## Current Gameplay API
 

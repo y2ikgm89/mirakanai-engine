@@ -72,6 +72,287 @@
             "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/])).+$"
           }
         },
+        "gameDesignSpec": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "designId",
+            "gameplayFamily",
+            "template",
+            "camera",
+            "inputMap",
+            "coreLoop",
+            "sceneList",
+            "assetRequests",
+            "systems",
+            "packageTargets",
+            "validationRecipeIds",
+            "qualityGates",
+            "unsupportedClaims"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "ai-game-design-spec-v1"
+            },
+            "designId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "gameplayFamily": {
+              "type": "string",
+              "enum": [
+                "headless-validation",
+                "desktop-runtime-package",
+                "desktop-runtime-cooked-scene",
+                "desktop-runtime-material-shader",
+                "2d-desktop-runtime-package",
+                "3d-playable-desktop-package"
+              ]
+            },
+            "template": {
+              "type": "string",
+              "enum": [
+                "Headless",
+                "DesktopRuntimePackage",
+                "DesktopRuntimeCookedScenePackage",
+                "DesktopRuntimeMaterialShaderPackage",
+                "DesktopRuntime2DPackage",
+                "DesktopRuntime3DPackage"
+              ]
+            },
+            "camera": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "primary"],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": ["none", "fixed-2d", "side-view-2d", "perspective-3d", "orbit-3d"]
+                },
+                "primary": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "notes": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "inputMap": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["action", "defaultBinding", "purpose"],
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "defaultBinding": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "coreLoop": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["objective", "playerActions", "feedback", "winState", "failState", "restart"],
+              "properties": {
+                "objective": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "playerActions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "feedback": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "winState": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "failState": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "restart": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "sceneList": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "kind", "path", "purpose"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["config", "scene", "package-index", "source-scene", "source-prefab"]
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/])).+$"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "assetRequests": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "kind", "purpose", "delivery"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "config",
+                      "texture",
+                      "sprite-atlas",
+                      "tilemap",
+                      "mesh",
+                      "material",
+                      "shader",
+                      "audio",
+                      "ui-atlas",
+                      "scene",
+                      "physics-collision",
+                      "animation"
+                    ]
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "delivery": {
+                    "type": "string",
+                    "enum": ["runtime-package-file", "reviewed-source-authoring", "host-built-shader-artifact", "first-party-placeholder"]
+                  }
+                }
+              }
+            },
+            "systems": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "packageTargets": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "validationRecipeIds": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              }
+            },
+            "qualityGates": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "evidence", "recipeIds"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "recipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  }
+                }
+              }
+            },
+            "unsupportedClaims": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "engine-internal-edits",
+                  "native-handles",
+                  "middleware-contracts",
+                  "unreviewed-external-assets",
+                  "arbitrary-shell",
+                  "broad-commercial-quality",
+                  "runtime-source-parsing",
+                  "renderer-rhi-residency",
+                  "metal-readiness"
+                ]
+              }
+            }
+          }
+        },
         "engineCapabilityHandoffs": {
           "type": "array",
           "uniqueItems": true,

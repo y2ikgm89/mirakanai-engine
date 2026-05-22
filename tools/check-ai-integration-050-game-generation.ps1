@@ -84,6 +84,122 @@ foreach ($check in $engineCapabilityHandoffChecks) {
     }
 }
 
+$aiGameDesignSpecChecks = @(
+    @{
+        Path = "schemas/game-agent.schema.json"
+        Needles = @(
+            "gameDesignSpec",
+            "ai-game-design-spec-v1",
+            "gameplayFamily",
+            "qualityGates",
+            "unsupportedClaims"
+        )
+    },
+    @{
+        Path = "tools/check-json-contracts-060-game-design-spec.ps1"
+        Needles = @(
+            "Assert-JsonGameDesignSpec",
+            "aiWorkflow.gameDesignSpec",
+            "packageTargets references undeclared packaging target",
+            "validationRecipeIds references undeclared validation recipe",
+            "unsupportedClaims missing",
+            "native-handles"
+        )
+    },
+    @{
+        Path = "tools/new-game-templates.ps1"
+        Needles = @(
+            "New-DesktopRuntime2DGameDesignSpec",
+            "New-DesktopRuntime3DGameDesignSpec",
+            "gameDesignSpec = New-DesktopRuntime2DGameDesignSpec",
+            "gameDesignSpec = New-DesktopRuntime3DGameDesignSpec"
+        )
+    },
+    @{
+        Path = "games/sample_2d_desktop_runtime_package/game.agent.json"
+        Needles = @(
+            '"capabilityId": "ai-game-design-spec-v1"',
+            '"gameplayFamily": "2d-desktop-runtime-package"',
+            '"qualityGates"',
+            '"engine-internal-edits"'
+        )
+    },
+    @{
+        Path = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+        Needles = @(
+            '"capabilityId": "ai-game-design-spec-v1"',
+            '"gameplayFamily": "3d-playable-desktop-package"',
+            '"systems"',
+            '"unreviewed-external-assets"'
+        )
+    },
+    @{
+        Path = "docs/ai-game-development.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.gameDesignSpec",
+            "ai-game-design-spec-v1",
+            "gameplay family, template, camera, input map, core loop",
+            "same-manifest declarations"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "AI Game Design Spec v1",
+            "game.agent.json.aiWorkflow.gameDesignSpec",
+            "DesktopRuntime2DPackage",
+            "DesktopRuntime3DPackage"
+        )
+    },
+    @{
+        Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
+        Needles = @(
+            "ai-game-design-spec-v1",
+            "implemented-1x-foundation",
+            "game.agent.json.aiWorkflow.gameDesignSpec"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "AI Game Design Spec v1",
+            "aiWorkflow.gameDesignSpec",
+            "gameplay family, template, camera, input map",
+            "same-manifest package targets and validation recipes"
+        )
+    },
+    @{
+        Path = ".agents/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.gameDesignSpec",
+            "validation recipe ids",
+            "same-manifest package targets"
+        )
+    },
+    @{
+        Path = ".claude/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.gameDesignSpec",
+            "validation recipe ids",
+            "same-manifest package targets"
+        )
+    },
+    @{
+        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.gameDesignSpec",
+            "validation recipe ids",
+            "same-manifest package targets"
+        )
+    }
+)
+foreach ($check in $aiGameDesignSpecChecks) {
+    $gameDesignSpecText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $gameDesignSpecText $needle $check.Path
+    }
+}
+
 $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/resource_panel.hpp"

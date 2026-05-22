@@ -4,7 +4,7 @@
       "Run pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1.",
       "Read engine/agent/manifest.json.",
       "Create or update games/\u003Cgame_name\u003E/game.agent.json.",
-      "Write a concise game spec before implementation.",
+      "For generated 2D/3D package work, write or update fail-closed game.agent.json aiWorkflow.gameDesignSpec rows before implementation so gameplay family, template, camera, input map, core loop, scene list, asset requests, systems, package targets, validation recipe ids, quality gates, and unsupported claims reference only same-manifest package targets and validation recipes.",
       "Use only public mirakana:: APIs from engine headers.",
       "Use MK_core diagnostics/profile/trace export/review/reconstruction APIs for deterministic CPU observability; host adapters can attach a DiagnosticsRecorder and optional IProfileClock through DesktopHostServices to capture runtime_host.frame and renderer counters; use build_diagnostics_ops_plan plus export_diagnostics_trace_json, review_diagnostics_trace_json, and import_diagnostics_trace_json for dependency-free summary/trace/crash-review/telemetry handoff and first-party exported Trace Event JSON review/reconstruction instead of inventing game-local profiling formats, and do not expose native/backend handles.",
       "Do not use Dear ImGui, SDL3, editor, UI middleware, or editor-private APIs for game runtime HUDs or menus; target first-party mirakana::ui contracts.",
