@@ -12,7 +12,7 @@ Archetypes are coverage probes. They should never force engine APIs to adopt one
 
 - Read this chapter after the parent index and only when broad gameplay coverage is being reviewed.
 - Treat each archetype as a stress test for reusable systems, not as a required sample game or product template.
-- If an archetype needs a missing reusable capability, create or update a developer-owned backlog row in `04-developer-owned-engine-capability-backlog.md`.
+- If an archetype needs a missing reusable capability, create or update the canonical post-1.0 row in `04-developer-owned-engine-capability-backlog.md`.
 - If the need is specific to one game concept, keep it under `games/<game_name>/` and do not change engine internals.
 - Do not claim an archetype is ready unless the underlying generic capabilities have tests, package evidence, manifest exposure where needed, and validation recipes.
 
@@ -46,7 +46,7 @@ Do not write `the engine supports RPGs`, `the engine supports bullet hell`, or s
 ## Recommended implementation sequence
 
 1. Close the 1.0 active gameplay/physics/navigation gaps first.
-2. Add missing reusable primitives to `04-developer-owned-engine-capability-backlog.md` instead of expanding archetype text.
+2. Add missing reusable primitives to the canonical backlog in `04-developer-owned-engine-capability-backlog.md` instead of expanding archetype text.
 3. For each selected primitive, create a dated capability/gap-cluster plan with tests, package evidence, docs, manifest fragments, and validation recipes.
 4. Use one small archetype package as proof after the primitive is implemented.
 5. Archive long completed evidence only when it no longer needs to be read for current planning.

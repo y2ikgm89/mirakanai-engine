@@ -1,29 +1,31 @@
 # Production Completion v1 - Renderer Advanced Production Track
 
-Source index: [Production Completion Master Plan v1](../2026-05-03-production-completion-master-plan-v1.md). Load this chapter only when its scope is needed; do not bulk-read the whole split plan by default.
+Source index: [Production Completion Master Plan v1](../2026-05-03-production-completion-master-plan-v1.md). Load this chapter only when selecting or reviewing renderer-related post-1.0 work.
 
-## Renderer Advanced Production Track (post-1.0 / 1.x)
+## Purpose
 
-The Engine 1.0 Windows-default ready surface remains focused on coherent small-to-medium 2D/3D desktop games, reviewed package evidence, and honest backend gates. Renderer high-functionality work should therefore be tracked as a **post-1.0 / 1.x production enhancement stream**, not as a retroactive blocker for the current 1.0 closeout, unless a future dated plan explicitly changes the ready definition.
+This chapter is the renderer projection over the canonical backlog in [04-developer-owned-engine-capability-backlog.md](04-developer-owned-engine-capability-backlog.md). It owns renderer implementation rules and evidence boundaries, not the canonical list of capability rows.
 
-Renderer enhancement work must follow official backend guidance and preserve existing engine boundaries:
+## Renderer Rules
 
-- **Backend-neutral first:** public gameplay, scene, material, UI, and package APIs stay backend-neutral. D3D12, Vulkan, Metal, PIX, RenderDoc, Xcode/Metal captures, descriptor heaps, command queues, command buffers, fences, semaphores, heaps, argument buffers, and native handles stay behind RHI/backend-private adapters or an explicitly accepted opaque interop design.
-- **Evidence before claim:** every promoted renderer feature needs package-visible counters or rows, focused renderer/RHI tests, recipe output, and host-gate notes. A D3D12 package proof does not imply Vulkan or Metal readiness.
-- **Official synchronization model:** D3D12 work must record resource-state, aliasing, queue/fence, upload, present-state, and common-state promotion/decay reasoning using Microsoft Direct3D 12 guidance. Vulkan work must record synchronization2, image layout, queue-family, validation-layer, and SPIR-V validation assumptions using Khronos guidance. Metal work must record Apple-host evidence, resource synchronization, feature-family/capability limits, heap/argument-buffer constraints, and Xcode/Metal toolchain evidence using Apple guidance.
-- **Performance claims require measurement:** async compute, multi-queue overlap, GPU-driven rendering, culling, LOD, streaming, residency, and frame pacing claims need timestamp/profile evidence, deterministic budgets, and failure diagnostics. Do not infer performance readiness from structural API presence.
-- **Package and editor separation:** runtime package renderer proof, editor preview, viewport tooling, capture handoff, and material-authoring UX are separate claims. Editor material-preview parity across Vulkan/Metal remains host-gated until those hosts prove it.
+- Keep public gameplay, scene, material, UI, and package APIs backend-neutral.
+- Keep D3D12, Vulkan, Metal, PIX, RenderDoc, Xcode/Metal capture, descriptor heaps, command queues, command buffers, fences, semaphores, heaps, argument buffers, and native handles behind backend-private adapters or an accepted opaque interop design.
+- Treat each backend independently. D3D12 package proof does not imply Vulkan or Metal readiness.
+- Cite current official backend documentation in the selected dated plan before changing synchronization, memory, shader, or presentation behavior.
+- Performance claims require timestamp/profile evidence, deterministic budgets, and failure diagnostics.
+- Keep runtime package renderer proof, editor preview, viewport tooling, capture handoff, and material-authoring UX as separate claims.
 
-Recommended renderer 1.x streams:
+## Renderer Projection
 
-| Stream | Goal | Official-practice evidence gate | Non-goals until separately planned |
-| --- | --- | --- | --- |
-| `renderer-modern-materials-v1` | Expand material quality beyond the current smoke surface: PBR material variants, IBL-ready environment inputs, shader-graph execution promotion, and material package diagnostics. | D3D12/Vulkan/Metal shader compiler evidence per backend, package-visible material counters, pipeline-cache diagnostics, and no live shader execution without reviewed compile requests. | Full DCC material ecosystem, arbitrary shader code execution, native PSO/cache blob public APIs. |
-| `renderer-lighting-shadows-v1` | Improve scene lighting beyond current directional shadow smoke: multi-light budgets, clustered or Forward+ light lists, improved shadow atlas/cascade policies, and deterministic light diagnostics. | Backend-neutral light-list contracts, D3D12 package proof, Vulkan/Metal host-gated proofs, GPU timestamp/counter evidence, and explicit shadow-map resource-state/layout transitions. | AAA global illumination, ray tracing, fully dynamic GI, broad platform parity without host evidence. |
-| `renderer-postprocess-v1` | Add production postprocess building blocks: tone mapping, exposure, bloom, color grading, fog, anti-aliasing selection, and framegraph pass diagnostics. | Frame graph pass rows, render-pass/load-store policy, texture lifetime/aliasing evidence, package-visible quality counters, and backend-specific shader validation. | Cinematic post stack parity, temporal upscalers, vendor SDKs, or subjective visual-quality claims without image/evidence gates. |
-| `renderer-scene-scale-v1` | Improve draw scalability: instancing, GPU/CPU culling boundaries, LOD selection, batching budgets, and draw-submission diagnostics. | Deterministic culling/LOD tests, package-visible draw-call/instance counters, CPU/GPU timing rows, and no public native handles. | Full open-world streaming, automatic content optimization, or GPU-driven renderer readiness without measurement. |
-| `renderer-gpu-memory-v1` | Make GPU memory pressure explicit: allocator budgets, residency diagnostics, transient heap/aliasing policy, upload/staging pressure, and package streaming integration. | D3D12 heap/resource evidence, Vulkan memory/layout validation, Metal heap/resource capability checks, package-visible budget diagnostics, and safe failure/remediation rows. | Automatic LRU eviction, broad background streaming, or cross-backend residency parity without per-host proof. |
-| `renderer-backend-parity-v1` | Promote selected Vulkan and Metal renderer features independently from D3D12. | Strict Vulkan validation-layer/SPIR-V evidence and Apple-host Metal/Xcode evidence per feature; manifest host gates remain explicit. | Treating D3D12 as proof for Vulkan/Metal, or broad Metal readiness from Windows. |
-| `renderer-debug-profiling-v1` | Strengthen renderer debugging and performance handoff: GPU timestamps, backend markers, capture request/evidence rows, frame diagnostics, and operator handoff. | PIX on Windows, Vulkan debug utils / validation evidence, Apple Metal capture or Xcode/Instruments evidence, and first-party trace/profile export rows. | Crash/telemetry backend publication, symbol-server operations, production flame graphs, or automatic external tool execution from editor core. |
+| Renderer concern | Canonical rows | Evidence boundary |
+| --- | --- | --- |
+| Modern materials and shader authoring | `renderer-modern-materials-v1`, `material-shader-graph-production-v1` | Backend-specific shader compiler evidence, package-visible material counters, pipeline-cache diagnostics, and reviewed compile requests. |
+| Lighting and shadows | `renderer-lighting-shadows-v1` | Backend-neutral light-list contracts, per-backend package proof, GPU counters, and explicit resource-state/layout evidence. |
+| Postprocess and image quality | `renderer-postprocess-v1` | Frame graph pass rows, render-pass/load-store policy, texture lifetime/aliasing evidence, package-visible quality counters, and backend shader validation. |
+| Scene scale and draw throughput | `renderer-scene-scale-v1`, `engine-entity-scale-and-culling-v1` | Deterministic culling/LOD tests, draw-call/instance counters, CPU/GPU timing rows, and no public native handles. |
+| GPU memory and residency | `renderer-gpu-memory-v1`, `world-streaming-and-large-scenes-v1` | Heap/resource evidence per backend, package-visible budget diagnostics, and safe failure/remediation rows. |
+| Backend parity | `renderer-backend-parity-v1` | Strict Vulkan validation/SPIR-V evidence and Apple-host Metal/Xcode evidence per promoted feature. |
+| Debug and profiling | `renderer-debug-profiling-v1` | PIX, Vulkan debug utils / validation layers, Apple Metal/Xcode capture evidence, and first-party trace/profile export rows. |
+| 2D sprite renderer production | `sprite-batching-renderer-v1`, `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, `sprite-effects-particles-v1` | Atlas/material grouping, draw/instance budgets, render-pass evidence, and per-backend package counters. |
 
-When a renderer stream is selected, create or update a dated capability/milestone plan rather than expanding this roadmap prose. That plan must cite the current official documentation it relies on, define backend-specific ready claims, update `engine/agent/manifest.fragments/*.json` only for machine-readable supported surfaces, and keep `unsupportedProductionGaps` honest if the renderer stream becomes a 1.0 blocker by explicit policy change.
+When a renderer row is selected, create or update a dated capability/milestone plan. Do not broaden ready claims, expose native handles, or mark host-gated backend work as ready without focused validation evidence.

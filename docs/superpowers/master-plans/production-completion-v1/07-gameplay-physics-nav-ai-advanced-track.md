@@ -1,40 +1,30 @@
-# Production Completion v1 - Gameplay Physics Navigation AI Advanced Track
+# Production Completion v1 - Gameplay, Physics, Navigation, And AI Advanced Track
 
-Source index: [Production Completion Master Plan v1](../2026-05-03-production-completion-master-plan-v1.md). Load this chapter only when its scope is needed; do not bulk-read the whole split plan by default.
+Source index: [Production Completion Master Plan v1](../2026-05-03-production-completion-master-plan-v1.md). Load this chapter only when selecting or reviewing deterministic gameplay, physics, navigation, or AI post-1.0 work.
 
-## Physics / Navigation / AI Advanced Gameplay Track (post-1.0 / 1.x)
+## Purpose
 
-The completed 2026-05-19 gameplay/physics/navigation/AI cluster owns the Engine 1.0 minimum gameplay-loop closeout: deterministic tick order, movement-policy diagnostics, traversal/obstacle behavior, and integrated 2D/3D package evidence. Advanced physics, navigation, and AI systems are tracked as a **post-1.0 / 1.x gameplay enhancement stream** unless a future dated plan explicitly promotes a specific row into a release-ready definition.
+This chapter is the gameplay projection over the canonical backlog in [04-developer-owned-engine-capability-backlog.md](04-developer-owned-engine-capability-backlog.md). It keeps deterministic simulation and middleware-boundary rules in one place while the canonical row list stays in `04`.
 
-Advanced gameplay systems must follow official engine architecture and platform practice:
+## Gameplay System Rules
 
-- **Deterministic simulation first:** fixed-timestep orchestration, explicit input/command rows, stable update order, replayable diagnostics, and package-visible counters are required before readiness claims. Variable frame-rate presentation must not drive authoritative simulation state.
-- **Middleware is optional and opaque:** first-party `MK_physics`, `MK_navigation`, and `MK_ai` contracts remain the ready surface. Jolt, PhysX, Recast/Detour, Havok, or other middleware can only enter through an optional adapter plan that updates `vcpkg.json`, dependency docs, legal/license records, `THIRD_PARTY_NOTICES.md`, schemas, manifest fragments, validation checks, and opaque/PIMPL boundaries. Public gameplay APIs must not expose middleware handles or native types.
-- **Scene/package ownership:** navmesh, collision, behavior, perception, and gameplay simulation data are reviewed scene/package assets or first-party runtime rows. Runtime code must not silently import, generate, mutate, or execute broad content outside reviewed dry-run/apply or validation recipe surfaces.
-- **2D/3D split at evidence boundary:** shared APIs and diagnostics should cover both 2D and 3D where practical, but package evidence must be proven separately for generated 2D and generated 3D lanes. One lane passing does not close the other lane.
-- **Performance and scale claims need budgets:** crowd counts, body counts, cast/query throughput, pathfinding latency, broadphase costs, and behavior-tree/utility-AI tick costs require explicit budgets, counters, and failure diagnostics before promotion.
-- **Host and platform boundaries:** gameplay systems must stay independent from renderer, editor, SDL3, platform SDKs, GPU/native handles, and backend-specific threading. Editor UX, runtime package execution, and headless validation remain separate claims.
+- Fixed-timestep orchestration, explicit input/command rows, stable update order, replayable diagnostics, and package-visible counters are required before readiness claims.
+- Variable frame-rate presentation must not drive authoritative simulation state.
+- Middleware is optional and opaque. Jolt, PhysX, Recast/Detour, Havok, or similar dependencies require optional-adapter plans, vcpkg feature gating, dependency/legal records, host gates, and first-party public APIs that do not expose middleware handles.
+- Navmesh, collision, behavior, perception, and simulation data must be reviewed scene/package assets or first-party runtime rows. Runtime code must not silently import, generate, mutate, or execute broad content outside reviewed surfaces.
+- 2D and 3D evidence must be proven separately when a claim affects both lanes.
+- Performance and scale claims need budgets for agent counts, body counts, casts, path latency, broadphase cost, behavior ticks, and failure diagnostics.
 
-Current selection:
+## Gameplay Projection
 
-- Active milestone: none; the composed manifest points back to the production-completion master plan after closing `docs/superpowers/plans/2026-05-22-post-1-0-capability-program-v1.md` at Phase 2.
-- Most recent stream evidence: Phase 1 `physics-constraints-and-joints-v1` and Phase 2 `physics-vehicles-and-kinematics-v1` kinematic motion plus public simple vehicle policy/package evidence have active draft PR #178 implementation evidence.
-- Completed lower-level foundations remain evidence: `physics-collision-query-v1`, `physics-joints-foundation-v1`, `engine-advanced-physics-controller-v1`, `engine-navmesh-crowd-v1`, `ai-perception-services-v1`, and `gameplay-simulation-orchestration-v1`.
-- Current manifest state remains `unsupportedProductionGaps = []`; this track is post-1.0 / 1.x work, not an active 1.0 blocker.
+| Concern | Canonical rows | Evidence boundary |
+| --- | --- | --- |
+| Core gameplay interactions | `engine-gameplay-interaction-framework-v1`, `engine-scene-gameplay-binding-v1` | Reusable interaction/state rows, scene binding diagnostics, 2D/3D package counters, and no game-specific engine shortcuts. |
+| Simulation orchestration | `gameplay-simulation-orchestration-v1` | Fixed-step planning, input-command playback, replay diagnostics, and package counters before rollback/network claims. |
+| Character and movement physics | `physics-character-dynamics-v1`, `physics-collision-query-v1` | Deterministic movement/query tests, package-visible counters, replay evidence, and first-party public contracts. |
+| Constraints, joints, and vehicles | `physics-constraints-and-joints-v1`, `physics-vehicles-and-kinematics-v1` | Stable solver order, bounded iterations, deterministic diagnostics, and explicit non-goals for ragdolls and broad vehicle simulation. |
+| Optional physics middleware | `native-physics-middleware-adapter-v1` | Opaque adapter boundary, dependency/legal records, host gates, fallback diagnostics, and no middleware types in public APIs. |
+| Navigation and crowds | `navigation-navmesh-v1`, `navigation-crowd-local-avoidance-v1`, `navigation-hierarchical-world-v1` | Reviewed nav assets, deterministic path/crowd tests, dynamic obstacle diagnostics, region/portal evidence, and package counters. |
+| AI behavior and perception | `ai-behavior-authoring-v1`, `ai-perception-services-v1` | Behavior asset validation, blackboard schema checks, perception ordering tests, deterministic decision traces, and package-visible counters. |
 
-Recommended gameplay 1.x streams:
-
-| Stream | Goal | Official-practice evidence gate | Non-goals until separately planned |
-| --- | --- | --- | --- |
-| `physics-character-dynamics-v1` | Production-grade first-party character movement: slope limits, step-up/down, ground snapping, moving platforms, kinematic-vs-dynamic interaction, push/slide policies, and deterministic movement diagnostics. | Fixed-timestep tests, 2D/3D movement-policy rows, package-visible counters, deterministic replay evidence, and no public native/middleware handles. | Full middleware parity, ragdoll, vehicles, destructibles, cloth, fluid simulation. |
-| `physics-collision-query-v1` | Expand scene queries: ray, shape, capsule/sphere/box cast, sweeps, trigger filtering, layer masks, query budgets, and diagnostics. | Deterministic query ordering, filter/layer tests, invalid-shape diagnostics, package-visible query counters, and first-party API contracts. | Broad automatic collision authoring, editor physics visualization parity, middleware-native query exposure. |
-| `physics-constraints-and-joints-v1` | Add first-party joint/constraint foundations: distance/fixed/linear-axis constraints, limits, break thresholds, and deterministic 2D/3D constraint diagnostics. | Stable solver order, bounded iteration policy, deterministic failure rows, package-visible joint counters, and clear non-goals for full ragdoll/vehicle systems. | Full ragdoll authoring, vehicle suspension, soft bodies, cloth, destructive physics. |
-| `physics-vehicles-and-kinematics-v1` | Add kinematic body policy and public simple vehicle policy foundations for small games. | Fixed-timestep movement policy, collision interaction diagnostics, package-visible sample evidence, wheel-probe rows, and explicit determinism limits. | AAA vehicle physics, tire models, suspension tuning suite, persistent vehicle simulation, middleware vehicle modules. |
-| `navigation-navmesh-v1` | Add first-party navmesh asset/query support for richer authored scenes, including deterministic path queries and scene-referenced nav data. | Reviewed nav asset/package rows, deterministic path query tests, dynamic obstacle invalidation/replan diagnostics, generated 2D/3D package evidence, and no runtime silent generation. | Full Recast/Detour parity, automatic world-scale nav baking, editor navmesh painting, broad streaming navmesh. |
-| `navigation-crowd-local-avoidance-v1` | Add crowd/local avoidance beyond the grid baseline: agent radius/priority, steering, completion/abort transitions, stuck diagnostics, and local obstacle response. | Deterministic agent ordering, crowd budget counters, 2D/3D package evidence, and failure rows for impossible or oscillating avoidance. | Massive crowd simulation, animation-aware crowd steering, networked crowd determinism. |
-| `navigation-hierarchical-world-v1` | Add large-scene navigation organization: region graphs, portal links, streaming-safe nav data references, and path cache diagnostics. | Package-scoped region/portal assets, deterministic cache invalidation, safe missing-region diagnostics, and explicit streaming ownership. | Open-world streaming readiness, automatic large-world bake pipelines, platform-specific async job systems. |
-| `ai-behavior-authoring-v1` | Expand behavior authoring beyond foundation execution: behavior tree/utility/GOAP asset rows, validation, deterministic tick policy, and editor/headless review models. | First-party behavior asset validation, blackboard schema checks, deterministic decision trace rows, package-visible behavior counters, and no arbitrary script execution. | Visual scripting parity, arbitrary code execution, ML inference, networked AI replication. |
-| `ai-perception-services-v1` | Add first-party perception services: sight/hearing/event stimuli, team/faction filters, memory decay, blackboard integration, and diagnostics. | Deterministic perception ordering, finite range/FOV tests, event lifetime diagnostics, package-visible perception counters, and explicit performance budgets. | Sensor middleware, acoustic simulation, full stealth game perception model, platform-native services. |
-| `gameplay-simulation-orchestration-v1` | Strengthen runtime orchestration: fixed timestep, pause/step/replay hooks, deterministic input-command playback, rollback-ready diagnostics, and package handoff. | Headless replay tests, generated 2D/3D package evidence, stable command/input rows, frame pacing separation, and validation recipe integration. | Network rollback shipping layer, lockstep multiplayer, save-state binary compatibility policy, editor in-process runtime embedding. |
-
-When a gameplay stream is selected, create or update a dated capability/milestone plan. The plan must state whether it advances a release-ready gap cluster or is post-1.0 only, cite official middleware/platform documentation if any dependency is considered, record legal/dependency implications before adding third-party code, and keep `engine/agent/manifest.fragments/*.json`, generated-game guidance, validation recipes, skills, and static checks aligned with the supported surface.
+When a gameplay row is selected, the dated plan must state whether it changes a release-ready definition or remains post-1.0 work, cite official middleware/platform documentation when dependencies are considered, and keep manifest fragments, validation recipes, generated-game guidance, and static checks aligned with the supported surface.

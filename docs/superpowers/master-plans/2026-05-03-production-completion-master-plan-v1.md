@@ -27,12 +27,12 @@ Use the split chapter that matches the current decision. Do not bulk-read every 
 | 1.0 readiness ledger, Current Verdict, user-scenario mapping | [01-one-dot-zero-readiness-ledger.md](production-completion-v1/01-one-dot-zero-readiness-ledger.md) |
 | Official Practice Review Gates and official documentation anchors | [02-official-practice-gates.md](production-completion-v1/02-official-practice-gates.md) |
 | AI Autonomous Game Creation Track for Codex / Claude Code / Cursor | [03-ai-autonomous-game-creation.md](production-completion-v1/03-ai-autonomous-game-creation.md) |
-| Developer-Owned Engine Capability Backlog for missing engine features | [04-developer-owned-engine-capability-backlog.md](production-completion-v1/04-developer-owned-engine-capability-backlog.md) |
-| 2D / 3D Core and Advanced Capability Coverage Matrix | [05-2d-3d-capability-coverage-matrix.md](production-completion-v1/05-2d-3d-capability-coverage-matrix.md) |
-| Renderer Advanced Production Track | [06-renderer-advanced-production-track.md](production-completion-v1/06-renderer-advanced-production-track.md) |
-| Physics / Navigation / AI Advanced Gameplay Track | [07-gameplay-physics-nav-ai-advanced-track.md](production-completion-v1/07-gameplay-physics-nav-ai-advanced-track.md) |
-| General-Purpose / High-Freedom Game Creation Track | [08-high-freedom-game-creation-track.md](production-completion-v1/08-high-freedom-game-creation-track.md) |
-| 2D Sprite Production Pipeline Track | [09-sprite-production-pipeline-track.md](production-completion-v1/09-sprite-production-pipeline-track.md) |
+| Canonical Post-1.0 / 1.x Capability Backlog | [04-developer-owned-engine-capability-backlog.md](production-completion-v1/04-developer-owned-engine-capability-backlog.md) |
+| 2D / 3D Core and Advanced Coverage Projection | [05-2d-3d-capability-coverage-matrix.md](production-completion-v1/05-2d-3d-capability-coverage-matrix.md) |
+| Renderer Advanced Production Projection | [06-renderer-advanced-production-track.md](production-completion-v1/06-renderer-advanced-production-track.md) |
+| Physics / Navigation / AI Advanced Gameplay Projection | [07-gameplay-physics-nav-ai-advanced-track.md](production-completion-v1/07-gameplay-physics-nav-ai-advanced-track.md) |
+| General-Purpose / High-Freedom Game Creation Projection | [08-high-freedom-game-creation-track.md](production-completion-v1/08-high-freedom-game-creation-track.md) |
+| 2D Sprite Production Pipeline Projection | [09-sprite-production-pipeline-track.md](production-completion-v1/09-sprite-production-pipeline-track.md) |
 | Gameplay archetype validation scenarios | [10-gameplay-archetype-validation.md](production-completion-v1/10-gameplay-archetype-validation.md) |
 | Historical verdict archive and retained static-check evidence | [99-historical-verdict-archive.md](production-completion-v1/99-historical-verdict-archive.md) |
 
