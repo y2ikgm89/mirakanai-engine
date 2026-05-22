@@ -1104,6 +1104,257 @@
         "native-handles",
         "broad-quality-claim"
       ]
+    },
+    "validationRemediationRecipes": {
+      "schemaVersion": 1,
+      "capabilityId": "ai-validation-remediation-recipes-v1",
+      "recipeSetId": "sample-2d-desktop-runtime-package-validation-remediation-recipes",
+      "playtestLoopId": "sample-2d-desktop-runtime-package-playtest-loop",
+      "mutationLedgerId": "sample-2d-desktop-runtime-package-ai-mutation-ledger",
+      "recipes": [
+        {
+          "id": "missing-package-file-remediation",
+          "failureClassificationId": "missing-package-file",
+          "remediationActionId": "missing-package-file",
+          "reviewedCommandSurfaceId": "register-runtime-package-files",
+          "mode": "repair-through-reviewed-surface",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "requiredEvidence": [
+            "missing runtimePackageFiles row or package artifact path",
+            "reviewed package registration dry-run"
+          ],
+          "stopConditions": [
+            "target path leaves the game root",
+            "repair requires cooked package mutation"
+          ],
+          "rerunPolicy": "rerun-selected-validation-recipe"
+        },
+        {
+          "id": "invalid-reference-remediation",
+          "failureClassificationId": "invalid-reference",
+          "remediationActionId": "validation-failure",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "mode": "repair-through-reviewed-surface",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "requiredEvidence": [
+            "invalid manifest, package, scene, asset, or recipe reference",
+            "reviewed game-local dry-run"
+          ],
+          "stopConditions": [
+            "reference targets shared repository paths",
+            "repair would delete validation evidence"
+          ],
+          "rerunPolicy": "rerun-selected-validation-recipe"
+        },
+        {
+          "id": "host-gated-remediation",
+          "failureClassificationId": "host-gated",
+          "remediationActionId": "validation-failure",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "mode": "record-host-gate",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "requiredEvidence": [
+            "host gate id and unavailable host tool or device",
+            "blocked recipe summary"
+          ],
+          "stopConditions": [
+            "host gate would be bypassed",
+            "an unrelated ready claim would replace host evidence"
+          ],
+          "rerunPolicy": "rerun-selected-validation-recipe"
+        },
+        {
+          "id": "shader-tool-gap-remediation",
+          "failureClassificationId": "shader-tool-gap",
+          "remediationActionId": "unsupported-engine-capability",
+          "reviewedCommandSurfaceId": "engine-capability-handoff",
+          "mode": "developer-handoff",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "requiredEvidence": [
+            "missing shader toolchain or backend evidence",
+            "canonical developer-owned capability id"
+          ],
+          "stopConditions": [
+            "shader compilation would be faked",
+            "engine internals or toolchain policy must change"
+          ],
+          "rerunPolicy": "rerun-selected-validation-recipe"
+        },
+        {
+          "id": "counter-mismatch-remediation",
+          "failureClassificationId": "counter-mismatch",
+          "remediationActionId": "validation-failure",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "mode": "repair-through-reviewed-surface",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "requiredEvidence": [
+            "expected gameplay, renderer, UI, audio, physics, navigation, or AI counter",
+            "actual package smoke output"
+          ],
+          "stopConditions": [
+            "repair weakens expected counters",
+            "repair broadens quality claims"
+          ],
+          "rerunPolicy": "rerun-selected-validation-recipe"
+        },
+        {
+          "id": "runtime-package-load-remediation",
+          "failureClassificationId": "runtime-package-load",
+          "remediationActionId": "missing-package-file",
+          "reviewedCommandSurfaceId": "register-runtime-package-files",
+          "mode": "repair-through-reviewed-surface",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "requiredEvidence": [
+            "package load, index, asset payload, or runtime scene validation diagnostic",
+            "reviewed package file registration dry-run"
+          ],
+          "stopConditions": [
+            "package repair needs unreviewed cooked artifact mutation",
+            "runtime source parsing would be introduced"
+          ],
+          "rerunPolicy": "rerun-selected-validation-recipe"
+        },
+        {
+          "id": "unsafe-mutation-request-remediation",
+          "failureClassificationId": "unsafe-mutation-request",
+          "remediationActionId": "unsafe-shared-path-request",
+          "reviewedCommandSurfaceId": "engine-capability-handoff",
+          "mode": "developer-handoff",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "requiredEvidence": [
+            "forbidden shared path or unsafe mutation request",
+            "developer-owned handoff target"
+          ],
+          "stopConditions": [
+            "shared repository files would be edited from the game lane",
+            "raw shell or native handles would be exposed"
+          ],
+          "rerunPolicy": "rerun-selected-validation-recipe"
+        }
+      ],
+      "unsupportedClaims": [
+        "validation-weakening",
+        "evidence-deletion",
+        "host-gate-bypass",
+        "arbitrary-shell",
+        "raw-manifest-command-evaluation",
+        "cooked-package-mutation",
+        "engine-internal-edits",
+        "native-handles",
+        "broad-quality-claim"
+      ]
     }
   },
   "gameplayContract": {

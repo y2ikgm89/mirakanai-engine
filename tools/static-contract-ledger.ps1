@@ -34,7 +34,8 @@ function Get-StaticContractLedger {
                 "check-json-contracts-060-game-design-spec.ps1",
                 "check-json-contracts-061-content-mutation-ledger.ps1",
                 "check-json-contracts-062-placeholder-asset-pipeline.ps1",
-                "check-json-contracts-063-generated-game-playtest-loop.ps1"
+                "check-json-contracts-063-generated-game-playtest-loop.ps1",
+                "check-json-contracts-064-validation-remediation-recipes.ps1"
             )
             MaximumEntryLines = 80
             MaximumCoreLines = 1600

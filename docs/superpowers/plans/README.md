@@ -75,13 +75,14 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 | AI safe content mutation ledger implementation evidence | [AI Safe Content Mutation Ledger v1](2026-05-23-ai-safe-content-mutation-ledger-v1.md) |
 | AI placeholder asset pipeline implementation evidence | [AI Placeholder Asset Pipeline v1](2026-05-23-ai-placeholder-asset-pipeline-v1.md) |
 | AI generated game playtest loop implementation evidence | [AI Generated Game Playtest Loop v1](2026-05-23-ai-generated-game-playtest-loop-v1.md) |
+| AI validation remediation recipes implementation evidence | [AI Validation Remediation Recipes v1](2026-05-23-ai-validation-remediation-recipes-v1.md) |
 | AI engine capability handoff implementation evidence | [AI Engine Capability Handoff v1](2026-05-22-ai-engine-capability-handoff-v1.md) |
 | Historical/static-check retained literals | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
 | Recent completed implementation evidence | Search [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) and Git history; do not treat this registry as a changelog. |
 
 ## Pinned Foundation Plans
 
-Only manifest-pinned foundation records remain as dated files in this directory. Completed governance, bridge, and capability plans have been archived in [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md).
+Manifest-pinned foundation records remain as dated files in this directory, and selected completed capability evidence plans may also remain while current docs, manifests, static checks, or active decisions still reference them. Completed governance, bridge, and capability plans that no longer need direct links are archived in [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md).
 
 | Plan | Why it remains |
 | --- | --- |
