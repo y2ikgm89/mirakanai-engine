@@ -2,7 +2,7 @@
 
 ## Goal
 
-Split `engine/tools` implementation sources into named subdirectories with CMake `OBJECT` libraries aggregated by `MK_tools`, per [ADR 0003](../adr/0003-directory-layout-clean-break.md) and [directory layout target v1](../../specs/2026-05-11-directory-layout-target-v1.md).
+Split `engine/tools` implementation sources into named subdirectories with CMake `OBJECT` libraries aggregated by `MK_tools`, per [ADR 0003](../../adr/0003-directory-layout-clean-break.md) and [directory layout target v1](../../specs/2026-05-11-directory-layout-target-v1.md).
 
 ## Context
 

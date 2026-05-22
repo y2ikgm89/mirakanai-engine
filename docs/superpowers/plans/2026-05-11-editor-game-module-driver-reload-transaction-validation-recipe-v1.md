@@ -12,7 +12,7 @@ Promote the existing Windows-only `MK_editor_game_module_driver_load_tests` CTes
 ## Context
 
 - Load tests and DLL barrier/session policy UI already land in `MK_editor_core_tests` and `MK_editor_game_module_driver_load_tests`; this slice wires **repository-wide** recipe metadata and the runner argv builder only.
-- Global manifest validation recipes live in [engine/agent/manifest.fragments/009-validationRecipes.json](../../engine/agent/manifest.fragments/009-validationRecipes.json); runner mapping lives in [tools/run-validation-recipe-plans.ps1](../../tools/run-validation-recipe-plans.ps1) with enforcement in [tools/check-validation-recipe-runner.ps1](../../tools/check-validation-recipe-runner.ps1), [tools/check-json-contracts.ps1](../../tools/check-json-contracts.ps1), and [tools/check-ai-integration.ps1](../../tools/check-ai-integration.ps1).
+- Global manifest validation recipes live in [engine/agent/manifest.fragments/009-validationRecipes.json](../../../engine/agent/manifest.fragments/009-validationRecipes.json); runner mapping lives in [tools/run-validation-recipe-plans.ps1](../../../tools/run-validation-recipe-plans.ps1) with enforcement in [tools/check-validation-recipe-runner.ps1](../../../tools/check-validation-recipe-runner.ps1), [tools/check-json-contracts.ps1](../../../tools/check-json-contracts.ps1), and [tools/check-ai-integration.ps1](../../../tools/check-ai-integration.ps1).
 
 ## Constraints
 

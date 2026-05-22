@@ -24,4 +24,4 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -
 
 Then prefer editing fragments going forward and use `-Write` to emit `manifest.json`.
 
-See [ADR 0002](../../docs/adr/0002-agent-manifest-fragments-compose.md).
+See [ADR 0002](../../../docs/adr/0002-agent-manifest-fragments-compose.md).

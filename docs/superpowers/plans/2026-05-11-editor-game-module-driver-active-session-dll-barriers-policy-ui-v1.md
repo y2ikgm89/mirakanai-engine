@@ -11,8 +11,8 @@ Expose **fail-closed, read-only policy and barrier rows** under the existing `pl
 
 ## Context
 
-- Load / unload / reload review models already append `play-session-active` blockers in `make_editor_game_module_driver_*_model` ([editor/core/src/game_module_driver.cpp](../../editor/core/src/game_module_driver.cpp)).
-- Session phase vocabulary lives in [docs/specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md](../specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md).
+- Load / unload / reload review models already append `play-session-active` blockers in `make_editor_game_module_driver_*_model` ([editor/core/src/game_module_driver.cpp](../../../editor/core/src/game_module_driver.cpp)).
+- Session phase vocabulary lives in [docs/specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md](../../specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md).
 - This slice **documents the barrier in retained MK_ui** and mirrors key lines in `MK_editor` for human operators; it does not add hot reload, active-session reload execution, or policy toggles.
 
 ## Constraints
@@ -28,7 +28,7 @@ Expose **fail-closed, read-only policy and barrier rows** under the existing `pl
   - `play_in_editor.game_module_driver.session.barrier.play_dll_surface_mutation.status`
   - `play_in_editor.game_module_driver.session.policy.active_session_hot_reload`
   - `play_in_editor.game_module_driver.session.policy.stopped_state_reload_scope`
-- [docs/specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md](../specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md) lists the new MK_ui rows.
+- [docs/specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md](../../specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md) lists the new MK_ui rows.
 - `MK_editor_core_tests` covers serialized session UI for the new ids (at least idle + play-active snapshots).
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passes (or recorded toolchain blocker).
 

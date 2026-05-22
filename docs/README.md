@@ -41,7 +41,7 @@ When a historical Japanese note is promoted into a current doc, translate the pr
 ## Design and Plan Records
 
 - [docs/specs/](specs/README.md): accepted designs, analysis records, Superpowers-authored design specs, and generated-game guidance.
-- [docs/superpowers/plans/](superpowers/plans/README.md): active implementation plan registry and historical execution evidence. Historical plan files stay in place for traceability; do not move them during docs cleanup.
+- [docs/superpowers/plans/](superpowers/plans/README.md): active implementation plan registry and retained historical execution evidence. Keep only plan files that remain referenced by current docs, manifests, checks, or active decisions; remove unreferenced historical noise in explicit cleanup tasks and rely on Git history for deleted records.
 
 Start with [the plan registry](superpowers/plans/README.md) before editing an implementation plan. It identifies the active roadmap, active milestone or focused slice, docs/governance cleanup slices, completed historical plans, host-gated work, and the rules for creating new plans.
 

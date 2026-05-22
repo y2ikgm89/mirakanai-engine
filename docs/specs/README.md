@@ -4,7 +4,7 @@ This directory holds **design records**, analysis notes, AI handoff/prompt mater
 
 ## Truth order when documents disagree
 
-Prefer, in order: latest **completed** implementation plan evidence, [`docs/current-capabilities.md`](../current-capabilities.md), [`docs/roadmap.md`](../roadmap.md), [`engine/agent/manifest.json`](../../engine/agent/manifest.json). Treat dated specs as historical intent unless a current doc explicitly adopts them.
+Prefer, in order: [`engine/agent/manifest.json`](../../engine/agent/manifest.json), [`docs/current-capabilities.md`](../current-capabilities.md), [`docs/roadmap.md`](../roadmap.md), and retained implementation-plan evidence. Treat dated specs as historical intent unless a current doc explicitly adopts them. Deleted historical plan/spec evidence remains available through Git history.
 
 ---
 
@@ -19,11 +19,6 @@ Prefer, in order: latest **completed** implementation plan evidence, [`docs/curr
 | **Analysis** | [`2026-04-27-engine-essential-gap-analysis.md`](2026-04-27-engine-essential-gap-analysis.md) | “Production-usable” gap list (cooked payloads, GPU binding, editor loop, session services, store-quality gates); P0/P1/P2 style framing. |
 | **Analysis** | [`2026-04-27-importer-dependency-audit.md`](2026-04-27-importer-dependency-audit.md) | Optional **`asset-importers`** feature: libspng / fastgltf / miniaudio; **tools-only**, runtime consumes cooked artifacts only. |
 | **Analysis** | [`2026-04-27-physics-backend-evaluation.md`](2026-04-27-physics-backend-evaluation.md) | **No third-party physics in current wave**; first-party `mirakana_physics` stays default; Jolt only as a future optional adapter candidate. |
-| **Foundation slice** | [`2026-04-27-first-party-byte-payload-cooking.md`](2026-04-27-first-party-byte-payload-cooking.md) | Deterministic **hex byte payloads** on first-party texture/mesh/audio sources preserved through import into cooked packages. |
-| **Foundation slice** | [`2026-04-27-navigation-foundation-design.md`](2026-04-27-navigation-foundation-design.md) | **`mirakana_navigation`**: grid A*, deterministic costs/tie-break; no navmesh/crowd claims in the first slice. |
-| **Foundation slice** | [`2026-04-27-runtime-mesh-rhi-upload.md`](2026-04-27-runtime-mesh-rhi-upload.md) | Cooked mesh payload bytes → **backend-neutral RHI** vertex/index buffers via `mirakana_runtime_rhi` (no raw gameplay exposure of handles). |
-| **Foundation slice** | [`2026-04-27-runtime-session-services-design.md`](2026-04-27-runtime-session-services-design.md) | Per-session **save/settings/localization/input-action** documents over `IFileSystem`; keyboard actions first; no third-party deps. |
-| **Foundation slice** | [`2026-04-29-core-observability-foundation-design.md`](2026-04-29-core-observability-foundation-design.md) | **`mirakana_core`** diagnostics recorder (events/counters/profile zones); no GPU/SDL/editor UI in the first slice. |
 | **Generated games / agents** | [`game-template.md`](game-template.md) | Blank **game spec** sections (loop, constraints, entities, validation, `game.agent.json` hooks). |
 | **Generated games / agents** | [`generated-game-validation-scenarios.md`](generated-game-validation-scenarios.md) | **Validation recipes** and scenario matrix; ties to manifest `productionLoop`, `aiCommandSurfaces`, and editor playtest review rules. |
 | **Generated games / agents** | [`game-prompt-pack.md`](game-prompt-pack.md) | Short **prompt templates** for recipe selection, AI command surfaces, Scene v2 migration, and schema contracts—always after `tools/agent-context.ps1`. |

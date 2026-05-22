@@ -11,7 +11,7 @@ Extend the reviewed **`run-validation-recipe`** allowlist with a **strict Vulkan
 
 ## Context
 
-- Global manifest validation recipes live in [engine/agent/manifest.fragments/009-validationRecipes.json](engine/agent/manifest.fragments/009-validationRecipes.json); the runner allowlist is enforced in [tools/run-validation-recipe-plans.ps1](tools/run-validation-recipe-plans.ps1) and [tools/check-validation-recipe-runner.ps1](tools/check-validation-recipe-runner.ps1).
+- Global manifest validation recipes live in [engine/agent/manifest.fragments/009-validationRecipes.json](../../../engine/agent/manifest.fragments/009-validationRecipes.json); the runner allowlist is enforced in [tools/run-validation-recipe-plans.ps1](../../../tools/run-validation-recipe-plans.ps1) and [tools/check-validation-recipe-runner.ps1](../../../tools/check-validation-recipe-runner.ps1).
 - The sample game already declares the equivalent packaged command on `game.agent.json`; this slice promotes the same contract to the **repository-wide** recipe table and `vulkan-strict` host gate.
 
 ## Constraints

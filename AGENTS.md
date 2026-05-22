@@ -133,7 +133,7 @@
 - Use `docs/specs/` for feature designs and `docs/superpowers/plans/` for implementation plans. Write new or updated implementation plans in English.
 - **Dated plan and spec files:** use `YYYY-MM-DD` in filenames and first headings from the session `Today's date`, explicit operator date, or local `Get-Date -Format yyyy-MM-dd`; keep filename date and heading date identical.
 - Keep the live plan stack shallow: one roadmap, one active gap-cluster burn-down or milestone, and at most one phase/child plan selected by `currentActivePlan`. Child plans require a distinct architecture/validation/review boundary or a phase too large for one safe context.
-- Prefer active capability/gap-cluster/milestone or phase-gated milestone plans over tiny child plans when work shares one architecture decision, public API family, validation surface, and review purpose. Preserve completed plan files as historical implementation evidence; do not append unrelated work, broaden ready claims, or weaken host gates.
+- Prefer active gap/milestone or phase-gated milestone plan over tiny child plans for one architecture/API/validation/review purpose. Preserve completed plans while referenced by current docs, manifests, checks, or decisions; delete unreferenced noise in cleanup and rely on Git history. Do not append unrelated work, broaden ready claims, or weaken host gates
 - Keep active plans concise: put detailed evidence in final validation tables, batch docs/manifest/skills synchronization after behavior is green unless those files are the behavior, and ensure each active phase still has Goal, Context, Constraints, Done When, and validation evidence.
 - Before generating game code or changing engine APIs, read `engine/agent/manifest.json`, a targeted `engine/agent/manifest.fragments/` file, or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1`. Prefer `-ContextProfile Minimal` or `-ContextProfile Standard`; use Full only when the decision needs full manifest-shaped output.
 - Use `.agents/skills/` when a task matches them, keep overlapping `.claude/skills/` behaviorally equivalent, and keep `.cursor/skills/gameengine-*` folders as thin pointers matching `.claude/skills/` names except the intentional Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`.
@@ -145,7 +145,7 @@
 
 ## Production Completion Execution
 
-- When executing the lightweight production-completion master-plan index, use `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps`; load split chapters only as needed.
+- When executing the lightweight production-completion master-plan index, use `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps`; load only the needed production-completion corpus chapter.
 - Keep each `unsupportedProductionGaps` row honest, including `oneDotZeroCloseoutTier`, in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` plus composed output; do not hand-edit `engine/agent/manifest.json`.
 - Re-read the master plan, registry, and manifest after user edits or resumes. Finish one selected gap as implemented, host-gated, blocked with evidence, or excluded before switching.
 - Prefer official documentation, Context7, project skills, and clean breaking greenfield designs over compatibility shims, broad ready claims, or shortcuts.

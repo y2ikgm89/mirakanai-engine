@@ -15,12 +15,12 @@ This wave completes **at least one dated child plan per priority band P0–P3** 
 
 | Priority | Area | Primary gap ids | Wave 1 child plan |
 | --- | --- | --- | --- |
-| P0 | Editor material preview parity evidence | `editor-productization` | [2026-05-09-editor-material-preview-parity-evidence-contract-v1.md](2026-05-09-editor-material-preview-parity-evidence-contract-v1.md) |
-| P1 | Frame Graph narrow | `frame-graph-v1` | [2026-05-09-frame-graph-v1-schedule-pass-invoke-order-contract-v1.md](2026-05-09-frame-graph-v1-schedule-pass-invoke-order-contract-v1.md) |
+| P0 | Editor material preview parity evidence | `editor-productization` | `2026-05-09-editor-material-preview-parity-evidence-contract-v1.md` (deleted historical candidate; use Git history if needed) |
+| P1 | Frame Graph narrow | `frame-graph-v1` | `2026-05-09-frame-graph-v1-schedule-pass-invoke-order-contract-v1.md` (deleted historical candidate; use Git history if needed) |
 | P1 | RHI native teardown (scoped slice) | `renderer-rhi-resource-foundation` | [2026-05-09-rhi-native-teardown-scoping-v1.md](2026-05-09-rhi-native-teardown-scoping-v1.md) |
-| P2 | Upload / streaming boundary | `upload-staging-v1`, `runtime-resource-v2` | [2026-05-09-upload-streaming-boundary-next-v1.md](2026-05-09-upload-streaming-boundary-next-v1.md) |
-| P2 | Registered cook + importer | `asset-identity-v2`, `runtime-resource-v2` | [2026-05-09-registered-cook-importer-regression-next-v1.md](2026-05-09-registered-cook-importer-regression-next-v1.md) |
-| P3 | UI / importer adapters | `production-ui-importer-platform-adapters` | [2026-05-09-production-ui-importer-adapters-step-v1.md](2026-05-09-production-ui-importer-adapters-step-v1.md) |
+| P2 | Upload / streaming boundary | `upload-staging-v1`, `runtime-resource-v2` | `2026-05-09-upload-streaming-boundary-next-v1.md` (deleted historical candidate; use Git history if needed) |
+| P2 | Registered cook + importer | `asset-identity-v2`, `runtime-resource-v2` | `2026-05-09-registered-cook-importer-regression-next-v1.md` (deleted historical candidate; use Git history if needed) |
+| P3 | UI / importer adapters | `production-ui-importer-platform-adapters` | `2026-05-09-production-ui-importer-adapters-step-v1.md` (deleted historical candidate; use Git history if needed) |
 
 Further waves (Wave 2+) should use **new dated milestone files** rather than appending unrelated rows here.
 

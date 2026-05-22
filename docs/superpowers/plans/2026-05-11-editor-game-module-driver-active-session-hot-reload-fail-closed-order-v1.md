@@ -11,7 +11,7 @@ Ship the first **verifiable, fail-closed** vertical toward the active-session ho
 
 ## Context
 
-- [Hot reload session state machine v1](../specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md) blocks DLL surface mutation while `play_session_active`.
+- [Hot reload session state machine v1](../../specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md) blocks DLL surface mutation while `play_session_active`.
 - Windows: callers must finish using a module and release `HMODULE` references before `FreeLibrary` can unload it (see Microsoft Learn `FreeLibrary` remarks).
 
 ## Constraints

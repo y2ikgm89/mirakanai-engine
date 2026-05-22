@@ -12,7 +12,7 @@ After the operator acknowledges the retained `pix_gpu_capture` capture request, 
 ## Context
 
 - [2026-05-11-editor-resource-capture-pix-launch-helper-v1.md](2026-05-11-editor-resource-capture-pix-launch-helper-v1.md) added `tools/launch-pix-host-helper.ps1` (no editor integration).
-- [editor/core/src/resource_panel.cpp](editor/core/src/resource_panel.cpp) already materializes `resources.capture_execution.*` MK_ui rows with bounded artifact/diagnostic fields.
+- [editor/core/src/resource_panel.cpp](../../../editor/core/src/resource_panel.cpp) already materializes `resources.capture_execution.*` MK_ui rows with bounded artifact/diagnostic fields.
 - `mirakana::run_process_command` and `Win32ProcessRunner` historically allowed only non-shell executables; reviewed `pwsh` allowlists must extend the shared gate alongside `is_safe_reviewed_validation_recipe_invocation`.
 
 ## Constraints

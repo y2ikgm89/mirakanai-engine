@@ -73,7 +73,7 @@ Assert-ContainsText $agentsContent "VCPKG_MANIFEST_INSTALL=OFF" "AGENTS.md"
 Assert-ContainsText $agentsContent 'VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed' "AGENTS.md"
 Assert-ContainsText $agentsContent "CMake configure must not install, restore, or download vcpkg packages" "AGENTS.md"
 Assert-ContainsText $agentsContent "phase-gated milestone plan" "AGENTS.md"
-foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "not PR/task-count units", "phase behavior/API/validation", "validation-only follow-up", "historical implementation evidence")) {
+foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "not PR/task-count units", "phase behavior/API/validation", "validation-only follow-up", "Git history")) {
     Assert-ContainsText $agentsContent $planVolumeNeedle "AGENTS.md"
 }
 foreach ($productionPromptNeedle in @("Production Completion Execution", "currentActivePlan", "recommendedNextPlan", "unsupportedProductionGaps", "clean breaking greenfield designs", "completed gap, remaining gaps, next active plan")) {
@@ -435,7 +435,7 @@ foreach ($windowsDiagnosticsNeedle in @("Debugging Tools for Windows", "Windows 
 }
 $planRegistryContent = Get-Content -LiteralPath $planRegistryPath -Raw
 Assert-ContainsText $planRegistryContent "Active milestone" "docs/superpowers/plans/README.md"
-foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "capability/gap-cluster/milestone", "Plan width is wider than PR width", "phase behavior/API/validation boundary", "Distinguish plan files from execution steps", "validation-only follow-up", "historical implementation evidence", "dedicated evidence indexes")) {
+foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "capability/gap-cluster/milestone", "Plan width is wider than PR width", "phase behavior/API/validation boundary", "Distinguish plan files from execution steps", "validation-only follow-up", "Git history", "useful evidence indexes")) {
     Assert-ContainsText $planRegistryContent $planVolumeNeedle "docs/superpowers/plans/README.md"
 }
 
