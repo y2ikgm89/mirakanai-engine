@@ -1,5 +1,11 @@
 # Engine Essential Gap Analysis
 
+## Status
+
+Historical MVP-era gap analysis.
+
+Current production gap truth lives in `engine/agent/manifest.json.aiOperableProductionLoop`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, and `docs/current-capabilities.md`.
+
 ## Goal
 
 Assess whether GameEngine has the essential capabilities expected from a usable C++ game engine, identify missing production features, and set a clean no-backward-compatibility implementation order.

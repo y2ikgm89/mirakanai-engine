@@ -1,5 +1,11 @@
 # AI-Operable Game Engine Handoff Prompt
 
+## Status
+
+Historical handoff prompt.
+
+Use `docs/README.md`, `tools/agent-context.ps1 -ContextProfile Minimal`, `engine/agent/manifest.json`, and the production-completion master plan for current handoffs.
+
 Use this prompt when opening a new chat to continue the AI-operable GameEngine production work.
 
 ## Prompt

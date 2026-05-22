@@ -952,7 +952,7 @@ foreach ($runtimeUiPngGuidance in @(
     "docs/ai-game-development.md",
     "docs/current-capabilities.md",
     "docs/dependencies.md",
-    "docs/superpowers/plans/README.md",
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md",
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
@@ -969,7 +969,7 @@ foreach ($runtimeUiDecodedAtlasGuidance in @(
     "docs/ai-game-development.md",
     "docs/current-capabilities.md",
     "docs/dependencies.md",
-    "docs/superpowers/plans/README.md",
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md",
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 )) {
     $runtimeUiDecodedAtlasText = Get-AgentSurfaceText $runtimeUiDecodedAtlasGuidance

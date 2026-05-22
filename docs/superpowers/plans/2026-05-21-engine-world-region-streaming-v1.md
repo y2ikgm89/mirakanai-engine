@@ -2,7 +2,7 @@
 
 **Plan ID:** `engine-world-region-streaming-v1`
 **Status:** Completed.
-**Current pointer rule:** `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at this milestone while active. Keep `unsupportedProductionGaps = []`; this is a developer-owned scale-enabler capability, not a reopened Engine 1.0 production gap.
+**Historical pointer note:** This completed plan was selected by `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` only while active; current pointer truth is the composed manifest and plan registry.
 
 ## Goal
 

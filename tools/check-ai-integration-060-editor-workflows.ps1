@@ -164,7 +164,7 @@ $editorInputRebindingProfilePanelChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-input-rebinding-profile-panel-v1.md",
             "Editor Input Rebinding Profile Panel v1",
@@ -1422,7 +1422,7 @@ $prefabVariantAuthoringChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-09-editor-scene-prefab-instance-refresh-review-v1.md",
             "2026-05-09-editor-prefab-instance-local-child-refresh-resolution-v1.md",
@@ -1669,7 +1669,7 @@ $editorSceneNativeDialogChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-scene-native-dialog-v1.md",
             "EditorSceneFileDialogModel",

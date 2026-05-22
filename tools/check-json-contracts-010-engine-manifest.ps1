@@ -634,6 +634,8 @@ if ($productionLoop.recommendedNextPlan.PSObject.Properties.Name.Contains("path"
     -not (Test-Path (Join-Path $root $productionLoop.recommendedNextPlan.path))) {
     Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan references missing document: $($productionLoop.recommendedNextPlan.path)"
 }
+Assert-ProductionCompletionCorpus
+Assert-SpecStatusSections
 Assert-ActiveProductionPlanDrift $productionLoop
 $physicsBackendAdapterDecision = @($productionLoop.physicsBackendAdapterDecisions | Where-Object { $_.id -eq "physics-1-0-jolt-native-adapter" })
 if ($physicsBackendAdapterDecision.Count -ne 1) {

@@ -34,7 +34,7 @@ Extended validation, editor-shell, plan lifecycle, production-completion, and ga
 - Use `docs/roadmap.md` for current status and priorities. Do not use it as a detailed task log.
 - Use `docs/superpowers/plans/README.md` as the implementation plan registry.
 - Use `docs/specs/README.md` to classify design records. Specs are design context, not live task lists.
-- Keep completed plans as historical implementation evidence. Do not append unrelated follow-up tasks to completed plans.
+- Keep completed plans only while they remain referenced evidence for current docs, manifests, checks, or active decisions. Do not append unrelated follow-up tasks to completed plans; remove unreferenced historical noise in explicit cleanup and rely on Git history for deleted records.
 - Keep the live plan stack shallow: one active roadmap, one active gap-cluster burn-down or milestone, and at most one active phase/child plan selected by `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
 - Treat dated plan files as capability/gap-cluster/milestone records. Use phases inside that plan for phase behavior/API/validation boundary decisions, and link the plan from the registry when work starts.
 - Plan-file width and PR/phase width are different: a plan may cover a capability/gap-cluster/milestone with multiple phase checkpoints, while each phase and PR stays one reviewable purpose with focused validation evidence.

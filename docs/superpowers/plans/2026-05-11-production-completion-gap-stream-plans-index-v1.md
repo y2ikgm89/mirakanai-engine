@@ -3,15 +3,15 @@
 **Plan ID:** `production-completion-gap-stream-plans-index-2026-05-11-v1`
 **Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Orchestration:** [2026-05-10-unsupported-production-gaps-orchestration-program-v1.md](2026-05-10-unsupported-production-gaps-orchestration-program-v1.md)
-**Status:** Reference index
+**Status:** Historical reference index. This file no longer selects the next active wedge; use `engine/agent/manifest.json.aiOperableProductionLoop`, the production-completion master plan, and the plan registry for current selection.
 
 ## Purpose
 
 Single navigation index for **program-scale stream plans** created to operationalize the Production gaps forward program without replacing per-slice dated implementation plans.
 
-## Next execution pointer
+## Historical execution pointer
 
-For `editor-productization`, the Windows-default 1.0 surface is closed by [Editor Productization 1.0 Host-Gated Exclusion Closeout v1](2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md), superseding the earlier Windows-tractable reclassification in [Editor Productization 1.0 Scope Closeout v1](2026-05-12-editor-productization-1-0-scope-closeout-v1.md). The **resource management execution** stream is closed (including [operator-validated PIX launch workflow](2026-05-11-editor-resources-capture-operator-validated-launch-workflow-v1.md)), and **nested prefab reviewed propagation coverage** is implemented through multi-target late loader drift atomicity in [2026-05-12-editor-scene-nested-prefab-propagation-multi-target-late-loader-drift-atomicity-v1.md](2026-05-12-editor-scene-nested-prefab-propagation-multi-target-late-loader-drift-atomicity-v1.md). Vulkan/Metal material-preview display parity beyond D3D12 host-owned evidence remains a future host-gated surface, not a Windows-default Engine 1.0 blocker. `production-ui-importer-platform-adapters` is closed by [Production UI Importer Platform Adapters 1.0 Closeout v1](2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md), with broader low-level UI, codec, importer, platform SDK, middleware, renderer texture-upload, and additional dependency/legal work left as future or dependency-gated non-goals. The Windows-default queue has moved past the completed `asset-identity-v2`, `runtime-resource-v2`, `renderer-rhi-resource-foundation`, `frame-graph-v1`, `upload-staging-v1`, `scene-component-prefab-schema-v2`, `2d-playable-vertical-slice`, `3d-playable-vertical-slice`, `editor-productization`, and `production-ui-importer-platform-adapters` burn-downs; the next active closeout wedge is `full-repository-quality-gate`.
+For `editor-productization`, the Windows-default 1.0 surface closed through [Editor Productization 1.0 Host-Gated Exclusion Closeout v1](2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md), superseding the earlier Windows-tractable reclassification in [Editor Productization 1.0 Scope Closeout v1](2026-05-12-editor-productization-1-0-scope-closeout-v1.md). The resource-management execution stream, nested prefab reviewed propagation coverage, `production-ui-importer-platform-adapters`, and the later Windows-default closeout wedges are historical. The current composed manifest has `unsupportedProductionGaps = []` and `recommendedNextPlan.id = next-production-gap-selection`; do not infer an active wedge from this index.
 
 ## Phase 0 — `editor-productization` streams
 

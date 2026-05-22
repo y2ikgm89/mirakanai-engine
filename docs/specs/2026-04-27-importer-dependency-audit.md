@@ -1,5 +1,11 @@
 # Production Importer Dependency Audit
 
+## Status
+
+Retained dependency audit record.
+
+Current dependency truth lives in `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, and `engine/agent/manifest.json`.
+
 ## Goal
 
 Select dependency candidates for production PNG, glTF, and audio source importers without adding default-build third-party dependencies or letting runtime game code parse external source formats directly.

@@ -315,7 +315,7 @@ $editorRuntimeHostPlaytestLaunchChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-runtime-host-playtest-launch-v1.md",
             "Editor Runtime Host Playtest Launch v1",
@@ -1401,7 +1401,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-profiler-trace-import-reconstruction-v1.md",
             "Editor Profiler Trace Import Reconstruction v1",
@@ -1863,7 +1863,7 @@ $editorResourceCaptureRequestChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-resource-capture-request-v1.md",
             "Editor Resource Capture Request v1",

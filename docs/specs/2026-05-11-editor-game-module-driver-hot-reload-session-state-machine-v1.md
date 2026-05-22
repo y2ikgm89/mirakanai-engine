@@ -1,5 +1,11 @@
 # Editor Game Module Driver Hot Reload Session State Machine v1 (2026-05-11)
 
+## Status
+
+Accepted narrow specification.
+
+Current implementation truth lives in editor/core tests and `engine/agent/manifest.json`; this spec owns the deterministic stopped-state session model only.
+
 ## Purpose
 
 Define a **deterministic, host-independent session phase model** for combining:

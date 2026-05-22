@@ -6,6 +6,10 @@ This directory holds **design records**, analysis notes, AI handoff/prompt mater
 
 Prefer, in order: [`engine/agent/manifest.json`](../../engine/agent/manifest.json), [`docs/current-capabilities.md`](../current-capabilities.md), [`docs/roadmap.md`](../roadmap.md), and retained implementation-plan evidence. Treat dated specs as historical intent unless a current doc explicitly adopts them. Deleted historical plan/spec evidence remains available through Git history.
 
+## File Contract
+
+Every non-README Markdown file in this directory must contain a `## Status` section near the top. Use one of these status categories so AI readers can classify the file before loading details: Historical design record, Retained analysis record, Accepted narrow specification, Current generated-game guide, or Historical handoff prompt.
+
 ---
 
 ## Specs at a glance (read this table first)

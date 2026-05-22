@@ -102,7 +102,7 @@ $editorResourceCaptureExecutionChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-resource-capture-execution-evidence-v1.md",
             "Editor Resource Capture Execution Evidence v1",
@@ -268,7 +268,7 @@ $editorAiCommandPanelChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-ai-command-diagnostics-panel-v1.md",
             "Editor AI Command Diagnostics Panel v1",
@@ -420,7 +420,7 @@ $editorAiEvidenceImportReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-ai-evidence-import-review-v1.md",
             "Editor AI Evidence Import Review v1",
@@ -595,7 +595,7 @@ $editorAiReviewedValidationExecutionChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-ai-host-gated-validation-execution-ack-v1.md",
             "Host-Gated Validation Execution Ack v1",
@@ -776,7 +776,7 @@ $editorAiReviewedValidationBatchExecutionChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-ai-reviewed-validation-batch-execution-v1.md",
             "Editor AI Reviewed Validation Batch Execution v1",
@@ -1004,7 +1004,7 @@ $editorContentBrowserImportPanelChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-12-editor-source-registry-visible-content-browser-v1.md",
             "Reload Source Registry",
@@ -1157,7 +1157,7 @@ $editorContentBrowserImportNativeDialogChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-content-browser-import-native-dialog-v1.md",
             "Editor Content Browser Import Native Dialog v1",
@@ -1313,7 +1313,7 @@ $editorContentBrowserImportExternalCopyReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-content-browser-import-external-copy-review-v1.md",
             "Editor Content Browser Import External Copy Review v1",
@@ -1391,7 +1391,7 @@ $editorContentBrowserImportCodecAdapterCompletedPlanChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-content-browser-import-codec-adapter-review-v1.md",
             "Editor Content Browser Import Codec Adapter Review v1",
@@ -1571,7 +1571,7 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-ci-matrix-contract-check-v1.md",
             "CI Matrix Contract Check v1",
@@ -1675,7 +1675,7 @@ $cpp23ReleasePackageArtifactCiEvidenceChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-08-cpp23-release-package-artifact-ci-evidence-v1.md",
             "C++23 Release Package Artifact CI Evidence v1",
@@ -1853,7 +1853,7 @@ $editorMaterialAssetPreviewPanelChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-material-asset-preview-diagnostics-v1.md",
             "2026-05-07-editor-material-gpu-preview-execution-evidence-v1.md",

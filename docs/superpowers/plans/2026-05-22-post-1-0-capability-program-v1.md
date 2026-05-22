@@ -111,55 +111,15 @@ Build simple kinematic and vehicle foundations on top of the Phase 1 constraint 
 - Simple vehicle policy remains first-party and value-only; broad vehicle dynamics, persistent vehicle simulation, tire models, suspension tuning suites, and middleware vehicle modules are not claimed.
 - Generated package evidence exposes selected counters.
 
-## Deferred Follow-Up Candidates
+## Deferred Backlog References
 
-The following candidate phases were not implemented in this plan. They remain post-1.0 / 1.x developer-owned backlog rows and require a new dated plan before work starts.
+The following phases were not implemented in this plan. They remain post-1.0 / 1.x developer-owned backlog rows and require a new dated plan before work starts. Canonical backlog status lives in [04-developer-owned-engine-capability-backlog.md](../master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md).
 
-## Phase 3 - Navigation Hierarchical World v1
-
-### Goal
-
-Add region/portal navigation organization for larger scenes using existing navigation and world-region foundations.
-
-### Done When
-
-- Region graph and portal rows validate deterministically.
-- Missing or unloaded navigation regions fail with explicit diagnostics.
-- Cache invalidation and path handoff evidence remain safe-point/package-scoped.
-
-## Phase 4 - Large World and Persistence v1
-
-### Goal
-
-Connect large-scene streaming evidence with persistence, save/resume validation, and migration diagnostics.
-
-### Done When
-
-- Region/chunk identity, entity persistence, and save-slot rows validate through package evidence.
-- Version mismatch and corrupted-state diagnostics are deterministic.
-- No cloud save, multiplayer replication, or binary compatibility promise is made without a release-policy plan.
-
-## Phase 5 - AI Game-Creation Follow-Ons
-
-### Goal
-
-Use the stable engine contracts from earlier phases to strengthen generated-game workflows without letting game-creation agents edit engine internals.
-
-### Candidate Rows
-
-- `ai-game-design-spec-v1`
-- `ai-game-generation-orchestrator-v1`
-- `ai-placeholder-asset-pipeline-v1`
-- `ai-generated-game-playtest-loop-v1`
-- `ai-validation-remediation-recipes-v1`
-- `ai-generated-game-quality-rubric-v1`
-- `ai-engine-capability-handoff-v1`
-
-### Done When
-
-- Generated-game plans produce reviewed game-owned files and durable handoff rows for missing reusable engine capabilities.
-- Manifest recipes and validation commands distinguish supported generation claims from planned follow-ups.
-
+| Deferred area | Canonical backlog row ids |
+| --- | --- |
+| Navigation hierarchical world | `navigation-hierarchical-world-v1` |
+| Large world and persistence | `world-streaming-and-large-scenes-v1`, `simulation-persistence-v1` |
+| AI game-creation follow-ons | `ai-game-design-spec-v1`, `ai-game-generation-orchestrator-v1`, `ai-placeholder-asset-pipeline-v1`, `ai-generated-game-playtest-loop-v1`, `ai-validation-remediation-recipes-v1`, `ai-generated-game-quality-rubric-v1`, `ai-engine-capability-handoff-v1` |
 ## Validation Evidence
 
 | Gate | Command | Evidence |

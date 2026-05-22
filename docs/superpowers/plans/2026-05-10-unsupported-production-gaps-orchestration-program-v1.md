@@ -1,7 +1,7 @@
 # Unsupported Production Gaps Orchestration Program v1 (2026-05-10)
 
 **Plan ID:** `unsupported-production-gaps-orchestration-program-v1`
-**Status:** Active program index. This file is the machine-readable execution index for all eleven `engine/agent/manifest.json.unsupportedProductionGaps` rows; it does not replace gap-by-gap validation or dated implementation child plans.
+**Status:** Historical orchestration index. This file records the original Phase 0-4 gap ordering from the 2026-05-10 production-forward program; it is no longer active or machine-readable authority. Current execution truth lives in `engine/agent/manifest.json.aiOperableProductionLoop`, the production-completion master plan, and the current plan registry.
 
 ## Goal
 
@@ -11,7 +11,7 @@ Provide a single repository-owned orchestration ledger that aligns the productio
 
 - Master plan: [`../master-plans/2026-05-03-production-completion-master-plan-v1.md`](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 - Roadmap: [`docs/roadmap.md`](../../roadmap.md)
-- Manifest gaps: `unsupportedProductionGaps` in [`engine/agent/manifest.json`](../../../engine/agent/manifest.json)
+- Manifest gaps: historical `unsupportedProductionGaps` rows in [`engine/agent/manifest.json`](../../../engine/agent/manifest.json); the current composed manifest may have no remaining rows.
 
 ## Constraints
 
@@ -31,19 +31,19 @@ Provide a single repository-owned orchestration ledger that aligns the productio
 
 ## Done When
 
-- `aiOperableProductionLoop.recommendedNextPlan.path` remains the production-completion master plan file while no dated child plan header is active (JSON contracts), with this orchestration ledger referenced from `recommendedNextPlan.completedContext` and [`README.md`](./README.md).
-- Phase owners record progress only through completed dated plans, manifest notes, and `docs/superpowers/plans/README.md`—not through silent gap hopping.
+- This historical index remains internally consistent enough for audit/search.
+- Current phase ownership is recorded through the composed manifest, production-completion chapters, and dated implementation plans, not through this file.
 
 ## Validation evidence
 
 | Check | Result |
 | --- | --- |
-| Plan registered in [`README.md`](./README.md) Current Active Work | **PASS** — Active slice row references the master plan and links [2026-05-11-production-completion-gap-stream-plans-index-v1.md](./2026-05-11-production-completion-gap-stream-plans-index-v1.md) as the Phase 0–4 stream index; latest completed slice records nested prefab propagation dry-run counters ([2026-05-11-editor-nested-prefab-propagation-candidate-dry-run-v1.md](./2026-05-11-editor-nested-prefab-propagation-candidate-dry-run-v1.md)); the next `editor-productization` child remains `recommendedNextPlan.id=next-production-gap-selection`. |
-| Manifest `recommendedNextPlan.path` / `currentActivePlan` | **PASS** — both paths reference `../master-plans/2026-05-03-production-completion-master-plan-v1.md` per `tools/check-json-contracts.ps1` / `tools/check-ai-integration.ps1`; `completedContext` references this orchestration file |
+| Historical registry entry | **PASS at original closeout** — this index was discoverable from the registry before the live registry was simplified. |
+| Manifest `recommendedNextPlan.path` / `currentActivePlan` | **Historical evidence only** — current manifest pointers supersede the values described in this program file. |
 
 ## Phase execution ledger (orchestration only)
 
-This program file sequences gap IDs (Phase 0–4); it does **not** remove `unsupportedProductionGaps` rows. Each phase closes only through dated child plans, manifest closeout, host-gated evidence, or explicit 1.0 exclusion recorded in `engine/agent/manifest.json` per the production-completion master plan.
+This program file sequenced gap IDs (Phase 0-4); it did **not** remove `unsupportedProductionGaps` rows. Each phase closed only through dated child plans, manifest closeout, host-gated evidence, or explicit 1.0 exclusion recorded in `engine/agent/manifest.json` per the production-completion master plan.
 
 | Phase | Gap IDs (manifest) | Execution status |
 | --- | --- | --- |

@@ -1,5 +1,11 @@
 # Game Spec Template
 
+## Status
+
+Current generated-game spec template.
+
+Use this as a template only; concrete game truth lives in `games/<game_name>/game.agent.json` and game-owned docs/source files.
+
 ## Goal
 
 Describe the game in one sentence.

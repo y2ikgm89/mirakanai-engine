@@ -133,7 +133,7 @@ $editorProjectNativeDialogChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-project-native-dialog-v1.md",
             "EditorProjectFileDialogModel",
@@ -412,7 +412,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-prefab-variant-conflict-review-v1.md",
             "2026-05-07-editor-prefab-variant-reviewed-resolution-v1.md",
@@ -1172,8 +1172,8 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $sceneRendererHeaderText $needle "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp"
 }
-$planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
-Assert-ContainsText $planRegistryText "3D Scene Mesh Package Telemetry v1" "docs/superpowers/plans/README.md"
+$historicalPlanEvidenceText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+Assert-ContainsText $historicalPlanEvidenceText "3D Scene Mesh Package Telemetry v1" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "3D Scene Mesh Package Telemetry v1" "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"

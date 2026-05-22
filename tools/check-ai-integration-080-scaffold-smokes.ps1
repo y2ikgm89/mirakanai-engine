@@ -998,7 +998,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebind
 $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
-$planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
+$historicalPlanEvidenceText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 Assert-DoesNotContainText $manifestText "generated-game morph package consumption/rendering" "engine/agent/manifest.json generated 3D morph stale unsupported claim"
 foreach ($needle in @(
     "2d-sprite-batch-planning-contract",
@@ -1017,7 +1017,7 @@ foreach ($needle in @(
 foreach ($doc in @(
     @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
     @{ Text = $roadmapText; Label = "docs/roadmap.md" },
-    @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" }
+    @{ Text = $historicalPlanEvidenceText; Label = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" }
 )) {
     Assert-ContainsText $doc.Text "2D Sprite Batch Planning Contract v1" $doc.Label
     Assert-ContainsText $doc.Text "2D Sprite Batch Package Telemetry v1" $doc.Label
@@ -2144,8 +2144,8 @@ Assert-ContainsText $engineManifestText "ui_texture_overlay_atlas_ready=1" "engi
 Assert-ContainsText $engineManifestText "desktopRuntime3dNativeUiTextGlyphAtlasPackageSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-native-ui-text-glyph-atlas" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "text_glyphs_resolved=2" "engine/agent/manifest.json"
-Assert-ContainsText $planRegistryText "remaining plan evidence that is still referenced" "docs/superpowers/plans/README.md"
-Assert-ContainsText $planRegistryText "Git history for deleted evidence" "docs/superpowers/plans/README.md"
+Assert-ContainsText $historicalPlanEvidenceText "remaining plan evidence that is still referenced" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+Assert-ContainsText $historicalPlanEvidenceText "Git history for deleted evidence" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 Assert-ContainsText $roadmapText "Generated 3D Committed Package Sample v1" "docs/roadmap.md"
 Assert-ContainsText $roadmapText "Generated 3D Renderer Quality Package Smoke v1" "docs/roadmap.md"
 Assert-ContainsText $roadmapText "Generated 3D Playable Package Smoke v1" "docs/roadmap.md"

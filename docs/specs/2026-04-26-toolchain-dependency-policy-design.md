@@ -1,5 +1,11 @@
 # Toolchain Dependency Policy Design
 
+## Status
+
+Retained policy design record.
+
+Current truth: repository command and dependency policy lives in `AGENTS.md`, `docs/dependencies.md`, `docs/building.md`, `docs/testing.md`, and the validation scripts under `tools/`.
+
 ## Goal
 
 Keep GameEngine dependency choices suitable for a production-grade engine: official sources only, minimal default dependencies, reproducible optional dependencies, and automated checks that make policy drift visible.
