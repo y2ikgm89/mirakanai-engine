@@ -3,7 +3,7 @@
 **Plan ID:** `editor-resource-capture-pix-host-handoff-evidence-v1`
 **Gap:** `editor-productization` (shared diagnostics with `renderer-rhi-resource-foundation`)
 **Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
-**Stream:** [2026-05-11-editor-productization-resource-management-execution-stream-v1.md](2026-05-11-editor-productization-resource-management-execution-stream-v1.md) (stream item 3)
+**Stream:** editor-productization resource-management execution stream (stream item 3; retired stream ledger retained through Git history)
 
 ## Goal
 
@@ -24,7 +24,7 @@ After the operator acknowledges the retained `pix_gpu_capture` capture request, 
 
 ## Cross-link: `renderer-rhi-resource-foundation`
 
-GPU capture and RHI lifetime evidence must stay aligned with native backend teardown and registry diagnostics tracked under gap `renderer-rhi-resource-foundation` (see `engine/agent/manifest.json` `unsupportedProductionGaps` row and plans such as [2026-05-09-rhi-native-teardown-scoping-v1.md](2026-05-09-rhi-native-teardown-scoping-v1.md)). This slice records **host-helper** evidence only; it does not close RHI teardown migration.
+GPU capture and RHI lifetime evidence must stay aligned with native backend teardown and registry diagnostics tracked under gap `renderer-rhi-resource-foundation` (see `engine/agent/manifest.json` for the current gap state). This slice records **host-helper** evidence only; it does not close RHI teardown migration.
 
 ## Done when
 

@@ -24,7 +24,7 @@ Record an explicit **1.0 product decision**: the engine does **not** ship or sup
 - [`docs/legal-and-licensing.md`](../../legal-and-licensing.md) contains a dedicated subsection stating the 1.0 exclusion and engineering rationale for editor game module DLLs.
 - [`docs/dependencies.md`](../../dependencies.md) cross-references that boundary (no new vcpkg entries required for this policy-only slice).
 - Stream ledger [2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md](2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md) records this slice as completing the **stable ABI track** exclusion path.
-- [2026-05-11-production-completion-gap-stream-plans-index-v1.md](2026-05-11-production-completion-gap-stream-plans-index-v1.md) lists this plan under the hot reload + stable ABI stream.
+- The retired production-completion gap stream index listed this plan under the hot reload + stable ABI stream; that index is now Git-history evidence.
 - [`docs/superpowers/plans/README.md`](README.md) active-work notes mention the completed exclusion slice where hot-reload stream progress is summarized.
 - `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` `recommendedNextPlan` / gap narrative reflects the exclusion (no change to `unsupportedProductionGaps[].id` list required for a documentation-only 1.0 boundary).
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` pass.

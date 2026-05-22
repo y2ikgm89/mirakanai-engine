@@ -2,7 +2,7 @@
 
 **Plan ID:** `editor-resource-capture-pix-launch-helper-v1`  
 **Gap:** `editor-productization`  
-**Parent:** [2026-05-11-editor-productization-resource-management-execution-stream-v1.md](2026-05-11-editor-productization-resource-management-execution-stream-v1.md)  
+**Parent:** editor-productization resource-management execution stream (retired stream ledger retained through Git history)
 **Status:** Completed (host-operator helper only; no editor-core mutation)
 
 ## Goal
@@ -12,7 +12,7 @@ Provide an **optional** repository `tools/` entrypoint that helps Windows operat
 ## Context
 
 - [Editor Resource Capture Execution Evidence v1](2026-05-07-editor-resource-capture-execution-evidence-v1.md) keeps PIX launch out of `editor/core`; execution evidence remains caller-supplied.
-- [Resource management execution stream](2026-05-11-editor-productization-resource-management-execution-stream-v1.md) lists an optional PIX wrapper as stream item 2.
+- The resource management execution stream listed an optional PIX wrapper as stream item 2; the stream ledger is now Git-history evidence.
 
 ## Constraints
 

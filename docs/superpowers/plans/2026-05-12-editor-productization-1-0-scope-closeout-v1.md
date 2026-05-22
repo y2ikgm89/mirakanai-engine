@@ -29,7 +29,7 @@ Reclassify the remaining `editor-productization` 1.0 scope after the recent Wind
 
 - Historical done condition at this plan's completion: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` keeps only the material-preview parity host-gated claim under `editor-productization.requiredBeforeReadyClaim`. This is superseded by the 2026-05-18 host-gated exclusion closeout.
 - The manifest notes explicitly record the implemented streams and 1.0 exclusions.
-- The next Windows-default gap selection points to `asset-identity-v2` per [2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md](2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md).
+- The next Windows-default gap selection pointed to `asset-identity-v2` per the retired Phase 1 foundation gap order ledger, now retained through Git history.
 - Master plan, registry, roadmap, and static checks agree with that scope.
 - Validation evidence is recorded for compose, agent/static checks, and full repository validation.
 

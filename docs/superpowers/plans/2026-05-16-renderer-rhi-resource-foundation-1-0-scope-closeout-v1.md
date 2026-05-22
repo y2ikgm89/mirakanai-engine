@@ -17,12 +17,11 @@
 - Implementation evidence already landed in:
   - [2026-05-01-renderer-rhi-resource-foundation-v1.md](2026-05-01-renderer-rhi-resource-foundation-v1.md)
   - [2026-05-03-native-rhi-resource-lifetime-migration-v1.md](2026-05-03-native-rhi-resource-lifetime-migration-v1.md)
-  - [2026-05-03-gpu-marker-and-timestamp-adapter-v1.md](2026-05-03-gpu-marker-and-timestamp-adapter-v1.md)
-  - [2026-05-03-allocator-and-residency-diagnostics-v1.md](2026-05-03-allocator-and-residency-diagnostics-v1.md)
+  - GPU marker/timestamp adapter and allocator/residency diagnostics slices now retained through Git history
   - [2026-05-07-editor-resource-panel-diagnostics-v1.md](2026-05-07-editor-resource-panel-diagnostics-v1.md)
   - [2026-05-07-editor-resource-capture-request-v1.md](2026-05-07-editor-resource-capture-request-v1.md)
   - [2026-05-07-editor-resource-capture-execution-evidence-v1.md](2026-05-07-editor-resource-capture-execution-evidence-v1.md)
-  - [2026-05-09-rhi-resource-lifetime-retired-handle-invalid-contract-v1.md](2026-05-09-rhi-resource-lifetime-retired-handle-invalid-contract-v1.md)
+  - RHI retired-handle invalidation contract tests now retained through tests and Git history
 
 ## Constraints
 
@@ -51,8 +50,8 @@
 **Files:**
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
-- Modify: `docs/superpowers/plans/2026-05-11-phase1-foundation-gaps-coherent-slice-order-v1.md`
-- Modify: `docs/superpowers/plans/2026-05-11-production-completion-gap-stream-plans-index-v1.md`
+- Modify: retired Phase 1 foundation gap order ledger (Git-history evidence)
+- Modify: retired production-completion gap stream index (Git-history evidence)
 - Modify: `docs/roadmap.md`
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/testing.md`

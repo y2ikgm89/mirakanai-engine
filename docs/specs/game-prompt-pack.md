@@ -2,7 +2,7 @@
 
 ## Status
 
-Current generated-game prompt guide.
+Current generated-game guide.
 
 Keep this guide aligned with `engine/agent/manifest.json.aiOperableProductionLoop`, `tools/agent-context.ps1`, and `docs/specs/generated-game-validation-scenarios.md`.
 

@@ -2,6 +2,8 @@
 
 ## Status
 
+Accepted narrow specification.
+
 Accepted as the repository **target layout** for `engine/tools` implementation sources. Top-level product tree (`engine/<module>/`, `games/`, `editor/`, `platform/`, `tests/`, `tools/`) remains SDK-style per [architecture-directory-verification.md](../architecture-directory-verification.md).
 
 ## Authority

@@ -21,7 +21,7 @@
 ## Context
 
 - The `runtime-resource-v2` burn-down now has focused evidence for generation-checked handles, safe-point package replacement/unload, selected package-streaming safe points, explicit resident mount ids, resident catalog cache reuse/rollback, resident unmount/replace, reviewed eviction planning/commit, reviewed `.geindex` discovery and selected candidate load, reviewed candidate/discovery resident mount/replace with optional reviewed evictions, and reviewed hot-reload recook-to-resident replacement composition.
-- The latest child, [2026-05-16-runtime-hot-reload-registered-asset-watch-tick-v1.md](2026-05-16-runtime-hot-reload-registered-asset-watch-tick-v1.md), adds caller-owned registered asset scanning into the hot-reload tracker/scheduler and keeps retry rows intact on recook/runtime replacement failure.
+- The latest child evidence added caller-owned registered asset scanning into the hot-reload tracker/scheduler and keeps retry rows intact on recook/runtime replacement failure; that child note is now retained through Git history.
 - The remaining words in the old unsupported row are not all `runtime-resource-v2` blockers: renderer/RHI resource lifetime belongs to `renderer-rhi-resource-foundation`, upload rings/staging pools belong to `upload-staging-v1`, production render graph ownership belongs to `frame-graph-v1`, and broad native watcher/background streaming/productized hot reload is outside the Engine 1.0 runtime-resource ready claim unless a later roadmap explicitly accepts it.
 
 ## Constraints

@@ -2,7 +2,7 @@
 
 ## Status
 
-Retained physics dependency evaluation.
+Retained analysis record.
 
 Current physics readiness truth lives in `engine/agent/manifest.json`, `docs/current-capabilities.md`, and the production-completion master plan/backlog.
 

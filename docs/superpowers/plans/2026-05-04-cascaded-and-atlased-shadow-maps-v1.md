@@ -20,7 +20,7 @@ Deliver production-grade directional shadow coverage using cascaded shadow maps 
 ## References
 
 - Zhang, "Parallel-Split Shadow Maps for Large-scale Virtual Environments" (GPU Gems 3, Ch.10) — practical split scheme.
-- Foundation slice: `docs/superpowers/plans/2026-04-30-shadow-map-foundation-v0.md`.
+- Foundation context: this v1 plan supersedes the earlier v0 shadow-map foundation note, now retained through Git history.
 
 ## Verification
 

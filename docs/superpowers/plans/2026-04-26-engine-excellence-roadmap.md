@@ -87,7 +87,7 @@
 - Create: `docs/superpowers/plans/2026-04-26-engine-excellence-roadmap.md`
 - Modify: `docs/roadmap.md`
 - Modify: `docs/workflows.md`
-- Modify: `docs/superpowers/plans/2026-04-25-core-first-mvp.md`
+- Modify: historical core-first MVP implementation-plan evidence (now retained through Git history)
 - Modify: `engine/agent/manifest.json`
 
 **Steps:**

@@ -2,7 +2,7 @@
 
 ## Status
 
-Current generated-game spec template.
+Current generated-game guide.
 
 Use this as a template only; concrete game truth lives in `games/<game_name>/game.agent.json` and game-owned docs/source files.
 

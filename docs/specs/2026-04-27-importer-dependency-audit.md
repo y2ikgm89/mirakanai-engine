@@ -2,7 +2,7 @@
 
 ## Status
 
-Retained dependency audit record.
+Retained analysis record.
 
 Current dependency truth lives in `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, and `engine/agent/manifest.json`.
 

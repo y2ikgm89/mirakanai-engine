@@ -18,9 +18,9 @@
 ## Context
 
 - [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md) Phase 1 の子候補 `full-clang-tidy-warning-cleanup-v1` に対応する。
-- 次スライス順位は [2026-05-03-production-gap-selection-v1.md](2026-05-03-production-gap-selection-v1.md)（Phase 0）に記載。
+- 次スライス順位は当時の Phase 0 production gap selection note（現在は Git history retained）に記載。
 - [2026-05-02-strict-clang-tidy-compile-database-enforcement-v1.md](2026-05-02-strict-clang-tidy-compile-database-enforcement-v1.md) により、`tidy-compile-database` host gate は ready。合成 `compile_commands.json` により Visual Studio ジェネレータでも strict tidy が実行可能。
-- `engine/agent/manifest.json` の `currentActivePlan` は本スライスを指す。`recommendedNextPlan` は `next-production-gap-selection` のまま（理由は [2026-05-03-production-gap-selection-v1.md](2026-05-03-production-gap-selection-v1.md) を参照）。本スライス完了時に `recommendedNextPlan` の再判定が必要かレビューする。
+- `engine/agent/manifest.json` の `currentActivePlan` は本スライスを指す。`recommendedNextPlan` は `next-production-gap-selection` のまま（理由は当時の Phase 0 selection note に記録）。本スライス完了時に `recommendedNextPlan` の再判定が必要かレビューする。
 
 ## Constraints
 
@@ -143,4 +143,4 @@
 
 ---
 
-*Plan authored: 2026-05-03. Slice closed 2026-05-03: strict tidy gate exit 0, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` green; `engine/agent/manifest.json` `currentActivePlan` advanced to `docs/superpowers/plans/2026-05-03-cmake-install-export-and-cxx-modules-audit-v1.md` per [production-gap-selection-v1](2026-05-03-production-gap-selection-v1.md) ranking.*
+*Plan authored: 2026-05-03. Slice closed 2026-05-03: strict tidy gate exit 0, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` green; `engine/agent/manifest.json` `currentActivePlan` advanced to `docs/superpowers/plans/2026-05-03-cmake-install-export-and-cxx-modules-audit-v1.md` per the then-active production gap ranking.*

@@ -12,7 +12,7 @@ Land the **hot reload stream item 1** deliverable: a formal session **state mach
 
 ## Context
 
-- Reload transaction tests are complete ([`2026-05-11-editor-game-module-driver-reload-transaction-load-tests-v1.md`](2026-05-11-editor-game-module-driver-reload-transaction-load-tests-v1.md)).
+- Reload transaction load tests are complete and retained as test coverage / Git-history evidence.
 - Load / reload / unload review models already encode play-session and residency gates; this slice makes the **combined phase** explicit and machine-readable.
 
 ## Constraints

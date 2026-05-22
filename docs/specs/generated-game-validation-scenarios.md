@@ -2,7 +2,7 @@
 
 ## Status
 
-Current generated-game validation guide.
+Current generated-game guide.
 
 Keep this guide aligned with manifest validation recipes, game manifests, and `tools/run-validation-recipe.ps1`.
 

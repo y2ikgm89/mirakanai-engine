@@ -2,7 +2,7 @@
 
 ## Status
 
-Historical MVP-era gap analysis.
+Retained analysis record.
 
 Current production gap truth lives in `engine/agent/manifest.json.aiOperableProductionLoop`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, and `docs/current-capabilities.md`.
 

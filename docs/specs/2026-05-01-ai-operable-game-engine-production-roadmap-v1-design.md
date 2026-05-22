@@ -2,7 +2,7 @@
 
 ## Status
 
-Historical design input for the production roadmap.
+Historical design record.
 
 Current sequencing truth lives in `docs/roadmap.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, and `engine/agent/manifest.json`.
 

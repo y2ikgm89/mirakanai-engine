@@ -3,8 +3,8 @@
 **Plan ID:** `editor-resources-capture-operator-validated-launch-workflow-v1`
 **Gap:** `editor-productization` (resource management execution stream)
 **Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
-**Stream:** [2026-05-11-editor-productization-resource-management-execution-stream-v1.md](2026-05-11-editor-productization-resource-management-execution-stream-v1.md)
-**Gap index:** [2026-05-11-production-completion-gap-stream-plans-index-v1.md](2026-05-11-production-completion-gap-stream-plans-index-v1.md)
+**Stream:** editor-productization resource-management execution stream (retired stream ledger retained through Git history)
+**Gap index:** retired production-completion gap stream index (Git-history evidence)
 
 ## Goal
 

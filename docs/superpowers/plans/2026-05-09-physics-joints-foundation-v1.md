@@ -14,7 +14,7 @@
 **Status:** Completed.
 **Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Gap:** `physics-1-0-collision-system` Phase P1.
-**Previous Slice:** [2026-05-09-physics-character-dynamic-interaction-policy-v1.md](2026-05-09-physics-character-dynamic-interaction-policy-v1.md)
+**Previous Slice:** character dynamic-interaction policy slice (historical predecessor retained through Git history)
 
 ## Context
 

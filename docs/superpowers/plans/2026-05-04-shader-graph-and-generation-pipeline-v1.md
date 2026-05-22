@@ -55,7 +55,7 @@
 - Full shader graph IR, node editor UI, renderer PBR upgrades, Metal library packaging automation, pipeline cache, or hot reload integration.
 - Automatic promotion of `shaderGraph` manifest readiness.
 
-**Closure:** This slice is complete; `engine/agent/manifest.json` `aiOperableProductionLoop.currentActivePlan` now selects `docs/superpowers/plans/2026-05-04-pbr-material-and-lighting-v1.md`.
+**Closure:** This slice is complete; `engine/agent/manifest.json` `aiOperableProductionLoop.currentActivePlan` advanced to the next Phase-4 material/lighting slice, which is now retained through Git history.
 
 ---
 
