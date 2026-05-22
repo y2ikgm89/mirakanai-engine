@@ -77,6 +77,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 | AI generated game playtest loop implementation evidence | [AI Generated Game Playtest Loop v1](2026-05-23-ai-generated-game-playtest-loop-v1.md) |
 | AI validation remediation recipes implementation evidence | [AI Validation Remediation Recipes v1](2026-05-23-ai-validation-remediation-recipes-v1.md) |
 | AI generated game quality rubric implementation evidence | [AI Generated Game Quality Rubric v1](2026-05-23-ai-generated-game-quality-rubric-v1.md) |
+| AI Codex/Claude/Cursor agent surface implementation evidence | [AI Codex/Claude/Cursor Agent Surface v1](2026-05-23-ai-codex-claude-agent-surface-v1.md) |
 | AI engine capability handoff implementation evidence | [AI Engine Capability Handoff v1](2026-05-22-ai-engine-capability-handoff-v1.md) |
 | Historical/static-check retained literals | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
 | Recent completed implementation evidence | Search [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) and Git history; do not treat this registry as a changelog. |

@@ -109,6 +109,153 @@
         "planning-auditor",
         "rendering-auditor"
       ]
+    },
+    "crossToolAlignment": {
+      "schemaVersion": 1,
+      "capabilityId": "ai-codex-claude-agent-surface-v1",
+      "status": "implemented-1x-foundation",
+      "officialDocs": [
+        {
+          "id": "openai-codex-agents-md",
+          "surface": "codex",
+          "url": "https://developers.openai.com/codex/guides/agents-md",
+          "appliesTo": [
+            "AGENTS.md",
+            "Codex project instructions"
+          ]
+        },
+        {
+          "id": "anthropic-claude-code-settings",
+          "surface": "claudeCode",
+          "url": "https://docs.anthropic.com/en/docs/claude-code/settings",
+          "appliesTo": [
+            ".claude/settings.json",
+            "shared project permissions",
+            "permissions.deny"
+          ]
+        },
+        {
+          "id": "anthropic-claude-code-subagents",
+          "surface": "claudeCode",
+          "url": "https://docs.anthropic.com/en/docs/claude-code/sub-agents",
+          "appliesTo": [
+            ".claude/agents",
+            "read-only tool restrictions",
+            "isolated subagent work"
+          ]
+        },
+        {
+          "id": "cursor-rules-agents-md",
+          "surface": "cursor",
+          "url": "https://docs.cursor.com/en/context",
+          "appliesTo": [
+            ".cursor/rules",
+            "AGENTS.md",
+            "project rules"
+          ]
+        }
+      ],
+      "toolSurfaces": [
+        {
+          "id": "codex",
+          "instructions": "AGENTS.md",
+          "rules": ".codex/rules",
+          "skills": ".agents/skills",
+          "agents": ".codex/agents",
+          "writeScope": "Generated-game tasks write game-owned roots by default; shared engine, tooling, schema, docs, rules, skill, and manifest surfaces require a developer-owned capability task.",
+          "validationGuards": [
+            "tools/check-agents.ps1",
+            "tools/check-ai-integration.ps1",
+            "tools/check-json-contracts.ps1"
+          ]
+        },
+        {
+          "id": "claudeCode",
+          "instructions": "CLAUDE.md",
+          "settings": ".claude/settings.json",
+          "rules": ".claude/rules",
+          "skills": ".claude/skills",
+          "agents": ".claude/agents",
+          "writeScope": "Generated-game tasks write game-owned roots by default; shared engine, tooling, schema, docs, rules, skill, and manifest surfaces require a developer-owned capability task.",
+          "validationGuards": [
+            "tools/check-agents.ps1",
+            "tools/check-ai-integration.ps1",
+            "tools/check-json-contracts.ps1"
+          ]
+        },
+        {
+          "id": "cursor",
+          "instructions": "AGENTS.md",
+          "rules": ".cursor/rules",
+          "skills": ".cursor/skills",
+          "agents": ".cursor/agents",
+          "writeScope": "Generated-game tasks write game-owned roots by default; shared engine, tooling, schema, docs, rules, skill, and manifest surfaces require a developer-owned capability task.",
+          "validationGuards": [
+            "tools/check-agents.ps1",
+            "tools/check-ai-integration.ps1",
+            "tools/check-json-contracts.ps1"
+          ]
+        }
+      ],
+      "gameOwnedWriteScopes": [
+        "games/<game_name>/",
+        "games/<game_name>/game.agent.json",
+        "game-local source assets and runtime package files declared by game.agent.json",
+        "game-local validation evidence under configured evidence roots"
+      ],
+      "sharedSurfaceWritePolicy": [
+        "Engine, editor, renderer, tools, schemas, docs, rules, skills, subagents, and manifest fragments require a developer-owned capability task and isolated topic branch.",
+        "Default branch direct push is forbidden; publish task-owned changes through a PR.",
+        "Do not add broad permission grants for raw shells, package managers, force pushes, destructive cleanup, immediate PR merge, or raw gh pr ready.",
+        "Use linked-worktree preparation and guarded post-merge cleanup for isolated production tasks."
+      ],
+      "reviewedCommandSurfaces": [
+        "tools/new-game.ps1",
+        "tools/create-game-recipe.ps1",
+        "tools/register-runtime-package-files.ps1",
+        "tools/register-source-asset.ps1",
+        "tools/cook-registered-source-assets.ps1",
+        "tools/migrate-scene-v2-runtime-package.ps1",
+        "tools/run-validation-recipe.ps1",
+        "tools/ready-task-pr.ps1",
+        "tools/remove-merged-worktree.ps1",
+        "gh pr create",
+        "gh pr view",
+        "gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>"
+      ],
+      "validationGuards": [
+        "tools/check-agents.ps1",
+        "tools/check-ai-integration.ps1",
+        "tools/check-json-contracts.ps1",
+        "tools/check-format.ps1",
+        "tools/validate.ps1"
+      ],
+      "forbiddenBroadGrants": [
+        "direct default-branch push",
+        "force push without explicit branch-owned request",
+        "immediate PR merge",
+        "raw gh pr ready",
+        "raw worktree cleanup",
+        "arbitrary shell or raw manifest command evaluation",
+        "destructive cleanup outside guarded scripts",
+        "credential or secret storage in repo"
+      ],
+      "requiredReadOnlyRoles": [
+        "agent-surface-auditor",
+        "explorer",
+        "cpp-reviewer",
+        "engine-architect",
+        "planning-auditor",
+        "rendering-auditor"
+      ],
+      "unsupportedClaims": [
+        "autonomous engine-internal edits from game generation",
+        "backend/native handle public game API",
+        "renderer/RHI public game API leakage",
+        "validation weakening",
+        "broad autonomous commercial game creation",
+        "broad production readiness"
+      ]
     }
   }
 }
