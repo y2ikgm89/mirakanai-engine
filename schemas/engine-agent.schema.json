@@ -111,7 +111,114 @@
     },
     "aiSurfaces": {
       "type": "object",
-      "required": ["codex", "claudeCode", "cursor"]
+      "required": ["codex", "claudeCode", "cursor", "crossToolAlignment"],
+      "properties": {
+        "codex": {
+          "type": "object"
+        },
+        "claudeCode": {
+          "type": "object"
+        },
+        "cursor": {
+          "type": "object"
+        },
+        "crossToolAlignment": {
+          "type": "object",
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "status",
+            "officialDocs",
+            "toolSurfaces",
+            "gameOwnedWriteScopes",
+            "sharedSurfaceWritePolicy",
+            "reviewedCommandSurfaces",
+            "validationGuards",
+            "forbiddenBroadGrants",
+            "requiredReadOnlyRoles",
+            "unsupportedClaims"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "ai-codex-claude-agent-surface-v1"
+            },
+            "status": {
+              "type": "string",
+              "const": "implemented-1x-foundation"
+            },
+            "officialDocs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": ["id", "surface", "url", "appliesTo"]
+              }
+            },
+            "toolSurfaces": {
+              "type": "array",
+              "minItems": 3,
+              "items": {
+                "type": "object",
+                "required": ["id", "instructions", "skills", "agents", "writeScope", "validationGuards"]
+              }
+            },
+            "gameOwnedWriteScopes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "sharedSurfaceWritePolicy": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "reviewedCommandSurfaces": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "validationGuards": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "forbiddenBroadGrants": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "requiredReadOnlyRoles": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "unsupportedClaims": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
     },
     "documentationPolicy": {
       "type": "object",

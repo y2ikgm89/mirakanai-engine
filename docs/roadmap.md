@@ -457,6 +457,8 @@ AI Validation Remediation Recipes v1 adds fail-closed `game.agent.json.aiWorkflo
 
 AI Generated Game Quality Rubric v1 adds fail-closed `game.agent.json.aiWorkflow.generatedGameQualityRubric` rows so generated/sample 2D/3D package games connect objective, controls, feedback, fail/restart, deterministic package smoke, and budget evidence gates to same-manifest design, playtest, remediation, validation recipe, and report ids without subjective fun, commercial quality, platform parity, unbounded performance, native handles, validation weakening, or broad production readiness claims.
 
+AI Codex/Claude/Cursor Agent Surface v1 adds fail-closed `engine/agent/manifest.json.aiSurfaces.crossToolAlignment` rows so Codex, Claude Code, and Cursor share official docs anchors, game-owned write scopes, reviewed command surfaces, validation guards, required read-only roles, forbidden broad grants, and unsupported claims without direct default-branch push, arbitrary shell, raw manifest command evaluation, native handle public API leakage, validation weakening, or broad production readiness claims.
+
 5. Keep dependency-gated work explicit. Broader importer depth, production UI text/font/accessibility/image adapters, and optional middleware must start with `license-audit`, dependency records, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md` updates.
 6. Keep Wave 3 Vulkan and Wave 4 Metal visible backend proofs maintained behind runtime/toolchain gates while shared asset/material paths evolve.
 7. Keep Wave 11 updated whenever public APIs, manifests, generated-game scaffolding, skills, rules, or subagents change; `agent-context` exposes module ownership, sample game readiness, asset/importer capabilities, platform targets, and validation recipes.

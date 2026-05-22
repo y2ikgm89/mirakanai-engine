@@ -1,0 +1,82 @@
+#requires -Version 7.0
+#requires -PSEdition Core
+
+# Chapter 91 for check-ai-integration.ps1 AI Codex/Claude/Cursor agent-surface alignment contracts.
+
+$agentSurfaceAlignmentChecks = @(
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @("aiSurfaces", "crossToolAlignment", "ai-codex-claude-agent-surface-v1", "openai-codex-agents-md", "anthropic-claude-code-settings", "anthropic-claude-code-subagents", "cursor-rules-agents-md", "game-local source assets", "tools/create-game-recipe.ps1", "tools/run-validation-recipe.ps1", "direct default-branch push", "arbitrary shell or raw manifest command evaluation", "backend/native handle public game API", "validation weakening")
+    },
+    @{
+        Path = "engine/agent/manifest.fragments/011-aiSurfaces.json"
+        Needles = @("crossToolAlignment", "officialDocs", "gameOwnedWriteScopes", "reviewedCommandSurfaces", "forbiddenBroadGrants", "unsupportedClaims")
+    },
+    @{
+        Path = "schemas/engine-agent.schema.json"
+        Needles = @("crossToolAlignment", "ai-codex-claude-agent-surface-v1", "officialDocs", "toolSurfaces", "forbiddenBroadGrants")
+    },
+    @{
+        Path = "tools/check-json-contracts-066-agent-surface-alignment.ps1"
+        Needles = @("crossToolAlignment", "openai-codex-agents-md", "tools/check-ai-integration.ps1", "raw gh pr ready", "backend/native handle public game API")
+    },
+    @{
+        Path = "docs/ai-integration.md"
+        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "aiSurfaces.crossToolAlignment", "games/<game_name>/", "tools/create-game-recipe.ps1", "gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>", "direct default-branch push", "arbitrary shell or raw manifest command evaluation", "backend/native handle public game API", "validation weakening")
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "aiSurfaces.crossToolAlignment", "game-owned write scopes", "forbidden broad grants", "broad production readiness")
+    },
+    @{
+        Path = "docs/roadmap.md"
+        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "aiSurfaces.crossToolAlignment", "required read-only roles", "native handle public API leakage")
+    },
+    @{
+        Path = "docs/superpowers/plans/2026-05-23-ai-codex-claude-agent-surface-v1.md"
+        Needles = @("ai-codex-claude-agent-surface-v1", "Official docs reviewed", "OpenAI Codex AGENTS.md guide", "Claude Code settings and permissions", "Cursor rules and AGENTS.md", 'no `*.cpp` or `*.hpp` implementation is expected')
+    },
+    @{
+        Path = "docs/superpowers/plans/README.md"
+        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "2026-05-23-ai-codex-claude-agent-surface-v1.md")
+    },
+    @{
+        Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
+        Needles = @("ai-codex-claude-agent-surface-v1", "implemented-1x-foundation", "aiSurfaces.crossToolAlignment", "official docs anchors")
+    },
+    @{
+        Path = "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md"
+        Needles = @("Agent-surface alignment", "ai-codex-claude-agent-surface-v1", "aiSurfaces.crossToolAlignment", "ai-validation-remediation-recipes-v1", "cross-tool agent-surface alignment")
+    },
+    @{
+        Path = ".agents/skills/gameengine-agent-integration/SKILL.md"
+        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json")
+    },
+    @{
+        Path = ".claude/skills/gameengine-agent-integration/SKILL.md"
+        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json")
+    },
+    @{
+        Path = ".cursor/skills/gameengine-agent-integration/SKILL.md"
+        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json")
+    },
+    @{
+        Path = ".codex/rules/gameengine.rules"
+        Needles = @("Direct pushes to default or protected branches", "gh pr merge --auto --merge --delete-branch", "--match-head-commit", "gh pr ready")
+    },
+    @{
+        Path = ".claude/settings.json"
+        Needles = @("gh pr merge --auto --merge --delete-branch --match-head-commit", "tools/remove-merged-worktree.ps1", "Bash(git push origin main:*)", "Bash(gh pr ready:*)")
+    },
+    @{
+        Path = ".cursor/rules/mirakana-repository-baseline.mdc"
+        Needles = @("AGENTS.md", ".cursor/skills/", "tools/*.ps1", "never push directly to the default branch")
+    }
+)
+
+foreach ($check in $agentSurfaceAlignmentChecks) {
+    $agentSurfaceAlignmentText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $agentSurfaceAlignmentText $needle $check.Path
+    }
+}
