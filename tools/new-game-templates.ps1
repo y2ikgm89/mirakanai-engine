@@ -5493,6 +5493,161 @@ function New-AiContentMutationLedger {
     }
 }
 
+function New-AiPlaceholderAssetRow {
+    param(
+        [string]$Id,
+        [string]$DesignAssetRequestId,
+        [string]$PlaceholderRole,
+        [string]$AssetKind,
+        [string]$AssetKey,
+        [string]$SourcePath,
+        [string]$ImportedPath,
+        [string[]]$ValidationRecipeIds
+    )
+
+    return [ordered]@{
+        id = $Id
+        designAssetRequestId = $DesignAssetRequestId
+        placeholderRole = $PlaceholderRole
+        assetKind = $AssetKind
+        assetKey = $AssetKey
+        sourcePath = $SourcePath
+        importedPath = $ImportedPath
+        reviewedToolSurfaceId = "plan-placeholder-asset-cook-package"
+        generator = "mirakana-placeholder-asset-tool-v1"
+        license = "LicenseRef-Proprietary"
+        delivery = "cook-package"
+        validationRecipeIds = @($ValidationRecipeIds)
+    }
+}
+
+function New-AiPlaceholderAssetPipeline {
+    param(
+        [string]$GameName,
+        [ValidateSet("2d", "3d")]
+        [string]$PipelineKind,
+        [string[]]$ValidationRecipeIds
+    )
+
+    $gameRoot = "games/$GameName"
+    $assetKeyPrefix = $GameName.Replace("_", "-")
+    $recipeIds = @($ValidationRecipeIds)
+    $plannedAssets = @()
+    if ($PipelineKind -eq "2d") {
+        $plannedAssets += New-AiPlaceholderAssetRow `
+            -Id "player-sprite-placeholder" `
+            -DesignAssetRequestId "player-sprite-atlas" `
+            -PlaceholderRole "sprite" `
+            -AssetKind "texture" `
+            -AssetKey "$assetKeyPrefix/placeholders/player-sprite" `
+            -SourcePath "$gameRoot/source/placeholders/player_sprite.texture_source" `
+            -ImportedPath "$gameRoot/runtime/assets/2d/player.texture.geasset" `
+            -ValidationRecipeIds $recipeIds
+        $plannedAssets += New-AiPlaceholderAssetRow `
+            -Id "player-material-placeholder" `
+            -DesignAssetRequestId "player-sprite-atlas" `
+            -PlaceholderRole "material" `
+            -AssetKind "material" `
+            -AssetKey "$assetKeyPrefix/placeholders/player-material" `
+            -SourcePath "$gameRoot/source/placeholders/player_material.material" `
+            -ImportedPath "$gameRoot/runtime/assets/2d/player.material" `
+            -ValidationRecipeIds $recipeIds
+        $plannedAssets += New-AiPlaceholderAssetRow `
+            -Id "jump-audio-placeholder" `
+            -DesignAssetRequestId "jump-audio" `
+            -PlaceholderRole "audio" `
+            -AssetKind "audio" `
+            -AssetKey "$assetKeyPrefix/placeholders/jump-audio" `
+            -SourcePath "$gameRoot/source/placeholders/jump_audio.audio_source" `
+            -ImportedPath "$gameRoot/runtime/assets/2d/jump.audio.geasset" `
+            -ValidationRecipeIds $recipeIds
+    } else {
+        $plannedAssets += New-AiPlaceholderAssetRow `
+            -Id "packaged-mesh-placeholder" `
+            -DesignAssetRequestId "packaged-mesh" `
+            -PlaceholderRole "mesh" `
+            -AssetKind "mesh" `
+            -AssetKey "$assetKeyPrefix/placeholders/packaged-mesh" `
+            -SourcePath "$gameRoot/source/placeholders/packaged_mesh.mesh_source" `
+            -ImportedPath "$gameRoot/runtime/assets/3d/triangle.mesh" `
+            -ValidationRecipeIds $recipeIds
+        $plannedAssets += New-AiPlaceholderAssetRow `
+            -Id "static-prop-placeholder" `
+            -DesignAssetRequestId "packaged-mesh" `
+            -PlaceholderRole "scene-prop" `
+            -AssetKind "mesh" `
+            -AssetKey "$assetKeyPrefix/placeholders/static-prop" `
+            -SourcePath "$gameRoot/source/placeholders/static_prop.mesh_source" `
+            -ImportedPath "$gameRoot/runtime/assets/3d/packaged_mesh.morph_mesh_cpu" `
+            -ValidationRecipeIds $recipeIds
+        $plannedAssets += New-AiPlaceholderAssetRow `
+            -Id "lit-material-placeholder" `
+            -DesignAssetRequestId "lit-material" `
+            -PlaceholderRole "material" `
+            -AssetKind "material" `
+            -AssetKey "$assetKeyPrefix/placeholders/lit-material" `
+            -SourcePath "$gameRoot/source/placeholders/lit_material.material" `
+            -ImportedPath "$gameRoot/runtime/assets/3d/lit.material" `
+            -ValidationRecipeIds $recipeIds
+        $plannedAssets += New-AiPlaceholderAssetRow `
+            -Id "hud-atlas-placeholder" `
+            -DesignAssetRequestId "hud-atlas" `
+            -PlaceholderRole "ui" `
+            -AssetKind "texture" `
+            -AssetKey "$assetKeyPrefix/placeholders/hud-atlas" `
+            -SourcePath "$gameRoot/source/placeholders/hud_atlas.texture_source" `
+            -ImportedPath "$gameRoot/runtime/assets/3d/hud.uiatlas" `
+            -ValidationRecipeIds $recipeIds
+    }
+
+    $handoffRuntimeFiles = @(
+        $plannedAssets |
+            Where-Object { $_.delivery -eq "cook-package" } |
+            ForEach-Object { ([string]$_.importedPath).Replace("\", "/").Substring($gameRoot.Length + 1) } |
+            Sort-Object -Unique
+    )
+
+    return [ordered]@{
+        schemaVersion = 1
+        capabilityId = "ai-placeholder-asset-pipeline-v1"
+        pipelineId = "$($GameName.Replace("_", "-"))-placeholder-assets"
+        sourceRegistryPath = "$gameRoot/source/assets/package.geassets"
+        packageIndexPath = "$gameRoot/runtime/$GameName.geindex"
+        reviewedToolSurfaces = @(
+            [ordered]@{
+                id = "plan-placeholder-asset-bundle"
+                mode = "review-only"
+                api = "mirakana::plan_placeholder_asset_bundle"
+                evidence = "Plans deterministic first-party placeholder source documents and provenance rows without external asset downloads."
+            },
+            [ordered]@{
+                id = "plan-placeholder-asset-cook-package"
+                mode = "review-only"
+                api = "mirakana::plan_placeholder_asset_cook_package"
+                evidence = "Routes placeholder source documents through registered source cook/package planning before runtime package consumption."
+            }
+        )
+        plannedAssets = $plannedAssets
+        packageHandoff = [ordered]@{
+            mode = "reviewed-cook-package"
+            sourceRevision = 1
+            runtimePackageFiles = $handoffRuntimeFiles
+            validationRecipeIds = $recipeIds
+            evidence = "Package handoff stays manifest-listed, first-party, and validation-recipe-backed before runtime use."
+        }
+        unsupportedClaims = @(
+            "external-asset-download",
+            "arbitrary-image-generation",
+            "runtime-source-parsing",
+            "renderer-rhi-residency",
+            "native-handles",
+            "middleware-contracts",
+            "broad-art-direction",
+            "broad-commercial-quality"
+        )
+    }
+}
+
 function New-HeadlessManifest {
     param(
         [string]$GameName,
@@ -5997,6 +6152,19 @@ function New-DesktopRuntime2DManifest {
                     "installed-2d-entity-scale-culling-smoke",
                     "installed-native-2d-sprite-smoke"
                 )
+            placeholderAssetPipeline = New-AiPlaceholderAssetPipeline `
+                -GameName $GameName `
+                -PipelineKind "2d" `
+                -ValidationRecipeIds @(
+                    "desktop-game-runtime",
+                    "desktop-runtime-release-target",
+                    "installed-2d-package-smoke",
+                    "installed-2d-sprite-animation-smoke",
+                    "installed-2d-tilemap-runtime-ux-smoke",
+                    "installed-2d-gameplay-systems-smoke",
+                    "installed-2d-entity-scale-culling-smoke",
+                    "installed-native-2d-sprite-smoke"
+                )
         }
         gameplayContract = [ordered]@{
             productionRecipe = "2d-desktop-runtime-package"
@@ -6219,6 +6387,22 @@ function New-DesktopRuntime3DManifest {
                     "shaders/runtime_scene.hlsl",
                     "shaders/runtime_postprocess.hlsl"
                 ) `
+                -ValidationRecipeIds @(
+                    "desktop-game-runtime",
+                    "desktop-runtime-release-target",
+                    "installed-d3d12-3d-package-smoke",
+                    "installed-d3d12-3d-directional-shadow-smoke",
+                    "installed-d3d12-3d-shadow-morph-composition-smoke",
+                    "installed-d3d12-3d-native-ui-overlay-smoke",
+                    "installed-d3d12-3d-visible-production-proof-smoke",
+                    "installed-d3d12-3d-entity-scale-culling-smoke",
+                    "installed-d3d12-3d-scene-collision-package-smoke",
+                    "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
+                    "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke"
+                )
+            placeholderAssetPipeline = New-AiPlaceholderAssetPipeline `
+                -GameName $GameName `
+                -PipelineKind "3d" `
                 -ValidationRecipeIds @(
                     "desktop-game-runtime",
                     "desktop-runtime-release-target",

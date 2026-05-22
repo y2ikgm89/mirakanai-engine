@@ -535,6 +535,131 @@
           ]
         }
       ]
+    },
+    "placeholderAssetPipeline": {
+      "schemaVersion": 1,
+      "capabilityId": "ai-placeholder-asset-pipeline-v1",
+      "pipelineId": "sample-desktop-runtime-game-placeholder-assets",
+      "sourceRegistryPath": "games/sample_desktop_runtime_game/source/assets/package.geassets",
+      "packageIndexPath": "games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex",
+      "reviewedToolSurfaces": [
+        {
+          "id": "plan-placeholder-asset-bundle",
+          "mode": "review-only",
+          "api": "mirakana::plan_placeholder_asset_bundle",
+          "evidence": "Plans deterministic first-party placeholder source documents and provenance rows without external asset downloads."
+        },
+        {
+          "id": "plan-placeholder-asset-cook-package",
+          "mode": "review-only",
+          "api": "mirakana::plan_placeholder_asset_cook_package",
+          "evidence": "Routes placeholder source documents through registered source cook/package planning before runtime package consumption."
+        }
+      ],
+      "plannedAssets": [
+        {
+          "id": "packaged-mesh-placeholder",
+          "designAssetRequestId": "triangle-mesh",
+          "placeholderRole": "mesh",
+          "assetKind": "mesh",
+          "assetKey": "sample-desktop-runtime-game/placeholders/packaged-mesh",
+          "sourcePath": "games/sample_desktop_runtime_game/source/placeholders/packaged_mesh.mesh_source",
+          "importedPath": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/triangle.mesh",
+          "reviewedToolSurfaceId": "plan-placeholder-asset-cook-package",
+          "generator": "mirakana-placeholder-asset-tool-v1",
+          "license": "LicenseRef-Proprietary",
+          "delivery": "cook-package",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-d3d12-scene-gpu-smoke",
+            "installed-vulkan-scene-gpu-smoke"
+          ]
+        },
+        {
+          "id": "static-prop-placeholder",
+          "designAssetRequestId": "triangle-mesh",
+          "placeholderRole": "scene-prop",
+          "assetKind": "mesh",
+          "assetKey": "sample-desktop-runtime-game/placeholders/static-prop",
+          "sourcePath": "games/sample_desktop_runtime_game/source/placeholders/static_prop.mesh_source",
+          "importedPath": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/triangle.mesh",
+          "reviewedToolSurfaceId": "plan-placeholder-asset-cook-package",
+          "generator": "mirakana-placeholder-asset-tool-v1",
+          "license": "LicenseRef-Proprietary",
+          "delivery": "cook-package",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-d3d12-scene-gpu-smoke",
+            "installed-vulkan-scene-gpu-smoke"
+          ]
+        },
+        {
+          "id": "lit-material-placeholder",
+          "designAssetRequestId": "desktop-material",
+          "placeholderRole": "material",
+          "assetKind": "material",
+          "assetKey": "sample-desktop-runtime-game/placeholders/lit-material",
+          "sourcePath": "games/sample_desktop_runtime_game/source/placeholders/lit_material.material",
+          "importedPath": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/unlit.material",
+          "reviewedToolSurfaceId": "plan-placeholder-asset-cook-package",
+          "generator": "mirakana-placeholder-asset-tool-v1",
+          "license": "LicenseRef-Proprietary",
+          "delivery": "cook-package",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-d3d12-scene-gpu-smoke",
+            "installed-vulkan-scene-gpu-smoke"
+          ]
+        },
+        {
+          "id": "hud-atlas-placeholder",
+          "designAssetRequestId": "hud-atlas",
+          "placeholderRole": "ui",
+          "assetKind": "texture",
+          "assetKey": "sample-desktop-runtime-game/placeholders/hud-atlas",
+          "sourcePath": "games/sample_desktop_runtime_game/source/placeholders/hud_atlas.texture_source",
+          "importedPath": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas",
+          "reviewedToolSurfaceId": "plan-placeholder-asset-cook-package",
+          "generator": "mirakana-placeholder-asset-tool-v1",
+          "license": "LicenseRef-Proprietary",
+          "delivery": "cook-package",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-d3d12-scene-gpu-smoke",
+            "installed-vulkan-scene-gpu-smoke"
+          ]
+        }
+      ],
+      "packageHandoff": {
+        "mode": "reviewed-cook-package",
+        "sourceRevision": 1,
+        "runtimePackageFiles": [
+          "runtime/assets/desktop_runtime/hud.uiatlas",
+          "runtime/assets/desktop_runtime/triangle.mesh",
+          "runtime/assets/desktop_runtime/unlit.material"
+        ],
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-d3d12-scene-gpu-smoke",
+          "installed-vulkan-scene-gpu-smoke"
+        ],
+        "evidence": "Package handoff stays manifest-listed, first-party, and validation-recipe-backed before runtime use."
+      },
+      "unsupportedClaims": [
+        "external-asset-download",
+        "arbitrary-image-generation",
+        "runtime-source-parsing",
+        "renderer-rhi-residency",
+        "native-handles",
+        "middleware-contracts",
+        "broad-art-direction",
+        "broad-commercial-quality"
+      ]
     }
   },
   "gameplayContract": {

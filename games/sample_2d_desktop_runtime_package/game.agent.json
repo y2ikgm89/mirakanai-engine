@@ -575,6 +575,156 @@
           ]
         }
       ]
+    },
+    "placeholderAssetPipeline": {
+      "schemaVersion": 1,
+      "capabilityId": "ai-placeholder-asset-pipeline-v1",
+      "pipelineId": "sample-2d-desktop-runtime-package-placeholder-assets",
+      "sourceRegistryPath": "games/sample_2d_desktop_runtime_package/source/assets/package.geassets",
+      "packageIndexPath": "games/sample_2d_desktop_runtime_package/runtime/sample_2d_desktop_runtime_package.geindex",
+      "reviewedToolSurfaces": [
+        {
+          "id": "plan-placeholder-asset-bundle",
+          "mode": "review-only",
+          "api": "mirakana::plan_placeholder_asset_bundle",
+          "evidence": "Plans deterministic first-party placeholder source documents and provenance rows without external asset downloads."
+        },
+        {
+          "id": "plan-placeholder-asset-cook-package",
+          "mode": "review-only",
+          "api": "mirakana::plan_placeholder_asset_cook_package",
+          "evidence": "Routes placeholder source documents through registered source cook/package planning before runtime package consumption."
+        }
+      ],
+      "plannedAssets": [
+        {
+          "id": "player-sprite-placeholder",
+          "designAssetRequestId": "player-sprite-atlas",
+          "placeholderRole": "sprite",
+          "assetKind": "texture",
+          "assetKey": "sample-2d-desktop-runtime-package/placeholders/player-sprite",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/placeholders/player_sprite.texture_source",
+          "importedPath": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/player.texture.geasset",
+          "reviewedToolSurfaceId": "plan-placeholder-asset-cook-package",
+          "generator": "mirakana-placeholder-asset-tool-v1",
+          "license": "LicenseRef-Proprietary",
+          "delivery": "cook-package",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ]
+        },
+        {
+          "id": "player-material-placeholder",
+          "designAssetRequestId": "player-sprite-atlas",
+          "placeholderRole": "material",
+          "assetKind": "material",
+          "assetKey": "sample-2d-desktop-runtime-package/placeholders/player-material",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/placeholders/player_material.material",
+          "importedPath": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/player.material",
+          "reviewedToolSurfaceId": "plan-placeholder-asset-cook-package",
+          "generator": "mirakana-placeholder-asset-tool-v1",
+          "license": "LicenseRef-Proprietary",
+          "delivery": "cook-package",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ]
+        },
+        {
+          "id": "jump-audio-placeholder",
+          "designAssetRequestId": "jump-audio",
+          "placeholderRole": "audio",
+          "assetKind": "audio",
+          "assetKey": "sample-2d-desktop-runtime-package/placeholders/jump-audio",
+          "sourcePath": "games/sample_2d_desktop_runtime_package/source/placeholders/jump_audio.audio_source",
+          "importedPath": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/jump.audio.geasset",
+          "reviewedToolSurfaceId": "plan-placeholder-asset-cook-package",
+          "generator": "mirakana-placeholder-asset-tool-v1",
+          "license": "LicenseRef-Proprietary",
+          "delivery": "cook-package",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ]
+        }
+      ],
+      "packageHandoff": {
+        "mode": "reviewed-cook-package",
+        "sourceRevision": 1,
+        "runtimePackageFiles": [
+          "runtime/assets/2d/jump.audio.geasset",
+          "runtime/assets/2d/player.material",
+          "runtime/assets/2d/player.texture.geasset"
+        ],
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-2d-package-smoke",
+          "installed-2d-sprite-animation-smoke",
+          "installed-2d-tilemap-runtime-ux-smoke",
+          "installed-2d-gameplay-systems-smoke",
+          "installed-2d-world-region-streaming-smoke",
+          "installed-2d-entity-scale-culling-smoke",
+          "installed-2d-scripting-sandbox-policy-smoke",
+          "installed-2d-networking-foundation-policy-smoke",
+          "installed-2d-simulation-orchestration-smoke",
+          "installed-2d-gameplay-authoring-review-smoke",
+          "installed-d3d12-window-smoke",
+          "installed-native-2d-sprite-smoke",
+          "installed-vulkan-window-smoke"
+        ],
+        "evidence": "Package handoff stays manifest-listed, first-party, and validation-recipe-backed before runtime use."
+      },
+      "unsupportedClaims": [
+        "external-asset-download",
+        "arbitrary-image-generation",
+        "runtime-source-parsing",
+        "renderer-rhi-residency",
+        "native-handles",
+        "middleware-contracts",
+        "broad-art-direction",
+        "broad-commercial-quality"
+      ]
     }
   },
   "gameplayContract": {

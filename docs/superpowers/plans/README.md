@@ -61,7 +61,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Status | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | No dated capability plan is active after closing `AI Safe Content Mutation Ledger v1`; `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`. |
+| Active slice (`currentActivePlan`) | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | No active dated child plan; select the next developer-owned backlog row before continuing. |
 
 ## Current Evidence Pointers
 

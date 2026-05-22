@@ -408,6 +408,118 @@ foreach ($check in $aiSafeContentMutationLedgerChecks) {
     }
 }
 
+$aiPlaceholderAssetPipelineChecks = @(
+    @{
+        Path = "schemas/game-agent.schema.json"
+        Needles = @(
+            "placeholderAssetPipeline",
+            "ai-placeholder-asset-pipeline-v1",
+            "plannedAssets",
+            "packageHandoff",
+            "unsupportedClaims"
+        )
+    },
+    @{
+        Path = "tools/check-json-contracts-062-placeholder-asset-pipeline.ps1"
+        Needles = @(
+            "Assert-JsonPlaceholderPipeline",
+            "aiWorkflow.placeholderAssetPipeline",
+            "plan-placeholder-asset-cook-package",
+            "external-asset-download",
+            "broad-art-direction"
+        )
+    },
+    @{
+        Path = "tools/new-game-templates.ps1"
+        Needles = @(
+            "New-AiPlaceholderAssetPipeline",
+            "placeholderAssetPipeline = New-AiPlaceholderAssetPipeline",
+            "plan-placeholder-asset-bundle",
+            "plan-placeholder-asset-cook-package"
+        )
+    },
+    @{
+        Path = "games/sample_2d_desktop_runtime_package/game.agent.json"
+        Needles = @(
+            '"capabilityId": "ai-placeholder-asset-pipeline-v1"',
+            '"player-sprite-placeholder"',
+            '"jump-audio-placeholder"'
+        )
+    },
+    @{
+        Path = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+        Needles = @(
+            '"capabilityId": "ai-placeholder-asset-pipeline-v1"',
+            '"packaged-mesh-placeholder"',
+            '"hud-atlas-placeholder"',
+            '"scene-prop"'
+        )
+    },
+    @{
+        Path = "docs/ai-game-development.md"
+        Needles = @(
+            "Placeholder Asset Pipeline",
+            "game.agent.json.aiWorkflow.placeholderAssetPipeline",
+            "first-party placeholder source documents",
+            "external asset downloads"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "AI Placeholder Asset Pipeline v1",
+            "game.agent.json.aiWorkflow.placeholderAssetPipeline",
+            "first-party placeholder assets"
+        )
+    },
+    @{
+        Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
+        Needles = @(
+            "ai-placeholder-asset-pipeline-v1",
+            "implemented-1x-foundation",
+            "game.agent.json.aiWorkflow.placeholderAssetPipeline"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "AI Placeholder Asset Pipeline v1",
+            "aiWorkflow.placeholderAssetPipeline",
+            "first-party placeholder"
+        )
+    },
+    @{
+        Path = ".agents/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.placeholderAssetPipeline",
+            "first-party placeholder assets",
+            "no external asset downloads"
+        )
+    },
+    @{
+        Path = ".claude/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.placeholderAssetPipeline",
+            "first-party placeholder assets",
+            "no external asset downloads"
+        )
+    },
+    @{
+        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.placeholderAssetPipeline",
+            "first-party placeholder assets",
+            "no external asset downloads"
+        )
+    }
+)
+foreach ($check in $aiPlaceholderAssetPipelineChecks) {
+    $placeholderPipelineText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $placeholderPipelineText $needle $check.Path
+    }
+}
+
 $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/resource_panel.hpp"
