@@ -17,7 +17,7 @@ Make the repository able to say: `core-first-mvp` is 100% complete for its curre
 ## Context
 
 - The historical core-first MVP implementation plan is already closed as implementation evidence and is now retained through Git history.
-- The active strategic ledger is `docs/superpowers/plans/2026-04-26-engine-excellence-roadmap.md`.
+- The active strategic ledger is the production-completion master plan; the older `Engine Excellence Roadmap` record is historical evidence.
 - `engine/agent/manifest.json` still uses `engine.stage = "core-first-mvp"` as the machine-readable stage name.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` on this Windows host passes before closure edits, with diagnostic-only host gates for Metal shader tools, Apple packaging/Xcode, Android signing/device smoke, and strict clang-tidy compile database availability.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` generates manifest-derived agent context successfully before closure edits.

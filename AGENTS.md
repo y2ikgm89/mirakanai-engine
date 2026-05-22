@@ -129,7 +129,7 @@
 ## AI Development Workflow
 
 - Plan registry, manifest/agent-context workflow, skills parity, `.clangd` / `compile_flags.txt`, `MK_tools` paths, and subagent delegation: see [docs/agent-operational-reference.md](docs/agent-operational-reference.md#ai-development-workflow-expanded).
-- Start docs from `docs/README.md`; use `docs/roadmap.md` for status, `docs/superpowers/plans/README.md` before creating/editing/extending plans, and `docs/superpowers/plans/2026-05-11-production-documentation-stack-v1.md` to reconcile manifest pointers, master plan, specs/ADRs, and historical dated plans without bulk-rewriting ledger prose.
+- Start docs from `docs/README.md`; use `docs/roadmap.md` for status, `docs/superpowers/plans/README.md` before creating/editing/extending plans, and reconcile manifest pointers, the master plan, specs/ADRs, and archived historical plan evidence without bulk-rewriting ledger prose.
 - Use `docs/specs/` for feature designs and `docs/superpowers/plans/` for implementation plans. Write new or updated implementation plans in English.
 - **Dated plan and spec files:** use `YYYY-MM-DD` in filenames and first headings from the session `Today's date`, explicit operator date, or local `Get-Date -Format yyyy-MM-dd`; keep filename date and heading date identical.
 - Keep the live plan stack shallow: one roadmap, one active gap-cluster burn-down or milestone, and at most one phase/child plan selected by `currentActivePlan`. Child plans require a distinct architecture/validation/review boundary or a phase too large for one safe context.

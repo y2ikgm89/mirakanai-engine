@@ -29,7 +29,7 @@ Concrete evidence requirements:
 
 ## Documentation authority stack
 
-Do **not** rely on bulk edits to this ledger or to completed dated child plans as the primary way to track physical tree rules. Use the stack in [2026-05-11-production-documentation-stack-v1.md](../../plans/2026-05-11-production-documentation-stack-v1.md): manifest and this master plan for **what** is in focus and **what** is ready; specs/ADRs for **invariants**; the plan registry for **active vs completed** navigation; historical plan files remain **evidence**, not living path catalogs.
+Do **not** rely on bulk edits to this ledger or to completed dated child plans as the primary way to track physical tree rules. Use the current stack: manifest and this master plan for **what** is in focus and **what** is ready; specs/ADRs for **invariants**; the plan registry for active navigation; archived historical plan snapshots for **evidence**, not living path catalogs.
 
 ## AI Autonomous Game Creation
 

@@ -12,7 +12,6 @@ Use these current-truth docs first:
 - [Workflows](../../workflows.md)
 - `engine/agent/manifest.json`
 - [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
-- [Production documentation stack v1](2026-05-11-production-documentation-stack-v1.md) for how manifest, master plan, registry, specs, and historical plan files relate
 - [Directory layout target v1](../../specs/2026-05-11-directory-layout-target-v1.md) and [ADR 0003](../../adr/0003-directory-layout-clean-break.md) for `engine/tools` physical layout and `MK_tools` CMake invariants
 
 ## Plan Lifecycle
@@ -62,7 +61,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Status | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | No dated capability plan is active after closing [2026-05-22-post-1-0-capability-program-v1.md](2026-05-22-post-1-0-capability-program-v1.md) at Phase 2; `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`. |
+| Active slice (`currentActivePlan`) | [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | No dated capability plan is active after closing `Post-1.0 Capability Program v1` at Phase 2; `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`. |
 
 ## Current Evidence Pointers
 
@@ -72,13 +71,16 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 | Post-1.0 / 1.x developer-owned capability backlog | [04-developer-owned-engine-capability-backlog.md](../master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md) |
 | Gameplay scenario projections and official practice gates | [05-projections-and-scenarios.md](../master-plans/production-completion-v1/05-projections-and-scenarios.md) |
 | Historical/static-check retained literals | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
-| Recent completed implementation evidence | Search the dated plan file directly with `rg -n "<capability-or-symbol>" docs/superpowers/plans`; do not treat this registry as a changelog. |
+| Recent completed implementation evidence | Search [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) and Git history; do not treat this registry as a changelog. |
 
-## Repository Layout Governance
+## Pinned Foundation Plans
 
-| Plan | Notes |
+Only manifest-pinned foundation records remain as dated files in this directory. Completed governance, bridge, and capability plans have been archived in [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md).
+
+| Plan | Why it remains |
 | --- | --- |
-| [2026-05-11-directory-layout-tools-split-v1.md](2026-05-11-directory-layout-tools-split-v1.md) | `MK_tools` implementation split into `engine/tools/{shader,gltf,asset,scene}` with `OBJECT` CMake targets; see [ADR 0003](../../adr/0003-directory-layout-clean-break.md). Does not advance production-completion gaps by itself. |
+| [2026-05-01-core-first-mvp-closure.md](2026-05-01-core-first-mvp-closure.md) | `engine/agent/manifest.json.stageClosurePlan` historical baseline. |
+| [2026-05-01-ai-operable-production-loop-foundation-v1.md](2026-05-01-ai-operable-production-loop-foundation-v1.md) | `engine/agent/manifest.json.aiOperableProductionLoop.foundationPlan` baseline. |
 
 ## Host-Gated Blockers
 

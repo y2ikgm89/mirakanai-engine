@@ -87,7 +87,7 @@ Dear ImGui is scoped to the optional developer/editor shell and debug tooling. I
 
 ### Editor native module boundary (not a vcpkg dependency)
 
-Optional **same-build** loading of an editor game module driver uses the Windows (or platform) dynamic loader against a **caller-selected path** for a module built with the same MIRAIKANAI Engine sources. That surface is **not** introduced through `vcpkg.json` and does **not** create a third-party package record. **Stable binary ABI** guarantees for out-of-tree vendor DLLs are **explicitly out of scope for Engine 1.0**; see `docs/legal-and-licensing.md` (Editor game module driver and third-party DLL ABI) and `docs/superpowers/plans/2026-05-11-editor-game-module-driver-stable-third-party-abi-1-0-exclusion-v1.md`.
+Optional **same-build** loading of an editor game module driver uses the Windows (or platform) dynamic loader against a **caller-selected path** for a module built with the same MIRAIKANAI Engine sources. That surface is **not** introduced through `vcpkg.json` and does **not** create a third-party package record. **Stable binary ABI** guarantees for out-of-tree vendor DLLs are **explicitly out of scope for Engine 1.0**; see `docs/legal-and-licensing.md` (Editor game module driver and third-party DLL ABI).
 
 `asset-importers` in `vcpkg.json` declares reviewed dependencies for optional production source importer adapters:
 

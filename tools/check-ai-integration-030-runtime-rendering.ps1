@@ -53,7 +53,7 @@ foreach ($needle in @(
     "UI middleware",
     "full-repository-quality-gate"
 )) {
-    Assert-ContainsText $productionUiCloseoutText $needle "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md production-ui closeout evidence"
+    Assert-ContainsText $productionUiCloseoutText $needle "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md production-ui closeout evidence"
 }
 $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "full-repository-quality-gate" })
 if ($fullRepoQualityGap.Count -ne 0) {

@@ -11,7 +11,7 @@
   `PIX.exe` when present) with that working directory when PIX is installed.   Does not write under
   the repository root. Optional `MK_editor` integration (Windows, D3D12 viewport, acknowledged PIX capture request)
   runs the same script with `-SkipLaunch` from a reviewed Resources panel control; see
-  `docs/superpowers/plans/2026-05-11-editor-resource-capture-pix-host-handoff-evidence-v1.md`.
+  `docs/workflows.md` Windows diagnostics guidance.
 
   Set MIRAKANA_PIX_EXE to override the PIX executable path (full path to `WinPix.exe` or `PIX.exe`).
 

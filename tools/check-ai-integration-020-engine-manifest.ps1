@@ -2127,7 +2127,7 @@ if ($frameGraphGap.Count -ne 0) {
 }
 foreach ($check in @(
     @{
-        Path = "docs/superpowers/plans/2026-05-18-frame-graph-v1-1-0-scope-closeout-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Frame Graph v1 1.0 Scope Closeout",
             "upload-staging-v1",

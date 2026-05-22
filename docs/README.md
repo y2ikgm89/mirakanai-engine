@@ -26,7 +26,7 @@ When a historical Japanese note is promoted into a current doc, translate the pr
 - [Workflows](workflows.md): task, validation, CI, packaging, and plan lifecycle rules.
 - [Codex local environment](codex-local-environment.md): Codex app setup script and project actions for lightweight worktree setup.
 - [Agent operational reference](agent-operational-reference.md): extended validation, editor shell, plan lifecycle, production completion, and game lanes (indexed from `AGENTS.md`).
-- Optional Windows PIX host helper (operator-run, non-repo scratch dirs): [`tools/launch-pix-host-helper.ps1`](../tools/launch-pix-host-helper.ps1) with plan [2026-05-11-editor-resource-capture-pix-launch-helper-v1.md](superpowers/plans/2026-05-11-editor-resource-capture-pix-launch-helper-v1.md); summarized under [Workflows — Windows diagnostics toolchain](workflows.md#windows-diagnostics-toolchain). Default **operator PIX + coding-agent analysis** pattern: [AI integration](ai-integration.md) subsection **Recommended workflow (operator PIX, AI analysis)**.
+- Optional Windows PIX host helper (operator-run, non-repo scratch dirs): [`tools/launch-pix-host-helper.ps1`](../tools/launch-pix-host-helper.ps1), summarized under [Workflows — Windows diagnostics toolchain](workflows.md#windows-diagnostics-toolchain). Default **operator PIX + coding-agent analysis** pattern: [AI integration](ai-integration.md) subsection **Recommended workflow (operator PIX, AI analysis)**.
 - [AI integration](ai-integration.md) and [AI game development](ai-game-development.md): Codex, Claude Code, and Cursor agent-facing usage guidance.
 
 ## System Areas
@@ -42,7 +42,7 @@ When a historical Japanese note is promoted into a current doc, translate the pr
 
 - [docs/specs/](specs/README.md): accepted designs, analysis records, Superpowers-authored design specs, and generated-game guidance.
 - [docs/adr/](adr/README.md): concise architecture decision index for accepted durable decisions.
-- [docs/superpowers/plans/](superpowers/plans/README.md): active implementation plan registry and retained historical execution evidence. Keep only plan files that remain referenced by current docs, manifests, checks, or active decisions; remove unreferenced historical noise in explicit cleanup tasks and rely on Git history for deleted records.
+- [docs/superpowers/plans/](superpowers/plans/README.md): active implementation plan registry plus manifest-pinned foundation records. Completed historical execution evidence belongs in `docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md` or Git history.
 
 Start with [the plan registry](superpowers/plans/README.md) before editing an implementation plan. It identifies the active roadmap, active milestone or focused slice, docs/governance cleanup slices, completed historical plans, host-gated work, and the rules for creating new plans.
 

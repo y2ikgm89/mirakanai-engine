@@ -17,8 +17,8 @@ This model is the specification backbone for **stopped-state** load / unload / r
 
 ## Authority
 
-- Implementation plan: [`docs/superpowers/plans/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-spec-v1.md`](../superpowers/plans/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-spec-v1.md)
-- Parent program stream: [`docs/superpowers/plans/2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md`](../superpowers/plans/2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md)
+- Implementation evidence: `Editor Game Module Driver Hot Reload Session State Machine Spec v1` is retained in the historical evidence archive.
+- Parent program stream: `Editor Productization Hot Reload Stable ABI Stream v1` is completed historical evidence, not an active plan file.
 
 ## Session phases
 
@@ -63,9 +63,9 @@ Retained rows under root id **`play_in_editor.game_module_driver.session`** expo
 
 Retained MK_ui row: `play_in_editor.game_module_driver.session.policy.dll_mutation_order_guidance`.
 
-Implementation plan: [`2026-05-11-editor-game-module-driver-active-session-hot-reload-fail-closed-order-v1.md`](../superpowers/plans/2026-05-11-editor-game-module-driver-active-session-hot-reload-fail-closed-order-v1.md).
+Implementation evidence: `Editor Game Module Driver Active Session Hot Reload Fail Closed Order v1` is retained in the historical evidence archive.
 
 ## Future work (not in this spec revision)
 
-- Active-session hot reload state splits, reload barriers, and validation recipes per [`2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md`](../superpowers/plans/2026-05-11-editor-productization-hot-reload-stable-abi-stream-v1.md).
+- Active-session hot reload state splits, reload barriers, and validation recipes remain future work beyond the completed `Editor Productization Hot Reload Stable ABI Stream v1` historical evidence.
 - Stable third-party ABI track remains separate from same-engine-build residency phases.
