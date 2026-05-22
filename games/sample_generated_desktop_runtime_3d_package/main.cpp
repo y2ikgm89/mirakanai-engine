@@ -39,10 +39,12 @@
 #include <charconv>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <optional>
 #include <span>
 #include <string>
@@ -891,6 +893,99 @@ physics_advanced_controller_diagnostic_name(mirakana::PhysicsAdvancedController3
     return "unknown";
 }
 
+[[nodiscard]] std::string_view physics_constraint_status_name(mirakana::PhysicsConstraint3DStatus status) noexcept {
+    switch (status) {
+    case mirakana::PhysicsConstraint3DStatus::solved:
+        return "solved";
+    case mirakana::PhysicsConstraint3DStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+physics_constraint_diagnostic_name(mirakana::PhysicsConstraint3DDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::PhysicsConstraint3DDiagnostic::none:
+        return "none";
+    case mirakana::PhysicsConstraint3DDiagnostic::invalid_config:
+        return "invalid_config";
+    case mirakana::PhysicsConstraint3DDiagnostic::invalid_constraint:
+        return "invalid_constraint";
+    case mirakana::PhysicsConstraint3DDiagnostic::missing_body:
+        return "missing_body";
+    case mirakana::PhysicsConstraint3DDiagnostic::static_pair:
+        return "static_pair";
+    case mirakana::PhysicsConstraint3DDiagnostic::disabled_constraint:
+        return "disabled_constraint";
+    case mirakana::PhysicsConstraint3DDiagnostic::invalid_axis:
+        return "invalid_axis";
+    case mirakana::PhysicsConstraint3DDiagnostic::invalid_limits:
+        return "invalid_limits";
+    case mirakana::PhysicsConstraint3DDiagnostic::row_budget_exceeded:
+        return "row_budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+physics_kinematic_motion_status_name(mirakana::PhysicsKinematicMotion3DStatus status) noexcept {
+    switch (status) {
+    case mirakana::PhysicsKinematicMotion3DStatus::moved:
+        return "moved";
+    case mirakana::PhysicsKinematicMotion3DStatus::constrained:
+        return "constrained";
+    case mirakana::PhysicsKinematicMotion3DStatus::blocked:
+        return "blocked";
+    case mirakana::PhysicsKinematicMotion3DStatus::initial_overlap:
+        return "initial_overlap";
+    case mirakana::PhysicsKinematicMotion3DStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+physics_kinematic_motion_diagnostic_name(mirakana::PhysicsKinematicMotion3DDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::PhysicsKinematicMotion3DDiagnostic::none:
+        return "none";
+    case mirakana::PhysicsKinematicMotion3DDiagnostic::invalid_request:
+        return "invalid_request";
+    case mirakana::PhysicsKinematicMotion3DDiagnostic::initial_overlap:
+        return "initial_overlap";
+    case mirakana::PhysicsKinematicMotion3DDiagnostic::iteration_limit:
+        return "iteration_limit";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+physics_simple_vehicle_status_name(mirakana::PhysicsSimpleVehicle3DStatus status) noexcept {
+    switch (status) {
+    case mirakana::PhysicsSimpleVehicle3DStatus::grounded:
+        return "grounded";
+    case mirakana::PhysicsSimpleVehicle3DStatus::airborne:
+        return "airborne";
+    case mirakana::PhysicsSimpleVehicle3DStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+physics_simple_vehicle_diagnostic_name(mirakana::PhysicsSimpleVehicle3DDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::PhysicsSimpleVehicle3DDiagnostic::none:
+        return "none";
+    case mirakana::PhysicsSimpleVehicle3DDiagnostic::invalid_request:
+        return "invalid_request";
+    case mirakana::PhysicsSimpleVehicle3DDiagnostic::invalid_motion:
+        return "invalid_motion";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::string_view behavior_tree_status_name(mirakana::BehaviorTreeStatus status) noexcept {
     switch (status) {
     case mirakana::BehaviorTreeStatus::success:
@@ -1017,6 +1112,8 @@ class GeneratedGameplaySystemsProbe final {
         build_navigation_crowd_probe();
         build_physics_movement_policy_probe();
         build_physics_advanced_controller_probe();
+        build_physics_constraints_probe();
+        build_physics_kinematic_motion_probe();
         render_audio_stream_probe();
         (void)animation_.trigger("move");
         started_ = true;
@@ -1081,6 +1178,19 @@ class GeneratedGameplaySystemsProbe final {
                advanced_controller_result_.replay_after.body_count == 5U &&
                advanced_controller_result_.replay_after.value != advanced_controller_result_.replay_before.value &&
                gameplay_systems_near(advanced_controller_result_.position.x, 3.25F) &&
+               physics_constraints_result_.status == mirakana::PhysicsConstraint3DStatus::solved &&
+               physics_constraints_result_.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::none &&
+               physics_constraints_result_.rows.size() == 2U && physics_constraints_fixed_row_count() == 1U &&
+               physics_constraints_linear_axis_row_count() == 1U &&
+               physics_constraints_axis_limit_clamped_count() == 1U &&
+               kinematic_motion_result_.status == mirakana::PhysicsKinematicMotion3DStatus::constrained &&
+               kinematic_motion_result_.diagnostic == mirakana::PhysicsKinematicMotion3DDiagnostic::none &&
+               kinematic_motion_result_.rows.size() == 2U && kinematic_motion_result_.grounded &&
+               simple_vehicle_result_.status == mirakana::PhysicsSimpleVehicle3DStatus::grounded &&
+               simple_vehicle_result_.diagnostic == mirakana::PhysicsSimpleVehicle3DDiagnostic::none &&
+               simple_vehicle_result_.wheel_rows.size() == 4U && simple_vehicle_result_.grounded_wheel_count == 4U &&
+               simple_vehicle_result_.wheel_hit_count == 4U &&
+               gameplay_systems_near(simple_vehicle_result_.position.x, 1.0F) &&
                navigation_agent_.status == mirakana::NavigationAgentStatus::reached_destination &&
                gameplay_systems_near(navigation_agent_.position.x, 1.5F) &&
                gameplay_systems_near(navigation_agent_.position.y, 0.5F) &&
@@ -1154,6 +1264,22 @@ class GeneratedGameplaySystemsProbe final {
             advanced_controller_result_.replay_after.body_count == 5U,
             advanced_controller_result_.replay_after.value != advanced_controller_result_.replay_before.value,
             gameplay_systems_near(advanced_controller_result_.position.x, 3.25F),
+            physics_constraints_result_.status == mirakana::PhysicsConstraint3DStatus::solved,
+            physics_constraints_result_.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::none,
+            physics_constraints_result_.rows.size() == 2U,
+            physics_constraints_fixed_row_count() == 1U,
+            physics_constraints_linear_axis_row_count() == 1U,
+            physics_constraints_axis_limit_clamped_count() == 1U,
+            kinematic_motion_result_.status == mirakana::PhysicsKinematicMotion3DStatus::constrained,
+            kinematic_motion_result_.diagnostic == mirakana::PhysicsKinematicMotion3DDiagnostic::none,
+            kinematic_motion_result_.rows.size() == 2U,
+            kinematic_motion_result_.grounded,
+            simple_vehicle_result_.status == mirakana::PhysicsSimpleVehicle3DStatus::grounded,
+            simple_vehicle_result_.diagnostic == mirakana::PhysicsSimpleVehicle3DDiagnostic::none,
+            simple_vehicle_result_.wheel_rows.size() == 4U,
+            simple_vehicle_result_.grounded_wheel_count == 4U,
+            simple_vehicle_result_.wheel_hit_count == 4U,
+            gameplay_systems_near(simple_vehicle_result_.position.x, 1.0F),
             navigation_agent_.status == mirakana::NavigationAgentStatus::reached_destination,
             gameplay_systems_near(navigation_agent_.position.x, 1.5F) &&
                 gameplay_systems_near(navigation_agent_.position.y, 0.5F),
@@ -1361,6 +1487,88 @@ class GeneratedGameplaySystemsProbe final {
 
     [[nodiscard]] float advanced_controller_final_x() const noexcept {
         return advanced_controller_result_.position.x;
+    }
+
+    [[nodiscard]] mirakana::PhysicsConstraint3DStatus physics_constraints_status() const noexcept {
+        return physics_constraints_result_.status;
+    }
+
+    [[nodiscard]] mirakana::PhysicsConstraint3DDiagnostic physics_constraints_diagnostic() const noexcept {
+        return physics_constraints_result_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t physics_constraints_row_count() const noexcept {
+        return physics_constraints_result_.rows.size();
+    }
+
+    [[nodiscard]] std::size_t physics_constraints_fixed_row_count() const noexcept {
+        std::size_t count = 0;
+        for (const auto& row : physics_constraints_result_.rows) {
+            if (row.kind == mirakana::PhysicsConstraint3DKind::fixed) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    [[nodiscard]] std::size_t physics_constraints_linear_axis_row_count() const noexcept {
+        std::size_t count = 0;
+        for (const auto& row : physics_constraints_result_.rows) {
+            if (row.kind == mirakana::PhysicsConstraint3DKind::linear_axis) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    [[nodiscard]] std::size_t physics_constraints_axis_limit_clamped_count() const noexcept {
+        std::size_t count = 0;
+        for (const auto& row : physics_constraints_result_.rows) {
+            if (row.axis_limit_clamped) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    [[nodiscard]] mirakana::PhysicsKinematicMotion3DStatus kinematic_motion_status() const noexcept {
+        return kinematic_motion_result_.status;
+    }
+
+    [[nodiscard]] mirakana::PhysicsKinematicMotion3DDiagnostic kinematic_motion_diagnostic() const noexcept {
+        return kinematic_motion_result_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t kinematic_motion_row_count() const noexcept {
+        return kinematic_motion_result_.rows.size();
+    }
+
+    [[nodiscard]] bool kinematic_motion_grounded() const noexcept {
+        return kinematic_motion_result_.grounded;
+    }
+
+    [[nodiscard]] mirakana::PhysicsSimpleVehicle3DStatus vehicle_status() const noexcept {
+        return simple_vehicle_result_.status;
+    }
+
+    [[nodiscard]] mirakana::PhysicsSimpleVehicle3DDiagnostic vehicle_diagnostic() const noexcept {
+        return simple_vehicle_result_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t vehicle_wheel_row_count() const noexcept {
+        return simple_vehicle_result_.wheel_rows.size();
+    }
+
+    [[nodiscard]] std::size_t vehicle_grounded_wheel_count() const noexcept {
+        return simple_vehicle_result_.grounded_wheel_count;
+    }
+
+    [[nodiscard]] std::size_t vehicle_wheel_probe_hit_count() const noexcept {
+        return simple_vehicle_result_.wheel_hit_count;
+    }
+
+    [[nodiscard]] float vehicle_final_x() const noexcept {
+        return simple_vehicle_result_.position.x;
     }
 
     [[nodiscard]] float navigation_goal_x() const noexcept {
@@ -1825,6 +2033,155 @@ class GeneratedGameplaySystemsProbe final {
         }
     }
 
+    void build_physics_constraints_probe() {
+        mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+        const auto fixed_first = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+        });
+        const auto fixed_second = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 4.0F, .y = 0.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+        });
+        const auto linear_axis_first = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 10.0F, .y = 0.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+        });
+        const auto linear_axis_second = world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 14.0F, .y = 3.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 1.0F,
+            .linear_damping = 0.0F,
+            .dynamic = true,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.1F, .z = 0.1F},
+            .collision_enabled = false,
+        });
+
+        physics_constraints_result_ = mirakana::solve_physics_constraints_3d(
+            world, mirakana::PhysicsConstraintSolve3DDesc{
+                       .config =
+                           mirakana::PhysicsConstraintSolve3DConfig{
+                               .iterations = 1U,
+                               .tolerance = 0.0001F,
+                               .max_rows = std::numeric_limits<std::size_t>::max(),
+                           },
+                       .distance_joints = {},
+                       .fixed_constraints =
+                           std::vector<mirakana::PhysicsFixedConstraint3DDesc>{
+                               mirakana::PhysicsFixedConstraint3DDesc{
+                                   .first = fixed_first,
+                                   .second = fixed_second,
+                                   .target_offset = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+                               },
+                           },
+                       .linear_axis_constraints =
+                           std::vector<mirakana::PhysicsLinearAxisConstraint3DDesc>{
+                               mirakana::PhysicsLinearAxisConstraint3DDesc{
+                                   .first = linear_axis_first,
+                                   .second = linear_axis_second,
+                                   .axis = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                   .min_axis_distance = 0.0F,
+                                   .max_axis_distance = 2.0F,
+                               },
+                           },
+                   });
+    }
+
+    void build_physics_kinematic_motion_probe() {
+        constexpr std::uint32_t vehicle_layer = 1U << 0U;
+        constexpr std::uint32_t floor_layer = 1U << 1U;
+        constexpr std::uint32_t wall_layer = 1U << 2U;
+
+        mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+        (void)world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 0.0F, .y = -0.5F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec3{.x = 8.0F, .y = 0.5F, .z = 8.0F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = floor_layer,
+            .collision_mask = vehicle_layer,
+        });
+        (void)world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 4.0F, .y = 1.0F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec3{.x = 0.25F, .y = 1.0F, .z = 8.0F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = wall_layer,
+            .collision_mask = vehicle_layer,
+        });
+
+        mirakana::PhysicsKinematicMotion3DDesc request;
+        request.position = mirakana::Vec3{.x = 0.0F, .y = 1.05F, .z = 0.0F};
+        request.displacement = mirakana::Vec3{.x = 5.0F, .y = 0.0F, .z = 1.0F};
+        request.shape = mirakana::PhysicsShape3DDesc::capsule(0.5F, 0.5F);
+        request.filter.collision_mask = floor_layer | wall_layer;
+        request.filter.include_triggers = false;
+        request.skin_width = 0.02F;
+        request.ground_probe_distance = 0.2F;
+        kinematic_motion_result_ = mirakana::plan_physics_kinematic_motion_3d(world, request);
+
+        mirakana::PhysicsSimpleVehicle3DDesc vehicle_request;
+        vehicle_request.motion.position = mirakana::Vec3{.x = 0.0F, .y = 0.45F, .z = 0.0F};
+        vehicle_request.motion.displacement = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+        vehicle_request.motion.shape =
+            mirakana::PhysicsShape3DDesc::aabb(mirakana::Vec3{.x = 0.8F, .y = 0.25F, .z = 0.5F});
+        vehicle_request.motion.filter.collision_mask = floor_layer;
+        vehicle_request.motion.filter.include_triggers = false;
+        vehicle_request.motion.skin_width = 0.02F;
+        vehicle_request.motion.ground_probe_distance = 0.3F;
+        vehicle_request.wheel_filter.collision_mask = floor_layer;
+        vehicle_request.wheel_filter.include_triggers = false;
+        vehicle_request.grounded_normal_y = 0.70F;
+        vehicle_request.wheels = std::vector<mirakana::PhysicsSimpleVehicle3DWheelDesc>{
+            mirakana::PhysicsSimpleVehicle3DWheelDesc{
+                .local_offset = mirakana::Vec3{.x = -0.55F, .y = 0.0F, .z = -0.35F},
+                .radius = 0.2F,
+                .ground_probe_distance = 0.5F,
+            },
+            mirakana::PhysicsSimpleVehicle3DWheelDesc{
+                .local_offset = mirakana::Vec3{.x = 0.55F, .y = 0.0F, .z = -0.35F},
+                .radius = 0.2F,
+                .ground_probe_distance = 0.5F,
+            },
+            mirakana::PhysicsSimpleVehicle3DWheelDesc{
+                .local_offset = mirakana::Vec3{.x = -0.55F, .y = 0.0F, .z = 0.35F},
+                .radius = 0.2F,
+                .ground_probe_distance = 0.5F,
+            },
+            mirakana::PhysicsSimpleVehicle3DWheelDesc{
+                .local_offset = mirakana::Vec3{.x = 0.55F, .y = 0.0F, .z = 0.35F},
+                .radius = 0.2F,
+                .ground_probe_distance = 0.5F,
+            },
+        };
+        simple_vehicle_result_ = mirakana::plan_physics_simple_vehicle_3d(world, vehicle_request);
+    }
+
     void render_audio_stream_probe() {
         mirakana::AudioMixer mixer;
         const auto clip =
@@ -2057,6 +2414,9 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::PhysicsCharacterController3DResult controller_result_;
     mirakana::PhysicsCharacterDynamicPolicy3DResult physics_policy_result_;
     mirakana::PhysicsAdvancedController3DResult advanced_controller_result_;
+    mirakana::PhysicsConstraintSolve3DResult physics_constraints_result_;
+    mirakana::PhysicsKinematicMotion3DResult kinematic_motion_result_;
+    mirakana::PhysicsSimpleVehicle3DResult simple_vehicle_result_;
     mirakana::NavigationNavmeshPathResult navigation_navmesh_result_;
     mirakana::NavigationCrowdPlanResult navigation_crowd_result_;
     mirakana::NavigationAgentState navigation_agent_;
@@ -2641,6 +3001,72 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] float gameplay_systems_advanced_controller_final_x() const noexcept {
         return gameplay_systems_.advanced_controller_final_x();
+    }
+
+    [[nodiscard]] mirakana::PhysicsConstraint3DStatus gameplay_systems_physics_constraints_status() const noexcept {
+        return gameplay_systems_.physics_constraints_status();
+    }
+
+    [[nodiscard]] mirakana::PhysicsConstraint3DDiagnostic
+    gameplay_systems_physics_constraints_diagnostic() const noexcept {
+        return gameplay_systems_.physics_constraints_diagnostic();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_constraints_rows() const noexcept {
+        return gameplay_systems_.physics_constraints_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_constraints_fixed_rows() const noexcept {
+        return gameplay_systems_.physics_constraints_fixed_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_constraints_linear_axis_rows() const noexcept {
+        return gameplay_systems_.physics_constraints_linear_axis_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_physics_constraints_axis_limit_clamped() const noexcept {
+        return gameplay_systems_.physics_constraints_axis_limit_clamped_count();
+    }
+
+    [[nodiscard]] mirakana::PhysicsKinematicMotion3DStatus gameplay_systems_kinematic_motion_status() const noexcept {
+        return gameplay_systems_.kinematic_motion_status();
+    }
+
+    [[nodiscard]] mirakana::PhysicsKinematicMotion3DDiagnostic
+    gameplay_systems_kinematic_motion_diagnostic() const noexcept {
+        return gameplay_systems_.kinematic_motion_diagnostic();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_kinematic_motion_rows() const noexcept {
+        return gameplay_systems_.kinematic_motion_row_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_kinematic_motion_grounded() const noexcept {
+        return gameplay_systems_.kinematic_motion_grounded();
+    }
+
+    [[nodiscard]] mirakana::PhysicsSimpleVehicle3DStatus gameplay_systems_vehicle_status() const noexcept {
+        return gameplay_systems_.vehicle_status();
+    }
+
+    [[nodiscard]] mirakana::PhysicsSimpleVehicle3DDiagnostic gameplay_systems_vehicle_diagnostic() const noexcept {
+        return gameplay_systems_.vehicle_diagnostic();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_vehicle_wheel_rows() const noexcept {
+        return gameplay_systems_.vehicle_wheel_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_vehicle_grounded_wheels() const noexcept {
+        return gameplay_systems_.vehicle_grounded_wheel_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_vehicle_wheel_probe_hits() const noexcept {
+        return gameplay_systems_.vehicle_wheel_probe_hit_count();
+    }
+
+    [[nodiscard]] float gameplay_systems_vehicle_final_x() const noexcept {
+        return gameplay_systems_.vehicle_final_x();
     }
 
     [[nodiscard]] float gameplay_systems_navigation_goal_x() const noexcept {
@@ -5511,6 +5937,30 @@ int main(int argc, char** argv) {
         << " gameplay_systems_advanced_controller_replay_after_bodies="
         << game.gameplay_systems_advanced_controller_replay_after_bodies()
         << " gameplay_systems_advanced_controller_final_x=" << game.gameplay_systems_advanced_controller_final_x()
+        << " gameplay_systems_physics_constraints_status="
+        << physics_constraint_status_name(game.gameplay_systems_physics_constraints_status())
+        << " gameplay_systems_physics_constraints_diagnostic="
+        << physics_constraint_diagnostic_name(game.gameplay_systems_physics_constraints_diagnostic())
+        << " gameplay_systems_physics_constraints_rows=" << game.gameplay_systems_physics_constraints_rows()
+        << " gameplay_systems_physics_constraints_fixed_rows=" << game.gameplay_systems_physics_constraints_fixed_rows()
+        << " gameplay_systems_physics_constraints_linear_axis_rows="
+        << game.gameplay_systems_physics_constraints_linear_axis_rows()
+        << " gameplay_systems_physics_constraints_axis_limit_clamped="
+        << game.gameplay_systems_physics_constraints_axis_limit_clamped()
+        << " gameplay_systems_kinematic_motion_status="
+        << physics_kinematic_motion_status_name(game.gameplay_systems_kinematic_motion_status())
+        << " gameplay_systems_kinematic_motion_diagnostic="
+        << physics_kinematic_motion_diagnostic_name(game.gameplay_systems_kinematic_motion_diagnostic())
+        << " gameplay_systems_kinematic_motion_rows=" << game.gameplay_systems_kinematic_motion_rows()
+        << " gameplay_systems_kinematic_motion_grounded=" << (game.gameplay_systems_kinematic_motion_grounded() ? 1 : 0)
+        << " gameplay_systems_vehicle_status="
+        << physics_simple_vehicle_status_name(game.gameplay_systems_vehicle_status())
+        << " gameplay_systems_vehicle_diagnostic="
+        << physics_simple_vehicle_diagnostic_name(game.gameplay_systems_vehicle_diagnostic())
+        << " gameplay_systems_vehicle_wheel_rows=" << game.gameplay_systems_vehicle_wheel_rows()
+        << " gameplay_systems_vehicle_grounded_wheels=" << game.gameplay_systems_vehicle_grounded_wheels()
+        << " gameplay_systems_vehicle_wheel_probe_hits=" << game.gameplay_systems_vehicle_wheel_probe_hits()
+        << " gameplay_systems_vehicle_final_x=" << game.gameplay_systems_vehicle_final_x()
         << " gameplay_systems_navigation_goal_x=" << game.gameplay_systems_navigation_goal_x()
         << " gameplay_systems_navigation_goal_y=" << game.gameplay_systems_navigation_goal_y()
         << " gameplay_systems_navigation_final_x=" << game.gameplay_systems_navigation_final_x()

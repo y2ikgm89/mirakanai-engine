@@ -957,7 +957,23 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_advanced_controller_constraint_rows",
             "gameplay_systems_advanced_controller_replay_changed",
             "gameplay_systems_advanced_controller_replay_before_bodies",
-            "gameplay_systems_advanced_controller_replay_after_bodies"
+            "gameplay_systems_advanced_controller_replay_after_bodies",
+            "gameplay_systems_physics_constraints_status",
+            "gameplay_systems_physics_constraints_diagnostic",
+            "gameplay_systems_physics_constraints_rows",
+            "gameplay_systems_physics_constraints_fixed_rows",
+            "gameplay_systems_physics_constraints_linear_axis_rows",
+            "gameplay_systems_physics_constraints_axis_limit_clamped",
+            "gameplay_systems_kinematic_motion_status",
+            "gameplay_systems_kinematic_motion_diagnostic",
+            "gameplay_systems_kinematic_motion_rows",
+            "gameplay_systems_kinematic_motion_grounded",
+            "gameplay_systems_vehicle_status",
+            "gameplay_systems_vehicle_diagnostic",
+            "gameplay_systems_vehicle_wheel_rows",
+            "gameplay_systems_vehicle_grounded_wheels",
+            "gameplay_systems_vehicle_wheel_probe_hits",
+            "gameplay_systems_vehicle_final_x"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not include gameplay systems field: $field"
@@ -1070,6 +1086,54 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_after_bodies=5\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller replay-after body count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_status=solved\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove solved physics constraints status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean physics constraints diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_rows=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact physics constraints row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_fixed_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact fixed physics constraint row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_linear_axis_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact linear-axis physics constraint row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_axis_limit_clamped=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clamped linear-axis physics constraint evidence."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_kinematic_motion_status=constrained\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove constrained kinematic motion status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_kinematic_motion_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean kinematic motion diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_kinematic_motion_rows=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact kinematic motion row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_kinematic_motion_grounded=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove kinematic motion grounding."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_vehicle_status=grounded\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove grounded simple vehicle policy status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_vehicle_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean simple vehicle diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_vehicle_wheel_rows=4\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact simple vehicle wheel rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_vehicle_grounded_wheels=4\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact grounded simple vehicle wheels."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_vehicle_wheel_probe_hits=4\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact simple vehicle wheel probe hits."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_vehicle_final_x=1(\.0+)?\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove simple vehicle final x."
     }
 }
 if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requiresNativeUiOverlay) {

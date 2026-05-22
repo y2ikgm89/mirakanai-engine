@@ -417,6 +417,101 @@ struct PhysicsCharacterDynamicPolicy3DResult {
     std::vector<PhysicsCharacterDynamicPolicy3DRow> rows;
 };
 
+enum class PhysicsKinematicMotion3DStatus : std::uint8_t {
+    moved,
+    constrained,
+    blocked,
+    initial_overlap,
+    invalid_request
+};
+
+enum class PhysicsKinematicMotion3DDiagnostic : std::uint8_t {
+    none,
+    invalid_request,
+    initial_overlap,
+    iteration_limit
+};
+
+enum class PhysicsKinematicMotion3DRowKind : std::uint8_t { solid_contact, trigger_overlap, slide, ground_probe };
+
+struct PhysicsKinematicMotion3DDesc {
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    PhysicsShape3DDesc shape{PhysicsShape3DDesc::capsule(0.5F, 0.5F)};
+    PhysicsQueryFilter3D filter{};
+    float skin_width{0.01F};
+    std::uint32_t max_iterations{4U};
+    float grounded_normal_y{0.70710677F};
+    float ground_probe_distance{0.05F};
+};
+
+struct PhysicsKinematicMotion3DRow {
+    PhysicsKinematicMotion3DRowKind kind{PhysicsKinematicMotion3DRowKind::solid_contact};
+    PhysicsBody3DId body;
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 normal{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+    float distance{0.0F};
+    bool initial_overlap{false};
+    bool grounded{false};
+    Vec3 attempted_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 applied_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 remaining_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+};
+
+struct PhysicsKinematicMotion3DResult {
+    PhysicsKinematicMotion3DStatus status{PhysicsKinematicMotion3DStatus::invalid_request};
+    PhysicsKinematicMotion3DDiagnostic diagnostic{PhysicsKinematicMotion3DDiagnostic::none};
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 applied_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 remaining_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    bool grounded{false};
+    std::vector<PhysicsKinematicMotion3DRow> rows;
+};
+
+enum class PhysicsSimpleVehicle3DStatus : std::uint8_t { grounded, airborne, invalid_request };
+
+enum class PhysicsSimpleVehicle3DDiagnostic : std::uint8_t { none, invalid_request, invalid_motion };
+
+struct PhysicsSimpleVehicle3DWheelDesc {
+    Vec3 local_offset{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    float radius{0.25F};
+    float ground_probe_distance{0.5F};
+};
+
+struct PhysicsSimpleVehicle3DDesc {
+    PhysicsKinematicMotion3DDesc motion{};
+    std::vector<PhysicsSimpleVehicle3DWheelDesc> wheels;
+    PhysicsQueryFilter3D wheel_filter{
+        .collision_mask = 0xFFFF'FFFFU,
+        .ignored_body = {},
+        .include_triggers = false,
+    };
+    float grounded_normal_y{0.70710677F};
+    std::size_t max_wheels{std::numeric_limits<std::size_t>::max()};
+};
+
+struct PhysicsSimpleVehicle3DWheelRow {
+    std::size_t source_index{0};
+    PhysicsBody3DId body;
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 normal{.x = 0.0F, .y = 1.0F, .z = 0.0F};
+    float distance{0.0F};
+    bool initial_overlap{false};
+    bool hit{false};
+    bool grounded{false};
+};
+
+struct PhysicsSimpleVehicle3DResult {
+    PhysicsSimpleVehicle3DStatus status{PhysicsSimpleVehicle3DStatus::invalid_request};
+    PhysicsSimpleVehicle3DDiagnostic diagnostic{PhysicsSimpleVehicle3DDiagnostic::none};
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    PhysicsKinematicMotion3DResult motion{};
+    std::size_t grounded_wheel_count{0};
+    std::size_t wheel_hit_count{0};
+    bool grounded{false};
+    std::vector<PhysicsSimpleVehicle3DWheelRow> wheel_rows;
+};
+
 enum class PhysicsJoint3DStatus : std::uint8_t { solved, invalid_request };
 
 enum class PhysicsJoint3DDiagnostic : std::uint8_t {
@@ -463,6 +558,76 @@ struct PhysicsJointSolve3DResult {
     PhysicsJoint3DStatus status{PhysicsJoint3DStatus::invalid_request};
     PhysicsJoint3DDiagnostic diagnostic{PhysicsJoint3DDiagnostic::none};
     std::vector<PhysicsJointSolve3DRow> rows;
+};
+
+enum class PhysicsConstraint3DKind : std::uint8_t { distance, fixed, linear_axis };
+
+enum class PhysicsConstraint3DStatus : std::uint8_t { solved, invalid_request };
+
+enum class PhysicsConstraint3DDiagnostic : std::uint8_t {
+    none,
+    invalid_config,
+    invalid_constraint,
+    missing_body,
+    static_pair,
+    disabled_constraint,
+    invalid_axis,
+    invalid_limits,
+    row_budget_exceeded,
+};
+
+struct PhysicsFixedConstraint3DDesc {
+    PhysicsBody3DId first;
+    PhysicsBody3DId second;
+    Vec3 local_anchor_first{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 local_anchor_second{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 target_offset{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    bool enabled{true};
+};
+
+struct PhysicsLinearAxisConstraint3DDesc {
+    PhysicsBody3DId first;
+    PhysicsBody3DId second;
+    Vec3 local_anchor_first{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 local_anchor_second{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 axis{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+    float min_axis_distance{0.0F};
+    float max_axis_distance{0.0F};
+    bool enabled{true};
+};
+
+struct PhysicsConstraintSolve3DConfig {
+    std::uint32_t iterations{1U};
+    float tolerance{0.0001F};
+    // The default is intentionally unbounded; set a positive cap to fail closed on unexpected row counts.
+    std::size_t max_rows{std::numeric_limits<std::size_t>::max()};
+};
+
+struct PhysicsConstraintSolve3DDesc {
+    PhysicsConstraintSolve3DConfig config{};
+    std::vector<PhysicsDistanceJoint3DDesc> distance_joints;
+    std::vector<PhysicsFixedConstraint3DDesc> fixed_constraints;
+    std::vector<PhysicsLinearAxisConstraint3DDesc> linear_axis_constraints;
+};
+
+struct PhysicsConstraintSolve3DRow {
+    std::size_t source_index{0};
+    PhysicsConstraint3DKind kind{PhysicsConstraint3DKind::distance};
+    PhysicsBody3DId first;
+    PhysicsBody3DId second;
+    Vec3 previous_delta{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 target_delta{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 residual_delta{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 first_correction{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 second_correction{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    bool axis_limit_clamped{false};
+    PhysicsConstraint3DDiagnostic diagnostic{PhysicsConstraint3DDiagnostic::none};
+};
+
+struct PhysicsConstraintSolve3DResult {
+    PhysicsConstraint3DStatus status{PhysicsConstraint3DStatus::invalid_request};
+    PhysicsConstraint3DDiagnostic diagnostic{PhysicsConstraint3DDiagnostic::none};
+    std::vector<PhysicsConstraintSolve3DRow> rows;
 };
 
 struct PhysicsReplaySignature3D {
@@ -633,8 +798,18 @@ move_physics_character_controller_3d(const PhysicsWorld3D& world, const PhysicsC
 evaluate_physics_character_dynamic_policy_3d(const PhysicsWorld3D& world,
                                              const PhysicsCharacterDynamicPolicy3DDesc& desc);
 
+[[nodiscard]] PhysicsKinematicMotion3DResult plan_physics_kinematic_motion_3d(const PhysicsWorld3D& world,
+                                                                              const PhysicsKinematicMotion3DDesc& desc);
+
+[[nodiscard]] PhysicsSimpleVehicle3DResult plan_physics_simple_vehicle_3d(const PhysicsWorld3D& world,
+                                                                          const PhysicsSimpleVehicle3DDesc& desc);
+
 [[nodiscard]] PhysicsJointSolve3DResult solve_physics_joints_3d(PhysicsWorld3D& world,
                                                                 const PhysicsJointSolve3DDesc& desc);
+
+// Solves authored constraints in-place; callers own contact-filter policy when constrained pairs should not collide.
+[[nodiscard]] PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& world,
+                                                                          const PhysicsConstraintSolve3DDesc& desc);
 
 [[nodiscard]] PhysicsReplaySignature3D make_physics_replay_signature_3d(const PhysicsWorld3D& world);
 

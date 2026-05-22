@@ -19,7 +19,7 @@ High-freedom game support must preserve the same AI-operable rules and remain ga
 
 Recommended high-freedom 1.x streams:
 
-As of PR #175 / merge commit `f05136e2`, `ai-gameplay-authoring-tools-v1` implementation is completed and the selection gate has returned to the production-completion master plan. It follows completed gameplay authoring, quest/inventory/construction/procedural/world/scripting/networking/simulation foundations and adds a value-only, reviewed, non-mutating gameplay authoring/remediation surface with selected package evidence. No follow-on high-freedom stream is active until a concrete game handoff or roadmap decision selects one.
+As of active draft PR #178, `post-1-0-capability-program-v1` closes at Phase 2 after Phase 1 `physics-constraints-and-joints-v1` and Phase 2 `physics-vehicles-and-kinematics-v1` kinematic motion plus public simple vehicle policy/package evidence. High-freedom streams return to the developer-owned selection pool until a later dated plan selects one directly.
 
 | Stream | Goal | Official-practice evidence gate | Non-goals until separately planned |
 | --- | --- | --- | --- |
