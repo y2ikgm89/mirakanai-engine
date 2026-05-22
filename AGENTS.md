@@ -166,7 +166,7 @@
 - Draft-to-ready automation must use `tools/ready-task-pr.ps1`, not raw `gh pr ready`. It requires a clean task branch, local/remote/PR head match, open draft, base, `MERGEABLE`/`CLEAN`, no requested changes or failed/pending checks, and `PR Gate` `SUCCESS`.
 - After a PR merges into `main`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch]` for linked worktree cleanup; it fetches/prunes, requires a clean base checkout, fast-forwards it, accepts standard roots, unlinks worktree-local vcpkg links, and keeps Windows fallback guarded/non-following. No ad hoc deletion; record no target.
 - Raw PR state changes through `gh pr edit`, immediate `gh pr merge` without `--auto`, raw `gh pr ready`, `gh pr close`, or `gh pr reopen` remain prompt-gated. If the wrapper blocks, use GitHub Desktop/Web or an approval-capable session.
-- If Git prints credential helper warnings such as `credential-manager-core` missing, inspect `git config --show-origin --get-all credential.helper` and fix host/user Git configuration. On Git for Windows, prefer current Git Credential Manager helper `manager`; do not add repository credential helper overrides or tokens.
+- Git warnings are local maintenance. Missing `credential-manager-core`: inspect `git config --show-origin --get-all credential.helper`, prefer `manager`, no repo overrides. Auto-GC loose objects: clean `git status --short --branch`, inspect `git count-objects -vH`, run `git maintenance run --task=gc`; avoid `git prune` / `git gc --prune=now` unless requested.
 
 ## AI Tool Integration
 
