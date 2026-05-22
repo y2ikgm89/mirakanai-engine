@@ -5648,6 +5648,166 @@ function New-AiPlaceholderAssetPipeline {
     }
 }
 
+function New-AiGeneratedGamePlaytestSelectedRecipe {
+    param(
+        [string]$Id,
+        [string]$ValidationRecipeId,
+        [string]$ReviewedRecipeSurfaceId,
+        [string]$EvidenceKind,
+        [string[]]$ExpectedSignals,
+        [string[]]$FailureClassificationIds
+    )
+
+    return [ordered]@{
+        id = $Id
+        validationRecipeId = $ValidationRecipeId
+        reviewedRecipeSurfaceId = $ReviewedRecipeSurfaceId
+        evidenceKind = $EvidenceKind
+        expectedSignals = @($ExpectedSignals)
+        failureClassificationIds = @($FailureClassificationIds)
+        hostGatePolicy = "respect-manifest-host-gates"
+    }
+}
+
+function New-AiGeneratedGamePlaytestLoop {
+    param(
+        [string]$GameName,
+        [ValidateSet("2d", "3d")]
+        [string]$PlaytestKind,
+        [string[]]$ValidationRecipeIds
+    )
+
+    $recipeIds = @($ValidationRecipeIds)
+    $allFailureClassificationIds = @(
+        "missing-package-file",
+        "invalid-reference",
+        "host-gated",
+        "shader-tool-gap",
+        "counter-mismatch",
+        "runtime-package-load",
+        "unsafe-mutation-request"
+    )
+
+    $selectedRecipes = @()
+    foreach ($recipeId in $recipeIds) {
+        $evidenceKind = "recipe-summary"
+        $surfaceId = "run-validation-recipe-execute"
+        $expectedSignals = @("recipe_status=passed")
+        if ($recipeId -eq "desktop-runtime-release-target" -or $recipeId -like "installed-*") {
+            $evidenceKind = "package-smoke-log"
+            $surfaceId = "package-smoke-evidence-review"
+            $expectedSignals = @("package_smoke_status=passed")
+        }
+        if ($recipeId -like "*gameplay*" -or $recipeId -like "*visible-production-proof*" -or $recipeId -like "*entity-scale-culling*") {
+            $evidenceKind = "gameplay-counter-summary"
+            $expectedSignals = @("gameplay_counter_summary=present")
+        }
+
+        $selectedRecipes += New-AiGeneratedGamePlaytestSelectedRecipe `
+            -Id "$recipeId-playtest" `
+            -ValidationRecipeId $recipeId `
+            -ReviewedRecipeSurfaceId $surfaceId `
+            -EvidenceKind $evidenceKind `
+            -ExpectedSignals $expectedSignals `
+            -FailureClassificationIds $allFailureClassificationIds
+    }
+
+    $gameId = $GameName.Replace("_", "-")
+    return [ordered]@{
+        schemaVersion = 1
+        capabilityId = "ai-generated-game-playtest-loop-v1"
+        loopId = "$gameId-playtest-loop"
+        evidenceRoot = "games/$GameName/reports/playtest/latest"
+        reviewedRecipeSurfaces = @(
+            [ordered]@{
+                id = "run-validation-recipe-dry-run"
+                mode = "dry-run"
+                commandSurfaceId = "run-validation-recipe"
+                evidence = "Plans allowlisted validation recipe argv and host gates without evaluating raw manifest command strings."
+            },
+            [ordered]@{
+                id = "run-validation-recipe-execute"
+                mode = "execute"
+                commandSurfaceId = "run-validation-recipe"
+                evidence = "Executes only reviewed validation recipes while preserving host-gate decisions and recipe output summaries."
+            },
+            [ordered]@{
+                id = "package-smoke-evidence-review"
+                mode = "review-only"
+                commandSurfaceId = "package-smoke-output"
+                evidence = "Reviews package smoke stdout, gameplay counters, and diagnostics before choosing mutation-ledger remediation."
+            }
+        )
+        selectedRecipes = $selectedRecipes
+        failureClassifications = @(
+            [ordered]@{
+                id = "missing-package-file"
+                trigger = "A selected recipe reports a missing manifest-listed runtimePackageFiles payload or package artifact."
+                remediationActionId = "missing-package-file"
+                evidence = "Repair the game-owned package file or manifest registration through reviewed package surfaces."
+            },
+            [ordered]@{
+                id = "invalid-reference"
+                trigger = "A manifest, package index, scene, asset, or recipe reference points at an undeclared or invalid row."
+                remediationActionId = "validation-failure"
+                evidence = "Repair game-owned descriptor rows without deleting validation evidence."
+            },
+            [ordered]@{
+                id = "host-gated"
+                trigger = "A recipe requires host gates that are unavailable or unacknowledged on the current machine."
+                remediationActionId = "validation-failure"
+                evidence = "Record the host gate and do not bypass it or substitute an unrelated ready claim."
+            },
+            [ordered]@{
+                id = "shader-tool-gap"
+                trigger = "A selected shader or package recipe reports missing D3D12, Vulkan, Metal, or shader toolchain evidence."
+                remediationActionId = "unsupported-engine-capability"
+                evidence = "Stop at a developer-owned toolchain or engine capability handoff when the game cannot repair the gap."
+            },
+            [ordered]@{
+                id = "counter-mismatch"
+                trigger = "Package stdout lacks expected gameplay, renderer, UI, audio, physics, navigation, or AI counters."
+                remediationActionId = "validation-failure"
+                evidence = "Repair game-owned rows or code through reviewed mutation surfaces without weakening expected counters."
+            },
+            [ordered]@{
+                id = "runtime-package-load"
+                trigger = "Runtime package load, index, asset payload, or runtime scene validation fails."
+                remediationActionId = "missing-package-file"
+                evidence = "Repair reviewed runtime package files and package index rows before rerunning smoke recipes."
+            },
+            [ordered]@{
+                id = "unsafe-mutation-request"
+                trigger = "A remediation would touch shared repository paths, engine internals, raw shell, or unreviewed cooked packages."
+                remediationActionId = "unsafe-shared-path-request"
+                evidence = "Stop at mutation-ledger remediation or developer-owned handoff instead of broadening game write scope."
+            }
+        )
+        remediationPolicy = [ordered]@{
+            mode = "mutation-ledger-remediation"
+            mutationLedgerId = "$gameId-ai-mutation-ledger"
+            remediationActionIds = @(
+                "missing-package-file",
+                "unsafe-shared-path-request",
+                "unsupported-engine-capability",
+                "validation-failure"
+            )
+            evidence = "All repair actions route through aiWorkflow.contentMutationLedger remediation rows and reviewed game-local command surfaces."
+        }
+        unsupportedClaims = @(
+            "validation-weakening",
+            "evidence-deletion",
+            "host-gate-bypass",
+            "arbitrary-shell",
+            "raw-manifest-command-evaluation",
+            "cooked-package-mutation",
+            "engine-internal-edits",
+            "native-handles",
+            "broad-quality-claim"
+        )
+    }
+}
+
 function New-HeadlessManifest {
     param(
         [string]$GameName,
@@ -6165,6 +6325,19 @@ function New-DesktopRuntime2DManifest {
                     "installed-2d-entity-scale-culling-smoke",
                     "installed-native-2d-sprite-smoke"
                 )
+            generatedGamePlaytestLoop = New-AiGeneratedGamePlaytestLoop `
+                -GameName $GameName `
+                -PlaytestKind "2d" `
+                -ValidationRecipeIds @(
+                    "desktop-game-runtime",
+                    "desktop-runtime-release-target",
+                    "installed-2d-package-smoke",
+                    "installed-2d-sprite-animation-smoke",
+                    "installed-2d-tilemap-runtime-ux-smoke",
+                    "installed-2d-gameplay-systems-smoke",
+                    "installed-2d-entity-scale-culling-smoke",
+                    "installed-native-2d-sprite-smoke"
+                )
         }
         gameplayContract = [ordered]@{
             productionRecipe = "2d-desktop-runtime-package"
@@ -6403,6 +6576,22 @@ function New-DesktopRuntime3DManifest {
             placeholderAssetPipeline = New-AiPlaceholderAssetPipeline `
                 -GameName $GameName `
                 -PipelineKind "3d" `
+                -ValidationRecipeIds @(
+                    "desktop-game-runtime",
+                    "desktop-runtime-release-target",
+                    "installed-d3d12-3d-package-smoke",
+                    "installed-d3d12-3d-directional-shadow-smoke",
+                    "installed-d3d12-3d-shadow-morph-composition-smoke",
+                    "installed-d3d12-3d-native-ui-overlay-smoke",
+                    "installed-d3d12-3d-visible-production-proof-smoke",
+                    "installed-d3d12-3d-entity-scale-culling-smoke",
+                    "installed-d3d12-3d-scene-collision-package-smoke",
+                    "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
+                    "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke"
+                )
+            generatedGamePlaytestLoop = New-AiGeneratedGamePlaytestLoop `
+                -GameName $GameName `
+                -PlaytestKind "3d" `
                 -ValidationRecipeIds @(
                     "desktop-game-runtime",
                     "desktop-runtime-release-target",

@@ -862,6 +862,247 @@
             }
           }
         },
+        "generatedGamePlaytestLoop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "loopId",
+            "evidenceRoot",
+            "reviewedRecipeSurfaces",
+            "selectedRecipes",
+            "failureClassifications",
+            "remediationPolicy",
+            "unsupportedClaims"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "ai-generated-game-playtest-loop-v1"
+            },
+            "loopId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-playtest-loop$"
+            },
+            "evidenceRoot": {
+              "type": "string",
+              "pattern": "^games/[a-z][a-z0-9_]*/reports/playtest/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+            },
+            "reviewedRecipeSurfaces": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "mode", "commandSurfaceId", "evidence"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": ["dry-run", "execute", "review-only"]
+                  },
+                  "commandSurfaceId": {
+                    "type": "string",
+                    "enum": ["run-validation-recipe", "package-smoke-output"]
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "selectedRecipes": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "validationRecipeId",
+                  "reviewedRecipeSurfaceId",
+                  "evidenceKind",
+                  "expectedSignals",
+                  "failureClassificationIds",
+                  "hostGatePolicy"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "validationRecipeId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "reviewedRecipeSurfaceId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "evidenceKind": {
+                    "type": "string",
+                    "enum": ["recipe-summary", "package-smoke-log", "gameplay-counter-summary"]
+                  },
+                  "expectedSignals": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "failureClassificationIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "hostGatePolicy": {
+                    "type": "string",
+                    "const": "respect-manifest-host-gates"
+                  }
+                }
+              }
+            },
+            "failureClassifications": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "trigger", "remediationActionId", "evidence"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "remediationActionId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "remediationPolicy": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "mutationLedgerId", "remediationActionIds", "evidence"],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "mutation-ledger-remediation"
+                },
+                "mutationLedgerId": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*-ai-mutation-ledger$"
+                },
+                "remediationActionIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "unsupportedClaims": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "allOf": [
+                {
+                  "contains": {
+                    "const": "validation-weakening"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "evidence-deletion"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "host-gate-bypass"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "arbitrary-shell"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "raw-manifest-command-evaluation"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "cooked-package-mutation"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "engine-internal-edits"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "native-handles"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-quality-claim"
+                  }
+                }
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "validation-weakening",
+                  "evidence-deletion",
+                  "host-gate-bypass",
+                  "arbitrary-shell",
+                  "raw-manifest-command-evaluation",
+                  "cooked-package-mutation",
+                  "engine-internal-edits",
+                  "native-handles",
+                  "broad-quality-claim"
+                ]
+              }
+            }
+          }
+        },
         "engineCapabilityHandoffs": {
           "type": "array",
           "uniqueItems": true,

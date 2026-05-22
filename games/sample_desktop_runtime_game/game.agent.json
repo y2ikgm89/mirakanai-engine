@@ -660,6 +660,176 @@
         "broad-art-direction",
         "broad-commercial-quality"
       ]
+    },
+    "generatedGamePlaytestLoop": {
+      "schemaVersion": 1,
+      "capabilityId": "ai-generated-game-playtest-loop-v1",
+      "loopId": "sample-desktop-runtime-game-playtest-loop",
+      "evidenceRoot": "games/sample_desktop_runtime_game/reports/playtest/latest",
+      "reviewedRecipeSurfaces": [
+        {
+          "id": "run-validation-recipe-dry-run",
+          "mode": "dry-run",
+          "commandSurfaceId": "run-validation-recipe",
+          "evidence": "Plans allowlisted validation recipe argv and host gates without evaluating raw manifest command strings."
+        },
+        {
+          "id": "run-validation-recipe-execute",
+          "mode": "execute",
+          "commandSurfaceId": "run-validation-recipe",
+          "evidence": "Executes only reviewed validation recipes while preserving host-gate decisions and recipe output summaries."
+        },
+        {
+          "id": "package-smoke-evidence-review",
+          "mode": "review-only",
+          "commandSurfaceId": "package-smoke-output",
+          "evidence": "Reviews package smoke stdout, gameplay counters, and diagnostics before choosing mutation-ledger remediation."
+        }
+      ],
+      "selectedRecipes": [
+        {
+          "id": "desktop-game-runtime-playtest",
+          "validationRecipeId": "desktop-game-runtime",
+          "reviewedRecipeSurfaceId": "run-validation-recipe-execute",
+          "evidenceKind": "recipe-summary",
+          "expectedSignals": [
+            "recipe_status=passed"
+          ],
+          "failureClassificationIds": [
+            "missing-package-file",
+            "invalid-reference",
+            "host-gated",
+            "shader-tool-gap",
+            "counter-mismatch",
+            "runtime-package-load",
+            "unsafe-mutation-request"
+          ],
+          "hostGatePolicy": "respect-manifest-host-gates"
+        },
+        {
+          "id": "desktop-runtime-release-target-playtest",
+          "validationRecipeId": "desktop-runtime-release-target",
+          "reviewedRecipeSurfaceId": "package-smoke-evidence-review",
+          "evidenceKind": "package-smoke-log",
+          "expectedSignals": [
+            "package_smoke_status=passed"
+          ],
+          "failureClassificationIds": [
+            "missing-package-file",
+            "invalid-reference",
+            "host-gated",
+            "shader-tool-gap",
+            "counter-mismatch",
+            "runtime-package-load",
+            "unsafe-mutation-request"
+          ],
+          "hostGatePolicy": "respect-manifest-host-gates"
+        },
+        {
+          "id": "installed-d3d12-scene-gpu-smoke-playtest",
+          "validationRecipeId": "installed-d3d12-scene-gpu-smoke",
+          "reviewedRecipeSurfaceId": "package-smoke-evidence-review",
+          "evidenceKind": "package-smoke-log",
+          "expectedSignals": [
+            "package_smoke_status=passed"
+          ],
+          "failureClassificationIds": [
+            "missing-package-file",
+            "invalid-reference",
+            "host-gated",
+            "shader-tool-gap",
+            "counter-mismatch",
+            "runtime-package-load",
+            "unsafe-mutation-request"
+          ],
+          "hostGatePolicy": "respect-manifest-host-gates"
+        },
+        {
+          "id": "installed-vulkan-scene-gpu-smoke-playtest",
+          "validationRecipeId": "installed-vulkan-scene-gpu-smoke",
+          "reviewedRecipeSurfaceId": "package-smoke-evidence-review",
+          "evidenceKind": "package-smoke-log",
+          "expectedSignals": [
+            "package_smoke_status=passed"
+          ],
+          "failureClassificationIds": [
+            "missing-package-file",
+            "invalid-reference",
+            "host-gated",
+            "shader-tool-gap",
+            "counter-mismatch",
+            "runtime-package-load",
+            "unsafe-mutation-request"
+          ],
+          "hostGatePolicy": "respect-manifest-host-gates"
+        }
+      ],
+      "failureClassifications": [
+        {
+          "id": "missing-package-file",
+          "trigger": "A selected recipe reports a missing manifest-listed runtimePackageFiles payload or package artifact.",
+          "remediationActionId": "missing-package-file",
+          "evidence": "Repair the game-owned package file or manifest registration through reviewed package surfaces."
+        },
+        {
+          "id": "invalid-reference",
+          "trigger": "A manifest, package index, scene, asset, or recipe reference points at an undeclared or invalid row.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Repair game-owned descriptor rows without deleting validation evidence."
+        },
+        {
+          "id": "host-gated",
+          "trigger": "A recipe requires host gates that are unavailable or unacknowledged on the current machine.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Record the host gate and do not bypass it or substitute an unrelated ready claim."
+        },
+        {
+          "id": "shader-tool-gap",
+          "trigger": "A selected shader or package recipe reports missing D3D12, Vulkan, Metal, or shader toolchain evidence.",
+          "remediationActionId": "unsupported-engine-capability",
+          "evidence": "Stop at a developer-owned toolchain or engine capability handoff when the game cannot repair the gap."
+        },
+        {
+          "id": "counter-mismatch",
+          "trigger": "Package stdout lacks expected gameplay, renderer, UI, audio, physics, navigation, or AI counters.",
+          "remediationActionId": "validation-failure",
+          "evidence": "Repair game-owned rows or code through reviewed mutation surfaces without weakening expected counters."
+        },
+        {
+          "id": "runtime-package-load",
+          "trigger": "Runtime package load, index, asset payload, or runtime scene validation fails.",
+          "remediationActionId": "missing-package-file",
+          "evidence": "Repair reviewed runtime package files and package index rows before rerunning smoke recipes."
+        },
+        {
+          "id": "unsafe-mutation-request",
+          "trigger": "A remediation would touch shared repository paths, engine internals, raw shell, or unreviewed cooked packages.",
+          "remediationActionId": "unsafe-shared-path-request",
+          "evidence": "Stop at mutation-ledger remediation or developer-owned handoff instead of broadening game write scope."
+        }
+      ],
+      "remediationPolicy": {
+        "mode": "mutation-ledger-remediation",
+        "mutationLedgerId": "sample-desktop-runtime-game-ai-mutation-ledger",
+        "remediationActionIds": [
+          "missing-package-file",
+          "unsafe-shared-path-request",
+          "unsupported-engine-capability",
+          "validation-failure"
+        ],
+        "evidence": "All repair actions route through aiWorkflow.contentMutationLedger remediation rows and reviewed game-local command surfaces."
+      },
+      "unsupportedClaims": [
+        "validation-weakening",
+        "evidence-deletion",
+        "host-gate-bypass",
+        "arbitrary-shell",
+        "raw-manifest-command-evaluation",
+        "cooked-package-mutation",
+        "engine-internal-edits",
+        "native-handles",
+        "broad-quality-claim"
+      ]
     }
   },
   "gameplayContract": {
