@@ -333,6 +333,13 @@ try {
     foreach ($pipelineNeedle in @("plan-placeholder-asset-cook-package", "player-sprite-placeholder", "jump-audio-placeholder", "mirakana-placeholder-asset-tool-v1")) {
         Assert-ContainsText $desktop2dPlaceholderPipelineText $pipelineNeedle "Desktop runtime 2D package scaffold placeholder asset pipeline"
     }
+    if ($desktop2dManifest.aiWorkflow.generatedGamePlaytestLoop.capabilityId -ne "ai-generated-game-playtest-loop-v1") {
+        Write-Error "Desktop runtime 2D package scaffold manifest must carry ai-generated-game-playtest-loop-v1"
+    }
+    $desktop2dPlaytestLoopText = $desktop2dManifest.aiWorkflow.generatedGamePlaytestLoop | ConvertTo-Json -Depth 40
+    foreach ($playtestNeedle in @("run-validation-recipe-execute", "installed-2d-package-smoke-playtest", "counter-mismatch", "mutation-ledger-remediation")) {
+        Assert-ContainsText $desktop2dPlaytestLoopText $playtestNeedle "Desktop runtime 2D package scaffold generated-game playtest loop"
+    }
     foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($desktop2dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 2D package scaffold manifest missing engine module: $module"
@@ -1130,6 +1137,13 @@ try {
     $desktop3dPlaceholderPipelineText = $desktop3dManifest.aiWorkflow.placeholderAssetPipeline | ConvertTo-Json -Depth 40
     foreach ($pipelineNeedle in @("plan-placeholder-asset-cook-package", "packaged-mesh-placeholder", "hud-atlas-placeholder", "scene-prop")) {
         Assert-ContainsText $desktop3dPlaceholderPipelineText $pipelineNeedle "Desktop runtime 3D package scaffold placeholder asset pipeline"
+    }
+    if ($desktop3dManifest.aiWorkflow.generatedGamePlaytestLoop.capabilityId -ne "ai-generated-game-playtest-loop-v1") {
+        Write-Error "Desktop runtime 3D package scaffold manifest must carry ai-generated-game-playtest-loop-v1"
+    }
+    $desktop3dPlaytestLoopText = $desktop3dManifest.aiWorkflow.generatedGamePlaytestLoop | ConvertTo-Json -Depth 40
+    foreach ($playtestNeedle in @("run-validation-recipe-execute", "installed-d3d12-3d-package-smoke-playtest", "package-smoke-evidence-review", "host-gated")) {
+        Assert-ContainsText $desktop3dPlaytestLoopText $playtestNeedle "Desktop runtime 3D package scaffold generated-game playtest loop"
     }
     foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dManifest.engineModules) -notcontains $module) {
@@ -2320,6 +2334,9 @@ try {
     if ($createGameRecipeManifest.aiWorkflow.placeholderAssetPipeline.capabilityId -ne "ai-placeholder-asset-pipeline-v1") {
         Write-Error "create-game-recipe apply must preserve the generated placeholder asset pipeline"
     }
+    if ($createGameRecipeManifest.aiWorkflow.generatedGamePlaytestLoop.capabilityId -ne "ai-generated-game-playtest-loop-v1") {
+        Write-Error "create-game-recipe apply must preserve the generated playtest loop"
+    }
     if (@($createGameRecipeManifest.aiWorkflow.gameDesignSpec.validationRecipeIds) -notcontains "installed-2d-package-smoke") {
         Write-Error "create-game-recipe apply must preserve reviewed validationRecipeIds"
     }
@@ -2347,6 +2364,7 @@ try {
     if ($createGameRecipe3dManifest.aiWorkflow.gameDesignSpec.designId -ne "orchestrated-3d") { Write-Error "create-game-recipe 3D apply must preserve the reviewed design spec" }
     if ($createGameRecipe3dManifest.aiWorkflow.contentMutationLedger.capabilityId -ne "ai-safe-content-mutation-ledger-v1") { Write-Error "create-game-recipe 3D apply must preserve the generated content mutation ledger" }
     if ($createGameRecipe3dManifest.aiWorkflow.placeholderAssetPipeline.capabilityId -ne "ai-placeholder-asset-pipeline-v1") { Write-Error "create-game-recipe 3D apply must preserve the generated placeholder asset pipeline" }
+    if ($createGameRecipe3dManifest.aiWorkflow.generatedGamePlaytestLoop.capabilityId -ne "ai-generated-game-playtest-loop-v1") { Write-Error "create-game-recipe 3D apply must preserve the generated playtest loop" }
     $createGameRecipe3dCmake = Get-Content -LiteralPath (Join-Path $createGameRecipeRoot "games/CMakeLists.txt") -Raw
     Assert-ContainsText $createGameRecipe3dCmake "MK_add_desktop_runtime_game(orchestrated_3d" "create-game-recipe 3D apply CMake"
 } finally {

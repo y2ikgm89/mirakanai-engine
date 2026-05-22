@@ -520,6 +520,117 @@ foreach ($check in $aiPlaceholderAssetPipelineChecks) {
     }
 }
 
+$aiGeneratedGamePlaytestLoopChecks = @(
+    @{
+        Path = "schemas/game-agent.schema.json"
+        Needles = @(
+            "generatedGamePlaytestLoop",
+            "ai-generated-game-playtest-loop-v1",
+            "reviewedRecipeSurfaces",
+            "failureClassifications",
+            "remediationPolicy"
+        )
+    },
+    @{
+        Path = "tools/check-json-contracts-063-generated-game-playtest-loop.ps1"
+        Needles = @(
+            "Assert-JsonGeneratedGamePlaytestLoop",
+            "aiWorkflow.generatedGamePlaytestLoop",
+            "run-validation-recipe-execute",
+            "validation-weakening",
+            "counter-mismatch"
+        )
+    },
+    @{
+        Path = "tools/new-game-templates.ps1"
+        Needles = @(
+            "New-AiGeneratedGamePlaytestLoop",
+            "generatedGamePlaytestLoop = New-AiGeneratedGamePlaytestLoop",
+            "package-smoke-evidence-review",
+            "mutation-ledger-remediation"
+        )
+    },
+    @{
+        Path = "games/sample_2d_desktop_runtime_package/game.agent.json"
+        Needles = @(
+            '"capabilityId": "ai-generated-game-playtest-loop-v1"',
+            '"installed-2d-package-smoke-playtest"',
+            '"counter-mismatch"'
+        )
+    },
+    @{
+        Path = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+        Needles = @(
+            '"capabilityId": "ai-generated-game-playtest-loop-v1"',
+            '"installed-d3d12-3d-package-smoke-playtest"',
+            '"host-gated"'
+        )
+    },
+    @{
+        Path = "docs/ai-game-development.md"
+        Needles = @(
+            "Generated Game Playtest Loop",
+            "game.agent.json.aiWorkflow.generatedGamePlaytestLoop",
+            "failure classification",
+            "no validation weakening"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "AI Generated Game Playtest Loop v1",
+            "game.agent.json.aiWorkflow.generatedGamePlaytestLoop",
+            "failure classification"
+        )
+    },
+    @{
+        Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
+        Needles = @(
+            "ai-generated-game-playtest-loop-v1",
+            "implemented-1x-foundation",
+            "game.agent.json.aiWorkflow.generatedGamePlaytestLoop"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "AI Generated Game Playtest Loop v1",
+            "aiWorkflow.generatedGamePlaytestLoop",
+            "failure classification"
+        )
+    },
+    @{
+        Path = ".agents/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.generatedGamePlaytestLoop",
+            "failure classification",
+            "no validation weakening"
+        )
+    },
+    @{
+        Path = ".claude/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.generatedGamePlaytestLoop",
+            "failure classification",
+            "no validation weakening"
+        )
+    },
+    @{
+        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.generatedGamePlaytestLoop",
+            "failure classification",
+            "no validation weakening"
+        )
+    }
+)
+foreach ($check in $aiGeneratedGamePlaytestLoopChecks) {
+    $playtestLoopText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $playtestLoopText $needle $check.Path
+    }
+}
+
 $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/resource_panel.hpp"
