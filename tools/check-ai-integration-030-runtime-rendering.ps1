@@ -390,6 +390,7 @@ Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsDistanceJoint3
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsJointSolve3DResult" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "solve_physics_joints_3d" "MK_physics module purpose"
 foreach ($needle in @("PhysicsConstraint3DStatus", "PhysicsConstraint3DDiagnostic", "PhysicsFixedConstraint3DDesc", "PhysicsLinearAxisConstraint3DDesc", "PhysicsConstraintSolve3DResult", "solve_physics_constraints_3d", "max_rows", "row_budget_exceeded", "rotational rigid-body constraints")) { Assert-ContainsText ([string]$gePhysicsModule[0].purpose) $needle "MK_physics module purpose" }
+foreach ($needle in @("PhysicsKinematicMotion3DResult", "plan_physics_kinematic_motion_3d", "PhysicsSimpleVehicle3DDesc", "PhysicsSimpleVehicle3DWheelDesc", "PhysicsSimpleVehicle3DResult", "plan_physics_simple_vehicle_3d", "simple vehicle")) { Assert-ContainsText ([string]$gePhysicsModule[0].purpose) $needle "MK_physics module purpose" }
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsDeterminismGate3DStatus" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsDeterminismGate3DDiagnostic" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsDeterminismGate3DConfig" "MK_physics module purpose"
@@ -1424,6 +1425,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "Physics
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsJointSolve3DResult" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "solve_physics_joints_3d" "physics game guidance"
 foreach ($needle in @("PhysicsConstraint3DStatus", "PhysicsConstraint3DDiagnostic", "PhysicsFixedConstraint3DDesc", "PhysicsLinearAxisConstraint3DDesc", "PhysicsConstraintSolve3DResult", "solve_physics_constraints_3d", "max_rows", "row_budget_exceeded", "rotational rigid-body constraints")) { Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) $needle "physics game guidance" }
+foreach ($needle in @("PhysicsKinematicMotion3DResult", "plan_physics_kinematic_motion_3d", "PhysicsSimpleVehicle3DDesc", "PhysicsSimpleVehicle3DWheelDesc", "PhysicsSimpleVehicle3DResult", "plan_physics_simple_vehicle_3d", "simple vehicle")) { Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) $needle "physics game guidance" }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsReplaySignature3D" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "PhysicsDeterminismGate3DResult" "physics game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentPhysics) "make_physics_replay_signature_3d" "physics game guidance"
@@ -1465,6 +1467,7 @@ foreach ($physicsGuidance in @(
     Assert-ContainsText $physicsText "PhysicsJointSolve3DResult" $physicsGuidance
     Assert-ContainsText $physicsText "solve_physics_joints_3d" $physicsGuidance
     foreach ($needle in @("PhysicsConstraintSolve3DResult", "solve_physics_constraints_3d", "max_rows", "row_budget_exceeded", "rotational rigid-body constraints")) { Assert-ContainsText $physicsText $needle $physicsGuidance }
+    foreach ($needle in @("PhysicsKinematicMotion3DResult", "plan_physics_kinematic_motion_3d", "PhysicsSimpleVehicle3DDesc", "plan_physics_simple_vehicle_3d", "simple vehicle")) { Assert-ContainsText $physicsText $needle $physicsGuidance }
     Assert-ContainsText $physicsText "PhysicsReplaySignature3D" $physicsGuidance
     Assert-ContainsText $physicsText "evaluate_physics_determinism_gate_3d" $physicsGuidance
 }
@@ -1482,7 +1485,7 @@ foreach ($advancedControllerPackageGuidance in @(
     "tools/validate-installed-desktop-runtime.ps1"
 )) {
     $advancedControllerPackageText = Get-AgentSurfaceText $advancedControllerPackageGuidance
-    foreach ($needle in @("gameplay_systems_advanced_controller_status=moved", "gameplay_systems_advanced_controller_platform_applied=1", "gameplay_systems_advanced_controller_constraint_rows=1", "gameplay_systems_advanced_controller_replay_changed=1", "gameplay_systems_physics_constraints_status=solved", "gameplay_systems_physics_constraints_diagnostic=none", "gameplay_systems_physics_constraints_rows=2", "gameplay_systems_physics_constraints_fixed_rows=1", "gameplay_systems_physics_constraints_linear_axis_rows=1", "gameplay_systems_physics_constraints_axis_limit_clamped=1")) { Assert-ContainsText $advancedControllerPackageText $needle $advancedControllerPackageGuidance }
+    foreach ($needle in @("gameplay_systems_advanced_controller_status=moved", "gameplay_systems_advanced_controller_platform_applied=1", "gameplay_systems_advanced_controller_constraint_rows=1", "gameplay_systems_advanced_controller_replay_changed=1", "gameplay_systems_physics_constraints_status=solved", "gameplay_systems_physics_constraints_diagnostic=none", "gameplay_systems_physics_constraints_rows=2", "gameplay_systems_physics_constraints_fixed_rows=1", "gameplay_systems_physics_constraints_linear_axis_rows=1", "gameplay_systems_physics_constraints_axis_limit_clamped=1", "gameplay_systems_kinematic_motion_status=constrained", "gameplay_systems_kinematic_motion_rows=2", "gameplay_systems_vehicle_status=grounded", "gameplay_systems_vehicle_diagnostic=none", "gameplay_systems_vehicle_wheel_rows=4", "gameplay_systems_vehicle_grounded_wheels=4", "gameplay_systems_vehicle_wheel_probe_hits=4")) { Assert-ContainsText $advancedControllerPackageText $needle $advancedControllerPackageGuidance }
 }
 foreach ($physicsUnsupportedGuidance in @(
     "docs/architecture.md",

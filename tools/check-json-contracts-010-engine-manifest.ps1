@@ -89,7 +89,14 @@ foreach ($needle in @(
     "gameplay_systems_physics_constraints_rows=2",
     "gameplay_systems_physics_constraints_fixed_rows=1",
     "gameplay_systems_physics_constraints_linear_axis_rows=1",
-    "gameplay_systems_physics_constraints_axis_limit_clamped=1"
+    "gameplay_systems_physics_constraints_axis_limit_clamped=1",
+    "gameplay_systems_kinematic_motion_status=constrained",
+    "gameplay_systems_kinematic_motion_rows=2",
+    "gameplay_systems_vehicle_status=grounded",
+    "gameplay_systems_vehicle_diagnostic=none",
+    "gameplay_systems_vehicle_wheel_rows=4",
+    "gameplay_systems_vehicle_grounded_wheels=4",
+    "gameplay_systems_vehicle_wheel_probe_hits=4"
 )) {
     if (-not ([string]$engine.gameCodeGuidance.desktopRuntimeGameplaySystemsPackageSmoke).Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.desktopRuntimeGameplaySystemsPackageSmoke missing: $needle"
@@ -498,6 +505,10 @@ if (-not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterControl
     -not ([string]$gePhysicsModule[0].purpose).Contains("max_rows") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("row_budget_exceeded") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("rotational rigid-body constraints") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsSimpleVehicle3DDesc") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsSimpleVehicle3DWheelDesc") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsSimpleVehicle3DResult") -or
+    -not ([string]$gePhysicsModule[0].purpose).Contains("plan_physics_simple_vehicle_3d") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDeterminismGate3DStatus") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDeterminismGate3DDiagnostic") -or
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsDeterminismGate3DConfig") -or

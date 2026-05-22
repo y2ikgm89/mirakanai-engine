@@ -1435,7 +1435,7 @@ if (-not (Test-Path -LiteralPath $generated3dPackageManifestFullPath)) {
         "gameplay_systems_local_avoidance_applied_neighbors=",
         "gameplay_systems_physics_policy_status=",
         "gameplay_systems_physics_policy_dynamic_pushes=",
-        "solve_physics_constraints_3d", "PhysicsFixedConstraint3DDesc", "PhysicsLinearAxisConstraint3DDesc", "gameplay_systems_physics_constraints_status=", "gameplay_systems_physics_constraints_diagnostic=", "gameplay_systems_physics_constraints_rows=", "gameplay_systems_physics_constraints_fixed_rows=", "gameplay_systems_physics_constraints_linear_axis_rows=", "gameplay_systems_physics_constraints_axis_limit_clamped=",
+        "solve_physics_constraints_3d", "PhysicsFixedConstraint3DDesc", "PhysicsLinearAxisConstraint3DDesc", "gameplay_systems_physics_constraints_status=", "gameplay_systems_physics_constraints_diagnostic=", "gameplay_systems_physics_constraints_rows=", "gameplay_systems_physics_constraints_fixed_rows=", "gameplay_systems_physics_constraints_linear_axis_rows=", "gameplay_systems_physics_constraints_axis_limit_clamped=", "plan_physics_simple_vehicle_3d", "PhysicsSimpleVehicle3DDesc", "gameplay_systems_vehicle_status=", "gameplay_systems_vehicle_diagnostic=", "gameplay_systems_vehicle_wheel_rows=", "gameplay_systems_vehicle_grounded_wheels=", "gameplay_systems_vehicle_wheel_probe_hits=",
         "gameplay_systems_blackboard_status=",
         "gameplay_systems_behavior_status=",
         "gameplay_systems_audio_status=", "gameplay_systems_audio_first_sample=",

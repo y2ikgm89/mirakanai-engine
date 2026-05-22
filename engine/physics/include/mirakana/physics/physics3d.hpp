@@ -468,6 +468,50 @@ struct PhysicsKinematicMotion3DResult {
     std::vector<PhysicsKinematicMotion3DRow> rows;
 };
 
+enum class PhysicsSimpleVehicle3DStatus : std::uint8_t { grounded, airborne, invalid_request };
+
+enum class PhysicsSimpleVehicle3DDiagnostic : std::uint8_t { none, invalid_request, invalid_motion };
+
+struct PhysicsSimpleVehicle3DWheelDesc {
+    Vec3 local_offset{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    float radius{0.25F};
+    float ground_probe_distance{0.5F};
+};
+
+struct PhysicsSimpleVehicle3DDesc {
+    PhysicsKinematicMotion3DDesc motion{};
+    std::vector<PhysicsSimpleVehicle3DWheelDesc> wheels;
+    PhysicsQueryFilter3D wheel_filter{
+        .collision_mask = 0xFFFF'FFFFU,
+        .ignored_body = {},
+        .include_triggers = false,
+    };
+    float grounded_normal_y{0.70710677F};
+    std::size_t max_wheels{std::numeric_limits<std::size_t>::max()};
+};
+
+struct PhysicsSimpleVehicle3DWheelRow {
+    std::size_t source_index{0};
+    PhysicsBody3DId body;
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 normal{.x = 0.0F, .y = 1.0F, .z = 0.0F};
+    float distance{0.0F};
+    bool initial_overlap{false};
+    bool hit{false};
+    bool grounded{false};
+};
+
+struct PhysicsSimpleVehicle3DResult {
+    PhysicsSimpleVehicle3DStatus status{PhysicsSimpleVehicle3DStatus::invalid_request};
+    PhysicsSimpleVehicle3DDiagnostic diagnostic{PhysicsSimpleVehicle3DDiagnostic::none};
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    PhysicsKinematicMotion3DResult motion{};
+    std::size_t grounded_wheel_count{0};
+    std::size_t wheel_hit_count{0};
+    bool grounded{false};
+    std::vector<PhysicsSimpleVehicle3DWheelRow> wheel_rows;
+};
+
 enum class PhysicsJoint3DStatus : std::uint8_t { solved, invalid_request };
 
 enum class PhysicsJoint3DDiagnostic : std::uint8_t {
@@ -756,6 +800,9 @@ evaluate_physics_character_dynamic_policy_3d(const PhysicsWorld3D& world,
 
 [[nodiscard]] PhysicsKinematicMotion3DResult plan_physics_kinematic_motion_3d(const PhysicsWorld3D& world,
                                                                               const PhysicsKinematicMotion3DDesc& desc);
+
+[[nodiscard]] PhysicsSimpleVehicle3DResult plan_physics_simple_vehicle_3d(const PhysicsWorld3D& world,
+                                                                          const PhysicsSimpleVehicle3DDesc& desc);
 
 [[nodiscard]] PhysicsJointSolve3DResult solve_physics_joints_3d(PhysicsWorld3D& world,
                                                                 const PhysicsJointSolve3DDesc& desc);

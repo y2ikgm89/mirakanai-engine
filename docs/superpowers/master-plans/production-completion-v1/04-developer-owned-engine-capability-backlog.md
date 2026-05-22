@@ -25,7 +25,7 @@ Priority tiers:
 
 Recommended developer-owned capability rows:
 
-As of active draft PR #178, `docs/superpowers/plans/2026-05-22-post-1-0-capability-program-v1.md` is the selected developer-owned milestone. Phase 1 `physics-constraints-and-joints-v1` and Phase 2 first-slice `physics-vehicles-and-kinematics-v1` have implementation evidence in that PR, and `unsupportedProductionGaps` remains empty. Use the remaining rows as historical capability evidence plus a selection pool; add or select another dated milestone only when a concrete game handoff or roadmap decision identifies a reusable developer-owned capability outside the active milestone.
+As of active draft PR #178, `docs/superpowers/plans/2026-05-22-post-1-0-capability-program-v1.md` closes at Phase 2 after Phase 1 `physics-constraints-and-joints-v1` and Phase 2 `physics-vehicles-and-kinematics-v1` kinematic motion plus public simple vehicle policy/package evidence. `unsupportedProductionGaps` remains empty, and no developer-owned row is currently selected. Use the remaining rows as historical capability evidence plus a selection pool; add or select another dated milestone only when a concrete game handoff or roadmap decision identifies a reusable developer-owned capability.
 
 | Capability id | Tier | Why games need it | Developer implementation boundary | Evidence before game agents can use it |
 | --- | --- | --- | --- | --- |

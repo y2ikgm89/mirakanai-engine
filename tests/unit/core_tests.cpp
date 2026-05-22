@@ -10464,6 +10464,130 @@ MK_TEST("3d physics kinematic motion rejects invalid requests and initial overla
     MK_REQUIRE(world.find_body(blocker)->velocity == before.velocity);
 }
 
+MK_TEST("3d physics simple vehicle policy composes kinematic motion and wheel probes deterministically") {
+    mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+    constexpr std::uint32_t vehicle_layer = 1U << 0U;
+    constexpr std::uint32_t floor_layer = 1U << 1U;
+    const auto floor = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 0.0F, .y = -0.5F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 8.0F, .y = 0.5F, .z = 8.0F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = floor_layer,
+        .collision_mask = vehicle_layer,
+    });
+
+    mirakana::PhysicsSimpleVehicle3DDesc request;
+    request.motion.position = mirakana::Vec3{.x = 0.0F, .y = 0.45F, .z = 0.0F};
+    request.motion.displacement = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+    request.motion.shape = mirakana::PhysicsShape3DDesc::aabb(mirakana::Vec3{.x = 0.8F, .y = 0.25F, .z = 0.5F});
+    request.motion.filter.collision_mask = floor_layer;
+    request.motion.filter.include_triggers = false;
+    request.motion.skin_width = 0.02F;
+    request.motion.ground_probe_distance = 0.3F;
+    request.wheel_filter.collision_mask = floor_layer;
+    request.wheel_filter.include_triggers = false;
+    request.grounded_normal_y = 0.70F;
+    request.wheels = std::vector<mirakana::PhysicsSimpleVehicle3DWheelDesc>{
+        mirakana::PhysicsSimpleVehicle3DWheelDesc{
+            .local_offset = mirakana::Vec3{.x = -0.55F, .y = 0.0F, .z = -0.35F},
+            .radius = 0.2F,
+            .ground_probe_distance = 0.5F,
+        },
+        mirakana::PhysicsSimpleVehicle3DWheelDesc{
+            .local_offset = mirakana::Vec3{.x = 0.55F, .y = 0.0F, .z = -0.35F},
+            .radius = 0.2F,
+            .ground_probe_distance = 0.5F,
+        },
+        mirakana::PhysicsSimpleVehicle3DWheelDesc{
+            .local_offset = mirakana::Vec3{.x = -0.55F, .y = 0.0F, .z = 0.35F},
+            .radius = 0.2F,
+            .ground_probe_distance = 0.5F,
+        },
+        mirakana::PhysicsSimpleVehicle3DWheelDesc{
+            .local_offset = mirakana::Vec3{.x = 0.55F, .y = 0.0F, .z = 0.35F},
+            .radius = 0.2F,
+            .ground_probe_distance = 0.5F,
+        },
+    };
+
+    const auto before = *world.find_body(floor);
+    const auto result = mirakana::plan_physics_simple_vehicle_3d(world, request);
+    const auto repeated = mirakana::plan_physics_simple_vehicle_3d(world, request);
+    const auto expected_position = mirakana::Vec3{.x = 1.0F, .y = 0.45F, .z = 0.0F};
+
+    MK_REQUIRE(result.status == mirakana::PhysicsSimpleVehicle3DStatus::grounded);
+    MK_REQUIRE(result.diagnostic == mirakana::PhysicsSimpleVehicle3DDiagnostic::none);
+    MK_REQUIRE(result.motion.status == mirakana::PhysicsKinematicMotion3DStatus::moved);
+    MK_REQUIRE(result.position == expected_position);
+    MK_REQUIRE(result.position == repeated.position);
+    MK_REQUIRE(result.grounded);
+    MK_REQUIRE(result.grounded_wheel_count == 4U);
+    MK_REQUIRE(result.wheel_hit_count == 4U);
+    MK_REQUIRE(result.wheel_rows.size() == 4U);
+    MK_REQUIRE(result.wheel_rows.size() == repeated.wheel_rows.size());
+    MK_REQUIRE(result.wheel_rows[0].source_index == 0U);
+    MK_REQUIRE(result.wheel_rows[0].body == floor);
+    MK_REQUIRE(result.wheel_rows[0].hit);
+    MK_REQUIRE(result.wheel_rows[0].grounded);
+    MK_REQUIRE(result.wheel_rows[0].normal.y >= 0.70F);
+    MK_REQUIRE(result.wheel_rows[0].distance > 0.24F);
+    MK_REQUIRE(result.wheel_rows[0].distance < 0.26F);
+    MK_REQUIRE(world.find_body(floor)->position == before.position);
+    MK_REQUIRE(world.find_body(floor)->velocity == before.velocity);
+}
+
+MK_TEST("3d physics simple vehicle policy rejects invalid wheel requests without world mutation") {
+    mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
+    constexpr std::uint32_t floor_layer = 1U << 1U;
+    const auto floor = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 0.0F, .y = -0.5F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 8.0F, .y = 0.5F, .z = 8.0F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = floor_layer,
+    });
+
+    mirakana::PhysicsSimpleVehicle3DDesc request;
+    request.motion.position = mirakana::Vec3{.x = 0.0F, .y = 0.45F, .z = 0.0F};
+    request.motion.displacement = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+    request.motion.shape = mirakana::PhysicsShape3DDesc::aabb(mirakana::Vec3{.x = 0.8F, .y = 0.25F, .z = 0.5F});
+    request.motion.filter.collision_mask = floor_layer;
+    request.wheel_filter.collision_mask = floor_layer;
+    request.wheels = std::vector<mirakana::PhysicsSimpleVehicle3DWheelDesc>{
+        mirakana::PhysicsSimpleVehicle3DWheelDesc{
+            .local_offset = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .radius = 0.0F,
+            .ground_probe_distance = 0.5F,
+        },
+    };
+
+    const auto before = *world.find_body(floor);
+    const auto invalid_radius = mirakana::plan_physics_simple_vehicle_3d(world, request);
+    request.wheels[0].radius = 0.2F;
+    request.wheel_filter.collision_mask = 0U;
+    const auto invalid_filter = mirakana::plan_physics_simple_vehicle_3d(world, request);
+
+    MK_REQUIRE(invalid_radius.status == mirakana::PhysicsSimpleVehicle3DStatus::invalid_request);
+    MK_REQUIRE(invalid_radius.diagnostic == mirakana::PhysicsSimpleVehicle3DDiagnostic::invalid_request);
+    MK_REQUIRE(invalid_radius.wheel_rows.empty());
+    MK_REQUIRE(invalid_filter.status == mirakana::PhysicsSimpleVehicle3DStatus::invalid_request);
+    MK_REQUIRE(invalid_filter.diagnostic == mirakana::PhysicsSimpleVehicle3DDiagnostic::invalid_request);
+    MK_REQUIRE(invalid_filter.wheel_rows.empty());
+    MK_REQUIRE(world.find_body(floor)->position == before.position);
+    MK_REQUIRE(world.find_body(floor)->velocity == before.velocity);
+}
+
 MK_TEST("3d physics advanced controller composes movement platform constraints and replay rows") {
     mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
     constexpr std::uint32_t character_layer = 1U << 0U;

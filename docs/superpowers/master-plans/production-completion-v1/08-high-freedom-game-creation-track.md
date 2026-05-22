@@ -19,7 +19,7 @@ High-freedom game support must preserve the same AI-operable rules and remain ga
 
 Recommended high-freedom 1.x streams:
 
-As of active draft PR #178, `post-1-0-capability-program-v1` selects the current post-1.0 / 1.x developer-owned milestone. Phase 1 `physics-constraints-and-joints-v1` and Phase 2 first-slice `physics-vehicles-and-kinematics-v1` have implementation evidence in that PR. High-freedom streams remain sequenced follow-ons in the same milestone until a later phase selects one directly.
+As of active draft PR #178, `post-1-0-capability-program-v1` closes at Phase 2 after Phase 1 `physics-constraints-and-joints-v1` and Phase 2 `physics-vehicles-and-kinematics-v1` kinematic motion plus public simple vehicle policy/package evidence. High-freedom streams return to the developer-owned selection pool until a later dated plan selects one directly.
 
 | Stream | Goal | Official-practice evidence gate | Non-goals until separately planned |
 | --- | --- | --- | --- |

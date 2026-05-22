@@ -1595,6 +1595,20 @@ kinematic_motion_ground_probe(const std::vector<PhysicsBody3D>& bodies, const Ph
     return row;
 }
 
+[[nodiscard]] bool is_valid_simple_vehicle_wheel_desc(const PhysicsSimpleVehicle3DWheelDesc& desc) noexcept {
+    return finite_vec(desc.local_offset) && finite(desc.radius) && desc.radius > 0.0F &&
+           finite(desc.ground_probe_distance) && desc.ground_probe_distance > 0.0F;
+}
+
+[[nodiscard]] bool is_valid_simple_vehicle_desc(const PhysicsSimpleVehicle3DDesc& desc) noexcept {
+    if (!is_valid_kinematic_motion_desc(desc.motion) || desc.wheels.empty() || desc.wheels.size() > desc.max_wheels ||
+        desc.wheel_filter.collision_mask == 0U || !finite(desc.grounded_normal_y) || desc.grounded_normal_y < 0.0F ||
+        desc.grounded_normal_y > 1.0F || desc.max_wheels == 0U) {
+        return false;
+    }
+    return std::ranges::all_of(desc.wheels, is_valid_simple_vehicle_wheel_desc);
+}
+
 [[nodiscard]] bool duplicate_authored_body_name(const std::vector<PhysicsAuthoredCollisionBody3DDesc>& bodies,
                                                 std::size_t index) noexcept {
     for (std::size_t previous = 0; previous < index; ++previous) {
@@ -2662,6 +2676,65 @@ PhysicsKinematicMotion3DResult plan_physics_kinematic_motion_3d(const PhysicsWor
         result.status = PhysicsKinematicMotion3DStatus::constrained;
     }
     result.diagnostic = PhysicsKinematicMotion3DDiagnostic::none;
+    return result;
+}
+
+PhysicsSimpleVehicle3DResult plan_physics_simple_vehicle_3d(const PhysicsWorld3D& world,
+                                                            const PhysicsSimpleVehicle3DDesc& desc) {
+    PhysicsSimpleVehicle3DResult result;
+    result.position = desc.motion.position;
+
+    if (!is_valid_simple_vehicle_desc(desc)) {
+        result.status = PhysicsSimpleVehicle3DStatus::invalid_request;
+        result.diagnostic = PhysicsSimpleVehicle3DDiagnostic::invalid_request;
+        return result;
+    }
+
+    result.motion = plan_physics_kinematic_motion_3d(world, desc.motion);
+    result.position = result.motion.position;
+    if (result.motion.status == PhysicsKinematicMotion3DStatus::invalid_request) {
+        result.status = PhysicsSimpleVehicle3DStatus::invalid_request;
+        result.diagnostic = PhysicsSimpleVehicle3DDiagnostic::invalid_motion;
+        return result;
+    }
+
+    result.wheel_rows.reserve(desc.wheels.size());
+    for (std::size_t wheel_index = 0; wheel_index < desc.wheels.size(); ++wheel_index) {
+        const auto& wheel = desc.wheels[wheel_index];
+        PhysicsSimpleVehicle3DWheelRow row{
+            .source_index = wheel_index,
+            .position = result.position + wheel.local_offset,
+        };
+
+        const auto cast = world.exact_sphere_cast(PhysicsExactSphereCast3DDesc{
+            .origin = row.position,
+            .direction = Vec3{.x = 0.0F, .y = -1.0F, .z = 0.0F},
+            .max_distance = wheel.ground_probe_distance,
+            .radius = wheel.radius,
+            .collision_mask = desc.wheel_filter.collision_mask,
+            .ignored_body = desc.wheel_filter.ignored_body,
+            .include_triggers = desc.wheel_filter.include_triggers,
+        });
+        if (cast.status == PhysicsExactSphereCast3DStatus::hit && cast.hit.has_value()) {
+            row.body = cast.hit->body;
+            row.position = cast.hit->position;
+            row.normal = cast.hit->normal;
+            row.distance = cast.hit->distance;
+            row.initial_overlap = cast.hit->initial_overlap;
+            row.hit = true;
+            row.grounded = row.normal.y >= desc.grounded_normal_y;
+            ++result.wheel_hit_count;
+            if (row.grounded) {
+                ++result.grounded_wheel_count;
+            }
+        }
+
+        result.wheel_rows.push_back(row);
+    }
+
+    result.grounded = result.grounded_wheel_count > 0U;
+    result.status = result.grounded ? PhysicsSimpleVehicle3DStatus::grounded : PhysicsSimpleVehicle3DStatus::airborne;
+    result.diagnostic = PhysicsSimpleVehicle3DDiagnostic::none;
     return result;
 }
 
