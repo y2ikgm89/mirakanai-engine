@@ -61,7 +61,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Status | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | No dated capability plan is active after closing `Post-1.0 Capability Program v1` at Phase 2; `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`. |
+| Active slice (`currentActivePlan`) | [production-completion-master-plan-v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | No dated capability plan is active after closing `AI Game Generation Orchestrator v1`; `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`. |
 
 ## Current Evidence Pointers
 

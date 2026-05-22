@@ -759,7 +759,7 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' cannot make execute ready before dry-run is ready"
     }
     if ($modeIds.ContainsKey("apply") -and $modeIds["apply"].status -eq "ready" -and
-        @("register-runtime-package-files", "update-ui-atlas-metadata-package", "create-material-instance", "create-material-from-graph", "update-scene-package", "migrate-scene-v2-runtime-package", "create-scene", "add-scene-node", "add-or-update-component", "create-prefab", "instantiate-prefab", "refresh-prefab-instance", "register-source-asset", "cook-registered-source-assets") -notcontains $commandSurface.id) {
+        @("create-game-recipe", "register-runtime-package-files", "update-ui-atlas-metadata-package", "create-material-instance", "create-material-from-graph", "update-scene-package", "migrate-scene-v2-runtime-package", "create-scene", "add-scene-node", "add-or-update-component", "create-prefab", "instantiate-prefab", "refresh-prefab-instance", "register-source-asset", "cook-registered-source-assets") -notcontains $commandSurface.id) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' cannot make apply ready without a focused apply tooling slice"
     }
     if ($modeIds.ContainsKey("execute") -and $modeIds["execute"].status -eq "ready" -and
@@ -825,6 +825,36 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
     }
     if ($modeIds.ContainsKey("apply") -and $modeIds["apply"].status -eq "ready" -and @($commandSurface.validationRecipes).Count -lt 1) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop command surface '$($commandSurface.id)' must list validation recipes when apply is ready"
+    }
+}
+$createGameRecipeCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq "create-game-recipe" })
+if ($createGameRecipeCommand.Count -ne 1 -or $createGameRecipeCommand[0].status -ne "ready") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one ready create-game-recipe command surface"
+} else {
+    $createGameRecipeModes = @{}
+    foreach ($mode in @($createGameRecipeCommand[0].requestModes)) {
+        $createGameRecipeModes[$mode.id] = $mode
+    }
+    if (-not $createGameRecipeModes.ContainsKey("dry-run") -or $createGameRecipeModes["dry-run"].status -ne "ready" -or
+        -not $createGameRecipeModes.ContainsKey("apply") -or $createGameRecipeModes["apply"].status -ne "ready") {
+        Write-Error "engine/agent/manifest.json aiOperableProductionLoop create-game-recipe must keep dry-run and apply ready"
+    }
+    foreach ($requiredField in @("mode", "gameName", "designSpecPath")) {
+        if (@($createGameRecipeCommand[0].requestShape.requiredFields) -notcontains $requiredField) {
+            Write-Error "engine/agent/manifest.json create-game-recipe requestShape missing required field: $requiredField"
+        }
+    }
+    foreach ($resultField in @("plannedFiles", "changedFiles")) {
+        if (-not ((@($createGameRecipeCommand[0].resultShape.dryRunFields) -contains $resultField) -or
+            (@($createGameRecipeCommand[0].resultShape.applyFields) -contains $resultField))) {
+            Write-Error "engine/agent/manifest.json create-game-recipe resultShape missing field: $resultField"
+        }
+    }
+    $createGameRecipeText = ($createGameRecipeCommand[0] | ConvertTo-Json -Depth 20)
+    foreach ($needle in @("tools/create-game-recipe.ps1", "tools/new-game.ps1", "aiWorkflow.gameDesignSpec", "DesktopRuntime2DPackage", "DesktopRuntime3DPackage", "arbitrary shell", "external asset generation")) {
+        if (-not $createGameRecipeText.Contains($needle)) {
+            Write-Error "engine/agent/manifest.json create-game-recipe command surface missing reviewed boundary needle: $needle"
+        }
     }
 }
 $runtimePackageCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq "register-runtime-package-files" })

@@ -200,6 +200,98 @@ foreach ($check in $aiGameDesignSpecChecks) {
     }
 }
 
+$aiGameGenerationOrchestratorChecks = @(
+    @{
+        Path = "tools/create-game-recipe.ps1"
+        Needles = @(
+            "[CmdletBinding(SupportsShouldProcess = `$true)]",
+            "GameEngine.AiCommand.CreateGameRecipe.Result.v1",
+            "tools/new-game.ps1",
+            "aiWorkflow.gameDesignSpec",
+            "DesktopRuntime2DPackage",
+            "DesktopRuntime3DPackage",
+            "arbitrary-shell"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            '"id": "create-game-recipe"',
+            '"status": "ready"',
+            "tools/create-game-recipe.ps1",
+            "tools/new-game.ps1",
+            "plannedFiles",
+            "changedFiles",
+            "external asset generation"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "AI Game Generation Orchestrator v1",
+            "tools/create-game-recipe.ps1",
+            "plannedFiles",
+            "changedFiles",
+            "external asset generation"
+        )
+    },
+    @{
+        Path = "docs/ai-game-development.md"
+        Needles = @(
+            "tools/create-game-recipe.ps1 -Mode DryRun",
+            "DesktopRuntime2DPackage",
+            "DesktopRuntime3DPackage",
+            "does not execute arbitrary shell text"
+        )
+    },
+    @{
+        Path = "docs/roadmap.md"
+        Needles = @(
+            "AI Game Generation Orchestrator v1",
+            "reviewed dry-run/apply wrapper",
+            "no arbitrary shell execution"
+        )
+    },
+    @{
+        Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
+        Needles = @(
+            "ai-game-generation-orchestrator-v1",
+            "implemented-1x-foundation",
+            "tools/create-game-recipe.ps1"
+        )
+    },
+    @{
+        Path = ".agents/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "tools/create-game-recipe.ps1",
+            "plannedFiles",
+            "arbitrary shell text"
+        )
+    },
+    @{
+        Path = ".claude/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "tools/create-game-recipe.ps1",
+            "plannedFiles",
+            "arbitrary shell text"
+        )
+    },
+    @{
+        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "tools/create-game-recipe.ps1",
+            "plannedFiles",
+            "arbitrary shell text"
+        )
+    }
+)
+foreach ($check in $aiGameGenerationOrchestratorChecks) {
+    $gameGenerationOrchestratorText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $gameGenerationOrchestratorText $needle $check.Path
+    }
+}
+
 $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/resource_panel.hpp"
