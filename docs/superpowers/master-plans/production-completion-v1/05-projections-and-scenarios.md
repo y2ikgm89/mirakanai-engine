@@ -68,11 +68,11 @@ The autonomous game-creation lane is game-surface only by default: agents may ge
 | Playtest and remediation | `ai-generated-game-playtest-loop-v1`, `ai-validation-remediation-recipes-v1` | Recipe output summaries, gameplay counters, package smoke logs, remediation rows, and no validation weakening. |
 | Quality gate | `ai-generated-game-quality-rubric-v1` | Objective clarity, controls, feedback, fail/restart, deterministic simulation, package evidence, and performance budget rows. |
 | Agent-surface alignment | `ai-codex-claude-agent-surface-v1` | `check-agents`, `check-ai-integration`, official docs review, and no broad permission grants. |
-| Developer handoff | `ai-engine-capability-handoff-v1` | Handoff rows include requested capability, current workaround, blocked feature, desired public contract, and required evidence. |
+| Developer handoff | `ai-engine-capability-handoff-v1` | `EngineCapabilityHandoffRequestRow` / `review_engine_capability_handoff_request` and optional `game.agent.json.aiWorkflow.engineCapabilityHandoffs` rows include requested capability, current workaround, blocked feature, affected game files, desired public contract, and required evidence. |
 
 ## Missing-Capability Handoff
 
-When a game-creation agent hits a missing reusable engine capability, it must stop at a handoff/remediation row. The row should name the requested game feature, the closest supported workaround, the affected game files, the desired first-party API or data contract, and the evidence needed before future agents can use the capability.
+When a game-creation agent hits a missing reusable engine capability, it must stop at a handoff/remediation row. The row should name the requested game feature, the closest supported workaround, the affected game files, the desired first-party API or data contract, and the evidence needed before future agents can use the capability. The AI Engine Capability Handoff v1 review API fails closed if the row invents a non-canonical capability id, omits required handoff fields, or leaks native handles, SDL3, Dear ImGui, renderer/RHI, backend, platform, or middleware types into the desired public contract.
 
 Only a developer-owned engine-feature task may change engine internals and promote the new capability back through the manifest, schema, docs, skills, and validation recipes.
 

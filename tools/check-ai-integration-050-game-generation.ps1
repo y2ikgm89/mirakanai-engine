@@ -3,6 +3,87 @@
 
 # Chapter 5 for check-ai-integration.ps1 static contracts.
 
+$engineCapabilityHandoffChecks = @(
+    @{
+        Path = "engine/tools/include/mirakana/tools/gameplay_authoring_tool.hpp"
+        Needles = @(
+            "EngineCapabilityHandoffRequestRow",
+            "EngineCapabilityHandoffReviewRequest",
+            "EngineCapabilityHandoffReviewResult",
+            "review_engine_capability_handoff_request"
+        )
+    },
+    @{
+        Path = "engine/tools/asset/gameplay_authoring_tool.cpp"
+        Needles = @(
+            "unsupported_capability_id",
+            "missing_current_workaround",
+            "unsafe_public_contract",
+            "developer-owned-engine-feature",
+            "create-dated-capability-plan"
+        )
+    },
+    @{
+        Path = "tests/unit/tools_tests.cpp"
+        Needles = @(
+            "engine capability handoff review accepts canonical developer handoff rows",
+            "engine capability handoff review fails closed on incomplete invented and native handoffs",
+            "EngineCapabilityHandoffRequestRow"
+        )
+    },
+    @{
+        Path = "schemas/game-agent.schema.json"
+        Needles = @(
+            "engineCapabilityHandoffs",
+            "requestedCapabilityId",
+            "blockedFeatureId",
+            "currentWorkaround",
+            "desiredPublicContract",
+            "requiredEvidenceIds"
+        )
+    },
+    @{
+        Path = "docs/ai-game-development.md"
+        Needles = @(
+            "Engine Capability Handoffs",
+            "EngineCapabilityHandoffRequestRow",
+            "review_engine_capability_handoff_request",
+            "game.agent.json.aiWorkflow.engineCapabilityHandoffs"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "AI Engine Capability Handoff v1",
+            "EngineCapabilityHandoffReviewRequest",
+            "native handles, SDL3, Dear ImGui, renderer/RHI, backend"
+        )
+    },
+    @{
+        Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
+        Needles = @(
+            "ai-engine-capability-handoff-v1",
+            "implemented-1x-foundation",
+            "game.agent.json.aiWorkflow.engineCapabilityHandoffs"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "implemented-ai-engine-capability-handoff",
+            "review_engine_capability_handoff_request",
+            "EngineCapabilityHandoffRequestRow",
+            "aiWorkflow.engineCapabilityHandoffs"
+        )
+    }
+)
+foreach ($check in $engineCapabilityHandoffChecks) {
+    $engineCapabilityHandoffText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $engineCapabilityHandoffText $needle $check.Path
+    }
+}
+
 $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/resource_panel.hpp"

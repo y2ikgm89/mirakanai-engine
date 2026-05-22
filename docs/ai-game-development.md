@@ -30,6 +30,10 @@ Current recipe ids:
 
 `planned`, `blocked`, or host-gated recipes must not be treated as ready unless the task is explicitly implementing that engine capability or the required host validation recipe has passed. Generated games must not bypass these recipes by exposing SDL3, Win32, D3D12, Vulkan, Metal, Dear ImGui, RHI backend handles, source asset parsers, runtime shader compilers, or game-local UI/physics/rendering systems.
 
+## Engine Capability Handoffs
+
+When a generated or sample game needs a reusable engine capability that is not supported by the selected recipe, stop at AI Engine Capability Handoff v1 instead of editing engine internals from the game-creation lane. Use `mirakana::EngineCapabilityHandoffRequestRow` and `mirakana::review_engine_capability_handoff_request` to produce deterministic developer-owned handoff rows, and optionally persist descriptor-only `game.agent.json.aiWorkflow.engineCapabilityHandoffs` rows. Each handoff must reference a canonical backlog capability id, name the blocked game feature, record the current supported workaround, list affected game-owned files, describe the desired first-party public contract, and list required evidence ids. The review fails closed for invented capability ids, incomplete rows, missing affected files/evidence, and desired contracts that leak native handles, SDL3, Dear ImGui, renderer/RHI, backend, Metal/Vulkan/D3D12, or middleware terms.
+
 ## AI Command Surfaces
 
 `aiCommandSurfaces` describes which AI-facing mutations may be dry-run or applied. Each descriptor has `schemaVersion`, `requestModes`, `requestShape`, `resultShape`, `requiredModules`, `capabilityGates`, `hostGates`, `validationRecipes`, `unsupportedGapIds`, and a placeholder `undoToken`; `unsupportedGapIds` can be empty after a narrow reviewed surface has no current `unsupportedProductionGaps` blocker. Agents must treat these rows as capability gates before editing game files, scene/prefab/material/package data, or manifests.

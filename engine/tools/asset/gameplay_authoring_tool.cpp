@@ -4,6 +4,7 @@
 #include "mirakana/tools/gameplay_authoring_tool.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -48,6 +49,82 @@ void validate_id_vector(GameplayAuthoringReviewResult& result, const GameplayAut
             add_remediation(result, feature, std::string{remediation_kind}, value, std::string{missing_message});
         }
     }
+}
+
+void add_handoff_diagnostic(EngineCapabilityHandoffReviewResult& result, std::string code, std::string message,
+                            const EngineCapabilityHandoffRequestRow& handoff, std::string referenced_id = {}) {
+    result.diagnostics.push_back(EngineCapabilityHandoffDiagnostic{
+        .code = std::move(code),
+        .message = std::move(message),
+        .handoff_id = handoff.handoff_id,
+        .referenced_id = std::move(referenced_id),
+        .source_index = handoff.source_index,
+    });
+}
+
+[[nodiscard]] bool contains_empty_value(const std::vector<std::string>& values) {
+    return std::ranges::any_of(values, [](const auto& value) { return value.empty(); });
+}
+
+[[nodiscard]] std::string to_ascii_lowercase(std::string_view value) {
+    std::string lowered;
+    lowered.reserve(value.size());
+    for (const unsigned char character : value) {
+        lowered.push_back(static_cast<char>(std::tolower(character)));
+    }
+    return lowered;
+}
+
+[[nodiscard]] bool is_game_owned_file_path(std::string_view value) {
+    constexpr std::string_view games_prefix = "games/";
+    if (!value.starts_with(games_prefix) || value.ends_with("/") || value.find('\\') != std::string_view::npos ||
+        value.find("..") != std::string_view::npos || value.find("//") != std::string_view::npos ||
+        value.find(';') != std::string_view::npos) {
+        return false;
+    }
+
+    const auto remaining = value.substr(games_prefix.size());
+    const auto separator = remaining.find('/');
+    if (separator == std::string_view::npos || separator == 0U || separator + 1U == remaining.size()) {
+        return false;
+    }
+
+    const auto game_name = remaining.substr(0, separator);
+    if (std::islower(static_cast<unsigned char>(game_name.front())) == 0) {
+        return false;
+    }
+    return std::ranges::all_of(game_name, [](const unsigned char character) {
+        return std::islower(character) != 0 || std::isdigit(character) != 0 || character == '_';
+    });
+}
+
+[[nodiscard]] bool contains_non_game_owned_file_path(const std::vector<std::string>& values) {
+    return std::ranges::any_of(values, [](const auto& value) { return !is_game_owned_file_path(value); });
+}
+
+[[nodiscard]] bool contains_unsafe_public_contract_term(std::string_view value) {
+    const auto lowered = to_ascii_lowercase(value);
+    constexpr std::string_view unsafe_terms[] = {
+        "native handle",
+        "native handles",
+        "native window handle",
+        "sdl",
+        "sdl3",
+        "dear imgui",
+        "imgui",
+        "irhi",
+        "rhi handle",
+        "d3d12",
+        "id3d12",
+        "vulkan",
+        "vk",
+        "metal",
+        "middleware",
+        "physx",
+        "jolt",
+    };
+    return std::ranges::any_of(unsafe_terms,
+                               [&lowered](std::string_view term) { return lowered.find(term) != std::string::npos; });
 }
 
 } // namespace
@@ -119,6 +196,84 @@ GameplayAuthoringReviewResult review_gameplay_authoring_request(const GameplayAu
             .validation_recipe_ids = feature.validation_recipe_ids,
             .package_evidence_ids = feature.package_evidence_ids,
             .source_index = feature.source_index,
+        });
+    }
+
+    return result;
+}
+
+EngineCapabilityHandoffReviewResult
+review_engine_capability_handoff_request(const EngineCapabilityHandoffReviewRequest& request) {
+    EngineCapabilityHandoffReviewResult result;
+    const auto canonical_capabilities = make_set(request.canonical_capability_ids);
+
+    std::unordered_set<std::string> seen_handoff_ids;
+    for (const auto& handoff : request.handoffs) {
+        if (handoff.handoff_id.empty()) {
+            add_handoff_diagnostic(result, "missing_handoff_id", "engine capability handoff id is required", handoff);
+        } else if (!seen_handoff_ids.insert(handoff.handoff_id).second) {
+            add_handoff_diagnostic(result, "duplicate_handoff_id",
+                                   "engine capability handoff id appears more than once", handoff, handoff.handoff_id);
+        }
+
+        if (handoff.requested_capability_id.empty()) {
+            add_handoff_diagnostic(result, "missing_requested_capability",
+                                   "requested canonical capability id is required", handoff);
+        } else if (!canonical_capabilities.contains(handoff.requested_capability_id)) {
+            add_handoff_diagnostic(result, "unsupported_capability_id",
+                                   "requested capability must reference a canonical developer-owned backlog row",
+                                   handoff, handoff.requested_capability_id);
+        }
+        if (handoff.blocked_feature_id.empty()) {
+            add_handoff_diagnostic(result, "missing_blocked_feature", "blocked game feature id is required", handoff);
+        }
+        if (handoff.current_workaround.empty()) {
+            add_handoff_diagnostic(result, "missing_current_workaround",
+                                   "current supported workaround must be recorded", handoff);
+        }
+        if (handoff.affected_game_files.empty() || contains_empty_value(handoff.affected_game_files)) {
+            add_handoff_diagnostic(result, "missing_affected_game_file",
+                                   "at least one affected game-owned file must be recorded", handoff);
+        } else if (contains_non_game_owned_file_path(handoff.affected_game_files)) {
+            for (const auto& affected_file : handoff.affected_game_files) {
+                if (!is_game_owned_file_path(affected_file)) {
+                    add_handoff_diagnostic(result, "invalid_affected_game_file",
+                                           "affected files must be repo-relative paths under games/", handoff,
+                                           affected_file);
+                }
+            }
+        }
+        if (handoff.desired_public_contract.empty()) {
+            add_handoff_diagnostic(result, "missing_desired_public_contract",
+                                   "desired first-party public contract must be recorded", handoff);
+        } else if (contains_unsafe_public_contract_term(handoff.desired_public_contract)) {
+            add_handoff_diagnostic(result, "unsafe_public_contract",
+                                   "desired public contract must stay first-party and backend-neutral", handoff,
+                                   handoff.desired_public_contract);
+        }
+        if (handoff.required_evidence_ids.empty() || contains_empty_value(handoff.required_evidence_ids)) {
+            add_handoff_diagnostic(result, "missing_required_evidence",
+                                   "at least one required evidence id must be recorded", handoff);
+        }
+    }
+
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    result.accepted_handoffs.reserve(request.handoffs.size());
+    for (const auto& handoff : request.handoffs) {
+        result.accepted_handoffs.push_back(EngineCapabilityHandoffRow{
+            .handoff_id = handoff.handoff_id,
+            .requested_capability_id = handoff.requested_capability_id,
+            .blocked_feature_id = handoff.blocked_feature_id,
+            .current_workaround = handoff.current_workaround,
+            .affected_game_files = handoff.affected_game_files,
+            .desired_public_contract = handoff.desired_public_contract,
+            .required_evidence_ids = handoff.required_evidence_ids,
+            .owner = "developer-owned-engine-feature",
+            .next_action = "create-dated-capability-plan",
+            .source_index = handoff.source_index,
         });
     }
 
