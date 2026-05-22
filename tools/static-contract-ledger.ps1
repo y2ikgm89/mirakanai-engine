@@ -15,7 +15,8 @@ function Get-StaticContractLedger {
                 "check-ai-integration-050-game-generation.ps1",
                 "check-ai-integration-060-editor-workflows.ps1",
                 "check-ai-integration-070-production-ledger.ps1",
-                "check-ai-integration-080-scaffold-smokes.ps1"
+                "check-ai-integration-080-scaffold-smokes.ps1",
+                "check-ai-integration-090-generated-game-quality-rubric.ps1"
             )
             MaximumEntryLines = 80
             MaximumCoreLines = 1600
@@ -35,7 +36,8 @@ function Get-StaticContractLedger {
                 "check-json-contracts-061-content-mutation-ledger.ps1",
                 "check-json-contracts-062-placeholder-asset-pipeline.ps1",
                 "check-json-contracts-063-generated-game-playtest-loop.ps1",
-                "check-json-contracts-064-validation-remediation-recipes.ps1"
+                "check-json-contracts-064-validation-remediation-recipes.ps1",
+                "check-json-contracts-065-generated-game-quality-rubric.ps1"
             )
             MaximumEntryLines = 80
             MaximumCoreLines = 1600

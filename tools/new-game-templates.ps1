@@ -5926,6 +5926,185 @@ function New-AiValidationRemediationRecipes {
     }
 }
 
+function New-AiGeneratedGameQualityGateResult {
+    param(
+        [string]$Id,
+        [string]$Category,
+        [string]$Status,
+        [string[]]$Evidence,
+        [string[]]$RequiredSignals,
+        [string[]]$ValidationRecipeIds,
+        [string[]]$RemediationRecipeIds
+    )
+
+    return [ordered]@{
+        id = $Id
+        category = $Category
+        status = $Status
+        evidence = @($Evidence)
+        requiredSignals = @($RequiredSignals)
+        validationRecipeIds = @($ValidationRecipeIds)
+        remediationRecipeIds = @($RemediationRecipeIds)
+    }
+}
+
+function New-AiGeneratedGameQualitySampleReport {
+    param(
+        [string]$Id,
+        [string]$Kind,
+        [string]$Path,
+        [string[]]$GateResultIds,
+        [string[]]$RequiredSignals
+    )
+
+    return [ordered]@{
+        id = $Id
+        kind = $Kind
+        path = $Path
+        gateResultIds = @($GateResultIds)
+        requiredSignals = @($RequiredSignals)
+    }
+}
+
+function New-AiGeneratedGameQualityUnsupportedRow {
+    param(
+        [string]$ClaimId,
+        [string]$Reason,
+        [string]$Escalation
+    )
+
+    return [ordered]@{
+        id = "unsupported-$ClaimId"
+        claimId = $ClaimId
+        reason = $Reason
+        escalation = $Escalation
+    }
+}
+
+function New-AiGeneratedGameQualityRubric {
+    param(
+        [string]$GameName,
+        [ValidateSet("2d", "3d")]
+        [string]$RubricKind,
+        [string[]]$ValidationRecipeIds
+    )
+
+    $gameId = $GameName.Replace("_", "-")
+    $recipeIds = @($ValidationRecipeIds)
+    $packageRecipeId = "installed-2d-package-smoke"
+    $budgetRecipeId = "installed-2d-entity-scale-culling-smoke"
+    $feedbackSignals = @("gameplay_systems_status=ready", "native_2d_sprite_batches_executed>=1")
+    if ($RubricKind -eq "3d") {
+        $packageRecipeId = "installed-d3d12-3d-package-smoke"
+        $budgetRecipeId = "installed-d3d12-3d-entity-scale-culling-smoke"
+        $feedbackSignals = @("playable_3d_ready=1", "ui_overlay_ready=1", "gameplay_systems_status=ready")
+        if ($recipeIds -notcontains $packageRecipeId -and $recipeIds -contains "installed-d3d12-scene-gpu-smoke") {
+            $packageRecipeId = "installed-d3d12-scene-gpu-smoke"
+            $feedbackSignals = @("scene_gpu_ready=1", "renderer_quality_ready=1")
+        }
+        if ($recipeIds -notcontains $budgetRecipeId) {
+            $budgetRecipeId = $packageRecipeId
+        }
+    }
+
+    return [ordered]@{
+        schemaVersion = 1
+        capabilityId = "ai-generated-game-quality-rubric-v1"
+        rubricId = "$gameId-quality-rubric"
+        designSpecId = $gameId
+        playtestLoopId = "$gameId-playtest-loop"
+        remediationRecipeSetId = "$gameId-validation-remediation-recipes"
+        reportId = "$gameId-quality-rubric-report"
+        reportPath = "games/$GameName/reports/quality/$GameName-quality-rubric.json"
+        gateResults = @(
+            New-AiGeneratedGameQualityGateResult `
+                -Id "objective-quality-gate" `
+                -Category "objective" `
+                -Status "passed-with-evidence" `
+                -Evidence @("aiWorkflow.gameDesignSpec.coreLoop.objective is declared before generation", "quality report records objective text") `
+                -RequiredSignals @("objective_declared=1") `
+                -ValidationRecipeIds @($recipeIds[0]) `
+                -RemediationRecipeIds @("invalid-reference-remediation")
+            New-AiGeneratedGameQualityGateResult `
+                -Id "controls-quality-gate" `
+                -Category "controls" `
+                -Status "passed-with-evidence" `
+                -Evidence @("aiWorkflow.gameDesignSpec.inputMap declares player actions and default bindings", "quality report records control rows") `
+                -RequiredSignals @("controls_declared=1", "input_map_rows>=1") `
+                -ValidationRecipeIds @($recipeIds[0]) `
+                -RemediationRecipeIds @("invalid-reference-remediation")
+            New-AiGeneratedGameQualityGateResult `
+                -Id "feedback-quality-gate" `
+                -Category "feedback" `
+                -Status "passed-with-evidence" `
+                -Evidence @("selected package smokes report gameplay, renderer, UI, audio, physics, navigation, or AI feedback counters") `
+                -RequiredSignals $feedbackSignals `
+                -ValidationRecipeIds @($packageRecipeId, $budgetRecipeId) `
+                -RemediationRecipeIds @("counter-mismatch-remediation")
+            New-AiGeneratedGameQualityGateResult `
+                -Id "fail-restart-quality-gate" `
+                -Category "fail-restart" `
+                -Status "passed-with-evidence" `
+                -Evidence @("aiWorkflow.gameDesignSpec.coreLoop.failState and restart are declared", "validation remediation rows keep rerun-selected-validation-recipe policy") `
+                -RequiredSignals @("fail_state_declared=1", "restart_declared=1", "rerun_policy=rerun-selected-validation-recipe") `
+                -ValidationRecipeIds @($recipeIds[0]) `
+                -RemediationRecipeIds @("invalid-reference-remediation", "runtime-package-load-remediation")
+            New-AiGeneratedGameQualityGateResult `
+                -Id "deterministic-package-smoke-quality-gate" `
+                -Category "deterministic-package-smoke" `
+                -Status "passed-with-evidence" `
+                -Evidence @("desktop runtime release target and selected installed package smoke are manifest-declared deterministic recipes") `
+                -RequiredSignals @("package_smoke_status=passed", "recipe_status=passed") `
+                -ValidationRecipeIds @("desktop-runtime-release-target", $packageRecipeId) `
+                -RemediationRecipeIds @("runtime-package-load-remediation", "missing-package-file-remediation")
+            New-AiGeneratedGameQualityGateResult `
+                -Id "budget-evidence-quality-gate" `
+                -Category "budget-evidence" `
+                -Status "passed-with-evidence" `
+                -Evidence @("selected budget smoke reports package-visible entity scale, culling, draw, update, or frame budget evidence") `
+                -RequiredSignals @("budget_evidence_present=1") `
+                -ValidationRecipeIds @($budgetRecipeId) `
+                -RemediationRecipeIds @("counter-mismatch-remediation", "host-gated-remediation")
+        )
+        sampleReports = @(
+            New-AiGeneratedGameQualitySampleReport `
+                -Id "headless-quality-report" `
+                -Kind "headless-assertion" `
+                -Path "games/$GameName/reports/quality/$GameName-headless-quality.json" `
+                -GateResultIds @("objective-quality-gate", "controls-quality-gate", "fail-restart-quality-gate") `
+                -RequiredSignals @("objective_declared=1", "controls_declared=1", "restart_declared=1")
+            New-AiGeneratedGameQualitySampleReport `
+                -Id "package-quality-report" `
+                -Kind "package-assertion" `
+                -Path "games/$GameName/reports/quality/$GameName-package-quality.json" `
+                -GateResultIds @("feedback-quality-gate", "deterministic-package-smoke-quality-gate", "budget-evidence-quality-gate") `
+                -RequiredSignals @("package_smoke_status=passed", "budget_evidence_present=1")
+        )
+        unsupportedRows = @(
+            New-AiGeneratedGameQualityUnsupportedRow -ClaimId "subjective-fun" -Reason "Rubric rows prove declared objective and deterministic evidence only." -Escalation "developer review"
+            New-AiGeneratedGameQualityUnsupportedRow -ClaimId "commercial-quality" -Reason "No commercial-quality, balance, or content-market fitness claim is made." -Escalation "product review"
+            New-AiGeneratedGameQualityUnsupportedRow -ClaimId "platform-parity" -Reason "Host-gated backend and platform evidence stays per recipe." -Escalation "platform validation"
+            New-AiGeneratedGameQualityUnsupportedRow -ClaimId "unbounded-performance" -Reason "Budget rows are selected package evidence, not unbounded performance proof." -Escalation "performance plan"
+            New-AiGeneratedGameQualityUnsupportedRow -ClaimId "unreviewed-content" -Reason "Only reviewed first-party/generated package content can satisfy rubric evidence." -Escalation "content review"
+            New-AiGeneratedGameQualityUnsupportedRow -ClaimId "autonomous-balancing" -Reason "The rubric does not tune or rebalance gameplay autonomously." -Escalation "gameplay designer review"
+            New-AiGeneratedGameQualityUnsupportedRow -ClaimId "native-handles" -Reason "Rubric evidence uses manifest rows and first-party counters only." -Escalation "engine capability handoff"
+            New-AiGeneratedGameQualityUnsupportedRow -ClaimId "validation-weakening" -Reason "Failing rubric rows route to remediation without weakening selected validation recipes." -Escalation "validation review"
+            New-AiGeneratedGameQualityUnsupportedRow -ClaimId "broad-production-readiness" -Reason "This is a generated-game foundation rubric, not a broad production readiness claim." -Escalation "production backlog selection"
+        )
+        unsupportedClaims = @(
+            "subjective-fun",
+            "commercial-quality",
+            "platform-parity",
+            "unbounded-performance",
+            "unreviewed-content",
+            "autonomous-balancing",
+            "native-handles",
+            "validation-weakening",
+            "broad-production-readiness"
+        )
+    }
+}
+
 function New-HeadlessManifest {
     param(
         [string]$GameName,
@@ -6468,6 +6647,19 @@ function New-DesktopRuntime2DManifest {
                     "installed-2d-entity-scale-culling-smoke",
                     "installed-native-2d-sprite-smoke"
                 )
+            generatedGameQualityRubric = New-AiGeneratedGameQualityRubric `
+                -GameName $GameName `
+                -RubricKind "2d" `
+                -ValidationRecipeIds @(
+                    "desktop-game-runtime",
+                    "desktop-runtime-release-target",
+                    "installed-2d-package-smoke",
+                    "installed-2d-sprite-animation-smoke",
+                    "installed-2d-tilemap-runtime-ux-smoke",
+                    "installed-2d-gameplay-systems-smoke",
+                    "installed-2d-entity-scale-culling-smoke",
+                    "installed-native-2d-sprite-smoke"
+                )
         }
         gameplayContract = [ordered]@{
             productionRecipe = "2d-desktop-runtime-package"
@@ -6737,6 +6929,22 @@ function New-DesktopRuntime3DManifest {
                 )
             validationRemediationRecipes = New-AiValidationRemediationRecipes `
                 -GameName $GameName `
+                -ValidationRecipeIds @(
+                    "desktop-game-runtime",
+                    "desktop-runtime-release-target",
+                    "installed-d3d12-3d-package-smoke",
+                    "installed-d3d12-3d-directional-shadow-smoke",
+                    "installed-d3d12-3d-shadow-morph-composition-smoke",
+                    "installed-d3d12-3d-native-ui-overlay-smoke",
+                    "installed-d3d12-3d-visible-production-proof-smoke",
+                    "installed-d3d12-3d-entity-scale-culling-smoke",
+                    "installed-d3d12-3d-scene-collision-package-smoke",
+                    "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
+                    "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke"
+                )
+            generatedGameQualityRubric = New-AiGeneratedGameQualityRubric `
+                -GameName $GameName `
+                -RubricKind "3d" `
                 -ValidationRecipeIds @(
                     "desktop-game-runtime",
                     "desktop-runtime-release-target",

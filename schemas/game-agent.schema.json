@@ -1277,6 +1277,222 @@
             }
           }
         },
+        "generatedGameQualityRubric": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "rubricId",
+            "designSpecId",
+            "playtestLoopId",
+            "remediationRecipeSetId",
+            "reportId",
+            "reportPath",
+            "gateResults",
+            "sampleReports",
+            "unsupportedRows",
+            "unsupportedClaims"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "ai-generated-game-quality-rubric-v1"
+            },
+            "rubricId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-quality-rubric$"
+            },
+            "designSpecId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "playtestLoopId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-playtest-loop$"
+            },
+            "remediationRecipeSetId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-validation-remediation-recipes$"
+            },
+            "reportId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-quality-rubric-report$"
+            },
+            "reportPath": {
+              "type": "string",
+              "pattern": "^games/[a-z][a-z0-9_]*/reports/quality/[a-z][a-z0-9_]*-quality-rubric\\.json$"
+            },
+            "gateResults": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "category",
+                  "status",
+                  "evidence",
+                  "requiredSignals",
+                  "validationRecipeIds",
+                  "remediationRecipeIds"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "objective",
+                      "controls",
+                      "feedback",
+                      "fail-restart",
+                      "deterministic-package-smoke",
+                      "budget-evidence"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": ["passed-with-evidence", "host-gated", "unsupported"]
+                  },
+                  "evidence": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "requiredSignals": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "validationRecipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "remediationRecipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  }
+                }
+              }
+            },
+            "sampleReports": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "kind", "path", "gateResultIds", "requiredSignals"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["headless-assertion", "package-assertion"]
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^games/[a-z][a-z0-9_]*/reports/quality/[a-z][a-z0-9_]*-[a-z0-9-]+-quality\\.json$"
+                  },
+                  "gateResultIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "requiredSignals": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            },
+            "unsupportedRows": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "claimId", "reason", "escalation"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "claimId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "escalation": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "unsupportedClaims": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "subjective-fun",
+                  "commercial-quality",
+                  "platform-parity",
+                  "unbounded-performance",
+                  "unreviewed-content",
+                  "autonomous-balancing",
+                  "native-handles",
+                  "validation-weakening",
+                  "broad-production-readiness"
+                ]
+              }
+            }
+          }
+        },
         "engineCapabilityHandoffs": {
           "type": "array",
           "uniqueItems": true,
