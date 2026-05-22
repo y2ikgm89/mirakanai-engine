@@ -619,6 +619,249 @@
             }
           }
         },
+        "placeholderAssetPipeline": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "pipelineId",
+            "sourceRegistryPath",
+            "packageIndexPath",
+            "reviewedToolSurfaces",
+            "plannedAssets",
+            "packageHandoff",
+            "unsupportedClaims"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "ai-placeholder-asset-pipeline-v1"
+            },
+            "pipelineId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-placeholder-assets$"
+            },
+            "sourceRegistryPath": {
+              "type": "string",
+              "pattern": "^games/[a-z][a-z0-9_]*/source/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geassets$"
+            },
+            "packageIndexPath": {
+              "type": "string",
+              "pattern": "^games/[a-z][a-z0-9_]*/runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+            },
+            "reviewedToolSurfaces": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "mode", "api", "evidence"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "const": "review-only"
+                  },
+                  "api": {
+                    "type": "string",
+                    "enum": [
+                      "mirakana::plan_placeholder_asset_bundle",
+                      "mirakana::plan_placeholder_asset_cook_package"
+                    ]
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "plannedAssets": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "designAssetRequestId",
+                  "placeholderRole",
+                  "assetKind",
+                  "assetKey",
+                  "sourcePath",
+                  "importedPath",
+                  "reviewedToolSurfaceId",
+                  "generator",
+                  "license",
+                  "delivery",
+                  "validationRecipeIds"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "designAssetRequestId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "placeholderRole": {
+                    "type": "string",
+                    "enum": ["sprite", "mesh", "material", "audio", "ui", "scene-prop"]
+                  },
+                  "assetKind": {
+                    "type": "string",
+                    "enum": ["texture", "mesh", "material", "audio"]
+                  },
+                  "assetKey": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9_./-]*$"
+                  },
+                  "sourcePath": {
+                    "type": "string",
+                    "pattern": "^games/[a-z][a-z0-9_]*/source/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  },
+                  "importedPath": {
+                    "type": "string",
+                    "pattern": "^games/[a-z][a-z0-9_]*/(runtime|intermediate)/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  },
+                  "reviewedToolSurfaceId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "generator": {
+                    "type": "string",
+                    "const": "mirakana-placeholder-asset-tool-v1"
+                  },
+                  "license": {
+                    "type": "string",
+                    "const": "LicenseRef-Proprietary"
+                  },
+                  "delivery": {
+                    "type": "string",
+                    "enum": ["source-document", "cook-package"]
+                  },
+                  "validationRecipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  }
+                }
+              }
+            },
+            "packageHandoff": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "sourceRevision", "runtimePackageFiles", "validationRecipeIds", "evidence"],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "reviewed-cook-package"
+                },
+                "sourceRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "runtimePackageFiles": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  }
+                },
+                "validationRecipeIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "unsupportedClaims": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "allOf": [
+                {
+                  "contains": {
+                    "const": "external-asset-download"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "arbitrary-image-generation"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "runtime-source-parsing"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "renderer-rhi-residency"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "native-handles"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "middleware-contracts"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-art-direction"
+                  }
+                },
+                {
+                  "contains": {
+                    "const": "broad-commercial-quality"
+                  }
+                }
+              ],
+              "items": {
+                "type": "string",
+                "enum": [
+                  "external-asset-download",
+                  "arbitrary-image-generation",
+                  "runtime-source-parsing",
+                  "renderer-rhi-residency",
+                  "native-handles",
+                  "middleware-contracts",
+                  "broad-art-direction",
+                  "broad-commercial-quality"
+                ]
+              }
+            }
+          }
+        },
         "engineCapabilityHandoffs": {
           "type": "array",
           "uniqueItems": true,

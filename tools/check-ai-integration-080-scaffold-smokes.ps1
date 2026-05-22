@@ -326,6 +326,13 @@ try {
         )) {
         Assert-ContainsText $desktop2dMutationLedgerText $ledgerNeedle "Desktop runtime 2D package scaffold content mutation ledger"
     }
+    if ($desktop2dManifest.aiWorkflow.placeholderAssetPipeline.capabilityId -ne "ai-placeholder-asset-pipeline-v1") {
+        Write-Error "Desktop runtime 2D package scaffold manifest must carry ai-placeholder-asset-pipeline-v1"
+    }
+    $desktop2dPlaceholderPipelineText = $desktop2dManifest.aiWorkflow.placeholderAssetPipeline | ConvertTo-Json -Depth 40
+    foreach ($pipelineNeedle in @("plan-placeholder-asset-cook-package", "player-sprite-placeholder", "jump-audio-placeholder", "mirakana-placeholder-asset-tool-v1")) {
+        Assert-ContainsText $desktop2dPlaceholderPipelineText $pipelineNeedle "Desktop runtime 2D package scaffold placeholder asset pipeline"
+    }
     foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($desktop2dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 2D package scaffold manifest missing engine module: $module"
@@ -1116,6 +1123,13 @@ try {
             "games/desktop_3d_package_game/shaders/runtime_scene.hlsl"
         )) {
         Assert-ContainsText $desktop3dMutationLedgerText $ledgerNeedle "Desktop runtime 3D package scaffold content mutation ledger"
+    }
+    if ($desktop3dManifest.aiWorkflow.placeholderAssetPipeline.capabilityId -ne "ai-placeholder-asset-pipeline-v1") {
+        Write-Error "Desktop runtime 3D package scaffold manifest must carry ai-placeholder-asset-pipeline-v1"
+    }
+    $desktop3dPlaceholderPipelineText = $desktop3dManifest.aiWorkflow.placeholderAssetPipeline | ConvertTo-Json -Depth 40
+    foreach ($pipelineNeedle in @("plan-placeholder-asset-cook-package", "packaged-mesh-placeholder", "hud-atlas-placeholder", "scene-prop")) {
+        Assert-ContainsText $desktop3dPlaceholderPipelineText $pipelineNeedle "Desktop runtime 3D package scaffold placeholder asset pipeline"
     }
     foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dManifest.engineModules) -notcontains $module) {
@@ -2303,6 +2317,9 @@ try {
     if ($createGameRecipeManifest.aiWorkflow.contentMutationLedger.capabilityId -ne "ai-safe-content-mutation-ledger-v1") {
         Write-Error "create-game-recipe apply must preserve the generated content mutation ledger"
     }
+    if ($createGameRecipeManifest.aiWorkflow.placeholderAssetPipeline.capabilityId -ne "ai-placeholder-asset-pipeline-v1") {
+        Write-Error "create-game-recipe apply must preserve the generated placeholder asset pipeline"
+    }
     if (@($createGameRecipeManifest.aiWorkflow.gameDesignSpec.validationRecipeIds) -notcontains "installed-2d-package-smoke") {
         Write-Error "create-game-recipe apply must preserve reviewed validationRecipeIds"
     }
@@ -2329,6 +2346,7 @@ try {
     $createGameRecipe3dManifest = Get-Content -LiteralPath (Join-Path $createGameRecipeRoot "games/orchestrated_3d/game.agent.json") -Raw | ConvertFrom-Json
     if ($createGameRecipe3dManifest.aiWorkflow.gameDesignSpec.designId -ne "orchestrated-3d") { Write-Error "create-game-recipe 3D apply must preserve the reviewed design spec" }
     if ($createGameRecipe3dManifest.aiWorkflow.contentMutationLedger.capabilityId -ne "ai-safe-content-mutation-ledger-v1") { Write-Error "create-game-recipe 3D apply must preserve the generated content mutation ledger" }
+    if ($createGameRecipe3dManifest.aiWorkflow.placeholderAssetPipeline.capabilityId -ne "ai-placeholder-asset-pipeline-v1") { Write-Error "create-game-recipe 3D apply must preserve the generated placeholder asset pipeline" }
     $createGameRecipe3dCmake = Get-Content -LiteralPath (Join-Path $createGameRecipeRoot "games/CMakeLists.txt") -Raw
     Assert-ContainsText $createGameRecipe3dCmake "MK_add_desktop_runtime_game(orchestrated_3d" "create-game-recipe 3D apply CMake"
 } finally {
