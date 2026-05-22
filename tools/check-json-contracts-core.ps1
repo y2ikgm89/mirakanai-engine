@@ -128,30 +128,30 @@ function Assert-ActiveProductionPlanDrift($productionLoop) {
             Write-Error "$planRegistryPath Active slice row must mention active child plan id or path: $($activePlan.path)"
         }
         if ($activePlan.planId -eq "physics-1-0-collision-system-closeout-v1") {
-            $physicsJointsPlanPath = Join-Path $root "docs/superpowers/plans/2026-05-09-physics-joints-foundation-v1.md"
-            $physicsBenchmarkPlanPath = Join-Path $root "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md"
-            $physicsJoltPlanPath = Join-Path $root "docs/superpowers/plans/2026-05-09-physics-jolt-adapter-gate-v1.md"
-            $physicsCloseoutPlanPath = Join-Path $root "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
+            $physicsJointsPlanPath = Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            $physicsBenchmarkPlanPath = Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            $physicsJoltPlanPath = Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            $physicsCloseoutPlanPath = Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
             $physicsJointsPlanText = Get-Content -LiteralPath $physicsJointsPlanPath -Raw
             $physicsBenchmarkPlanText = Get-Content -LiteralPath $physicsBenchmarkPlanPath -Raw
             $physicsJoltPlanText = Get-Content -LiteralPath $physicsJoltPlanPath -Raw
             $physicsCloseoutPlanText = Get-Content -LiteralPath $physicsCloseoutPlanPath -Raw
-            Assert-ContainsText $physicsJointsPlanText "**Status:** Completed." "docs/superpowers/plans/2026-05-09-physics-joints-foundation-v1.md"
-            Assert-ContainsText $physicsBenchmarkPlanText 'Plan ID:** `physics-benchmark-determinism-gates-v1`' "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md"
-            Assert-ContainsText $physicsBenchmarkPlanText "**Status:** Completed." "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md"
-            Assert-ContainsText $physicsBenchmarkPlanText 'Gap:** `physics-1-0-collision-system` Phase P2' "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md"
-            Assert-ContainsText $physicsBenchmarkPlanText "count-based" "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md"
-            Assert-ContainsText $physicsBenchmarkPlanText "budget gates" "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md"
-            Assert-ContainsText $physicsBenchmarkPlanText "PhysicsReplaySignature3D" "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md"
-            Assert-ContainsText $physicsBenchmarkPlanText "evaluate_physics_determinism_gate_3d" "docs/superpowers/plans/2026-05-09-physics-benchmark-determinism-gates-v1.md"
-            Assert-ContainsText $physicsJoltPlanText 'Plan ID:** `physics-jolt-adapter-gate-v1`' "docs/superpowers/plans/2026-05-09-physics-jolt-adapter-gate-v1.md"
-            Assert-ContainsText $physicsJoltPlanText "**Status:** Completed." "docs/superpowers/plans/2026-05-09-physics-jolt-adapter-gate-v1.md"
-            Assert-ContainsText $physicsJoltPlanText 'Gap:** `physics-1-0-collision-system` Phase P3' "docs/superpowers/plans/2026-05-09-physics-jolt-adapter-gate-v1.md"
-            Assert-ContainsText $physicsJoltPlanText "Jolt" "docs/superpowers/plans/2026-05-09-physics-jolt-adapter-gate-v1.md"
-            Assert-ContainsText $physicsJoltPlanText "explicit 1.0 exclusion" "docs/superpowers/plans/2026-05-09-physics-jolt-adapter-gate-v1.md"
-            Assert-ContainsText $physicsCloseoutPlanText 'Plan ID:** `physics-1-0-collision-system-closeout-v1`' "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
-            Assert-ContainsText $physicsCloseoutPlanText "**Status:** Completed." "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
-            Assert-ContainsText $physicsCloseoutPlanText 'Gap:** `physics-1-0-collision-system` Phase P4' "docs/superpowers/plans/2026-05-09-physics-1-0-collision-system-closeout-v1.md"
+            Assert-ContainsText $physicsJointsPlanText "**Status:** Completed." "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsBenchmarkPlanText 'Plan ID:** `physics-benchmark-determinism-gates-v1`' "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsBenchmarkPlanText "**Status:** Completed." "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsBenchmarkPlanText 'Gap:** `physics-1-0-collision-system` Phase P2' "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsBenchmarkPlanText "count-based" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsBenchmarkPlanText "budget gates" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsBenchmarkPlanText "PhysicsReplaySignature3D" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsBenchmarkPlanText "evaluate_physics_determinism_gate_3d" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsJoltPlanText 'Plan ID:** `physics-jolt-adapter-gate-v1`' "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsJoltPlanText "**Status:** Completed." "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsJoltPlanText 'Gap:** `physics-1-0-collision-system` Phase P3' "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsJoltPlanText "Jolt" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsJoltPlanText "explicit 1.0 exclusion" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsCloseoutPlanText 'Plan ID:** `physics-1-0-collision-system-closeout-v1`' "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsCloseoutPlanText "**Status:** Completed." "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+            Assert-ContainsText $physicsCloseoutPlanText 'Gap:** `physics-1-0-collision-system` Phase P4' "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         }
         return
     }

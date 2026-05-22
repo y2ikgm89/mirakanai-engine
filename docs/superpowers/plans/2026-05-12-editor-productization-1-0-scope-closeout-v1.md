@@ -5,7 +5,7 @@
 **Parent:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Gap:** `editor-productization`
 
-**Superseded boundary:** [2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md](2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md) later removes `editor-productization` from `unsupportedProductionGaps` for the Windows-default Engine 1.0 ready surface by making Vulkan/Metal material-preview display parity an explicit future host-gated exclusion.
+**Superseded boundary:** `editor-productization-1-0-host-gated-exclusion-closeout-v1` later removed `editor-productization` from `unsupportedProductionGaps` for the Windows-default Engine 1.0 ready surface by making Vulkan/Metal material-preview display parity an explicit future host-gated exclusion. Retained literals live in [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md).
 
 ## Goal
 

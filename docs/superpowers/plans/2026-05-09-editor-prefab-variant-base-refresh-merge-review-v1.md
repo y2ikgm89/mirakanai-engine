@@ -14,7 +14,7 @@
 **Status:** Completed.
 **Master Plan:** [../master-plans/2026-05-03-production-completion-master-plan-v1.md](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 **Gap:** `editor-productization` focused child slice.
-**Previous Slice:** [2026-05-09-physics-1-0-collision-system-closeout-v1.md](2026-05-09-physics-1-0-collision-system-closeout-v1.md)
+**Previous Slice:** `physics-1-0-collision-system-closeout-v1` evidence is retired to [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md); full prose remains in Git history.
 
 ## Context
 

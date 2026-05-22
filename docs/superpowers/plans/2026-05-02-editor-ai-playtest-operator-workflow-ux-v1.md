@@ -1,6 +1,6 @@
 # Editor AI Playtest Operator Workflow UX v1 Implementation Plan (2026-05-02)
 
-> **Status note (2026-05-02):** This is the focused next production gap selected by [AI-Operable Production Loop Clean Uplift v1](2026-05-02-ai-operable-production-loop-clean-uplift-v1.md). It should start only after that milestone records validation evidence.
+> **Status note (2026-05-02):** This was the focused next production gap selected by the AI-operable production loop clean-uplift milestone. The detailed clean-uplift plan has been retired; retained literals live in [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) and full prose remains in Git history.
 
 **Goal:** Turn the consolidated read-only Editor AI playtest operator workflow into a practical editor/operator UX surface without adding another remediation row model.
 

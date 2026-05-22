@@ -516,11 +516,11 @@ $runtimeSceneRhiHeader = Get-AgentSurfaceText "engine/runtime_scene_rhi/include/
 $runtimeSceneRhiSource = Get-AgentSurfaceText "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp"
 $runtimeRhiTests = Get-AgentSurfaceText "tests/unit/runtime_rhi_tests.cpp"
 $runtimeSceneRhiTests = Get-AgentSurfaceText "tests/unit/runtime_scene_rhi_tests.cpp"
-$runtimeUploadFencePlan = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-runtime-rhi-upload-submission-fence-rows-v1.md"
+$runtimeUploadFencePlan = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 $frameGraphRhiTextureSchedulePlan =
-    Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md"
+    Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 $rhiUploadStaleGenerationPlan =
-    Get-AgentSurfaceText "docs/superpowers/plans/2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md"
+    Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 $runtimeUploadQueueWaitPlan =
     Get-AgentSurfaceText "docs/superpowers/plans/2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md"
 $rendererCmake = Get-AgentSurfaceText "engine/renderer/CMakeLists.txt"

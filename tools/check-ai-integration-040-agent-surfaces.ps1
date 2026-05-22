@@ -507,7 +507,7 @@ $editorInProcessRuntimeHostReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-09-editor-in-process-runtime-host-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor In-Process Runtime Host Review Implementation Plan",
             "EditorInProcessRuntimeHostModel",
@@ -826,7 +826,7 @@ $editorGameModuleDriverLoadChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-09-editor-game-module-driver-dynamic-probe-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Game Module Driver Dynamic Probe Implementation Plan",
             "MK_editor_game_module_driver_probe",
@@ -836,7 +836,7 @@ $editorGameModuleDriverLoadChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-09-editor-dynamic-game-module-driver-load-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Dynamic Game Module Driver Load Implementation Plan",
             "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
@@ -845,7 +845,7 @@ $editorGameModuleDriverLoadChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-09-editor-game-module-driver-safe-reload-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Game Module Driver Safe Reload Review Implementation Plan",
             "EditorGameModuleDriverReloadModel",
@@ -856,7 +856,7 @@ $editorGameModuleDriverLoadChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-09-editor-game-module-driver-contract-metadata-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Game Module Driver Contract Metadata Review Implementation Plan",
             "EditorGameModuleDriverContractMetadataModel",
@@ -989,7 +989,7 @@ $editorRuntimeScenePackageValidationExecutionChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-09-editor-runtime-scene-package-validation-execution-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Runtime Scene Package Validation Execution Implementation Plan",
             "EditorRuntimeScenePackageValidationExecutionModel",

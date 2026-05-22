@@ -43,6 +43,7 @@ When closing the active plan, do not leave `currentActivePlan` pointing at a com
 - Distinguish plan files from execution steps: checkboxes can be small actions, and each phase behavior/API/validation boundary should close with focused evidence.
 - Do not create new plan files for validation-only follow-up, docs/manifest/static-check synchronization, small mechanical cleanup, or substeps that fit the current active plan checklist.
 - Completed plan files are retained only while referenced by current guidance, manifest/static checks, or active decisions. Unreferenced completed plans may be deleted after a reference scan; their evidence remains available through Git history.
+- Static checks must not require retired dated plan files as source artifacts. When a historical literal is still contract-relevant, assert current source/docs/manifest truth or move the literal to [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md).
 - Keep the registry biased toward current active work. Put historical/static-check retained literals in [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md), not in this registry.
 
 ## Plan Scope Heuristics

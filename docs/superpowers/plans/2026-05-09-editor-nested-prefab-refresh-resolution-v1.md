@@ -18,7 +18,7 @@
 
 - Active master plan: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
 - Selected gap: `editor-productization`.
-- Previous slice: `docs/superpowers/plans/2026-05-09-editor-dynamic-game-module-driver-load-v1.md`.
+- Previous slice: `editor-dynamic-game-module-driver-load-v1`; retained literals now live in [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md).
 - Selected-root scene prefab refresh can preserve generic local child subtrees and stale source-node subtrees through explicit policies, but nested linked prefab instances are still treated as generic local/differently linked children.
 - This slice adds explicit nested prefab preservation rows for reviewed parent-prefab refresh. It does not add automatic nested prefab refresh, fuzzy matching, automatic merge/rebase/resolution UX, runtime prefab instance semantics, package script execution, validation recipe execution, renderer/RHI uploads, package streaming, or native handles.
 

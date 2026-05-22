@@ -1480,3 +1480,719 @@ workspace `ai_commands` panel state
 - `unacknowledged or automatic host-gated AI command execution`
 - `virtual keyboard behavior`
 - `workspace ``ai_commands`` panel state`
+
+## Retired dated plan static evidence (2026-05-22 cleanup)
+
+The static guards use this section as the single historical sink for retired dated implementation plans. These literals preserve the evidence that used to require keeping individual completed plan files in `docs/superpowers/plans/`; the detailed prose remains available through Git history.
+
+### 2026-05-02-ai-operable-production-loop-clean-uplift-v1.md
+- 2026-05-02-ai-operable-production-loop-clean-uplift-v1.md
+- AI-Operable Production Loop Clean Uplift v1 Implementation Plan (2026-05-02)
+- Phase 2 decision: retire the separate remediation evidence-review and closeout-report candidates
+- Phase 3 consolidation: package diagnostics -> validation recipe preflight -> readiness -> operator handoff -> evidence summary -> remediation queue -> remediation handoff
+- closeout through existing evidence summary
+
+### 2026-05-02-editor-ai-playtest-remediation-closeout-report-v1.md
+- 2026-05-02-editor-ai-playtest-remediation-closeout-report-v1.md
+- Editor AI Playtest Remediation Closeout Report v1 Implementation Plan (2026-05-02)
+- Status note (2026-05-02): Retired by
+- no separate remediation closeout-report row model
+
+### 2026-05-02-editor-ai-playtest-remediation-evidence-review-v1.md
+- 2026-05-02-editor-ai-playtest-remediation-evidence-review-v1.md
+- Editor AI Playtest Remediation Evidence Review v1 Implementation Plan (2026-05-02)
+- Status note (2026-05-02): Retired by
+- no separate remediation evidence-review row model
+
+### 2026-05-06-android-release-device-matrix-v1.md
+- **Status:** Completed on 2026-05-06
+- 2026-05-06-android-release-device-matrix-v1.md
+- Android Release Device Matrix v1 Implementation Plan (2026-05-06)
+- Phase 1: Overlay Row Contract
+- RED tests describe overlay row planning
+- RuntimeGameplayDebugOverlayPlan
+- plan_runtime_gameplay_debug_overlay
+
+### 2026-05-06-apple-metal-ios-host-evidence-v1.md
+- **Status:** Completed
+- **Status:** Completed on 2026-05-06
+- 2026-05-06-apple-metal-ios-host-evidence-v1.md
+- Apple Metal iOS Host Evidence v1 Implementation Plan (2026-05-06)
+- Crash Telemetry Trace Ops v1
+- build_diagnostics_ops_plan
+- without adding native dump writing
+
+### 2026-05-06-crash-telemetry-trace-ops-v1.md
+- **Status:** Completed
+- **Status:** Completed on 2026-05-06
+- 2026-05-06-crash-telemetry-trace-ops-v1.md
+- Crash Telemetry Trace Ops v1 Implementation Plan (2026-05-06)
+- IImageDecodingAdapter
+- ImageDecodePixelFormat::rgba8_unorm
+- MK_tools_tests
+- PngImageDecodingAdapter
+- Runtime UI PNG Image Decoding Adapter v1
+- decode_audited_png_rgba8
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
+
+### 2026-05-06-desktop-release-package-evidence-v1.md
+- **Status:** Completed on 2026-05-06
+- 2026-05-06-desktop-release-package-evidence-v1.md
+- Desktop Release Package Evidence v1 Implementation Plan (2026-05-06)
+
+### 2026-05-06-generated-3d-compute-morph-async-telemetry-package-smoke-d3d12-v1.md
+- **Plan ID:** `generated-3d-compute-morph-async-telemetry-package-smoke-d3d12-v1`
+- **Status:** Completed
+- 2026-05-06-generated-3d-compute-morph-async-telemetry-package-smoke-d3d12-v1.md
+- Generated 3D Compute Morph Async Telemetry Package Smoke D3D12 v1 (2026-05-06)
+- Runtime RHI Compute Morph Async Telemetry D3D12 v1
+- last_graphics_queue_wait_fence_value
+- without claiming performance overlap
+
+### 2026-05-06-generated-3d-compute-morph-package-smoke-vulkan-v1.md
+- **Plan ID:** `generated-3d-compute-morph-package-smoke-vulkan-v1`
+- **Status:** Completed
+- 2026-05-06-generated-3d-compute-morph-package-smoke-vulkan-v1.md
+- Do not claim generated-package Vulkan compute morph readiness
+- Generated 3D Compute Morph Package Smoke Vulkan v1 Implementation Plan (2026-05-06)
+- MK_VULKAN_TEST_COMPUTE_MORPH_TANGENT_FRAME_SPV
+- Runtime RHI Compute Morph NORMAL/TANGENT Output Vulkan v1
+- RuntimeMorphMeshComputeBindingOptions::output_normal_usage
+- descriptor bindings `4..7`
+- output_tangent_usage
+- vulkan_compute_morph_tangent_frame.cs.spv
+
+### 2026-05-06-generated-3d-compute-morph-skin-package-smoke-d3d12-v1.md
+- **Plan ID:** `generated-3d-compute-morph-skin-package-smoke-d3d12-v1`
+- **Status:** Completed
+- 2026-05-06-generated-3d-compute-morph-skin-package-smoke-d3d12-v1.md
+- Generated 3D Compute Morph Skin Package Smoke D3D12 v1 (2026-05-06)
+- Runtime Scene RHI Compute Morph Skin Palette D3D12 v1
+- RuntimeSceneComputeMorphSkinnedMeshBinding
+- SceneSkinnedGpuBindingPalette
+- compute_morph_output_position_bytes
+- compute_morph_skinned_mesh_bindings
+
+### 2026-05-06-installed-sdk-release-metadata-validation-v1.md
+- **Status:** Completed on 2026-05-06
+- 2026-05-06-installed-sdk-release-metadata-validation-v1.md
+- Installed SDK Release Metadata Validation v1 Implementation Plan (2026-05-06)
+
+### 2026-05-06-production-1-0-readiness-audit-v1.md
+- **Status:** Completed on 2026-05-06
+- 2026-05-06-production-1-0-readiness-audit-v1.md
+- Invoke-MobilePackagingProbe
+- Kill($true)
+- OutputWaitMilliseconds
+- Production 1.0 Readiness Audit v1 Implementation Plan (2026-05-06)
+- apple-host-helpers.ps1
+- probe-timeout
+
+### 2026-05-06-rhi-d3d12-calibrated-queue-timing-diagnostics-v1.md
+- **Plan ID:** `rhi-d3d12-calibrated-queue-timing-diagnostics-v1`
+- **Status:** Completed
+- 2026-05-06-rhi-d3d12-calibrated-queue-timing-diagnostics-v1.md
+- CPU QPC sample
+- GetClockCalibration
+- QueueClockCalibration
+- RHI D3D12 Calibrated Queue Timing Diagnostics v1 (2026-05-06)
+- RHI D3D12 Queue Clock Calibration Foundation v1
+
+### 2026-05-06-rhi-d3d12-per-queue-fence-synchronization-v1.md
+- **Plan ID:** `rhi-d3d12-per-queue-fence-synchronization-v1`
+- **Status:** Completed
+- 2026-05-06-rhi-d3d12-per-queue-fence-synchronization-v1.md
+- Do not update generated
+- RHI D3D12 Per-Queue Fence Synchronization v1 (2026-05-06)
+- RhiPipelinedComputeGraphicsScheduleEvidence
+- Runtime RHI Compute Morph Pipelined Scheduling D3D12 v1
+- different current slot
+- previously completed output slot
+
+### 2026-05-06-rhi-d3d12-queue-clock-calibration-foundation-v1.md
+- **Plan ID:** `rhi-d3d12-queue-clock-calibration-foundation-v1`
+- **Status:** Completed
+- 2026-05-06-rhi-d3d12-queue-clock-calibration-foundation-v1.md
+- Do not expose `ID3D12QueryHeap`
+- Microsoft Learn: Timing
+- RHI D3D12 Queue Clock Calibration Foundation v1 (2026-05-06)
+- RHI D3D12 Queue Timestamp Measurement Foundation v1
+- ResolveQueryData
+- timestamp query heap recording
+
+### 2026-05-06-rhi-d3d12-queue-timestamp-measurement-foundation-v1.md
+- **Plan ID:** `rhi-d3d12-queue-timestamp-measurement-foundation-v1`
+- **Status:** Completed
+- 2026-05-06-rhi-d3d12-queue-timestamp-measurement-foundation-v1.md
+- Do not expose native fences
+- FenceValue
+- RHI D3D12 Per-Queue Fence Synchronization v1
+- RHI D3D12 Queue Timestamp Measurement Foundation v1 (2026-05-06)
+- per-queue fences
+
+### 2026-05-06-rhi-d3d12-submitted-command-calibrated-timing-scopes-v1.md
+- **Plan ID:** `rhi-d3d12-submitted-command-calibrated-timing-scopes-v1`
+- **Status:** Completed
+- 2026-05-06-rhi-d3d12-submitted-command-calibrated-timing-scopes-v1.md
+- QueryPerformanceCounter
+- RHI D3D12 Submitted Command Calibrated Timing Scopes v1 (2026-05-06)
+- RhiPipelinedComputeGraphicsScheduleEvidence
+- Runtime RHI Compute Morph Calibrated Overlap Diagnostics D3D12 v1
+- calibrated overlap diagnostic
+
+### 2026-05-06-runtime-rhi-compute-morph-async-overlap-evidence-d3d12-v1.md
+- **Plan ID:** `runtime-rhi-compute-morph-async-overlap-evidence-d3d12-v1`
+- **Status:** Completed
+- --require-compute-morph-async-telemetry
+- 2026-05-06-runtime-rhi-compute-morph-async-overlap-evidence-d3d12-v1.md
+- Generated 3D Compute Morph Async Telemetry Package Smoke D3D12 v1
+- Runtime RHI Compute Morph Async Overlap Evidence D3D12 v1 (2026-05-06)
+- without exposing queue/fence handles
+
+### 2026-05-06-runtime-rhi-compute-morph-async-telemetry-d3d12-v1.md
+- **Plan ID:** `runtime-rhi-compute-morph-async-telemetry-d3d12-v1`
+- **Status:** Completed
+- 2026-05-06-runtime-rhi-compute-morph-async-telemetry-d3d12-v1.md
+- DesktopRuntime3DPackage
+- Generated 3D Compute Morph Skin Package Smoke D3D12 v1
+- Runtime RHI Compute Morph Async Telemetry D3D12 v1 (2026-05-06)
+- without exposing RHI or native handles
+
+### 2026-05-06-runtime-rhi-compute-morph-calibrated-overlap-diagnostics-d3d12-v1.md
+- **Plan ID:** `runtime-rhi-compute-morph-calibrated-overlap-diagnostics-d3d12-v1`
+- **Status:** Completed
+- 2026-05-06-runtime-rhi-compute-morph-calibrated-overlap-diagnostics-d3d12-v1.md
+- QueueCalibratedTiming
+- RHI D3D12 Calibrated Queue Timing Diagnostics v1
+- Runtime RHI Compute Morph Calibrated Overlap Diagnostics D3D12 v1 (2026-05-06)
+- calibrated interval rows
+
+### 2026-05-06-runtime-rhi-compute-morph-normal-tangent-output-vulkan-v1.md
+- **Plan ID:** `runtime-rhi-compute-morph-normal-tangent-output-vulkan-v1`
+- **Status:** Completed
+- 2026-05-06-runtime-rhi-compute-morph-normal-tangent-output-vulkan-v1.md
+- Do not claim generated-package Vulkan compute morph readiness
+- MK_VULKAN_TEST_COMPUTE_MORPH_RENDER_FRAGMENT_SPV
+- MK_VULKAN_TEST_COMPUTE_MORPH_RENDER_VERTEX_SPV
+- RhiFrameRenderer
+- Runtime RHI Compute Morph NORMAL/TANGENT Output Vulkan v1 Implementation Plan (2026-05-06)
+- Runtime RHI Compute Morph Renderer Consumption Vulkan v1
+- make_runtime_compute_morph_output_mesh_gpu_binding
+
+### 2026-05-06-runtime-rhi-compute-morph-pipelined-output-ring-d3d12-v1.md
+- **Plan ID:** `runtime-rhi-compute-morph-pipelined-output-ring-d3d12-v1`
+- **Status:** Completed
+- 2026-05-06-runtime-rhi-compute-morph-pipelined-output-ring-d3d12-v1.md
+- Do not update generated package validation to require overlap
+- RhiAsyncOverlapReadinessDiagnostics
+- Runtime RHI Compute Morph Async Overlap Evidence D3D12 v1
+- Runtime RHI Compute Morph Pipelined Output Ring D3D12 v1 (2026-05-06)
+- not_proven_serial_dependency
+- official Microsoft D3D12
+- runtime/RHI-only D3D12 evidence
+
+### 2026-05-06-runtime-rhi-compute-morph-pipelined-scheduling-d3d12-v1.md
+- **Plan ID:** `runtime-rhi-compute-morph-pipelined-scheduling-d3d12-v1`
+- **Status:** Completed
+- 2026-05-06-runtime-rhi-compute-morph-pipelined-scheduling-d3d12-v1.md
+- DesktopRuntime3DPackage
+- Do not update generated
+- Runtime RHI Compute Morph Pipelined Output Ring D3D12 v1
+- Runtime RHI Compute Morph Pipelined Scheduling D3D12 v1 (2026-05-06)
+- RuntimeMorphMeshComputeOutputSlot
+- multi-slot compute morph output-ring
+- not_proven_serial_dependency
+- output_slot_count
+
+### 2026-05-06-runtime-rhi-compute-morph-renderer-consumption-vulkan-v1.md
+- **Plan ID:** `runtime-rhi-compute-morph-renderer-consumption-vulkan-v1`
+- **Status:** Completed
+- 2026-05-06-runtime-rhi-compute-morph-renderer-consumption-vulkan-v1.md
+- Do not claim generated-package Vulkan compute morph readiness
+- MK_VULKAN_TEST_COMPUTE_MORPH_SPV
+- Runtime RHI Compute Morph Renderer Consumption Vulkan v1 Implementation Plan (2026-05-06)
+- Runtime RHI Compute Morph Vulkan Proof v1
+- RuntimeMorphMeshComputeBinding
+- create_runtime_morph_mesh_compute_binding
+
+### 2026-05-06-runtime-rhi-compute-morph-submitted-overlap-diagnostics-d3d12-v1.md
+- **Plan ID:** `runtime-rhi-compute-morph-submitted-overlap-diagnostics-d3d12-v1`
+- **Status:** Completed
+- 2026-05-06-runtime-rhi-compute-morph-submitted-overlap-diagnostics-d3d12-v1.md
+- RHI D3D12 Submitted Command Calibrated Timing Scopes v1
+- ResolveQueryData
+- Runtime RHI Compute Morph Submitted Overlap Diagnostics D3D12 v1 (2026-05-06)
+- SubmittedCommandCalibratedTiming
+- actual submitted D3D12 graphics/compute command lists
+
+### 2026-05-06-runtime-rhi-compute-morph-vulkan-proof-v1.md
+- **Plan ID:** `runtime-rhi-compute-morph-vulkan-proof-v1`
+- **Status:** Completed
+- 2026-05-06-runtime-rhi-compute-morph-vulkan-proof-v1.md
+- Do not claim Vulkan compute morph parity
+- MK_VULKAN_TEST_COMPUTE_SPV
+- RHI Vulkan Compute Dispatch Foundation v1
+- Runtime RHI Compute Morph Vulkan Proof v1 Implementation Plan (2026-05-06)
+- vkCmdDispatch
+- vkCreateComputePipelines
+
+### 2026-05-06-runtime-scene-quaternion-animation-transform-binding-v1.md
+- **Plan ID:** `runtime-scene-quaternion-animation-transform-binding-v1`
+- **Status:** Completed
+- 2026-05-06-runtime-scene-quaternion-animation-transform-binding-v1.md
+- Runtime Scene Quaternion Animation Transform Binding v1 (2026-05-06)
+
+### 2026-05-06-runtime-ui-font-image-adapter-v1.md
+- **Status:** Completed
+- 2026-05-06-runtime-ui-font-image-adapter-v1.md
+- Runtime UI Font Image Adapter v1 Implementation Plan (2026-05-06)
+
+### 2026-05-07-ci-matrix-contract-check-v1.md
+- 2026-05-07-ci-matrix-contract-check-v1.md
+- CI Matrix Contract Check v1 Implementation Plan
+- CI Matrix Contract Check v1 Implementation Plan (2026-05-07)
+- Windows/Linux/sanitizer/macOS/iOS
+- full package/build matrix readiness
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1
+
+### 2026-05-07-generated-3d-compute-morph-skin-package-smoke-vulkan-v1.md
+- **Status:** Completed
+- **Status:** Completed.
+- --require-compute-morph
+- 2026-05-07-generated-3d-compute-morph-skin-package-smoke-vulkan-v1.md
+- DesktopRuntime3DPackage
+- Do not claim Vulkan NORMAL/TANGENT package smoke
+- Generated 3D Compute Morph Package Smoke Vulkan v1
+- Generated 3D Compute Morph Skin Package Smoke Vulkan v1 Implementation Plan (2026-05-07)
+- SdlDesktopPresentationVulkanSceneRendererDesc
+
+### 2026-05-07-runtime-ui-accessibility-publish-plan-v1.md
+- **Status:** Completed
+- 2026-05-07-runtime-ui-accessibility-publish-plan-v1.md
+- AccessibilityPublishPlan
+- AccessibilityPublishResult
+- IAccessibilityAdapter
+- MK_ui_renderer_tests
+- OS accessibility adapter
+- Runtime UI Accessibility Publish Plan v1
+- Runtime UI Accessibility Publish Plan v1 Implementation Plan (2026-05-07)
+- plan_accessibility_publish
+- publish_accessibility_payload
+
+### 2026-05-07-runtime-ui-font-rasterization-request-plan-v1.md
+- **Status:** Completed
+- 2026-05-07-runtime-ui-font-rasterization-request-plan-v1.md
+- FontRasterizationRequestPlan
+- FontRasterizationResult
+- IFontRasterizerAdapter
+- MK_ui_renderer_tests
+- Runtime UI Font Image Adapter v1
+- Runtime UI Font Rasterization Request Plan v1
+- Runtime UI Font Rasterization Request Plan v1 Implementation Plan (2026-05-07)
+- UiRendererGlyphAtlasPalette
+- invalid_font_allocation
+- make_ui_text_glyph_sprite_command
+- plan_font_rasterization_request
+- rasterize_font_glyph
+- text_glyph_sprites_submitted
+- without claiming font loading/rasterization
+
+### 2026-05-07-runtime-ui-ime-composition-publish-plan-v1.md
+- **Status:** Completed
+- 2026-05-07-runtime-ui-ime-composition-publish-plan-v1.md
+- IImeAdapter
+- ImeCompositionPublishPlan
+- ImeCompositionPublishResult
+- MK_ui_renderer_tests
+- Runtime UI IME Composition Publish Plan v1
+- Runtime UI IME Composition Publish Plan v1 Implementation Plan (2026-05-07)
+- Win32/TSF
+- plan_ime_composition_update
+- publish_ime_composition
+
+### 2026-05-08-cpp23-release-package-artifact-ci-evidence-v1.md
+- **Status:** Completed on 2026-05-08.
+- .zip.sha256
+- 2026-05-08-cpp23-release-package-artifact-ci-evidence-v1.md
+- Assert-ReleasePackageArtifacts
+- C++23 Release Package Artifact CI Evidence v1 Implementation Plan
+- C++23 Release Package Artifact CI Evidence v1 Implementation Plan (2026-05-08)
+- full cross-platform package matrix readiness
+- tools/evaluate-cpp23.ps1 -Release
+
+### 2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md
+- **Plan ID:** `frame-graph-rhi-texture-schedule-execution-v1`
+- **Status:** Completed
+- **Status:** Completed.
+- 2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md
+- Frame Graph RHI Texture Schedule Execution v1 Implementation Plan (2026-05-08)
+- Runtime RHI Upload Submission Fence Rows v1
+- last_submitted_upload_fence.value != 0
+- native async upload execution
+- runtime scene rhi upload execution preserves submitted fences in submit order across queues
+- submitted_upload_fence_count
+- submitted_upload_fence_count == 3
+- submitted_upload_fence_count == 4
+- submitted_upload_fences
+- submitted_upload_fences[0].queue == mirakana::rhi::QueueKind::compute
+- submitted_upload_fences[1].value == compute_resource.base_position_upload.submitted_fence.value
+
+### 2026-05-08-full-repository-static-analysis-ci-contract-v1.md
+- **Plan ID:** `full-repository-static-analysis-ci-contract-v1`
+- **Status:** Completed.
+- 2026-05-08-full-repository-static-analysis-ci-contract-v1.md
+- Full Repository Static Analysis CI Contract v1 Implementation Plan
+- Full Repository Static Analysis CI Contract v1 Implementation Plan (2026-05-08)
+- tools/check-tidy.ps1 -Strict
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+- static-analysis
+- static-analysis-tidy-logs
+
+### 2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md
+- **Plan ID:** `rhi-upload-stale-generation-diagnostics-v1`
+- **Status:** Completed.
+- 2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md
+- FrameGraphRhiTextureExecutionDesc
+- FrameGraphRhiTextureExecutionResult
+- RHI Upload Stale Generation Diagnostics v1 Implementation Plan (2026-05-08)
+- execute_frame_graph_rhi_texture_schedule
+
+### 2026-05-08-runtime-rhi-upload-submission-fence-rows-v1.md
+- **Status:** Completed
+- 2026-05-08-runtime-rhi-upload-submission-fence-rows-v1.md
+- Runtime RHI Upload Submission Fence Rows v1 Implementation Plan (2026-05-08)
+- base_upload.submitted_fence
+- binding.frame_graph_barriers_recorded == 0
+- binding.frame_graph_command_lists_submitted == 1
+- binding.frame_graph_pass_callbacks_invoked == 1
+- binding.frame_graph_queue_waits_recorded == 0
+- binding.submitted_fence
+- binding.submitted_fence.value != 0
+- bindings.submitted_upload_fences
+- device.stats().fence_waits == 0
+- device.stats().last_graphics_queue_wait_fence_queue == mirakana::rhi::QueueKind::copy
+- evidence.graphics_waited_for_copy
+- evidence.package_transactions == 4
+- evidence.resource_updates_ready
+- evidence.ring_backed_uploads == 4
+- record_submitted_upload_fence
+- result.submitted_fence.value != 0
+- result.submitted_upload_fences.push_back
+- runtime package resource update readiness publishes rows after upload fences are graphics ready
+- runtime package streaming mesh upload transaction waits graphics queue for async copy upload
+- runtime package upload staging evidence uses pooled async ring for selected package transactions
+- runtime rhi upload reports submitted fence without forcing wait
+- transaction.upload_queue_waits_recorded == 1
+- upload.submitted_fence
+- upload.submitted_fence.value != 0
+
+### 2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md
+- **Status:** Completed
+- **Status:** Completed.
+- 2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md
+- GameEngine.CookedTexture.v1
+- GameEngine.UiAtlas.v1
+- MK_tools_tests
+- PackedUiAtlasAuthoringDesc
+- Runtime UI Decoded Image Atlas Package Bridge v1
+- Runtime UI Decoded Image Atlas Package Bridge v1 Implementation Plan (2026-05-08)
+- apply_packed_ui_atlas_package_update
+- author_packed_ui_atlas_from_decoded_images
+- pack_sprite_atlas_rgba8_max_side
+- plan_packed_ui_atlas_package_update
+
+### 2026-05-08-runtime-ui-glyph-atlas-package-bridge-v1.md
+- **Status:** Completed
+- 2026-05-08-runtime-ui-glyph-atlas-package-bridge-v1.md
+- GameEngine.CookedTexture.v1
+- GameEngine.UiAtlas.v1
+- MK_tools_tests
+- PackedUiGlyphAtlasAuthoringDesc
+- Runtime UI Glyph Atlas Package Bridge v1
+- Runtime UI Glyph Atlas Package Bridge v1 Implementation Plan (2026-05-08)
+- RuntimeUiAtlasGlyph
+- UiAtlasMetadataGlyph
+- apply_packed_ui_glyph_atlas_package_update
+- author_packed_ui_glyph_atlas_from_rasterized_glyphs
+- build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas
+- plan_packed_ui_glyph_atlas_package_update
+
+### 2026-05-08-runtime-ui-image-decode-request-plan-v1.md
+- **Status:** Completed
+- 2026-05-08-runtime-ui-image-decode-request-plan-v1.md
+- IImageDecodingAdapter
+- IPlatformIntegrationAdapter
+- ImageDecodeDispatchResult
+- ImageDecodePixelFormat
+- ImageDecodeRequestPlan
+- MK_ui_renderer_tests
+- PlatformTextInputEndPlan
+- PlatformTextInputEndResult
+- PlatformTextInputSessionPlan
+- PlatformTextInputSessionResult
+- Runtime UI Image Decode Request Plan v1
+- Runtime UI Image Decode Request Plan v1 Implementation Plan (2026-05-08)
+- Runtime UI Platform Text Input Session Plan v1
+- begin_platform_text_input
+- decode_image_request
+- end_platform_text_input
+- invalid_image_decode_result
+- native text-input object/session ownership
+- plan_image_decode_request
+
+### 2026-05-08-runtime-ui-platform-text-input-session-plan-v1.md
+- **Status:** Completed
+- 2026-05-08-runtime-ui-platform-text-input-session-plan-v1.md
+- FontRasterizationRequestPlan
+- FontRasterizationResult
+- IFontRasterizerAdapter
+- IPlatformIntegrationAdapter
+- MK_ui_renderer_tests
+- PlatformTextInputEndPlan
+- PlatformTextInputEndResult
+- PlatformTextInputSessionPlan
+- PlatformTextInputSessionResult
+- Runtime UI Font Rasterization Request Plan v1
+- Runtime UI Platform Text Input Session Plan v1
+- Runtime UI Platform Text Input Session Plan v1 Implementation Plan (2026-05-08)
+- begin_platform_text_input
+- end_platform_text_input
+- invalid_font_allocation
+- native text-input object/session ownership
+- plan_font_rasterization_request
+- rasterize_font_glyph
+- without font loading/rasterization implementations
+
+### 2026-05-08-runtime-ui-png-image-decoding-adapter-v1.md
+- **Status:** Completed
+- 2026-05-08-runtime-ui-png-image-decoding-adapter-v1.md
+- IImageDecodingAdapter
+- ImageDecodeDispatchResult
+- ImageDecodePixelFormat
+- ImageDecodePixelFormat::rgba8_unorm
+- ImageDecodeRequestPlan
+- MK_tools_tests
+- MK_ui_renderer_tests
+- PngImageDecodingAdapter
+- Runtime UI Image Decode Request Plan v1
+- Runtime UI PNG Image Decoding Adapter v1
+- Runtime UI PNG Image Decoding Adapter v1 Implementation Plan (2026-05-08)
+- decode_audited_png_rgba8
+- decode_image_request
+- invalid_image_decode_result
+- plan_image_decode_request
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
+- without image decoding implementations
+
+### 2026-05-08-runtime-ui-text-shaping-request-plan-v1.md
+- **Plan ID:** `runtime-ui-text-shaping-request-plan-v1`
+- **Status:** Completed
+- 2026-05-08-runtime-ui-text-shaping-request-plan-v1.md
+- ITextShapingAdapter
+- MK_ui_renderer_tests
+- Runtime UI Text Shaping Request Plan v1
+- Runtime UI Text Shaping Request Plan v1 Implementation Plan (2026-05-08)
+- TextShapingRequestPlan
+- TextShapingResult
+- invalid_text_shaping_result
+- plan_text_shaping_request
+- shape_text_run
+
+### 2026-05-09-editor-dynamic-game-module-driver-load-v1.md
+- **Plan ID:** `editor-dynamic-game-module-driver-load-v1`
+- **Status:** Completed.
+- 2026-05-09-editor-dynamic-game-module-driver-load-v1.md
+- Editor Dynamic Game Module Driver Load Implementation Plan
+- Editor Dynamic Game Module Driver Load Implementation Plan (2026-05-09)
+- LoadLibraryExW
+- play_in_editor.game_module_driver
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
+
+### 2026-05-09-editor-game-module-driver-contract-metadata-review-v1.md
+- **Plan ID:** `editor-game-module-driver-contract-metadata-review-v1`
+- **Status:** Completed.
+- 2026-05-09-editor-game-module-driver-contract-metadata-review-v1.md
+- Editor Game Module Driver Contract Metadata Review Implementation Plan
+- Editor Game Module Driver Contract Metadata Review Implementation Plan (2026-05-09)
+- EditorGameModuleDriverContractMetadataModel
+- make_editor_game_module_driver_contract_metadata_model
+- play_in_editor.game_module_driver.contract
+- same-engine-build
+- stable third-party ABI
+
+### 2026-05-09-editor-game-module-driver-dynamic-probe-v1.md
+- **Plan ID:** `editor-game-module-driver-dynamic-probe-v1`
+- **Status:** Completed.
+- 2026-05-09-editor-game-module-driver-dynamic-probe-v1.md
+- Editor Game Module Driver Dynamic Probe Implementation Plan
+- Editor Game Module Driver Dynamic Probe Implementation Plan (2026-05-09)
+- MK_editor_game_module_driver_load_tests
+- MK_editor_game_module_driver_probe
+- mirakana_create_editor_game_module_driver_v1
+- stable third-party ABI
+
+### 2026-05-09-editor-game-module-driver-safe-reload-review-v1.md
+- **Plan ID:** `editor-game-module-driver-safe-reload-review-v1`
+- **Status:** Completed.
+- 2026-05-09-editor-game-module-driver-safe-reload-review-v1.md
+- Editor Game Module Driver Safe Reload Review Implementation Plan
+- Editor Game Module Driver Safe Reload Review Implementation Plan (2026-05-09)
+- EditorGameModuleDriverReloadModel
+- Reload Game Module Driver
+- active-session hot reload
+- make_editor_game_module_driver_reload_model
+- play_in_editor.game_module_driver.reload
+
+### 2026-05-09-editor-in-process-runtime-host-review-v1.md
+- **Plan ID:** `editor-in-process-runtime-host-review-v1`
+- **Status:** Completed.
+- 2026-05-09-editor-in-process-runtime-host-review-v1.md
+- Editor In-Process Runtime Host Review Implementation Plan
+- Editor In-Process Runtime Host Review Implementation Plan (2026-05-09)
+- EditorInProcessRuntimeHostModel
+- play_in_editor.in_process_runtime_host
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
+
+### 2026-05-09-editor-runtime-scene-package-validation-execution-v1.md
+- **Plan ID:** `editor-runtime-scene-package-validation-execution-v1`
+- **Status:** Completed.
+- 2026-05-09-editor-runtime-scene-package-validation-execution-v1.md
+- Editor Runtime Scene Package Validation Execution Implementation Plan
+- Editor Runtime Scene Package Validation Execution Implementation Plan (2026-05-09)
+- EditorRuntimeScenePackageValidationExecutionModel
+- playtest_package_review.runtime_scene_validation
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
+
+### 2026-05-09-physics-1-0-collision-system-closeout-v1.md
+- **Gap:** `physics-1-0-collision-system` Phase P4.
+- **Plan ID:** `physics-1-0-collision-system-closeout-v1`
+- **Status:** Completed.
+- 2026-05-09-physics-1-0-collision-system-closeout-v1.md
+- Gap:** `physics-1-0-collision-system` Phase P2
+- Physics 1.0 Collision System Closeout Implementation Plan (2026-05-09)
+- PhysicsReplaySignature3D
+- Plan ID:** `physics-benchmark-determinism-gates-v1`
+- budget gates
+- count-based
+- evaluate_physics_determinism_gate_3d
+
+### 2026-05-09-physics-benchmark-determinism-gates-v1.md
+- **Gap:** `physics-1-0-collision-system` Phase P2.
+- **Plan ID:** `physics-benchmark-determinism-gates-v1`
+- **Status:** Completed.
+- 2026-05-09-physics-benchmark-determinism-gates-v1.md
+- DiagnosticsOpsPlan
+- Execute this master plan by burning down one
+- Gap Burn-down Execution Strategy
+- IFontRasterizerAdapter
+- Mirakanai_API36
+- Physics Benchmark Determinism Gates Implementation Plan (2026-05-09)
+- PngImageDecodingAdapter
+- Runtime UI Font Rasterization Request Plan v1
+- Runtime UI PNG Image Decoding Adapter v1
+- UiRendererGlyphAtlasPalette
+- android-release-device-matrix-v1
+- apple-host-evidence-check
+- apple-metal-ios-host-evidence-v1
+- crash-telemetry-trace-ops-v1
+- generated-3d-compute-morph-async-telemetry-package-smoke-d3d12-v1
+- generated-3d-compute-morph-normal-tangent-package-smoke-d3d12-v1
+- generated-3d-compute-morph-package-smoke-d3d12-v1
+- generated-3d-compute-morph-package-smoke-vulkan-v1
+- generated-3d-compute-morph-queue-sync-package-smoke-d3d12-v1
+- generated-3d-compute-morph-skin-package-smoke-d3d12-v1
+- physics-1-0-collision-system-closeout-v1
+- production-1-0-readiness-audit-v1
+- production-readiness-audit-check
+- rhi-compute-dispatch-foundation-v1
+- rhi-d3d12-calibrated-queue-timing-diagnostics-v1
+- rhi-d3d12-per-queue-fence-synchronization-v1
+- rhi-d3d12-queue-clock-calibration-foundation-v1
+- rhi-d3d12-queue-timestamp-measurement-foundation-v1
+- rhi-d3d12-submitted-command-calibrated-timing-scopes-v1
+- rhi-vulkan-compute-dispatch-foundation-v1
+- runtime-rhi-compute-morph-async-overlap-evidence-d3d12-v1
+- runtime-rhi-compute-morph-async-telemetry-d3d12-v1
+- runtime-rhi-compute-morph-calibrated-overlap-diagnostics-d3d12-v1
+- runtime-rhi-compute-morph-d3d12-proof-v1
+- runtime-rhi-compute-morph-normal-tangent-output-d3d12-v1
+- runtime-rhi-compute-morph-normal-tangent-output-vulkan-v1
+- runtime-rhi-compute-morph-pipelined-output-ring-d3d12-v1
+- runtime-rhi-compute-morph-pipelined-scheduling-d3d12-v1
+- runtime-rhi-compute-morph-queue-synchronization-d3d12-v1
+- runtime-rhi-compute-morph-renderer-consumption-d3d12-v1
+- runtime-rhi-compute-morph-renderer-consumption-vulkan-v1
+- runtime-rhi-compute-morph-skin-composition-d3d12-v1
+- runtime-rhi-compute-morph-submitted-overlap-diagnostics-d3d12-v1
+- runtime-rhi-compute-morph-vulkan-proof-v1
+- runtime-scene-rhi-compute-morph-skin-palette-d3d12-v1
+- runtime-ui-font-image-adapter-v1
+
+### 2026-05-09-physics-joints-foundation-v1.md
+- **Gap:** `physics-1-0-collision-system` Phase P1.
+- **Plan ID:** `physics-joints-foundation-v1`
+- **Status:** Completed.
+- 2026-05-09-physics-joints-foundation-v1.md
+- Active gap burn-down
+- Gap:** `physics-1-0-collision-system` Phase P3
+- Jolt
+- Physics Joints Foundation Implementation Plan (2026-05-09)
+- Plan ID:** `physics-jolt-adapter-gate-v1`
+- explicit 1.0 exclusion
+
+### 2026-05-09-physics-jolt-adapter-gate-v1.md
+- **Gap:** `physics-1-0-collision-system` Phase P3.
+- **Plan ID:** `physics-jolt-adapter-gate-v1`
+- **Status:** Completed.
+- 2026-05-09-physics-jolt-adapter-gate-v1.md
+- Gap:** `physics-1-0-collision-system` Phase P1
+- Physics Jolt Adapter Gate Implementation Plan (2026-05-09)
+
+### 2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md
+- **Gap:** `editor-productization`
+- **Plan ID:** `editor-productization-1-0-host-gated-exclusion-closeout-v1`
+- **Status:** Completed
+- 2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md
+- Editor Productization 1.0 Host-Gated Exclusion Closeout
+- Editor Productization 1.0 Host-Gated Exclusion Closeout (2026-05-18)
+- EditorAiReviewedValidationExecutionModel
+- EditorMaterialGpuPreviewExecutionSnapshot
+- EditorPlaySession
+- PrefabVariantBaseRefreshPlan
+- ScenePrefabInstanceRefreshPlan
+- Vulkan/Metal material-preview display parity
+- explicit 1.0 exclusion
+- explicit 1.0 host-gated exclusion
+- full-repository-quality-gate
+- production-ui-importer-platform-adapters
+- reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence
+
+### 2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md
+- **Plan ID:** `full-repository-quality-gate-1-0-closeout-v1`
+- **Status:** Completed
+- 2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md
+- CI Matrix Contract Check v1
+- Full Repository Quality Gate 1.0 Closeout
+- Full Repository Quality Gate 1.0 Closeout v1 Implementation Plan
+- Full Repository Static Analysis CI Contract v1
+- Linux coverage threshold policy
+- Windows release package artifact evidence
+- broader analyzer profile expansion
+- full cross-platform package execution evidence
+- local full validate
+- notarization
+- release distribution
+- sanitizer lane documentation
+- signing
+- unsupported_gaps=0
+
+### 2026-05-18-upload-staging-v1-selected-package-upload-evidence-v1.md
+- **Status:** Completed.
+- 2026-05-18-upload-staging-v1-selected-package-upload-evidence-v1.md
+- Runtime Upload Queue Wait v1
+- Upload Staging v1 Selected Package Upload Evidence v1 - 2026-05-18
+- execute_runtime_package_upload_staging_evidence
+- --require-package-upload-staging
+- upload_queue_waits_recorded
+- wait_for_runtime_uploads_on_queue

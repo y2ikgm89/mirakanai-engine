@@ -513,7 +513,7 @@ $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-O
 if ($editorProductizationGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md"
+$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Editor Productization 1.0 Host-Gated Exclusion Closeout",
     "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
@@ -564,7 +564,7 @@ $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($fullRepoQualityGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md"
+$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Full Repository Quality Gate 1.0 Closeout",
     "local full validate",
@@ -710,7 +710,7 @@ foreach ($needle in @(
         Write-Error ".github/workflows/validate.yml missing required static-analysis lane text: $needle"
     }
 }
-$fullRepoStaticAnalysisPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-full-repository-static-analysis-ci-contract-v1.md") -Raw
+$fullRepoStaticAnalysisPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Full Repository Static Analysis CI Contract v1 Implementation Plan",
     "**Status:** Completed.",
@@ -725,7 +725,7 @@ foreach ($needle in @(
     }
 }
 
-$runtimeUiAccessibilityPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-07-runtime-ui-accessibility-publish-plan-v1.md") -Raw
+$runtimeUiAccessibilityPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Accessibility Publish Plan v1",
     "**Status:** Completed",
@@ -741,7 +741,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI accessibility publish plan missing required evidence: $needle"
     }
 }
-$runtimeUiImePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-07-runtime-ui-ime-composition-publish-plan-v1.md") -Raw
+$runtimeUiImePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI IME Composition Publish Plan v1",
     "**Status:** Completed",
@@ -757,7 +757,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI IME composition publish plan missing required evidence: $needle"
     }
 }
-$runtimeUiPlatformTextInputSessionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-platform-text-input-session-plan-v1.md") -Raw
+$runtimeUiPlatformTextInputSessionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Platform Text Input Session Plan v1",
     "**Status:** Completed",
@@ -775,7 +775,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI platform text input session plan missing required evidence: $needle"
     }
 }
-$runtimeUiFontRasterizationRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-07-runtime-ui-font-rasterization-request-plan-v1.md") -Raw
+$runtimeUiFontRasterizationRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Font Rasterization Request Plan v1",
     "**Status:** Completed",
@@ -791,7 +791,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI font rasterization request plan missing required evidence: $needle"
     }
 }
-$runtimeUiTextShapingRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-text-shaping-request-plan-v1.md") -Raw
+$runtimeUiTextShapingRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Text Shaping Request Plan v1",
     "**Status:** Completed",
@@ -807,7 +807,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI text shaping request plan missing required evidence: $needle"
     }
 }
-$runtimeUiImageDecodeRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-image-decode-request-plan-v1.md") -Raw
+$runtimeUiImageDecodeRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Image Decode Request Plan v1",
     "**Status:** Completed",
@@ -824,7 +824,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI image decode request plan missing required evidence: $needle"
     }
 }
-$runtimeUiPngImageDecodingAdapterPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-png-image-decoding-adapter-v1.md") -Raw
+$runtimeUiPngImageDecodingAdapterPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI PNG Image Decoding Adapter v1",
     "**Status:** Completed",
@@ -839,7 +839,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI PNG image decoding adapter plan missing required evidence: $needle"
     }
 }
-$runtimeUiDecodedImageAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md") -Raw
+$runtimeUiDecodedImageAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Decoded Image Atlas Package Bridge v1",
     "**Status:** Completed",
@@ -856,7 +856,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI decoded image atlas package bridge plan missing required evidence: $needle"
     }
 }
-$runtimeUiGlyphAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-glyph-atlas-package-bridge-v1.md") -Raw
+$runtimeUiGlyphAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Glyph Atlas Package Bridge v1",
     "**Status:** Completed",

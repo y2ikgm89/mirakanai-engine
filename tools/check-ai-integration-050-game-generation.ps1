@@ -1561,7 +1561,7 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-ci-matrix-contract-check-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "CI Matrix Contract Check v1 Implementation Plan",
             "tools/check-ci-matrix.ps1",
@@ -1588,7 +1588,7 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-08-full-repository-static-analysis-ci-contract-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Full Repository Static Analysis CI Contract v1 Implementation Plan",
             "**Status:** Completed.",
@@ -1665,7 +1665,7 @@ foreach ($check in $ciMatrixContractCheckCompletedPlanChecks) {
 
 $cpp23ReleasePackageArtifactCiEvidenceChecks = @(
     @{
-        Path = "docs/superpowers/plans/2026-05-08-cpp23-release-package-artifact-ci-evidence-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "C++23 Release Package Artifact CI Evidence v1 Implementation Plan",
             "tools/evaluate-cpp23.ps1 -Release",

@@ -1042,7 +1042,7 @@ $editorAiPlaytestOperatorWorkflowChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-02-ai-operable-production-loop-clean-uplift-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Phase 2 decision: retire the separate remediation evidence-review and closeout-report candidates",
             "Phase 3 consolidation: package diagnostics -> validation recipe preflight -> readiness -> operator handoff -> evidence summary -> remediation queue -> remediation handoff",
@@ -1050,14 +1050,14 @@ $editorAiPlaytestOperatorWorkflowChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-02-editor-ai-playtest-remediation-evidence-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Status note (2026-05-02): Retired by",
             "no separate remediation evidence-review row model"
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-02-editor-ai-playtest-remediation-closeout-report-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Status note (2026-05-02): Retired by",
             "no separate remediation closeout-report row model"
