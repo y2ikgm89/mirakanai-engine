@@ -166,6 +166,415 @@
         "renderer-rhi-residency",
         "metal-readiness"
       ]
+    },
+    "contentMutationLedger": {
+      "schemaVersion": 1,
+      "capabilityId": "ai-safe-content-mutation-ledger-v1",
+      "ledgerId": "sample-2d-desktop-runtime-package-ai-mutation-ledger",
+      "aiOwnedSourceRoots": [
+        {
+          "id": "game-root",
+          "path": "games/sample_2d_desktop_runtime_package",
+          "allowedOperations": [
+            "create",
+            "modify"
+          ],
+          "reviewedCommandSurfaceIds": [
+            "create-game-recipe",
+            "register-runtime-package-files",
+            "engine-capability-handoff"
+          ],
+          "evidence": "Generated game-owned files are confined to this root; shared repository surfaces require a separate developer-owned task."
+        },
+        {
+          "id": "runtime-package-root",
+          "path": "games/sample_2d_desktop_runtime_package/runtime",
+          "allowedOperations": [
+            "create",
+            "modify"
+          ],
+          "reviewedCommandSurfaceIds": [
+            "create-game-recipe",
+            "register-runtime-package-files"
+          ],
+          "evidence": "Runtime package payload changes must stay manifest-listed and validation-recipe-backed."
+        },
+        {
+          "id": "source-authoring-root",
+          "path": "games/sample_2d_desktop_runtime_package/source",
+          "allowedOperations": [
+            "create",
+            "modify"
+          ],
+          "reviewedCommandSurfaceIds": [
+            "create-game-recipe"
+          ],
+          "evidence": "Generated source authoring fixtures remain game-local before reviewed cook/package handoff."
+        },
+        {
+          "id": "shader-authoring-root",
+          "path": "games/sample_2d_desktop_runtime_package/shaders",
+          "allowedOperations": [
+            "create",
+            "modify"
+          ],
+          "reviewedCommandSurfaceIds": [
+            "create-game-recipe"
+          ],
+          "evidence": "Generated shader source fixtures remain game-local and require shader-toolchain validation before package claims."
+        }
+      ],
+      "generatedFiles": [
+        {
+          "id": "game-agent-json",
+          "path": "games/sample_2d_desktop_runtime_package/game.agent.json",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "main-cpp",
+          "path": "games/sample_2d_desktop_runtime_package/main.cpp",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "readme-md",
+          "path": "games/sample_2d_desktop_runtime_package/README.md",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-sample-2d-desktop-runtime-package-config",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/sample_2d_desktop_runtime_package.config",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-sample-2d-desktop-runtime-package-geindex",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/sample_2d_desktop_runtime_package.geindex",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-assets-2d-player-texture-geasset",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/player.texture.geasset",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-assets-2d-player-material",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/player.material",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-assets-2d-jump-audio-geasset",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/jump.audio.geasset",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-assets-2d-level-tilemap",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/level.tilemap",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-assets-2d-player-sprite-animation",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/player.sprite_animation",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-assets-2d-playable-scene",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/playable.scene",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-gitattributes",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/.gitattributes",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "source-assets-package-geassets",
+          "path": "games/sample_2d_desktop_runtime_package/source/assets/package.geassets",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "source-sprites-player-atlas-texture-source",
+          "path": "games/sample_2d_desktop_runtime_package/source/sprites/player_atlas.texture_source",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "shaders-runtime-2d-sprite-hlsl",
+          "path": "games/sample_2d_desktop_runtime_package/shaders/runtime_2d_sprite.hlsl",
+          "generatedBy": "tools/new-game.ps1",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        }
+      ],
+      "reviewedCommandSurfaces": [
+        {
+          "id": "create-game-recipe",
+          "mode": "dry-run-apply",
+          "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/create-game-recipe.ps1",
+          "allowedPathRoots": [
+            "games/sample_2d_desktop_runtime_package"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "unsupportedActions": [
+            "arbitrary-shell",
+            "engine-internal-edits",
+            "native-handles",
+            "middleware-contracts",
+            "unreviewed-external-assets",
+            "cooked-package-mutation",
+            "renderer-rhi-residency",
+            "broad-commercial-quality"
+          ]
+        },
+        {
+          "id": "register-runtime-package-files",
+          "mode": "dry-run-apply",
+          "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/register-runtime-package-files.ps1",
+          "allowedPathRoots": [
+            "games/sample_2d_desktop_runtime_package/runtime",
+            "games/sample_2d_desktop_runtime_package/game.agent.json"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "unsupportedActions": [
+            "arbitrary-shell",
+            "engine-internal-edits",
+            "native-handles",
+            "middleware-contracts",
+            "unreviewed-external-assets",
+            "cooked-package-mutation",
+            "renderer-rhi-residency",
+            "broad-commercial-quality"
+          ]
+        },
+        {
+          "id": "engine-capability-handoff",
+          "mode": "review-only",
+          "command": "mirakana::review_engine_capability_handoff_request",
+          "allowedPathRoots": [
+            "games/sample_2d_desktop_runtime_package/game.agent.json"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ],
+          "unsupportedActions": [
+            "arbitrary-shell",
+            "engine-internal-edits",
+            "native-handles",
+            "middleware-contracts",
+            "unreviewed-external-assets",
+            "cooked-package-mutation",
+            "renderer-rhi-residency",
+            "broad-commercial-quality"
+          ]
+        }
+      ],
+      "forbiddenSharedPaths": [
+        {
+          "id": "engine",
+          "path": "engine",
+          "reason": "Engine internals require a separate developer-owned capability task."
+        },
+        {
+          "id": "editor",
+          "path": "editor",
+          "reason": "Editor internals are outside generated-game mutation scope."
+        },
+        {
+          "id": "shared-tools",
+          "path": "tools",
+          "reason": "Shared automation changes require a repository workflow task."
+        },
+        {
+          "id": "shared-schemas",
+          "path": "schemas",
+          "reason": "Shared schema changes require explicit agent-surface synchronization."
+        },
+        {
+          "id": "agent-surfaces",
+          "path": "engine/agent",
+          "reason": "Machine-readable engine contracts are composed from reviewed fragments only."
+        },
+        {
+          "id": "repository-ci",
+          "path": ".github",
+          "reason": "CI workflow changes are outside generated-game mutation scope."
+        },
+        {
+          "id": "shared-docs",
+          "path": "docs/superpowers",
+          "reason": "Plan and production-ledger changes are developer-owned repository work."
+        },
+        {
+          "id": "shared-games-cmake",
+          "path": "games/CMakeLists.txt",
+          "reason": "Shared game registration is changed only by reviewed scaffolding tools."
+        }
+      ],
+      "remediationActions": [
+        {
+          "id": "missing-package-file",
+          "trigger": "A manifest-declared runtime package payload is missing or not registered.",
+          "reviewedCommandSurfaceId": "register-runtime-package-files",
+          "expectedResult": "Repair only game-local runtime payload registration before rerunning package validation.",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ]
+        },
+        {
+          "id": "unsafe-shared-path-request",
+          "trigger": "A requested change targets a forbidden shared repository path.",
+          "reviewedCommandSurfaceId": "engine-capability-handoff",
+          "expectedResult": "Stop and record a developer-owned handoff instead of editing shared surfaces.",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ]
+        },
+        {
+          "id": "unsupported-engine-capability",
+          "trigger": "A requested game behavior needs an unsupported reusable engine capability.",
+          "reviewedCommandSurfaceId": "engine-capability-handoff",
+          "expectedResult": "Persist a reviewed aiWorkflow.engineCapabilityHandoffs row with first-party public-contract evidence.",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ]
+        },
+        {
+          "id": "validation-failure",
+          "trigger": "A selected validation recipe fails after generated game-local mutation.",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "expectedResult": "Repair game-owned rows without weakening validation, deleting evidence, or changing shared tooling.",
+          "validationRecipeIds": [
+            "desktop-game-runtime",
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke",
+            "installed-2d-sprite-animation-smoke",
+            "installed-2d-tilemap-runtime-ux-smoke",
+            "installed-2d-gameplay-systems-smoke",
+            "installed-2d-world-region-streaming-smoke",
+            "installed-2d-entity-scale-culling-smoke",
+            "installed-2d-scripting-sandbox-policy-smoke",
+            "installed-2d-networking-foundation-policy-smoke",
+            "installed-2d-simulation-orchestration-smoke",
+            "installed-2d-gameplay-authoring-review-smoke",
+            "installed-d3d12-window-smoke",
+            "installed-native-2d-sprite-smoke",
+            "installed-vulkan-window-smoke"
+          ]
+        }
+      ]
     }
   },
   "gameplayContract": {

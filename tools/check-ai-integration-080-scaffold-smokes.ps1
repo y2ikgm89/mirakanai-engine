@@ -313,6 +313,19 @@ try {
     if ($desktop2dManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
         Write-Error "Desktop runtime 2D package scaffold manifest must select 2d-desktop-runtime-package"
     }
+    if ($desktop2dManifest.aiWorkflow.contentMutationLedger.capabilityId -ne "ai-safe-content-mutation-ledger-v1") {
+        Write-Error "Desktop runtime 2D package scaffold manifest must carry ai-safe-content-mutation-ledger-v1"
+    }
+    $desktop2dMutationLedgerText = $desktop2dManifest.aiWorkflow.contentMutationLedger | ConvertTo-Json -Depth 40
+    foreach ($ledgerNeedle in @(
+            "create-game-recipe",
+            "register-runtime-package-files",
+            "engine-capability-handoff",
+            "games/desktop_2d_package_game/game.agent.json",
+            "games/desktop_2d_package_game/runtime/desktop_2d_package_game.geindex"
+        )) {
+        Assert-ContainsText $desktop2dMutationLedgerText $ledgerNeedle "Desktop runtime 2D package scaffold content mutation ledger"
+    }
     foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($desktop2dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 2D package scaffold manifest missing engine module: $module"
@@ -1089,6 +1102,20 @@ try {
     Assert-ContainsText $desktop3dReadmeText 'selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke with `--require-shadow-morph-composition`, `renderer_gpu_morph_draws`, `renderer_morph_descriptor_binds`, `directional_shadow_ready=1`, `framegraph_passes=3`, `framegraph_passes_executed=6`, `framegraph_render_passes_recorded=6`' "Desktop runtime 3D package scaffold README"
     if ($desktop3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
         Write-Error "Desktop runtime 3D package scaffold manifest must select 3d-playable-desktop-package"
+    }
+    if ($desktop3dManifest.aiWorkflow.contentMutationLedger.capabilityId -ne "ai-safe-content-mutation-ledger-v1") {
+        Write-Error "Desktop runtime 3D package scaffold manifest must carry ai-safe-content-mutation-ledger-v1"
+    }
+    $desktop3dMutationLedgerText = $desktop3dManifest.aiWorkflow.contentMutationLedger | ConvertTo-Json -Depth 40
+    foreach ($ledgerNeedle in @(
+            "create-game-recipe",
+            "register-runtime-package-files",
+            "engine-capability-handoff",
+            "games/desktop_3d_package_game/game.agent.json",
+            "games/desktop_3d_package_game/runtime/desktop_3d_package_game.geindex",
+            "games/desktop_3d_package_game/shaders/runtime_scene.hlsl"
+        )) {
+        Assert-ContainsText $desktop3dMutationLedgerText $ledgerNeedle "Desktop runtime 3D package scaffold content mutation ledger"
     }
     foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dManifest.engineModules) -notcontains $module) {
@@ -2273,6 +2300,9 @@ try {
     if ($createGameRecipeManifest.aiWorkflow.gameDesignSpec.designId -ne "orchestrated-2d") {
         Write-Error "create-game-recipe apply must preserve the reviewed design spec"
     }
+    if ($createGameRecipeManifest.aiWorkflow.contentMutationLedger.capabilityId -ne "ai-safe-content-mutation-ledger-v1") {
+        Write-Error "create-game-recipe apply must preserve the generated content mutation ledger"
+    }
     if (@($createGameRecipeManifest.aiWorkflow.gameDesignSpec.validationRecipeIds) -notcontains "installed-2d-package-smoke") {
         Write-Error "create-game-recipe apply must preserve reviewed validationRecipeIds"
     }
@@ -2298,6 +2328,7 @@ try {
     }
     $createGameRecipe3dManifest = Get-Content -LiteralPath (Join-Path $createGameRecipeRoot "games/orchestrated_3d/game.agent.json") -Raw | ConvertFrom-Json
     if ($createGameRecipe3dManifest.aiWorkflow.gameDesignSpec.designId -ne "orchestrated-3d") { Write-Error "create-game-recipe 3D apply must preserve the reviewed design spec" }
+    if ($createGameRecipe3dManifest.aiWorkflow.contentMutationLedger.capabilityId -ne "ai-safe-content-mutation-ledger-v1") { Write-Error "create-game-recipe 3D apply must preserve the generated content mutation ledger" }
     $createGameRecipe3dCmake = Get-Content -LiteralPath (Join-Path $createGameRecipeRoot "games/CMakeLists.txt") -Raw
     Assert-ContainsText $createGameRecipe3dCmake "MK_add_desktop_runtime_game(orchestrated_3d" "create-game-recipe 3D apply CMake"
 } finally {
