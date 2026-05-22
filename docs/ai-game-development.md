@@ -353,6 +353,8 @@ For shader hot-reload/cache metadata, use `mirakana::build_shader_pipeline_cache
 
 `game.agent.json.aiWorkflow.gameDesignSpec` is the fail-closed structured design contract for `ai-game-design-spec-v1`. Generated or sample 2D/3D package manifests use it to record gameplay family, template, camera, input map, core loop, scene list, asset requests, systems, package targets, validation recipes, quality gates, and explicit unsupported claims before game code or package rows are expanded. The descriptor must reference only package targets and validation recipe ids declared by the same manifest; schema/static checks reject missing rows, undeclared references, native-handle claims, engine-internal edits, arbitrary shell claims, and unreviewed external asset claims.
 
+Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/create-game-recipe.ps1 -Mode DryRun -GameName <game_name> -DesignSpecPath <repo-relative-json>` before applying generated 2D/3D package scaffolds from a reviewed design spec. The apply mode repeats the same validation, calls `tools/new-game.ps1` directly with fixed arguments, writes only `games/<game_name>/` plus `games/CMakeLists.txt`, and preserves the reviewed `aiWorkflow.gameDesignSpec` in the generated manifest. This command surface supports only `DesktopRuntime2DPackage` and `DesktopRuntime3DPackage`; it does not execute arbitrary shell text, generate external assets, cook packages beyond the scaffold, expose native handles, or claim autonomous game design quality.
+
 Agents should follow this sequence:
 
 1. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1`.
@@ -360,7 +362,7 @@ Agents should follow this sequence:
 3. Select a recipe id and verify its `status`, `validationRecipes`, `hostGates`, `unsupportedClaims`, and `followUpCapability`.
 4. Inspect `aiCommandSurfaces` before making manifest, package, scene, prefab, material, or asset changes; use only ready request modes, and report planned/blocked command surfaces as unsupported diagnostics.
 5. Read the target game's `game.agent.json`.
-6. For generated 2D/3D package work, write or update `game.agent.json.aiWorkflow.gameDesignSpec` before implementation, then mirror human-readable intent in the game README or `docs/specs/`.
+6. For generated 2D/3D package work, write or update `game.agent.json.aiWorkflow.gameDesignSpec` before implementation, then use `tools/create-game-recipe.ps1 -Mode DryRun` / `-Mode Apply` for reviewed scaffold creation and mirror human-readable intent in the game README or `docs/specs/`.
 7. Implement gameplay only through public engine APIs.
 8. Add tests or an executable sample result that proves the behavior.
 9. Run the recipe's validation commands, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` before reporting completion.
