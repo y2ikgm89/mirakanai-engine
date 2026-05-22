@@ -16,6 +16,7 @@
 #include "mirakana/renderer/sprite_batch.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/entity_scale_culling.hpp"
+#include "mirakana/runtime/gameplay_interaction.hpp"
 #include "mirakana/runtime/inventory_items.hpp"
 #include "mirakana/runtime/networking_foundation.hpp"
 #include "mirakana/runtime/procedural_generation.hpp"
@@ -228,6 +229,19 @@ struct GameplayAuthoringReviewProbeResult {
         return "ready";
     case Gameplay2DSystemsStatus::diagnostics:
         return "diagnostics";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+runtime_gameplay_session_state_name(mirakana::runtime::RuntimeGameplaySessionState state) noexcept {
+    switch (state) {
+    case mirakana::runtime::RuntimeGameplaySessionState::running:
+        return "running";
+    case mirakana::runtime::RuntimeGameplaySessionState::won:
+        return "won";
+    case mirakana::runtime::RuntimeGameplaySessionState::lost:
+        return "lost";
     }
     return "unknown";
 }
@@ -509,6 +523,15 @@ struct Gameplay2DInventoryProbeResult {
     std::size_t completed_rows{0U};
     std::size_t final_stacks{0U};
     std::uint32_t final_workbench_quantity{0U};
+};
+
+struct Gameplay2DInteractionProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t rows{0U};
+    std::size_t feedback_rows{0U};
+    mirakana::runtime::RuntimeGameplaySessionState final_session_state{
+        mirakana::runtime::RuntimeGameplaySessionState::running};
 };
 
 struct Gameplay2DConstructionPlacementProbeResult {
@@ -843,6 +866,146 @@ struct Gameplay2DProceduralGenerationProbeResult {
     result.ready = final_state_validation.succeeded && result.diagnostics == 0U && result.catalog_rows == 2U &&
                    result.state_rows == 2U && result.transition_rows == 2U && result.accepted_rows == 1U &&
                    result.completed_rows == 1U && result.final_stacks == 1U && result.final_workbench_quantity == 1U;
+    return result;
+}
+
+[[nodiscard]] Gameplay2DInteractionProbeResult validate_gameplay_2d_interactions() {
+    using namespace mirakana::runtime;
+
+    const RuntimeGameplayInteractionState state{
+        .session_state = RuntimeGameplaySessionState::running,
+        .entities =
+            std::vector<RuntimeGameplayEntityState>{
+                RuntimeGameplayEntityState{.id = "player", .health = 8, .max_health = 10, .active = true},
+                RuntimeGameplayEntityState{.id = "enemy", .health = 5, .max_health = 5, .active = true},
+            },
+        .pickups =
+            std::vector<RuntimeGameplayPickupState>{
+                RuntimeGameplayPickupState{.id = "pickup.gem", .item_id = "gem", .quantity = 1U, .available = true},
+            },
+        .objectives =
+            std::vector<RuntimeGameplayObjectiveState>{
+                RuntimeGameplayObjectiveState{
+                    .id = "objective.escape", .progress = 1U, .target = 3U, .completed = false},
+            },
+    };
+    const std::vector<RuntimeGameplayInteractionEvent> events{
+        RuntimeGameplayInteractionEvent{
+            .id = "event.trigger",
+            .kind = RuntimeGameplayInteractionKind::trigger,
+            .source_entity_id = "player",
+            .target_entity_id = {},
+            .pickup_id = {},
+            .objective_id = {},
+            .feedback_id = "feedback.trigger",
+            .amount = 0,
+        },
+        RuntimeGameplayInteractionEvent{
+            .id = "event.damage",
+            .kind = RuntimeGameplayInteractionKind::damage,
+            .source_entity_id = "player",
+            .target_entity_id = "enemy",
+            .pickup_id = {},
+            .objective_id = {},
+            .feedback_id = "feedback.damage",
+            .amount = 3,
+        },
+        RuntimeGameplayInteractionEvent{
+            .id = "event.heal",
+            .kind = RuntimeGameplayInteractionKind::heal,
+            .source_entity_id = "player",
+            .target_entity_id = "player",
+            .pickup_id = {},
+            .objective_id = {},
+            .feedback_id = "feedback.heal",
+            .amount = 2,
+        },
+        RuntimeGameplayInteractionEvent{
+            .id = "event.pickup",
+            .kind = RuntimeGameplayInteractionKind::pickup,
+            .source_entity_id = "player",
+            .target_entity_id = {},
+            .pickup_id = "pickup.gem",
+            .objective_id = {},
+            .feedback_id = "feedback.pickup",
+            .amount = 1,
+        },
+        RuntimeGameplayInteractionEvent{
+            .id = "event.objective",
+            .kind = RuntimeGameplayInteractionKind::objective_progress,
+            .source_entity_id = "player",
+            .target_entity_id = {},
+            .pickup_id = {},
+            .objective_id = "objective.escape",
+            .feedback_id = "feedback.objective",
+            .amount = 2,
+        },
+        RuntimeGameplayInteractionEvent{
+            .id = "event.feedback",
+            .kind = RuntimeGameplayInteractionKind::feedback,
+            .source_entity_id = "player",
+            .target_entity_id = {},
+            .pickup_id = {},
+            .objective_id = {},
+            .feedback_id = "feedback.prompt",
+            .amount = 0,
+        },
+        RuntimeGameplayInteractionEvent{
+            .id = "event.win",
+            .kind = RuntimeGameplayInteractionKind::win,
+            .source_entity_id = "player",
+            .target_entity_id = {},
+            .pickup_id = {},
+            .objective_id = {},
+            .feedback_id = "feedback.win",
+            .amount = 0,
+        },
+        RuntimeGameplayInteractionEvent{
+            .id = "event.restart",
+            .kind = RuntimeGameplayInteractionKind::restart,
+            .source_entity_id = {},
+            .target_entity_id = {},
+            .pickup_id = {},
+            .objective_id = {},
+            .feedback_id = "feedback.restart",
+            .amount = 0,
+        },
+        RuntimeGameplayInteractionEvent{
+            .id = "event.loss",
+            .kind = RuntimeGameplayInteractionKind::loss,
+            .source_entity_id = "player",
+            .target_entity_id = {},
+            .pickup_id = {},
+            .objective_id = {},
+            .feedback_id = "feedback.loss",
+            .amount = 0,
+        },
+        RuntimeGameplayInteractionEvent{
+            .id = "event.restart_after_loss",
+            .kind = RuntimeGameplayInteractionKind::restart,
+            .source_entity_id = {},
+            .target_entity_id = {},
+            .pickup_id = {},
+            .objective_id = {},
+            .feedback_id = "feedback.restart_after_loss",
+            .amount = 0,
+        },
+    };
+
+    const auto plan =
+        plan_runtime_gameplay_interactions(state, std::span<const RuntimeGameplayInteractionEvent>{events});
+    Gameplay2DInteractionProbeResult result{
+        .ready = false,
+        .diagnostics = plan.diagnostics.size(),
+        .rows = plan.rows.size(),
+        .feedback_rows = plan.feedback_rows.size(),
+        .final_session_state = plan.state.session_state,
+    };
+    result.ready =
+        plan.succeeded && result.diagnostics == 0U && result.rows == 10U && result.feedback_rows == 10U &&
+        result.final_session_state == RuntimeGameplaySessionState::running && plan.state.entities.size() == 2U &&
+        plan.state.entities[0].health == 10 && plan.state.entities[1].health == 2 && plan.state.pickups.size() == 1U &&
+        !plan.state.pickups[0].available && plan.state.objectives.size() == 1U && plan.state.objectives[0].completed;
     return result;
 }
 
@@ -1989,6 +2152,13 @@ class Gameplay2DSystemsProbe final {
         inventory_items_final_stacks_ = inventory_items.final_stacks;
         inventory_items_final_workbench_quantity_ = inventory_items.final_workbench_quantity;
 
+        const auto interaction = validate_gameplay_2d_interactions();
+        interaction_ready_ = interaction.ready;
+        interaction_diagnostics_ = interaction.diagnostics;
+        interaction_rows_ = interaction.rows;
+        interaction_feedback_rows_ = interaction.feedback_rows;
+        interaction_final_session_state_ = interaction.final_session_state;
+
         const auto construction_placement = validate_gameplay_2d_construction_placement();
         construction_placement_ready_ = construction_placement.ready;
         construction_placement_diagnostics_ = construction_placement.diagnostics;
@@ -2056,6 +2226,9 @@ class Gameplay2DSystemsProbe final {
                inventory_items_state_rows_ == 2U && inventory_items_transition_rows_ == 2U &&
                inventory_items_accepted_rows_ == 1U && inventory_items_completed_rows_ == 1U &&
                inventory_items_final_stacks_ == 1U && inventory_items_final_workbench_quantity_ == 1U &&
+               interaction_ready_ && interaction_diagnostics_ == 0U && interaction_rows_ == 10U &&
+               interaction_feedback_rows_ == 10U &&
+               interaction_final_session_state_ == mirakana::runtime::RuntimeGameplaySessionState::running &&
                construction_placement_ready_ && construction_placement_diagnostics_ == 0U &&
                construction_placement_validation_rows_ == 3U && construction_placement_intent_rows_ == 1U &&
                construction_placement_intent_accepted_rows_ == 1U &&
@@ -2233,6 +2406,26 @@ class Gameplay2DSystemsProbe final {
 
     [[nodiscard]] std::uint32_t inventory_items_final_workbench_quantity() const noexcept {
         return inventory_items_final_workbench_quantity_;
+    }
+
+    [[nodiscard]] bool interaction_ready() const noexcept {
+        return interaction_ready_;
+    }
+
+    [[nodiscard]] std::size_t interaction_diagnostic_count() const noexcept {
+        return interaction_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t interaction_row_count() const noexcept {
+        return interaction_rows_;
+    }
+
+    [[nodiscard]] std::size_t interaction_feedback_row_count() const noexcept {
+        return interaction_feedback_rows_;
+    }
+
+    [[nodiscard]] mirakana::runtime::RuntimeGameplaySessionState interaction_final_session_state() const noexcept {
+        return interaction_final_session_state_;
     }
 
     [[nodiscard]] bool construction_placement_ready() const noexcept {
@@ -2428,6 +2621,9 @@ class Gameplay2DSystemsProbe final {
     std::size_t inventory_items_accepted_rows_{0U};
     std::size_t inventory_items_completed_rows_{0U};
     std::size_t inventory_items_final_stacks_{0U};
+    std::size_t interaction_diagnostics_{0U};
+    std::size_t interaction_rows_{0U};
+    std::size_t interaction_feedback_rows_{0U};
     std::size_t construction_placement_diagnostics_{0U};
     std::size_t construction_placement_validation_rows_{0U};
     std::size_t construction_placement_intent_rows_{0U};
@@ -2443,6 +2639,8 @@ class Gameplay2DSystemsProbe final {
     std::size_t procedural_generation_placement_intent_accepted_rows_{0U};
     std::uint64_t procedural_generation_replay_hash_{0ULL};
     std::uint32_t inventory_items_final_workbench_quantity_{0U};
+    mirakana::runtime::RuntimeGameplaySessionState interaction_final_session_state_{
+        mirakana::runtime::RuntimeGameplaySessionState::running};
     std::uint32_t ticks_{0U};
     std::uint32_t physics_ticks_{0U};
     bool last_perception_has_primary_target_{false};
@@ -2451,6 +2649,7 @@ class Gameplay2DSystemsProbe final {
     bool behavior_authoring_ready_{false};
     bool quest_dialogue_ready_{false};
     bool inventory_items_ready_{false};
+    bool interaction_ready_{false};
     bool construction_placement_ready_{false};
     bool procedural_generation_ready_{false};
     bool started_{false};
@@ -2942,6 +3141,27 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::uint32_t gameplay_systems_inventory_items_final_workbench_quantity() const noexcept {
         return gameplay_systems_.inventory_items_final_workbench_quantity();
+    }
+
+    [[nodiscard]] bool gameplay_systems_interaction_ready() const noexcept {
+        return gameplay_systems_.interaction_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_interaction_diagnostics() const noexcept {
+        return gameplay_systems_.interaction_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_interaction_rows() const noexcept {
+        return gameplay_systems_.interaction_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_interaction_feedback_rows() const noexcept {
+        return gameplay_systems_.interaction_feedback_row_count();
+    }
+
+    [[nodiscard]] mirakana::runtime::RuntimeGameplaySessionState
+    gameplay_systems_interaction_final_session_state() const noexcept {
+        return gameplay_systems_.interaction_final_session_state();
     }
 
     [[nodiscard]] bool gameplay_systems_construction_placement_ready() const noexcept {
@@ -3956,6 +4176,12 @@ int main(int argc, char** argv) {
         << " gameplay_systems_inventory_items_final_stacks=" << game.gameplay_systems_inventory_items_final_stacks()
         << " gameplay_systems_inventory_items_final_workbench_quantity="
         << game.gameplay_systems_inventory_items_final_workbench_quantity()
+        << " gameplay_systems_interaction_ready=" << (game.gameplay_systems_interaction_ready() ? 1 : 0)
+        << " gameplay_systems_interaction_diagnostics=" << game.gameplay_systems_interaction_diagnostics()
+        << " gameplay_systems_interaction_rows=" << game.gameplay_systems_interaction_rows()
+        << " gameplay_systems_interaction_feedback_rows=" << game.gameplay_systems_interaction_feedback_rows()
+        << " gameplay_systems_interaction_final_session_state="
+        << runtime_gameplay_session_state_name(game.gameplay_systems_interaction_final_session_state())
         << " gameplay_systems_construction_placement_ready="
         << (game.gameplay_systems_construction_placement_ready() ? 1 : 0)
         << " gameplay_systems_construction_placement_diagnostics="
@@ -4189,6 +4415,12 @@ int main(int argc, char** argv) {
             << " gameplay_systems_inventory_items_diagnostics=" << game.gameplay_systems_inventory_items_diagnostics()
             << " gameplay_systems_inventory_items_transition_rows="
             << game.gameplay_systems_inventory_items_transition_rows()
+            << " gameplay_systems_interaction_ready=" << (game.gameplay_systems_interaction_ready() ? 1 : 0)
+            << " gameplay_systems_interaction_diagnostics=" << game.gameplay_systems_interaction_diagnostics()
+            << " gameplay_systems_interaction_rows=" << game.gameplay_systems_interaction_rows()
+            << " gameplay_systems_interaction_feedback_rows=" << game.gameplay_systems_interaction_feedback_rows()
+            << " gameplay_systems_interaction_final_session_state="
+            << runtime_gameplay_session_state_name(game.gameplay_systems_interaction_final_session_state())
             << " gameplay_systems_construction_placement_ready="
             << (game.gameplay_systems_construction_placement_ready() ? 1 : 0)
             << " gameplay_systems_construction_placement_diagnostics="

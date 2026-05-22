@@ -1412,6 +1412,9 @@
           ],
           "requiredSignals": [
             "gameplay_systems_status=ready",
+            "gameplay_systems_interaction_ready=1",
+            "gameplay_systems_interaction_feedback_rows=10",
+            "gameplay_systems_interaction_final_session_state=running",
             "native_2d_sprite_batches_executed>=1"
           ],
           "validationRecipeIds": [
@@ -1433,6 +1436,9 @@
           "requiredSignals": [
             "fail_state_declared=1",
             "restart_declared=1",
+            "gameplay_systems_interaction_ready=1",
+            "gameplay_systems_interaction_rows=10",
+            "gameplay_systems_interaction_final_session_state=running",
             "rerun_policy=rerun-selected-validation-recipe"
           ],
           "validationRecipeIds": [
@@ -1509,6 +1515,9 @@
           ],
           "requiredSignals": [
             "package_smoke_status=passed",
+            "gameplay_systems_interaction_ready=1",
+            "gameplay_systems_interaction_feedback_rows=10",
+            "gameplay_systems_interaction_final_session_state=running",
             "budget_evidence_present=1"
           ]
         }
