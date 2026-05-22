@@ -13,4 +13,3 @@ Every ADR Markdown file must contain a `## Status` section near the top. Accepte
 | [0001: Core-First C++ Engine](0001-core-first-cpp-engine.md) | Accepted; historical initial milestone completed | C++23 core-first architecture before platform, renderer, editor, and runtime dependency expansion. |
 | [0002: Agent Manifest Fragments and Compose-as-Canonical](0002-agent-manifest-fragments-compose.md) | Accepted | Edit `engine/agent/manifest.fragments/*.json`, compose committed `engine/agent/manifest.json`, and reject semantic drift in checks. |
 | [0003: Directory Layout Clean-Break](0003-directory-layout-clean-break.md) | Accepted | Keep SDK-style CMake target boundaries while splitting `engine/tools` implementation ownership under one `MK_tools` public target. |
-
