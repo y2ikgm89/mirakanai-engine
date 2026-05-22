@@ -3,7 +3,7 @@
 **Plan ID:** `post-1-0-capability-program-v1`
 **Status:** Active.
 **Milestone type:** Post-1.0 / 1.x phase-gated capability program.
-**Current phase:** Phase 1 - `physics-constraints-and-joints-v1`.
+**Current phase:** Phase 2 - `physics-vehicles-and-kinematics-v1`.
 
 ## Goal
 
@@ -46,15 +46,15 @@ This plan keeps the production-completion pointer on one active dated milestone 
 - [x] Update the plan registry current active work row.
 - [x] Update the production-completion master-plan verdict.
 - [x] Update the 2D/3D matrix so completed foundations are not described as active 1.0 gaps.
-- [x] Update the gameplay physics/navigation/AI advanced track with the selected Phase 1 stream and completed lower-level foundations.
+- [x] Update the gameplay physics/navigation/AI advanced track with the selected post-1.0 stream and completed lower-level foundations.
 - [x] Update current-capabilities active-work text.
 - [x] Update `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, compose `engine/agent/manifest.json`, and keep `unsupportedProductionGaps = []`.
 
 ### Done When
 
 - `currentActivePlan` points to this plan.
-- `recommendedNextPlan.id = physics-constraints-and-joints-v1`.
-- Related planning surfaces agree that Phase 1 is active and later post-1.0 candidates remain sequenced follow-ups.
+- `recommendedNextPlan.id = physics-vehicles-and-kinematics-v1`.
+- Related planning surfaces agree that Phase 2 is active and later post-1.0 candidates remain sequenced follow-ups.
 - Focused docs/manifest validation passes.
 
 ## Phase 1 - Physics Constraints and Joints v1
@@ -95,10 +95,17 @@ Advance the existing distance-joint foundation into a broader first-party constr
 
 Build simple kinematic and vehicle foundations on top of the Phase 1 constraint surface and existing advanced-controller policy.
 
+### First Implementation Slice
+
+- [x] Add RED tests for deterministic kinematic fixed-step movement and package-visible wheel-probe evidence.
+- [x] Add first-party `MK_physics` value contracts for value-only kinematic motion planning without middleware/native handles.
+- [x] Add package-visible selected generated 3D counters for kinematic motion and simple vehicle-like wheel probe evidence.
+- [x] Update docs, manifest fragments/composed manifest, and agent-surface records where durable contracts change; no new static guard needle was needed beyond existing manifest/json/AI integration checks.
+
 ### Done When
 
 - Kinematic movement policy is deterministic under fixed timestep.
-- Vehicle rows remain simple and first-party; no tire model, suspension tuning suite, or middleware vehicle module is claimed.
+- Vehicle evidence remains simple and first-party; no public vehicle API, tire model, suspension tuning suite, or middleware vehicle module is claimed.
 - Generated package evidence exposes selected counters.
 
 ## Phase 3 - Navigation Hierarchical World v1
@@ -160,6 +167,18 @@ Use the stable engine contracts from earlier phases to strengthen generated-game
 | Phase 1 row-budget focused physics test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_core_tests"` | PASS on 2026-05-22 after row-budget implementation and review follow-up; `MK_core_tests` passed, including `requested_rows == max_rows` acceptance and explicit aggregate `max_rows` call sites. |
 | Phase 1 package build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_generated_desktop_runtime_3d_package` | PASS on 2026-05-22. |
 | Phase 1 package smoke | `out\build\dev\games\Debug\sample_generated_desktop_runtime_3d_package\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-gameplay-systems` | PASS on 2026-05-22; reports `gameplay_systems_physics_constraints_status=solved`, `gameplay_systems_physics_constraints_rows=2`, fixed rows `1`, linear-axis rows `1`, and axis-limit-clamped `1`. |
+| Phase 2 RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` before implementation | Expected failure on 2026-05-22: missing `PhysicsKinematicMotion3D*` public types and `plan_physics_kinematic_motion_3d`. |
+| Phase 2 focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests sample_generated_desktop_runtime_3d_package` | PASS on 2026-05-22 after implementation. |
+| Phase 2 focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests` | PASS on 2026-05-22; kinematic motion tests cover deterministic slide rows, trigger overlap rows, invalid requests, initial-overlap diagnostics, and no caller-world mutation. |
+| Phase 2 package smoke | `out\build\dev\games\Debug\sample_generated_desktop_runtime_3d_package\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-gameplay-systems` | PASS on 2026-05-22; reports `gameplay_systems_kinematic_motion_status=constrained`, `gameplay_systems_kinematic_motion_rows=2`, `gameplay_systems_vehicle_grounded_wheels=4`, and `gameplay_systems_vehicle_wheel_probe_hits=4`. |
+| Phase 2 constraint-review RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests` before constraint diagnostic hardening | Expected failure on 2026-05-22: exact linear-axis boundary was flagged as clamped and static-pair constraint rows did not retain kind-specific deltas. |
+| Phase 2 constraint-review focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests` | PASS on 2026-05-22 after constraint diagnostic hardening. |
+| Phase 2 public API boundary | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS on 2026-05-22. |
+| Phase 2 format | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `git diff --check` | PASS on 2026-05-22 after `tools/format.ps1`. |
+| Phase 2 docs/manifest sync | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS on 2026-05-22; `agent-manifest-compose: ok`, `json-contract-check: ok`. |
+| Phase 2 agent integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | PASS on 2026-05-22; `ai-integration-check: ok`. |
+| Phase 2 agent surfaces | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | PASS on 2026-05-22; `agent-config-check: ok`. |
+| Phase 2 full gate | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticJobs 1` | PASS on 2026-05-22; all 73 CTest tests passed. Diagnostic-only host gates still report missing Apple/macOS and Metal host tooling on this Windows host. |
 | Phase 1 public API boundary | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | PASS on 2026-05-22. |
 | Phase 1 format | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` plus `git diff --check` | PASS on 2026-05-22 after `tools/format.ps1` normalized C++ formatting. |
 | Phase 1 docs/manifest sync | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | PASS on 2026-05-22; `agent-manifest-compose: ok`, `json-contract-check: ok`. |

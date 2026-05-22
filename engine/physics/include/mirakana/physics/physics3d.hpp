@@ -417,6 +417,57 @@ struct PhysicsCharacterDynamicPolicy3DResult {
     std::vector<PhysicsCharacterDynamicPolicy3DRow> rows;
 };
 
+enum class PhysicsKinematicMotion3DStatus : std::uint8_t {
+    moved,
+    constrained,
+    blocked,
+    initial_overlap,
+    invalid_request
+};
+
+enum class PhysicsKinematicMotion3DDiagnostic : std::uint8_t {
+    none,
+    invalid_request,
+    initial_overlap,
+    iteration_limit
+};
+
+enum class PhysicsKinematicMotion3DRowKind : std::uint8_t { solid_contact, trigger_overlap, slide, ground_probe };
+
+struct PhysicsKinematicMotion3DDesc {
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    PhysicsShape3DDesc shape{PhysicsShape3DDesc::capsule(0.5F, 0.5F)};
+    PhysicsQueryFilter3D filter{};
+    float skin_width{0.01F};
+    std::uint32_t max_iterations{4U};
+    float grounded_normal_y{0.70710677F};
+    float ground_probe_distance{0.05F};
+};
+
+struct PhysicsKinematicMotion3DRow {
+    PhysicsKinematicMotion3DRowKind kind{PhysicsKinematicMotion3DRowKind::solid_contact};
+    PhysicsBody3DId body;
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 normal{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+    float distance{0.0F};
+    bool initial_overlap{false};
+    bool grounded{false};
+    Vec3 attempted_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 applied_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 remaining_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+};
+
+struct PhysicsKinematicMotion3DResult {
+    PhysicsKinematicMotion3DStatus status{PhysicsKinematicMotion3DStatus::invalid_request};
+    PhysicsKinematicMotion3DDiagnostic diagnostic{PhysicsKinematicMotion3DDiagnostic::none};
+    Vec3 position{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 applied_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 remaining_displacement{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    bool grounded{false};
+    std::vector<PhysicsKinematicMotion3DRow> rows;
+};
+
 enum class PhysicsJoint3DStatus : std::uint8_t { solved, invalid_request };
 
 enum class PhysicsJoint3DDiagnostic : std::uint8_t {
@@ -703,9 +754,13 @@ move_physics_character_controller_3d(const PhysicsWorld3D& world, const PhysicsC
 evaluate_physics_character_dynamic_policy_3d(const PhysicsWorld3D& world,
                                              const PhysicsCharacterDynamicPolicy3DDesc& desc);
 
+[[nodiscard]] PhysicsKinematicMotion3DResult plan_physics_kinematic_motion_3d(const PhysicsWorld3D& world,
+                                                                              const PhysicsKinematicMotion3DDesc& desc);
+
 [[nodiscard]] PhysicsJointSolve3DResult solve_physics_joints_3d(PhysicsWorld3D& world,
                                                                 const PhysicsJointSolve3DDesc& desc);
 
+// Solves authored constraints in-place; callers own contact-filter policy when constrained pairs should not collide.
 [[nodiscard]] PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& world,
                                                                           const PhysicsConstraintSolve3DDesc& desc);
 

@@ -19,7 +19,7 @@ High-freedom game support must preserve the same AI-operable rules and remain ga
 
 Recommended high-freedom 1.x streams:
 
-As of PR #175 / merge commit `f05136e2`, `ai-gameplay-authoring-tools-v1` implementation is completed and the selection gate returned to the production-completion master plan. `post-1-0-capability-program-v1` now selects the next post-1.0 / 1.x developer-owned milestone, starting in the physics/navigation/AI track with `physics-constraints-and-joints-v1`. High-freedom streams remain sequenced follow-ons in the same milestone until a later phase selects one directly.
+As of active draft PR #178, `post-1-0-capability-program-v1` selects the current post-1.0 / 1.x developer-owned milestone. Phase 1 `physics-constraints-and-joints-v1` and Phase 2 first-slice `physics-vehicles-and-kinematics-v1` have implementation evidence in that PR. High-freedom streams remain sequenced follow-ons in the same milestone until a later phase selects one directly.
 
 | Stream | Goal | Official-practice evidence gate | Non-goals until separately planned |
 | --- | --- | --- | --- |

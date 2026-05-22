@@ -18,7 +18,7 @@ Advanced gameplay systems must follow official engine architecture and platform 
 Current selection:
 
 - Active milestone: `docs/superpowers/plans/2026-05-22-post-1-0-capability-program-v1.md`.
-- Phase 1 stream: `physics-constraints-and-joints-v1`.
+- Phase 2 stream: `physics-vehicles-and-kinematics-v1`; Phase 1 `physics-constraints-and-joints-v1` and Phase 2 first-slice kinematic motion / wheel-probe evidence have active draft PR #178 implementation evidence.
 - Completed lower-level foundations remain evidence: `physics-collision-query-v1`, `physics-joints-foundation-v1`, `engine-advanced-physics-controller-v1`, `engine-navmesh-crowd-v1`, `ai-perception-services-v1`, and `gameplay-simulation-orchestration-v1`.
 - Current manifest state remains `unsupportedProductionGaps = []`; this track is post-1.0 / 1.x work, not an active 1.0 blocker.
 

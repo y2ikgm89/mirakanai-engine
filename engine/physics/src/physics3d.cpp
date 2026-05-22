@@ -1456,6 +1456,145 @@ character_dynamic_policy_ground_probe(const std::vector<PhysicsBody3D>& bodies,
     return row;
 }
 
+[[nodiscard]] bool is_valid_kinematic_motion_desc(const PhysicsKinematicMotion3DDesc& desc) noexcept {
+    return finite_vec(desc.position) && finite_vec(desc.displacement) && is_valid_physics_shape_desc(desc.shape) &&
+           desc.filter.collision_mask != 0U && finite(desc.skin_width) && desc.skin_width > 0.0F &&
+           desc.max_iterations > 0U && desc.max_iterations <= 16U && finite(desc.grounded_normal_y) &&
+           desc.grounded_normal_y >= 0.0F && desc.grounded_normal_y <= 1.0F && finite(desc.ground_probe_distance) &&
+           desc.ground_probe_distance >= 0.0F;
+}
+
+[[nodiscard]] bool target_matches_kinematic_motion(const PhysicsKinematicMotion3DDesc& desc,
+                                                   const PhysicsBody3D& body) noexcept {
+    return body.collision_enabled && body.id != desc.filter.ignored_body &&
+           (desc.filter.collision_mask & body.collision_layer) != 0U;
+}
+
+[[nodiscard]] PhysicsKinematicMotion3DRowKind kinematic_motion_kind_for(const PhysicsBody3D& body) noexcept {
+    return body.trigger ? PhysicsKinematicMotion3DRowKind::trigger_overlap
+                        : PhysicsKinematicMotion3DRowKind::solid_contact;
+}
+
+[[nodiscard]] PhysicsKinematicMotion3DRow
+make_kinematic_motion_row(const PhysicsKinematicMotion3DDesc& desc, const PhysicsBody3D& body,
+                          const PhysicsExactShapeSweep3DHit& hit, Vec3 attempted_displacement,
+                          Vec3 applied_displacement, Vec3 remaining_displacement) noexcept {
+    return PhysicsKinematicMotion3DRow{
+        .kind = kinematic_motion_kind_for(body),
+        .body = body.id,
+        .position = hit.position,
+        .normal = hit.normal,
+        .distance = hit.distance,
+        .initial_overlap = hit.initial_overlap,
+        .grounded = hit.normal.y >= desc.grounded_normal_y,
+        .attempted_displacement = attempted_displacement,
+        .applied_displacement = applied_displacement,
+        .remaining_displacement = remaining_displacement,
+    };
+}
+
+struct KinematicMotionHit3D {
+    PhysicsKinematicMotion3DRow row;
+    bool blocking{false};
+};
+
+[[nodiscard]] bool should_replace_kinematic_motion_hit(const KinematicMotionHit3D& candidate,
+                                                       const KinematicMotionHit3D& closest) noexcept {
+    constexpr auto distance_tie_epsilon = 0.00001F;
+    if (candidate.row.distance < closest.row.distance - distance_tie_epsilon) {
+        return true;
+    }
+    return std::fabs(candidate.row.distance - closest.row.distance) <= distance_tie_epsilon &&
+           candidate.row.body.value < closest.row.body.value;
+}
+
+[[nodiscard]] std::vector<KinematicMotionHit3D>
+collect_kinematic_motion_hits(const std::vector<PhysicsBody3D>& bodies, const PhysicsKinematicMotion3DDesc& desc,
+                              Vec3 origin, Vec3 direction, float max_distance, Vec3 attempted_displacement,
+                              bool include_triggers) {
+    std::vector<KinematicMotionHit3D> hits;
+    for (const auto& body : bodies) {
+        if (!target_matches_kinematic_motion(desc, body)) {
+            continue;
+        }
+        if (body.trigger && (!include_triggers || !desc.filter.include_triggers)) {
+            continue;
+        }
+
+        const auto sweep =
+            exact_shape_sweep_impl(bodies,
+                                   PhysicsExactShapeSweep3DDesc{
+                                       .origin = origin,
+                                       .direction = direction,
+                                       .max_distance = max_distance,
+                                       .shape = desc.shape,
+                                       .filter = PhysicsQueryFilter3D{.collision_mask = desc.filter.collision_mask,
+                                                                      .ignored_body = desc.filter.ignored_body,
+                                                                      .include_triggers = true},
+                                   },
+                                   [id = body.id](const PhysicsBody3D& target) noexcept { return target.id == id; });
+        if (sweep.status != PhysicsExactShapeSweep3DStatus::hit || !sweep.hit.has_value()) {
+            continue;
+        }
+
+        const auto applied_distance = std::min(sweep.hit->distance, max_distance);
+        const auto applied_displacement = direction * applied_distance;
+        const auto remaining_displacement = attempted_displacement - applied_displacement;
+        const auto kind = kinematic_motion_kind_for(body);
+        hits.push_back(KinematicMotionHit3D{
+            .row = make_kinematic_motion_row(desc, body, *sweep.hit, attempted_displacement, applied_displacement,
+                                             remaining_displacement),
+            .blocking = kind != PhysicsKinematicMotion3DRowKind::trigger_overlap,
+        });
+    }
+
+    std::ranges::sort(hits, [](const KinematicMotionHit3D& lhs, const KinematicMotionHit3D& rhs) {
+        if (lhs.row.distance != rhs.row.distance) {
+            return lhs.row.distance < rhs.row.distance;
+        }
+        if (lhs.row.body.value != rhs.row.body.value) {
+            return lhs.row.body.value < rhs.row.body.value;
+        }
+        return static_cast<int>(lhs.row.kind) < static_cast<int>(rhs.row.kind);
+    });
+    return hits;
+}
+
+[[nodiscard]] std::optional<KinematicMotionHit3D>
+nearest_blocking_kinematic_motion_hit(const std::vector<KinematicMotionHit3D>& hits) noexcept {
+    std::optional<KinematicMotionHit3D> closest;
+    for (const auto& hit : hits) {
+        if (!hit.blocking) {
+            continue;
+        }
+        if (!closest.has_value() || should_replace_kinematic_motion_hit(hit, *closest)) {
+            closest = hit;
+        }
+    }
+    return closest;
+}
+
+[[nodiscard]] std::optional<PhysicsKinematicMotion3DRow>
+kinematic_motion_ground_probe(const std::vector<PhysicsBody3D>& bodies, const PhysicsKinematicMotion3DDesc& desc,
+                              Vec3 position) {
+    if (desc.ground_probe_distance <= 0.000001F) {
+        return std::nullopt;
+    }
+
+    const auto hits = collect_kinematic_motion_hits(
+        bodies, desc, position, Vec3{.x = 0.0F, .y = -1.0F, .z = 0.0F}, desc.ground_probe_distance,
+        Vec3{.x = 0.0F, .y = -desc.ground_probe_distance, .z = 0.0F}, false);
+    const auto ground = nearest_blocking_kinematic_motion_hit(hits);
+    if (!ground.has_value()) {
+        return std::nullopt;
+    }
+
+    auto row = ground->row;
+    row.kind = PhysicsKinematicMotion3DRowKind::ground_probe;
+    row.grounded = row.normal.y >= desc.grounded_normal_y;
+    return row;
+}
+
 [[nodiscard]] bool duplicate_authored_body_name(const std::vector<PhysicsAuthoredCollisionBody3DDesc>& bodies,
                                                 std::size_t index) noexcept {
     for (std::size_t previous = 0; previous < index; ++previous) {
@@ -1553,9 +1692,7 @@ void apply_constraint_error(PhysicsBody3D& first, PhysicsBody3D& second, Vec3 er
                                                        bool& axis_limit_clamped) noexcept {
     const auto axis_distance = dot(delta, axis);
     const auto clamped_axis_distance = clamp_value(axis_distance, desc.min_axis_distance, desc.max_axis_distance);
-    axis_limit_clamped = std::fabs(axis_distance - clamped_axis_distance) > 0.000001F ||
-                         clamped_axis_distance <= desc.min_axis_distance + 0.000001F ||
-                         clamped_axis_distance >= desc.max_axis_distance - 0.000001F;
+    axis_limit_clamped = std::fabs(axis_distance - clamped_axis_distance) > 0.000001F;
     return axis * clamped_axis_distance;
 }
 
@@ -2405,6 +2542,129 @@ evaluate_physics_character_dynamic_policy_3d(const PhysicsWorld3D& world,
     return result;
 }
 
+PhysicsKinematicMotion3DResult plan_physics_kinematic_motion_3d(const PhysicsWorld3D& world,
+                                                                const PhysicsKinematicMotion3DDesc& desc) {
+    PhysicsKinematicMotion3DResult result;
+    result.position = desc.position;
+    result.remaining_displacement = desc.displacement;
+
+    if (!is_valid_kinematic_motion_desc(desc)) {
+        result.status = PhysicsKinematicMotion3DStatus::invalid_request;
+        result.diagnostic = PhysicsKinematicMotion3DDiagnostic::invalid_request;
+        return result;
+    }
+
+    const auto initial_hits = collect_kinematic_motion_hits(
+        world.bodies(), desc, desc.position, Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F}, 0.0F, desc.displacement, false);
+    const auto initial_blocking = nearest_blocking_kinematic_motion_hit(initial_hits);
+    if (initial_blocking.has_value()) {
+        result.rows.push_back(initial_blocking->row);
+        result.grounded = initial_blocking->row.grounded;
+        result.status = PhysicsKinematicMotion3DStatus::initial_overlap;
+        result.diagnostic = PhysicsKinematicMotion3DDiagnostic::initial_overlap;
+        return result;
+    }
+
+    auto position = desc.position;
+    auto remaining = desc.displacement;
+    Vec3 applied{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    bool constrained = false;
+
+    for (std::uint32_t iteration = 0; iteration < desc.max_iterations; ++iteration) {
+        const auto remaining_distance = length(remaining);
+        if (remaining_distance <= 0.000001F) {
+            remaining = Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+            break;
+        }
+
+        const auto direction = remaining * (1.0F / remaining_distance);
+        const auto hits = collect_kinematic_motion_hits(world.bodies(), desc, position, direction, remaining_distance,
+                                                        remaining, desc.filter.include_triggers);
+        const auto blocking_hit = nearest_blocking_kinematic_motion_hit(hits);
+        const auto blocking_distance = blocking_hit.has_value() ? blocking_hit->row.distance : remaining_distance;
+
+        for (const auto& hit : hits) {
+            if (hit.blocking) {
+                continue;
+            }
+            if (hit.row.distance <= blocking_distance + 0.00001F) {
+                result.rows.push_back(hit.row);
+            }
+        }
+
+        if (!blocking_hit.has_value()) {
+            position = position + remaining;
+            applied = applied + remaining;
+            remaining = Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+            break;
+        }
+
+        auto row = blocking_hit->row;
+        row.attempted_displacement = remaining;
+
+        if (row.initial_overlap) {
+            result.rows.push_back(row);
+            result.position = position;
+            result.applied_displacement = applied;
+            result.remaining_displacement = remaining;
+            result.grounded = row.grounded;
+            result.status = PhysicsKinematicMotion3DStatus::initial_overlap;
+            result.diagnostic = PhysicsKinematicMotion3DDiagnostic::initial_overlap;
+            return result;
+        }
+
+        constrained = true;
+        const auto safe_distance = std::max(0.0F, row.distance - desc.skin_width);
+        const auto step = direction * safe_distance;
+        position = position + step;
+        applied = applied + step;
+
+        auto leftover = remaining - (direction * row.distance);
+        const auto normal_component = dot(leftover, row.normal);
+        if (normal_component < 0.0F) {
+            leftover = leftover - (row.normal * normal_component);
+        }
+        if (length(leftover) <= 0.000001F) {
+            leftover = Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+        }
+
+        row.applied_displacement = step;
+        row.remaining_displacement = leftover;
+        if (length(leftover) > 0.000001F) {
+            row.kind = PhysicsKinematicMotion3DRowKind::slide;
+        }
+        result.grounded = result.grounded || row.grounded;
+        result.rows.push_back(row);
+        remaining = leftover;
+    }
+
+    result.position = position;
+    result.applied_displacement = applied;
+    result.remaining_displacement = remaining;
+
+    if (auto ground = kinematic_motion_ground_probe(world.bodies(), desc, result.position); ground.has_value()) {
+        result.grounded = ground->grounded;
+        result.rows.push_back(*ground);
+    }
+
+    if (length(result.remaining_displacement) > 0.000001F) {
+        result.status = length(result.applied_displacement) <= 0.000001F ? PhysicsKinematicMotion3DStatus::blocked
+                                                                         : PhysicsKinematicMotion3DStatus::constrained;
+        result.diagnostic = PhysicsKinematicMotion3DDiagnostic::iteration_limit;
+        return result;
+    }
+
+    if (!constrained) {
+        result.status = PhysicsKinematicMotion3DStatus::moved;
+    } else if (length(result.applied_displacement) <= 0.000001F) {
+        result.status = PhysicsKinematicMotion3DStatus::blocked;
+    } else {
+        result.status = PhysicsKinematicMotion3DStatus::constrained;
+    }
+    result.diagnostic = PhysicsKinematicMotion3DDiagnostic::none;
+    return result;
+}
+
 PhysicsJointSolve3DResult solve_physics_joints_3d(PhysicsWorld3D& world, const PhysicsJointSolve3DDesc& desc) {
     PhysicsJointSolve3DResult result;
 
@@ -2556,16 +2816,18 @@ PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& worl
             return false;
         }
 
-        row.previous_delta = constraint_anchor(*second, Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}) -
-                             constraint_anchor(*first, Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F});
-        if (first->inverse_mass <= 0.0F && second->inverse_mass <= 0.0F) {
+        return true;
+    };
+
+    auto reject_static_pair = [&reject, &result](PhysicsConstraintSolve3DRow& row, const PhysicsBody3D& first,
+                                                 const PhysicsBody3D& second) {
+        if (first.inverse_mass <= 0.0F && second.inverse_mass <= 0.0F) {
             row.diagnostic = PhysicsConstraint3DDiagnostic::static_pair;
             result.rows.push_back(row);
             reject(PhysicsConstraint3DDiagnostic::static_pair);
-            return false;
+            return true;
         }
-
-        return true;
+        return false;
     };
 
     for (std::size_t index = 0; index < desc.distance_joints.size(); ++index) {
@@ -2594,6 +2856,10 @@ PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& worl
             constraint_anchor(*second, joint.local_anchor_second) - constraint_anchor(*first, joint.local_anchor_first);
         row.target_delta = distance_constraint_target_delta(row.previous_delta, joint.rest_distance);
         row.residual_delta = row.previous_delta - row.target_delta;
+
+        if (reject_static_pair(row, *first, *second)) {
+            continue;
+        }
 
         if (!joint.enabled) {
             row.diagnostic = PhysicsConstraint3DDiagnostic::disabled_constraint;
@@ -2635,6 +2901,10 @@ PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& worl
         row.previous_delta = constraint_anchor(*second, constraint.local_anchor_second) -
                              constraint_anchor(*first, constraint.local_anchor_first);
         row.residual_delta = row.previous_delta - row.target_delta;
+
+        if (reject_static_pair(row, *first, *second)) {
+            continue;
+        }
 
         if (!constraint.enabled) {
             row.diagnostic = PhysicsConstraint3DDiagnostic::disabled_constraint;
@@ -2690,6 +2960,10 @@ PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& worl
         row.target_delta =
             linear_axis_constraint_target_delta(row.previous_delta, axis, constraint, row.axis_limit_clamped);
         row.residual_delta = row.previous_delta - row.target_delta;
+
+        if (reject_static_pair(row, *first, *second)) {
+            continue;
+        }
 
         if (!constraint.enabled) {
             row.diagnostic = PhysicsConstraint3DDiagnostic::disabled_constraint;
@@ -2770,7 +3044,7 @@ PhysicsConstraintSolve3DResult solve_physics_constraints_3d(PhysicsWorld3D& worl
             bool axis_limit_clamped = false;
             row.residual_delta =
                 delta - linear_axis_constraint_target_delta(delta, item.linear_axis, constraint, axis_limit_clamped);
-            row.axis_limit_clamped = axis_limit_clamped;
+            row.axis_limit_clamped = row.axis_limit_clamped || axis_limit_clamped;
         }
     }
 
