@@ -214,7 +214,6 @@ prefix_rule(
         "gh pr merge --squash --delete-branch",
         "gh pr merge --rebase --delete-branch",
         "gh pr merge --admin --merge --delete-branch",
-        "gh pr merge --auto --merge --delete-branch",
     ],
     not_match = [
         "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
