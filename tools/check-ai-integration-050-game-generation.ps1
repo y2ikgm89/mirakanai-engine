@@ -631,6 +631,24 @@ foreach ($check in $aiGeneratedGamePlaytestLoopChecks) {
     }
 }
 
+$aiValidationRemediationRecipesChecks = @(
+    @{ Path = "schemas/game-agent.schema.json"; Needles = @("validationRemediationRecipes", "ai-validation-remediation-recipes-v1", "failureClassificationId", "rerun-selected-validation-recipe") },
+    @{ Path = "tools/check-json-contracts-064-validation-remediation-recipes.ps1"; Needles = @("Assert-JsonValidationRemediationRecipes", "aiWorkflow.validationRemediationRecipes", "failureClassificationId", "host-gate-bypass") },
+    @{ Path = "tools/new-game-templates.ps1"; Needles = @("New-AiValidationRemediationRecipes", "validationRemediationRecipes = New-AiValidationRemediationRecipes", "rerun-selected-validation-recipe", "record-host-gate") },
+    @{ Path = "games/sample_2d_desktop_runtime_package/game.agent.json"; Needles = @('"capabilityId": "ai-validation-remediation-recipes-v1"', '"missing-package-file-remediation"', '"host-gated-remediation"') },
+    @{ Path = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"; Needles = @('"capabilityId": "ai-validation-remediation-recipes-v1"', '"shader-tool-gap-remediation"', '"counter-mismatch-remediation"') },
+    @{ Path = "docs/ai-game-development.md"; Needles = @("Validation Remediation Recipes", "game.agent.json.aiWorkflow.validationRemediationRecipes", "rerun selected validation recipes", "no validation weakening") },
+    @{ Path = "docs/current-capabilities.md"; Needles = @("AI Validation Remediation Recipes v1", "game.agent.json.aiWorkflow.validationRemediationRecipes", "common generation failures") },
+    @{ Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"; Needles = @("ai-validation-remediation-recipes-v1", "implemented-1x-foundation", "game.agent.json.aiWorkflow.validationRemediationRecipes") },
+    @{ Path = "engine/agent/manifest.json"; Needles = @("AI Validation Remediation Recipes v1", "aiWorkflow.validationRemediationRecipes", "common missing package file, invalid reference, host gate, shader/tool gap, counter mismatch, and runtime package load failures") },
+    @{ Path = ".agents/skills/gameengine-game-development/SKILL.md"; Needles = @("game.agent.json.aiWorkflow.validationRemediationRecipes", "rerun selected validation recipes", "no validation weakening") },
+    @{ Path = ".claude/skills/gameengine-game-development/SKILL.md"; Needles = @("game.agent.json.aiWorkflow.validationRemediationRecipes", "rerun selected validation recipes", "no validation weakening") },
+    @{ Path = ".cursor/skills/gameengine-game-development/SKILL.md"; Needles = @("game.agent.json.aiWorkflow.validationRemediationRecipes", "rerun selected validation recipes", "no validation weakening") }
+)
+foreach ($check in $aiValidationRemediationRecipesChecks) {
+    $remediationRecipesText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) { Assert-ContainsText $remediationRecipesText $needle $check.Path }
+}
 $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/resource_panel.hpp"
