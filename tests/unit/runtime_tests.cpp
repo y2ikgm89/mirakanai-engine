@@ -386,6 +386,12 @@ find_session_profile_document_row(const std::vector<mirakana::runtime::RuntimeSe
     return nullptr;
 }
 
+[[nodiscard]] bool has_session_profile_resume_diagnostic(
+    const std::vector<mirakana::runtime::RuntimeSessionProfileResumeDiagnostic>& diagnostics,
+    mirakana::runtime::RuntimeSessionProfileResumeDiagnosticCode code) noexcept {
+    return std::ranges::any_of(diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
 } // namespace
 
 MK_TEST("runtime asset package loads cooked payloads with stable handles") {
@@ -1625,6 +1631,149 @@ MK_TEST("runtime session profile document bundle writes reviewed defaults withou
     const auto* rejected_input = find_session_profile_document_row(rejected.rows, Kind::input_rebinding_profile);
     MK_REQUIRE(rejected_input != nullptr);
     MK_REQUIRE(rejected_input->status == Status::failed_invalid_document);
+}
+
+MK_TEST("runtime session profile resume plan verifies save slot progression and package evidence") {
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+
+    mirakana::runtime::RuntimeSessionProfileDocuments documents;
+    documents.save_data.schema_version = 4;
+    documents.save_data.set_value("save.slot", "slot_1");
+    documents.save_data.set_value("progression.checkpoint", "intro_gate");
+    documents.save_data.set_value("package.id", "runtime/sample_game.geindex");
+    documents.settings.schema_version = 2;
+    documents.settings.set_value("settings.profile", "desktop_default");
+    documents.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto written = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+    MK_REQUIRE(written.succeeded());
+
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+    const auto plan = mirakana::runtime::plan_runtime_session_profile_resume(
+        mirakana::runtime::RuntimeSessionProfileResumeRequest{.documents = loaded,
+                                                              .expected_save_slot = "slot_1",
+                                                              .expected_progression_checkpoint = "intro_gate",
+                                                              .expected_package_id = "runtime/sample_game.geindex",
+                                                              .expected_profile_id = "slot_1"});
+
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSessionProfileResumeStatus::ready);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.save_slot == "slot_1");
+    MK_REQUIRE(plan.progression_checkpoint == "intro_gate");
+    MK_REQUIRE(plan.package_id == "runtime/sample_game.geindex");
+    MK_REQUIRE(plan.profile_id == "slot_1");
+    MK_REQUIRE(plan.save_schema_version == 4);
+    MK_REQUIRE(plan.settings_schema_version == 2);
+    MK_REQUIRE(plan.loaded_document_rows == 3);
+    MK_REQUIRE(plan.defaulted_document_rows == 0);
+}
+
+MK_TEST("runtime session profile resume plan fails closed for missing and mismatched evidence") {
+    using Code = mirakana::runtime::RuntimeSessionProfileResumeDiagnosticCode;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+
+    mirakana::runtime::RuntimeSessionProfileDocuments documents;
+    documents.save_data.set_value("save.slot", "slot_2");
+    documents.save_data.set_value("package.id", "runtime/other.geindex");
+    documents.input_rebinding_profile.profile_id = "slot_2";
+    const auto written = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+    MK_REQUIRE(written.succeeded());
+
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+    const auto plan = mirakana::runtime::plan_runtime_session_profile_resume(
+        mirakana::runtime::RuntimeSessionProfileResumeRequest{.documents = loaded,
+                                                              .expected_save_slot = "slot_1",
+                                                              .expected_progression_checkpoint = "intro_gate",
+                                                              .expected_package_id = "runtime/sample_game.geindex",
+                                                              .expected_profile_id = "slot_1"});
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSessionProfileResumeStatus::blocked);
+    MK_REQUIRE(has_session_profile_resume_diagnostic(plan.diagnostics, Code::save_slot_mismatch));
+    MK_REQUIRE(has_session_profile_resume_diagnostic(plan.diagnostics, Code::missing_progression_checkpoint));
+    MK_REQUIRE(has_session_profile_resume_diagnostic(plan.diagnostics, Code::package_id_mismatch));
+    MK_REQUIRE(has_session_profile_resume_diagnostic(plan.diagnostics, Code::profile_id_mismatch));
+}
+
+MK_TEST("runtime session profile resume plan blocks defaulted documents before package resume") {
+    using Code = mirakana::runtime::RuntimeSessionProfileResumeDiagnosticCode;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+
+    mirakana::runtime::RuntimeSessionProfileDocuments defaults;
+    defaults.save_data.schema_version = 4;
+    defaults.save_data.set_value("save.slot", "slot_1");
+    defaults.save_data.set_value("progression.checkpoint", "intro_gate");
+    defaults.save_data.set_value("package.id", "runtime/sample_game.geindex");
+    defaults.settings.schema_version = 2;
+    defaults.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = defaults});
+    MK_REQUIRE(loaded.succeeded());
+    MK_REQUIRE(loaded.used_defaults);
+
+    const auto plan = mirakana::runtime::plan_runtime_session_profile_resume(
+        mirakana::runtime::RuntimeSessionProfileResumeRequest{.documents = loaded,
+                                                              .expected_save_slot = "slot_1",
+                                                              .expected_progression_checkpoint = "intro_gate",
+                                                              .expected_package_id = "runtime/sample_game.geindex",
+                                                              .expected_profile_id = "slot_1"});
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSessionProfileResumeStatus::blocked);
+    MK_REQUIRE(plan.loaded_document_rows == 0);
+    MK_REQUIRE(plan.defaulted_document_rows == 3);
+    MK_REQUIRE(has_session_profile_resume_diagnostic(plan.diagnostics, Code::blocking_document_status));
+    MK_REQUIRE(plan.save_slot.empty());
+    MK_REQUIRE(plan.progression_checkpoint.empty());
+    MK_REQUIRE(plan.package_id.empty());
+}
+
+MK_TEST("runtime session profile resume plan blocks unsupported migration rows before package resume") {
+    using Code = mirakana::runtime::RuntimeSessionProfileResumeDiagnosticCode;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
+    fs.write_text(paths.save_data_path, "format=GameEngine.RuntimeSaveData.v0\nschema.version=1\n");
+
+    mirakana::runtime::RuntimeSessionProfileDocuments defaults;
+    defaults.save_data.set_value("save.slot", "slot_1");
+    defaults.save_data.set_value("progression.checkpoint", "intro_gate");
+    defaults.save_data.set_value("package.id", "runtime/sample_game.geindex");
+    defaults.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = defaults});
+    MK_REQUIRE(!loaded.succeeded());
+
+    const auto plan = mirakana::runtime::plan_runtime_session_profile_resume(
+        mirakana::runtime::RuntimeSessionProfileResumeRequest{.documents = loaded,
+                                                              .expected_save_slot = "slot_1",
+                                                              .expected_progression_checkpoint = "intro_gate",
+                                                              .expected_package_id = "runtime/sample_game.geindex",
+                                                              .expected_profile_id = "slot_1"});
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSessionProfileResumeStatus::blocked);
+    MK_REQUIRE(has_session_profile_resume_diagnostic(plan.diagnostics, Code::blocking_document_status));
+    MK_REQUIRE(plan.save_slot.empty());
+    MK_REQUIRE(plan.progression_checkpoint.empty());
+    MK_REQUIRE(plan.package_id.empty());
 }
 
 MK_TEST("runtime localization catalog resolves text with key fallback") {

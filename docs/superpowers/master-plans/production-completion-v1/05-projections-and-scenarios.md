@@ -101,7 +101,7 @@ Coverage statuses:
 | 2D collision, hitboxes, and triggers | `post-1x-row`: physics/query foundations exist, but frame-authored hitbox families need a selected row. | `sprite-collision-hitbox-v1`, `physics-collision-query-v1`, `engine-gameplay-interaction-framework-v1` |
 | HUD, menus, dialogue, and rebinding | `covered-foundation`: runtime UI and input context foundations exist, but polished game menus remain a selected 1.x feature. | `engine-ui-game-menu-hud-v1`, `engine-input-action-contexts-v1`, `engine-quest-dialogue-state-v1` |
 | Audio, feedback, and SFX | `covered-foundation`: gameplay audio mix planning exists without broad codec claims. | `engine-audio-gameplay-mixer-v1`, `sprite-effects-particles-v1` |
-| Save, progression, and reset | `post-1x-row`: session/profile primitives exist, but richer generated-game save slots and migration evidence need a selected row. | `engine-save-settings-profile-v1`, `simulation-persistence-v1` |
+| Save, progression, and reset | `covered-foundation`: session/profile documents plus selected package resume evidence exist; broader simulation persistence, real save UX, cloud/binary saves, and migration execution remain selected rows. | `engine-save-settings-profile-v1`, `simulation-persistence-v1` |
 | Dense 2D arena or projectile games | `post-1x-row`: use archetypes only as evidence probes. | `engine-entity-scale-and-culling-v1`, `sprite-batching-renderer-v1`, `sprite-collision-hitbox-v1`, `gameplay-simulation-orchestration-v1` |
 
 ## 3D Coverage Projection

@@ -1788,6 +1788,10 @@
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-gameplay-systems --require-procedural-generation"
     },
     {
+      "name": "installed-2d-runtime-profile-resume-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-profile-resume"
+    },
+    {
       "name": "installed-2d-world-region-streaming-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-gameplay-systems --require-procedural-generation --require-world-region-streaming"
     },
@@ -1817,7 +1821,7 @@
     },
     {
       "name": "installed-native-2d-sprite-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review"
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review --require-runtime-profile-resume"
     },
     {
       "name": "installed-vulkan-window-smoke",

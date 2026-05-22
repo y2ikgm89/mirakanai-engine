@@ -27,6 +27,7 @@
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/physics_collision_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
+#include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
@@ -91,6 +92,7 @@ struct DesktopRuntimeOptions {
     bool require_gameplay_systems{false};
     bool require_scene_collision_package{false};
     bool require_entity_scale_culling{false};
+    bool require_runtime_profile_resume{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -616,6 +618,17 @@ runtime_gameplay_session_state_name(mirakana::runtime::RuntimeGameplaySessionSta
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+runtime_session_profile_resume_status_name(mirakana::runtime::RuntimeSessionProfileResumeStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeSessionProfileResumeStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeSessionProfileResumeStatus::blocked:
+        return "blocked";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] bool gameplay_systems_near(float value, float expected, float epsilon = 0.001F) noexcept {
     return std::abs(value - expected) <= epsilon;
 }
@@ -1130,6 +1143,7 @@ class GeneratedGameplaySystemsProbe final {
         build_physics_kinematic_motion_probe();
         render_audio_stream_probe();
         build_gameplay_interaction_probe();
+        build_runtime_profile_resume_probe();
         (void)animation_.trigger("move");
         started_ = true;
     }
@@ -1225,8 +1239,8 @@ class GeneratedGameplaySystemsProbe final {
                gameplay_systems_near(audio_stream_sample_abs_sum_, 0.7F) && interaction_ready() &&
                interaction_plan_.rows.size() == 10U && interaction_plan_.feedback_rows.size() == 10U &&
                interaction_plan_.state.session_state == mirakana::runtime::RuntimeGameplaySessionState::running &&
-               final_animation_sample_.to_state == "walk" && !final_animation_sample_.blending &&
-               final_actor_position_.x > 0.0F;
+               runtime_profile_resume_ready() && final_animation_sample_.to_state == "walk" &&
+               !final_animation_sample_.blending && final_actor_position_.x > 0.0F;
     }
 
     [[nodiscard]] GameplaySystemsStatus status(std::uint32_t expected_ticks) const {
@@ -1324,6 +1338,7 @@ class GeneratedGameplaySystemsProbe final {
             interaction_plan_.rows.size() == 10U,
             interaction_plan_.feedback_rows.size() == 10U,
             interaction_plan_.state.session_state == mirakana::runtime::RuntimeGameplaySessionState::running,
+            runtime_profile_resume_ready(),
             final_animation_sample_.to_state == "walk" && !final_animation_sample_.blending,
             final_actor_position_.x > 0.0F,
         };
@@ -1720,6 +1735,34 @@ class GeneratedGameplaySystemsProbe final {
         return interaction_plan_.state.session_state;
     }
 
+    [[nodiscard]] bool runtime_profile_resume_ready() const noexcept {
+        return runtime_profile_resume_plan_.ready();
+    }
+
+    [[nodiscard]] mirakana::runtime::RuntimeSessionProfileResumeStatus runtime_profile_resume_status() const noexcept {
+        return runtime_profile_resume_plan_.status;
+    }
+
+    [[nodiscard]] std::size_t runtime_profile_resume_diagnostic_count() const noexcept {
+        return runtime_profile_resume_plan_.diagnostics.size();
+    }
+
+    [[nodiscard]] std::size_t runtime_profile_resume_loaded_document_count() const noexcept {
+        return runtime_profile_resume_plan_.loaded_document_rows;
+    }
+
+    [[nodiscard]] std::size_t runtime_profile_resume_defaulted_document_count() const noexcept {
+        return runtime_profile_resume_plan_.defaulted_document_rows;
+    }
+
+    [[nodiscard]] std::uint32_t runtime_profile_resume_save_schema_version() const noexcept {
+        return runtime_profile_resume_plan_.save_schema_version;
+    }
+
+    [[nodiscard]] std::uint32_t runtime_profile_resume_settings_schema_version() const noexcept {
+        return runtime_profile_resume_plan_.settings_schema_version;
+    }
+
     [[nodiscard]] std::string_view animation_state() const noexcept {
         return final_animation_sample_.to_state;
     }
@@ -1855,6 +1898,36 @@ class GeneratedGameplaySystemsProbe final {
 
         interaction_plan_ =
             plan_runtime_gameplay_interactions(state, std::span<const RuntimeGameplayInteractionEvent>{events});
+    }
+
+    void build_runtime_profile_resume_probe() {
+        mirakana::MemoryFileSystem fs;
+        mirakana::runtime::RuntimeSessionProfileDocuments documents;
+        documents.save_data.schema_version = 3;
+        documents.save_data.set_value("save.slot", "slot_1");
+        documents.save_data.set_value("progression.checkpoint", "scene.generated_3d.ready");
+        documents.save_data.set_value("package.id", "runtime/sample_generated_desktop_runtime_3d_package.geindex");
+        documents.settings.schema_version = 2;
+        documents.settings.set_value("settings.profile", "desktop_3d");
+        documents.input_rebinding_profile.profile_id = "slot_1";
+
+        const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+            .game_id = "sample_generated_desktop_runtime_3d_package", .profile_id = "slot_1", .root_path = "profiles"};
+        const auto write = mirakana::runtime::write_runtime_session_profile_documents(
+            fs,
+            mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+        const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+            fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+        runtime_profile_resume_plan_ = mirakana::runtime::plan_runtime_session_profile_resume(
+            mirakana::runtime::RuntimeSessionProfileResumeRequest{
+                .documents = loaded,
+                .expected_save_slot = "slot_1",
+                .expected_progression_checkpoint = "scene.generated_3d.ready",
+                .expected_package_id = "runtime/sample_generated_desktop_runtime_3d_package.geindex",
+                .expected_profile_id = "slot_1"});
+        if (!write.succeeded()) {
+            runtime_profile_resume_plan_.status = mirakana::runtime::RuntimeSessionProfileResumeStatus::blocked;
+        }
     }
 
     void build_authored_collision_probe() {
@@ -2587,6 +2660,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::PhysicsKinematicMotion3DResult kinematic_motion_result_;
     mirakana::PhysicsSimpleVehicle3DResult simple_vehicle_result_;
     mirakana::runtime::RuntimeGameplayInteractionPlan interaction_plan_;
+    mirakana::runtime::RuntimeSessionProfileResumePlan runtime_profile_resume_plan_;
     mirakana::NavigationNavmeshPathResult navigation_navmesh_result_;
     mirakana::NavigationCrowdPlanResult navigation_crowd_result_;
     mirakana::NavigationAgentState navigation_agent_;
@@ -3368,6 +3442,35 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
         return gameplay_systems_.interaction_final_session_state();
     }
 
+    [[nodiscard]] bool gameplay_systems_runtime_profile_resume_ready() const noexcept {
+        return gameplay_systems_.runtime_profile_resume_ready();
+    }
+
+    [[nodiscard]] mirakana::runtime::RuntimeSessionProfileResumeStatus
+    gameplay_systems_runtime_profile_resume_status() const noexcept {
+        return gameplay_systems_.runtime_profile_resume_status();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_runtime_profile_resume_diagnostics() const noexcept {
+        return gameplay_systems_.runtime_profile_resume_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_runtime_profile_resume_loaded_documents() const noexcept {
+        return gameplay_systems_.runtime_profile_resume_loaded_document_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_runtime_profile_resume_defaulted_documents() const noexcept {
+        return gameplay_systems_.runtime_profile_resume_defaulted_document_count();
+    }
+
+    [[nodiscard]] std::uint32_t gameplay_systems_runtime_profile_resume_save_schema_version() const noexcept {
+        return gameplay_systems_.runtime_profile_resume_save_schema_version();
+    }
+
+    [[nodiscard]] std::uint32_t gameplay_systems_runtime_profile_resume_settings_schema_version() const noexcept {
+        return gameplay_systems_.runtime_profile_resume_settings_schema_version();
+    }
+
     [[nodiscard]] std::string_view gameplay_systems_animation_state() const noexcept {
         return gameplay_systems_.animation_state();
     }
@@ -3538,7 +3641,7 @@ void print_usage() {
                  "[--require-quaternion-animation] [--require-package-streaming-safe-point] "
                  "[--require-package-upload-staging] "
                  "[--require-gameplay-systems] [--require-scene-collision-package] "
-                 "[--require-entity-scale-culling]\n";
+                 "[--require-entity-scale-culling] [--require-runtime-profile-resume]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -3761,6 +3864,10 @@ void print_usage() {
         }
         if (arg == "--require-entity-scale-culling") {
             options.require_entity_scale_culling = true;
+            continue;
+        }
+        if (arg == "--require-runtime-profile-resume") {
+            options.require_runtime_profile_resume = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -6190,6 +6297,18 @@ int main(int argc, char** argv) {
         << " gameplay_systems_interaction_feedback_rows=" << game.gameplay_systems_interaction_feedback_rows()
         << " gameplay_systems_interaction_final_session_state="
         << runtime_gameplay_session_state_name(game.gameplay_systems_interaction_final_session_state())
+        << " runtime_profile_resume_status="
+        << runtime_session_profile_resume_status_name(game.gameplay_systems_runtime_profile_resume_status())
+        << " runtime_profile_resume_ready=" << (game.gameplay_systems_runtime_profile_resume_ready() ? 1 : 0)
+        << " runtime_profile_resume_diagnostics=" << game.gameplay_systems_runtime_profile_resume_diagnostics()
+        << " runtime_profile_resume_loaded_documents="
+        << game.gameplay_systems_runtime_profile_resume_loaded_documents()
+        << " runtime_profile_resume_defaulted_documents="
+        << game.gameplay_systems_runtime_profile_resume_defaulted_documents()
+        << " runtime_profile_resume_save_schema_version="
+        << game.gameplay_systems_runtime_profile_resume_save_schema_version()
+        << " runtime_profile_resume_settings_schema_version="
+        << game.gameplay_systems_runtime_profile_resume_settings_schema_version()
         << " gameplay_systems_animation_state=" << game.gameplay_systems_animation_state()
         << " gameplay_systems_final_actor_x=" << game.gameplay_systems_final_actor_x()
         << " hud_boxes=" << game.hud_boxes_submitted() << " hud_images=" << game.hud_images_submitted()
@@ -6301,9 +6420,6 @@ int main(int argc, char** argv) {
             !visible_3d.ready) {
             return 3;
         }
-        if (options.require_gameplay_systems && !gameplay_systems_ready) {
-            return 3;
-        }
         if (options.require_entity_scale_culling && !entity_scale_culling_probe.ready) {
             std::cout << "sample_generated_desktop_runtime_3d_package required_entity_scale_culling_unavailable"
                       << " entity_scale_culling_status="
@@ -6318,6 +6434,31 @@ int main(int argc, char** argv) {
                       << " entity_scale_culling_budget_diagnostics=" << entity_scale_culling_probe.budget_diagnostics
                       << '\n';
             return 15;
+        }
+        if (options.require_runtime_profile_resume &&
+            (!game.gameplay_systems_runtime_profile_resume_ready() ||
+             game.gameplay_systems_runtime_profile_resume_loaded_documents() != 3U ||
+             game.gameplay_systems_runtime_profile_resume_defaulted_documents() != 0U ||
+             game.gameplay_systems_runtime_profile_resume_save_schema_version() != 3U ||
+             game.gameplay_systems_runtime_profile_resume_settings_schema_version() != 2U)) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_runtime_profile_resume_unavailable"
+                      << " runtime_profile_resume_status="
+                      << runtime_session_profile_resume_status_name(
+                             game.gameplay_systems_runtime_profile_resume_status())
+                      << " runtime_profile_resume_diagnostics="
+                      << game.gameplay_systems_runtime_profile_resume_diagnostics()
+                      << " runtime_profile_resume_loaded_documents="
+                      << game.gameplay_systems_runtime_profile_resume_loaded_documents()
+                      << " runtime_profile_resume_defaulted_documents="
+                      << game.gameplay_systems_runtime_profile_resume_defaulted_documents()
+                      << " runtime_profile_resume_save_schema_version="
+                      << game.gameplay_systems_runtime_profile_resume_save_schema_version()
+                      << " runtime_profile_resume_settings_schema_version="
+                      << game.gameplay_systems_runtime_profile_resume_settings_schema_version() << '\n';
+            return 16;
+        }
+        if (options.require_gameplay_systems && !gameplay_systems_ready) {
+            return 3;
         }
         if (options.require_scene_collision_package && !collision_package.ready) {
             return 3;

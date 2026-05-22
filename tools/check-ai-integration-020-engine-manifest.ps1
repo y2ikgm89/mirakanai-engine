@@ -1758,6 +1758,71 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "load_runtime_session_profile_documents" $docSurface.Label
     Assert-ContainsText $docSurface.Text "write_runtime_session_profile_documents" $docSurface.Label
 }
+$runtimeSessionProfileResumeAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-session-profile-resume-plan-v1" })
+if ($runtimeSessionProfileResumeAuthoringSurface.Count -ne 1 -or
+    $runtimeSessionProfileResumeAuthoringSurface[0].status -ne "ready" -or
+    $runtimeSessionProfileResumeAuthoringSurface[0].owner -ne "MK_runtime") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-session-profile-resume-plan-v1 must be ready as an MK_runtime surface"
+}
+if (-not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("RuntimeSessionProfileResumeRequest") -or
+    -not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("RuntimeSessionProfileResumePlan") -or
+    -not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("RuntimeSessionProfileResumeDiagnostic") -or
+    -not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("plan_runtime_session_profile_resume") -or
+    -not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("save.slot") -or
+    -not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("progression.checkpoint") -or
+    -not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("package.id") -or
+    -not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("runtime_profile_resume_ready") -or
+    -not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("save migration executor") -or
+    -not ([string]$runtimeSessionProfileResumeAuthoringSurface[0].notes).Contains("game-specific save schema")) {
+    Write-Error "engine/agent/manifest.json runtime-session-profile-resume-plan-v1 authoring surface must keep resume evidence contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeSessionProfileResumeRequest",
+        "RuntimeSessionProfileResumePlan",
+        "RuntimeSessionProfileResumeDiagnostic",
+        "RuntimeSessionProfileResumeDiagnosticCode",
+        "plan_runtime_session_profile_resume"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesHeaderText $needle "engine/runtime/include/mirakana/runtime/session_services.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSessionProfileResumeStatus::ready",
+        "RuntimeSessionProfileResumeDiagnosticCode::blocking_document_status",
+        "RuntimeSessionProfileResumeDiagnosticCode::missing_progression_checkpoint",
+        "RuntimeSessionProfileResumeDiagnosticCode::package_id_mismatch",
+        "RuntimeSessionProfileResumeDiagnosticCode::profile_id_mismatch"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesSourceText $needle "engine/runtime/src/session_services.cpp"
+}
+Assert-ContainsText $runtimeTestsText "runtime session profile resume plan verifies save slot progression and package evidence" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime session profile resume plan fails closed for missing and mismatched evidence" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime session profile resume plan blocks defaulted documents before package resume" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime session profile resume plan blocks unsupported migration rows before package resume" "tests/unit/runtime_tests.cpp"
+$sample2DPackageText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
+$sample3DPackageText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
+foreach ($sampleSurface in @(
+        @{ Text = $sample2DPackageText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
+        @{ Text = $sample3DPackageText; Label = "games/sample_generated_desktop_runtime_3d_package/main.cpp" }
+    )) {
+    Assert-ContainsText $sampleSurface.Text "--require-runtime-profile-resume" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "runtime_profile_resume_ready" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "runtime_profile_resume_loaded_documents" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "plan_runtime_session_profile_resume" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "gameplay_systems_runtime_profile_resume_loaded_documents() != 3U" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "gameplay_systems_runtime_profile_resume_defaulted_documents() != 0U" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "gameplay_systems_runtime_profile_resume_save_schema_version() != 3U" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "gameplay_systems_runtime_profile_resume_settings_schema_version() != 2U" $sampleSurface.Label
+}
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeSessionProfileResumeRequest" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_session_profile_resume" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "--require-runtime-profile-resume" $docSurface.Label
+}
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeProfileResume) "RuntimeSessionProfileResumePlan" "runtime profile resume guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeProfileResume) "runtime_profile_resume_ready" "runtime profile resume guidance"
 $runtimeMenuHudIntentAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-menu-hud-intent-model-v1" })
 if ($runtimeMenuHudIntentAuthoringSurface.Count -ne 1 -or
     $runtimeMenuHudIntentAuthoringSurface[0].status -ne "ready" -or
