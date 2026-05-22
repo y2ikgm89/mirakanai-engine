@@ -4462,6 +4462,115 @@ MK_TEST("gameplay authoring review fails closed on duplicates missing evidence a
     MK_REQUIRE(has_diagnostic("unsupported_claim"));
 }
 
+MK_TEST("engine capability handoff review accepts canonical developer handoff rows") {
+    mirakana::EngineCapabilityHandoffReviewRequest request;
+    request.canonical_capability_ids = {"sprite-collision-hitbox-v1", "simulation-persistence-v1"};
+    request.handoffs.push_back(mirakana::EngineCapabilityHandoffRequestRow{
+        .handoff_id = "combat-hitboxes",
+        .requested_capability_id = "sprite-collision-hitbox-v1",
+        .blocked_feature_id = "melee-combat-hit-detection",
+        .current_workaround = "use conservative trigger volumes owned by the game package",
+        .affected_game_files = {"games/sample_2d_desktop_runtime_package/main.cpp"},
+        .desired_public_contract = "first-party sprite-frame hitbox rows connected to gameplay interaction rows",
+        .required_evidence_ids = {"hitbox-schema-tests", "deterministic-hit-counter-package-smoke"},
+        .source_index = 9,
+    });
+
+    const auto result = mirakana::review_engine_capability_handoff_request(request);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.accepted_handoffs.size() == 1U);
+    MK_REQUIRE(result.diagnostics.empty());
+    const auto& handoff = result.accepted_handoffs[0];
+    MK_REQUIRE(handoff.handoff_id == "combat-hitboxes");
+    MK_REQUIRE(handoff.requested_capability_id == "sprite-collision-hitbox-v1");
+    MK_REQUIRE(handoff.blocked_feature_id == "melee-combat-hit-detection");
+    MK_REQUIRE(handoff.current_workaround.find("trigger volumes") != std::string::npos);
+    MK_REQUIRE(handoff.affected_game_files.size() == 1U);
+    MK_REQUIRE(handoff.desired_public_contract.find("first-party") != std::string::npos);
+    MK_REQUIRE(handoff.required_evidence_ids.size() == 2U);
+    MK_REQUIRE(handoff.owner == "developer-owned-engine-feature");
+    MK_REQUIRE(handoff.next_action == "create-dated-capability-plan");
+    MK_REQUIRE(handoff.source_index == 9U);
+}
+
+MK_TEST("engine capability handoff review fails closed on incomplete invented and native handoffs") {
+    mirakana::EngineCapabilityHandoffReviewRequest request;
+    request.canonical_capability_ids = {"sprite-collision-hitbox-v1"};
+    request.handoffs.push_back(mirakana::EngineCapabilityHandoffRequestRow{
+        .handoff_id = "duplicate",
+        .requested_capability_id = "invented-engine-row-v1",
+        .blocked_feature_id = "boss-hit-reaction",
+        .current_workaround = "use existing gameplay interaction counters",
+        .affected_game_files = {"games/sample_2d_desktop_runtime_package/main.cpp"},
+        .desired_public_contract = "Expose SDL3 and native RHI handles for hit testing",
+        .required_evidence_ids = {"package-smoke"},
+        .source_index = 3,
+    });
+    request.handoffs.push_back(mirakana::EngineCapabilityHandoffRequestRow{
+        .handoff_id = "duplicate",
+        .requested_capability_id = "sprite-collision-hitbox-v1",
+        .blocked_feature_id = {},
+        .current_workaround = {},
+        .affected_game_files = {},
+        .desired_public_contract = {},
+        .required_evidence_ids = {},
+        .source_index = 4,
+    });
+
+    const auto result = mirakana::review_engine_capability_handoff_request(request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.accepted_handoffs.empty());
+    const auto has_diagnostic = [&result](std::string_view code) {
+        return std::ranges::any_of(result.diagnostics,
+                                   [code](const auto& diagnostic) { return diagnostic.code == code; });
+    };
+    MK_REQUIRE(has_diagnostic("unsupported_capability_id"));
+    MK_REQUIRE(has_diagnostic("unsafe_public_contract"));
+    MK_REQUIRE(has_diagnostic("duplicate_handoff_id"));
+    MK_REQUIRE(has_diagnostic("missing_blocked_feature"));
+    MK_REQUIRE(has_diagnostic("missing_current_workaround"));
+    MK_REQUIRE(has_diagnostic("missing_affected_game_file"));
+    MK_REQUIRE(has_diagnostic("missing_desired_public_contract"));
+    MK_REQUIRE(has_diagnostic("missing_required_evidence"));
+}
+
+MK_TEST("engine capability handoff review rejects non game owned files and lowercase backend terms") {
+    mirakana::EngineCapabilityHandoffReviewRequest request;
+    request.canonical_capability_ids = {"sprite-collision-hitbox-v1"};
+    request.handoffs.push_back(mirakana::EngineCapabilityHandoffRequestRow{
+        .handoff_id = "engine-path",
+        .requested_capability_id = "sprite-collision-hitbox-v1",
+        .blocked_feature_id = "melee-hitboxes",
+        .current_workaround = "keep conservative overlap checks in game code",
+        .affected_game_files = {"engine/renderer/private_hitbox_bridge.hpp"},
+        .desired_public_contract = "first-party hitbox rows without backend interop",
+        .required_evidence_ids = {"hitbox-contract-tests"},
+    });
+    request.handoffs.push_back(mirakana::EngineCapabilityHandoffRequestRow{
+        .handoff_id = "lowercase-native-contract",
+        .requested_capability_id = "sprite-collision-hitbox-v1",
+        .blocked_feature_id = "melee-hitboxes",
+        .current_workaround = "keep conservative overlap checks in game code",
+        .affected_game_files = {"games/sample_2d_desktop_runtime_package/main.cpp"},
+        .desired_public_contract = "first-party imgui/vulkan/d3d12 native window handle inspection",
+        .required_evidence_ids = {"hitbox-contract-tests"},
+    });
+
+    const auto result = mirakana::review_engine_capability_handoff_request(request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.accepted_handoffs.empty());
+    const auto has_diagnostic = [&result](std::string_view code, std::string_view referenced_id = {}) {
+        return std::ranges::any_of(result.diagnostics, [code, referenced_id](const auto& diagnostic) {
+            return diagnostic.code == code && (referenced_id.empty() || diagnostic.referenced_id == referenced_id);
+        });
+    };
+    MK_REQUIRE(has_diagnostic("invalid_affected_game_file", "engine/renderer/private_hitbox_bridge.hpp"));
+    MK_REQUIRE(has_diagnostic("unsafe_public_contract"));
+}
+
 MK_TEST("registered source asset cook package rejects empty selected asset keys") {
     auto request = make_registered_cook_request();
     request.selected_asset_keys.clear();

@@ -79,4 +79,53 @@ struct GameplayAuthoringReviewResult {
 [[nodiscard]] GameplayAuthoringReviewResult
 review_gameplay_authoring_request(const GameplayAuthoringReviewRequest& request);
 
+struct EngineCapabilityHandoffRequestRow {
+    std::string handoff_id;
+    std::string requested_capability_id;
+    std::string blocked_feature_id;
+    std::string current_workaround;
+    std::vector<std::string> affected_game_files;
+    std::string desired_public_contract;
+    std::vector<std::string> required_evidence_ids;
+    std::uint32_t source_index{0};
+};
+
+struct EngineCapabilityHandoffRow {
+    std::string handoff_id;
+    std::string requested_capability_id;
+    std::string blocked_feature_id;
+    std::string current_workaround;
+    std::vector<std::string> affected_game_files;
+    std::string desired_public_contract;
+    std::vector<std::string> required_evidence_ids;
+    std::string owner;
+    std::string next_action;
+    std::uint32_t source_index{0};
+};
+
+struct EngineCapabilityHandoffDiagnostic {
+    std::string code;
+    std::string message;
+    std::string handoff_id;
+    std::string referenced_id;
+    std::uint32_t source_index{0};
+};
+
+struct EngineCapabilityHandoffReviewRequest {
+    std::vector<std::string> canonical_capability_ids;
+    std::vector<EngineCapabilityHandoffRequestRow> handoffs;
+};
+
+struct EngineCapabilityHandoffReviewResult {
+    std::vector<EngineCapabilityHandoffRow> accepted_handoffs;
+    std::vector<EngineCapabilityHandoffDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
+[[nodiscard]] EngineCapabilityHandoffReviewResult
+review_engine_capability_handoff_request(const EngineCapabilityHandoffReviewRequest& request);
+
 } // namespace mirakana

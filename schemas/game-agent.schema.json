@@ -51,7 +51,86 @@
     },
     "aiWorkflow": {
       "type": "object",
-      "required": ["spec", "validate", "allowedEditRoots"]
+      "required": ["spec", "validate", "allowedEditRoots"],
+      "additionalProperties": false,
+      "properties": {
+        "spec": {
+          "type": "string",
+          "minLength": 1
+        },
+        "validate": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allowedEditRoots": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/])).+$"
+          }
+        },
+        "engineCapabilityHandoffs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "handoffId",
+              "requestedCapabilityId",
+              "blockedFeatureId",
+              "currentWorkaround",
+              "affectedGameFiles",
+              "desiredPublicContract",
+              "requiredEvidenceIds"
+            ],
+            "properties": {
+              "handoffId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "requestedCapabilityId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*-v[0-9]+$"
+              },
+              "blockedFeatureId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "currentWorkaround": {
+                "type": "string",
+                "minLength": 1
+              },
+              "affectedGameFiles": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^games/[a-z][a-z0-9_]*/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                }
+              },
+              "desiredPublicContract": {
+                "type": "string",
+                "minLength": 1
+              },
+              "requiredEvidenceIds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "gameplayContract": {
       "type": "object",
