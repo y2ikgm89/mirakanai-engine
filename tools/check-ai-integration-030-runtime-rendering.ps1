@@ -27,7 +27,7 @@ $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps |
 if ($productionUiImporterPlatformGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md"
+$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Production UI Importer Platform Adapters 1.0 Closeout",
     "reviewed adapter-boundary and package evidence",

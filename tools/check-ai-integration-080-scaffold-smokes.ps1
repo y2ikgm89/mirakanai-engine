@@ -522,7 +522,7 @@ $frameGraphRhiTextureSchedulePlan =
 $rhiUploadStaleGenerationPlan =
     Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 $runtimeUploadQueueWaitPlan =
-    Get-AgentSurfaceText "docs/superpowers/plans/2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md"
+    Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 $rendererCmake = Get-AgentSurfaceText "engine/renderer/CMakeLists.txt"
 foreach ($needle in @(
     "FrameGraphPassExecutionBinding",

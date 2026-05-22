@@ -2196,3 +2196,1446 @@ The static guards use this section as the single historical sink for retired dat
 - --require-package-upload-staging
 - upload_queue_waits_recorded
 - wait_for_runtime_uploads_on_queue
+
+## Retired dated plan static evidence (2026-05-22 roadmap/current-capabilities cleanup)
+
+This section is the historical sink for dated plans retired after roadmap/current-capabilities stopped rooting completed slice files. Direct static-guard needles are retained here; detailed prose remains available through Git history.
+
+### 2026-05-01-desktop-runtime-productization.md
+- 2026-05-01-desktop-runtime-productization.md
+- Desktop Runtime Productization Implementation Plan (2026-05-01)
+- **Goal:** Productize the first practical Windows desktop vertical slice so a game can be created, launched from the source tree, packaged, installed, and validated through one documented desktop runtime path.
+
+### 2026-05-01-scene-package-apply-tooling-v1.md
+- 2026-05-01-scene-package-apply-tooling-v1.md
+- Scene Package Apply Tooling v1 Implementation Plan (2026-05-01)
+- **Goal:** Add a reviewed dry-run/apply tooling surface for first-party scene package authoring that can create or update explicit `.scene` content and matching cooked `.geindex` `AssetKind::scene` rows with scene mesh/material/sprite dependency edges, without claiming broad editor productization, package streaming, renderer/RHI residency, material graphs, shader graphs, live shader generation, or native handle access.
+
+### 2026-05-01-scene-prefab-authoring-command-tooling-v1.md
+- 2026-05-01-scene-prefab-authoring-command-tooling-v1.md
+- Scene Prefab Authoring Command Tooling v1 Implementation Plan (2026-05-01)
+- **Status:** Completed on 2026-05-01.
+- **Goal:** Add a reviewed AI-safe dry-run/apply command surface for stable-id Scene/Component/Prefab Schema v2 authoring operations, so agents can create scenes, add nodes/components, create prefabs, and instantiate prefabs through typed engine tooling instead of ad hoc JSON/text edits.
+
+### 2026-05-03-metal-visible-presentation-apple-host-v1.md
+- 2026-05-03-metal-visible-presentation-apple-host-v1.md
+- Metal Visible Presentation Apple Host v1 Implementation Plan (2026-05-03)
+- **Goal:** Align Metal runtime owners with the same “visible in GPU capture / Xcode Metal debugger object list” standard as D3D12 `SetName` and Vulkan `vkSetDebugUtilsObjectNameEXT`, scoped to code that already compiles on macOS with Metal+QuartzCore linked.
+
+### 2026-05-03-phase-2-manifest-schema-docs-skills-validation-recipes.md
+- 2026-05-03-phase-2-manifest-schema-docs-skills-validation-recipes.md
+- Phase 2 manifest, schema, docs, skills, and validation recipe evidence (2026-05-03)
+- **Goal:** `ai-cook-package-command-surface-v1` 完了後に残っていた「マニフェスト／スキーマ／ドキュメント／Cursor スキル／`run-validation-recipe` 証跡」の一括整合を記録し、マスター Phase 2 の該当チェックボックスを緑の根拠で更新する。
+
+### 2026-05-03-renderer-rhi-safe-point-resource-teardown-v1.md
+- 2026-05-03-renderer-rhi-safe-point-resource-teardown-v1.md
+- Renderer RHI Safe Point Resource Teardown v1 Implementation Plan (2026-05-03)
+- **Goal:** `RuntimeSceneGpuBindingResult` に保持された RHI ハンドルを、**フレーム境界などホストが選ぶ safe-point** で破棄できるよう、バックエンド中立のティアダウン入口と診断を提供する。実 GPU バックエンドでは `IRhiDevice` に destroy が無いため、**`NullRhiDevice` では決定的にハンドルを無効化**し、それ以外では **ホストがネイティブ側で破棄する必要がある**ことを明示する。
+
+### 2026-05-03-runtime-resource-residency-budget-execution-v1.md
+- 2026-05-03-runtime-resource-residency-budget-execution-v1.md
+- Runtime Resource Residency Budget Execution v1 Implementation Plan (2026-05-03)
+- **Goal:** `packageStreamingResidencyTargets` 等で表現される **常駐バジェット意図**と同一の定義（`RuntimeAssetRecord::content` の合計バイト）を、`merge_runtime_asset_packages_overlay` 後の **単一マージ済みビュー**に対しても機械的に検証できるようにする。上限超過時は **カタログを変更せず**、診断コードで失敗を返す。
+
+### 2026-05-03-sanitizer-and-ci-matrix-hardening-v1.md
+- 2026-05-03-sanitizer-and-ci-matrix-hardening-v1.md
+- Sanitizer And CI Matrix Hardening v1 Implementation Plan (2026-05-03)
+- **Goal:** AddressSanitizer / UndefinedBehaviorSanitizer（およびプロジェクトが既に採用している他サニタイザ）付きビルドで **CTest が緑**であり、その構成が **CI マトリクス上で明示**される。Phase 1 の「Sanitizer CTest lane remains green」と「複数レーンの現行証跡」を満たす。
+
+### 2026-05-04-animation-root-motion-foundation-v1.md
+- 2026-05-04-animation-root-motion-foundation-v1.md
+- Animation Root Motion Foundation v1 Implementation Plan (2026-05-04)
+- **Plan ID:** `animation-root-motion-foundation-v1`
+- **Status:** Completed on 2026-05-04. This slice is limited to deterministic `mirakana_animation` root-joint translation delta sampling.
+
+### 2026-05-04-cascaded-and-atlased-shadow-maps-v1.md
+- 2026-05-04-cascaded-and-atlased-shadow-maps-v1.md
+- Cascaded and atlased shadow maps v1 (2026-05-04)
+
+### 2026-05-05-animation-3d-local-rotation-limits-twist-controls-v1.md
+- 2026-05-05-animation-3d-local-rotation-limits-twist-controls-v1.md
+- Animation 3D Local Rotation Limits Twist Controls v1 (2026-05-05)
+- **Plan ID:** `animation-3d-local-rotation-limits-twist-controls-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-fabrik-3d-chain-ik-v1.md
+- 2026-05-05-animation-fabrik-3d-chain-ik-v1.md
+- Animation FABRIK 3D Chain IK v1 (2026-05-05)
+- **Plan ID:** `animation-fabrik-3d-chain-ik-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-fabrik-3d-pose-application-v1.md
+- 2026-05-05-animation-fabrik-3d-pose-application-v1.md
+- Animation FABRIK 3D Pose Application v1 (2026-05-05)
+- **Plan ID:** `animation-fabrik-3d-pose-application-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-fabrik-integrated-rotation-constraints-v1.md
+- 2026-05-05-animation-fabrik-integrated-rotation-constraints-v1.md
+- Animation FABRIK Integrated Rotation Constraints v1 (2026-05-05)
+- **Plan ID:** `animation-fabrik-integrated-rotation-constraints-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-fabrik-pole-vector-xy-v1.md
+- 2026-05-05-animation-fabrik-pole-vector-xy-v1.md
+- Animation FABRIK Pole Vector XY v1 (2026-05-05)
+- **Plan ID:** `animation-fabrik-pole-vector-xy-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-float-transform-application-v1.md
+- 2026-05-05-animation-float-transform-application-v1.md
+- Animation Float Transform Application v1 Implementation Plan (2026-05-05)
+- **Goal:** Apply sampled scalar float animation curves to caller-owned `Transform3D` rows through explicit, deterministic bindings.
+- **Plan ID:** `animation-float-transform-application-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-gltf-quaternion-import-v1.md
+- 2026-05-05-animation-gltf-quaternion-import-v1.md
+- Animation glTF Quaternion Import v1 (2026-05-05)
+- **Plan ID:** `animation-gltf-quaternion-import-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-ik-angle-wrap-normalization-v1.md
+- 2026-05-05-animation-ik-angle-wrap-normalization-v1.md
+- Animation IK Angle Wrap Normalization v1 (2026-05-05)
+- **Plan ID:** `animation-ik-angle-wrap-normalization-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-quaternion-clip-sampling-application-v1.md
+- 2026-05-05-animation-quaternion-clip-sampling-application-v1.md
+- Animation Quaternion Clip Sampling Application v1 (2026-05-05)
+- **Plan ID:** `animation-quaternion-clip-sampling-application-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-quaternion-local-pose-foundation-v1.md
+- 2026-05-05-animation-quaternion-local-pose-foundation-v1.md
+- Animation Quaternion Local Pose Foundation v1 (2026-05-05)
+- **Plan ID:** `animation-quaternion-local-pose-foundation-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-root-motion-loop-accumulation-foundation-v1.md
+- 2026-05-05-animation-root-motion-loop-accumulation-foundation-v1.md
+- Animation Root Motion Loop Accumulation Foundation v1 Implementation Plan (2026-05-05)
+- **Plan ID:** `animation-root-motion-loop-accumulation-foundation-v1`
+- **Status:** Completed on 2026-05-05. This slice is limited to deterministic `mirakana_animation` root-motion delta accumulation over an explicit positive clip duration.
+
+### 2026-05-05-animation-root-rotation-delta-foundation-v1.md
+- 2026-05-05-animation-root-rotation-delta-foundation-v1.md
+- Animation Root Rotation Delta Foundation v1 Implementation Plan (2026-05-05)
+- **Plan ID:** `animation-root-rotation-delta-foundation-v1`
+- **Status:** Completed on 2026-05-05. This slice is limited to deterministic `mirakana_animation` root-joint Z-rotation delta sampling over the existing root-motion contract.
+
+### 2026-05-05-animation-transform-binding-source-v1.md
+- 2026-05-05-animation-transform-binding-source-v1.md
+- Animation Transform Binding Source v1 Implementation Plan (2026-05-05)
+- **Goal:** Add a first-party source document that maps sampled scalar animation curve targets to named transform components.
+- **Plan ID:** `animation-transform-binding-source-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-two-bone-ik-3d-orientation-v1.md
+- 2026-05-05-animation-two-bone-ik-3d-orientation-v1.md
+- Animation Two Bone IK 3D Orientation v1 (2026-05-05)
+- **Plan ID:** `animation-two-bone-ik-3d-orientation-v1`
+- **Status:** Completed
+
+### 2026-05-05-animation-two-bone-ik-pole-vector-xy-v1.md
+- 2026-05-05-animation-two-bone-ik-pole-vector-xy-v1.md
+- Animation Two-Bone IK Pole Vector XY v1 (2026-05-05)
+- **Plan ID:** `animation-two-bone-ik-pole-vector-xy-v1`
+- **Status:** Completed
+
+### 2026-05-05-cooked-animation-quaternion-clip-v1.md
+- 2026-05-05-cooked-animation-quaternion-clip-v1.md
+- Cooked Animation Quaternion Clip v1 (2026-05-05)
+- **Plan ID:** `cooked-animation-quaternion-clip-v1`
+- **Status:** Completed
+
+### 2026-05-05-generated-3d-morph-gpu-palette-smoke-v1.md
+- 2026-05-05-generated-3d-morph-gpu-palette-smoke-v1.md
+- Generated 3D Morph GPU Palette Smoke v1 (2026-05-05)
+- **Plan ID:** `generated-3d-morph-gpu-palette-smoke-v1`
+- **Status:** Completed
+
+### 2026-05-05-generated-3d-morph-normal-tangent-package-smoke-v1.md
+- 2026-05-05-generated-3d-morph-normal-tangent-package-smoke-v1.md
+- Generated 3D Morph Normal Tangent Package Smoke v1 (2026-05-05)
+- **Plan ID:** `generated-3d-morph-normal-tangent-package-smoke-v1`
+- **Status:** Completed
+
+### 2026-05-05-generated-3d-morph-package-consumption-v1.md
+- 2026-05-05-generated-3d-morph-package-consumption-v1.md
+- Generated 3D Morph Package Consumption v1 Implementation Plan (2026-05-05)
+- **Goal:** Extend generated `DesktopRuntime3DPackage` games so their package smoke consumes a cooked `morph_mesh_cpu` payload plus a cooked morph-weight `animation_float_clip` and reports deterministic CPU morph evaluation counters.
+- **Plan ID:** `generated-3d-morph-package-consumption-v1`
+- **Status:** Completed
+
+### 2026-05-05-generated-3d-morph-visible-deformation-v1.md
+- 2026-05-05-generated-3d-morph-visible-deformation-v1.md
+- Generated 3D Morph Visible Deformation v1 (2026-05-05)
+- **Plan ID:** `generated-3d-morph-visible-deformation-v1`
+- **Status:** Completed
+
+### 2026-05-05-generated-3d-quaternion-animation-package-smoke-v1.md
+- 2026-05-05-generated-3d-quaternion-animation-package-smoke-v1.md
+- Generated 3D Quaternion Animation Package Smoke v1 (2026-05-05)
+- **Plan ID:** `generated-3d-quaternion-animation-package-smoke-v1`
+- **Status:** Completed
+
+### 2026-05-05-generated-3d-transform-animation-scaffold-v1.md
+- 2026-05-05-generated-3d-transform-animation-scaffold-v1.md
+- Generated 3D Transform Animation Scaffold v1 Implementation Plan (2026-05-05)
+- **Goal:** Extend generated `DesktopRuntime3DPackage` games so the packaged 3D smoke applies a cooked scalar animation float clip to a scene node transform through first-party transform binding rows.
+- **Plan ID:** `generated-3d-transform-animation-scaffold-v1`
+- **Status:** Completed
+
+### 2026-05-05-gltf-animation-float-clip-bridge-v1.md
+- 2026-05-05-gltf-animation-float-clip-bridge-v1.md
+- glTF Animation Float Clip Bridge v1 (2026-05-05)
+- **Plan ID:** `gltf-animation-float-clip-bridge-v1`
+- **Status:** Completed on 2026-05-05.
+
+### 2026-05-05-gltf-node-transform-animation-binding-source-bridge-v1.md
+- 2026-05-05-gltf-node-transform-animation-binding-source-bridge-v1.md
+- glTF Node Transform Animation Binding Source Bridge v1 Implementation Plan (2026-05-05)
+- **Goal:** Import authored transform-binding source rows for glTF node TRS animation targets.
+- **Plan ID:** `gltf-node-transform-animation-binding-source-bridge-v1`
+- **Status:** Completed
+
+### 2026-05-05-gltf-node-transform-animation-float-clip-bridge-v1.md
+- 2026-05-05-gltf-node-transform-animation-float-clip-bridge-v1.md
+- glTF Node Transform Animation Float Clip Bridge v1 (2026-05-05)
+- **Plan ID:** `gltf-node-transform-animation-float-clip-bridge-v1`
+- **Status:** Completed
+
+### 2026-05-05-gltf-node-transform-animation-import-v1.md
+- 2026-05-05-gltf-node-transform-animation-import-v1.md
+- glTF Node Transform Animation Import v1 (2026-05-05)
+- **Plan ID:** `gltf-node-transform-animation-import-v1`
+- **Status:** Completed
+
+### 2026-05-05-gpu-morph-d3d12-proof-v1.md
+- 2026-05-05-gpu-morph-d3d12-proof-v1.md
+- GPU Morph D3D12 Proof v1 (2026-05-05)
+- **Plan ID:** `gpu-morph-d3d12-proof-v1`
+- **Status:** Completed
+
+### 2026-05-05-gpu-morph-normal-tangent-d3d12-proof-v1.md
+- 2026-05-05-gpu-morph-normal-tangent-d3d12-proof-v1.md
+- GPU Morph Normal Tangent D3D12 Proof v1 (2026-05-05)
+- **Plan ID:** `gpu-morph-normal-tangent-d3d12-proof-v1`
+- **Status:** Completed
+
+### 2026-05-05-rhi-compute-dispatch-foundation-v1.md
+- 2026-05-05-rhi-compute-dispatch-foundation-v1.md
+- RHI Compute Dispatch Foundation v1 (2026-05-05)
+- **Plan ID:** `rhi-compute-dispatch-foundation-v1`
+- **Status:** Completed
+
+### 2026-05-05-runtime-rhi-compute-morph-d3d12-proof-v1.md
+- 2026-05-05-runtime-rhi-compute-morph-d3d12-proof-v1.md
+- Runtime RHI Compute Morph D3D12 Proof v1 (2026-05-05)
+- **Plan ID:** `runtime-rhi-compute-morph-d3d12-proof-v1`
+- **Status:** Completed
+
+### 2026-05-05-runtime-scene-animation-transform-binding-v1.md
+- 2026-05-05-runtime-scene-animation-transform-binding-v1.md
+- Runtime Scene Animation Transform Binding v1 Implementation Plan (2026-05-05)
+- **Goal:** Resolve authored animation transform binding source rows against a runtime scene instance and optionally apply sampled scalar curves to scene node transforms.
+- **Plan ID:** `runtime-scene-animation-transform-binding-v1`
+- **Status:** Completed
+
+### 2026-05-05-runtime-scene-rhi-morph-gpu-palette-v1.md
+- 2026-05-05-runtime-scene-rhi-morph-gpu-palette-v1.md
+- Runtime Scene RHI Morph GPU Palette v1 (2026-05-05)
+- **Plan ID:** `runtime-scene-rhi-morph-gpu-palette-v1`
+- **Status:** Completed
+
+### 2026-05-06-2d-native-sprite-batching-execution-v1.md
+- 2026-05-06-2d-native-sprite-batching-execution-v1.md
+- 2D Native Sprite Batching Execution v1 Implementation Plan (2026-05-06)
+- **Plan ID:** `2d-native-sprite-batching-execution-v1`
+- **Status:** Completed
+- Static guard literals:
+  - `plan_sprite_batches`
+  - `sample_2d_desktop_runtime_package`
+
+### 2026-05-06-2d-sprite-animation-package-v1.md
+- 2026-05-06-2d-sprite-animation-package-v1.md
+- 2D Sprite Animation Package v1 Implementation Plan (2026-05-06)
+- **Plan ID:** `2d-sprite-animation-package-v1`
+- **Status:** Completed
+- Static guard literals:
+  - `DesktopRuntime2DPackage`
+  - `sprite_animation_frames_sampled=3`
+
+### 2026-05-06-2d-tilemap-editor-runtime-ux-v1.md
+- 2026-05-06-2d-tilemap-editor-runtime-ux-v1.md
+- 2D Tilemap Editor Runtime UX v1 Implementation Plan (2026-05-06)
+- **Plan ID:** `2d-tilemap-editor-runtime-ux-v1`
+- **Status:** Completed
+- Static guard literals:
+  - `GameEngine.Tilemap.v1`
+  - `tilemap_cells_sampled=3`
+
+### 2026-05-06-generated-3d-compute-morph-normal-tangent-package-smoke-d3d12-v1.md
+- 2026-05-06-generated-3d-compute-morph-normal-tangent-package-smoke-d3d12-v1.md
+- Generated 3D Compute Morph Normal Tangent Package Smoke D3D12 v1 (2026-05-06)
+- **Plan ID:** `generated-3d-compute-morph-normal-tangent-package-smoke-d3d12-v1`
+- **Status:** Completed
+
+### 2026-05-06-generated-3d-compute-morph-package-smoke-d3d12-v1.md
+- 2026-05-06-generated-3d-compute-morph-package-smoke-d3d12-v1.md
+- Generated 3D Compute Morph Package Smoke D3D12 v1 (2026-05-06)
+- **Plan ID:** `generated-3d-compute-morph-package-smoke-d3d12-v1`
+- **Status:** Completed
+
+### 2026-05-06-generated-3d-compute-morph-queue-sync-package-smoke-d3d12-v1.md
+- 2026-05-06-generated-3d-compute-morph-queue-sync-package-smoke-d3d12-v1.md
+- Generated 3D Compute Morph Queue Sync Package Smoke D3D12 v1 (2026-05-06)
+- **Plan ID:** `generated-3d-compute-morph-queue-sync-package-smoke-d3d12-v1`
+- **Status:** Completed
+- Static guard literals:
+  - `compute_morph_queue_waits`
+
+### 2026-05-06-input-rebinding-profile-ux-v1.md
+- 2026-05-06-input-rebinding-profile-ux-v1.md
+- Input Rebinding Profile UX v1 Implementation Plan (2026-05-06)
+- **Goal:** Add a host-independent, persisted runtime input rebinding profile contract plus editor-core review diagnostics so generated games can expose controller/key rebinding without SDL3, editor-private APIs, native handles, or middleware.
+- **Status:** Completed
+- Static guard literals:
+  - `EditorInputRebindingProfileReviewModel`
+  - `GameEngine.RuntimeInputRebindingProfile.v1`
+  - `apply_runtime_input_rebinding_profile`
+
+### 2026-05-06-material-graph-package-binding-v1.md
+- 2026-05-06-material-graph-package-binding-v1.md
+- Material Graph Package Binding v1 Implementation Plan (2026-05-06)
+- **Goal:** Add a reviewed, host-independent package update surface that lowers explicit `GameEngine.MaterialGraph.v1` source text into the existing runtime-loadable `GameEngine.Material.v1` material package row.
+- **Status:** Completed
+
+### 2026-05-06-play-in-editor-gameplay-driver-v1.md
+- 2026-05-06-play-in-editor-gameplay-driver-v1.md
+- Play-In-Editor Gameplay Driver v1 Implementation Plan (2026-05-06)
+- **Goal:** Extend the Play-In-Editor editor-core contract so a reviewed gameplay simulation driver can run against the isolated simulation scene without mutating the authored source scene.
+
+### 2026-05-06-play-in-editor-session-isolation-v1.md
+- 2026-05-06-play-in-editor-session-isolation-v1.md
+- Play-In-Editor Session Isolation v1 Implementation Plan (2026-05-06)
+- **Goal:** Add a GUI-independent Play-In-Editor session isolation model so editor play mode runs against a mutable simulation scene copy and stopping play discards simulation edits while preserving the authored source scene.
+
+### 2026-05-06-play-in-editor-visible-viewport-wiring-v1.md
+- 2026-05-06-play-in-editor-visible-viewport-wiring-v1.md
+- Play-In-Editor Visible Viewport Wiring v1 Implementation Plan (2026-05-06)
+- **Goal:** Wire the visible `mirakana_editor` Run/Viewport controls to `EditorPlaySession` so the editor shell displays and advances the isolated simulation scene while source-scene mutations stay blocked during play.
+
+### 2026-05-06-rhi-vulkan-compute-dispatch-foundation-v1.md
+- 2026-05-06-rhi-vulkan-compute-dispatch-foundation-v1.md
+- RHI Vulkan Compute Dispatch Foundation v1 Implementation Plan (2026-05-06)
+- **Plan ID:** `rhi-vulkan-compute-dispatch-foundation-v1`
+- **Status:** Completed
+- Static guard literals:
+  - `MK_VULKAN_TEST_COMPUTE_SPV`
+  - `vkCmdDispatch`
+  - `vkCreateComputePipelines`
+
+### 2026-05-06-runtime-rhi-compute-morph-normal-tangent-output-d3d12-v1.md
+- 2026-05-06-runtime-rhi-compute-morph-normal-tangent-output-d3d12-v1.md
+- Runtime RHI Compute Morph Normal Tangent Output D3D12 v1 (2026-05-06)
+- **Plan ID:** `runtime-rhi-compute-morph-normal-tangent-output-d3d12-v1`
+- **Status:** Completed
+
+### 2026-05-06-runtime-rhi-compute-morph-queue-synchronization-d3d12-v1.md
+- 2026-05-06-runtime-rhi-compute-morph-queue-synchronization-d3d12-v1.md
+- Runtime RHI Compute Morph Queue Synchronization D3D12 v1 (2026-05-06)
+- **Plan ID:** `runtime-rhi-compute-morph-queue-synchronization-d3d12-v1`
+- **Status:** Completed
+- without host-side `IRhiDevice::wait`
+
+### 2026-05-06-runtime-rhi-compute-morph-renderer-consumption-d3d12-v1.md
+- 2026-05-06-runtime-rhi-compute-morph-renderer-consumption-d3d12-v1.md
+- Runtime RHI Compute Morph Renderer Consumption D3D12 v1 (2026-05-06)
+- **Plan ID:** `runtime-rhi-compute-morph-renderer-consumption-d3d12-v1`
+- **Status:** Completed
+
+### 2026-05-06-runtime-rhi-compute-morph-skin-composition-d3d12-v1.md
+- 2026-05-06-runtime-rhi-compute-morph-skin-composition-d3d12-v1.md
+- Runtime RHI Compute Morph Skin Composition D3D12 v1 (2026-05-06)
+- **Plan ID:** `runtime-rhi-compute-morph-skin-composition-d3d12-v1`
+- **Status:** Completed
+- Static guard literals:
+  - `skin_attribute_vertex_buffer`
+
+### 2026-05-06-runtime-scene-rhi-compute-morph-skin-palette-d3d12-v1.md
+- 2026-05-06-runtime-scene-rhi-compute-morph-skin-palette-d3d12-v1.md
+- Runtime Scene RHI Compute Morph Skin Palette D3D12 v1 (2026-05-06)
+- **Plan ID:** `runtime-scene-rhi-compute-morph-skin-palette-d3d12-v1`
+- **Status:** Completed
+- Static guard literals:
+  - `RuntimeSceneComputeMorphSkinnedMeshBinding`
+  - `SceneSkinnedGpuBindingPalette`
+  - `compute_morph_output_position_bytes`
+  - `compute_morph_skinned_mesh_bindings`
+
+### 2026-05-07-editor-ai-command-diagnostics-panel-v1.md
+- 2026-05-07-editor-ai-command-diagnostics-panel-v1.md
+- Editor AI Command Diagnostics Panel v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a visible editor AI Commands panel backed by a GUI-independent diagnostics model over existing AI package, validation recipe, operator handoff, and evidence summary contracts.
+
+### 2026-05-07-editor-ai-evidence-import-review-v1.md
+- 2026-05-07-editor-ai-evidence-import-review-v1.md
+- Editor AI Evidence Import Review v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a deterministic editor-core evidence import review surface so externally supplied AI validation evidence can be pasted, reviewed, and fed into the existing AI Commands panel without editor-core execution or file mutation.
+
+### 2026-05-07-editor-ai-host-gated-validation-execution-ack-v1.md
+- 2026-05-07-editor-ai-host-gated-validation-execution-ack-v1.md
+- Editor AI Host-Gated Validation Execution Ack v1 Implementation Plan (2026-05-07)
+- **Goal:** Let the visible `mirakana_editor` AI Commands panel execute reviewed host-gated `run-validation-recipe` rows only after an explicit per-row host-gate acknowledgement.
+- Static guard literals:
+  - `-HostGateAcknowledgements`
+  - `Host-Gated Validation Execution Ack v1`
+  - `acknowledge_host_gates`
+  - `host_gate_acknowledgement_required`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-ai-reviewed-validation-batch-execution-v1.md
+- 2026-05-07-editor-ai-reviewed-validation-batch-execution-v1.md
+- Editor AI Reviewed Validation Batch Execution v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a reviewed batch execution model and visible `MK_editor` control for all currently executable AI validation recipe rows, including host-gated rows only after explicit acknowledgement.
+- Static guard literals:
+  - `Editor AI Reviewed Validation Batch Execution v1 Implementation Plan`
+  - `EditorAiReviewedValidationExecutionBatchModel`
+  - `Execute Ready`
+  - `ai_commands.execution.batch`
+  - `make_editor_ai_reviewed_validation_execution_batch`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-ai-reviewed-validation-execution-v1.md
+- 2026-05-07-editor-ai-reviewed-validation-execution-v1.md
+- Editor AI Reviewed Validation Execution v1 Implementation Plan (2026-05-07)
+- **Goal:** Let the visible `mirakana_editor` AI Commands panel execute host-gate-free reviewed `run-validation-recipe` rows and feed the result into the existing evidence summary without moving process execution into `editor/core`.
+
+### 2026-05-07-editor-content-browser-import-codec-adapter-review-v1.md
+- 2026-05-07-editor-content-browser-import-codec-adapter-review-v1.md
+- Editor Content Browser Import Codec Adapter Review v1 Implementation Plan (2026-05-07)
+- **Goal:** Let the Content Browser reviewed import-source dialog build explicit import plans for supported PNG, glTF, and common-audio codec sources through the existing optional `MK_tools` importer adapters.
+- Static guard literals:
+  - `.flac`
+  - `.glb`
+  - `.gltf`
+  - `.mp3`
+  - `.png`
+  - `.wav`
+  - `Editor Content Browser Import Codec Adapter Review v1 Implementation Plan`
+  - `ExternalAssetImportAdapters`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1`
+
+### 2026-05-07-editor-content-browser-import-diagnostics-v1.md
+- 2026-05-07-editor-content-browser-import-diagnostics-v1.md
+- Editor Content Browser Import Diagnostics v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a GUI-independent editor content/import diagnostics panel model that unifies Content Browser rows, import progress, diagnostics, dependencies, thumbnail requests, and material preview rows for the visible Assets panel and AI/editor tooling.
+
+### 2026-05-07-editor-content-browser-import-external-copy-review-v1.md
+- 2026-05-07-editor-content-browser-import-external-copy-review-v1.md
+- Editor Content Browser Import External Copy Review v1 Implementation Plan (2026-05-07)
+- **Goal:** Let the Content Browser reviewed import-source dialog stage external first-party source documents into the project before rebuilding the import plan.
+- Static guard literals:
+  - `Copy External Sources`
+  - `Editor Content Browser Import External Copy Review v1 Implementation Plan`
+  - `EditorContentBrowserImportExternalSourceCopyModel`
+  - `content_browser_import.external_copy`
+  - `make_content_browser_import_external_source_copy_model`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-content-browser-import-native-dialog-v1.md
+- 2026-05-07-editor-content-browser-import-native-dialog-v1.md
+- Editor Content Browser Import Native Dialog v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a reviewed native open-file dialog path for Content Browser asset import source selection without moving file dialogs, filesystem path conversion, or import execution into `editor/core`.
+- Static guard literals:
+  - `Editor Content Browser Import Native Dialog v1 Implementation Plan`
+  - `EditorContentBrowserImportOpenDialogModel`
+  - `content_browser_import.open_dialog`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-input-rebinding-profile-panel-v1.md
+- 2026-05-07-editor-input-rebinding-profile-panel-v1.md
+- Editor Input Rebinding Profile Panel v1 Implementation Plan (2026-05-07)
+- **Goal:** Promote the existing input rebinding profile review contract into a visible read-only editor panel that `mirakana_editor` and AI/editor tooling can share.
+- Static guard literals:
+  - `Editor Input Rebinding Profile Panel v1`
+  - `EditorInputRebindingProfilePanelModel`
+  - `PanelId::input_rebinding`
+  - `interactive runtime/game rebinding panels`
+
+### 2026-05-07-editor-material-asset-preview-diagnostics-v1.md
+- 2026-05-07-editor-material-asset-preview-diagnostics-v1.md
+- Editor Material Asset Preview Diagnostics v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a GUI-independent read-only material asset preview diagnostics model that visible `mirakana_editor` and AI/editor tooling can share.
+
+### 2026-05-07-editor-material-gpu-preview-execution-evidence-v1.md
+- 2026-05-07-editor-material-gpu-preview-execution-evidence-v1.md
+- Editor Material GPU Preview Execution Evidence v1 Implementation Plan (2026-05-07)
+- **Goal:** Add retained editor-core evidence rows for host-owned selected-material GPU preview execution without moving RHI, SDL3, Dear ImGui, shader compiler, or native handle work into `editor/core`.
+- Static guard literals:
+  - `EditorMaterialGpuPreviewExecutionSnapshot`
+  - `Vulkan display parity`
+  - `apply_editor_material_gpu_preview_execution_snapshot`
+  - `editor-material-gpu-preview-execution-evidence-v1`
+  - `material_asset_preview.gpu.execution`
+
+### 2026-05-07-editor-prefab-variant-batch-resolution-review-v1.md
+- 2026-05-07-editor-prefab-variant-batch-resolution-review-v1.md
+- Editor Prefab Variant Batch Resolution Review v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a reviewed batch-resolution path for prefab variant conflicts so the editor can apply all currently safe cleanup/retarget rows as one undoable action.
+- Static guard literals:
+  - `Apply All Reviewed`
+  - `Editor Prefab Variant Batch Resolution Review v1`
+  - `PrefabVariantConflictBatchResolutionPlan`
+  - `automatic merge/rebase`
+  - `make_prefab_variant_conflict_batch_resolution_action`
+  - `prefab_variant_conflicts.batch_resolution`
+  - `resolve_prefab_variant_conflicts`
+
+### 2026-05-07-editor-prefab-variant-conflict-review-v1.md
+- 2026-05-07-editor-prefab-variant-conflict-review-v1.md
+- Editor Prefab Variant Conflict Review v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a GUI-independent, read-only prefab variant conflict review model so editor/AI tooling can surface unsafe or surprising prefab override rows before save, instantiation, or future nested propagation work.
+- Static guard literals:
+  - `PrefabVariantConflictReviewModel`
+  - `automatic merge/rebase/resolution UX`
+  - `nested-prefab-conflict-ux-v1`
+  - `prefab_variant_conflicts`
+
+### 2026-05-07-editor-prefab-variant-missing-node-cleanup-v1.md
+- 2026-05-07-editor-prefab-variant-missing-node-cleanup-v1.md
+- Editor Prefab Variant Missing Node Cleanup v1 Implementation Plan (2026-05-07)
+- **Goal:** Add an explicit reviewed cleanup path for prefab variant overrides that target nodes no longer present in the base prefab.
+- Static guard literals:
+  - `Remove missing-node override`
+  - `automatic merge/rebase/resolution UX`
+  - `deserialize_prefab_variant_definition_for_review`
+  - `editor-prefab-variant-missing-node-cleanup-v1`
+  - `node remapping`
+
+### 2026-05-07-editor-prefab-variant-native-dialog-v1.md
+- 2026-05-07-editor-prefab-variant-native-dialog-v1.md
+- Editor Prefab Variant Native Dialog v1 Implementation Plan (2026-05-07)
+- **Plan ID:** `editor-prefab-variant-native-dialog-v1`
+- **Status:** Completed
+- **Goal:** Add a narrow native open/save dialog review path for visible Prefab Variant authoring so `mirakana_editor` can browse `.prefabvariant` files outside the Profiler-only dialog path.
+- Static guard literals:
+  - `Browse Load Variant`
+  - `Browse Save Variant`
+  - `Editor Prefab Variant Native Dialog v1 Implementation Plan`
+  - `EditorPrefabVariantFileDialogModel`
+  - `SdlFileDialogService`
+  - `broader editor native save/open dialogs`
+  - `make_prefab_variant_file_dialog_ui_model`
+  - `make_prefab_variant_open_dialog_model`
+  - `make_prefab_variant_open_dialog_request`
+  - `make_prefab_variant_save_dialog_model`
+  - `make_prefab_variant_save_dialog_request`
+
+### 2026-05-07-editor-prefab-variant-node-retarget-review-v1.md
+- 2026-05-07-editor-prefab-variant-node-retarget-review-v1.md
+- Editor Prefab Variant Node Retarget Review v1 Implementation Plan (2026-05-07)
+- **Goal:** Implement `editor-prefab-variant-node-retarget-review-v1`: add a reviewed, undoable prefab-variant missing-node retarget path when a stale override carries a stable source-node name that uniquely resolves to a current base-prefab node.
+- Static guard literals:
+  - `PrefabNodeOverride::source_node_name`
+  - `Retarget override to node`
+  - `automatic merge/rebase/resolution UX`
+  - `editor-prefab-variant-node-retarget-review-v1`
+  - `override.N.source_node_name`
+
+### 2026-05-07-editor-prefab-variant-reviewed-resolution-v1.md
+- 2026-05-07-editor-prefab-variant-reviewed-resolution-v1.md
+- Editor Prefab Variant Reviewed Resolution v1 Implementation Plan (2026-05-07)
+- **Goal:** Add an explicit reviewed cleanup path for safe prefab variant conflict rows, starting with redundant overrides and later duplicate override rows.
+- Static guard literals:
+  - `automatic merge/rebase/resolution UX`
+  - `editor-prefab-variant-reviewed-resolution-v1`
+  - `make_prefab_variant_conflict_resolution_action`
+  - `missing-node resolution`
+  - `prefab_variant_conflicts`
+  - `resolve_prefab_variant_conflict`
+
+### 2026-05-07-editor-prefab-variant-source-mismatch-accept-current-review-v1.md
+- 2026-05-07-editor-prefab-variant-source-mismatch-accept-current-review-v1.md
+- Editor Prefab Variant Source Mismatch Accept Current Review v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a reviewed accept-current-node path for existing-node prefab variant source mismatches when the old source-node name no longer maps uniquely to another base node.
+- Static guard literals:
+  - `Accept current node N`
+  - `Editor Prefab Variant Source Mismatch Accept Current Review v1`
+  - `accept_current.node.1.transform`
+  - `accept_current_node`
+  - `automatic merge/rebase`
+  - `resolve_prefab_variant_conflict`
+  - `resolve_prefab_variant_conflicts`
+  - `source_node_mismatch`
+  - strict `MK_scene` prefab variant validation and composition index-based
+  - `updates only`
+
+### 2026-05-07-editor-prefab-variant-source-mismatch-retarget-review-v1.md
+- 2026-05-07-editor-prefab-variant-source-mismatch-retarget-review-v1.md
+- Editor Prefab Variant Source Mismatch Retarget Review v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a reviewed retarget path when a prefab variant override still targets an existing node index but its recorded `source_node_name` now points to a different current base-prefab node.
+- Static guard literals:
+  - `Editor Prefab Variant Source Mismatch Retarget Review v1`
+  - `Retarget override to node N`
+  - `automatic merge/rebase`
+  - `composition index-based`
+  - `prefab_variant_conflicts.rows.node.1.transform.resolution_kind`
+  - `resolve_prefab_variant_conflict`
+  - `resolve_prefab_variant_conflicts`
+  - `source_node_mismatch`
+
+### 2026-05-07-editor-profiler-native-trace-open-dialog-v1.md
+- 2026-05-07-editor-profiler-native-trace-open-dialog-v1.md
+- Editor Profiler Native Trace Open Dialog v1 Implementation Plan (2026-05-07)
+- **Plan ID:** `editor-profiler-native-trace-open-dialog-v1`
+- **Goal:** Add a narrow native file-open dialog path for selecting Profiler Trace Event JSON files and feeding safe project-relative selections into the existing trace import review workflow.
+- Static guard literals:
+  - `Browse Trace JSON`
+  - `Editor Profiler Native Trace Open Dialog v1 Implementation Plan`
+  - `EditorProfilerTraceOpenDialogModel`
+  - `SdlFileDialogService`
+  - `make_editor_profiler_trace_open_dialog_model`
+  - `make_editor_profiler_trace_open_dialog_request`
+  - `profiler.trace_open_dialog`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-profiler-native-trace-save-dialog-v1.md
+- 2026-05-07-editor-profiler-native-trace-save-dialog-v1.md
+- Editor Profiler Native Trace Save Dialog v1 Implementation Plan (2026-05-07)
+- **Plan ID:** `editor-profiler-native-trace-save-dialog-v1`
+- **Goal:** Add a narrow native file-save dialog path for choosing the Profiler Trace Event JSON output file while preserving the existing safe project-relative trace save contract.
+- Static guard literals:
+  - `Browse Save Trace JSON`
+  - `Editor Profiler Native Trace Save Dialog v1 Implementation Plan`
+  - `EditorProfilerTraceSaveDialogModel`
+  - `SdlFileDialogService`
+  - `make_editor_profiler_trace_save_dialog_model`
+  - `make_editor_profiler_trace_save_dialog_request`
+  - `profiler.trace_save_dialog`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-profiler-telemetry-handoff-v1.md
+- 2026-05-07-editor-profiler-telemetry-handoff-v1.md
+- Editor Profiler Telemetry Handoff v1 Implementation Plan (2026-05-07)
+- **Plan ID:** `editor-profiler-telemetry-handoff-v1`
+- **Goal:** Expose the existing dependency-free `DiagnosticsOpsPlan` telemetry upload handoff state in the editor Profiler panel without uploading telemetry or adding a backend dependency.
+- Static guard literals:
+  - `Editor Profiler Telemetry Handoff v1 Implementation Plan`
+  - `EditorProfilerTelemetryHandoffModel`
+  - `Profiler Telemetry Handoff`
+  - `make_editor_profiler_telemetry_handoff_model`
+  - `profiler.telemetry`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-profiler-trace-export-v1.md
+- 2026-05-07-editor-profiler-trace-export-v1.md
+- Editor Profiler Trace Export v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a deterministic Profiler trace-export model and visible `MK_editor` copy action for the current diagnostics capture.
+- Static guard literals:
+  - `Copy Trace JSON`
+  - `Editor Profiler Trace Export v1 Implementation Plan`
+  - `EditorProfilerTraceExportModel`
+  - `make_editor_profiler_trace_export_model`
+  - `profiler.trace_export`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-profiler-trace-file-import-review-v1.md
+- 2026-05-07-editor-profiler-trace-file-import-review-v1.md
+- Editor Profiler Trace File Import Review v1 Implementation Plan (2026-05-07)
+- **Plan ID:** `editor-profiler-trace-file-import-review-v1`
+- **Goal:** Add a safe project-relative trace JSON file import review path so the editor Profiler can read a saved trace from the project `ITextStore` and review it through the existing structured Trace Event JSON reviewer.
+- Static guard literals:
+  - `Editor Profiler Trace File Import Review v1 Implementation Plan`
+  - `EditorProfilerTraceFileImportRequest`
+  - `EditorProfilerTraceFileImportResult`
+  - `Import Trace JSON`
+  - `Trace Import Path`
+  - `import_editor_profiler_trace_json`
+  - `profiler.trace_file_import`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-profiler-trace-file-save-v1.md
+- 2026-05-07-editor-profiler-trace-file-save-v1.md
+- Editor Profiler Trace File Save v1 Implementation Plan (2026-05-07)
+- **Plan ID:** `editor-profiler-trace-file-save-v1`
+- **Goal:** Add an explicit editor Profiler action that saves the current diagnostics Chrome Trace Event JSON to a safe project-relative `.json` file.
+- Static guard literals:
+  - `Editor Profiler Trace File Save v1 Implementation Plan`
+  - `EditorProfilerTraceFileSaveRequest`
+  - `EditorProfilerTraceFileSaveResult`
+  - `Save Trace JSON`
+  - `profiler.trace_file_save`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+  - `save_editor_profiler_trace_json`
+
+### 2026-05-07-editor-profiler-trace-import-reconstruction-v1.md
+- 2026-05-07-editor-profiler-trace-import-reconstruction-v1.md
+- Editor Profiler Trace Import Reconstruction v1 Implementation Plan (2026-05-07)
+- **Plan ID:** `editor-profiler-trace-import-reconstruction-v1`
+- **Status:** Completed
+- **Goal:** Reconstruct a narrow `mirakana::DiagnosticCapture` from GameEngine-exported Chrome Trace Event JSON so the editor Profiler import path can hand callers reviewed capture rows instead of review counts only.
+- Static guard literals:
+  - `DiagnosticsTraceImportResult`
+  - `Editor Profiler Trace Import Reconstruction v1 Implementation Plan`
+  - `EditorProfilerTraceFileImportResult`
+  - `EditorProfilerTraceImportReviewModel`
+  - `first-party exported`
+  - `import_diagnostics_trace_json`
+  - `profiler.trace_import.reconstructed_*`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+### 2026-05-07-editor-profiler-trace-import-review-v1.md
+- 2026-05-07-editor-profiler-trace-import-review-v1.md
+- Editor Profiler Trace Import Review v1 Implementation Plan (2026-05-07)
+- **Plan ID:** `editor-profiler-trace-import-review-v1`
+- **Goal:** Add a safe structured review path for pasted Chrome Trace Event JSON so the editor Profiler can inspect trace files exported by `mirakana::export_diagnostics_trace_json` without adding file import, flame graphs, or third-party telemetry tooling.
+- Static guard literals:
+  - `DiagnosticsTraceImportReview`
+  - `Editor Profiler Trace Import Review v1 Implementation Plan`
+  - `EditorProfilerTraceImportReviewModel`
+  - `Review Trace JSON`
+  - `make_editor_profiler_trace_import_review_model`
+  - `profiler.trace_import`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+  - `review_diagnostics_trace_json`
+
+### 2026-05-07-editor-project-native-dialog-v1.md
+- 2026-05-07-editor-project-native-dialog-v1.md
+- Editor Project Native Dialog v1 Implementation Plan (2026-05-07)
+- **Goal:** Add reviewed native `.geproject` open/save-as dialog models and visible `MK_editor` wiring for project bundles without moving SDL3, native handles, or filesystem path conversion into `editor/core`.
+- Static guard literals:
+  - `Editor Project Native Dialog v1 Implementation Plan`
+  - `EditorProjectFileDialogModel`
+  - `SdlFileDialogService`
+  - `make_project_file_dialog_ui_model`
+  - `make_project_open_dialog_model`
+  - `make_project_open_dialog_request`
+  - `make_project_save_dialog_model`
+  - `make_project_save_dialog_request`
+  - `project_file_dialog.open`
+  - `project_file_dialog.save`
+
+### 2026-05-07-editor-runtime-host-playtest-launch-v1.md
+- 2026-05-07-editor-runtime-host-playtest-launch-v1.md
+- Editor Runtime Host Playtest Launch v1 Implementation Plan (2026-05-07)
+- **Goal:** Add a reviewed Play-In-Editor runtime-host launch path so the visible editor can execute a selected desktop runtime host as an external process and record evidence without loading dynamic game modules into editor core.
+- Static guard literals:
+  - `Editor Runtime Host Playtest Launch v1 Implementation Plan`
+  - `EditorRuntimeHostPlaytestLaunchModel`
+  - `play_in_editor.runtime_host`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`
+
+### 2026-05-07-editor-scene-native-dialog-v1.md
+- 2026-05-07-editor-scene-native-dialog-v1.md
+- Editor Scene Native Dialog v1 Implementation Plan (2026-05-07)
+- **Plan ID:** `editor-scene-native-dialog-v1`
+- **Status:** Completed
+- **Goal:** Add a narrow native open/save dialog review path for visible Scene authoring so `mirakana_editor` can browse `.scene` files through reviewed first-party contracts.
+- Static guard literals:
+  - `Editor Scene Native Dialog v1 Implementation Plan`
+  - `EditorSceneFileDialogModel`
+  - `SdlFileDialogService`
+  - `broader editor native save/open`
+  - `make_scene_file_dialog_ui_model`
+  - `make_scene_open_dialog_model`
+  - `make_scene_open_dialog_request`
+  - `make_scene_save_dialog_model`
+  - `make_scene_save_dialog_request`
+
+### 2026-05-08-editor-input-rebinding-action-capture-panel-v1.md
+- 2026-05-08-editor-input-rebinding-action-capture-panel-v1.md
+- Editor Input Rebinding Action Capture Panel v1 Implementation Plan (2026-05-08)
+- **Goal:** Promote the visible editor Input Rebinding panel from read-only diagnostics to reviewed in-memory digital action capture using the existing first-party runtime rebinding capture contract. Validated in `MK_editor_core_tests`.
+- **Status:** Completed.
+- EditorInputRebindingCaptureModel
+- make_editor_input_rebinding_capture_action_model
+- make_input_rebinding_capture_action_ui_model
+- input_rebinding.capture
+- MK_editor_core_tests
+- pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
+
+### 2026-05-08-runtime-input-rebinding-capture-contract-v1.md
+- 2026-05-08-runtime-input-rebinding-capture-contract-v1.md
+- Runtime Input Rebinding Capture Contract v1 Implementation Plan (2026-05-08)
+- **Goal:** Add a host-independent runtime input rebinding capture contract that turns the next first-party key, pointer, or gamepad-button press into a validated `RuntimeInputRebindingProfile` action override candidate.
+- **Status:** Completed.
+- Static guard literals:
+  - `MK_runtime_tests`
+  - `RuntimeInputRebindingCaptureRequest`
+  - `RuntimeInputRebindingCaptureResult`
+  - `capture_runtime_input_rebinding_action`
+
+### 2026-05-08-runtime-input-rebinding-focus-consumption-v1.md
+- 2026-05-08-runtime-input-rebinding-focus-consumption-v1.md
+- Runtime Input Rebinding Focus Consumption v1 Implementation Plan (2026-05-08)
+- **Status:** Completed.
+- **Goal:** Add a host-independent runtime input rebinding capture guard that keeps a UI/menu capture focused and consumes gameplay input while a digital action rebinding capture is waiting or captured.
+- Static guard literals:
+  - `RuntimeInputRebindingFocusCaptureRequest`
+
+### 2026-05-08-runtime-input-rebinding-presentation-rows-v1.md
+- 2026-05-08-runtime-input-rebinding-presentation-rows-v1.md
+- Runtime Input Rebinding Presentation Rows v1 Implementation Plan (2026-05-08)
+- **Plan ID:** `runtime-input-rebinding-presentation-rows-v1`
+- **Status:** Completed
+- **Goal:** Add host-independent `mirakana_runtime` input rebinding presentation rows so runtime/game rebinding UI can display reviewed base/profile bindings and symbolic glyph lookup keys without depending on editor code, SDL3, native handles, or platform glyph generation.
+- RuntimeInputRebindingPresentationToken
+- RuntimeInputRebindingPresentationRow
+- RuntimeInputRebindingPresentationModel
+- present_runtime_input_action_trigger
+- present_runtime_input_axis_source
+- make_runtime_input_rebinding_presentation
+- glyph_lookup_key
+- model.diagnostics[0].path == row->id
+- MK_runtime_tests
+
+### 2026-05-08-runtime-resource-safe-point-unload-v1.md
+- 2026-05-08-runtime-resource-safe-point-unload-v1.md
+- Runtime Resource Safe-Point Unload v1 Implementation Plan (2026-05-08)
+- **Goal:** Add an explicit host-independent safe-point unload primitive for the active runtime package and `RuntimeResourceCatalogV2`.
+- **Status:** Completed.
+
+### 2026-05-09-editor-nested-prefab-refresh-resolution-v1.md
+- 2026-05-09-editor-nested-prefab-refresh-resolution-v1.md
+- Editor Nested Prefab Refresh Resolution Implementation Plan (2026-05-09)
+- **Goal:** Extend reviewed scene prefab instance refresh so nested linked prefab instances can be explicitly preserved under refreshed parent prefab anchors.
+- **Plan ID:** `editor-nested-prefab-refresh-resolution-v1`
+- **Status:** Completed.
+
+### 2026-05-09-editor-prefab-instance-stale-node-refresh-resolution-v1.md
+- 2026-05-09-editor-prefab-instance-stale-node-refresh-resolution-v1.md
+- Editor Prefab Instance Stale Node Refresh Resolution Implementation Plan (2026-05-09)
+- **Goal:** Extend reviewed scene prefab instance refresh so an author can explicitly keep stale source-node subtrees as local author-owned scene nodes.
+- **Plan ID:** `editor-prefab-instance-stale-node-refresh-resolution-v1`
+- **Status:** Completed.
+
+### 2026-05-09-editor-prefab-variant-base-refresh-merge-review-v1.md
+- 2026-05-09-editor-prefab-variant-base-refresh-merge-review-v1.md
+- Editor Prefab Variant Base Refresh Merge Review Implementation Plan (2026-05-09)
+- **Goal:** Add a GUI-independent reviewed base-prefab refresh surface for prefab variants so editor authors can retarget existing overrides by stable `source_node_name` hints before accepting a refreshed embedded base prefab.
+- **Plan ID:** `editor-prefab-variant-base-refresh-merge-review-v1`
+- **Status:** Completed.
+- **Gap:** `editor-productization` focused child slice.
+- Static guard literals:
+  - `Editor Prefab Variant Base Refresh Merge Review Implementation Plan`
+  - `PrefabVariantBaseRefreshPlan`
+  - `apply_prefab_variant_base_refresh`
+  - `duplicate target`
+  - `full nested prefab propagation`
+  - `make_prefab_variant_base_refresh_ui_model`
+  - `missing hints`
+  - `plan_prefab_variant_base_refresh`
+  - `prefab_variant_base_refresh`
+
+### 2026-05-10-editor-input-rebinding-axis-capture-keyboard-key-pair-v1.md
+- 2026-05-10-editor-input-rebinding-axis-capture-keyboard-key-pair-v1.md
+- Editor Input Rebinding Axis Capture Keyboard Key Pair v1 (2026-05-10)
+- **Plan ID:** `editor-input-rebinding-axis-capture-keyboard-key-pair-v1`
+- **Status:** Completed.
+
+### 2026-05-12-asset-identity-v2-command-apply-surface-evidence-v1.md
+- 2026-05-12-asset-identity-v2-command-apply-surface-evidence-v1.md
+- Asset Identity v2 Command Apply Surface Evidence v1 (2026-05-12)
+- **Plan ID:** `asset-identity-v2-command-apply-surface-evidence-v1`
+- **Status:** Completed
+- **Gap:** `asset-identity-v2`
+
+### 2026-05-12-asset-identity-v2-reference-cleanup-milestone-v1.md
+- 2026-05-12-asset-identity-v2-reference-cleanup-milestone-v1.md
+- Asset Identity v2 Reference Cleanup Milestone Implementation Plan (2026-05-12)
+- **Goal:** Close the `asset-identity-v2` `scene/render/UI/gameplay reference cleanup` blocker by adding testable Asset Identity v2 provenance at runtime-scene boundaries and by requiring generated/game source package references to derive from `AssetKeyV2`.
+- **Plan ID:** `asset-identity-v2-reference-cleanup-milestone-v1`
+- **Status:** Completed.
+- **Gap:** `asset-identity-v2`
+
+### 2026-05-12-asset-identity-v2-scene-runtime-reference-placement-evidence-v1.md
+- 2026-05-12-asset-identity-v2-scene-runtime-reference-placement-evidence-v1.md
+- Asset Identity v2 Scene Runtime Reference Placement Evidence v1 Implementation Plan (2026-05-12)
+- **Plan ID:** `asset-identity-v2-scene-runtime-reference-placement-evidence-v1`
+- **Status:** Completed
+- **Goal:** Add deterministic Asset Identity v2 placement evidence to the reviewed Scene v2 runtime package migration surface so scene-side mesh/material/sprite references prove which stable `AssetKeyV2` rows produced the runtime `AssetId` values.
+
+### 2026-05-12-editor-content-browser-source-registry-population-v1.md
+- 2026-05-12-editor-content-browser-source-registry-population-v1.md
+- Editor Content Browser Source Registry Population v1 Implementation Plan (2026-05-12)
+- **Plan ID:** `editor-content-browser-source-registry-population-v1`
+- **Status:** Completed
+- **Goal:** Let the GUI-independent editor Content Browser populate rows directly from `GameEngine.SourceAssetRegistry.v1` while preserving existing `AssetId` selection and retained Assets panel behavior.
+
+### 2026-05-12-editor-productization-1-0-scope-closeout-v1.md
+- 2026-05-12-editor-productization-1-0-scope-closeout-v1.md
+- Editor Productization 1.0 Scope Closeout v1 (2026-05-12)
+- **Plan ID:** `editor-productization-1-0-scope-closeout-v1`
+- **Status:** Completed
+- **Gap:** `editor-productization`
+
+### 2026-05-12-editor-source-registry-visible-content-browser-v1.md
+- 2026-05-12-editor-source-registry-visible-content-browser-v1.md
+- Editor Source Registry Visible Content Browser v1 Implementation Plan
+- **Goal:** Make the visible `MK_editor` Assets panel load the project-owned `GameEngine.SourceAssetRegistry.v1` file and show source-registry-backed Content Browser rows without falling back to hard-coded cooked registry rows when a reviewed registry is available.
+
+### 2026-05-12-runtime-resource-v2-resident-package-replacement-commit-v1.md
+- 2026-05-12-runtime-resource-v2-resident-package-replacement-commit-v1.md
+- Runtime Resource v2 Resident Package Replacement Commit v1 (2026-05-12)
+- **Status:** Completed
+- **Gap:** `runtime-resource-v2` foundation follow-up
+
+### 2026-05-12-runtime-resource-v2-resident-unmount-cache-refresh-v1.md
+- 2026-05-12-runtime-resource-v2-resident-unmount-cache-refresh-v1.md
+- Runtime Resource v2 Resident Unmount Cache Refresh v1 (2026-05-12)
+- **Plan ID:** `runtime-resource-v2-resident-unmount-cache-refresh-v1`
+- **Status:** Completed
+
+### 2026-05-12-runtime-resource-v2-streaming-resident-mount-commit-v1.md
+- 2026-05-12-runtime-resource-v2-streaming-resident-mount-commit-v1.md
+- Runtime Resource v2 Streaming Resident Mount Commit v1 (2026-05-12)
+- **Plan ID:** `runtime-resource-v2-streaming-resident-mount-commit-v1`
+- **Status:** Completed
+
+### 2026-05-15-runtime-package-streaming-resident-replace-v1.md
+- 2026-05-15-runtime-package-streaming-resident-replace-v1.md
+- Runtime Package Streaming Resident Replace v1 (2026-05-15)
+- **Plan ID:** `runtime-package-streaming-resident-replace-v1`
+
+### 2026-05-16-frame-graph-postprocess-scene-pass-ownership-v1.md
+- 2026-05-16-frame-graph-postprocess-scene-pass-ownership-v1.md
+- Frame Graph Postprocess Scene Pass Ownership v1 Implementation Plan
+- **Goal:** Move `RhiPostprocessFrameRenderer` scene pass command recording under `execute_frame_graph_rhi_texture_schedule` without broad renderer-wide migration.
+- **Plan ID:** `frame-graph-postprocess-scene-pass-ownership-v1`
+- **Status:** Completed.
+
+### 2026-05-16-frame-graph-rhi-pass-target-access-validation-v1.md
+- 2026-05-16-frame-graph-rhi-pass-target-access-validation-v1.md
+- Frame Graph RHI Pass Target Access Validation v1 Implementation Plan
+- **Goal:** Make frame graph RHI pass target-state rows fail closed unless they match a declared writer access for the same pass/resource pair.
+- **Plan ID:** `frame-graph-rhi-pass-target-access-validation-v1`
+- **Status:** Completed.
+
+### 2026-05-16-frame-graph-rhi-pass-target-state-execution-v1.md
+- 2026-05-16-frame-graph-rhi-pass-target-state-execution-v1.md
+- Frame Graph RHI Pass Target State Execution v1 Implementation Plan
+- **Goal:** Move Frame Graph RHI texture execution from inter-pass/final-state barriers only to also owning declared per-pass writer texture preparation before pass callbacks run.
+- **Plan ID:** `frame-graph-rhi-pass-target-state-execution-v1`
+- **Status:** Completed.
+
+### 2026-05-16-frame-graph-rhi-primary-pass-ownership-v1.md
+- 2026-05-16-frame-graph-rhi-primary-pass-ownership-v1.md
+- Frame Graph RHI Primary Pass Ownership v1 Implementation Plan
+- **Goal:** Move `RhiFrameRenderer` primary color pass timing into the Frame Graph RHI executor so the simple renderer path participates in production pass ownership without native handle exposure.
+- **Status:** Completed.
+
+### 2026-05-16-frame-graph-shadow-scratch-color-target-state-ownership-v1.md
+- 2026-05-16-frame-graph-shadow-scratch-color-target-state-ownership-v1.md
+- Frame Graph Shadow Scratch Color Target-State Ownership v1 Implementation Plan
+- **Goal:** Move the `RhiDirectionalShadowSmokeFrameRenderer` `shadow_color` scratch render-target first-use state preparation under `execute_frame_graph_rhi_texture_schedule`.
+- **Plan ID:** `frame-graph-shadow-scratch-color-target-state-ownership-v1`
+- **Status:** Completed.
+
+### 2026-05-16-frame-graph-shared-texture-state-handoff-v1.md
+- 2026-05-16-frame-graph-shared-texture-state-handoff-v1.md
+- Frame Graph Shared Texture State Handoff v1 Implementation Plan
+- **Goal:** Make Frame Graph RHI texture barrier/pass-target/final-state execution track state by shared `TextureHandle` when multiple frame-graph resource binding rows intentionally refer to the same backend-neutral transient texture lease.
+- **Status:** Completed.
+
+### 2026-05-16-frame-graph-transient-texture-alias-plan-v1.md
+- 2026-05-16-frame-graph-transient-texture-alias-plan-v1.md
+- Frame Graph Transient Texture Alias Planning v1 Implementation Plan
+- **Goal:** Add a backend-neutral Frame Graph v1 transient texture lifetime and alias planning contract that can prove conservative alias groups before native heap aliasing execution exists.
+
+### 2026-05-16-frame-graph-transient-texture-lease-binding-v1.md
+- 2026-05-16-frame-graph-transient-texture-lease-binding-v1.md
+- Frame Graph Transient Texture Lease Binding v1 Implementation Plan
+- **Goal:** Bind the existing Frame Graph transient texture alias plan to backend-neutral `IRhiDevice` transient texture leases without claiming native heap aliasing or backend aliasing barriers.
+- **Status:** Completed.
+
+### 2026-05-16-frame-graph-viewport-surface-color-state-executor-v1.md
+- 2026-05-16-frame-graph-viewport-surface-color-state-executor-v1.md
+- Frame Graph Viewport Surface Color State Executor v1 Implementation Plan
+- **Goal:** Route `RhiViewportSurface` color-target state changes through the Frame Graph RHI texture executor so high-level renderer sources no longer call `IRhiCommandList::transition_texture` directly outside `frame_graph_rhi.cpp`.
+- **Status:** Completed.
+
+### 2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md
+- 2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md
+- Renderer RHI Resource Foundation 1.0 Scope Closeout v1 Implementation Plan
+- **Goal:** Close `renderer-rhi-resource-foundation` for the Engine 1.0 Windows-default renderer/RHI foundation surface without broadening frame graph, upload/staging, Metal, allocator-enforcement, native-handle, or renderer-quality claims.
+- Static guard literals:
+  - `$($check.Path) renderer-rhi-resource-foundation closeout evidence`
+  - `D3D12/Vulkan deferred native teardown`
+  - `Metal IRhiDevice parity`
+  - `Renderer RHI Resource Foundation 1.0 Scope Closeout`
+  - `RhiDeviceMemoryDiagnostics`
+  - `engine manifest aiOperableProductionLoop frame-graph-v1 gap must leave unsupportedProductionGaps after 1.0 scope closeout`
+  - `engine/agent/manifest.json aiOperableProductionLoop frame-graph-v1 gap must leave unsupportedProductionGaps after 1.0 scope closeout`
+  - `frame-graph-v1`
+  - `upload-staging-v1`
+
+### 2026-05-16-runtime-resource-v2-1-0-scope-closeout-v1.md
+- 2026-05-16-runtime-resource-v2-1-0-scope-closeout-v1.md
+- Runtime Resource v2 1.0 Scope Closeout Implementation Plan
+- **Goal:** Close the `runtime-resource-v2` 1.0 foundation follow-up by recording the implemented reviewed safe-point, residency, streaming, and hot-reload surfaces without broadening claims beyond evidence.
+- **Plan ID:** `runtime-resource-v2-1-0-scope-closeout-v1`
+- **Status:** Completed.
+- **Gap:** `runtime-resource-v2`
+- Static guard literals:
+  - `$($check.Path) runtime-resource-v2 closeout evidence`
+  - `Runtime Resource v2 1.0 Scope Closeout`
+  - `engine/agent/manifest.json aiOperableProductionLoop renderer-rhi-resource-foundation gap must leave unsupportedProductionGaps after 1.0 scope closeout`
+  - `native file watcher ownership`
+  - `renderer-rhi-resource-foundation`
+
+### 2026-05-17-frame-graph-automatic-aliasing-barrier-insertion-v1.md
+- 2026-05-17-frame-graph-automatic-aliasing-barrier-insertion-v1.md
+- Frame Graph Automatic Aliasing Barrier Insertion v1 Implementation Plan
+
+### 2026-05-17-frame-graph-d3d12-overlapping-placed-texture-alias-execution-v1.md
+- 2026-05-17-frame-graph-d3d12-overlapping-placed-texture-alias-execution-v1.md
+- Frame Graph D3D12 Overlapping Placed Texture Alias Execution v1 Implementation Plan
+- **Goal:** Prove D3D12 backend-private overlapping placed texture alias barrier recording and submit-time state bookkeeping with distinct resource handles and non-null aliasing barriers.
+- **Status:** Completed.
+
+### 2026-05-17-frame-graph-d3d12-placed-transient-texture-lease-v1.md
+- 2026-05-17-frame-graph-d3d12-placed-transient-texture-lease-v1.md
+- Frame Graph D3D12 Placed Transient Texture Lease v1 Implementation Plan
+- **Goal:** Back D3D12 `IRhiDevice::acquire_transient_texture` leases with backend-private native heaps and placed resources.
+- **Status:** Completed.
+
+### 2026-05-17-frame-graph-directional-shadow-render-pass-envelope-v1.md
+- 2026-05-17-frame-graph-directional-shadow-render-pass-envelope-v1.md
+- Frame Graph Directional Shadow Render Pass Envelope v1 (2026-05-17)
+- **Plan ID:** `frame-graph-directional-shadow-render-pass-envelope-v1`
+- **Status:** Completed slice for `frame-graph-v1`.
+
+### 2026-05-17-frame-graph-multiqueue-package-evidence-v1.md
+- 2026-05-17-frame-graph-multiqueue-package-evidence-v1.md
+- Frame Graph Multi-Queue Package Evidence v1 (2026-05-17)
+- **Plan ID:** `frame-graph-multiqueue-package-evidence-v1`
+- **Status:** Completed slice under `frame-graph-v1`.
+
+### 2026-05-17-frame-graph-package-streaming-texture-binding-handoff-v1.md
+- 2026-05-17-frame-graph-package-streaming-texture-binding-handoff-v1.md
+- Frame Graph Package Streaming Texture Binding Handoff v1 Implementation Plan (2026-05-17)
+- **Plan ID:** `frame-graph-package-streaming-texture-binding-handoff-v1`
+- **Status:** Completed.
+
+### 2026-05-17-frame-graph-primary-pass-target-state-evidence-v1.md
+- 2026-05-17-frame-graph-primary-pass-target-state-evidence-v1.md
+- Frame Graph Primary Pass Target-State Evidence v1 - 2026-05-17
+
+### 2026-05-17-frame-graph-public-null-aliasing-barriers-v1.md
+- 2026-05-17-frame-graph-public-null-aliasing-barriers-v1.md
+- Frame Graph Public Null Aliasing Barriers v1
+- **Goal:** Promote public wildcard/null texture aliasing barriers from unsupported to a backend-neutral Frame Graph/RHI contract.
+
+### 2026-05-17-frame-graph-remaining-render-pass-envelopes-v1.md
+- 2026-05-17-frame-graph-remaining-render-pass-envelopes-v1.md
+- Frame Graph Remaining Render Pass Envelopes v1 (2026-05-17)
+- **Plan ID:** `frame-graph-remaining-render-pass-envelopes-v1`
+- **Status:** Completed slice for `frame-graph-v1`.
+
+### 2026-05-17-frame-graph-render-pass-envelope-v1.md
+- 2026-05-17-frame-graph-render-pass-envelope-v1.md
+- Frame Graph Render Pass Envelope v1 (2026-05-17)
+- **Plan ID:** `frame-graph-render-pass-envelope-v1`
+- **Status:** Completed.
+
+### 2026-05-17-frame-graph-render-pass-package-evidence-v1.md
+- 2026-05-17-frame-graph-render-pass-package-evidence-v1.md
+- 2026-05-17 Frame Graph Render Pass Package Evidence v1
+
+### 2026-05-17-frame-graph-render-pass-stats-evidence-v1.md
+- 2026-05-17-frame-graph-render-pass-stats-evidence-v1.md
+- Frame Graph Render Pass Stats Evidence v1 (2026-05-17)
+- **Plan ID:** `frame-graph-render-pass-stats-evidence-v1`
+- **Status:** Completed.
+
+### 2026-05-17-frame-graph-rhi-multiqueue-executor-v1.md
+- 2026-05-17-frame-graph-rhi-multiqueue-executor-v1.md
+- Frame Graph RHI Multi-Queue Executor v1
+- **Goal:** Add a backend-neutral Frame Graph RHI executor that opens native RHI command lists on declared pass queues, submits each pass, and records cross-queue waits only after producer pass fences exist.
+
+### 2026-05-17-frame-graph-rhi-multiqueue-texture-barrier-execution-v1.md
+- 2026-05-17-frame-graph-rhi-multiqueue-texture-barrier-execution-v1.md
+- Frame Graph RHI Multi-Queue Texture Barrier Execution v1
+- **Goal:** Let the backend-neutral Frame Graph RHI multi-queue executor optionally record scheduled texture barriers on the consumer pass command list after producer queue waits and before the consumer callback.
+
+### 2026-05-17-frame-graph-rhi-queue-dependency-plan-v1.md
+- 2026-05-17-frame-graph-rhi-queue-dependency-plan-v1.md
+- Frame Graph RHI Queue Dependency Plan v1 - 2026-05-17
+
+### 2026-05-17-runtime-mesh-frame-graph-command-evidence-v1.md
+- 2026-05-17-runtime-mesh-frame-graph-command-evidence-v1.md
+- Runtime Mesh Frame Graph Command Evidence v1 (2026-05-17)
+- **Status:** Completed
+- **Gap:** `frame-graph-v1`
+
+### 2026-05-17-runtime-morph-mesh-frame-graph-command-evidence-v1.md
+- 2026-05-17-runtime-morph-mesh-frame-graph-command-evidence-v1.md
+- Runtime Morph Mesh Frame Graph Command Evidence v1 (2026-05-17)
+- **Status:** Completed
+- **Gap:** `frame-graph-v1`
+
+### 2026-05-17-runtime-skinned-mesh-frame-graph-command-evidence-v1.md
+- 2026-05-17-runtime-skinned-mesh-frame-graph-command-evidence-v1.md
+- Runtime Skinned Mesh Frame Graph Command Evidence v1 (2026-05-17)
+- **Status:** Completed
+- **Gap:** `frame-graph-v1`
+
+### 2026-05-17-runtime-upload-frame-graph-transition-evidence-v1.md
+- 2026-05-17-runtime-upload-frame-graph-transition-evidence-v1.md
+- Runtime Upload Frame Graph Transition Evidence v1 (2026-05-17)
+- **Plan ID:** `runtime-upload-frame-graph-transition-evidence-v1`
+- **Status:** Completed slice under `frame-graph-v1`.
+
+### 2026-05-18-2d-playable-vertical-slice-1-0-closeout-v1.md
+- 2026-05-18-2d-playable-vertical-slice-1-0-closeout-v1.md
+- 2D Playable Vertical Slice 1.0 Closeout v1 (2026-05-18)
+- **Gap:** `2d-playable-vertical-slice`
+- **Status:** Completed
+
+### 2026-05-18-3d-playable-vertical-slice-1-0-closeout-v1.md
+- 2026-05-18-3d-playable-vertical-slice-1-0-closeout-v1.md
+- 3D Playable Vertical Slice 1.0 Closeout v1 (2026-05-18)
+- **Gap:** `3d-playable-vertical-slice`
+- **Status:** Completed
+
+### 2026-05-18-frame-graph-multiqueue-render-pass-execution-v1.md
+- 2026-05-18-frame-graph-multiqueue-render-pass-execution-v1.md
+- 2026-05-18 Frame Graph Multi-Queue Render Pass Execution v1
+- **Plan ID:** `frame-graph-multiqueue-render-pass-execution-v1`
+- **Status:** Completed.
+
+### 2026-05-18-frame-graph-transient-alias-content-initialization-v1.md
+- 2026-05-18-frame-graph-transient-alias-content-initialization-v1.md
+- 2026-05-18 Frame Graph Transient Alias Content Initialization v1
+
+### 2026-05-18-frame-graph-v1-production-ownership-milestone-v1.md
+- 2026-05-18-frame-graph-v1-production-ownership-milestone-v1.md
+- 2026-05-18 Frame Graph v1 Production Ownership Milestone v1
+- **Status:** Completed.
+
+### 2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md
+- 2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md
+- Production UI Importer Platform Adapters 1.0 Closeout v1 Implementation Plan
+- **Goal:** Close `production-ui-importer-platform-adapters` for the Engine 1.0 Windows-default ready surface without claiming broad low-level UI, codec, or platform-service parity.
+- **Plan ID:** `production-ui-importer-platform-adapters-1-0-closeout-v1`
+- **Status:** Completed
+- reviewed adapter-boundary and package evidence
+- AccessibilityPublishPlan
+- ImeCompositionPublishPlan
+- PlatformTextInputSessionPlan
+- TextShapingRequestPlan
+- FontRasterizationRequestPlan
+- ImageDecodeRequestPlan
+- PngImageDecodingAdapter
+- author_packed_ui_atlas_from_decoded_images
+- author_packed_ui_glyph_atlas_from_rasterized_glyphs
+- selected SDL3 platform bridges
+- package-visible native UI overlay/atlas smokes
+- production text shaping implementation
+- real font loading/rasterization
+- OS accessibility publication
+- broad native IME/text services
+- broader source codecs
+- SVG/vector parsing
+- renderer texture-upload APIs
+- arbitrary importer adapters
+- UI middleware
+- full-repository-quality-gate
+
+### 2026-05-18-runtime-package-streaming-rhi-upload-binding-transaction-v1.md
+- 2026-05-18-runtime-package-streaming-rhi-upload-binding-transaction-v1.md
+- Runtime Package Streaming RHI Upload Binding Transaction v1 - 2026-05-18
+
+### 2026-05-18-scene-v2-command-authored-runtime-workflow-validation-v1.md
+- 2026-05-18-scene-v2-command-authored-runtime-workflow-validation-v1.md
+- Scene v2 Command-Authored Runtime Workflow Validation v1
+- **Status:** Completed.
+- **Goal:** Narrow `scene-component-prefab-schema-v2` by proving reviewed Scene/Prefab v2 authoring commands can feed source asset registration, registered cook, Scene v2 runtime migration, and non-mutating runtime scene package validation in one host-independent workflow.
+
+### 2026-05-18-scene-v2-prefab-refresh-apply-v1.md
+- 2026-05-18-scene-v2-prefab-refresh-apply-v1.md
+- Scene v2 Prefab Refresh Apply v1 (2026-05-18)
+- **Plan ID:** `scene-v2-prefab-refresh-apply-v1`
+- **Status:** Completed
+
+### 2026-05-18-scene-v2-prefab-refresh-command-surface-v1.md
+- 2026-05-18-scene-v2-prefab-refresh-command-surface-v1.md
+- Scene v2 Prefab Refresh Command Surface v1 - 2026-05-18
+
+### 2026-05-18-scene-v2-prefab-refresh-integrity-v1.md
+- 2026-05-18-scene-v2-prefab-refresh-integrity-v1.md
+- Scene v2 Prefab Refresh Integrity v1 (2026-05-18)
+- **Plan ID:** `scene-v2-prefab-refresh-integrity-v1`
+- **Status:** Completed
+- **Gap:** `scene-component-prefab-schema-v2`
+
+### 2026-05-18-scene-v2-prefab-refresh-local-ownership-guard-v1.md
+- 2026-05-18-scene-v2-prefab-refresh-local-ownership-guard-v1.md
+- Scene v2 Prefab Refresh Local Ownership Guard v1 - 2026-05-18
+- **Status:** Completed
+
+### 2026-05-18-scene-v2-prefab-refresh-nested-guard-v1.md
+- 2026-05-18-scene-v2-prefab-refresh-nested-guard-v1.md
+- Scene v2 Prefab Refresh Nested Guard v1 (2026-05-18)
+- **Plan ID:** `scene-v2-prefab-refresh-nested-guard-v1`
+- **Status:** Completed
+- **Gap:** `scene-component-prefab-schema-v2`
+
+### 2026-05-18-scene-v2-prefab-source-provenance-v1.md
+- 2026-05-18-scene-v2-prefab-source-provenance-v1.md
+- Scene v2 Prefab Source Provenance v1 (2026-05-18)
+- **Plan ID:** `scene-v2-prefab-source-provenance-v1`
+- **Status:** Completed
+- **Gap:** `scene-component-prefab-schema-v2`
+
+### 2026-05-18-scene-v2-stable-id-prefab-refresh-plan-v1.md
+- 2026-05-18-scene-v2-stable-id-prefab-refresh-plan-v1.md
+- Scene v2 Stable-Id Prefab Refresh Plan v1 (2026-05-18)
+- **Plan ID:** `scene-v2-stable-id-prefab-refresh-plan-v1`
+- **Status:** Completed
+- **Gap:** `scene-component-prefab-schema-v2`
+
+### 2026-05-18-upload-staging-v1-async-ready-resource-updates-v1.md
+- 2026-05-18-upload-staging-v1-async-ready-resource-updates-v1.md
+- Upload Staging v1 Async-Ready Resource Updates Implementation Plan
+- **Status:** Completed.
+- **Goal:** Close the remaining `upload-staging-v1` ready-claim blocker by proving selected package resource updates are ready only after submitted upload fences are available and graphics-queue consumption waits are recorded.
+- Static guard literals:
+  - ` `
+  - `$($check.Path) upload-staging-v1 closeout evidence`
+  - `2026-05-18-upload-staging-v1-package-static-mesh-upload-binding-transaction-v1.md`
+  - `2026-05-18-upload-staging-v1-runtime-buffer-ring-backed-uploads-v1.md`
+  - `2026-05-18-upload-staging-v1-runtime-ring-backed-texture-upload-v1.md`
+  - `2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md`
+  - `2026-05-18-upload-staging-v1-staging-pool-lease-adoption-v1.md`
+  - `2d-playable-vertical-slice`
+  - `3d-playable-vertical-slice`
+  - `6 pass callbacks/15 barrier steps`
+  - `Frame Graph Automatic Aliasing Barrier Insertion v1`
+  - `Frame Graph Backend-Neutral Distinct Alias-Group Lease Binding v1`
+  - `Frame Graph D3D12 Texture Aliasing Barrier Evidence v1`
+  - `Frame Graph RHI Multi-Queue Executor v1`
+  - `Frame Graph RHI Multi-Queue Texture Barrier Execution v1`
+  - `Frame Graph RHI Pass Target Access Validation v1`
+  - `Frame Graph RHI Queue Dependency Plan v1`
+  - `Frame Graph Remaining Render Pass Envelopes v1`
+  - `Frame Graph Render Pass Envelope v1`
+  - `Frame Graph Shadow Scratch Color Target-State Ownership v1`
+  - `Frame Graph Shared Texture State Handoff v1`
+  - `Frame Graph Texture Aliasing Barrier Command v1`
+  - `Frame Graph Transient Texture Alias Planning v1`
+  - `Frame Graph Viewport Surface Color State Executor v1`
+  - `Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1`
+  - `FrameGraphRhiMultiQueueExecutionResult::barriers_recorded`
+  - `FrameGraphTexturePassTargetAccess`
+  - `FrameGraphTransientTextureAliasPlan`
+  - `FrameGraphTransientTextureLeaseBindingResult`
+  - `IRhiDevice::acquire_transient_texture_alias_group`
+  - `IRhiDevice::wait_for_queue`
+  - `NavigationNavmeshPathRequest`
+  - `Package Static Mesh Upload Binding Transaction v1`
+  - `Package Streaming Frame Graph Texture Binding Handoff v1`
+  - `RhiPostprocessFrameRenderer scene pass command recording`
+  - `RhiStagingBufferLease`
+  - `RhiUploadRingDesc::buffer`
+  - `RhiViewportSurface`
+  - `Runtime Buffer Ring-Backed Uploads v1`
+  - `Runtime Package Streaming RHI Upload Binding Transaction v1`
+  - `Runtime Ring-Backed Texture Upload v1`
+  - `Runtime Upload Queue Wait v1`
+  - `RuntimeMeshUploadOptions::upload_ring`
+  - `RuntimeMorphMeshUploadOptions::upload_ring`
+  - `RuntimePackageResourceUpdateReadinessResult`
+  - `RuntimePackageStreamingMeshUploadBindingResult`
+  - `RuntimePackageStreamingMeshUploadSource`
+  - `RuntimeSkinnedMeshUploadOptions::upload_ring`
+  - `RuntimeTextureUploadOptions::upload_ring`
+  - `Staging Pool Lease Adoption v1`
+  - `Upload Staging v1 Async-Ready Resource Updates`
+  - `acquire_frame_graph_transient_texture_lease_bindings`
+  - `broad/background streaming`
+  - `build_frame_graph_texture_pass_target_accesses`
+  - `conflicting initial shared-handle states`
+  - `editor-productization`
+  - `engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout`
+  - `engine manifest aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout`
+  - `engine manifest aiOperableProductionLoop recommendedNextPlan 3d closeout`
+  - `engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle`
+  - `engine/agent/manifest.json aiOperableProductionLoop $closedGameplayGapId gap must leave unsupportedProductionGaps after gameplay physics/navigation closeout`
+  - `engine/agent/manifest.json aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan 3d closeout`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan gameplay closeout evidence`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption`
+  - `engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext`
+  - `evaluate_physics_character_dynamic_policy_3d`
+  - `execute_frame_graph_rhi_multi_queue_schedule`
+  - `frame-graph-shadow-scratch-color-target-state-ownership-v1`
+  - `gameplay-2d-3d-package-evidence`
+  - `gameplay-physics-navigation-ai-foundation-v1`
+  - `generated desktop 3D package proof`
+  - `host-gated D3D12/Vulkan package smokes`
+  - `make_runtime_package_resource_update_readiness`
+  - `make_runtime_package_streaming_frame_graph_texture_bindings`
+  - `native UI overlay/atlas package counters`
+  - `navigation-navmesh-and-dynamic-obstacle-follow-up`
+  - `null_resource_aliasing_barriers`
+  - `package_upload_staging_resource_updates_ready`
+  - `physics-1-0-collision-system`
+  - `physics-advanced-dynamics-follow-up`
+  - `plan_frame_graph_rhi_queue_waits`
+  - `plan_frame_graph_transient_texture_aliases`
+  - `plan_navigation_navmesh_path`
+  - `record_frame_graph_texture_aliasing_barriers`
+  - `refresh-prefab-instance`
+  - `render_passes_recorded`
+  - `scene-component-prefab-schema-v2`
+  - `selected generated 2D and 3D package gameplay systems composition smokes`
+  - `shadow_color`
+  - `upload-staging-v1`
+  - `upload_queue_waits_recorded`
+  - `upload_runtime_package_streaming_frame_graph_texture_bindings`
+  - `upload_runtime_package_streaming_mesh_gpu_bindings`
+  - `viewport_color`
+  - `visible 3D aggregate counters`
+  - `wait_for_runtime_uploads_on_queue`
+
+### 2026-05-18-upload-staging-v1-package-static-mesh-upload-binding-transaction-v1.md
+- 2026-05-18-upload-staging-v1-package-static-mesh-upload-binding-transaction-v1.md
+- Upload Staging v1 Package Static Mesh Upload Binding Transaction v1 Implementation Plan
+- **Goal:** Add a host-owned package streaming transaction for resident static mesh payload uploads and renderer mesh bindings.
+
+### 2026-05-18-upload-staging-v1-runtime-buffer-ring-backed-uploads-v1.md
+- 2026-05-18-upload-staging-v1-runtime-buffer-ring-backed-uploads-v1.md
+- Upload Staging v1 Runtime Buffer Ring-Backed Uploads v1 Implementation Plan
+- **Goal:** Add opt-in caller-owned upload-ring staging for runtime mesh, skinned mesh, and morph mesh buffer uploads.
+
+### 2026-05-18-upload-staging-v1-runtime-ring-backed-texture-upload-v1.md
+- 2026-05-18-upload-staging-v1-runtime-ring-backed-texture-upload-v1.md
+- Upload Staging v1 Runtime Ring-Backed Texture Upload v1 Implementation Plan
+- **Goal:** Add an opt-in runtime texture upload path that uses a caller-owned `RhiUploadRing` and `RhiUploadStagingPlan` rows instead of allocating one staging buffer per texture upload.
+
+### 2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md
+- 2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md
+- Upload Staging v1 Runtime Upload Queue Wait v1 - 2026-05-18
+- **Status:** Completed.
+- **Goal:** Add runtime/package upload queue-consumption evidence so async copy-queue uploads can be made visible to graphics consumers through backend-neutral GPU-side queue waits.
+
+### 2026-05-18-upload-staging-v1-staging-pool-lease-adoption-v1.md
+- 2026-05-18-upload-staging-v1-staging-pool-lease-adoption-v1.md
+- Upload Staging v1 Staging Pool Lease Adoption v1 - 2026-05-18
+- **Status:** Completed.
+- **Goal:** Let host-owned staging-pool chunks back `RhiUploadRing` uploads so selected package upload transactions can reuse pooled staging buffers without creating per-transaction upload buffers.
+
+### 2026-05-19-engine-save-settings-profile-v1.md
+- 2026-05-19-engine-save-settings-profile-v1.md
+- Engine Save Settings Profile v1 (2026-05-19)
+- **Plan ID:** `engine-save-settings-profile-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+
+### 2026-05-19-engine-ui-game-menu-hud-v1.md
+- 2026-05-19-engine-ui-game-menu-hud-v1.md
+- Engine UI Game Menu HUD v1 (2026-05-19)
+- **Plan ID:** `engine-ui-game-menu-hud-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+
+### 2026-05-19-gameplay-authoring-foundation-v1.md
+- 2026-05-19-gameplay-authoring-foundation-v1.md
+- Gameplay Authoring Foundation v1 (2026-05-19)
+- **Plan ID:** `gameplay-authoring-foundation-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Not selected.
+
+### 2026-05-20-engine-asset-placeholder-generation-v1.md
+- 2026-05-20-engine-asset-placeholder-generation-v1.md
+- Engine Asset Placeholder Generation v1 (2026-05-20)
+- **Plan ID:** `engine-asset-placeholder-generation-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+
+### 2026-05-20-engine-gameplay-debug-overlay-v1.md
+- 2026-05-20-engine-gameplay-debug-overlay-v1.md
+- Engine Gameplay Debug Overlay v1 (2026-05-20)
+- **Plan ID:** `engine-gameplay-debug-overlay-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- Static guard literals:
+  - `RuntimeGameplayDebugOverlayPlan`
+  - `plan_runtime_gameplay_debug_overlay`
+
+### 2026-05-20-engine-inventory-items-crafting-v1.md
+- 2026-05-20-engine-inventory-items-crafting-v1.md
+- Engine Inventory Items Crafting v1 (2026-05-20)
+- **Plan ID:** `engine-inventory-items-crafting-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+
+### 2026-05-20-engine-quest-dialogue-state-v1.md
+- 2026-05-20-engine-quest-dialogue-state-v1.md
+- Engine Quest Dialogue State v1 (2026-05-20)
+- **Plan ID:** `engine-quest-dialogue-state-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+
+### 2026-05-20-sprite-animation-flipbook-v1.md
+- 2026-05-20-sprite-animation-flipbook-v1.md
+- Sprite Animation Flipbook v1 (2026-05-20)
+- **Plan ID:** `sprite-animation-flipbook-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+
+### 2026-05-20-sprite-batching-renderer-v1.md
+- 2026-05-20-sprite-batching-renderer-v1.md
+- Sprite Batching Renderer v1 (2026-05-20)
+- **Plan ID:** `sprite-batching-renderer-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+
+### 2026-05-21-engine-construction-placement-v1.md
+- 2026-05-21-engine-construction-placement-v1.md
+- Engine Construction Placement v1 (2026-05-21)
+- **Plan ID:** `engine-construction-placement-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+
+### 2026-05-21-engine-procedural-generation-v1.md
+- 2026-05-21-engine-procedural-generation-v1.md
+- Engine Procedural Generation v1 (2026-05-21)
+- **Plan ID:** `engine-procedural-generation-v1`
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.
+- **Status:** Completed.

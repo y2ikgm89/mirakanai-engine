@@ -74,7 +74,7 @@ foreach ($docText in @($currentCapabilitiesText, $aiGameDevelopmentText, $roadma
     Assert-ContainsText $docText "scene_gpu_compute_morph_async_" "Generated 3D compute morph async telemetry package smoke docs"
     Assert-ContainsText $docText "package-visible" "Generated 3D compute morph queue sync package smoke docs"
 }
-$currentCapabilitiesInputTimeline = [regex]::Match($currentCapabilitiesText, '(?m)^`docs/superpowers/plans/2026-05-06-2d-sprite-animation-package-v1\.md`.*$')
+$currentCapabilitiesInputTimeline = [regex]::Match($currentCapabilitiesText, '(?m)^`2D Sprite Animation Package v1`.*$')
 Assert-ContainsText $currentCapabilitiesInputTimeline.Value "RuntimeInputRebindingPresentationModel" "current capabilities input timeline summary"
 Assert-ContainsText $currentCapabilitiesInputTimeline.Value "platform input glyph generation" "current capabilities input timeline summary"
 $roadmapRuntimePresentationFoundationRow = [regex]::Match($roadmapText, '(?m)^- Runtime Input Rebinding Presentation Rows v1.*$')
@@ -2085,7 +2085,7 @@ foreach ($check in @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-16-runtime-resource-v2-1-0-scope-closeout-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Runtime Resource v2 1.0 Scope Closeout",
             "renderer-rhi-resource-foundation",
@@ -2105,7 +2105,7 @@ if ($rendererRhiGap.Count -ne 0) {
 }
 foreach ($check in @(
     @{
-        Path = "docs/superpowers/plans/2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Renderer RHI Resource Foundation 1.0 Scope Closeout",
             "D3D12/Vulkan deferred native teardown",
@@ -2148,7 +2148,7 @@ if ($uploadStagingGap.Count -ne 0) {
 }
 foreach ($check in @(
     @{
-        Path = "docs/superpowers/plans/2026-05-18-upload-staging-v1-async-ready-resource-updates-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Upload Staging v1 Async-Ready Resource Updates",
             "make_runtime_package_resource_update_readiness",
@@ -2213,25 +2213,25 @@ Assert-ContainsText $recommendedText "Runtime Package Streaming RHI Upload Bindi
 Assert-ContainsText $recommendedText "upload_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
 Assert-ContainsText $recommendedText "Runtime Ring-Backed Texture Upload v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
 Assert-ContainsText $recommendedText "RuntimeTextureUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
-Assert-ContainsText $recommendedText "2026-05-18-upload-staging-v1-runtime-ring-backed-texture-upload-v1.md" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
+Assert-ContainsText $recommendedText "Upload Staging v1 Runtime Ring Backed Texture Upload v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
 Assert-ContainsText $recommendedText "Runtime Buffer Ring-Backed Uploads v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
 Assert-ContainsText $recommendedText "RuntimeMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
 Assert-ContainsText $recommendedText "RuntimeSkinnedMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
 Assert-ContainsText $recommendedText "RuntimeMorphMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
-Assert-ContainsText $recommendedText "2026-05-18-upload-staging-v1-runtime-buffer-ring-backed-uploads-v1.md" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
+Assert-ContainsText $recommendedText "Upload Staging v1 Runtime Buffer Ring Backed Uploads v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
 Assert-ContainsText $recommendedText "Package Static Mesh Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
 Assert-ContainsText $recommendedText "RuntimePackageStreamingMeshUploadSource" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
 Assert-ContainsText $recommendedText "RuntimePackageStreamingMeshUploadBindingResult" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
 Assert-ContainsText $recommendedText "upload_runtime_package_streaming_mesh_gpu_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
-Assert-ContainsText $recommendedText "2026-05-18-upload-staging-v1-package-static-mesh-upload-binding-transaction-v1.md" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+Assert-ContainsText $recommendedText "Upload Staging v1 Package Static Mesh Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
 Assert-ContainsText $recommendedText "Runtime Upload Queue Wait v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
 Assert-ContainsText $recommendedText "wait_for_runtime_uploads_on_queue" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
 Assert-ContainsText $recommendedText "upload_queue_waits_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
-Assert-ContainsText $recommendedText "2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
+Assert-ContainsText $recommendedText "Upload Staging v1 Runtime Upload Queue Wait v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
 Assert-ContainsText $recommendedText "Staging Pool Lease Adoption v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
 Assert-ContainsText $recommendedText "RhiStagingBufferLease" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
 Assert-ContainsText $recommendedText "RhiUploadRingDesc::buffer" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
-Assert-ContainsText $recommendedText "2026-05-18-upload-staging-v1-staging-pool-lease-adoption-v1.md" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
+Assert-ContainsText $recommendedText "Upload Staging v1 Staging Pool Lease Adoption v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
 Assert-ContainsText $recommendedText "Frame Graph Automatic Aliasing Barrier Insertion v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"

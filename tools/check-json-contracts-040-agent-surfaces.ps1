@@ -378,7 +378,7 @@ if ($rendererRhiGap.Count -ne 0) {
 }
 foreach ($check in @(
     @{
-        Path = "docs/superpowers/plans/2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Renderer RHI Resource Foundation 1.0 Scope Closeout",
             "D3D12/Vulkan deferred native teardown",
@@ -421,7 +421,7 @@ if ($uploadStagingGap.Count -ne 0) {
 }
 foreach ($check in @(
     @{
-        Path = "docs/superpowers/plans/2026-05-18-upload-staging-v1-async-ready-resource-updates-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Upload Staging v1 Async-Ready Resource Updates",
             "make_runtime_package_resource_update_readiness",
@@ -468,7 +468,7 @@ foreach ($needle in @(
     "FrameGraphTexturePassTargetAccess",
     "build_frame_graph_texture_pass_target_accesses",
     "RhiPostprocessFrameRenderer scene pass command recording",
-    "frame-graph-shadow-scratch-color-target-state-ownership-v1",
+    "Frame Graph Shadow Scratch Color Target-State Ownership v1",
     "shadow_color",
     "6 pass callbacks/15 barrier steps",
     "Frame Graph Viewport Surface Color State Executor v1",
@@ -530,7 +530,7 @@ $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps |
 if ($productionUiImporterPlatformGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md"
+$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Production UI Importer Platform Adapters 1.0 Closeout",
     "reviewed adapter-boundary and package evidence",
@@ -875,7 +875,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI glyph atlas package bridge plan missing required evidence: $needle"
     }
 }
-$runtimeInputRebindingCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-capture-contract-v1.md") -Raw
+$runtimeInputRebindingCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime Input Rebinding Capture Contract v1",
     "**Status:** Completed",
@@ -888,7 +888,7 @@ foreach ($needle in @(
         Write-Error "Runtime input rebinding capture plan missing required evidence: $needle"
     }
 }
-$runtimeInputRebindingFocusConsumptionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-focus-consumption-v1.md") -Raw
+$runtimeInputRebindingFocusConsumptionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime Input Rebinding Focus Consumption v1",
     "**Status:** Completed",
@@ -903,7 +903,7 @@ foreach ($needle in @(
         Write-Error "Runtime input rebinding focus consumption plan missing required evidence: $needle"
     }
 }
-$runtimeInputRebindingPresentationRowsPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-presentation-rows-v1.md") -Raw
+$runtimeInputRebindingPresentationRowsPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime Input Rebinding Presentation Rows v1",
     "**Status:** Completed",
@@ -921,7 +921,7 @@ foreach ($needle in @(
         Write-Error "Runtime input rebinding presentation rows plan missing required evidence: $needle"
     }
 }
-$editorInputRebindingActionCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-editor-input-rebinding-action-capture-panel-v1.md") -Raw
+$editorInputRebindingActionCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Editor Input Rebinding Action Capture Panel v1",
     "**Status:** Completed",

@@ -607,7 +607,7 @@ $editorAiReviewedValidationExecutionChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-ai-host-gated-validation-execution-ack-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Host-Gated Validation Execution Ack v1",
             "acknowledge_host_gates",
@@ -786,7 +786,7 @@ $editorAiReviewedValidationBatchExecutionChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-ai-reviewed-validation-batch-execution-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor AI Reviewed Validation Batch Execution v1 Implementation Plan",
             "EditorAiReviewedValidationExecutionBatchModel",
@@ -985,10 +985,10 @@ $editorContentBrowserImportPanelChecks = @(
     @{
         Path = "docs/roadmap.md"
         Needles = @(
-            "2026-05-12-editor-source-registry-visible-content-browser-v1.md",
+            "Editor Source Registry Visible Content Browser v1",
             "visible `MK_editor` source registry loading is complete",
             "Editor Content Browser Import Diagnostics v1",
-            "2026-05-12-editor-content-browser-source-registry-population-v1.md",
+            "Editor Content Browser Source Registry Population v1",
             "EditorContentBrowserImportPanelModel",
             "hot-reload summaries",
             "broad editor/importer readiness"
@@ -1177,7 +1177,7 @@ $editorContentBrowserImportNativeDialogChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-content-browser-import-native-dialog-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Content Browser Import Native Dialog v1 Implementation Plan",
             "EditorContentBrowserImportOpenDialogModel",
@@ -1302,7 +1302,7 @@ $editorContentBrowserImportExternalCopyReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-content-browser-import-external-copy-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Content Browser Import External Copy Review v1 Implementation Plan",
             "content_browser_import.external_copy",
@@ -1377,7 +1377,7 @@ foreach ($check in $editorContentBrowserImportExternalCopyReviewChecks) {
 
 $editorContentBrowserImportCodecAdapterCompletedPlanChecks = @(
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-content-browser-import-codec-adapter-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Content Browser Import Codec Adapter Review v1 Implementation Plan",
             "ExternalAssetImportAdapters",
@@ -1877,7 +1877,7 @@ $editorMaterialAssetPreviewPanelChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-material-gpu-preview-execution-evidence-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "editor-material-gpu-preview-execution-evidence-v1",
             "EditorMaterialGpuPreviewExecutionSnapshot",

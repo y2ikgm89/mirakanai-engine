@@ -720,7 +720,7 @@ $frameGraphRhiTextureSchedulePlanText =
 $rhiUploadStaleGenerationPlanText =
     Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 $runtimeUploadQueueWaitPlanText =
-    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md") -Raw
+    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 $runtimePackageUploadStagingEvidencePlanText =
     Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 $rendererCmakeText = Get-Content -LiteralPath (Join-Path $root "engine/renderer/CMakeLists.txt") -Raw

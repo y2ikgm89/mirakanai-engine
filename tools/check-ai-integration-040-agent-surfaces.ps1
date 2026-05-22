@@ -335,7 +335,7 @@ $editorRuntimeHostPlaytestLaunchChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-runtime-host-playtest-launch-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Runtime Host Playtest Launch v1 Implementation Plan",
             "EditorRuntimeHostPlaytestLaunchModel",
@@ -1451,7 +1451,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-profiler-trace-import-reconstruction-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Profiler Trace Import Reconstruction v1 Implementation Plan",
             "DiagnosticsTraceImportResult",
@@ -1464,7 +1464,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-profiler-native-trace-save-dialog-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Profiler Native Trace Save Dialog v1 Implementation Plan",
             "EditorProfilerTraceSaveDialogModel",
@@ -1477,7 +1477,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-profiler-native-trace-open-dialog-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Profiler Native Trace Open Dialog v1 Implementation Plan",
             "EditorProfilerTraceOpenDialogModel",
@@ -1490,7 +1490,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-profiler-trace-file-import-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Profiler Trace File Import Review v1 Implementation Plan",
             "EditorProfilerTraceFileImportRequest",
@@ -1503,7 +1503,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-profiler-trace-import-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Profiler Trace Import Review v1 Implementation Plan",
             "DiagnosticsTraceImportReview",
@@ -1516,7 +1516,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-profiler-telemetry-handoff-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Profiler Telemetry Handoff v1 Implementation Plan",
             "EditorProfilerTelemetryHandoffModel",
@@ -1527,7 +1527,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-profiler-trace-file-save-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Profiler Trace File Save v1 Implementation Plan",
             "EditorProfilerTraceFileSaveRequest",
@@ -1539,7 +1539,7 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-profiler-trace-export-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Profiler Trace Export v1 Implementation Plan",
             "EditorProfilerTraceExportModel",

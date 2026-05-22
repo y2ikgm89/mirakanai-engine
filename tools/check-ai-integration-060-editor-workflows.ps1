@@ -114,13 +114,10 @@ $editorInputRebindingProfilePanelChecks = @(
     @{
         Path = "docs/current-capabilities.md"
         Needles = @(
-            "2026-05-07-editor-input-rebinding-profile-panel-v1.md",
             "Editor Input Rebinding Profile Panel v1",
             "EditorInputRebindingProfilePanelModel",
-            "2026-05-08-editor-input-rebinding-action-capture-panel-v1.md",
             "Editor Input Rebinding Action Capture Panel v1",
             "EditorInputRebindingCaptureModel",
-            "2026-05-10-editor-input-rebinding-axis-capture-gamepad-v1.md",
             "Editor Input Rebinding Axis Capture Gamepad v1",
             "capture_runtime_input_rebinding_axis",
             "in-memory profile"
@@ -186,7 +183,7 @@ $editorInputRebindingProfilePanelChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-input-rebinding-profile-panel-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Input Rebinding Profile Panel v1",
             "EditorInputRebindingProfilePanelModel",
@@ -379,7 +376,6 @@ $editorAiValidationRecipePreflightChecks = @(
     @{
         Path = "docs/roadmap.md"
         Needles = @(
-            "2026-05-02-editor-ai-validation-recipe-preflight-v1.md",
             "Editor AI Validation Recipe Preflight v1"
         )
     },
@@ -476,7 +472,6 @@ $editorAiPlaytestReadinessReportChecks = @(
     @{
         Path = "docs/roadmap.md"
         Needles = @(
-            "2026-05-02-editor-ai-playtest-readiness-report-v1.md",
             "Editor AI Playtest Readiness Report v1"
         )
     },
@@ -570,7 +565,6 @@ $editorAiPlaytestOperatorHandoffChecks = @(
     @{
         Path = "docs/roadmap.md"
         Needles = @(
-            "2026-05-02-editor-ai-playtest-operator-handoff-v1.md",
             "Editor AI Playtest Operator Handoff v1"
         )
     },
@@ -668,7 +662,6 @@ $editorAiPlaytestEvidenceSummaryChecks = @(
     @{
         Path = "docs/roadmap.md"
         Needles = @(
-            "2026-05-02-editor-ai-playtest-evidence-summary-v1.md",
             "Editor AI Playtest Evidence Summary v1"
         )
     },
@@ -762,7 +755,6 @@ $editorAiPlaytestRemediationQueueChecks = @(
     @{
         Path = "docs/roadmap.md"
         Needles = @(
-            "2026-05-02-editor-ai-playtest-remediation-queue-v1.md",
             "Editor AI Playtest Remediation Queue v1"
         )
     },
@@ -857,7 +849,6 @@ $editorAiPlaytestRemediationHandoffChecks = @(
     @{
         Path = "docs/roadmap.md"
         Needles = @(
-            "2026-05-02-editor-ai-playtest-remediation-handoff-v1.md",
             "Editor AI Playtest Remediation Handoff v1"
         )
     },
@@ -1370,10 +1361,6 @@ $prefabVariantAuthoringChecks = @(
     @{
         Path = "docs/current-capabilities.md"
         Needles = @(
-            "2026-05-09-editor-scene-prefab-instance-refresh-review-v1.md",
-            "2026-05-09-editor-prefab-instance-local-child-refresh-resolution-v1.md",
-            "2026-05-09-editor-prefab-instance-stale-node-refresh-resolution-v1.md",
-            "2026-05-09-editor-nested-prefab-refresh-resolution-v1.md",
             "Editor Scene Prefab Instance Refresh Review v1",
             "Editor Prefab Instance Local Child Refresh Resolution v1",
             "Editor Prefab Instance Stale Node Refresh Resolution v1",
@@ -1632,7 +1619,6 @@ $editorSceneNativeDialogChecks = @(
         Path = "docs/current-capabilities.md"
         Needles = @(
             "Editor Scene Native Dialog v1",
-            "2026-05-07-editor-scene-native-dialog-v1.md",
             "EditorSceneFileDialogModel",
             "make_scene_open_dialog_request",
             "make_scene_save_dialog_request",
@@ -1700,7 +1686,7 @@ $editorSceneNativeDialogChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-scene-native-dialog-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Scene Native Dialog v1 Implementation Plan",
             "EditorSceneFileDialogModel",
