@@ -292,6 +292,122 @@ foreach ($check in $aiGameGenerationOrchestratorChecks) {
     }
 }
 
+$aiSafeContentMutationLedgerChecks = @(
+    @{
+        Path = "schemas/game-agent.schema.json"
+        Needles = @(
+            "contentMutationLedger",
+            "ai-safe-content-mutation-ledger-v1",
+            "aiOwnedSourceRoots",
+            "generatedFiles",
+            "reviewedCommandSurfaces",
+            "forbiddenSharedPaths",
+            "remediationActions"
+        )
+    },
+    @{
+        Path = "tools/check-json-contracts-061-content-mutation-ledger.ps1"
+        Needles = @(
+            "Assert-JsonMutationLedger",
+            "aiWorkflow.contentMutationLedger",
+            "reviewedCommandSurfaces missing",
+            "forbiddenSharedPaths missing",
+            "remediationActions missing"
+        )
+    },
+    @{
+        Path = "tools/new-game-templates.ps1"
+        Needles = @(
+            "New-AiContentMutationLedger",
+            "contentMutationLedger = New-AiContentMutationLedger",
+            "create-game-recipe",
+            "register-runtime-package-files",
+            "engine-capability-handoff"
+        )
+    },
+    @{
+        Path = "games/sample_2d_desktop_runtime_package/game.agent.json"
+        Needles = @(
+            '"capabilityId": "ai-safe-content-mutation-ledger-v1"',
+            '"ledgerId": "sample-2d-desktop-runtime-package-ai-mutation-ledger"',
+            '"path": "engine"',
+            '"id": "missing-package-file"'
+        )
+    },
+    @{
+        Path = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+        Needles = @(
+            '"capabilityId": "ai-safe-content-mutation-ledger-v1"',
+            '"ledgerId": "sample-generated-desktop-runtime-3d-package-ai-mutation-ledger"',
+            '"path": "engine/agent"',
+            '"id": "unsupported-engine-capability"'
+        )
+    },
+    @{
+        Path = "docs/ai-game-development.md"
+        Needles = @(
+            "Content Mutation Ledger",
+            "game.agent.json.aiWorkflow.contentMutationLedger",
+            "tools/register-runtime-package-files.ps1",
+            "forbidden shared repository paths"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "AI Safe Content Mutation Ledger v1",
+            "game.agent.json.aiWorkflow.contentMutationLedger",
+            "forbidden shared repository paths"
+        )
+    },
+    @{
+        Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
+        Needles = @(
+            "ai-safe-content-mutation-ledger-v1",
+            "implemented-1x-foundation",
+            "game.agent.json.aiWorkflow.contentMutationLedger"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "AI Safe Content Mutation Ledger v1",
+            "aiWorkflow.contentMutationLedger",
+            "forbidden shared paths"
+        )
+    },
+    @{
+        Path = ".agents/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.contentMutationLedger",
+            "register-runtime-package-files.ps1",
+            "games/CMakeLists.txt"
+        )
+    },
+    @{
+        Path = ".claude/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.contentMutationLedger",
+            "register-runtime-package-files.ps1",
+            "games/CMakeLists.txt"
+        )
+    },
+    @{
+        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
+        Needles = @(
+            "game.agent.json.aiWorkflow.contentMutationLedger",
+            "register-runtime-package-files.ps1",
+            "games/CMakeLists.txt"
+        )
+    }
+)
+foreach ($check in $aiSafeContentMutationLedgerChecks) {
+    $safeMutationLedgerText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $safeMutationLedgerText $needle $check.Path
+    }
+}
+
 $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/resource_panel.hpp"

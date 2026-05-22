@@ -19,7 +19,7 @@ function Get-StaticContractLedger {
             )
             MaximumEntryLines = 80
             MaximumCoreLines = 1600
-            MaximumSectionLines = 2500
+            MaximumSectionLines = 2600
         },
         [pscustomobject]@{
             Id = "check-json-contracts"
@@ -31,7 +31,8 @@ function Get-StaticContractLedger {
                 "check-json-contracts-030-tooling-contracts.ps1",
                 "check-json-contracts-040-agent-surfaces.ps1",
                 "check-json-contracts-050-generated-games.ps1",
-                "check-json-contracts-060-game-design-spec.ps1"
+                "check-json-contracts-060-game-design-spec.ps1",
+                "check-json-contracts-061-content-mutation-ledger.ps1"
             )
             MaximumEntryLines = 80
             MaximumCoreLines = 1600

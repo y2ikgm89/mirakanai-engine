@@ -5320,6 +5320,179 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
     return $template.Replace("__TITLE__", $Title).Replace("__TARGET_NAME__", $TargetName).Replace("__GAME_NAME__", $GameName)
 }
 
+function ConvertTo-AiContentMutationLedgerId {
+    param(
+        [string]$RelativePath
+    )
+
+    $normalized = $RelativePath.Replace("\", "/").ToLowerInvariant()
+    $id = $normalized -replace "^games/[a-z][a-z0-9_]*/", ""
+    $id = $id -replace "[^a-z0-9]+", "-"
+    $id = $id.Trim("-")
+    if ([string]::IsNullOrWhiteSpace($id)) {
+        return "game-root"
+    }
+
+    return $id
+}
+
+function New-AiContentMutationLedger {
+    param(
+        [string]$GameName,
+        [string[]]$RuntimePackageFiles,
+        [string[]]$AdditionalGeneratedFiles,
+        [string[]]$ValidationRecipeIds
+    )
+
+    $gameRoot = "games/$GameName"
+    $ledgerId = "$($GameName.Replace("_", "-"))-ai-mutation-ledger"
+    $unsupportedActions = @(
+        "arbitrary-shell",
+        "engine-internal-edits",
+        "native-handles",
+        "middleware-contracts",
+        "unreviewed-external-assets",
+        "cooked-package-mutation",
+        "renderer-rhi-residency",
+        "broad-commercial-quality"
+    )
+    $recipeIds = @($ValidationRecipeIds)
+
+    $generatedPaths = @("$gameRoot/game.agent.json", "$gameRoot/main.cpp", "$gameRoot/README.md")
+    foreach ($runtimeFile in @($RuntimePackageFiles)) {
+        $generatedPaths += "$gameRoot/$runtimeFile"
+    }
+    foreach ($generatedFile in @($AdditionalGeneratedFiles)) {
+        $generatedPaths += "$gameRoot/$generatedFile"
+    }
+
+    $seenGeneratedPaths = @{}
+    $generatedRows = @()
+    foreach ($generatedPath in $generatedPaths) {
+        $normalizedGeneratedPath = $generatedPath.Replace("\", "/")
+        if ($seenGeneratedPaths.ContainsKey($normalizedGeneratedPath)) {
+            continue
+        }
+        $seenGeneratedPaths[$normalizedGeneratedPath] = $true
+        $generatedRows += [ordered]@{
+            id = ConvertTo-AiContentMutationLedgerId -RelativePath $normalizedGeneratedPath
+            path = $normalizedGeneratedPath
+            generatedBy = "tools/new-game.ps1"
+            reviewedCommandSurfaceId = "create-game-recipe"
+            updatePolicy = "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        }
+    }
+
+    $ownedRoots = @(
+        [ordered]@{
+            id = "game-root"
+            path = $gameRoot
+            allowedOperations = @("create", "modify")
+            reviewedCommandSurfaceIds = @("create-game-recipe", "register-runtime-package-files", "engine-capability-handoff")
+            evidence = "Generated game-owned files are confined to this root; shared repository surfaces require a separate developer-owned task."
+        },
+        [ordered]@{
+            id = "runtime-package-root"
+            path = "$gameRoot/runtime"
+            allowedOperations = @("create", "modify")
+            reviewedCommandSurfaceIds = @("create-game-recipe", "register-runtime-package-files")
+            evidence = "Runtime package payload changes must stay manifest-listed and validation-recipe-backed."
+        }
+    )
+    if (@($AdditionalGeneratedFiles | Where-Object { ([string]$_).Replace("\", "/").StartsWith("source/") }).Count -gt 0) {
+        $ownedRoots += [ordered]@{
+            id = "source-authoring-root"
+            path = "$gameRoot/source"
+            allowedOperations = @("create", "modify")
+            reviewedCommandSurfaceIds = @("create-game-recipe")
+            evidence = "Generated source authoring fixtures remain game-local before reviewed cook/package handoff."
+        }
+    }
+    if (@($AdditionalGeneratedFiles | Where-Object { ([string]$_).Replace("\", "/").StartsWith("shaders/") }).Count -gt 0) {
+        $ownedRoots += [ordered]@{
+            id = "shader-authoring-root"
+            path = "$gameRoot/shaders"
+            allowedOperations = @("create", "modify")
+            reviewedCommandSurfaceIds = @("create-game-recipe")
+            evidence = "Generated shader source fixtures remain game-local and require shader-toolchain validation before package claims."
+        }
+    }
+
+    return [ordered]@{
+        schemaVersion = 1
+        capabilityId = "ai-safe-content-mutation-ledger-v1"
+        ledgerId = $ledgerId
+        aiOwnedSourceRoots = $ownedRoots
+        generatedFiles = $generatedRows
+        reviewedCommandSurfaces = @(
+            [ordered]@{
+                id = "create-game-recipe"
+                mode = "dry-run-apply"
+                command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/create-game-recipe.ps1"
+                allowedPathRoots = @($gameRoot)
+                validationRecipeIds = $recipeIds
+                unsupportedActions = $unsupportedActions
+            },
+            [ordered]@{
+                id = "register-runtime-package-files"
+                mode = "dry-run-apply"
+                command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/register-runtime-package-files.ps1"
+                allowedPathRoots = @("$gameRoot/runtime", "$gameRoot/game.agent.json")
+                validationRecipeIds = $recipeIds
+                unsupportedActions = $unsupportedActions
+            },
+            [ordered]@{
+                id = "engine-capability-handoff"
+                mode = "review-only"
+                command = "mirakana::review_engine_capability_handoff_request"
+                allowedPathRoots = @("$gameRoot/game.agent.json")
+                validationRecipeIds = $recipeIds
+                unsupportedActions = $unsupportedActions
+            }
+        )
+        forbiddenSharedPaths = @(
+            [ordered]@{ id = "engine"; path = "engine"; reason = "Engine internals require a separate developer-owned capability task." },
+            [ordered]@{ id = "editor"; path = "editor"; reason = "Editor internals are outside generated-game mutation scope." },
+            [ordered]@{ id = "shared-tools"; path = "tools"; reason = "Shared automation changes require a repository workflow task." },
+            [ordered]@{ id = "shared-schemas"; path = "schemas"; reason = "Shared schema changes require explicit agent-surface synchronization." },
+            [ordered]@{ id = "agent-surfaces"; path = "engine/agent"; reason = "Machine-readable engine contracts are composed from reviewed fragments only." },
+            [ordered]@{ id = "repository-ci"; path = ".github"; reason = "CI workflow changes are outside generated-game mutation scope." },
+            [ordered]@{ id = "shared-docs"; path = "docs/superpowers"; reason = "Plan and production-ledger changes are developer-owned repository work." },
+            [ordered]@{ id = "shared-games-cmake"; path = "games/CMakeLists.txt"; reason = "Shared game registration is changed only by reviewed scaffolding tools." }
+        )
+        remediationActions = @(
+            [ordered]@{
+                id = "missing-package-file"
+                trigger = "A manifest-declared runtime package payload is missing or not registered."
+                reviewedCommandSurfaceId = "register-runtime-package-files"
+                expectedResult = "Repair only game-local runtime payload registration before rerunning package validation."
+                validationRecipeIds = $recipeIds
+            },
+            [ordered]@{
+                id = "unsafe-shared-path-request"
+                trigger = "A requested change targets a forbidden shared repository path."
+                reviewedCommandSurfaceId = "engine-capability-handoff"
+                expectedResult = "Stop and record a developer-owned handoff instead of editing shared surfaces."
+                validationRecipeIds = $recipeIds
+            },
+            [ordered]@{
+                id = "unsupported-engine-capability"
+                trigger = "A requested game behavior needs an unsupported reusable engine capability."
+                reviewedCommandSurfaceId = "engine-capability-handoff"
+                expectedResult = "Persist a reviewed aiWorkflow.engineCapabilityHandoffs row with first-party public-contract evidence."
+                validationRecipeIds = $recipeIds
+            },
+            [ordered]@{
+                id = "validation-failure"
+                trigger = "A selected validation recipe fails after generated game-local mutation."
+                reviewedCommandSurfaceId = "create-game-recipe"
+                expectedResult = "Repair game-owned rows without weakening validation, deleting evidence, or changing shared tooling."
+                validationRecipeIds = $recipeIds
+            }
+        )
+    }
+}
+
 function New-HeadlessManifest {
     param(
         [string]$GameName,
@@ -5797,6 +5970,33 @@ function New-DesktopRuntime2DManifest {
             validate = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
             allowedEditRoots = @("games/$GameName", "tests")
             gameDesignSpec = New-DesktopRuntime2DGameDesignSpec -GameName $GameName
+            contentMutationLedger = New-AiContentMutationLedger `
+                -GameName $GameName `
+                -RuntimePackageFiles @(
+                    "runtime/$GameName.config",
+                    "runtime/$GameName.geindex",
+                    "runtime/assets/2d/player.texture.geasset",
+                    "runtime/assets/2d/player.material",
+                    "runtime/assets/2d/jump.audio.geasset",
+                    "runtime/assets/2d/level.tilemap",
+                    "runtime/assets/2d/player.sprite_animation",
+                    "runtime/assets/2d/playable.scene"
+                ) `
+                -AdditionalGeneratedFiles @(
+                    "runtime/.gitattributes",
+                    "source/assets/package.geassets",
+                    "source/sprites/player_atlas.texture_source"
+                ) `
+                -ValidationRecipeIds @(
+                    "desktop-game-runtime",
+                    "desktop-runtime-release-target",
+                    "installed-2d-package-smoke",
+                    "installed-2d-sprite-animation-smoke",
+                    "installed-2d-tilemap-runtime-ux-smoke",
+                    "installed-2d-gameplay-systems-smoke",
+                    "installed-2d-entity-scale-culling-smoke",
+                    "installed-native-2d-sprite-smoke"
+                )
         }
         gameplayContract = [ordered]@{
             productionRecipe = "2d-desktop-runtime-package"
@@ -5992,6 +6192,46 @@ function New-DesktopRuntime3DManifest {
             validate = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
             allowedEditRoots = @("games/$GameName", "tests")
             gameDesignSpec = New-DesktopRuntime3DGameDesignSpec -GameName $GameName
+            contentMutationLedger = New-AiContentMutationLedger `
+                -GameName $GameName `
+                -RuntimePackageFiles @(
+                    "runtime/$GameName.config",
+                    "runtime/$GameName.geindex",
+                    "runtime/assets/3d/base_color.texture.geasset",
+                    "runtime/assets/3d/triangle.mesh",
+                    "runtime/assets/3d/packaged_mesh.morph_mesh_cpu",
+                    "runtime/assets/3d/lit.material",
+                    "runtime/assets/3d/packaged_mesh_bob.animation_float_clip",
+                    "runtime/assets/3d/packaged_mesh_morph_weights.animation_float_clip",
+                    "runtime/assets/3d/packaged_pose.animation_quaternion_clip",
+                    "runtime/assets/3d/skinned_triangle.skinned_mesh",
+                    "runtime/assets/3d/packaged_scene.scene",
+                    "runtime/assets/3d/hud.uiatlas",
+                    "runtime/assets/3d/hud_text.uiatlas",
+                    "runtime/assets/3d/collision.collision3d"
+                ) `
+                -AdditionalGeneratedFiles @(
+                    "runtime/.gitattributes",
+                    "source/materials/lit.material",
+                    "source/scenes/packaged_scene.scene",
+                    "source/prefabs/static_prop.prefab",
+                    "source/assets/package.geassets",
+                    "shaders/runtime_scene.hlsl",
+                    "shaders/runtime_postprocess.hlsl"
+                ) `
+                -ValidationRecipeIds @(
+                    "desktop-game-runtime",
+                    "desktop-runtime-release-target",
+                    "installed-d3d12-3d-package-smoke",
+                    "installed-d3d12-3d-directional-shadow-smoke",
+                    "installed-d3d12-3d-shadow-morph-composition-smoke",
+                    "installed-d3d12-3d-native-ui-overlay-smoke",
+                    "installed-d3d12-3d-visible-production-proof-smoke",
+                    "installed-d3d12-3d-entity-scale-culling-smoke",
+                    "installed-d3d12-3d-scene-collision-package-smoke",
+                    "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
+                    "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke"
+                )
         }
         gameplayContract = [ordered]@{
             productionRecipe = "3d-playable-desktop-package"

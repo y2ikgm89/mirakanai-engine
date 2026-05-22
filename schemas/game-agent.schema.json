@@ -353,6 +353,272 @@
             }
           }
         },
+        "contentMutationLedger": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "capabilityId",
+            "ledgerId",
+            "aiOwnedSourceRoots",
+            "generatedFiles",
+            "reviewedCommandSurfaces",
+            "forbiddenSharedPaths",
+            "remediationActions"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "type": "integer",
+              "const": 1
+            },
+            "capabilityId": {
+              "type": "string",
+              "const": "ai-safe-content-mutation-ledger-v1"
+            },
+            "ledgerId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*-ai-mutation-ledger$"
+            },
+            "aiOwnedSourceRoots": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "path", "allowedOperations", "reviewedCommandSurfaceIds", "evidence"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^games/[a-z][a-z0-9_]*/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$|^games/[a-z][a-z0-9_]*$"
+                  },
+                  "allowedOperations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "enum": ["create", "modify"]
+                    }
+                  },
+                  "reviewedCommandSurfaceIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "generatedFiles": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "path", "generatedBy", "reviewedCommandSurfaceId", "updatePolicy"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "path": {
+                    "type": "string",
+                    "pattern": "^games/[a-z][a-z0-9_]*/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  },
+                  "generatedBy": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reviewedCommandSurfaceId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "updatePolicy": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "reviewedCommandSurfaces": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "mode", "command", "allowedPathRoots", "validationRecipeIds", "unsupportedActions"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": ["dry-run-apply", "review-only"]
+                  },
+                  "command": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "allowedPathRoots": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^games/[a-z][a-z0-9_]*/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$|^games/[a-z][a-z0-9_]*$"
+                    }
+                  },
+                  "validationRecipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  },
+                  "unsupportedActions": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "allOf": [
+                      {
+                        "contains": {
+                          "const": "arbitrary-shell"
+                        }
+                      },
+                      {
+                        "contains": {
+                          "const": "engine-internal-edits"
+                        }
+                      },
+                      {
+                        "contains": {
+                          "const": "native-handles"
+                        }
+                      },
+                      {
+                        "contains": {
+                          "const": "middleware-contracts"
+                        }
+                      },
+                      {
+                        "contains": {
+                          "const": "unreviewed-external-assets"
+                        }
+                      },
+                      {
+                        "contains": {
+                          "const": "cooked-package-mutation"
+                        }
+                      },
+                      {
+                        "contains": {
+                          "const": "renderer-rhi-residency"
+                        }
+                      },
+                      {
+                        "contains": {
+                          "const": "broad-commercial-quality"
+                        }
+                      }
+                    ],
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "arbitrary-shell",
+                        "engine-internal-edits",
+                        "native-handles",
+                        "middleware-contracts",
+                        "unreviewed-external-assets",
+                        "cooked-package-mutation",
+                        "renderer-rhi-residency",
+                        "broad-commercial-quality"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "forbiddenSharedPaths": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "path", "reason"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "remediationActions": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "trigger", "reviewedCommandSurfaceId", "expectedResult", "validationRecipeIds"],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reviewedCommandSurfaceId": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "expectedResult": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "validationRecipeIds": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z][a-z0-9-]*$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "engineCapabilityHandoffs": {
           "type": "array",
           "uniqueItems": true,
