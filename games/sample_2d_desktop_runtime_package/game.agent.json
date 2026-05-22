@@ -1355,6 +1355,231 @@
         "native-handles",
         "broad-quality-claim"
       ]
+    },
+    "generatedGameQualityRubric": {
+      "schemaVersion": 1,
+      "capabilityId": "ai-generated-game-quality-rubric-v1",
+      "rubricId": "sample-2d-desktop-runtime-package-quality-rubric",
+      "designSpecId": "sample-2d-desktop-runtime-package",
+      "playtestLoopId": "sample-2d-desktop-runtime-package-playtest-loop",
+      "remediationRecipeSetId": "sample-2d-desktop-runtime-package-validation-remediation-recipes",
+      "reportId": "sample-2d-desktop-runtime-package-quality-rubric-report",
+      "reportPath": "games/sample_2d_desktop_runtime_package/reports/quality/sample_2d_desktop_runtime_package-quality-rubric.json",
+      "gateResults": [
+        {
+          "id": "objective-quality-gate",
+          "category": "objective",
+          "status": "passed-with-evidence",
+          "evidence": [
+            "aiWorkflow.gameDesignSpec.coreLoop.objective is declared before generation",
+            "quality report records objective text"
+          ],
+          "requiredSignals": [
+            "objective_declared=1"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime"
+          ],
+          "remediationRecipeIds": [
+            "invalid-reference-remediation"
+          ]
+        },
+        {
+          "id": "controls-quality-gate",
+          "category": "controls",
+          "status": "passed-with-evidence",
+          "evidence": [
+            "aiWorkflow.gameDesignSpec.inputMap declares player actions and default bindings",
+            "quality report records control rows"
+          ],
+          "requiredSignals": [
+            "controls_declared=1",
+            "input_map_rows>=1"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime"
+          ],
+          "remediationRecipeIds": [
+            "invalid-reference-remediation"
+          ]
+        },
+        {
+          "id": "feedback-quality-gate",
+          "category": "feedback",
+          "status": "passed-with-evidence",
+          "evidence": [
+            "selected package smokes report gameplay, renderer, UI, audio, physics, navigation, or AI feedback counters"
+          ],
+          "requiredSignals": [
+            "gameplay_systems_status=ready",
+            "native_2d_sprite_batches_executed>=1"
+          ],
+          "validationRecipeIds": [
+            "installed-2d-package-smoke",
+            "installed-2d-entity-scale-culling-smoke"
+          ],
+          "remediationRecipeIds": [
+            "counter-mismatch-remediation"
+          ]
+        },
+        {
+          "id": "fail-restart-quality-gate",
+          "category": "fail-restart",
+          "status": "passed-with-evidence",
+          "evidence": [
+            "aiWorkflow.gameDesignSpec.coreLoop.failState and restart are declared",
+            "validation remediation rows keep rerun-selected-validation-recipe policy"
+          ],
+          "requiredSignals": [
+            "fail_state_declared=1",
+            "restart_declared=1",
+            "rerun_policy=rerun-selected-validation-recipe"
+          ],
+          "validationRecipeIds": [
+            "desktop-game-runtime"
+          ],
+          "remediationRecipeIds": [
+            "invalid-reference-remediation",
+            "runtime-package-load-remediation"
+          ]
+        },
+        {
+          "id": "deterministic-package-smoke-quality-gate",
+          "category": "deterministic-package-smoke",
+          "status": "passed-with-evidence",
+          "evidence": [
+            "desktop runtime release target and selected installed package smoke are manifest-declared deterministic recipes"
+          ],
+          "requiredSignals": [
+            "package_smoke_status=passed",
+            "recipe_status=passed"
+          ],
+          "validationRecipeIds": [
+            "desktop-runtime-release-target",
+            "installed-2d-package-smoke"
+          ],
+          "remediationRecipeIds": [
+            "runtime-package-load-remediation",
+            "missing-package-file-remediation"
+          ]
+        },
+        {
+          "id": "budget-evidence-quality-gate",
+          "category": "budget-evidence",
+          "status": "passed-with-evidence",
+          "evidence": [
+            "selected budget smoke reports package-visible entity scale, culling, draw, update, or frame budget evidence"
+          ],
+          "requiredSignals": [
+            "budget_evidence_present=1"
+          ],
+          "validationRecipeIds": [
+            "installed-2d-entity-scale-culling-smoke"
+          ],
+          "remediationRecipeIds": [
+            "counter-mismatch-remediation",
+            "host-gated-remediation"
+          ]
+        }
+      ],
+      "sampleReports": [
+        {
+          "id": "headless-quality-report",
+          "kind": "headless-assertion",
+          "path": "games/sample_2d_desktop_runtime_package/reports/quality/sample_2d_desktop_runtime_package-headless-quality.json",
+          "gateResultIds": [
+            "objective-quality-gate",
+            "controls-quality-gate",
+            "fail-restart-quality-gate"
+          ],
+          "requiredSignals": [
+            "objective_declared=1",
+            "controls_declared=1",
+            "restart_declared=1"
+          ]
+        },
+        {
+          "id": "package-quality-report",
+          "kind": "package-assertion",
+          "path": "games/sample_2d_desktop_runtime_package/reports/quality/sample_2d_desktop_runtime_package-package-quality.json",
+          "gateResultIds": [
+            "feedback-quality-gate",
+            "deterministic-package-smoke-quality-gate",
+            "budget-evidence-quality-gate"
+          ],
+          "requiredSignals": [
+            "package_smoke_status=passed",
+            "budget_evidence_present=1"
+          ]
+        }
+      ],
+      "unsupportedRows": [
+        {
+          "id": "unsupported-subjective-fun",
+          "claimId": "subjective-fun",
+          "reason": "Rubric rows prove declared objective and deterministic evidence only.",
+          "escalation": "developer review"
+        },
+        {
+          "id": "unsupported-commercial-quality",
+          "claimId": "commercial-quality",
+          "reason": "No commercial-quality, balance, or content-market fitness claim is made.",
+          "escalation": "product review"
+        },
+        {
+          "id": "unsupported-platform-parity",
+          "claimId": "platform-parity",
+          "reason": "Host-gated backend and platform evidence stays per recipe.",
+          "escalation": "platform validation"
+        },
+        {
+          "id": "unsupported-unbounded-performance",
+          "claimId": "unbounded-performance",
+          "reason": "Budget rows are selected package evidence, not unbounded performance proof.",
+          "escalation": "performance plan"
+        },
+        {
+          "id": "unsupported-unreviewed-content",
+          "claimId": "unreviewed-content",
+          "reason": "Only reviewed first-party/generated package content can satisfy rubric evidence.",
+          "escalation": "content review"
+        },
+        {
+          "id": "unsupported-autonomous-balancing",
+          "claimId": "autonomous-balancing",
+          "reason": "The rubric does not tune or rebalance gameplay autonomously.",
+          "escalation": "gameplay designer review"
+        },
+        {
+          "id": "unsupported-native-handles",
+          "claimId": "native-handles",
+          "reason": "Rubric evidence uses manifest rows and first-party counters only.",
+          "escalation": "engine capability handoff"
+        },
+        {
+          "id": "unsupported-validation-weakening",
+          "claimId": "validation-weakening",
+          "reason": "Failing rubric rows route to remediation without weakening selected validation recipes.",
+          "escalation": "validation review"
+        },
+        {
+          "id": "unsupported-broad-production-readiness",
+          "claimId": "broad-production-readiness",
+          "reason": "This is a generated-game foundation rubric, not a broad production readiness claim.",
+          "escalation": "production backlog selection"
+        }
+      ],
+      "unsupportedClaims": [
+        "subjective-fun",
+        "commercial-quality",
+        "platform-parity",
+        "unbounded-performance",
+        "unreviewed-content",
+        "autonomous-balancing",
+        "native-handles",
+        "validation-weakening",
+        "broad-production-readiness"
+      ]
     }
   },
   "gameplayContract": {

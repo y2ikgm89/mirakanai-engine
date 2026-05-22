@@ -455,6 +455,8 @@ AI Generated Game Playtest Loop v1 adds fail-closed `game.agent.json.aiWorkflow.
 
 AI Validation Remediation Recipes v1 adds fail-closed `game.agent.json.aiWorkflow.validationRemediationRecipes` rows so generated/sample 2D/3D package games map common validation failures to reviewed mutation-ledger actions, required evidence, stop conditions, and rerun-selected-validation-recipe policy without validation weakening, evidence deletion, host-gate bypass, arbitrary shell, raw manifest command evaluation, cooked-package mutation, engine-internal edits, native handles, or broad quality claims.
 
+AI Generated Game Quality Rubric v1 adds fail-closed `game.agent.json.aiWorkflow.generatedGameQualityRubric` rows so generated/sample 2D/3D package games connect objective, controls, feedback, fail/restart, deterministic package smoke, and budget evidence gates to same-manifest design, playtest, remediation, validation recipe, and report ids without subjective fun, commercial quality, platform parity, unbounded performance, native handles, validation weakening, or broad production readiness claims.
+
 5. Keep dependency-gated work explicit. Broader importer depth, production UI text/font/accessibility/image adapters, and optional middleware must start with `license-audit`, dependency records, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md` updates.
 6. Keep Wave 3 Vulkan and Wave 4 Metal visible backend proofs maintained behind runtime/toolchain gates while shared asset/material paths evolve.
 7. Keep Wave 11 updated whenever public APIs, manifests, generated-game scaffolding, skills, rules, or subagents change; `agent-context` exposes module ownership, sample game readiness, asset/importer capabilities, platform targets, and validation recipes.
