@@ -1,5 +1,11 @@
 # Core-First MVP Design
 
+## Status
+
+Historical design record.
+
+Current truth: `core-first-mvp` is closed by `docs/superpowers/plans/2026-05-01-core-first-mvp-closure.md`; use `engine/agent/manifest.json`, `docs/current-capabilities.md`, and `docs/roadmap.md` for current capabilities.
+
 Historical note: this document records the initial MVP design. The current `core-first-mvp` scope is closed as a verified MVP foundation by `docs/superpowers/plans/2026-05-01-core-first-mvp-closure.md`; use `docs/roadmap.md` and `engine/agent/manifest.json` for current capabilities.
 
 ## Goal

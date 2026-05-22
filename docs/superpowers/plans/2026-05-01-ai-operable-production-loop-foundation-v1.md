@@ -164,7 +164,7 @@ This shape is illustrative. The implementation should follow the existing manife
     "schemaVersion": 1,
     "design": "docs/specs/2026-05-01-ai-operable-game-engine-production-roadmap-v1-design.md",
     "foundationPlan": "docs/superpowers/plans/2026-05-01-ai-operable-production-loop-foundation-v1.md",
-    "currentActivePlan": "docs/superpowers/plans/2026-05-01-scene-component-prefab-schema-v2.md",
+    "currentActivePlan": "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md",
     "recipes": [
       {
         "id": "desktop-runtime-material-shader-package",
@@ -232,7 +232,7 @@ Record command results here while implementing this plan.
 - Implementation contract check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` PASS after adding `aiOperableProductionLoop`, schema coverage, and JSON contract checks.
 - Implementation integration check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` PASS after docs/scenario/prompt/handoff synchronization and top-level `agent-context` production-loop output checks.
 - Implementation context check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` PASS and emitted `productionLoop`, `productionRecipes`, `aiCommandSurfaces`, `unsupportedProductionGaps`, `hostGates`, and `recommendedNextPlan`.
-- Final contract check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` PASS after moving the active registry to `docs/superpowers/plans/2026-05-01-scene-component-prefab-schema-v2.md`.
+- Final contract check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` PASS after moving the active registry from the foundation plan to the next production slice.
 - Final schema check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` PASS.
 - Final integration check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` PASS.
 - Final validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` PASS with 22/22 CTest tests passing. Diagnostic-only gates remained explicit for missing Metal tools, Apple packaging on non-macOS hosts, Android release signing/device smoke, and tidy compile database availability.

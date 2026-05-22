@@ -95,7 +95,6 @@ $editorProjectNativeDialogChecks = @(
         Path = "docs/current-capabilities.md"
         Needles = @(
             "Editor Project Native Dialog v1",
-            "2026-05-07-editor-project-native-dialog-v1.md",
             "EditorProjectFileDialogModel",
             "EditorProjectFileDialogMode",
             "make_project_open_dialog_request",
@@ -133,7 +132,7 @@ $editorProjectNativeDialogChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-project-native-dialog-v1.md",
             "EditorProjectFileDialogModel",
@@ -166,7 +165,7 @@ $editorProjectNativeDialogChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-project-native-dialog-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Project Native Dialog v1 Implementation Plan",
             "EditorProjectFileDialogModel",
@@ -304,11 +303,11 @@ $prefabVariantConflictReviewChecks = @(
             "Source Mismatch Accept Current Review v1",
             "Native Dialog v1",
             "Base Refresh Merge Review v1",
-            "editor-prefab-variant-batch-resolution-review-v1.md",
-            "editor-prefab-variant-source-mismatch-retarget-review-v1.md",
-            "editor-prefab-variant-source-mismatch-accept-current-review-v1.md",
-            "editor-prefab-variant-native-dialog-v1.md",
-            "editor-prefab-variant-base-refresh-merge-review-v1.md",
+            "Editor Prefab Variant Batch Resolution Review v1",
+            "Editor Prefab Variant Source Mismatch Retarget Review v1",
+            "Editor Prefab Variant Source Mismatch Accept Current Review v1",
+            "Editor Prefab Variant Native Dialog v1",
+            "Editor Prefab Variant Base Refresh Merge Review v1",
             "PrefabVariantConflictRow",
             "PrefabVariantConflictBatchResolutionPlan",
             "PrefabVariantBaseRefreshPlan",
@@ -412,7 +411,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/README.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "2026-05-07-editor-prefab-variant-conflict-review-v1.md",
             "2026-05-07-editor-prefab-variant-reviewed-resolution-v1.md",
@@ -494,7 +493,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-prefab-variant-native-dialog-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Prefab Variant Native Dialog v1 Implementation Plan",
             "EditorPrefabVariantFileDialogModel",
@@ -510,7 +509,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-prefab-variant-conflict-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "nested-prefab-conflict-ux-v1",
             "PrefabVariantConflictReviewModel",
@@ -519,7 +518,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-prefab-variant-reviewed-resolution-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "editor-prefab-variant-reviewed-resolution-v1",
             "resolve_prefab_variant_conflict",
@@ -530,7 +529,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-prefab-variant-missing-node-cleanup-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "editor-prefab-variant-missing-node-cleanup-v1",
             "deserialize_prefab_variant_definition_for_review",
@@ -540,7 +539,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-prefab-variant-node-retarget-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "editor-prefab-variant-node-retarget-review-v1",
             "PrefabNodeOverride::source_node_name",
@@ -550,7 +549,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-prefab-variant-batch-resolution-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Prefab Variant Batch Resolution Review v1",
             "PrefabVariantConflictBatchResolutionPlan",
@@ -562,7 +561,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-prefab-variant-source-mismatch-retarget-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Prefab Variant Source Mismatch Retarget Review v1",
             "source_node_mismatch",
@@ -575,7 +574,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-07-editor-prefab-variant-source-mismatch-accept-current-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Prefab Variant Source Mismatch Accept Current Review v1",
             "source_node_mismatch",
@@ -590,7 +589,7 @@ $prefabVariantConflictReviewChecks = @(
         )
     },
     @{
-        Path = "docs/superpowers/plans/2026-05-09-editor-prefab-variant-base-refresh-merge-review-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Editor Prefab Variant Base Refresh Merge Review Implementation Plan",
             "PrefabVariantBaseRefreshPlan",
@@ -1172,8 +1171,8 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $sceneRendererHeaderText $needle "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp"
 }
-$planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
-Assert-ContainsText $planRegistryText "3D Scene Mesh Package Telemetry v1" "docs/superpowers/plans/README.md"
+$historicalPlanEvidenceText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+Assert-ContainsText $historicalPlanEvidenceText "3D Scene Mesh Package Telemetry v1" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "3D Scene Mesh Package Telemetry v1" "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -1378,7 +1377,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "CMake File API" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "VCPKG_MANIFEST_INSTALL=OFF" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "phase-gated milestone plan" $agentIntegrationSkill
-    foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "phase behavior/API/validation boundary", "fine-grained execution steps", "commit/push/PR counts", "validation-only follow-up", "historical implementation evidence")) {
+    foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "phase behavior/API/validation boundary", "fine-grained execution steps", "commit/push/PR counts", "validation-only follow-up", "Git history")) {
         Assert-ContainsText $agentIntegrationSkillText $planVolumeNeedle $agentIntegrationSkill
     }
     foreach ($productionPromptNeedle in @("currentActivePlan", "recommendedNextPlan", "unsupportedProductionGaps", "clean breaking greenfield designs", "official documentation", "focused validation")) {

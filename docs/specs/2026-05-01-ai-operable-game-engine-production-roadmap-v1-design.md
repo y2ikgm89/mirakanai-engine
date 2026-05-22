@@ -1,5 +1,11 @@
 # AI-Operable Game Engine Production Roadmap v1 Design
 
+## Status
+
+Historical design record.
+
+Current sequencing truth lives in `docs/roadmap.md`, `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, and `engine/agent/manifest.json`.
+
 ## Goal
 
 Make GameEngine a clean C++23 engine that can be operated by Codex or similar coding agents to create both 2D and 3D games. The target is not a Unity or Unreal clone. The target is a first-party engine whose scene, prefab, asset, package, gameplay, renderer, validation, and release contracts are explicit enough that an AI agent can understand the engine state, choose supported capabilities, place authored content, write game code, and run validation without guessing.

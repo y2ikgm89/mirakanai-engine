@@ -1,5 +1,11 @@
 # Advanced 3D Physics Backend Evaluation
 
+## Status
+
+Retained analysis record.
+
+Current physics readiness truth lives in `engine/agent/manifest.json`, `docs/current-capabilities.md`, and the production-completion master plan/backlog.
+
 ## Goal
 
 Decide whether GameEngine should add a third-party advanced 3D physics backend now, and define the dependency boundary if one is added later.

@@ -714,15 +714,15 @@ $runtimeSceneRhiHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/r
 $runtimeSceneRhiSourceText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp") -Raw
 $runtimeRhiTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/runtime_rhi_tests.cpp") -Raw
 $runtimeSceneRhiTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/runtime_scene_rhi_tests.cpp") -Raw
-$runtimeUploadFencePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-rhi-upload-submission-fence-rows-v1.md") -Raw
+$runtimeUploadFencePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 $frameGraphRhiTextureSchedulePlanText =
-    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-frame-graph-rhi-texture-schedule-execution-v1.md") -Raw
+    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 $rhiUploadStaleGenerationPlanText =
-    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-rhi-upload-stale-generation-diagnostics-v1.md") -Raw
+    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 $runtimeUploadQueueWaitPlanText =
-    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-18-upload-staging-v1-runtime-upload-queue-wait-v1.md") -Raw
+    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 $runtimePackageUploadStagingEvidencePlanText =
-    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-18-upload-staging-v1-selected-package-upload-evidence-v1.md") -Raw
+    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 $rendererCmakeText = Get-Content -LiteralPath (Join-Path $root "engine/renderer/CMakeLists.txt") -Raw
 $engineManifestText = Get-Content -LiteralPath (Join-Path $root "engine/agent/manifest.json") -Raw
 foreach ($needle in @("FrameGraphPassExecutionBinding", "FrameGraphExecutionCallbacks", "FrameGraphExecutionResult", "execute_frame_graph_v1_schedule")) {

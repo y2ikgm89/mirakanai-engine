@@ -7,7 +7,7 @@ $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-O
 if ($editorProductizationGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 host-gated exclusion closeout"
 }
-$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md"
+$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Editor Productization 1.0 Host-Gated Exclusion Closeout",
     "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
@@ -21,13 +21,13 @@ foreach ($needle in @(
     "production-ui-importer-platform-adapters",
     "full-repository-quality-gate"
 )) {
-    Assert-ContainsText $editorProductizationCloseoutText $needle "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md editor-productization closeout evidence"
+    Assert-ContainsText $editorProductizationCloseoutText $needle "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md editor-productization closeout evidence"
 }
 $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "production-ui-importer-platform-adapters" })
 if ($productionUiImporterPlatformGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md"
+$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Production UI Importer Platform Adapters 1.0 Closeout",
     "reviewed adapter-boundary and package evidence",
@@ -53,13 +53,13 @@ foreach ($needle in @(
     "UI middleware",
     "full-repository-quality-gate"
 )) {
-    Assert-ContainsText $productionUiCloseoutText $needle "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md production-ui closeout evidence"
+    Assert-ContainsText $productionUiCloseoutText $needle "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md production-ui closeout evidence"
 }
 $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "full-repository-quality-gate" })
 if ($fullRepoQualityGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md"
+$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Full Repository Quality Gate 1.0 Closeout",
     "local full validate",
@@ -75,7 +75,7 @@ foreach ($needle in @(
     "release distribution",
     "unsupported_gaps=0"
 )) {
-    Assert-ContainsText $fullRepoQualityCloseoutText $needle "docs/superpowers/plans/2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md full repository quality closeout evidence"
+    Assert-ContainsText $fullRepoQualityCloseoutText $needle "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md full repository quality closeout evidence"
 }
 $vulkanGate = @($productionLoop.hostGates | Where-Object { $_.id -eq "vulkan-strict" })
 if ($vulkanGate.Count -ne 1 -or $vulkanGate[0].status -ne "host-gated") {
@@ -952,7 +952,7 @@ foreach ($runtimeUiPngGuidance in @(
     "docs/ai-game-development.md",
     "docs/current-capabilities.md",
     "docs/dependencies.md",
-    "docs/superpowers/plans/README.md",
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md",
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/SKILL.md"
@@ -969,7 +969,7 @@ foreach ($runtimeUiDecodedAtlasGuidance in @(
     "docs/ai-game-development.md",
     "docs/current-capabilities.md",
     "docs/dependencies.md",
-    "docs/superpowers/plans/README.md",
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md",
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 )) {
     $runtimeUiDecodedAtlasText = Get-AgentSurfaceText $runtimeUiDecodedAtlasGuidance

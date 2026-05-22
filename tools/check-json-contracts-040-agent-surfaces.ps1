@@ -378,7 +378,7 @@ if ($rendererRhiGap.Count -ne 0) {
 }
 foreach ($check in @(
     @{
-        Path = "docs/superpowers/plans/2026-05-16-renderer-rhi-resource-foundation-1-0-scope-closeout-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Renderer RHI Resource Foundation 1.0 Scope Closeout",
             "D3D12/Vulkan deferred native teardown",
@@ -400,7 +400,7 @@ if ($frameGraphGap.Count -ne 0) {
 }
 foreach ($check in @(
     @{
-        Path = "docs/superpowers/plans/2026-05-18-frame-graph-v1-1-0-scope-closeout-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Frame Graph v1 1.0 Scope Closeout",
             "upload-staging-v1",
@@ -421,7 +421,7 @@ if ($uploadStagingGap.Count -ne 0) {
 }
 foreach ($check in @(
     @{
-        Path = "docs/superpowers/plans/2026-05-18-upload-staging-v1-async-ready-resource-updates-v1.md"
+        Path = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
         Needles = @(
             "Upload Staging v1 Async-Ready Resource Updates",
             "make_runtime_package_resource_update_readiness",
@@ -468,7 +468,7 @@ foreach ($needle in @(
     "FrameGraphTexturePassTargetAccess",
     "build_frame_graph_texture_pass_target_accesses",
     "RhiPostprocessFrameRenderer scene pass command recording",
-    "frame-graph-shadow-scratch-color-target-state-ownership-v1",
+    "Frame Graph Shadow Scratch Color Target-State Ownership v1",
     "shadow_color",
     "6 pass callbacks/15 barrier steps",
     "Frame Graph Viewport Surface Color State Executor v1",
@@ -513,7 +513,7 @@ $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-O
 if ($editorProductizationGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-editor-productization-1-0-host-gated-exclusion-closeout-v1.md"
+$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Editor Productization 1.0 Host-Gated Exclusion Closeout",
     "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
@@ -530,7 +530,7 @@ $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps |
 if ($productionUiImporterPlatformGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-production-ui-importer-platform-adapters-1-0-closeout-v1.md"
+$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Production UI Importer Platform Adapters 1.0 Closeout",
     "reviewed adapter-boundary and package evidence",
@@ -564,7 +564,7 @@ $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($fullRepoQualityGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/plans/2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md"
+$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 foreach ($needle in @(
     "Full Repository Quality Gate 1.0 Closeout",
     "local full validate",
@@ -710,7 +710,7 @@ foreach ($needle in @(
         Write-Error ".github/workflows/validate.yml missing required static-analysis lane text: $needle"
     }
 }
-$fullRepoStaticAnalysisPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-full-repository-static-analysis-ci-contract-v1.md") -Raw
+$fullRepoStaticAnalysisPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Full Repository Static Analysis CI Contract v1 Implementation Plan",
     "**Status:** Completed.",
@@ -725,7 +725,7 @@ foreach ($needle in @(
     }
 }
 
-$runtimeUiAccessibilityPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-07-runtime-ui-accessibility-publish-plan-v1.md") -Raw
+$runtimeUiAccessibilityPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Accessibility Publish Plan v1",
     "**Status:** Completed",
@@ -741,7 +741,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI accessibility publish plan missing required evidence: $needle"
     }
 }
-$runtimeUiImePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-07-runtime-ui-ime-composition-publish-plan-v1.md") -Raw
+$runtimeUiImePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI IME Composition Publish Plan v1",
     "**Status:** Completed",
@@ -757,7 +757,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI IME composition publish plan missing required evidence: $needle"
     }
 }
-$runtimeUiPlatformTextInputSessionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-platform-text-input-session-plan-v1.md") -Raw
+$runtimeUiPlatformTextInputSessionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Platform Text Input Session Plan v1",
     "**Status:** Completed",
@@ -775,7 +775,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI platform text input session plan missing required evidence: $needle"
     }
 }
-$runtimeUiFontRasterizationRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-07-runtime-ui-font-rasterization-request-plan-v1.md") -Raw
+$runtimeUiFontRasterizationRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Font Rasterization Request Plan v1",
     "**Status:** Completed",
@@ -791,7 +791,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI font rasterization request plan missing required evidence: $needle"
     }
 }
-$runtimeUiTextShapingRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-text-shaping-request-plan-v1.md") -Raw
+$runtimeUiTextShapingRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Text Shaping Request Plan v1",
     "**Status:** Completed",
@@ -807,7 +807,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI text shaping request plan missing required evidence: $needle"
     }
 }
-$runtimeUiImageDecodeRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-image-decode-request-plan-v1.md") -Raw
+$runtimeUiImageDecodeRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Image Decode Request Plan v1",
     "**Status:** Completed",
@@ -824,7 +824,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI image decode request plan missing required evidence: $needle"
     }
 }
-$runtimeUiPngImageDecodingAdapterPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-png-image-decoding-adapter-v1.md") -Raw
+$runtimeUiPngImageDecodingAdapterPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI PNG Image Decoding Adapter v1",
     "**Status:** Completed",
@@ -839,7 +839,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI PNG image decoding adapter plan missing required evidence: $needle"
     }
 }
-$runtimeUiDecodedImageAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md") -Raw
+$runtimeUiDecodedImageAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Decoded Image Atlas Package Bridge v1",
     "**Status:** Completed",
@@ -856,7 +856,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI decoded image atlas package bridge plan missing required evidence: $needle"
     }
 }
-$runtimeUiGlyphAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-ui-glyph-atlas-package-bridge-v1.md") -Raw
+$runtimeUiGlyphAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime UI Glyph Atlas Package Bridge v1",
     "**Status:** Completed",
@@ -875,7 +875,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI glyph atlas package bridge plan missing required evidence: $needle"
     }
 }
-$runtimeInputRebindingCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-capture-contract-v1.md") -Raw
+$runtimeInputRebindingCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime Input Rebinding Capture Contract v1",
     "**Status:** Completed",
@@ -888,7 +888,7 @@ foreach ($needle in @(
         Write-Error "Runtime input rebinding capture plan missing required evidence: $needle"
     }
 }
-$runtimeInputRebindingFocusConsumptionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-focus-consumption-v1.md") -Raw
+$runtimeInputRebindingFocusConsumptionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime Input Rebinding Focus Consumption v1",
     "**Status:** Completed",
@@ -903,7 +903,7 @@ foreach ($needle in @(
         Write-Error "Runtime input rebinding focus consumption plan missing required evidence: $needle"
     }
 }
-$runtimeInputRebindingPresentationRowsPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-runtime-input-rebinding-presentation-rows-v1.md") -Raw
+$runtimeInputRebindingPresentationRowsPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Runtime Input Rebinding Presentation Rows v1",
     "**Status:** Completed",
@@ -921,7 +921,7 @@ foreach ($needle in @(
         Write-Error "Runtime input rebinding presentation rows plan missing required evidence: $needle"
     }
 }
-$editorInputRebindingActionCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/2026-05-08-editor-input-rebinding-action-capture-panel-v1.md") -Raw
+$editorInputRebindingActionCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
 foreach ($needle in @(
     "Editor Input Rebinding Action Capture Panel v1",
     "**Status:** Completed",
@@ -940,7 +940,7 @@ $runtimeUiDocs = @{
     "docs/current-capabilities.md" = @("AccessibilityPublishPlan", "publish_accessibility_payload", "OS accessibility bridge publication", "ImeCompositionPublishPlan", "publish_ime_composition", "native IME/text-input adapter integration", "PlatformTextInputSessionPlan", "begin_platform_text_input", "IPlatformIntegrationAdapter", "virtual keyboard/session ownership", "TextShapingRequestPlan", "shape_text_run", "ITextShapingAdapter", "FontRasterizationRequestPlan", "rasterize_font_glyph", "adapter allocation diagnostics", "ImageDecodeRequestPlan", "decode_image_request", "ImageDecodePixelFormat::rgba8_unorm")
     "docs/ui.md" = @("AccessibilityPublishPlan", "IAccessibilityAdapter", "UI Automation", "NSAccessibility", "ImeCompositionPublishPlan", "IImeAdapter", "Win32/TSF", "PlatformTextInputSessionPlan", "IPlatformIntegrationAdapter", "virtual keyboard behavior", "TextShapingRequestPlan", "ITextShapingAdapter", "TextLayoutRun", "FontRasterizationRequestPlan", "IFontRasterizerAdapter", "GlyphAtlasAllocation", "ImageDecodeRequestPlan", "IImageDecodingAdapter", "ImageDecodePixelFormat::rgba8_unorm")
     "docs/roadmap.md" = @("Runtime UI Accessibility Publish Plan v1", "plan_accessibility_publish", "Runtime UI IME Composition Publish Plan v1", "plan_ime_composition_update", "Runtime UI Platform Text Input Session Plan v1", "begin_platform_text_input", "Runtime UI Text Shaping Request Plan v1", "plan_text_shaping_request", "Runtime UI Font Rasterization Request Plan v1", "plan_font_rasterization_request", "Runtime UI Image Decode Request Plan v1", "plan_image_decode_request", "source codecs", "platform SDK calls")
-    "docs/superpowers/plans/README.md" = @("2026-05-08-runtime-ui-text-shaping-request-plan-v1.md", "TextShapingResult", "2026-05-07-runtime-ui-accessibility-publish-plan-v1.md", "AccessibilityPublishResult", "2026-05-07-runtime-ui-ime-composition-publish-plan-v1.md", "ImeCompositionPublishResult", "2026-05-08-runtime-ui-platform-text-input-session-plan-v1.md", "PlatformTextInputSessionResult", "2026-05-07-runtime-ui-font-rasterization-request-plan-v1.md", "FontRasterizationResult", "2026-05-08-runtime-ui-image-decode-request-plan-v1.md", "ImageDecodeDispatchResult", "source codecs", "third-party adapters unsupported")
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-runtime-ui-text-shaping-request-plan-v1.md", "TextShapingResult", "2026-05-07-runtime-ui-accessibility-publish-plan-v1.md", "AccessibilityPublishResult", "2026-05-07-runtime-ui-ime-composition-publish-plan-v1.md", "ImeCompositionPublishResult", "2026-05-08-runtime-ui-platform-text-input-session-plan-v1.md", "PlatformTextInputSessionResult", "2026-05-07-runtime-ui-font-rasterization-request-plan-v1.md", "FontRasterizationResult", "2026-05-08-runtime-ui-image-decode-request-plan-v1.md", "ImageDecodeDispatchResult", "source codecs", "third-party adapters unsupported")
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI Accessibility Publish Plan v1", "IAccessibilityAdapter", "native accessibility objects", "Runtime UI IME Composition Publish Plan v1", "IImeAdapter", "native IME/text-input sessions", "Runtime UI Platform Text Input Session Plan v1", "IPlatformIntegrationAdapter", "virtual keyboard behavior", "Runtime UI Text Shaping Request Plan v1", "ITextShapingAdapter", "Runtime UI Font Rasterization Request Plan v1", "IFontRasterizerAdapter", "Runtime UI Image Decode Request Plan v1", "IImageDecodingAdapter", "source image codecs", "renderer texture upload")
 }
 foreach ($docPath in $runtimeUiDocs.Keys) {
@@ -959,7 +959,7 @@ $runtimeUiPngDocs = @{
     "docs/roadmap.md" = @("Runtime UI PNG Image Decoding Adapter v1", "PngImageDecodingAdapter", "decode_audited_png_rgba8")
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md" = @("PngImageDecodingAdapter", "decode_audited_png_rgba8", "asset-importers")
     "docs/ai-game-development.md" = @("PngImageDecodingAdapter", "decode_audited_png_rgba8", "source PNGs")
-    "docs/superpowers/plans/README.md" = @("2026-05-08-runtime-ui-png-image-decoding-adapter-v1.md", "PngImageDecodingAdapter", "decode_audited_png_rgba8")
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-runtime-ui-png-image-decoding-adapter-v1.md", "PngImageDecodingAdapter", "decode_audited_png_rgba8")
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI PNG Image Decoding Adapter v1", "PngImageDecodingAdapter", "decode_audited_png_rgba8")
 }
 foreach ($docPath in $runtimeUiPngDocs.Keys) {
@@ -978,7 +978,7 @@ $runtimeUiDecodedAtlasDocs = @{
     "docs/roadmap.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture.v1")
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture.v1")
     "docs/ai-game-development.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture.v1")
-    "docs/superpowers/plans/README.md" = @("2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md", "PackedUiAtlasAuthoringDesc", "GameEngine.CookedTexture.v1")
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md", "PackedUiAtlasAuthoringDesc", "GameEngine.CookedTexture.v1")
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture.v1")
 }
 foreach ($docPath in $runtimeUiDecodedAtlasDocs.Keys) {
@@ -998,7 +998,7 @@ $runtimeUiGlyphAtlasDocs = @{
     "docs/roadmap.md" = @("Runtime UI Glyph Atlas Package Bridge v1", "UiAtlasMetadataGlyph", "RuntimeUiAtlasGlyph", "author_packed_ui_glyph_atlas_from_rasterized_glyphs")
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md" = @("Runtime UI Glyph Atlas Package Bridge v1", "UiAtlasMetadataGlyph", "RuntimeUiAtlasGlyph", "author_packed_ui_glyph_atlas_from_rasterized_glyphs")
     "docs/ai-game-development.md" = @("author_packed_ui_glyph_atlas_from_rasterized_glyphs", "plan_packed_ui_glyph_atlas_package_update", "source.decoding=rasterized-glyph-adapter", "atlas.packing=deterministic-glyph-atlas-rgba8-max-side")
-    "docs/superpowers/plans/README.md" = @("2026-05-08-runtime-ui-glyph-atlas-package-bridge-v1.md", "Runtime UI Glyph Atlas Package Bridge v1", "PackedUiGlyphAtlasAuthoringDesc")
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-runtime-ui-glyph-atlas-package-bridge-v1.md", "Runtime UI Glyph Atlas Package Bridge v1", "PackedUiGlyphAtlasAuthoringDesc")
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI Glyph Atlas Package Bridge v1", "author_packed_ui_glyph_atlas_from_rasterized_glyphs", "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas")
 }
 foreach ($docPath in $runtimeUiGlyphAtlasDocs.Keys) {
@@ -1014,7 +1014,7 @@ $runtimeInputRebindingCaptureDocs = @{
     "docs/architecture.md" = @("capture_runtime_input_rebinding_action", "RuntimeInputRebindingProfile", "axis capture")
     "docs/roadmap.md" = @("Runtime Input Rebinding Capture Contract v1", "RuntimeInputRebindingCaptureResult", "capture_runtime_input_rebinding_action")
     "docs/ai-game-development.md" = @("RuntimeInputRebindingCaptureRequest", "RuntimeInputRebindingCaptureResult", "capture_runtime_input_rebinding_action")
-    "docs/superpowers/plans/README.md" = @("2026-05-08-runtime-input-rebinding-capture-contract-v1.md", "RuntimeInputRebindingCaptureRequest", "capture_runtime_input_rebinding_action")
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-runtime-input-rebinding-capture-contract-v1.md", "RuntimeInputRebindingCaptureRequest", "capture_runtime_input_rebinding_action")
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime Input Rebinding Capture Contract v1", "RuntimeInputRebindingCaptureRequest", "capture_runtime_input_rebinding_action")
 }
 foreach ($docPath in $runtimeInputRebindingCaptureDocs.Keys) {
@@ -1031,7 +1031,7 @@ $runtimeInputRebindingFocusConsumptionDocs = @{
     "docs/roadmap.md" = @("Runtime Input Rebinding Focus Consumption v1", "RuntimeInputRebindingFocusCaptureResult", "capture_runtime_input_rebinding_action_with_focus", "gameplay_input_consumed")
     "docs/testing.md" = @("RuntimeInputRebindingFocusCaptureRequest", "capture_runtime_input_rebinding_action_with_focus", "pressed rejected-trigger consumption")
     "docs/ai-game-development.md" = @("Runtime Input Rebinding Focus Consumption v1", "RuntimeInputRebindingFocusCaptureRequest", "capture_runtime_input_rebinding_action_with_focus", "gameplay_input_consumed")
-    "docs/superpowers/plans/README.md" = @("2026-05-08-runtime-input-rebinding-focus-consumption-v1.md", "RuntimeInputRebindingFocusCaptureRequest", "capture_runtime_input_rebinding_action_with_focus")
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-runtime-input-rebinding-focus-consumption-v1.md", "RuntimeInputRebindingFocusCaptureRequest", "capture_runtime_input_rebinding_action_with_focus")
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime Input Rebinding Focus Consumption v1", "RuntimeInputRebindingFocusCaptureRequest", "capture_runtime_input_rebinding_action_with_focus", "gameplay_input_consumed")
 }
 foreach ($docPath in $runtimeInputRebindingFocusConsumptionDocs.Keys) {
@@ -1048,7 +1048,7 @@ $runtimeInputRebindingPresentationRowsDocs = @{
     "docs/roadmap.md" = @("Runtime Input Rebinding Presentation Rows v1", "RuntimeInputRebindingPresentationRow", "present_runtime_input_axis_source", "symbolic glyph lookup keys")
     "docs/testing.md" = @("Runtime Input Rebinding Presentation Rows v1", "RuntimeInputRebindingPresentationToken", "glyph_lookup_key", "invalid-profile diagnostics")
     "docs/ai-game-development.md" = @("Runtime Input Rebinding Presentation Rows v1", "RuntimeInputRebindingPresentationModel", "make_runtime_input_rebinding_presentation", "symbolic glyph lookup keys")
-    "docs/superpowers/plans/README.md" = @("2026-05-08-runtime-input-rebinding-presentation-rows-v1.md", "Runtime Input Rebinding Presentation Rows v1", "RuntimeInputRebindingPresentationModel")
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-runtime-input-rebinding-presentation-rows-v1.md", "Runtime Input Rebinding Presentation Rows v1", "RuntimeInputRebindingPresentationModel")
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime Input Rebinding Presentation Rows v1", "RuntimeInputRebindingPresentationToken", "make_runtime_input_rebinding_presentation", "platform input glyph generation")
 }
 foreach ($docPath in $runtimeInputRebindingPresentationRowsDocs.Keys) {
@@ -1066,7 +1066,7 @@ $editorInputRebindingActionCaptureDocs = @{
     "docs/roadmap.md" = @("EditorInputRebindingCaptureModel", "action-row capture controls", "in-memory profile")
     "docs/architecture.md" = @("reviewed editor action capture rows", "RuntimeInputStateView", "axis capture")
     "docs/ai-game-development.md" = @("EditorInputRebindingCaptureModel", "make_editor_input_rebinding_capture_action_model", "in-memory profile")
-    "docs/superpowers/plans/README.md" = @("2026-05-08-editor-input-rebinding-action-capture-panel-v1.md", "Editor Input Rebinding Action Capture Panel v1", "in-memory profile")
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-editor-input-rebinding-action-capture-panel-v1.md", "Editor Input Rebinding Action Capture Panel v1", "in-memory profile")
     "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Editor Input Rebinding Action Capture Panel v1", "EditorInputRebindingCaptureModel", "reviewed editor action capture lane")
 }
 foreach ($docPath in $editorInputRebindingActionCaptureDocs.Keys) {

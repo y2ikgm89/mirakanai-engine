@@ -1,5 +1,11 @@
 # Generated Game Validation Scenarios
 
+## Status
+
+Current generated-game guide.
+
+Keep this guide aligned with manifest validation recipes, game manifests, and `tools/run-validation-recipe.ps1`.
+
 Use these scenarios when an AI agent creates or expands a game under `games/<game_name>/`. The selected scenario must be reflected in the game's `game.agent.json` through `backendReadiness`, `importerRequirements`, `packagingTargets`, and `validationRecipes`.
 
 First read `engine/agent/manifest.json.aiOperableProductionLoop` or the `productionLoop` section from `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1`. The currently enforced recipe ids are `headless-gameplay`, `desktop-runtime-config-package`, `desktop-runtime-cooked-scene-package`, `desktop-runtime-material-shader-package`, `ai-navigation-headless`, `runtime-ui-headless`, `2d-playable-source-tree`, `2d-desktop-runtime-package`, `3d-playable-desktop-package`, `native-gpu-runtime-ui-overlay`, `native-ui-textured-sprite-atlas`, `native-ui-text-glyph-atlas`, `native-ui-atlas-package-metadata`, and `future-3d-playable-vertical-slice`.

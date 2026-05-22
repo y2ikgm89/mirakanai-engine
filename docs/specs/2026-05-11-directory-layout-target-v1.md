@@ -2,6 +2,8 @@
 
 ## Status
 
+Accepted narrow specification.
+
 Accepted as the repository **target layout** for `engine/tools` implementation sources. Top-level product tree (`engine/<module>/`, `games/`, `editor/`, `platform/`, `tests/`, `tools/`) remains SDK-style per [architecture-directory-verification.md](../architecture-directory-verification.md).
 
 ## Authority
@@ -28,7 +30,7 @@ Accepted as the repository **target layout** for `engine/tools` implementation s
 
 ## Validation evidence (implementation slice)
 
-Recorded in [2026-05-11-directory-layout-tools-split-v1.md](../superpowers/plans/2026-05-11-directory-layout-tools-split-v1.md): `tools/validate.ps1` after the split, and updated `tools/check-json-contracts.ps1` / `tools/check-ai-integration.ps1` paths for moved `.cpp` files.
+Recorded as completed historical evidence in `99-historical-verdict-archive.md`: `tools/validate.ps1` after the split, and updated `tools/check-json-contracts.ps1` / `tools/check-ai-integration.ps1` paths for moved `.cpp` files.
 
 ## Optional follow-ups (not v1)
 

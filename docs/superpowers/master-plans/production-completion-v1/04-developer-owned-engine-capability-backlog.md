@@ -4,7 +4,7 @@ Source index: [Production Completion Master Plan v1](../2026-05-03-production-co
 
 ## Purpose
 
-This is the canonical selection ledger for post-1.0 / 1.x capability work. The surrounding chapters project these rows into AI game creation, renderer, gameplay, high-freedom game creation, sprite, and 2D/3D coverage views; they must not carry their own competing backlog tables.
+This is the canonical selection ledger for post-1.0 / 1.x capability work. [05-projections-and-scenarios.md](05-projections-and-scenarios.md) projects these rows into AI game creation, renderer, gameplay, high-freedom game creation, sprite, 2D/3D coverage, and validation scenarios; it must not carry a competing backlog table.
 
 These rows are not 1.0 blockers while `engine/agent/manifest.json.aiOperableProductionLoop.unsupportedProductionGaps = []`. A row becomes active only when a developer selects it through a dated capability, gap-cluster, or milestone plan. Game-creation agents may reference these ids in handoff/remediation rows, but they may not implement engine internals from the game-creation lane.
 
@@ -122,14 +122,8 @@ These rows are not 1.0 blockers while `engine/agent/manifest.json.aiOperableProd
 | `networking-and-multiplayer-v1` | `optional-adapter` | `optional-adapter-candidate` | Multiplayer after deterministic simulation and persistence mature. | Architecture decision, threat model, replay tests, host/network gates, and no broad multiplayer ready claim. |
 | `native-physics-middleware-adapter-v1` | `optional-adapter` | `optional-adapter-candidate` | Optional Jolt/PhysX/Recast-style adapters behind first-party opaque APIs. | vcpkg feature gating, legal records, host gates, fallback diagnostics, and no middleware types in public APIs. |
 
-## Projection Chapters
+## Projection Chapter
 
-- [03-ai-autonomous-game-creation.md](03-ai-autonomous-game-creation.md) describes game-owned mutation boundaries and AI workflow rules for the `ai-*` rows.
-- [05-2d-3d-capability-coverage-matrix.md](05-2d-3d-capability-coverage-matrix.md) maps supported 2D/3D scopes to these rows.
-- [06-renderer-advanced-production-track.md](06-renderer-advanced-production-track.md) gives renderer-specific evidence rules for `renderer-*`, material, and sprite renderer rows.
-- [07-gameplay-physics-nav-ai-advanced-track.md](07-gameplay-physics-nav-ai-advanced-track.md) gives deterministic simulation and middleware-boundary rules.
-- [08-high-freedom-game-creation-track.md](08-high-freedom-game-creation-track.md) groups sandbox, persistence, procedural, scripting, and multiplayer rows.
-- [09-sprite-production-pipeline-track.md](09-sprite-production-pipeline-track.md) groups sprite-specific authoring/import/runtime rows.
-- [10-gameplay-archetype-validation.md](10-gameplay-archetype-validation.md) uses archetypes only as evidence probes; it must not introduce separate capability rows.
+[05-projections-and-scenarios.md](05-projections-and-scenarios.md) describes official-practice gates, game-owned mutation boundaries, AI workflow rules, 2D/3D coverage, renderer evidence rules, deterministic gameplay and middleware boundaries, high-freedom game grouping, sprite-specific rules, and archetype validation probes over the canonical rows in this file. It must not introduce separate capability rows.
 
 Promotion rule: add or change a capability here only when it is reusable across at least two gameplay families, has a stable first-party contract, can be validated outside one specific game, and can be exposed safely to AI through manifests, reviewed tools, schemas, or validation recipes.

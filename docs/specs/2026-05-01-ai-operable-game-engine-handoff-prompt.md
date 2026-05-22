@@ -1,5 +1,11 @@
 # AI-Operable Game Engine Handoff Prompt
 
+## Status
+
+Historical handoff prompt.
+
+Use `docs/README.md`, `tools/agent-context.ps1 -ContextProfile Minimal`, `engine/agent/manifest.json`, and the production-completion master plan for current handoffs.
+
 Use this prompt when opening a new chat to continue the AI-operable GameEngine production work.
 
 ## Prompt
@@ -19,23 +25,24 @@ Context to read first:
 - docs/superpowers/plans/README.md
 - docs/specs/2026-05-01-ai-operable-game-engine-production-roadmap-v1-design.md
 - docs/superpowers/plans/2026-05-01-ai-operable-production-loop-foundation-v1.md
-- docs/superpowers/plans/2026-05-01-scene-component-prefab-schema-v2.md
-- docs/superpowers/plans/2026-05-01-asset-identity-runtime-resource-v2.md
-- docs/superpowers/plans/2026-05-01-renderer-rhi-resource-foundation-v1.md
-- docs/superpowers/plans/2026-05-01-frame-graph-upload-staging-foundation-v1.md
-- docs/superpowers/plans/2026-05-01-ai-command-surface-foundation-v1.md
-- docs/superpowers/plans/2026-05-01-2d-playable-vertical-slice-foundation-v1.md
-- docs/superpowers/plans/2026-05-01-2d-desktop-runtime-package-proof-v1.md
-- docs/superpowers/plans/2026-05-01-3d-playable-vertical-slice-foundation-v1.md
-- docs/superpowers/plans/2026-05-01-native-gpu-ui-overlay-foundation-v1.md
-- docs/superpowers/plans/2026-05-01-native-ui-textured-sprite-atlas-foundation-v1.md
-- docs/superpowers/plans/2026-05-01-native-ui-atlas-package-metadata-foundation-v1.md
-- docs/superpowers/plans/2026-05-01-ui-atlas-metadata-authoring-tooling-v1.md
-- docs/superpowers/plans/2026-05-01-ui-atlas-metadata-apply-tooling-v1.md
-- docs/superpowers/plans/2026-05-01-source-asset-registration-command-tooling-v1.md
-- docs/superpowers/plans/2026-05-01-scene-v2-runtime-package-migration-v1.md
-- docs/superpowers/plans/2026-05-01-registered-source-asset-cook-package-command-tooling-v1.md
-- docs/superpowers/plans/2026-05-01-runtime-scene-package-validation-command-tooling-v1.md
+- docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md (search these retired plan titles only when historical slice evidence is needed)
+- Scene Component Prefab Schema v2
+- Asset Identity Runtime Resource v2
+- Renderer RHI Resource Foundation v1
+- Frame Graph Upload Staging Foundation v1
+- AI Command Surface Foundation v1
+- 2d Playable Vertical Slice Foundation v1
+- 2d Desktop Runtime Package Proof v1
+- 3d Playable Vertical Slice Foundation v1
+- Native GPU UI Overlay Foundation v1
+- Native UI Textured Sprite Atlas Foundation v1
+- Native UI Atlas Package Metadata Foundation v1
+- UI Atlas Metadata Authoring Tooling v1
+- UI Atlas Metadata Apply Tooling v1
+- Source Asset Registration Command Tooling v1
+- Scene v2 Runtime Package Migration v1
+- Registered Source Asset Cook Package Command Tooling v1
+- Runtime Scene Package Validation Command Tooling v1
 - engine/agent/manifest.json
 
 Required discovery:
@@ -70,19 +77,19 @@ Constraints:
 
 Execution order:
 1. Treat docs/superpowers/plans/2026-05-01-ai-operable-production-loop-foundation-v1.md as completed contract groundwork.
-2. Treat docs/superpowers/plans/2026-05-01-scene-component-prefab-schema-v2.md as a completed contract-only `mirakana_scene` slice. Later focused slices add reviewed Scene/Prefab v2 authoring commands, runtime package migration proof, deterministic `prefab_source` provenance, non-mutating `plan_scene_prefab_instance_refresh_v2` stable-id planning with `duplicate_prefab_source_identity` ambiguity diagnostics, `unsupported_nested_prefab_instance` nested-root diagnostics, `unsupported_local_prefab_child` / `unsupported_local_prefab_component` local ownership diagnostics, pure value `apply_scene_prefab_instance_refresh_v2` / `ScenePrefabInstanceRefreshResultV2` stable-id apply, and reviewed `refresh-prefab-instance` authored `.scene` writes without making editor productization, nested prefab propagation/merge resolution UX, broad/dependent package cooking, renderer/RHI residency, package streaming, or runtime prefab semantics ready.
-3. Treat docs/superpowers/plans/2026-05-01-asset-identity-runtime-resource-v2.md as a completed foundation-only asset/runtime slice.
-4. Treat docs/superpowers/plans/2026-05-01-renderer-rhi-resource-foundation-v1.md as a completed foundation-only `mirakana_rhi` slice with `RhiResourceLifetimeRegistry`, resource ids, owner labels, debug names, deferred-release records, frame-indexed retirement, deterministic diagnostics, and marker-style events.
-5. Treat docs/superpowers/plans/2026-05-01-frame-graph-upload-staging-foundation-v1.md as a completed foundation-only `mirakana_renderer`/`mirakana_rhi` slice with `FrameGraphV1Desc`, barrier intent rows, `RhiUploadStagingPlan`, buffer/texture copy rows, submitted `FenceValue` tracking, and completed-fence retirement.
-6. Treat docs/superpowers/plans/2026-05-01-ai-command-surface-foundation-v1.md as a completed descriptor-only command surface slice. Ready apply remains narrow: register-runtime-package-files for reviewed runtimePackageFiles registration, register-source-asset for `GameEngine.SourceAssetRegistry.v1` rows plus deterministic `GameEngine.AssetIdentity.v2` and import-metadata projections, cook-registered-source-assets for explicitly selected source registry rows through existing import/package helpers, migrate-scene-v2-runtime-package for the reviewed bridge from authored `GameEngine.Scene.v2` plus source-registry rows into the existing `GameEngine.Scene.v1` `.scene` plus `.geindex` update surface, update-ui-atlas-metadata-package for cooked UI atlas metadata package row updates, create-material-instance for first-party material instance `.material` plus `.geindex` `AssetKind::material` / `material_texture` row updates, and update-scene-package for first-party `GameEngine.Scene.v1` `.scene` plus `.geindex` `AssetKind::scene` / `scene_mesh` / `scene_material` / `scene_sprite` row updates. Ready non-mutating execute surfaces include `validate-runtime-scene-package` for explicit package load plus runtime scene instantiation diagnostics.
-7. Treat docs/superpowers/plans/2026-05-01-2d-playable-vertical-slice-foundation-v1.md as the completed source-tree 2D recipe slice once its validation evidence is present.
-8. Treat docs/superpowers/plans/2026-05-01-2d-desktop-runtime-package-proof-v1.md as the completed host-gated `2d-desktop-runtime-package` recipe slice once its validation evidence is present.
-9. Treat docs/superpowers/plans/2026-05-01-3d-playable-vertical-slice-foundation-v1.md as the completed host-gated `3d-playable-desktop-package` recipe slice once its validation evidence is present.
-10. Treat docs/superpowers/plans/2026-05-01-native-gpu-ui-overlay-foundation-v1.md as the completed host-gated `native-gpu-runtime-ui-overlay` recipe slice once its validation evidence is present.
-11. Treat docs/superpowers/plans/2026-05-01-native-ui-textured-sprite-atlas-foundation-v1.md as the completed host-gated `native-ui-textured-sprite-atlas` recipe slice once its validation evidence is present.
-12. Treat docs/superpowers/plans/2026-05-01-ui-atlas-metadata-authoring-tooling-v1.md as the completed ready cooked-metadata authoring surface once its validation evidence is present.
-13. Treat docs/superpowers/plans/2026-05-01-registered-source-asset-cook-package-command-tooling-v1.md and docs/superpowers/plans/2026-05-01-scene-v2-registered-asset-runtime-workflow-validation-v1.md as completed explicit source-row cook/package and workflow proof slices once their validation evidence is present.
-14. Treat docs/superpowers/plans/2026-05-01-runtime-scene-package-validation-command-tooling-v1.md as the completed reviewed `validate-runtime-scene-package` slice once its validation evidence is present; it is non-mutating runtime scene package validation only and does not make broad package cooking, runtime source parsing, renderer/RHI residency, package streaming, editor productization, native handles, Metal, or general renderer quality ready.
+2. Treat Scene Component Prefab Schema v2 as a completed contract-only `mirakana_scene` slice. Later focused slices add reviewed Scene/Prefab v2 authoring commands, runtime package migration proof, deterministic `prefab_source` provenance, non-mutating `plan_scene_prefab_instance_refresh_v2` stable-id planning with `duplicate_prefab_source_identity` ambiguity diagnostics, `unsupported_nested_prefab_instance` nested-root diagnostics, `unsupported_local_prefab_child` / `unsupported_local_prefab_component` local ownership diagnostics, pure value `apply_scene_prefab_instance_refresh_v2` / `ScenePrefabInstanceRefreshResultV2` stable-id apply, and reviewed `refresh-prefab-instance` authored `.scene` writes without making editor productization, nested prefab propagation/merge resolution UX, broad/dependent package cooking, renderer/RHI residency, package streaming, or runtime prefab semantics ready.
+3. Treat Asset Identity Runtime Resource v2 as a completed foundation-only asset/runtime slice.
+4. Treat Renderer RHI Resource Foundation v1 as a completed foundation-only `mirakana_rhi` slice with `RhiResourceLifetimeRegistry`, resource ids, owner labels, debug names, deferred-release records, frame-indexed retirement, deterministic diagnostics, and marker-style events.
+5. Treat Frame Graph Upload Staging Foundation v1 as a completed foundation-only `mirakana_renderer`/`mirakana_rhi` slice with `FrameGraphV1Desc`, barrier intent rows, `RhiUploadStagingPlan`, buffer/texture copy rows, submitted `FenceValue` tracking, and completed-fence retirement.
+6. Treat AI Command Surface Foundation v1 as a completed descriptor-only command surface slice. Ready apply remains narrow: register-runtime-package-files for reviewed runtimePackageFiles registration, register-source-asset for `GameEngine.SourceAssetRegistry.v1` rows plus deterministic `GameEngine.AssetIdentity.v2` and import-metadata projections, cook-registered-source-assets for explicitly selected source registry rows through existing import/package helpers, migrate-scene-v2-runtime-package for the reviewed bridge from authored `GameEngine.Scene.v2` plus source-registry rows into the existing `GameEngine.Scene.v1` `.scene` plus `.geindex` update surface, update-ui-atlas-metadata-package for cooked UI atlas metadata package row updates, create-material-instance for first-party material instance `.material` plus `.geindex` `AssetKind::material` / `material_texture` row updates, and update-scene-package for first-party `GameEngine.Scene.v1` `.scene` plus `.geindex` `AssetKind::scene` / `scene_mesh` / `scene_material` / `scene_sprite` row updates. Ready non-mutating execute surfaces include `validate-runtime-scene-package` for explicit package load plus runtime scene instantiation diagnostics.
+7. Treat 2d Playable Vertical Slice Foundation v1 as the completed source-tree 2D recipe slice once its validation evidence is present.
+8. Treat 2d Desktop Runtime Package Proof v1 as the completed host-gated `2d-desktop-runtime-package` recipe slice once its validation evidence is present.
+9. Treat 3d Playable Vertical Slice Foundation v1 as the completed host-gated `3d-playable-desktop-package` recipe slice once its validation evidence is present.
+10. Treat Native GPU UI Overlay Foundation v1 as the completed host-gated `native-gpu-runtime-ui-overlay` recipe slice once its validation evidence is present.
+11. Treat Native UI Textured Sprite Atlas Foundation v1 as the completed host-gated `native-ui-textured-sprite-atlas` recipe slice once its validation evidence is present.
+12. Treat UI Atlas Metadata Authoring Tooling v1 as the completed ready cooked-metadata authoring surface once its validation evidence is present.
+13. Treat Registered Source Asset Cook Package Command Tooling v1 and Scene v2 Registered Asset Runtime Workflow Validation v1 as completed explicit source-row cook/package and workflow proof slices once their validation evidence is present.
+14. Treat Runtime Scene Package Validation Command Tooling v1 as the completed reviewed `validate-runtime-scene-package` slice once its validation evidence is present; it is non-mutating runtime scene package validation only and does not make broad package cooking, runtime source parsing, renderer/RHI residency, package streaming, editor productization, native handles, Metal, or general renderer quality ready.
 15. Update schemas/static checks, tools/agent-context.ps1, docs/ai-game-development.md, docs/specs/generated-game-validation-scenarios.md, and docs/specs/game-prompt-pack.md whenever the contract changes.
 16. Run pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1, pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1, pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1, pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1 for public header changes, and pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1.
 

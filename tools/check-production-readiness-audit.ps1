@@ -24,9 +24,17 @@ if ($null -eq $productionLoop) {
 }
 
 $gaps = @($productionLoop.unsupportedProductionGaps)
-$zeroGapCloseoutPlan = Join-Path $root "docs\superpowers\plans\2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md"
-if ($gaps.Count -eq 0 -and -not (Test-Path -LiteralPath $zeroGapCloseoutPlan -PathType Leaf)) {
-    Write-Error "Production readiness audit accepts a zero-gap manifest only after the full repository quality gate closeout plan exists."
+$zeroGapCloseoutArchive = Join-Path $root "docs\superpowers\master-plans\production-completion-v1\99-historical-verdict-archive.md"
+if ($gaps.Count -eq 0) {
+    if (-not (Test-Path -LiteralPath $zeroGapCloseoutArchive -PathType Leaf)) {
+        Write-Error "Production readiness audit accepts a zero-gap manifest only after the full repository quality gate closeout evidence exists."
+    }
+    $zeroGapCloseoutArchiveText = Get-Content -LiteralPath $zeroGapCloseoutArchive -Raw
+    foreach ($needle in @("2026-05-18-full-repository-quality-gate-1-0-closeout-v1.md", "Full Repository Quality Gate 1.0 Closeout")) {
+        if (-not $zeroGapCloseoutArchiveText.Contains($needle)) {
+            Write-Error "Production readiness audit accepts a zero-gap manifest only after the full repository quality gate closeout evidence is archived: $needle"
+        }
+    }
 }
 
 $allowedStatuses = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)

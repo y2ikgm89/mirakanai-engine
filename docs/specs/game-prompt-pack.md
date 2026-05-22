@@ -1,5 +1,11 @@
 # Game Prompt Pack
 
+## Status
+
+Current generated-game guide.
+
+Keep this guide aligned with `engine/agent/manifest.json.aiOperableProductionLoop`, `tools/agent-context.ps1`, and `docs/specs/generated-game-validation-scenarios.md`.
+
 These prompt templates are intentionally constrained to current public GameEngine APIs. They assume the agent first runs or inspects `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1`, then reads `engine/agent/manifest.json` and the target `game.agent.json`.
 
 For engine-building sessions that continue the AI-operable production roadmap itself, use `docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md` before choosing a generated-game prompt.
