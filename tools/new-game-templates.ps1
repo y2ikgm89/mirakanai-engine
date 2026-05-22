@@ -5537,6 +5537,225 @@ function New-DesktopRuntimeCookedSceneManifest {
     }
 }
 
+function New-DesktopRuntime2DGameDesignSpec {
+    param(
+        [string]$GameName
+    )
+
+    return [ordered]@{
+        schemaVersion = 1
+        capabilityId = "ai-game-design-spec-v1"
+        designId = $GameName.Replace("_", "-")
+        gameplayFamily = "2d-desktop-runtime-package"
+        template = "DesktopRuntime2DPackage"
+        camera = [ordered]@{
+            mode = "fixed-2d"
+            primary = "packaged-2d-scene-camera"
+            notes = "Orthographic package smoke camera over the cooked 2D scene."
+        }
+        inputMap = @(
+            [ordered]@{
+                action = "move-left"
+                defaultBinding = "Left Arrow"
+                purpose = "Move the player sprite through deterministic 2D gameplay smoke rows."
+            },
+            [ordered]@{
+                action = "jump"
+                defaultBinding = "Space"
+                purpose = "Exercise audio, contact, and animation feedback in the package proof."
+            }
+        )
+        coreLoop = [ordered]@{
+            objective = "Move the cooked player sprite through the packaged scene while package-visible systems report deterministic gameplay counters."
+            playerActions = @("move-left-right", "jump", "trigger-audio-cue", "restart-smoke")
+            feedback = "Sprite animation, HUD submission, audio cue, physics contacts, navigation, AI, and native sprite counters are emitted by selected package recipes."
+            winState = "Installed package recipes report clean 2D package, gameplay systems, and native sprite evidence."
+            failState = "Missing package files, invalid scene references, or unsupported broad claims fail schema/static/package validation."
+            restart = "Rerun the package smoke from the manifest-derived runtime package files without mutating cooked payloads."
+        }
+        sceneList = @(
+            [ordered]@{
+                id = "runtime-config"
+                kind = "config"
+                path = "runtime/$GameName.config"
+                purpose = "Desktop runtime configuration shipped through runtimePackageFiles."
+            },
+            [ordered]@{
+                id = "runtime-package-index"
+                kind = "package-index"
+                path = "runtime/$GameName.geindex"
+                purpose = "Package index used by installed validation and runtime scene loading."
+            },
+            [ordered]@{
+                id = "playable-scene"
+                kind = "scene"
+                path = "runtime/assets/2d/playable.scene"
+                purpose = "Cooked 2D scene validated by runtimeSceneValidationTargets."
+            }
+        )
+        assetRequests = @(
+            [ordered]@{
+                id = "player-sprite-atlas"
+                kind = "sprite-atlas"
+                purpose = "Reviewed RGBA8 source frames feed first-party sprite atlas authoring before cooked runtime consumption."
+                delivery = "reviewed-source-authoring"
+            },
+            [ordered]@{
+                id = "level-tilemap"
+                kind = "tilemap"
+                purpose = "First-party tilemap metadata drives deterministic visible tile counters."
+                delivery = "runtime-package-file"
+            },
+            [ordered]@{
+                id = "jump-audio"
+                kind = "audio"
+                purpose = "Cooked audio cue proves device-independent audio feedback."
+                delivery = "runtime-package-file"
+            }
+        )
+        systems = @("sdl3-desktop-host", "scene-rendering", "runtime-ui", "audio-mix", "physics-2d", "navigation-grid", "behavior-ai")
+        packageTargets = @("desktop-game-runtime", "desktop-runtime-release")
+        validationRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")
+        qualityGates = @(
+            [ordered]@{
+                id = "package-loads"
+                evidence = "Installed package validation loads manifest-derived config, package index, and cooked scene payloads."
+                recipeIds = @("desktop-runtime-release-target", "installed-2d-package-smoke")
+            },
+            [ordered]@{
+                id = "playable-feedback"
+                evidence = "Gameplay systems, native sprite, UI, audio, physics, navigation, and AI counters are selected package evidence."
+                recipeIds = @("installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")
+            }
+        )
+        unsupportedClaims = @("engine-internal-edits", "native-handles", "middleware-contracts", "unreviewed-external-assets", "arbitrary-shell", "broad-commercial-quality", "runtime-source-parsing", "renderer-rhi-residency", "metal-readiness")
+    }
+}
+
+function New-DesktopRuntime3DGameDesignSpec {
+    param(
+        [string]$GameName
+    )
+
+    return [ordered]@{
+        schemaVersion = 1
+        capabilityId = "ai-game-design-spec-v1"
+        designId = $GameName.Replace("_", "-")
+        gameplayFamily = "3d-playable-desktop-package"
+        template = "DesktopRuntime3DPackage"
+        camera = [ordered]@{
+            mode = "perspective-3d"
+            primary = "packaged-3d-scene-primary-camera"
+            notes = "Perspective camera/controller package proof over the cooked 3D scene."
+        }
+        inputMap = @(
+            [ordered]@{
+                action = "move-camera-right"
+                defaultBinding = "Right Arrow"
+                purpose = "Drive deterministic primary camera/controller smoke evidence."
+            },
+            [ordered]@{
+                action = "inspect-scene"
+                defaultBinding = "Mouse drag"
+                purpose = "Document the intended 3D inspection loop while package validation remains deterministic."
+            }
+        )
+        coreLoop = [ordered]@{
+            objective = "Inspect the cooked 3D package scene while public physics, navigation, AI, renderer-quality, UI, and package-streaming smoke rows prove selected systems."
+            playerActions = @("move-camera-right", "inspect-scene", "trigger-package-smoke", "restart-smoke")
+            feedback = "Scene render, primary camera/controller, renderer-quality, collision, UI overlay, and gameplay systems counters report package-visible feedback."
+            winState = "Installed package recipes report ready scene, camera/controller, collision, UI, and selected D3D12 renderer-quality evidence."
+            failState = "Invalid package rows, missing shader artifacts, unsafe native claims, or missing gameplay counters fail static or package validation."
+            restart = "Rerun selected package smokes from manifest-declared runtime files and host-gated shader artifacts."
+        }
+        sceneList = @(
+            [ordered]@{
+                id = "runtime-config"
+                kind = "config"
+                path = "runtime/$GameName.config"
+                purpose = "Desktop runtime configuration shipped through runtimePackageFiles."
+            },
+            [ordered]@{
+                id = "runtime-package-index"
+                kind = "package-index"
+                path = "runtime/$GameName.geindex"
+                purpose = "Package index used by runtime scene loading and package validation."
+            },
+            [ordered]@{
+                id = "packaged-scene"
+                kind = "scene"
+                path = "runtime/assets/3d/packaged_scene.scene"
+                purpose = "Cooked 3D scene validated by runtimeSceneValidationTargets."
+            },
+            [ordered]@{
+                id = "source-scene"
+                kind = "source-scene"
+                path = "source/scenes/packaged_scene.scene"
+                purpose = "Scene v2 authoring input reviewed before package migration."
+            },
+            [ordered]@{
+                id = "source-prefab"
+                kind = "source-prefab"
+                path = "source/prefabs/static_prop.prefab"
+                purpose = "Prefab v2 authoring input reviewed before package migration."
+            }
+        )
+        assetRequests = @(
+            [ordered]@{
+                id = "base-color-texture"
+                kind = "texture"
+                purpose = "Cooked texture fixture for material and scene GPU package evidence."
+                delivery = "reviewed-source-authoring"
+            },
+            [ordered]@{
+                id = "packaged-mesh"
+                kind = "mesh"
+                purpose = "First-party mesh source and cooked mesh payload for scene draw evidence."
+                delivery = "reviewed-source-authoring"
+            },
+            [ordered]@{
+                id = "lit-material"
+                kind = "material"
+                purpose = "Runtime material plus source material/HLSL authoring inputs for selected shader package smokes."
+                delivery = "reviewed-source-authoring"
+            },
+            [ordered]@{
+                id = "hud-atlas"
+                kind = "ui-atlas"
+                purpose = "Cooked UI atlas image/text package metadata for native overlay package evidence."
+                delivery = "runtime-package-file"
+            },
+            [ordered]@{
+                id = "collision-scene"
+                kind = "physics-collision"
+                purpose = "Cooked collision scene package rows for selected 3D collision query evidence."
+                delivery = "runtime-package-file"
+            }
+        )
+        systems = @("sdl3-desktop-host", "scene-rendering", "renderer-quality", "runtime-ui", "physics-3d", "navigation-navmesh", "behavior-ai", "animation", "package-streaming")
+        packageTargets = @("desktop-game-runtime", "desktop-runtime-release")
+        validationRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-3d-package-smoke", "installed-d3d12-3d-scene-collision-package-smoke", "installed-d3d12-3d-native-ui-overlay-smoke", "installed-d3d12-3d-directional-shadow-smoke")
+        qualityGates = @(
+            [ordered]@{
+                id = "package-loads"
+                evidence = "Installed package validation loads manifest-derived config, package index, and cooked 3D scene payloads."
+                recipeIds = @("desktop-runtime-release-target", "installed-d3d12-3d-package-smoke")
+            },
+            [ordered]@{
+                id = "camera-render-feedback"
+                evidence = "Primary camera/controller, scene rendering, UI overlay, and directional shadow counters are selected package evidence."
+                recipeIds = @("installed-d3d12-3d-package-smoke", "installed-d3d12-3d-native-ui-overlay-smoke", "installed-d3d12-3d-directional-shadow-smoke")
+            },
+            [ordered]@{
+                id = "collision-gameplay"
+                evidence = "Scene collision package smoke reports ready collision package and deterministic query counters."
+                recipeIds = @("installed-d3d12-3d-scene-collision-package-smoke")
+            }
+        )
+        unsupportedClaims = @("engine-internal-edits", "native-handles", "middleware-contracts", "unreviewed-external-assets", "arbitrary-shell", "broad-commercial-quality", "runtime-source-parsing", "renderer-rhi-residency", "metal-readiness")
+    }
+}
+
 function New-DesktopRuntime2DManifest {
     param(
         [string]$GameName,
@@ -5577,6 +5796,7 @@ function New-DesktopRuntime2DManifest {
             spec = "games/$GameName/README.md"
             validate = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
             allowedEditRoots = @("games/$GameName", "tests")
+            gameDesignSpec = New-DesktopRuntime2DGameDesignSpec -GameName $GameName
         }
         gameplayContract = [ordered]@{
             productionRecipe = "2d-desktop-runtime-package"
@@ -5771,6 +5991,7 @@ function New-DesktopRuntime3DManifest {
             spec = "games/$GameName/README.md"
             validate = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1"
             allowedEditRoots = @("games/$GameName", "tests")
+            gameDesignSpec = New-DesktopRuntime3DGameDesignSpec -GameName $GameName
         }
         gameplayContract = [ordered]@{
             productionRecipe = "3d-playable-desktop-package"

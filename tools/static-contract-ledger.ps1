@@ -30,7 +30,8 @@ function Get-StaticContractLedger {
                 "check-json-contracts-020-game-contracts.ps1",
                 "check-json-contracts-030-tooling-contracts.ps1",
                 "check-json-contracts-040-agent-surfaces.ps1",
-                "check-json-contracts-050-generated-games.ps1"
+                "check-json-contracts-050-generated-games.ps1",
+                "check-json-contracts-060-game-design-spec.ps1"
             )
             MaximumEntryLines = 80
             MaximumCoreLines = 1600

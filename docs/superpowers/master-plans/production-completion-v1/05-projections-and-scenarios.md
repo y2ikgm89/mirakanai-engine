@@ -52,7 +52,7 @@ The autonomous game-creation lane is game-surface only by default: agents may ge
 - Keep game-owned mutation under `games/<game_name>/`, game-local source asset roots, game-local docs/evidence, and reviewed generated/runtime package registration rows.
 - Treat `engine/`, `editor/`, shared `tools/`, schemas, skills, rules, subagents, CMake/vcpkg, and validation policy as read-only unless a separate engine-change plan is selected.
 - Create or change game content through reviewed dry-run/apply tools, typed command rows, or documented file formats.
-- Require a structured game design contract before generation: gameplay family, template, camera, input map, core loop, win/loss/restart, scene list, asset requests, systems, package targets, validation recipes, and quality gates.
+- Require `game.agent.json.aiWorkflow.gameDesignSpec` before generated 2D/3D package expansion: gameplay family, template, camera, input map, core loop, win/loss/restart, scene list, asset requests, systems, package targets, validation recipes, quality gates, and unsupported claims.
 - Use first-party or reviewed placeholder assets with provenance/license rows. Do not copy web, store, sample, blog, or repository assets without explicit license evidence.
 - Record validation/playtest evidence, classify failures, and repair through remediation recipes. Do not loosen validation or delete evidence to pass.
 - If a requested game needs unsupported engine capability, emit a typed developer handoff that references a canonical row in `04`.
@@ -61,7 +61,7 @@ The autonomous game-creation lane is game-surface only by default: agents may ge
 
 | Workflow concern | Canonical rows | Evidence boundary |
 | --- | --- | --- |
-| Design before generation | `ai-game-design-spec-v1` | Schema/static checks, examples for 2D/3D templates, and validation that required gameplay/package fields exist. |
+| Design before generation | `ai-game-design-spec-v1` | Fail-closed `game.agent.json.aiWorkflow.gameDesignSpec` schema/static checks, examples for 2D/3D templates, and validation that required gameplay/package fields and same-manifest package/recipe references exist. |
 | Generation orchestration | `ai-game-generation-orchestrator-v1` | Dry-run/apply rows, deterministic file lists, generated 2D/3D package evidence, and no arbitrary shell. |
 | Safe mutation boundaries | `ai-safe-content-mutation-ledger-v1` | `game.agent.json` schema rows, static checks, and failure when AI-owned mutation surfaces drift. |
 | Placeholder assets | `ai-placeholder-asset-pipeline-v1`, `engine-asset-placeholder-generation-v1` | Provenance rows, license status, package rows, hash/eol checks, and package-visible placeholder evidence. |

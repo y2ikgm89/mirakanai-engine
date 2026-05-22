@@ -70,6 +70,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 | 1.0 readiness, current verdict, and supported/unsupported boundaries | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) and [01-one-dot-zero-readiness-ledger.md](../master-plans/production-completion-v1/01-one-dot-zero-readiness-ledger.md) |
 | Post-1.0 / 1.x developer-owned capability backlog | [04-developer-owned-engine-capability-backlog.md](../master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md) |
 | Gameplay scenario projections and official practice gates | [05-projections-and-scenarios.md](../master-plans/production-completion-v1/05-projections-and-scenarios.md) |
+| AI game design spec implementation evidence | [AI Game Design Spec v1](2026-05-23-ai-game-design-spec-v1.md) |
 | AI engine capability handoff implementation evidence | [AI Engine Capability Handoff v1](2026-05-22-ai-engine-capability-handoff-v1.md) |
 | Historical/static-check retained literals | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
 | Recent completed implementation evidence | Search [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) and Git history; do not treat this registry as a changelog. |

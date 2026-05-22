@@ -31,7 +31,130 @@
     "allowedEditRoots": [
       "games/sample_desktop_runtime_game",
       "tests"
-    ]
+    ],
+    "gameDesignSpec": {
+      "schemaVersion": 1,
+      "capabilityId": "ai-game-design-spec-v1",
+      "designId": "sample-desktop-runtime-game",
+      "gameplayFamily": "3d-playable-desktop-package",
+      "template": "DesktopRuntime3DPackage",
+      "camera": {
+        "mode": "perspective-3d",
+        "primary": "desktop-runtime-primary-camera",
+        "notes": "Perspective camera/controller package foundation over the cooked desktop runtime scene."
+      },
+      "inputMap": [
+        {
+          "action": "move-camera-right",
+          "defaultBinding": "Right Arrow",
+          "purpose": "Drive deterministic camera/controller movement over the cooked primary camera node."
+        }
+      ],
+      "coreLoop": {
+        "objective": "Load the cooked 3D desktop runtime package, move the primary camera, and prove scene GPU/UI/shadow package evidence on supported hosts.",
+        "playerActions": [
+          "move-camera-right",
+          "inspect-scene",
+          "restart-smoke"
+        ],
+        "feedback": "Scene GPU binding, UI overlay, directional shadow, postprocess, renderer-quality, and package smoke counters report host-gated feedback.",
+        "winState": "Installed D3D12 or strict Vulkan scene GPU recipes report ready scene, camera, shader, UI, and renderer-quality evidence.",
+        "failState": "Missing package files, missing shader artifacts, stale unsupported claims, or unsafe native handle access fail validation.",
+        "restart": "Rerun installed package validation from the manifest-derived runtime files and selected host-gated shader artifacts."
+      },
+      "sceneList": [
+        {
+          "id": "runtime-config",
+          "kind": "config",
+          "path": "runtime/sample_desktop_runtime_game.config",
+          "purpose": "Desktop runtime configuration shipped through runtimePackageFiles."
+        },
+        {
+          "id": "runtime-package-index",
+          "kind": "package-index",
+          "path": "runtime/sample_desktop_runtime_game.geindex",
+          "purpose": "Package index used by runtime scene loading and installed validation."
+        },
+        {
+          "id": "packaged-scene",
+          "kind": "scene",
+          "path": "runtime/assets/desktop_runtime/packaged_scene.scene",
+          "purpose": "Cooked 3D scene validated by runtimeSceneValidationTargets."
+        }
+      ],
+      "assetRequests": [
+        {
+          "id": "base-color-texture",
+          "kind": "texture",
+          "purpose": "Cooked texture fixture for material and scene GPU package evidence.",
+          "delivery": "runtime-package-file"
+        },
+        {
+          "id": "triangle-mesh",
+          "kind": "mesh",
+          "purpose": "Cooked mesh payload for scene draw and GPU skinning package evidence.",
+          "delivery": "runtime-package-file"
+        },
+        {
+          "id": "desktop-material",
+          "kind": "material",
+          "purpose": "Runtime material fixture for scene rendering and package validation.",
+          "delivery": "runtime-package-file"
+        },
+        {
+          "id": "hud-atlas",
+          "kind": "ui-atlas",
+          "purpose": "Cooked UI atlas metadata for native overlay package evidence.",
+          "delivery": "runtime-package-file"
+        }
+      ],
+      "systems": [
+        "sdl3-desktop-host",
+        "scene-rendering",
+        "renderer-quality",
+        "runtime-ui",
+        "animation",
+        "framegraph-multiqueue"
+      ],
+      "packageTargets": [
+        "desktop-game-runtime",
+        "desktop-runtime-release"
+      ],
+      "validationRecipeIds": [
+        "desktop-game-runtime",
+        "desktop-runtime-release-target",
+        "installed-d3d12-scene-gpu-smoke",
+        "installed-vulkan-scene-gpu-smoke"
+      ],
+      "qualityGates": [
+        {
+          "id": "package-loads",
+          "evidence": "Installed package validation loads manifest-derived config, package index, and cooked 3D scene payloads.",
+          "recipeIds": [
+            "desktop-runtime-release-target"
+          ]
+        },
+        {
+          "id": "scene-gpu-feedback",
+          "evidence": "D3D12 and strict Vulkan scene GPU smokes report selected host-gated scene, camera, shader, and renderer counters.",
+          "recipeIds": [
+            "installed-d3d12-scene-gpu-smoke",
+            "installed-vulkan-scene-gpu-smoke"
+          ]
+        }
+      ],
+      "unsupportedClaims": [
+        "engine-internal-edits",
+        "native-handles",
+        "middleware-contracts",
+        "unreviewed-external-assets",
+        "arbitrary-shell",
+        "broad-commercial-quality",
+        "runtime-source-parsing",
+        "renderer-rhi-residency",
+        "metal-readiness"
+      ]
+    }
   },
   "gameplayContract": {
     "productionRecipe": "3d-playable-desktop-package",
