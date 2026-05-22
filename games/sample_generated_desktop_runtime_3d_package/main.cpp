@@ -23,6 +23,7 @@
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/entity_scale_culling.hpp"
+#include "mirakana/runtime/gameplay_interaction.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/physics_collision_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
@@ -602,6 +603,19 @@ enum class GameplaySystemsStatus : std::uint8_t {
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+runtime_gameplay_session_state_name(mirakana::runtime::RuntimeGameplaySessionState state) noexcept {
+    switch (state) {
+    case mirakana::runtime::RuntimeGameplaySessionState::running:
+        return "running";
+    case mirakana::runtime::RuntimeGameplaySessionState::won:
+        return "won";
+    case mirakana::runtime::RuntimeGameplaySessionState::lost:
+        return "lost";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] bool gameplay_systems_near(float value, float expected, float epsilon = 0.001F) noexcept {
     return std::abs(value - expected) <= epsilon;
 }
@@ -1115,6 +1129,7 @@ class GeneratedGameplaySystemsProbe final {
         build_physics_constraints_probe();
         build_physics_kinematic_motion_probe();
         render_audio_stream_probe();
+        build_gameplay_interaction_probe();
         (void)animation_.trigger("move");
         started_ = true;
     }
@@ -1207,7 +1222,9 @@ class GeneratedGameplaySystemsProbe final {
                audio_render_command_count_ == 1U && audio_stream_frames_ == 2U && audio_stream_sample_count_ == 2U &&
                gameplay_systems_near(audio_stream_first_sample_, 0.3F) &&
                gameplay_systems_near(audio_stream_second_sample_, 0.4F) &&
-               gameplay_systems_near(audio_stream_sample_abs_sum_, 0.7F) &&
+               gameplay_systems_near(audio_stream_sample_abs_sum_, 0.7F) && interaction_ready() &&
+               interaction_plan_.rows.size() == 10U && interaction_plan_.feedback_rows.size() == 10U &&
+               interaction_plan_.state.session_state == mirakana::runtime::RuntimeGameplaySessionState::running &&
                final_animation_sample_.to_state == "walk" && !final_animation_sample_.blending &&
                final_actor_position_.x > 0.0F;
     }
@@ -1303,6 +1320,10 @@ class GeneratedGameplaySystemsProbe final {
             gameplay_systems_near(audio_stream_first_sample_, 0.3F),
             gameplay_systems_near(audio_stream_second_sample_, 0.4F),
             gameplay_systems_near(audio_stream_sample_abs_sum_, 0.7F),
+            interaction_ready(),
+            interaction_plan_.rows.size() == 10U,
+            interaction_plan_.feedback_rows.size() == 10U,
+            interaction_plan_.state.session_state == mirakana::runtime::RuntimeGameplaySessionState::running,
             final_animation_sample_.to_state == "walk" && !final_animation_sample_.blending,
             final_actor_position_.x > 0.0F,
         };
@@ -1679,6 +1700,26 @@ class GeneratedGameplaySystemsProbe final {
         return audio_stream_sample_abs_sum_;
     }
 
+    [[nodiscard]] bool interaction_ready() const noexcept {
+        return interaction_plan_.succeeded && interaction_plan_.diagnostics.empty();
+    }
+
+    [[nodiscard]] std::size_t interaction_diagnostic_count() const noexcept {
+        return interaction_plan_.diagnostics.size();
+    }
+
+    [[nodiscard]] std::size_t interaction_row_count() const noexcept {
+        return interaction_plan_.rows.size();
+    }
+
+    [[nodiscard]] std::size_t interaction_feedback_row_count() const noexcept {
+        return interaction_plan_.feedback_rows.size();
+    }
+
+    [[nodiscard]] mirakana::runtime::RuntimeGameplaySessionState interaction_final_session_state() const noexcept {
+        return interaction_plan_.state.session_state;
+    }
+
     [[nodiscard]] std::string_view animation_state() const noexcept {
         return final_animation_sample_.to_state;
     }
@@ -1688,6 +1729,134 @@ class GeneratedGameplaySystemsProbe final {
     }
 
   private:
+    void build_gameplay_interaction_probe() {
+        using namespace mirakana::runtime;
+
+        const RuntimeGameplayInteractionState state{
+            .session_state = RuntimeGameplaySessionState::running,
+            .entities =
+                std::vector<RuntimeGameplayEntityState>{
+                    RuntimeGameplayEntityState{.id = "player", .health = 8, .max_health = 10, .active = true},
+                    RuntimeGameplayEntityState{.id = "enemy", .health = 5, .max_health = 5, .active = true},
+                },
+            .pickups =
+                std::vector<RuntimeGameplayPickupState>{
+                    RuntimeGameplayPickupState{
+                        .id = "pickup.relic", .item_id = "relic", .quantity = 1U, .available = true},
+                },
+            .objectives =
+                std::vector<RuntimeGameplayObjectiveState>{
+                    RuntimeGameplayObjectiveState{
+                        .id = "objective.extract", .progress = 1U, .target = 3U, .completed = false},
+                },
+        };
+        const std::vector<RuntimeGameplayInteractionEvent> events{
+            RuntimeGameplayInteractionEvent{
+                .id = "event.trigger",
+                .kind = RuntimeGameplayInteractionKind::trigger,
+                .source_entity_id = "player",
+                .target_entity_id = {},
+                .pickup_id = {},
+                .objective_id = {},
+                .feedback_id = "feedback.trigger",
+                .amount = 0,
+            },
+            RuntimeGameplayInteractionEvent{
+                .id = "event.damage",
+                .kind = RuntimeGameplayInteractionKind::damage,
+                .source_entity_id = "player",
+                .target_entity_id = "enemy",
+                .pickup_id = {},
+                .objective_id = {},
+                .feedback_id = "feedback.damage",
+                .amount = 3,
+            },
+            RuntimeGameplayInteractionEvent{
+                .id = "event.heal",
+                .kind = RuntimeGameplayInteractionKind::heal,
+                .source_entity_id = "player",
+                .target_entity_id = "player",
+                .pickup_id = {},
+                .objective_id = {},
+                .feedback_id = "feedback.heal",
+                .amount = 2,
+            },
+            RuntimeGameplayInteractionEvent{
+                .id = "event.pickup",
+                .kind = RuntimeGameplayInteractionKind::pickup,
+                .source_entity_id = "player",
+                .target_entity_id = {},
+                .pickup_id = "pickup.relic",
+                .objective_id = {},
+                .feedback_id = "feedback.pickup",
+                .amount = 1,
+            },
+            RuntimeGameplayInteractionEvent{
+                .id = "event.objective",
+                .kind = RuntimeGameplayInteractionKind::objective_progress,
+                .source_entity_id = "player",
+                .target_entity_id = {},
+                .pickup_id = {},
+                .objective_id = "objective.extract",
+                .feedback_id = "feedback.objective",
+                .amount = 2,
+            },
+            RuntimeGameplayInteractionEvent{
+                .id = "event.feedback",
+                .kind = RuntimeGameplayInteractionKind::feedback,
+                .source_entity_id = "player",
+                .target_entity_id = {},
+                .pickup_id = {},
+                .objective_id = {},
+                .feedback_id = "feedback.prompt",
+                .amount = 0,
+            },
+            RuntimeGameplayInteractionEvent{
+                .id = "event.win",
+                .kind = RuntimeGameplayInteractionKind::win,
+                .source_entity_id = "player",
+                .target_entity_id = {},
+                .pickup_id = {},
+                .objective_id = {},
+                .feedback_id = "feedback.win",
+                .amount = 0,
+            },
+            RuntimeGameplayInteractionEvent{
+                .id = "event.restart",
+                .kind = RuntimeGameplayInteractionKind::restart,
+                .source_entity_id = {},
+                .target_entity_id = {},
+                .pickup_id = {},
+                .objective_id = {},
+                .feedback_id = "feedback.restart",
+                .amount = 0,
+            },
+            RuntimeGameplayInteractionEvent{
+                .id = "event.loss",
+                .kind = RuntimeGameplayInteractionKind::loss,
+                .source_entity_id = "player",
+                .target_entity_id = {},
+                .pickup_id = {},
+                .objective_id = {},
+                .feedback_id = "feedback.loss",
+                .amount = 0,
+            },
+            RuntimeGameplayInteractionEvent{
+                .id = "event.restart_after_loss",
+                .kind = RuntimeGameplayInteractionKind::restart,
+                .source_entity_id = {},
+                .target_entity_id = {},
+                .pickup_id = {},
+                .objective_id = {},
+                .feedback_id = "feedback.restart_after_loss",
+                .amount = 0,
+            },
+        };
+
+        interaction_plan_ =
+            plan_runtime_gameplay_interactions(state, std::span<const RuntimeGameplayInteractionEvent>{events});
+    }
+
     void build_authored_collision_probe() {
         mirakana::PhysicsAuthoredCollisionScene3DDesc scene;
         scene.world_config = mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}};
@@ -2417,6 +2586,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::PhysicsConstraintSolve3DResult physics_constraints_result_;
     mirakana::PhysicsKinematicMotion3DResult kinematic_motion_result_;
     mirakana::PhysicsSimpleVehicle3DResult simple_vehicle_result_;
+    mirakana::runtime::RuntimeGameplayInteractionPlan interaction_plan_;
     mirakana::NavigationNavmeshPathResult navigation_navmesh_result_;
     mirakana::NavigationCrowdPlanResult navigation_crowd_result_;
     mirakana::NavigationAgentState navigation_agent_;
@@ -3175,6 +3345,27 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] float gameplay_systems_audio_abs_sum() const noexcept {
         return gameplay_systems_.audio_stream_sample_abs_sum();
+    }
+
+    [[nodiscard]] bool gameplay_systems_interaction_ready() const noexcept {
+        return gameplay_systems_.interaction_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_interaction_diagnostics() const noexcept {
+        return gameplay_systems_.interaction_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_interaction_rows() const noexcept {
+        return gameplay_systems_.interaction_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_interaction_feedback_rows() const noexcept {
+        return gameplay_systems_.interaction_feedback_row_count();
+    }
+
+    [[nodiscard]] mirakana::runtime::RuntimeGameplaySessionState
+    gameplay_systems_interaction_final_session_state() const noexcept {
+        return gameplay_systems_.interaction_final_session_state();
     }
 
     [[nodiscard]] std::string_view gameplay_systems_animation_state() const noexcept {
@@ -5993,6 +6184,12 @@ int main(int argc, char** argv) {
         << " gameplay_systems_audio_first_sample=" << game.gameplay_systems_audio_first_sample()
         << " gameplay_systems_audio_second_sample=" << game.gameplay_systems_audio_second_sample()
         << " gameplay_systems_audio_abs_sum=" << game.gameplay_systems_audio_abs_sum()
+        << " gameplay_systems_interaction_ready=" << (game.gameplay_systems_interaction_ready() ? 1 : 0)
+        << " gameplay_systems_interaction_diagnostics=" << game.gameplay_systems_interaction_diagnostics()
+        << " gameplay_systems_interaction_rows=" << game.gameplay_systems_interaction_rows()
+        << " gameplay_systems_interaction_feedback_rows=" << game.gameplay_systems_interaction_feedback_rows()
+        << " gameplay_systems_interaction_final_session_state="
+        << runtime_gameplay_session_state_name(game.gameplay_systems_interaction_final_session_state())
         << " gameplay_systems_animation_state=" << game.gameplay_systems_animation_state()
         << " gameplay_systems_final_actor_x=" << game.gameplay_systems_final_actor_x()
         << " hud_boxes=" << game.hud_boxes_submitted() << " hud_images=" << game.hud_images_submitted()

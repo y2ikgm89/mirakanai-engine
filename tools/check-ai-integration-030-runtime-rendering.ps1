@@ -249,8 +249,8 @@ if ($geAssetsModule[0].status -ne "implemented-asset-identity-v2-foundation") {
 if (@($geAssetsModule[0].publicHeaders) -notcontains "engine/assets/include/mirakana/assets/asset_identity.hpp") {
     Write-Error "engine/agent/manifest.json MK_assets publicHeaders must include asset_identity.hpp"
 }
-if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-safe-point-controller") {
-    Write-Error "engine/agent/manifest.json MK_runtime status must advertise the closed Runtime Resource v2 safe-point/controller surface honestly"
+if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-gameplay-interaction-framework") {
+    Write-Error "engine/agent/manifest.json MK_runtime status must advertise the closed Runtime Resource v2 plus gameplay interaction framework surface honestly"
 }
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") {
     Write-Error "engine/agent/manifest.json MK_runtime publicHeaders must include resource_runtime.hpp"
@@ -1159,8 +1159,8 @@ $geRuntimeModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime"
 if ($geRuntimeModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_runtime module"
 }
-if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-safe-point-controller") {
-    Write-Error "engine/agent/manifest.json MK_runtime status must advertise the closed Runtime Resource v2 safe-point/controller surface honestly"
+if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-gameplay-interaction-framework") {
+    Write-Error "engine/agent/manifest.json MK_runtime status must advertise the closed Runtime Resource v2 plus gameplay interaction framework surface honestly"
 }
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentInput")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentInput"

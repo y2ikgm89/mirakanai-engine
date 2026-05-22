@@ -429,11 +429,14 @@ if (-not ([string]$geAssetsModule[0].purpose).Contains("Asset Identity v2") -or
     -not ([string]$geAssetsModule[0].purpose).Contains("renderer/RHI residency")) {
     Write-Error "engine manifest MK_assets purpose must describe Asset Identity v2 as foundation-only and keep follow-up limits explicit"
 }
-if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-safe-point-controller") {
-    Write-Error "engine manifest MK_runtime status must advertise the closed Runtime Resource v2 safe-point/controller surface honestly"
+if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-gameplay-interaction-framework") {
+    Write-Error "engine manifest MK_runtime status must advertise the closed Runtime Resource v2 plus gameplay interaction framework surface honestly"
 }
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") {
     Write-Error "engine manifest MK_runtime publicHeaders must include resource_runtime.hpp"
+}
+if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/gameplay_interaction.hpp") {
+    Write-Error "engine manifest MK_runtime publicHeaders must include gameplay_interaction.hpp"
 }
 if ($geAudioModule[0].status -ne "implemented-gameplay-audio-mix-planner") {
     Write-Error "engine manifest MK_audio status must advertise the gameplay audio mix planner honestly"
