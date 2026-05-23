@@ -185,6 +185,24 @@ function Test-EnvironmentSet {
     return $true
 }
 
+function Test-MobilePackagingDeviceProbeEnabled {
+    param([bool]$RequireAndroidPackaging = $false)
+
+    $override = Get-EnvironmentVariableAnyScope "MK_MOBILE_DEVICE_PROBE"
+    if ($override -match "^(1|true|yes|on)$") {
+        return $true
+    }
+    if ($override -match "^(0|false|no|off)$") {
+        return $false
+    }
+
+    if ($RequireAndroidPackaging) {
+        return $true
+    }
+
+    return (Get-EnvironmentVariableAnyScope "GITHUB_ACTIONS") -ine "true"
+}
+
 function Invoke-MobilePackagingProbe {
     param(
         [Parameter(Mandatory = $true)][string]$FilePath,
@@ -375,7 +393,8 @@ if ($emulator) {
 
 $androidDeviceReady = $false
 $androidDeviceProbeTimedOut = $false
-if ($adb) {
+$androidDeviceProbeSkipped = $false
+if ($adb -and (Test-MobilePackagingDeviceProbeEnabled -RequireAndroidPackaging:$RequireAndroid.IsPresent)) {
     $deviceProbe = Invoke-MobilePackagingProbe -FilePath $adb -ArgumentList @("devices")
     $androidDeviceProbeTimedOut = $deviceProbe.TimedOut
     if (-not $deviceProbe.TimedOut -and $deviceProbe.ExitCode -eq 0) {
@@ -383,6 +402,8 @@ if ($adb) {
                 [string]$_ -match "^\S+\s+device$"
             }).Count -gt 0
     }
+} elseif ($adb) {
+    $androidDeviceProbeSkipped = $true
 }
 
 $androidReleaseSigningEnvironment = @(
@@ -476,6 +497,9 @@ else {
 
 if ($androidDeviceProbeTimedOut) {
     Write-Information "mobile-packaging: android-device-smoke=probe-timeout" -InformationAction Continue
+}
+elseif ($androidDeviceProbeSkipped) {
+    Write-Information "mobile-packaging: android-device-smoke=probe-skipped-ci" -InformationAction Continue
 }
 elseif ($androidDeviceReady) {
     Write-Information "mobile-packaging: android-device-smoke=ready" -InformationAction Continue

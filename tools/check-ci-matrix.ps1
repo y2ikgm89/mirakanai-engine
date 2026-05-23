@@ -518,7 +518,7 @@ Assert-ContainsAll $agentStaticJob @(
     'if: ${{ github.event_name == ''pull_request'' }}',
     'git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}',
     "Run static validation",
-    "run: ./tools/validate.ps1 -StaticOnly -StaticJobs 1"
+    "run: ./tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120"
 ) ".github/workflows/validate.yml agent-static job"
 
 $linuxJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux" -Label ".github/workflows/validate.yml"

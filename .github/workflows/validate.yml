@@ -73,7 +73,7 @@ jobs:
 
       - name: Run static validation
         shell: pwsh
-        run: ./tools/validate.ps1 -StaticOnly -StaticJobs 1
+        run: ./tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120
 
   windows:
     name: Windows MSVC
