@@ -736,6 +736,22 @@ function Get-ClangFormatCommand {
     return $null
 }
 
+function Get-CxxSourceFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root,
+
+        [string[]]$SourceRoots = @("engine", "editor", "examples", "games", "tests")
+    )
+
+    foreach ($sourceRoot in $SourceRoots) {
+        $path = Join-Path $Root $sourceRoot
+        if (Test-Path -LiteralPath $path) {
+            Get-ChildItem -LiteralPath $path -Recurse -File -Include *.cpp, *.hpp, *.h
+        }
+    }
+}
+
 function Get-ClangTidyCommand {
     $fromPath = Get-Command clang-tidy -ErrorAction SilentlyContinue
     if ($fromPath) {
