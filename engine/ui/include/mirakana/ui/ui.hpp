@@ -824,6 +824,8 @@ enum class RuntimeMenuHudRowKind : std::uint8_t {
     label,
     counter,
     prompt,
+    dialogue_box,
+    input_binding_prompt,
     command,
 };
 

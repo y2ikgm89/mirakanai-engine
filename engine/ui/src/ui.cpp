@@ -69,6 +69,8 @@ namespace {
     case RuntimeMenuHudRowKind::label:
     case RuntimeMenuHudRowKind::counter:
     case RuntimeMenuHudRowKind::prompt:
+    case RuntimeMenuHudRowKind::dialogue_box:
+    case RuntimeMenuHudRowKind::input_binding_prompt:
     case RuntimeMenuHudRowKind::command:
         return true;
     }

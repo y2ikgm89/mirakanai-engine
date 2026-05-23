@@ -1144,6 +1144,46 @@ MK_TEST("runtime menu hud plan produces deterministic display and command rows")
     MK_REQUIRE(!plan.command_rows[1].enabled);
 }
 
+MK_TEST("runtime menu hud plan supports dialogue and input binding prompt rows") {
+    const std::vector<mirakana::ui::RuntimeMenuHudRowDesc> rows{
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "dialogue.intro",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::dialogue_box,
+            .label = "Guide",
+            .value = "Find the relay station.",
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "bindings.jump",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::input_binding_prompt,
+            .label = "Jump",
+            .value = "Space",
+        },
+        mirakana::ui::RuntimeMenuHudRowDesc{
+            .id = "menu.resume",
+            .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+            .label = "Resume",
+            .command_id = "game.resume",
+            .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::resume_game,
+            .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_menu_hud(rows);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.display_rows.size() == 3);
+    MK_REQUIRE(plan.display_rows[0].kind == mirakana::ui::RuntimeMenuHudRowKind::dialogue_box);
+    MK_REQUIRE(plan.display_rows[0].label == "Guide");
+    MK_REQUIRE(plan.display_rows[0].value == "Find the relay station.");
+    MK_REQUIRE(plan.display_rows[1].kind == mirakana::ui::RuntimeMenuHudRowKind::input_binding_prompt);
+    MK_REQUIRE(plan.display_rows[1].label == "Jump");
+    MK_REQUIRE(plan.display_rows[1].value == "Space");
+    MK_REQUIRE(plan.command_rows.size() == 1);
+    MK_REQUIRE(plan.command_rows[0].command_id == "game.resume");
+    MK_REQUIRE(plan.command_rows[0].intent == mirakana::ui::RuntimeMenuHudCommandIntent::resume_game);
+}
+
 MK_TEST("runtime menu hud plan rejects duplicate row and command ids") {
     const std::vector<mirakana::ui::RuntimeMenuHudRowDesc> rows{
         mirakana::ui::RuntimeMenuHudRowDesc{

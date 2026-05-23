@@ -1800,6 +1800,8 @@ Assert-ContainsText $runtimeTestsText "runtime session profile resume plan block
 Assert-ContainsText $runtimeTestsText "runtime session profile resume plan blocks unsupported migration rows before package resume" "tests/unit/runtime_tests.cpp"
 $sample2DPackageText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sample3DPackageText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
+$sample2DPackageManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
+$sample3DPackageManifestText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
 foreach ($sampleSurface in @(
         @{ Text = $sample2DPackageText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
         @{ Text = $sample3DPackageText; Label = "games/sample_generated_desktop_runtime_3d_package/main.cpp" }
@@ -1832,6 +1834,9 @@ if ($runtimeMenuHudIntentAuthoringSurface.Count -ne 1 -or
 if (-not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudRowDesc") -or
     -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudCommandIntent") -or
     -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudCommandTarget") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("dialogue_box") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("input_binding_prompt") -or
+    -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("runtime_menu_hud_ready") -or
     -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("plan_runtime_menu_hud") -or
     -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudDisplayRow") -or
     -not ([string]$runtimeMenuHudIntentAuthoringSurface[0].notes).Contains("RuntimeMenuHudCommandRow") -or
@@ -1865,10 +1870,37 @@ foreach ($needle in @(
     Assert-ContainsText $uiSourceText $needle "engine/ui/src/ui.cpp"
 }
 Assert-ContainsText $coreTestsText "runtime menu hud plan produces deterministic display and command rows" "tests/unit/core_tests.cpp"
+Assert-ContainsText $coreTestsText "runtime menu hud plan supports dialogue and input binding prompt rows" "tests/unit/core_tests.cpp"
 Assert-ContainsText $coreTestsText "runtime menu hud plan rejects duplicate row and command ids" "tests/unit/core_tests.cpp"
 Assert-ContainsText $coreTestsText "runtime menu hud plan rejects missing command ids and invalid command targets" "tests/unit/core_tests.cpp"
 Assert-ContainsText $sampleUiAudioAssetsText "plan_runtime_menu_hud" "games/sample_ui_audio_assets/main.cpp"
 Assert-ContainsText $sampleUiAudioAssetsText "RuntimeMenuHudCommandIntent::restart_session" "games/sample_ui_audio_assets/main.cpp"
+$sample2DPackageText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
+$sample3DPackageText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
+foreach ($sampleSurface in @(
+        @{ Text = $sample2DPackageText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
+        @{ Text = $sample3DPackageText; Label = "games/sample_generated_desktop_runtime_3d_package/main.cpp" }
+    )) {
+    Assert-ContainsText $sampleSurface.Text "--require-runtime-menu-hud" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "runtime_menu_hud_ready" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "runtime_menu_hud_display_rows" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "runtime_menu_hud_command_rows" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "runtime_menu_hud_dialogue_rows" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "runtime_menu_hud_input_binding_prompt_rows" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "gameplay_systems_runtime_menu_hud_display_rows() != 6U" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "gameplay_systems_runtime_menu_hud_command_rows() != 2U" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "gameplay_systems_runtime_menu_hud_dialogue_rows() != 1U" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "gameplay_systems_runtime_menu_hud_input_binding_prompt_rows() != 1U" $sampleSurface.Label
+}
+foreach ($sampleManifestSurface in @(
+        @{ Text = $sample2DPackageManifestText; Label = "games/sample_2d_desktop_runtime_package/game.agent.json"; Recipe = "installed-2d-runtime-menu-hud-smoke" },
+        @{ Text = $sample3DPackageManifestText; Label = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"; Recipe = "installed-3d-runtime-menu-hud-smoke" }
+    )) {
+    Assert-ContainsText $sampleManifestSurface.Text "runtime-menu-hud" $sampleManifestSurface.Label
+    Assert-ContainsText $sampleManifestSurface.Text $sampleManifestSurface.Recipe $sampleManifestSurface.Label
+    Assert-ContainsText $sampleManifestSurface.Text "--require-runtime-menu-hud" $sampleManifestSurface.Label
+    Assert-ContainsText $sampleManifestSurface.Text "runtime_menu_hud_ready" $sampleManifestSurface.Label
+}
 foreach ($docSurface in @(
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
         @{ Text = $roadmapText; Label = "docs/roadmap.md" },
@@ -1877,6 +1909,7 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "RuntimeMenuHudRowDesc" $docSurface.Label
     Assert-ContainsText $docSurface.Text "plan_runtime_menu_hud" $docSurface.Label
     Assert-ContainsText $docSurface.Text "RuntimeMenuHudCommandRow" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "--require-runtime-menu-hud" $docSurface.Label
 }
 $runtimeGameplayDebugOverlayAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-gameplay-debug-overlay-v1" })
 if ($runtimeGameplayDebugOverlayAuthoringSurface.Count -ne 1 -or
