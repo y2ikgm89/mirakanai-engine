@@ -1,7 +1,7 @@
 ---
 name: planning-auditor
 description: Read-only plan lifecycle agent for GameEngine plan necessity, active plan alignment, and gap sequencing.
-model: inherit
+model: composer-2.5-fast
 readonly: true
 ---
 

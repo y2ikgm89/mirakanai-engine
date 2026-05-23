@@ -1,7 +1,7 @@
 ---
 name: cpp-reviewer
 description: Read-only reviewer for GameEngine C++ ownership, lifetime, API clarity, determinism, and tests.
-model: inherit
+model: composer-2.5-fast
 readonly: true
 ---
 

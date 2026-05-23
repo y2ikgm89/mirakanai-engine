@@ -122,11 +122,11 @@ Claude Code parallel write sessions should use `--worktree`, and write-capable p
 
 ## Cursor
 
-Cursor loads root `AGENTS.md`, workspace rules under `.cursor/rules/`, Agent Skills under `.cursor/skills/`, and project subagents under `.cursor/agents/` when enabled. This repository treats `.cursor/agents/*.md` as the authoritative Cursor subagent surface; `.claude/agents/` and `.codex/agents/` are sibling surfaces for their own tools, not Cursor fallback roots.
+Cursor loads root `AGENTS.md`, workspace rules under `.cursor/rules/`, Agent Skills under `.cursor/skills/`, and project subagents under `.cursor/agents/` when enabled. Cursor rules stay focused, actionable, scoped, and under the official 500-line rule guidance; root `AGENTS.md` remains a plain Markdown global baseline, while `.cursor/rules/*.mdc` owns scoped metadata. This repository treats `.cursor/agents/*.md` as the authoritative Cursor subagent surface; `.claude/agents/` and `.codex/agents/` are sibling surfaces for their own tools, not Cursor fallback roots.
 
 - **Cursor-only summaries:** `gameengine-cursor-baseline` (PowerShell wrappers, validation shorthand, manifest alignment) and `gameengine-plan-registry` (dated plans under `docs/superpowers/plans/`).
 - **Thin pointers:** each `.cursor/skills/gameengine-*` folder (except the two above) must match a `.claude/skills/gameengine-*` name and point readers at the Claude/Codex skill routers and detailed references—`gameengine-agent-integration`, `gameengine-cmake-build-system`, `gameengine-debugging`, `gameengine-editor`, `gameengine-feature`, `gameengine-game-development`, `gameengine-license-audit`, `gameengine-rendering`.
-- **Project subagents:** `.cursor/agents/` mirrors the shared roles `agent-surface-auditor`, `explorer`, `cpp-reviewer`, `engine-architect`, `planning-auditor`, `rendering-auditor`, `gameplay-builder`, and `build-fixer`. Read-only review/audit/exploration roles declare `readonly: true`; write-capable builder/fixer roles keep `model: inherit` and must stay in the delegated scope.
+- **Project subagents:** `.cursor/agents/` mirrors the shared roles `agent-surface-auditor`, `explorer`, `cpp-reviewer`, `engine-architect`, `planning-auditor`, `rendering-auditor`, `gameplay-builder`, and `build-fixer`. Read-only review/audit/exploration roles declare `readonly: true`; all Cursor project subagents declare **`model: composer-2.5-fast`** using Cursor's documented subagent `model` frontmatter field (parent Task delegations use the same default unless the operator overrides), and write-capable builder/fixer roles must stay in the delegated scope. If Cursor rejects the model slug in a future release, verify the replacement in Cursor's model picker or API and update all Cursor agents, docs, and static guards together.
 
 For this repository, `AGENTS.md` Git Workflow is the intended workspace policy. If Cursor global instructions conflict with it, such as a blanket "do not commit until explicitly requested" rule, align the global instruction or add a workspace override before relying on automation.
 
@@ -178,7 +178,7 @@ The engine manifest also declares `aiOperableProductionLoop`: recipe ids, struct
 - Codex rules: https://developers.openai.com/codex/rules
 - Codex skills: https://developers.openai.com/codex/skills
 - Codex subagents: https://developers.openai.com/codex/subagents
-- OpenAI developer docs MCP: https://platform.openai.com/docs/docs-mcp
+- OpenAI developer docs MCP: https://developers.openai.com/learn/docs-mcp
 - Claude Code memory: https://docs.anthropic.com/en/docs/claude-code/memory
 - Claude Code settings and permissions: https://docs.anthropic.com/en/docs/claude-code/settings
 - Claude Code hooks: https://docs.anthropic.com/en/docs/claude-code/hooks
@@ -186,6 +186,7 @@ The engine manifest also declares `aiOperableProductionLoop`: recipe ids, struct
 - Cursor rules: https://cursor.com/docs/rules
 - Cursor Agent Skills: https://cursor.com/docs/skills
 - Cursor subagents: https://cursor.com/docs/subagents
+- Cursor Composer 2.5: https://cursor.com/changelog/composer-2-5
 - PowerShell approved verbs: https://learn.microsoft.com/en-us/powershell/scripting/developer/cmdlet/approved-verbs-for-windows-powershell-commands
 - PSScriptAnalyzer ShouldProcess rule: https://learn.microsoft.com/en-us/powershell/utility-modules/psscriptanalyzer/rules/shouldprocess
 - PowerShell ShouldProcess guidance: https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/everything-about-shouldprocess

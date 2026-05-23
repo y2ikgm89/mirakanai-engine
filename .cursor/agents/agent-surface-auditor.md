@@ -1,7 +1,7 @@
 ---
 name: agent-surface-auditor
 description: Read-only audit agent for Codex, Claude Code, Cursor, manifest, and validation-policy drift.
-model: inherit
+model: composer-2.5-fast
 readonly: true
 ---
 

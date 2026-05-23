@@ -251,6 +251,16 @@ if (Test-Path $codexRuleRoot) {
     }
 }
 
+$cursorRuleRoot = Join-Path $root ".cursor/rules"
+if (Test-Path -LiteralPath $cursorRuleRoot) {
+    Get-ChildItem -LiteralPath $cursorRuleRoot -Filter "*.mdc" -File -Recurse | ForEach-Object {
+        $lineCount = @(Get-Content -LiteralPath $_.FullName).Count
+        if ($lineCount -gt 500) {
+            Write-Error "Cursor rule exceeds official 500-line guidance: $($_.FullName)"
+        }
+    }
+}
+
 if (Test-Path $claudeSettingsPath) {
     $settings = Get-Content -LiteralPath $claudeSettingsPath -Raw | ConvertFrom-Json
     if (-not $settings.PSObject.Properties.Name.Contains('$schema')) {
@@ -356,7 +366,8 @@ function Test-CursorAgentFrontmatter {
     param(
         [Parameter(Mandatory)][string]$AgentPath,
         [Parameter(Mandatory)][string]$ExpectedName,
-        [Parameter(Mandatory)][string[]]$ReadOnlyAgentNames
+        [Parameter(Mandatory)][string[]]$ReadOnlyAgentNames,
+        [Parameter(Mandatory)][string]$RequiredModel
     )
 
     $fm = Get-AgentFrontmatterBlock -AgentPath $AgentPath
@@ -370,6 +381,9 @@ function Test-CursorAgentFrontmatter {
     }
     if ($fm -notmatch '(?m)^description:\s*\S') {
         Write-Error "Cursor agent frontmatter must include non-empty 'description:': $AgentPath"
+    }
+    if ($fm -notmatch "(?m)^model:\s*$([regex]::Escape($RequiredModel))\s*$") {
+        Write-Error "Cursor agent frontmatter must declare model: ${RequiredModel}: $AgentPath"
     }
     if ($ReadOnlyAgentNames -contains $ExpectedName -and $fm -notmatch '(?m)^readonly:\s*true\s*$') {
         Write-Error "Cursor read-only agent must declare readonly: true: $AgentPath"
@@ -479,6 +493,7 @@ $cursorReadOnlyAgents = @(
     "planning-auditor",
     "rendering-auditor"
 )
+$cursorRequiredAgentModel = "composer-2.5-fast"
 if (-not (Test-Path -LiteralPath $cursorAgentRoot)) {
     Write-Error "Cursor project subagents must live under .cursor/agents per Cursor Subagents documentation."
 }
@@ -504,7 +519,7 @@ if (Test-Path -LiteralPath $cursorAgentRoot) {
             -MaxBytes (16 * 1024) `
             -Label ".cursor/agents/$($_.Name)" `
             -Guidance "Keep Cursor subagents narrowly scoped and move reusable procedures to skills/docs."
-        Test-CursorAgentFrontmatter -AgentPath $_.FullName -ExpectedName $agentName -ReadOnlyAgentNames $cursorReadOnlyAgents
+        Test-CursorAgentFrontmatter -AgentPath $_.FullName -ExpectedName $agentName -ReadOnlyAgentNames $cursorReadOnlyAgents -RequiredModel $cursorRequiredAgentModel
         if (Test-Path -LiteralPath $claudeAgentRoot) {
             $pairedClaudeAgentPath = Join-Path $claudeAgentRoot "$agentName.md"
             if (-not (Test-Path -LiteralPath $pairedClaudeAgentPath)) {

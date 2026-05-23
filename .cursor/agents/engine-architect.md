@@ -1,7 +1,7 @@
 ---
 name: engine-architect
 description: Read-only architecture agent for scoped GameEngine design decisions and boundaries.
-model: inherit
+model: composer-2.5-fast
 readonly: true
 ---
 

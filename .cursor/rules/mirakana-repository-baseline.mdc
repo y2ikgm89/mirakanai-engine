@@ -6,6 +6,7 @@ alwaysApply: true
 # MIRAIKANAI baseline (Cursor rule)
 
 - **Authority:** [`AGENTS.md`](../../AGENTS.md) is the shared baseline; resolve conflicts in favor of `AGENTS.md`.
+- **Cursor rule shape:** Keep this and other `.cursor/rules/*.mdc` files focused, actionable, scoped, and under Cursor's recommended 500-line budget; use `AGENTS.md` for root-wide plain Markdown guidance.
 - **Automation:** Use **PowerShell 7** only: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1`. Do not use Windows PowerShell 5.1 or ad hoc `package.json` scripts for repo tasks.
 - **`tools/*.ps1` edits:** Follow **`AGENTS.md` → Repository command entrypoints** for PSScriptAnalyzer-friendly patterns (automatic variables, `ShouldProcess` on host-mutating helpers, `Write-Information` vs `Write-Host`, non-empty `catch`, approved verbs such as `ConvertTo-*` over `Normalize-*`). Run **`Invoke-ScriptAnalyzer`** on touched scripts when the module is installed.
 - **Expanded procedures:** [`docs/agent-operational-reference.md`](../../docs/agent-operational-reference.md) (validation matrix, editor shell details, plan lifecycle, game lanes).
