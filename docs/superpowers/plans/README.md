@@ -61,7 +61,8 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Status | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | No active dated child plan; select the next developer-owned backlog row before continuing. |
+| Active slice (`currentActivePlan`) | [Sprite Sorting Layer v1](2026-05-23-sprite-sorting-layer-v1.md) | Explicit 2D sorting layers, deterministic sprite sort order, and package-visible sorted draw counters. |
+| Active roadmap (parent) | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | Post-1.0 index; `unsupportedProductionGaps = []`. |
 
 ## Current Evidence Pointers
 

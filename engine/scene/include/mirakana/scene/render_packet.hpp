@@ -44,6 +44,14 @@ struct SceneRenderPacket {
     [[nodiscard]] const SceneRenderCamera* primary_camera() const noexcept;
 };
 
+struct SceneRenderSpriteSortStats {
+    std::uint64_t sprite_count{0};
+    std::uint64_t sorting_layers_applied{0};
+    std::uint64_t sorted_draws{0};
+    std::uint64_t reordered_count{0};
+};
+
+[[nodiscard]] SceneRenderSpriteSortStats sort_scene_render_sprites(std::vector<SceneRenderSprite>& sprites);
 [[nodiscard]] SceneRenderPacket build_scene_render_packet(const Scene& scene);
 
 } // namespace mirakana

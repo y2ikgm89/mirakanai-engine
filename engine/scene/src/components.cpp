@@ -84,10 +84,28 @@ bool is_valid_mesh_renderer_component(const MeshRendererComponent& renderer) noe
     return renderer.mesh.value != 0 && renderer.material.value != 0;
 }
 
+namespace {
+
+[[nodiscard]] bool valid_sprite_sorting_space(SpriteSortingSpace space) noexcept {
+    switch (space) {
+    case SpriteSortingSpace::world_space:
+    case SpriteSortingSpace::camera_space:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool valid_sorting_layer(std::int32_t value) noexcept {
+    return value >= -100000 && value <= 100000;
+}
+
+} // namespace
+
 bool is_valid_sprite_renderer_component(const SpriteRendererComponent& renderer) noexcept {
     return renderer.sprite.value != 0 && renderer.material.value != 0 &&
            finite_range(renderer.size.x, 0.0001F, 1000000.0F) && finite_range(renderer.size.y, 0.0001F, 1000000.0F) &&
-           valid_tint(renderer.tint);
+           valid_tint(renderer.tint) && valid_sprite_sorting_space(renderer.sorting_space) &&
+           valid_sorting_layer(renderer.sorting_layer) && valid_sorting_layer(renderer.order_in_layer);
 }
 
 bool is_valid_scene_node_components(const SceneNodeComponents& components) noexcept {
