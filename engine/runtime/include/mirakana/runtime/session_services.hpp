@@ -558,6 +558,92 @@ struct RuntimeSessionProfileResumePlan {
     [[nodiscard]] bool ready() const noexcept;
 };
 
+enum class RuntimeSimulationPersistenceStatus : std::uint8_t {
+    ready,
+    migration_required,
+    remediation_required,
+    blocked,
+};
+
+enum class RuntimeSimulationPersistenceRemediationAction : std::uint8_t {
+    none,
+    quarantine_corrupt_save,
+    reset_unsupported_save,
+};
+
+enum class RuntimeSimulationPersistenceDiagnosticCode : std::uint8_t {
+    blocking_document_status,
+    corrupt_save_document,
+    missing_save_slot,
+    save_slot_mismatch,
+    missing_world_id,
+    world_id_mismatch,
+    missing_snapshot_id,
+    missing_world_tick,
+    invalid_world_tick,
+    malformed_entity_state,
+    duplicate_entity_state,
+    missing_entity_state,
+    missing_required_entity,
+    unsupported_schema_version,
+    invalid_migration_step,
+    missing_migration_step,
+};
+
+struct RuntimeSimulationPersistenceDiagnostic {
+    RuntimeSimulationPersistenceDiagnosticCode code{
+        RuntimeSimulationPersistenceDiagnosticCode::blocking_document_status};
+    std::string field;
+    std::string expected;
+    std::string actual;
+    std::string message;
+};
+
+struct RuntimeSimulationPersistentEntityRow {
+    std::string entity_id;
+    std::string entity_type;
+    std::string region_id;
+    std::string state_hash;
+};
+
+struct RuntimeSimulationPersistenceMigrationStep {
+    std::uint32_t from_schema_version{0};
+    std::uint32_t to_schema_version{0};
+    std::string migration_id;
+};
+
+struct RuntimeSimulationPersistenceRequest {
+    RuntimeSessionProfileDocumentLoadResult documents;
+    std::string expected_save_slot;
+    std::string expected_world_id;
+    std::uint32_t current_schema_version{1};
+    std::uint32_t minimum_supported_schema_version{1};
+    std::vector<std::string> required_entity_ids;
+    std::vector<RuntimeSimulationPersistenceMigrationStep> supported_migrations;
+    std::string save_slot_key{"save.slot"};
+    std::string world_id_key{"world.id"};
+    std::string snapshot_id_key{"snapshot.id"};
+    std::string world_tick_key{"world.tick"};
+    std::string entity_key_prefix{"entity."};
+};
+
+struct RuntimeSimulationPersistencePlan {
+    RuntimeSimulationPersistenceStatus status{RuntimeSimulationPersistenceStatus::blocked};
+    RuntimeSimulationPersistenceRemediationAction remediation_action{
+        RuntimeSimulationPersistenceRemediationAction::none};
+    std::string save_slot;
+    std::string world_id;
+    std::string snapshot_id;
+    std::uint64_t world_tick{0};
+    std::uint32_t save_schema_version{0};
+    std::uint32_t settings_schema_version{0};
+    std::vector<RuntimeSimulationPersistentEntityRow> entity_rows;
+    std::vector<RuntimeSimulationPersistenceMigrationStep> migration_rows;
+    std::vector<RuntimeSimulationPersistenceDiagnostic> diagnostics;
+
+    [[nodiscard]] bool ready() const noexcept;
+};
+
 [[nodiscard]] std::string serialize_runtime_save_data(const RuntimeSaveData& data);
 [[nodiscard]] RuntimeSaveDataLoadResult deserialize_runtime_save_data(std::string_view text);
 [[nodiscard]] RuntimeSaveDataLoadResult load_runtime_save_data(IFileSystem& filesystem, std::string_view path);
@@ -615,6 +701,8 @@ write_runtime_session_profile_documents(IFileSystem& filesystem,
                                         const RuntimeSessionProfileDocumentWriteRequest& request);
 [[nodiscard]] RuntimeSessionProfileResumePlan
 plan_runtime_session_profile_resume(const RuntimeSessionProfileResumeRequest& request);
+[[nodiscard]] RuntimeSimulationPersistencePlan
+plan_runtime_simulation_persistence(const RuntimeSimulationPersistenceRequest& request);
 [[nodiscard]] std::string serialize_runtime_input_rebinding_profile(const RuntimeInputRebindingProfile& profile);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult deserialize_runtime_input_rebinding_profile(std::string_view text);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult load_runtime_input_rebinding_profile(IFileSystem& filesystem,

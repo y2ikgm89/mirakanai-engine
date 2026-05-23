@@ -1825,6 +1825,61 @@ foreach ($docSurface in @(
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeProfileResume) "RuntimeSessionProfileResumePlan" "runtime profile resume guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeProfileResume) "runtime_profile_resume_ready" "runtime profile resume guidance"
+$runtimeSimulationPersistenceAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-simulation-persistence-v1" })
+if ($runtimeSimulationPersistenceAuthoringSurface.Count -ne 1 -or
+    $runtimeSimulationPersistenceAuthoringSurface[0].status -ne "ready" -or
+    $runtimeSimulationPersistenceAuthoringSurface[0].owner -ne "MK_runtime") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface runtime-simulation-persistence-v1 must be ready as an MK_runtime surface"
+}
+if (-not ([string]$runtimeSimulationPersistenceAuthoringSurface[0].notes).Contains("RuntimeSimulationPersistenceRequest") -or
+    -not ([string]$runtimeSimulationPersistenceAuthoringSurface[0].notes).Contains("RuntimeSimulationPersistencePlan") -or
+    -not ([string]$runtimeSimulationPersistenceAuthoringSurface[0].notes).Contains("RuntimeSimulationPersistenceDiagnostic") -or
+    -not ([string]$runtimeSimulationPersistenceAuthoringSurface[0].notes).Contains("plan_runtime_simulation_persistence") -or
+    -not ([string]$runtimeSimulationPersistenceAuthoringSurface[0].notes).Contains("entity.<id>.(type|region|state_hash)") -or
+    -not ([string]$runtimeSimulationPersistenceAuthoringSurface[0].notes).Contains("RuntimeSimulationPersistenceRemediationAction") -or
+    -not ([string]$runtimeSimulationPersistenceAuthoringSurface[0].notes).Contains("binary compatibility policy") -or
+    -not ([string]$runtimeSimulationPersistenceAuthoringSurface[0].notes).Contains("migration execution")) {
+    Write-Error "engine/agent/manifest.json runtime-simulation-persistence-v1 authoring surface must keep simulation persistence contract and non-goals explicit"
+}
+foreach ($needle in @(
+        "RuntimeSimulationPersistenceRequest",
+        "RuntimeSimulationPersistencePlan",
+        "RuntimeSimulationPersistenceDiagnostic",
+        "RuntimeSimulationPersistenceDiagnosticCode",
+        "RuntimeSimulationPersistenceRemediationAction",
+        "plan_runtime_simulation_persistence"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesHeaderText $needle "engine/runtime/include/mirakana/runtime/session_services.hpp"
+}
+foreach ($needle in @(
+        "RuntimeSimulationPersistenceStatus::ready",
+        "RuntimeSimulationPersistenceStatus::migration_required",
+        "RuntimeSimulationPersistenceStatus::remediation_required",
+        "RuntimeSimulationPersistenceDiagnosticCode::corrupt_save_document",
+        "RuntimeSimulationPersistenceDiagnosticCode::missing_migration_step",
+        "RuntimeSimulationPersistenceRemediationAction::quarantine_corrupt_save"
+    )) {
+    Assert-ContainsText $runtimeSessionServicesSourceText $needle "engine/runtime/src/session_services.cpp"
+}
+Assert-ContainsText $runtimeTestsText "runtime simulation persistence plan accepts stable snapshot entity rows and save slot evidence" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime simulation persistence plan reports supported schema migration chain" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime simulation persistence plan chooses reachable migration path over dead end" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime simulation persistence plan blocks malformed entity rows and migration gaps" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime simulation persistence plan keeps valid save recovery when settings document is corrupt" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime simulation persistence plan recommends corrupt save remediation" "tests/unit/runtime_tests.cpp"
+Assert-ContainsText $runtimeTestsText "runtime simulation persistence plan recommends unsupported save reset" "tests/unit/runtime_tests.cpp"
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedGameValidationScenariosText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeSimulationPersistenceRequest" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_simulation_persistence" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "RuntimeSimulationPersistenceRemediationAction" $docSurface.Label
+}
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeSimulationPersistence) "RuntimeSimulationPersistencePlan" "runtime simulation persistence guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeSimulationPersistence) "blocking save document status" "runtime simulation persistence guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeSimulationPersistence) "binary compatibility policy" "runtime simulation persistence guidance"
 $runtimeMenuHudIntentAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "runtime-menu-hud-intent-model-v1" })
 if ($runtimeMenuHudIntentAuthoringSurface.Count -ne 1 -or
     $runtimeMenuHudIntentAuthoringSurface[0].status -ne "ready" -or

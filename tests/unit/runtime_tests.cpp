@@ -392,6 +392,12 @@ find_session_profile_document_row(const std::vector<mirakana::runtime::RuntimeSe
     return std::ranges::any_of(diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
 }
 
+[[nodiscard]] bool has_simulation_persistence_diagnostic(
+    const std::vector<mirakana::runtime::RuntimeSimulationPersistenceDiagnostic>& diagnostics,
+    mirakana::runtime::RuntimeSimulationPersistenceDiagnosticCode code) noexcept {
+    return std::ranges::any_of(diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
 } // namespace
 
 MK_TEST("runtime asset package loads cooked payloads with stable handles") {
@@ -1774,6 +1780,300 @@ MK_TEST("runtime session profile resume plan blocks unsupported migration rows b
     MK_REQUIRE(plan.save_slot.empty());
     MK_REQUIRE(plan.progression_checkpoint.empty());
     MK_REQUIRE(plan.package_id.empty());
+}
+
+MK_TEST("runtime simulation persistence plan accepts stable snapshot entity rows and save slot evidence") {
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+
+    mirakana::runtime::RuntimeSessionProfileDocuments documents;
+    documents.save_data.schema_version = 3;
+    documents.save_data.set_value("save.slot", "slot_1");
+    documents.save_data.set_value("world.id", "overworld");
+    documents.save_data.set_value("snapshot.id", "snapshot_0007");
+    documents.save_data.set_value("world.tick", "42");
+    documents.save_data.set_value("entity.player.type", "hero");
+    documents.save_data.set_value("entity.player.region", "region_a");
+    documents.save_data.set_value("entity.player.state_hash", "hash_player_42");
+    documents.save_data.set_value("entity.pickup_01.type", "collectible");
+    documents.save_data.set_value("entity.pickup_01.region", "region_a");
+    documents.save_data.set_value("entity.pickup_01.state_hash", "hash_pickup_42");
+    documents.settings.schema_version = 2;
+    documents.input_rebinding_profile.profile_id = "slot_1";
+
+    const auto written = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+    MK_REQUIRE(written.succeeded());
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+
+    const auto plan = mirakana::runtime::plan_runtime_simulation_persistence(
+        mirakana::runtime::RuntimeSimulationPersistenceRequest{.documents = loaded,
+                                                               .expected_save_slot = "slot_1",
+                                                               .expected_world_id = "overworld",
+                                                               .current_schema_version = 3,
+                                                               .minimum_supported_schema_version = 2,
+                                                               .required_entity_ids = {"player", "pickup_01"}});
+
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSimulationPersistenceStatus::ready);
+    MK_REQUIRE(plan.remediation_action == mirakana::runtime::RuntimeSimulationPersistenceRemediationAction::none);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.save_slot == "slot_1");
+    MK_REQUIRE(plan.world_id == "overworld");
+    MK_REQUIRE(plan.snapshot_id == "snapshot_0007");
+    MK_REQUIRE(plan.world_tick == 42);
+    MK_REQUIRE(plan.save_schema_version == 3);
+    MK_REQUIRE(plan.settings_schema_version == 2);
+    MK_REQUIRE(plan.entity_rows.size() == 2);
+    MK_REQUIRE(plan.entity_rows[0].entity_id == "pickup_01");
+    MK_REQUIRE(plan.entity_rows[0].entity_type == "collectible");
+    MK_REQUIRE(plan.entity_rows[0].region_id == "region_a");
+    MK_REQUIRE(plan.entity_rows[0].state_hash == "hash_pickup_42");
+    MK_REQUIRE(plan.entity_rows[1].entity_id == "player");
+    MK_REQUIRE(plan.entity_rows[1].entity_type == "hero");
+    MK_REQUIRE(plan.entity_rows[1].region_id == "region_a");
+    MK_REQUIRE(plan.entity_rows[1].state_hash == "hash_player_42");
+    MK_REQUIRE(plan.migration_rows.empty());
+}
+
+MK_TEST("runtime simulation persistence plan reports supported schema migration chain") {
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+
+    mirakana::runtime::RuntimeSessionProfileDocuments documents;
+    documents.save_data.schema_version = 1;
+    documents.save_data.set_value("save.slot", "slot_1");
+    documents.save_data.set_value("world.id", "overworld");
+    documents.save_data.set_value("snapshot.id", "snapshot_0003");
+    documents.save_data.set_value("world.tick", "9");
+    documents.save_data.set_value("entity.player.type", "hero");
+    documents.save_data.set_value("entity.player.region", "region_a");
+    documents.save_data.set_value("entity.player.state_hash", "hash_player_9");
+    documents.input_rebinding_profile.profile_id = "slot_1";
+    const auto written = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+    MK_REQUIRE(written.succeeded());
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+
+    const auto plan =
+        mirakana::runtime::plan_runtime_simulation_persistence(mirakana::runtime::RuntimeSimulationPersistenceRequest{
+            .documents = loaded,
+            .expected_save_slot = "slot_1",
+            .expected_world_id = "overworld",
+            .current_schema_version = 3,
+            .minimum_supported_schema_version = 1,
+            .required_entity_ids = {"player"},
+            .supported_migrations = {
+                {.from_schema_version = 1, .to_schema_version = 2, .migration_id = "save-v1-v2"},
+                {.from_schema_version = 2, .to_schema_version = 3, .migration_id = "save-v2-v3"}}});
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSimulationPersistenceStatus::migration_required);
+    MK_REQUIRE(plan.remediation_action == mirakana::runtime::RuntimeSimulationPersistenceRemediationAction::none);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.migration_rows.size() == 2);
+    MK_REQUIRE(plan.migration_rows[0].migration_id == "save-v1-v2");
+    MK_REQUIRE(plan.migration_rows[1].migration_id == "save-v2-v3");
+    MK_REQUIRE(plan.entity_rows.size() == 1);
+    MK_REQUIRE(plan.entity_rows[0].entity_id == "player");
+}
+
+MK_TEST("runtime simulation persistence plan chooses reachable migration path over dead end") {
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+
+    mirakana::runtime::RuntimeSessionProfileDocuments documents;
+    documents.save_data.schema_version = 1;
+    documents.save_data.set_value("save.slot", "slot_1");
+    documents.save_data.set_value("world.id", "overworld");
+    documents.save_data.set_value("snapshot.id", "snapshot_0005");
+    documents.save_data.set_value("world.tick", "11");
+    documents.save_data.set_value("entity.player.type", "hero");
+    documents.save_data.set_value("entity.player.region", "region_a");
+    documents.save_data.set_value("entity.player.state_hash", "hash_player_11");
+    documents.input_rebinding_profile.profile_id = "slot_1";
+    const auto written = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+    MK_REQUIRE(written.succeeded());
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+
+    const auto plan =
+        mirakana::runtime::plan_runtime_simulation_persistence(mirakana::runtime::RuntimeSimulationPersistenceRequest{
+            .documents = loaded,
+            .expected_save_slot = "slot_1",
+            .expected_world_id = "overworld",
+            .current_schema_version = 4,
+            .minimum_supported_schema_version = 1,
+            .required_entity_ids = {"player"},
+            .supported_migrations = {
+                {.from_schema_version = 1, .to_schema_version = 2, .migration_id = "save-v1-v2-dead-end"},
+                {.from_schema_version = 1, .to_schema_version = 4, .migration_id = "save-v1-v4-direct"}}});
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSimulationPersistenceStatus::migration_required);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.migration_rows.size() == 1);
+    MK_REQUIRE(plan.migration_rows[0].migration_id == "save-v1-v4-direct");
+}
+
+MK_TEST("runtime simulation persistence plan blocks malformed entity rows and migration gaps") {
+    using Code = mirakana::runtime::RuntimeSimulationPersistenceDiagnosticCode;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+
+    mirakana::runtime::RuntimeSessionProfileDocuments documents;
+    documents.save_data.schema_version = 2;
+    documents.save_data.set_value("save.slot", "slot_1");
+    documents.save_data.set_value("world.id", "overworld");
+    documents.save_data.set_value("snapshot.id", "snapshot_0004");
+    documents.save_data.set_value("world.tick", "not-a-tick");
+    documents.save_data.set_value("entity.player.type", "hero");
+    documents.input_rebinding_profile.profile_id = "slot_1";
+    const auto written = mirakana::runtime::write_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentWriteRequest{.profile = profile, .documents = documents});
+    MK_REQUIRE(written.succeeded());
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = documents});
+
+    const auto plan = mirakana::runtime::plan_runtime_simulation_persistence(
+        mirakana::runtime::RuntimeSimulationPersistenceRequest{.documents = loaded,
+                                                               .expected_save_slot = "slot_1",
+                                                               .expected_world_id = "overworld",
+                                                               .current_schema_version = 3,
+                                                               .minimum_supported_schema_version = 1,
+                                                               .required_entity_ids = {"player"}});
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSimulationPersistenceStatus::blocked);
+    MK_REQUIRE(has_simulation_persistence_diagnostic(plan.diagnostics, Code::invalid_world_tick));
+    MK_REQUIRE(has_simulation_persistence_diagnostic(plan.diagnostics, Code::missing_entity_state));
+    MK_REQUIRE(has_simulation_persistence_diagnostic(plan.diagnostics, Code::missing_required_entity));
+    MK_REQUIRE(has_simulation_persistence_diagnostic(plan.diagnostics, Code::missing_migration_step));
+    MK_REQUIRE(plan.entity_rows.empty());
+    MK_REQUIRE(plan.migration_rows.empty());
+}
+
+MK_TEST("runtime simulation persistence plan keeps valid save recovery when settings document is corrupt") {
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
+
+    mirakana::runtime::RuntimeSaveData save;
+    save.schema_version = 3;
+    save.set_value("save.slot", "slot_1");
+    save.set_value("world.id", "overworld");
+    save.set_value("snapshot.id", "snapshot_0006");
+    save.set_value("world.tick", "12");
+    save.set_value("entity.player.type", "hero");
+    save.set_value("entity.player.region", "region_a");
+    save.set_value("entity.player.state_hash", "hash_player_12");
+    mirakana::runtime::write_runtime_save_data(fs, paths.save_data_path, save);
+    fs.write_text(paths.settings_path, "format=GameEngine.RuntimeSettings.v1\nentry.audio=bad\tvalue\n");
+    mirakana::runtime::RuntimeInputRebindingProfile input_profile;
+    input_profile.profile_id = "slot_1";
+    mirakana::runtime::write_runtime_input_rebinding_profile(fs, paths.input_rebinding_profile_path, input_profile);
+
+    mirakana::runtime::RuntimeSessionProfileDocuments defaults;
+    defaults.input_rebinding_profile.profile_id = "slot_1";
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = defaults});
+    MK_REQUIRE(!loaded.succeeded());
+
+    const auto plan = mirakana::runtime::plan_runtime_simulation_persistence(
+        mirakana::runtime::RuntimeSimulationPersistenceRequest{.documents = loaded,
+                                                               .expected_save_slot = "slot_1",
+                                                               .expected_world_id = "overworld",
+                                                               .current_schema_version = 3,
+                                                               .minimum_supported_schema_version = 1,
+                                                               .required_entity_ids = {"player"}});
+
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSimulationPersistenceStatus::ready);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.entity_rows.size() == 1);
+    MK_REQUIRE(plan.entity_rows[0].entity_id == "player");
+}
+
+MK_TEST("runtime simulation persistence plan recommends corrupt save remediation") {
+    using Code = mirakana::runtime::RuntimeSimulationPersistenceDiagnosticCode;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
+    fs.write_text(paths.save_data_path, "format=GameEngine.RuntimeSaveData.v1\n"
+                                        "schema.version=3\n"
+                                        "entry.world.id=bad\tworld\n");
+    mirakana::runtime::RuntimeSettings settings;
+    mirakana::runtime::write_runtime_settings(fs, paths.settings_path, settings);
+    mirakana::runtime::RuntimeInputRebindingProfile input_profile;
+    input_profile.profile_id = "slot_1";
+    mirakana::runtime::write_runtime_input_rebinding_profile(fs, paths.input_rebinding_profile_path, input_profile);
+
+    mirakana::runtime::RuntimeSessionProfileDocuments defaults;
+    defaults.input_rebinding_profile.profile_id = "slot_1";
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = defaults});
+    MK_REQUIRE(!loaded.succeeded());
+
+    const auto plan = mirakana::runtime::plan_runtime_simulation_persistence(
+        mirakana::runtime::RuntimeSimulationPersistenceRequest{.documents = loaded,
+                                                               .expected_save_slot = "slot_1",
+                                                               .expected_world_id = "overworld",
+                                                               .current_schema_version = 3,
+                                                               .minimum_supported_schema_version = 1});
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSimulationPersistenceStatus::remediation_required);
+    MK_REQUIRE(plan.remediation_action ==
+               mirakana::runtime::RuntimeSimulationPersistenceRemediationAction::quarantine_corrupt_save);
+    MK_REQUIRE(has_simulation_persistence_diagnostic(plan.diagnostics, Code::blocking_document_status));
+    MK_REQUIRE(has_simulation_persistence_diagnostic(plan.diagnostics, Code::corrupt_save_document));
+    MK_REQUIRE(plan.entity_rows.empty());
+    MK_REQUIRE(plan.migration_rows.empty());
+}
+
+MK_TEST("runtime simulation persistence plan recommends unsupported save reset") {
+    using Code = mirakana::runtime::RuntimeSimulationPersistenceDiagnosticCode;
+
+    mirakana::MemoryFileSystem fs;
+    const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
+        .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
+    const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
+    fs.write_text(paths.save_data_path, "format=GameEngine.RuntimeSaveData.v0\nschema.version=1\n");
+    mirakana::runtime::RuntimeSettings settings;
+    mirakana::runtime::write_runtime_settings(fs, paths.settings_path, settings);
+    mirakana::runtime::RuntimeInputRebindingProfile input_profile;
+    input_profile.profile_id = "slot_1";
+    mirakana::runtime::write_runtime_input_rebinding_profile(fs, paths.input_rebinding_profile_path, input_profile);
+
+    mirakana::runtime::RuntimeSessionProfileDocuments defaults;
+    defaults.input_rebinding_profile.profile_id = "slot_1";
+    const auto loaded = mirakana::runtime::load_runtime_session_profile_documents(
+        fs, mirakana::runtime::RuntimeSessionProfileDocumentLoadRequest{.profile = profile, .defaults = defaults});
+    MK_REQUIRE(!loaded.succeeded());
+
+    const auto plan = mirakana::runtime::plan_runtime_simulation_persistence(
+        mirakana::runtime::RuntimeSimulationPersistenceRequest{.documents = loaded,
+                                                               .expected_save_slot = "slot_1",
+                                                               .expected_world_id = "overworld",
+                                                               .current_schema_version = 3,
+                                                               .minimum_supported_schema_version = 1});
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.status == mirakana::runtime::RuntimeSimulationPersistenceStatus::remediation_required);
+    MK_REQUIRE(plan.remediation_action ==
+               mirakana::runtime::RuntimeSimulationPersistenceRemediationAction::reset_unsupported_save);
+    MK_REQUIRE(has_simulation_persistence_diagnostic(plan.diagnostics, Code::blocking_document_status));
 }
 
 MK_TEST("runtime localization catalog resolves text with key fallback") {
