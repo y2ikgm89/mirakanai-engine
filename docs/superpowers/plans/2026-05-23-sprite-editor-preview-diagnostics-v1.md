@@ -6,13 +6,15 @@
 
 **Plan ID:** `sprite-editor-preview-diagnostics-v1`
 
-**Status:** Validated; PR pending.
+**Status:** Completed; PR #202 merged.
 
 **Gap:** `sprite-editor-preview-diagnostics-v1`
 
 **Architecture:** Planned next child of Candidate Backlog Burn-down v1. Keep diagnostics value-oriented and reviewable, prefer existing editor-core retained models and runtime diagnostics contracts, and keep visible preview execution host-gated.
 
 **Tech Stack:** C++23, `MK_editor_core`, `MK_editor`, `MK_runtime`, `MK_scene`, `MK_scene_renderer` only through public rows as needed, repository `tools/*.ps1`, composed engine agent manifest fragments.
+
+**Closeout:** PR #202 merged as `0ec60fa33ed2915aee5603c92b4f1243c4be9346` after fixing the D3D12 queue-qualified resource lifetime CI failure and preserving full `tools/validate.ps1` 76/76 evidence.
 
 ## Official Docs Review
 

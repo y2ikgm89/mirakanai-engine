@@ -115,7 +115,8 @@ jobs:
 
       - name: Restore vcpkg tool checkout cache
         id: restore-vcpkg-tool
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: external/vcpkg
           key: ${{ runner.os }}-vcpkg-tool-${{ hashFiles('vcpkg.json') }}
@@ -180,6 +181,7 @@ jobs:
 
       - name: Restore vcpkg package cache
         id: restore-vcpkg-package
+        continue-on-error: true
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: out/vcpkg
@@ -189,6 +191,7 @@ jobs:
 
       - name: Restore vcpkg installed cache
         id: restore-vcpkg-installed
+        continue-on-error: true
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: vcpkg_installed
@@ -198,6 +201,7 @@ jobs:
 
       - name: Restore Windows dev build cache
         id: restore-dev-build
+        continue-on-error: true
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: out/build/dev
@@ -214,8 +218,16 @@ jobs:
         shell: pwsh
         run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke
 
+      - name: Save vcpkg tool checkout cache
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-tool.outcome == 'success' && steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ steps.restore-vcpkg-tool.outputs.cache-primary-key }}
+
       - name: Save vcpkg package cache
-        if: ${{ success() && !cancelled() && steps.restore-vcpkg-package.outputs.cache-hit != 'true' }}
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-package.outcome == 'success' && steps.restore-vcpkg-package.outputs.cache-hit != 'true' }}
         continue-on-error: true
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -223,7 +235,7 @@ jobs:
           key: ${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}
 
       - name: Save vcpkg installed cache
-        if: ${{ success() && !cancelled() && steps.restore-vcpkg-installed.outputs.cache-hit != 'true' }}
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-installed.outcome == 'success' && steps.restore-vcpkg-installed.outputs.cache-hit != 'true' }}
         continue-on-error: true
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -231,7 +243,7 @@ jobs:
           key: ${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}
 
       - name: Save Windows dev build cache
-        if: ${{ success() && !cancelled() && steps.restore-dev-build.outputs.cache-hit != 'true' }}
+        if: ${{ success() && !cancelled() && steps.restore-dev-build.outcome == 'success' && steps.restore-dev-build.outputs.cache-hit != 'true' }}
         continue-on-error: true
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -271,7 +283,8 @@ jobs:
 
       - name: Restore vcpkg tool checkout cache
         id: restore-vcpkg-tool
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        continue-on-error: true
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: external/vcpkg
           key: ${{ runner.os }}-vcpkg-tool-${{ hashFiles('vcpkg.json') }}
@@ -336,6 +349,7 @@ jobs:
 
       - name: Restore vcpkg package cache
         id: restore-vcpkg-package
+        continue-on-error: true
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: out/vcpkg
@@ -345,6 +359,7 @@ jobs:
 
       - name: Restore vcpkg installed cache
         id: restore-vcpkg-installed
+        continue-on-error: true
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: vcpkg_installed
@@ -354,6 +369,7 @@ jobs:
 
       - name: Restore Windows C++23 build cache
         id: restore-cpp23-build
+        continue-on-error: true
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
@@ -373,8 +389,16 @@ jobs:
         shell: pwsh
         run: ./tools/evaluate-cpp23.ps1 -Release
 
+      - name: Save vcpkg tool checkout cache
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-tool.outcome == 'success' && steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: external/vcpkg
+          key: ${{ steps.restore-vcpkg-tool.outputs.cache-primary-key }}
+
       - name: Save vcpkg package cache
-        if: ${{ success() && !cancelled() && steps.restore-vcpkg-package.outputs.cache-hit != 'true' }}
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-package.outcome == 'success' && steps.restore-vcpkg-package.outputs.cache-hit != 'true' }}
         continue-on-error: true
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -382,7 +406,7 @@ jobs:
           key: ${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}
 
       - name: Save vcpkg installed cache
-        if: ${{ success() && !cancelled() && steps.restore-vcpkg-installed.outputs.cache-hit != 'true' }}
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-installed.outcome == 'success' && steps.restore-vcpkg-installed.outputs.cache-hit != 'true' }}
         continue-on-error: true
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
@@ -390,7 +414,7 @@ jobs:
           key: ${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}
 
       - name: Save Windows C++23 build cache
-        if: ${{ success() && !cancelled() && steps.restore-cpp23-build.outputs.cache-hit != 'true' }}
+        if: ${{ success() && !cancelled() && steps.restore-cpp23-build.outcome == 'success' && steps.restore-cpp23-build.outputs.cache-hit != 'true' }}
         continue-on-error: true
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:

@@ -16,7 +16,7 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
 - Current active plan: Candidate Backlog Burn-down v1 is selected as the active milestone for the canonical post-1.0 candidate rows; completed child evidence is recorded in the plan registry.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = sprite-editor-preview-diagnostics-v1` after the sprite sorting, 9-slice/tiled, sprite collision hitbox, and sprite effects/particles slices. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = navigation-hierarchical-world-v1` after the sprite sorting, 9-slice/tiled, sprite collision hitbox, sprite effects/particles, and sprite editor preview diagnostics slices. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
 - Current gap cluster: post-1.0 candidate burn-down is active; finish the next remaining child row before switching clusters.
 
 ## Plan map

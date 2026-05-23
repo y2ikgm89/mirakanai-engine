@@ -1322,6 +1322,9 @@ if ($geNavigationModule[0].publicHeaders -notcontains "engine/navigation/include
 if ($geNavigationModule[0].publicHeaders -notcontains "engine/navigation/include/mirakana/navigation/navigation_navmesh.hpp") {
     Write-Error "engine/agent/manifest.json MK_navigation publicHeaders must include navigation_navmesh.hpp"
 }
+if ($geNavigationModule[0].publicHeaders -notcontains "engine/navigation/include/mirakana/navigation/navigation_hierarchical_world.hpp") {
+    Write-Error "engine/agent/manifest.json MK_navigation publicHeaders must include navigation_hierarchical_world.hpp"
+}
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentNavigation")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentNavigation"
 }
@@ -1334,6 +1337,9 @@ Assert-ContainsText ([string]$geNavigationModule[0].purpose) "NavigationGridAgen
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "plan_navigation_grid_agent_path" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "NavigationNavmeshPathRequest" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "plan_navigation_navmesh_path" "MK_navigation module purpose"
+Assert-ContainsText ([string]$geNavigationModule[0].purpose) "NavigationHierarchicalWorldPathRequest" "MK_navigation module purpose"
+Assert-ContainsText ([string]$geNavigationModule[0].purpose) "plan_navigation_hierarchical_world_path" "MK_navigation module purpose"
+Assert-ContainsText ([string]$geNavigationModule[0].purpose) "automatic nav baking" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "navmesh" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "crowd" "MK_navigation module purpose"
 Assert-ContainsText ([string]$geNavigationModule[0].purpose) "scene/physics integration" "MK_navigation module purpose"
@@ -1349,6 +1355,36 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "Navi
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "plan_navigation_navmesh_path" "navigation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "NavigationCrowdPlanRequest" "navigation game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentNavigation) "plan_navigation_navmesh_crowd" "navigation game guidance"
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentHierarchicalWorldNavigation")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentHierarchicalWorldNavigation"
+}
+foreach ($navigationWorldGuidanceNeedle in @(
+    "NavigationHierarchicalWorldPathRequest",
+    "NavigationHierarchicalWorldPathResult",
+    "NavigationHierarchicalWorldPortalPathRow",
+    "plan_navigation_hierarchical_world_path",
+    "world-region refs",
+    "nav-data refs",
+    "renderer/RHI/native handles"
+)) {
+    Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentHierarchicalWorldNavigation) $navigationWorldGuidanceNeedle "hierarchical world navigation game guidance"
+}
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentWorldRegionNavigationRefs")) {
+    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentWorldRegionNavigationRefs"
+}
+foreach ($worldRegionNavigationGuidanceNeedle in @(
+    "RuntimeWorldRegionNavigationRefReviewRequest",
+    "RuntimeWorldRegionNavigationRefReviewResult",
+    "RuntimeWorldRegionNavigationPathCacheReviewRequest",
+    "RuntimeWorldRegionNavigationPathCacheReviewResult",
+    "review_runtime_world_region_navigation_refs",
+    "review_runtime_world_region_navigation_path_cache",
+    "RuntimeResidentCatalogCacheV2",
+    "unrefreshed",
+    "value-only"
+)) {
+    Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentWorldRegionNavigationRefs) $worldRegionNavigationGuidanceNeedle "world-region navigation game guidance"
+}
 foreach ($navigationGuidance in @(
     "docs/architecture.md",
     "docs/roadmap.md",
@@ -1375,6 +1411,48 @@ foreach ($navigationGuidance in @(
     Assert-ContainsText $navigationText "crowd" $navigationGuidance
     Assert-ContainsText $navigationText "scene/physics" $navigationGuidance
     Assert-ContainsText $navigationText "editor" $navigationGuidance
+}
+foreach ($hierarchicalNavigationGuidance in @(
+    "docs/architecture.md",
+    "docs/current-capabilities.md",
+    "docs/roadmap.md",
+    "docs/ai-game-development.md",
+    "docs/specs/generated-game-validation-scenarios.md",
+    "docs/specs/game-prompt-pack.md",
+    ".agents/skills/gameengine-game-development/SKILL.md",
+    ".claude/skills/gameengine-game-development/SKILL.md"
+)) {
+    $hierarchicalNavigationText = Get-AgentSurfaceText $hierarchicalNavigationGuidance
+    Assert-ContainsText $hierarchicalNavigationText "NavigationHierarchicalWorldPathRequest" $hierarchicalNavigationGuidance
+    Assert-ContainsText $hierarchicalNavigationText "plan_navigation_hierarchical_world_path" $hierarchicalNavigationGuidance
+    Assert-ContainsText $hierarchicalNavigationText "RuntimeWorldRegionNavigationRefReviewRequest" $hierarchicalNavigationGuidance
+    Assert-ContainsText $hierarchicalNavigationText "review_runtime_world_region_navigation_refs" $hierarchicalNavigationGuidance
+    Assert-ContainsText $hierarchicalNavigationText "RuntimeWorldRegionNavigationPathCacheReviewRequest" $hierarchicalNavigationGuidance
+    Assert-ContainsText $hierarchicalNavigationText "review_runtime_world_region_navigation_path_cache" $hierarchicalNavigationGuidance
+    Assert-ContainsText $hierarchicalNavigationText "nav-data" $hierarchicalNavigationGuidance
+    Assert-ContainsText $hierarchicalNavigationText "native handles" $hierarchicalNavigationGuidance
+}
+$navigationHierarchicalWorldHeader = Get-AgentSurfaceText "engine/navigation/include/mirakana/navigation/navigation_hierarchical_world.hpp"
+foreach ($navigationHierarchicalWorldHeaderNeedle in @(
+    "NavigationHierarchicalWorldPathRequest",
+    "NavigationHierarchicalWorldPathResult",
+    "NavigationHierarchicalWorldPortalPathRow",
+    "plan_navigation_hierarchical_world_path"
+)) {
+    Assert-ContainsText $navigationHierarchicalWorldHeader $navigationHierarchicalWorldHeaderNeedle "navigation_hierarchical_world.hpp"
+}
+$worldRegionStreamingHeader = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/world_region_streaming.hpp"
+foreach ($worldRegionNavigationHeaderNeedle in @(
+    "RuntimeWorldRegionNavigationRefReviewRequest",
+    "RuntimeWorldRegionNavigationRefReviewResult",
+    "RuntimeWorldRegionNavigationPathCacheEntry",
+    "RuntimeWorldRegionNavigationPathCacheReviewRequest",
+    "RuntimeWorldRegionNavigationPathCacheReviewResult",
+    "review_runtime_world_region_navigation_refs",
+    "review_runtime_world_region_navigation_path_cache",
+    "catalog_cache_not_ready"
+)) {
+    Assert-ContainsText $worldRegionStreamingHeader $worldRegionNavigationHeaderNeedle "world_region_streaming.hpp"
 }
 
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentPhysics")) {

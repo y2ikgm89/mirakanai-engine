@@ -6,13 +6,15 @@
 
 **Plan ID:** `sprite-effects-particles-v1`
 
-**Status:** Validated; PR pending.
+**Status:** Completed; PR #201 merged.
 
 **Gap:** `sprite-effects-particles-v1`
 
 **Architecture:** Implemented as the fourth child of Candidate Backlog Burn-down v1. The runtime contract is value-only and backend-neutral, caller-owned active particle state advances through explicit requests, scene renderer integration is limited to reviewed `SpriteCommand` rows, and native/RHI handles stay out of gameplay APIs.
 
 **Tech Stack:** C++23, `MK_runtime`, `MK_scene_renderer`, `MK_renderer` statistics as needed, repository `tools/*.ps1`, composed engine agent manifest fragments.
+
+**Closeout:** PR #201 merged as `817915966a293fca645bb593a9714efda558419a` with focused package smoke evidence and full `tools/validate.ps1` 76/76 evidence recorded below.
 
 ## Official Docs Review
 

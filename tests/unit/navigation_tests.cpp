@@ -7,6 +7,7 @@
 #include "mirakana/navigation/navigation_agent.hpp"
 #include "mirakana/navigation/navigation_crowd.hpp"
 #include "mirakana/navigation/navigation_grid.hpp"
+#include "mirakana/navigation/navigation_hierarchical_world.hpp"
 #include "mirakana/navigation/navigation_navmesh.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
 #include "mirakana/navigation/navigation_replan.hpp"
@@ -447,6 +448,194 @@ MK_TEST("navigation navmesh reports deterministic diagnostics for invalid scene 
     MK_REQUIRE(blocked_start.diagnostic == mirakana::NavigationNavmeshPathDiagnostic::blocked_start);
     MK_REQUIRE(blocked_start.dynamic_obstacle_count == 1U);
     MK_REQUIRE(blocked_start.failing_polygon == 1U);
+}
+
+MK_TEST("navigation hierarchical world plans deterministic region portal paths") {
+    const std::vector<mirakana::NavigationHierarchicalWorldRegion> regions{
+        mirakana::NavigationHierarchicalWorldRegion{
+            .region_id = "town", .world_region_ref = "town", .nav_data_ref = "nav/town.navdata", .traversal_cost = 1U},
+        mirakana::NavigationHierarchicalWorldRegion{.region_id = "forest",
+                                                    .world_region_ref = "forest",
+                                                    .nav_data_ref = "nav/forest.navdata",
+                                                    .traversal_cost = 1U},
+        mirakana::NavigationHierarchicalWorldRegion{.region_id = "caves",
+                                                    .world_region_ref = "caves",
+                                                    .nav_data_ref = "nav/caves.navdata",
+                                                    .traversal_cost = 1U},
+        mirakana::NavigationHierarchicalWorldRegion{.region_id = "dungeon",
+                                                    .world_region_ref = "dungeon",
+                                                    .nav_data_ref = "nav/dungeon.navdata",
+                                                    .traversal_cost = 1U},
+    };
+    const std::vector<mirakana::NavigationHierarchicalWorldPortal> portals{
+        mirakana::NavigationHierarchicalWorldPortal{
+            .portal_id = "direct-road",
+            .from = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "town",
+                                                                        .nav_data_ref = "nav/town.navdata",
+                                                                        .polygon_id = 1U,
+                                                                        .scene_ref = "scene.town"},
+            .to = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "forest",
+                                                                      .nav_data_ref = "nav/forest.navdata",
+                                                                      .polygon_id = 2U,
+                                                                      .scene_ref = "scene.forest"},
+            .cost = 8U,
+            .bidirectional = true,
+        },
+        mirakana::NavigationHierarchicalWorldPortal{
+            .portal_id = "cave-road",
+            .from = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "town",
+                                                                        .nav_data_ref = "nav/town.navdata",
+                                                                        .polygon_id = 3U,
+                                                                        .scene_ref = "scene.town"},
+            .to = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "caves",
+                                                                      .nav_data_ref = "nav/caves.navdata",
+                                                                      .polygon_id = 4U,
+                                                                      .scene_ref = "scene.caves"},
+            .cost = 1U,
+            .bidirectional = true,
+        },
+        mirakana::NavigationHierarchicalWorldPortal{
+            .portal_id = "deep-road",
+            .from = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "caves",
+                                                                        .nav_data_ref = "nav/caves.navdata",
+                                                                        .polygon_id = 5U,
+                                                                        .scene_ref = "scene.caves"},
+            .to = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "dungeon",
+                                                                      .nav_data_ref = "nav/dungeon.navdata",
+                                                                      .polygon_id = 6U,
+                                                                      .scene_ref = "scene.dungeon"},
+            .cost = 1U,
+            .bidirectional = true,
+        },
+        mirakana::NavigationHierarchicalWorldPortal{
+            .portal_id = "forest-lift",
+            .from = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "dungeon",
+                                                                        .nav_data_ref = "nav/dungeon.navdata",
+                                                                        .polygon_id = 7U,
+                                                                        .scene_ref = "scene.dungeon"},
+            .to = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "forest",
+                                                                      .nav_data_ref = "nav/forest.navdata",
+                                                                      .polygon_id = 8U,
+                                                                      .scene_ref = "scene.forest"},
+            .cost = 1U,
+            .bidirectional = true,
+        },
+    };
+
+    const auto result =
+        mirakana::plan_navigation_hierarchical_world_path(mirakana::NavigationHierarchicalWorldPathRequest{
+            .regions = regions,
+            .portals = portals,
+            .start_region_id = "town",
+            .goal_region_id = "forest",
+        });
+    const auto replay =
+        mirakana::plan_navigation_hierarchical_world_path(mirakana::NavigationHierarchicalWorldPathRequest{
+            .regions = regions,
+            .portals = portals,
+            .start_region_id = "town",
+            .goal_region_id = "forest",
+        });
+
+    const std::vector<std::string> expected_regions{"town", "caves", "dungeon", "forest"};
+    const std::vector<std::string> expected_portals{"cave-road", "deep-road", "forest-lift"};
+    MK_REQUIRE(result.status == mirakana::NavigationHierarchicalWorldPathStatus::success);
+    MK_REQUIRE(result.diagnostic == mirakana::NavigationHierarchicalWorldPathDiagnostic::none);
+    MK_REQUIRE(result.region_path == expected_regions);
+    MK_REQUIRE(result.portal_path == expected_portals);
+    MK_REQUIRE(result.portal_rows.size() == 3U);
+    MK_REQUIRE(result.portal_rows[0].from_region_id == "town");
+    MK_REQUIRE(result.portal_rows[0].to_region_id == "caves");
+    MK_REQUIRE(result.portal_rows[0].from_nav_data_ref == "nav/town.navdata");
+    MK_REQUIRE(result.portal_rows[0].to_nav_data_ref == "nav/caves.navdata");
+    MK_REQUIRE(result.portal_rows[2].portal_id == "forest-lift");
+    MK_REQUIRE(result.world_region_refs == expected_regions);
+    MK_REQUIRE(result.nav_data_refs.size() == expected_regions.size());
+    MK_REQUIRE(result.total_cost == 6U);
+    MK_REQUIRE(replay.region_path == result.region_path);
+    MK_REQUIRE(replay.portal_path == result.portal_path);
+    MK_REQUIRE(replay.total_cost == result.total_cost);
+}
+
+MK_TEST("navigation hierarchical world rejects malformed regions and portals before rows") {
+    using Diagnostic = mirakana::NavigationHierarchicalWorldPathDiagnostic;
+    using Status = mirakana::NavigationHierarchicalWorldPathStatus;
+
+    std::vector<mirakana::NavigationHierarchicalWorldRegion> regions{
+        mirakana::NavigationHierarchicalWorldRegion{
+            .region_id = "town", .world_region_ref = "town", .nav_data_ref = "nav/town.navdata", .traversal_cost = 1U},
+        mirakana::NavigationHierarchicalWorldRegion{.region_id = "forest",
+                                                    .world_region_ref = "forest",
+                                                    .nav_data_ref = "nav/forest.navdata",
+                                                    .traversal_cost = 1U},
+    };
+    const std::vector<mirakana::NavigationHierarchicalWorldPortal> portals{
+        mirakana::NavigationHierarchicalWorldPortal{
+            .portal_id = "road",
+            .from = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "town",
+                                                                        .nav_data_ref = "nav/town.navdata",
+                                                                        .polygon_id = 1U,
+                                                                        .scene_ref = "scene.town"},
+            .to = mirakana::NavigationHierarchicalWorldPortalEndpoint{.region_id = "forest",
+                                                                      .nav_data_ref = "nav/forest.navdata",
+                                                                      .polygon_id = 2U,
+                                                                      .scene_ref = "scene.forest"},
+            .cost = 1U,
+            .bidirectional = true,
+        },
+    };
+
+    auto duplicate_world_ref_regions = regions;
+    duplicate_world_ref_regions[1].world_region_ref = "town";
+    const auto duplicate_world_ref =
+        mirakana::plan_navigation_hierarchical_world_path(mirakana::NavigationHierarchicalWorldPathRequest{
+            .regions = duplicate_world_ref_regions,
+            .portals = portals,
+            .start_region_id = "town",
+            .goal_region_id = "forest",
+        });
+    MK_REQUIRE(duplicate_world_ref.status == Status::invalid_world_graph);
+    MK_REQUIRE(duplicate_world_ref.diagnostic == Diagnostic::duplicate_world_region_ref);
+    MK_REQUIRE(duplicate_world_ref.region_path.empty());
+
+    auto invalid_nav_ref_regions = regions;
+    invalid_nav_ref_regions[1].nav_data_ref = "nav/forest:bad.navdata";
+    const auto invalid_nav_ref =
+        mirakana::plan_navigation_hierarchical_world_path(mirakana::NavigationHierarchicalWorldPathRequest{
+            .regions = invalid_nav_ref_regions,
+            .portals = portals,
+            .start_region_id = "town",
+            .goal_region_id = "forest",
+        });
+    MK_REQUIRE(invalid_nav_ref.status == Status::invalid_world_graph);
+    MK_REQUIRE(invalid_nav_ref.diagnostic == Diagnostic::invalid_nav_data_ref);
+    MK_REQUIRE(invalid_nav_ref.failing_region_id == "forest");
+
+    auto mismatch_portals = portals;
+    mismatch_portals[0].to.nav_data_ref = "nav/wrong.navdata";
+    const auto mismatch =
+        mirakana::plan_navigation_hierarchical_world_path(mirakana::NavigationHierarchicalWorldPathRequest{
+            .regions = regions,
+            .portals = mismatch_portals,
+            .start_region_id = "town",
+            .goal_region_id = "forest",
+        });
+    MK_REQUIRE(mismatch.status == Status::invalid_world_graph);
+    MK_REQUIRE(mismatch.diagnostic == Diagnostic::portal_nav_data_region_mismatch);
+    MK_REQUIRE(mismatch.failing_portal_id == "road");
+
+    auto invalid_cost_portals = portals;
+    invalid_cost_portals[0].cost = 0U;
+    const auto invalid_cost =
+        mirakana::plan_navigation_hierarchical_world_path(mirakana::NavigationHierarchicalWorldPathRequest{
+            .regions = regions,
+            .portals = invalid_cost_portals,
+            .start_region_id = "town",
+            .goal_region_id = "forest",
+        });
+    MK_REQUIRE(invalid_cost.status == Status::invalid_world_graph);
+    MK_REQUIRE(invalid_cost.diagnostic == Diagnostic::invalid_portal_cost);
+    MK_REQUIRE(invalid_cost.failing_portal_id == "road");
 }
 
 MK_TEST("navigation navmesh crowd plans agents deterministically with avoidance and dynamic obstacles") {

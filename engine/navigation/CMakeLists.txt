@@ -3,6 +3,7 @@ add_library(mirakana_navigation
     src/navigation_agent.cpp
     src/navigation_crowd.cpp
     src/navigation_grid.cpp
+    src/navigation_hierarchical_world.cpp
     src/navigation_navmesh.cpp
     src/navigation_path_planner.cpp
     src/navigation_replan.cpp
