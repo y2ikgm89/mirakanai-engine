@@ -81,6 +81,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 | Engine gameplay interaction framework implementation evidence | [Engine Gameplay Interaction Framework v1](2026-05-23-engine-gameplay-interaction-framework-v1.md) |
 | Engine save settings profile implementation evidence | [Engine Save Settings Profile v1](2026-05-23-engine-save-settings-profile-v1.md) |
 | Engine UI game menu HUD implementation evidence | [Engine UI Game Menu HUD v1](2026-05-23-engine-ui-game-menu-hud-v1.md) |
+| Engine audio gameplay mixer implementation evidence | [Engine Audio Gameplay Mixer v1](2026-05-23-engine-audio-gameplay-mixer-v1.md) |
 | AI engine capability handoff implementation evidence | [AI Engine Capability Handoff v1](2026-05-22-ai-engine-capability-handoff-v1.md) |
 | Historical/static-check retained literals | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
 | Recent completed implementation evidence | Search [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) and Git history; do not treat this registry as a changelog. |

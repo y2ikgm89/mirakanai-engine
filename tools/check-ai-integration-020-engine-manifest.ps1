@@ -2012,6 +2012,54 @@ Assert-ContainsText $sample2DPlayableFoundationText "plan_runtime_gameplay_debug
 Assert-ContainsText $sample2DPlayableFoundationText "RuntimeInputContextLayerKind::overlay" "games/sample_2d_playable_foundation/main.cpp"
 Assert-ContainsText $sample2DPlayableFoundationText "input_contexts=" "games/sample_2d_playable_foundation/main.cpp"
 Assert-ContainsText $sample2DPlayableFoundationText "debug_overlay_rows=" "games/sample_2d_playable_foundation/main.cpp"
+foreach ($sampleSurface in @(
+        @{ Text = $sample2DPackageText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
+        @{ Text = $sample3DPackageText; Label = "games/sample_generated_desktop_runtime_3d_package/main.cpp" }
+    )) {
+    Assert-ContainsText $sampleSurface.Text "--require-audio-gameplay-mixer" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "plan_gameplay_audio_mix" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_ready" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_diagnostics" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_buses" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_cues" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_triggers" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_commands" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_paused_buses" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_faded_buses" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_looping_commands" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_spatial_commands" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_render_commands" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_render_frames" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_render_samples" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_sample_abs_sum" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "audio_gameplay_mixer_payload_diagnostics" $sampleSurface.Label
+}
+foreach ($sampleSurface in @(
+        @{ Text = $sample2DPackageText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
+        @{ Text = $sample3DPackageText; Label = "games/sample_generated_desktop_runtime_3d_package/main.cpp" }
+    )) {
+    Assert-ContainsText $sampleSurface.Text "runtime_audio_payload" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "make_audio_samples" $sampleSurface.Label
+    Assert-ContainsText $sampleSurface.Text "packaged_audio_asset_id" $sampleSurface.Label
+}
+Assert-ContainsText $sample3DPackageText "--require-audio-gameplay-mixer requires --require-scene-package with packaged gameplay audio" "games/sample_generated_desktop_runtime_3d_package/main.cpp"
+foreach ($sampleManifestSurface in @(
+        @{ Text = $sample2DPackageManifestText; Label = "games/sample_2d_desktop_runtime_package/game.agent.json"; Recipe = "installed-2d-audio-gameplay-mixer-smoke" },
+        @{ Text = $sample3DPackageManifestText; Label = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"; Recipe = "installed-3d-audio-gameplay-mixer-smoke" }
+    )) {
+    Assert-ContainsText $sampleManifestSurface.Text "audio-gameplay-mixer" $sampleManifestSurface.Label
+    Assert-ContainsText $sampleManifestSurface.Text $sampleManifestSurface.Recipe $sampleManifestSurface.Label
+    Assert-ContainsText $sampleManifestSurface.Text "--require-audio-gameplay-mixer" $sampleManifestSurface.Label
+    Assert-ContainsText $sampleManifestSurface.Text "audio_gameplay_mixer_ready" $sampleManifestSurface.Label
+}
+Assert-ContainsText $sample3DPackageManifestText "runtime/assets/3d/gameplay_systems.audio.geasset" "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+Assert-ContainsText $sample3DPackageManifestText "cooked package audio payload" "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+if (-not [regex]::Match($sample3DPackageManifestText, '(?s)"residentResourceKinds"\s*:\s*\[[^\]]*"audio"').Success) {
+    Write-Error "games/sample_generated_desktop_runtime_3d_package/game.agent.json residentResourceKinds must include audio for package streaming smokes"
+}
+Assert-ContainsText $sample3DPackageText "mirakana::AssetKind::audio" "games/sample_generated_desktop_runtime_3d_package/main.cpp package streaming resident kinds"
+Assert-ContainsText (Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex") "runtime/assets/3d/gameplay_systems.audio.geasset" "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex"
+Assert-ContainsText (Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset") "GameEngine.CookedAudio.v1" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset"
 foreach ($docSurface in @(
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
         @{ Text = $roadmapText; Label = "docs/roadmap.md" },
@@ -2019,6 +2067,8 @@ foreach ($docSurface in @(
     )) {
     Assert-ContainsText $docSurface.Text "RuntimeInputContextStackRequest" $docSurface.Label
     Assert-ContainsText $docSurface.Text "plan_runtime_input_context_stack" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "--require-audio-gameplay-mixer" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "audio_gameplay_mixer_ready" $docSurface.Label
 }
 Assert-ContainsText $manifestRaw "currentInputContextPlanning" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "RuntimeInputContextStackPlan" "engine/agent/manifest.json"

@@ -43,6 +43,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <iostream>
@@ -94,6 +95,7 @@ struct DesktopRuntimeOptions {
     bool require_entity_scale_culling{false};
     bool require_runtime_profile_resume{false};
     bool require_runtime_menu_hud{false};
+    bool require_audio_gameplay_mixer{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -215,6 +217,10 @@ constexpr std::uint64_t kPackageStreamingResidentBudgetBytes{67108864};
 
 [[nodiscard]] mirakana::AssetId packaged_collision_scene_asset_id() {
     return asset_id_from_game_asset_key("sample-generated-desktop-runtime-3d-package/physics/collision");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_audio_asset_id() {
+    return asset_id_from_game_asset_key("sample-generated-desktop-runtime-3d-package/audio/gameplay-systems");
 }
 
 constexpr const char* kHudAtlasProofResourceId{"hud.texture_atlas_proof"};
@@ -604,6 +610,142 @@ enum class GameplaySystemsStatus : std::uint8_t {
         return "diagnostics";
     }
     return "unknown";
+}
+
+struct AudioGameplayMixerProbeResult {
+    bool ready{false};
+    std::size_t diagnostics{0U};
+    std::size_t buses{0U};
+    std::size_t cues{0U};
+    std::size_t triggers{0U};
+    std::size_t commands{0U};
+    std::size_t paused_buses{0U};
+    std::size_t faded_buses{0U};
+    std::size_t looping_commands{0U};
+    std::size_t spatial_commands{0U};
+    std::size_t render_commands{0U};
+    std::uint32_t render_frames{0U};
+    std::size_t render_samples{0U};
+    float sample_abs_sum{0.0F};
+    std::size_t payload_diagnostics{0U};
+};
+
+[[nodiscard]] AudioGameplayMixerProbeResult
+validate_audio_gameplay_mixer_package_evidence(const mirakana::AudioClipSampleData& samples) {
+    AudioGameplayMixerProbeResult result;
+    result.payload_diagnostics = mirakana::is_valid_audio_clip_sample_data(samples) ? 0U : 1U;
+
+    const auto request = mirakana::AudioGameplayMixRequest{
+        .buses =
+            {
+                mirakana::AudioGameplayBusMixDesc{.name = "music",
+                                                  .gain = 0.8F,
+                                                  .paused = false,
+                                                  .fade_from_gain = 0.5F,
+                                                  .fade_to_gain = 1.0F,
+                                                  .fade_elapsed_seconds = 0.5F,
+                                                  .fade_duration_seconds = 1.0F},
+                mirakana::AudioGameplayBusMixDesc{.name = "sfx", .gain = 1.0F, .paused = true},
+            },
+        .cues =
+            {
+                mirakana::AudioGameplayCueDesc{.id = "music.theme",
+                                               .kind = mirakana::AudioGameplayCueKind::music,
+                                               .clip = samples.clip,
+                                               .bus = "music",
+                                               .gain = 0.5F,
+                                               .looping = true},
+                mirakana::AudioGameplayCueDesc{.id = "sfx.jump",
+                                               .kind = mirakana::AudioGameplayCueKind::sfx,
+                                               .clip = samples.clip,
+                                               .bus = "sfx",
+                                               .gain = 1.0F,
+                                               .looping = false,
+                                               .spatialized = true,
+                                               .position = mirakana::AudioPoint3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                               .min_distance = 1.0F,
+                                               .max_distance = 8.0F},
+            },
+        .triggers =
+            {
+                mirakana::AudioGameplayCueTrigger{.cue_id = "music.theme", .start_frame = 0U, .gain_scale = 1.0F},
+                mirakana::AudioGameplayCueTrigger{.cue_id = "sfx.jump", .start_frame = 0U, .gain_scale = 0.75F},
+            },
+    };
+
+    result.buses = request.buses.size();
+    result.cues = request.cues.size();
+    result.triggers = request.triggers.size();
+    for (const auto& bus : request.buses) {
+        if (bus.paused) {
+            ++result.paused_buses;
+        }
+        if (bus.fade_duration_seconds > 0.0F) {
+            ++result.faded_buses;
+        }
+    }
+
+    const auto plan = mirakana::plan_gameplay_audio_mix(request);
+    result.diagnostics = plan.diagnostics.size();
+    result.commands = plan.commands.size();
+    for (const auto& command : plan.commands) {
+        if (command.voice.looping) {
+            ++result.looping_commands;
+        }
+        if (command.spatialized) {
+            ++result.spatial_commands;
+        }
+    }
+    if (!plan.succeeded() || result.payload_diagnostics != 0U) {
+        return result;
+    }
+
+    try {
+        mirakana::AudioMixer mixer;
+        for (const auto& bus : plan.buses) {
+            mixer.add_bus(bus);
+        }
+        if (!mixer.register_clip(mirakana::AudioClipDesc{.clip = samples.clip,
+                                                         .sample_rate = samples.format.sample_rate,
+                                                         .channel_count = samples.format.channel_count,
+                                                         .frame_count = samples.frame_count,
+                                                         .sample_format = samples.format.sample_format,
+                                                         .streaming = false,
+                                                         .buffered_frame_count = samples.frame_count})) {
+            ++result.payload_diagnostics;
+            return result;
+        }
+        for (const auto& command : plan.commands) {
+            (void)mixer.play(command.voice);
+        }
+
+        const auto output = mirakana::render_audio_device_stream_interleaved_float(
+            mixer,
+            mirakana::AudioDeviceStreamRequest{
+                .format = samples.format,
+                .device_frame = 0U,
+                .queued_frames = 0U,
+                .target_queued_frames = 2U,
+                .max_render_frames = 2U,
+            },
+            std::span<const mirakana::AudioClipSampleData>{&samples, 1});
+        result.render_commands = output.buffer.plan.commands.size();
+        result.render_frames = output.buffer.frame_count;
+        result.render_samples = output.buffer.interleaved_float_samples.size();
+        for (const auto sample : output.buffer.interleaved_float_samples) {
+            result.sample_abs_sum += std::abs(sample);
+        }
+    } catch (const std::exception&) {
+        ++result.diagnostics;
+        return result;
+    }
+
+    result.ready = result.diagnostics == 0U && result.payload_diagnostics == 0U && result.buses == 2U &&
+                   result.cues == 2U && result.triggers == 2U && result.commands == 2U && result.paused_buses == 1U &&
+                   result.faded_buses == 1U && result.looping_commands == 1U && result.spatial_commands == 1U &&
+                   result.render_commands == 2U && result.render_frames == 2U && result.render_samples == 2U &&
+                   result.sample_abs_sum > 0.0F;
+    return result;
 }
 
 [[nodiscard]] std::string_view
@@ -1094,7 +1236,7 @@ audio_device_stream_diagnostic_name(mirakana::AudioDeviceStreamDiagnostic diagno
 
 class GeneratedGameplaySystemsProbe final {
   public:
-    GeneratedGameplaySystemsProbe()
+    explicit GeneratedGameplaySystemsProbe(std::optional<mirakana::AudioClipSampleData> audio_samples = std::nullopt)
         : physics_(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}}),
           animation_(mirakana::AnimationStateMachineDesc{
               .states =
@@ -1114,7 +1256,8 @@ class GeneratedGameplaySystemsProbe final {
                       mirakana::AnimationTransitionDesc{
                           .from_state = "idle", .to_state = "walk", .trigger = "move", .blend_seconds = 0.25F},
                   },
-          }) {}
+          }),
+          audio_samples_(std::move(audio_samples)) {}
 
     void start() {
         floor_body_ = physics_.create_body(mirakana::PhysicsBody3DDesc{
@@ -1724,6 +1867,10 @@ class GeneratedGameplaySystemsProbe final {
 
     [[nodiscard]] float audio_stream_sample_abs_sum() const noexcept {
         return audio_stream_sample_abs_sum_;
+    }
+
+    [[nodiscard]] const AudioGameplayMixerProbeResult& audio_gameplay_mixer_probe() const noexcept {
+        return audio_gameplay_mixer_;
     }
 
     [[nodiscard]] bool interaction_ready() const noexcept {
@@ -2509,41 +2656,41 @@ class GeneratedGameplaySystemsProbe final {
 
     void render_audio_stream_probe() {
         mirakana::AudioMixer mixer;
-        const auto clip =
-            asset_id_from_game_asset_key("sample-generated-desktop-runtime-3d-package/audio/gameplay-systems");
+        const mirakana::AudioClipSampleData fallback_samples{
+            .clip = packaged_audio_asset_id(),
+            .format = mirakana::AudioDeviceFormat{.sample_rate = 48000,
+                                                  .channel_count = 1,
+                                                  .sample_format = mirakana::AudioSampleFormat::float32},
+            .frame_count = 4,
+            .interleaved_float_samples = {0.1F, 0.2F, 0.3F, 0.4F},
+        };
+        const mirakana::AudioClipSampleData& clip_samples =
+            audio_samples_.has_value() ? *audio_samples_ : fallback_samples;
+        const auto clip = clip_samples.clip;
         mixer.add_clip(mirakana::AudioClipDesc{.clip = clip,
-                                               .sample_rate = 48000,
-                                               .channel_count = 1,
-                                               .frame_count = 4,
-                                               .sample_format = mirakana::AudioSampleFormat::float32,
+                                               .sample_rate = clip_samples.format.sample_rate,
+                                               .channel_count = clip_samples.format.channel_count,
+                                               .frame_count = clip_samples.frame_count,
+                                               .sample_format = clip_samples.format.sample_format,
                                                .streaming = false,
-                                               .buffered_frame_count = 4});
+                                               .buffered_frame_count = clip_samples.frame_count});
         const auto voice =
             mixer.play(mirakana::AudioVoiceDesc{.clip = clip, .bus = "master", .gain = 1.0F, .looping = false});
         audio_voice_started_ = voice != mirakana::null_audio_voice;
 
         const std::vector<mirakana::AudioClipSampleData> samples{
-            mirakana::AudioClipSampleData{
-                .clip = clip,
-                .format = mirakana::AudioDeviceFormat{.sample_rate = 48000,
-                                                      .channel_count = 1,
-                                                      .sample_format = mirakana::AudioSampleFormat::float32},
-                .frame_count = 4,
-                .interleaved_float_samples = {0.1F, 0.2F, 0.3F, 0.4F},
-            },
+            clip_samples,
         };
-        const auto output = mirakana::render_audio_device_stream_interleaved_float(
-            mixer,
-            mirakana::AudioDeviceStreamRequest{
-                .format = mirakana::AudioDeviceFormat{.sample_rate = 48000,
-                                                      .channel_count = 1,
-                                                      .sample_format = mirakana::AudioSampleFormat::float32},
-                .device_frame = 0,
-                .queued_frames = 2,
-                .target_queued_frames = 4,
-                .max_render_frames = 2,
-            },
-            samples);
+        audio_gameplay_mixer_ = validate_audio_gameplay_mixer_package_evidence(samples[0]);
+        const auto output = mirakana::render_audio_device_stream_interleaved_float(mixer,
+                                                                                   mirakana::AudioDeviceStreamRequest{
+                                                                                       .format = clip_samples.format,
+                                                                                       .device_frame = 0,
+                                                                                       .queued_frames = 2,
+                                                                                       .target_queued_frames = 4,
+                                                                                       .max_render_frames = 2,
+                                                                                   },
+                                                                                   samples);
         audio_stream_status_ = output.plan.status;
         audio_stream_diagnostic_ = output.plan.diagnostic;
         audio_render_command_count_ = output.buffer.plan.commands.size();
@@ -2735,6 +2882,7 @@ class GeneratedGameplaySystemsProbe final {
 
     mirakana::PhysicsWorld3D physics_;
     mirakana::AnimationStateMachine animation_;
+    std::optional<mirakana::AudioClipSampleData> audio_samples_;
     mirakana::PhysicsAuthoredCollisionScene3DBuildResult authored_collision_;
     mirakana::PhysicsCharacterController3DResult controller_result_;
     mirakana::PhysicsCharacterDynamicPolicy3DResult physics_policy_result_;
@@ -2745,6 +2893,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::runtime::RuntimeGameplayInteractionPlan interaction_plan_;
     mirakana::runtime::RuntimeSessionProfileResumePlan runtime_profile_resume_plan_;
     mirakana::ui::RuntimeMenuHudPlan runtime_menu_hud_plan_;
+    AudioGameplayMixerProbeResult audio_gameplay_mixer_;
     mirakana::NavigationNavmeshPathResult navigation_navmesh_result_;
     mirakana::NavigationCrowdPlanResult navigation_crowd_result_;
     mirakana::NavigationAgentState navigation_agent_;
@@ -2805,6 +2954,7 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
                                          std::optional<mirakana::runtime::RuntimeMorphMeshCpuPayload> morph_payload,
                                          std::optional<mirakana::AnimationFloatClipSourceDocument> morph_animation_clip,
                                          std::vector<mirakana::AnimationJointTrack3dDesc> quaternion_animation_tracks,
+                                         std::optional<mirakana::AudioClipSampleData> audio_samples,
                                          bool textured_ui_atlas_mode, mirakana::UiRendererImagePalette image_palette,
                                          bool text_glyph_ui_atlas_mode,
                                          mirakana::UiRendererGlyphAtlasPalette glyph_atlas)
@@ -2813,7 +2963,8 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
           morph_payload_(std::move(morph_payload)), morph_animation_clip_(std::move(morph_animation_clip)),
           quaternion_animation_tracks_(std::move(quaternion_animation_tracks)),
           image_palette_(std::move(image_palette)), glyph_atlas_(std::move(glyph_atlas)),
-          textured_ui_atlas_mode_(textured_ui_atlas_mode), text_glyph_ui_atlas_mode_(text_glyph_ui_atlas_mode) {}
+          gameplay_systems_(std::move(audio_samples)), textured_ui_atlas_mode_(textured_ui_atlas_mode),
+          text_glyph_ui_atlas_mode_(text_glyph_ui_atlas_mode) {}
 
     void on_start(mirakana::EngineContext&) override {
         renderer_.set_clear_color(mirakana::Color{.r = 0.025F, .g = 0.035F, .b = 0.045F, .a = 1.0F});
@@ -3505,6 +3656,10 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
         return gameplay_systems_.audio_stream_sample_abs_sum();
     }
 
+    [[nodiscard]] const AudioGameplayMixerProbeResult& gameplay_systems_audio_gameplay_mixer_probe() const noexcept {
+        return gameplay_systems_.audio_gameplay_mixer_probe();
+    }
+
     [[nodiscard]] bool gameplay_systems_interaction_ready() const noexcept {
         return gameplay_systems_.interaction_ready();
     }
@@ -3750,7 +3905,7 @@ void print_usage() {
                  "[--require-package-upload-staging] "
                  "[--require-gameplay-systems] [--require-scene-collision-package] "
                  "[--require-entity-scale-culling] [--require-runtime-profile-resume] "
-                 "[--require-runtime-menu-hud]\n";
+                 "[--require-runtime-menu-hud] [--require-audio-gameplay-mixer]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -3981,6 +4136,10 @@ void print_usage() {
         }
         if (arg == "--require-runtime-menu-hud") {
             options.require_runtime_menu_hud = true;
+            continue;
+        }
+        if (arg == "--require-audio-gameplay-mixer") {
+            options.require_audio_gameplay_mixer = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -4468,7 +4627,7 @@ package_streaming_smoke_ready(const mirakana::runtime::RuntimePackageStreamingEx
            package_streaming_result.replacement.committed_record_count > 0 &&
            package_streaming_result.replacement.committed_record_count == expected_records &&
            package_streaming_result.required_preload_asset_count == 1 &&
-           package_streaming_result.resident_resource_kind_count == 10 &&
+           package_streaming_result.resident_resource_kind_count == 11 &&
            package_streaming_result.resident_package_count == 1 && package_streaming_result.diagnostics.empty();
 }
 
@@ -4859,6 +5018,28 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
     }
 }
 
+[[nodiscard]] std::optional<mirakana::AudioClipSampleData>
+make_audio_samples(const mirakana::runtime::RuntimeAudioPayload& payload) {
+    if (payload.sample_format != mirakana::AudioSourceSampleFormat::float32 || payload.channel_count == 0 ||
+        payload.samples.size() != payload.source_bytes || payload.samples.size() % sizeof(float) != 0) {
+        return std::nullopt;
+    }
+
+    std::vector<float> samples(payload.samples.size() / sizeof(float));
+    if (!samples.empty()) {
+        std::memcpy(samples.data(), payload.samples.data(), payload.samples.size());
+    }
+
+    return mirakana::AudioClipSampleData{
+        .clip = payload.asset,
+        .format = mirakana::AudioDeviceFormat{.sample_rate = payload.sample_rate,
+                                              .channel_count = payload.channel_count,
+                                              .sample_format = mirakana::AudioSampleFormat::float32},
+        .frame_count = payload.frame_count,
+        .interleaved_float_samples = std::move(samples),
+    };
+}
+
 [[nodiscard]] std::filesystem::path executable_directory(const char* executable_path) {
     try {
         if (executable_path != nullptr && !std::string_view{executable_path}.empty()) {
@@ -4909,7 +5090,8 @@ load_required_scene_package(const char* executable_path, std::string_view packag
                             std::optional<mirakana::AnimationFloatClipSourceDocument>& animation_clip,
                             std::optional<mirakana::runtime::RuntimeMorphMeshCpuPayload>& morph_payload,
                             std::optional<mirakana::AnimationFloatClipSourceDocument>& morph_animation_clip,
-                            std::vector<mirakana::AnimationJointTrack3dDesc>& quaternion_animation_tracks) {
+                            std::vector<mirakana::AnimationJointTrack3dDesc>& quaternion_animation_tracks,
+                            std::optional<mirakana::AudioClipSampleData>& audio_samples, bool require_audio_samples) {
     if (package_path.empty()) {
         return true;
     }
@@ -4944,6 +5126,34 @@ load_required_scene_package(const char* executable_path, std::string_view packag
         if (instance.material_palette.count() == 0) {
             std::cerr << "runtime scene package did not resolve scene materials: " << package_path << '\n';
             return false;
+        }
+        const auto* audio_record = package_result.package.find(packaged_audio_asset_id());
+        if (audio_record == nullptr) {
+            if (require_audio_samples) {
+                std::cerr << "runtime scene package did not include packaged gameplay audio payload: " << package_path
+                          << '\n';
+                return false;
+            }
+        } else {
+            const auto audio_payload = mirakana::runtime::runtime_audio_payload(*audio_record);
+            if (!audio_payload.succeeded()) {
+                if (require_audio_samples) {
+                    std::cerr << "runtime scene package gameplay audio payload is invalid: " << audio_payload.diagnostic
+                              << '\n';
+                    return false;
+                }
+            } else {
+                auto samples = make_audio_samples(audio_payload.payload);
+                if (!samples.has_value()) {
+                    if (require_audio_samples) {
+                        std::cerr
+                            << "runtime scene package gameplay audio payload is not a supported float32 sample clip\n";
+                        return false;
+                    }
+                } else {
+                    audio_samples = std::move(samples);
+                }
+            }
         }
         const auto* animation_record = package_result.package.find(packaged_animation_asset_id());
         if (animation_record == nullptr) {
@@ -5050,6 +5260,7 @@ execute_package_streaming_safe_point_smoke(const mirakana::runtime::RuntimeAsset
                     mirakana::AssetKind::ui_atlas,
                     mirakana::AssetKind::scene,
                     mirakana::AssetKind::physics_collision_scene,
+                    mirakana::AssetKind::audio,
                 },
             .max_resident_packages = 1,
         },
@@ -5357,9 +5568,11 @@ int main(int argc, char** argv) {
     std::optional<mirakana::runtime::RuntimeMorphMeshCpuPayload> packaged_morph_payload;
     std::optional<mirakana::AnimationFloatClipSourceDocument> packaged_morph_animation_clip;
     std::vector<mirakana::AnimationJointTrack3dDesc> packaged_quaternion_animation_tracks;
+    std::optional<mirakana::AudioClipSampleData> packaged_audio_samples;
     if (!load_required_scene_package(argc > 0 ? argv[0] : nullptr, options.required_scene_package_path, runtime_package,
                                      packaged_scene, packaged_animation_clip, packaged_morph_payload,
-                                     packaged_morph_animation_clip, packaged_quaternion_animation_tracks)) {
+                                     packaged_morph_animation_clip, packaged_quaternion_animation_tracks,
+                                     packaged_audio_samples, options.require_audio_gameplay_mixer)) {
         return 4;
     }
     if (options.require_scene_gpu_bindings && (!runtime_package.has_value() || !packaged_scene.has_value())) {
@@ -5377,6 +5590,10 @@ int main(int argc, char** argv) {
     }
     if (options.require_quaternion_animation && packaged_quaternion_animation_tracks.empty()) {
         std::cerr << "--require-quaternion-animation requires --require-scene-package\n";
+        return 4;
+    }
+    if (options.require_audio_gameplay_mixer && !packaged_audio_samples.has_value()) {
+        std::cerr << "--require-audio-gameplay-mixer requires --require-scene-package with packaged gameplay audio\n";
         return 4;
     }
     if (options.require_package_streaming_safe_point &&
@@ -6029,9 +6246,9 @@ int main(int argc, char** argv) {
     GeneratedDesktopRuntime3DPackageGame game(
         host.input(), host.renderer(), options.throttle, std::move(packaged_scene), std::move(packaged_animation_clip),
         packaged_animation_bindings(), std::move(packaged_morph_payload), std::move(packaged_morph_animation_clip),
-        std::move(packaged_quaternion_animation_tracks), options.require_native_ui_textured_sprite_atlas,
-        std::move(ui_atlas_metadata.palette), options.require_native_ui_text_glyph_atlas,
-        std::move(ui_text_glyph_atlas_metadata.glyph_atlas));
+        std::move(packaged_quaternion_animation_tracks), std::move(packaged_audio_samples),
+        options.require_native_ui_textured_sprite_atlas, std::move(ui_atlas_metadata.palette),
+        options.require_native_ui_text_glyph_atlas, std::move(ui_text_glyph_atlas_metadata.glyph_atlas));
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
@@ -6052,6 +6269,7 @@ int main(int argc, char** argv) {
                                             ? run_package_upload_staging_evidence(host.presentation())
                                             : mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence{};
 
+    const auto& audio_gameplay_mixer = game.gameplay_systems_audio_gameplay_mixer_probe();
     std::cout
         << "sample_generated_desktop_runtime_3d_package status=" << status_name(result.status)
         << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
@@ -6404,6 +6622,21 @@ int main(int argc, char** argv) {
         << " gameplay_systems_audio_first_sample=" << game.gameplay_systems_audio_first_sample()
         << " gameplay_systems_audio_second_sample=" << game.gameplay_systems_audio_second_sample()
         << " gameplay_systems_audio_abs_sum=" << game.gameplay_systems_audio_abs_sum()
+        << " audio_gameplay_mixer_ready=" << (audio_gameplay_mixer.ready ? 1 : 0)
+        << " audio_gameplay_mixer_diagnostics=" << audio_gameplay_mixer.diagnostics
+        << " audio_gameplay_mixer_buses=" << audio_gameplay_mixer.buses
+        << " audio_gameplay_mixer_cues=" << audio_gameplay_mixer.cues
+        << " audio_gameplay_mixer_triggers=" << audio_gameplay_mixer.triggers
+        << " audio_gameplay_mixer_commands=" << audio_gameplay_mixer.commands
+        << " audio_gameplay_mixer_paused_buses=" << audio_gameplay_mixer.paused_buses
+        << " audio_gameplay_mixer_faded_buses=" << audio_gameplay_mixer.faded_buses
+        << " audio_gameplay_mixer_looping_commands=" << audio_gameplay_mixer.looping_commands
+        << " audio_gameplay_mixer_spatial_commands=" << audio_gameplay_mixer.spatial_commands
+        << " audio_gameplay_mixer_render_commands=" << audio_gameplay_mixer.render_commands
+        << " audio_gameplay_mixer_render_frames=" << audio_gameplay_mixer.render_frames
+        << " audio_gameplay_mixer_render_samples=" << audio_gameplay_mixer.render_samples
+        << " audio_gameplay_mixer_sample_abs_sum=" << audio_gameplay_mixer.sample_abs_sum
+        << " audio_gameplay_mixer_payload_diagnostics=" << audio_gameplay_mixer.payload_diagnostics
         << " gameplay_systems_interaction_ready=" << (game.gameplay_systems_interaction_ready() ? 1 : 0)
         << " gameplay_systems_interaction_diagnostics=" << game.gameplay_systems_interaction_diagnostics()
         << " gameplay_systems_interaction_rows=" << game.gameplay_systems_interaction_rows()
@@ -6523,7 +6756,7 @@ int main(int argc, char** argv) {
              package_streaming_result.replacement.committed_record_count == 0 ||
              package_streaming_result.replacement.committed_record_count != runtime_package->records().size() ||
              package_streaming_result.required_preload_asset_count != 1 ||
-             package_streaming_result.resident_resource_kind_count != 10 ||
+             package_streaming_result.resident_resource_kind_count != 11 ||
              package_streaming_result.resident_package_count != 1 || !package_streaming_result.diagnostics.empty())) {
             return 3;
         }
@@ -6593,6 +6826,26 @@ int main(int argc, char** argv) {
                       << " runtime_menu_hud_input_binding_prompt_rows="
                       << game.gameplay_systems_runtime_menu_hud_input_binding_prompt_rows() << '\n';
             return 17;
+        }
+        if (options.require_audio_gameplay_mixer && !audio_gameplay_mixer.ready) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_audio_gameplay_mixer_unavailable"
+                      << " audio_gameplay_mixer_ready=" << (audio_gameplay_mixer.ready ? 1 : 0)
+                      << " audio_gameplay_mixer_diagnostics=" << audio_gameplay_mixer.diagnostics
+                      << " audio_gameplay_mixer_buses=" << audio_gameplay_mixer.buses
+                      << " audio_gameplay_mixer_cues=" << audio_gameplay_mixer.cues
+                      << " audio_gameplay_mixer_triggers=" << audio_gameplay_mixer.triggers
+                      << " audio_gameplay_mixer_commands=" << audio_gameplay_mixer.commands
+                      << " audio_gameplay_mixer_paused_buses=" << audio_gameplay_mixer.paused_buses
+                      << " audio_gameplay_mixer_faded_buses=" << audio_gameplay_mixer.faded_buses
+                      << " audio_gameplay_mixer_looping_commands=" << audio_gameplay_mixer.looping_commands
+                      << " audio_gameplay_mixer_spatial_commands=" << audio_gameplay_mixer.spatial_commands
+                      << " audio_gameplay_mixer_render_commands=" << audio_gameplay_mixer.render_commands
+                      << " audio_gameplay_mixer_render_frames=" << audio_gameplay_mixer.render_frames
+                      << " audio_gameplay_mixer_render_samples=" << audio_gameplay_mixer.render_samples
+                      << " audio_gameplay_mixer_sample_abs_sum=" << audio_gameplay_mixer.sample_abs_sum
+                      << " audio_gameplay_mixer_payload_diagnostics=" << audio_gameplay_mixer.payload_diagnostics
+                      << '\n';
+            return 18;
         }
         if (options.require_gameplay_systems && !gameplay_systems_ready) {
             return 3;
