@@ -105,6 +105,104 @@ struct RuntimeWorldRegionStreamingPlan {
 [[nodiscard]] RuntimeWorldRegionStreamingPlan
 plan_runtime_world_region_streaming(const RuntimeWorldRegionStreamingPlanRequest& request);
 
+enum class RuntimeWorldRegionNavigationReviewStatus : std::uint8_t {
+    ready = 0,
+    invalid_request,
+    not_resident,
+    stale,
+};
+
+enum class RuntimeWorldRegionNavigationDiagnosticCode : std::uint8_t {
+    invalid_region_id = 0,
+    duplicate_region,
+    duplicate_route_region,
+    missing_region_package,
+    invalid_package_index_path,
+    invalid_mount_id,
+    duplicate_mount_id,
+    duplicate_region_ref,
+    empty_route,
+    route_portal_count_mismatch,
+    route_region_not_resident,
+    path_cache_region_path_mismatch,
+    path_cache_portal_path_mismatch,
+    mount_generation_mismatch,
+    catalog_generation_mismatch,
+    catalog_cache_not_ready,
+};
+
+struct RuntimeWorldRegionNavigationDiagnostic {
+    RuntimeWorldRegionNavigationDiagnosticCode code{RuntimeWorldRegionNavigationDiagnosticCode::invalid_region_id};
+    std::string region_id;
+    std::string message;
+};
+
+struct RuntimeWorldRegionNavigationRefReviewRequest {
+    std::vector<RuntimeWorldRegionPackageDesc> regions;
+    std::vector<std::string> route_region_ids;
+};
+
+struct RuntimeWorldRegionNavigationRefRow {
+    std::string region_id;
+    RuntimeResidentPackageMountIdV2 mount_id;
+    std::string package_index_path;
+    std::string content_root;
+    bool resident{false};
+};
+
+struct RuntimeWorldRegionNavigationRefReviewResult {
+    RuntimeWorldRegionNavigationReviewStatus status{RuntimeWorldRegionNavigationReviewStatus::invalid_request};
+    std::vector<RuntimeWorldRegionNavigationDiagnostic> diagnostics;
+    std::vector<RuntimeWorldRegionNavigationRefRow> rows;
+    std::size_t resident_region_count{0};
+    std::size_t missing_resident_region_count{0};
+    std::uint32_t current_mount_generation{0};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Reviews a hierarchical navigation route against caller-reviewed world-region package references and current resident
+/// mounts. This value-only helper does not read package files, execute streaming safe points, mutate resident state,
+/// refresh catalogs, bake navigation data, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimeWorldRegionNavigationRefReviewResult
+review_runtime_world_region_navigation_refs(const RuntimeResidentPackageMountSetV2& mount_set,
+                                            const RuntimeWorldRegionNavigationRefReviewRequest& request);
+
+struct RuntimeWorldRegionNavigationPathCacheEntry {
+    std::vector<std::string> region_path;
+    std::vector<std::string> portal_path;
+    std::uint32_t mount_generation{0};
+    std::uint32_t catalog_generation{0};
+};
+
+struct RuntimeWorldRegionNavigationPathCacheReviewRequest {
+    std::vector<RuntimeWorldRegionPackageDesc> regions;
+    std::vector<std::string> route_region_ids;
+    std::vector<std::string> route_portal_ids;
+    RuntimeWorldRegionNavigationPathCacheEntry cache;
+};
+
+struct RuntimeWorldRegionNavigationPathCacheReviewResult {
+    RuntimeWorldRegionNavigationReviewStatus status{RuntimeWorldRegionNavigationReviewStatus::invalid_request};
+    std::vector<RuntimeWorldRegionNavigationDiagnostic> diagnostics;
+    std::vector<RuntimeWorldRegionNavigationRefRow> rows;
+    std::size_t resident_region_count{0};
+    std::size_t missing_resident_region_count{0};
+    std::uint32_t current_mount_generation{0};
+    std::uint32_t current_catalog_generation{0};
+    bool cache_ready{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+/// Reviews whether a retained hierarchical navigation path-cache row still matches the current route and resident
+/// package/catalog generations. The coarse generation key is conservative: it may invalidate too often, but it never
+/// reuses stale package-backed navigation rows as ready.
+[[nodiscard]] RuntimeWorldRegionNavigationPathCacheReviewResult
+review_runtime_world_region_navigation_path_cache(const RuntimeResidentPackageMountSetV2& mount_set,
+                                                  const RuntimeResidentCatalogCacheV2& catalog_cache,
+                                                  const RuntimeWorldRegionNavigationPathCacheReviewRequest& request);
+
 enum class RuntimeWorldRegionStreamingSafePointStatus : std::uint8_t {
     invalid_plan = 0,
     no_changes,

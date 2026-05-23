@@ -36,6 +36,7 @@ foreach ($header in @(
     "engine/navigation/include/mirakana/navigation/navigation_path_planner.hpp",
     "engine/navigation/include/mirakana/navigation/navigation_replan.hpp",
     "engine/navigation/include/mirakana/navigation/navigation_crowd.hpp",
+    "engine/navigation/include/mirakana/navigation/navigation_hierarchical_world.hpp",
     "engine/navigation/include/mirakana/navigation/navigation_navmesh.hpp",
     "engine/navigation/include/mirakana/navigation/path_smoothing.hpp",
     "engine/navigation/include/mirakana/navigation/local_avoidance.hpp"
@@ -54,8 +55,11 @@ foreach ($needle in @(
     "plan_navigation_navmesh_path",
     "NavigationCrowdPlanRequest",
     "plan_navigation_navmesh_crowd",
+    "NavigationHierarchicalWorldPathRequest",
+    "plan_navigation_hierarchical_world_path",
     "navmesh",
     "crowd",
+    "automatic nav baking",
     "scene/physics integration",
     "editor visualization"
 )) {
@@ -66,9 +70,29 @@ foreach ($needle in @(
 if (-not $engine.gameCodeGuidance.PSObject.Properties.Name.Contains("currentNavigation")) {
     Write-Error "engine manifest gameCodeGuidance must declare currentNavigation"
 }
+Assert-Properties $engine.gameCodeGuidance @("currentHierarchicalWorldNavigation") "engine manifest gameCodeGuidance"
 foreach ($needle in @("NavigationGridAgentPathRequest", "NavigationGridAgentPathPlan", "plan_navigation_grid_agent_path", "NavigationNavmeshPathRequest", "plan_navigation_navmesh_path", "NavigationCrowdPlanRequest", "plan_navigation_navmesh_crowd", "navmesh", "crowd", "scene/physics integration", "editor visualization")) {
     if (-not ([string]$engine.gameCodeGuidance.currentNavigation).Contains($needle)) {
         Write-Error "engine manifest gameCodeGuidance.currentNavigation missing $needle"
+    }
+}
+foreach ($needle in @("NavigationHierarchicalWorldPathRequest", "NavigationHierarchicalWorldPathResult", "NavigationHierarchicalWorldPortalPathRow", "plan_navigation_hierarchical_world_path", "world-region refs", "nav-data refs", "renderer/RHI/native handles")) {
+    if (-not ([string]$engine.gameCodeGuidance.currentHierarchicalWorldNavigation).Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentHierarchicalWorldNavigation missing $needle"
+    }
+}
+Assert-Properties $engine.gameCodeGuidance @("currentWorldRegionNavigationRefs") "engine manifest gameCodeGuidance"
+$geRuntimeModuleForNavigation = @($engine.modules | Where-Object { $_.name -eq "MK_runtime" })
+if ($geRuntimeModuleForNavigation.Count -ne 1) {
+    Write-Error "engine manifest must declare exactly one MK_runtime module"
+}
+if (@($geRuntimeModuleForNavigation[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/world_region_streaming.hpp") {
+    Write-Error "engine manifest MK_runtime publicHeaders missing world_region_streaming.hpp"
+}
+$worldRegionNavigationText = (([string]$engine.gameCodeGuidance.currentWorldRegionNavigationRefs), ((@($geRuntimeModuleForNavigation[0].recentEvidence) -join " "))) -join " "
+foreach ($needle in @("RuntimeWorldRegionNavigationRefReviewRequest", "RuntimeWorldRegionNavigationRefReviewResult", "RuntimeWorldRegionNavigationPathCacheReviewRequest", "RuntimeWorldRegionNavigationPathCacheReviewResult", "review_runtime_world_region_navigation_refs", "review_runtime_world_region_navigation_path_cache", "RuntimeResidentCatalogCacheV2", "unrefreshed", "without package reads")) {
+    if (-not $worldRegionNavigationText.Contains($needle)) {
+        Write-Error "engine manifest world-region navigation review surface missing $needle"
     }
 }
 Assert-Properties $engine.gameCodeGuidance @("currentEditorContentBrowserImportDiagnostics") "engine manifest gameCodeGuidance"

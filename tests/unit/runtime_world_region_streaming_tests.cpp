@@ -130,6 +130,20 @@ make_refreshed_cache(const mirakana::runtime::RuntimeResidentPackageMountSetV2& 
     return catalog_cache;
 }
 
+void mount_region_scene(mirakana::runtime::RuntimeResidentPackageMountSetV2& mount_set, std::string region_id,
+                        std::uint32_t mount_id) {
+    const auto scene = mirakana::AssetId::from_name(region_id + "/scene");
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = mount_id},
+                       .label = region_id,
+                       .package = make_package(make_record(scene, mirakana::AssetKind::scene,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = mount_id},
+                                                           region_id + " scene")),
+                   })
+                   .succeeded());
+}
+
 [[nodiscard]] mirakana::runtime::RuntimeWorldRegionStreamingPlanRequest streaming_request() {
     return mirakana::runtime::RuntimeWorldRegionStreamingPlanRequest{
         .regions =
@@ -551,6 +565,201 @@ MK_TEST("runtime world region streaming safe point unloads reviewed inactive reg
     MK_REQUIRE(mount_set.mounts()[0].id == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U});
     MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), town_scene).has_value());
     MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), forest_scene).has_value());
+}
+
+MK_TEST("runtime world region navigation refs review reports residency without package reads") {
+    using Code = mirakana::runtime::RuntimeWorldRegionNavigationDiagnosticCode;
+    using Status = mirakana::runtime::RuntimeWorldRegionNavigationReviewStatus;
+
+    CountingFileSystem filesystem;
+    const auto town_scene = mirakana::AssetId::from_name("town/scene");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                .label = "town",
+                .package = make_package(make_record(town_scene, mirakana::AssetKind::scene,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1U}, "town scene")),
+            })
+            .succeeded());
+
+    const auto request = streaming_request();
+    const auto review = mirakana::runtime::review_runtime_world_region_navigation_refs(
+        mount_set, mirakana::runtime::RuntimeWorldRegionNavigationRefReviewRequest{
+                       .regions = request.regions,
+                       .route_region_ids = {"town", "forest"},
+                   });
+
+    MK_REQUIRE(review.status == Status::not_resident);
+    MK_REQUIRE(!review.succeeded());
+    MK_REQUIRE(review.rows.size() == 2U);
+    MK_REQUIRE(review.rows[0].region_id == "town");
+    MK_REQUIRE(review.rows[0].resident);
+    MK_REQUIRE(review.rows[1].region_id == "forest");
+    MK_REQUIRE(!review.rows[1].resident);
+    MK_REQUIRE(review.resident_region_count == 1U);
+    MK_REQUIRE(review.missing_resident_region_count == 1U);
+    MK_REQUIRE(review.diagnostics.size() == 1U);
+    MK_REQUIRE(review.diagnostics[0].code == Code::route_region_not_resident);
+    MK_REQUIRE(review.diagnostics[0].region_id == "forest");
+    MK_REQUIRE(filesystem.read_text_count() == 0);
+}
+
+MK_TEST("runtime world region navigation refs review rejects duplicate route and missing catalog regions") {
+    using Code = mirakana::runtime::RuntimeWorldRegionNavigationDiagnosticCode;
+    using Status = mirakana::runtime::RuntimeWorldRegionNavigationReviewStatus;
+
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    const auto request = streaming_request();
+
+    const auto review = mirakana::runtime::review_runtime_world_region_navigation_refs(
+        mount_set, mirakana::runtime::RuntimeWorldRegionNavigationRefReviewRequest{
+                       .regions = request.regions,
+                       .route_region_ids = {"town", "missing", "town"},
+                   });
+
+    MK_REQUIRE(review.status == Status::invalid_request);
+    MK_REQUIRE(!review.succeeded());
+    MK_REQUIRE(review.rows.empty());
+    MK_REQUIRE(review.diagnostics.size() == 2U);
+    MK_REQUIRE(review.diagnostics[0].code == Code::missing_region_package);
+    MK_REQUIRE(review.diagnostics[0].region_id == "missing");
+    MK_REQUIRE(review.diagnostics[1].code == Code::duplicate_route_region);
+    MK_REQUIRE(review.diagnostics[1].region_id == "town");
+
+    const auto empty_route = mirakana::runtime::review_runtime_world_region_navigation_refs(
+        mount_set, mirakana::runtime::RuntimeWorldRegionNavigationRefReviewRequest{
+                       .regions = request.regions,
+                       .route_region_ids = {},
+                   });
+
+    MK_REQUIRE(empty_route.status == Status::invalid_request);
+    MK_REQUIRE(!empty_route.succeeded());
+    MK_REQUIRE(empty_route.rows.empty());
+    MK_REQUIRE(empty_route.diagnostics.size() == 1U);
+    MK_REQUIRE(empty_route.diagnostics[0].code == Code::empty_route);
+}
+
+MK_TEST("runtime world region navigation path cache review rejects malformed routes and stale catalog caches") {
+    using Code = mirakana::runtime::RuntimeWorldRegionNavigationDiagnosticCode;
+    using Status = mirakana::runtime::RuntimeWorldRegionNavigationReviewStatus;
+
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_region_scene(mount_set, "town", 1U);
+    mount_region_scene(mount_set, "forest", 2U);
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto request = streaming_request();
+
+    const mirakana::runtime::RuntimeWorldRegionNavigationPathCacheEntry matching_cache{
+        .region_path = {"town", "forest"},
+        .portal_path = {"road"},
+        .mount_generation = mount_set.generation(),
+        .catalog_generation = catalog_cache.catalog().generation(),
+    };
+    const auto malformed = mirakana::runtime::review_runtime_world_region_navigation_path_cache(
+        mount_set, catalog_cache,
+        mirakana::runtime::RuntimeWorldRegionNavigationPathCacheReviewRequest{
+            .regions = request.regions,
+            .route_region_ids = {"town", "forest"},
+            .route_portal_ids = {},
+            .cache = matching_cache,
+        });
+
+    MK_REQUIRE(malformed.status == Status::invalid_request);
+    MK_REQUIRE(!malformed.succeeded());
+    MK_REQUIRE(malformed.cache_ready == false);
+    MK_REQUIRE(malformed.diagnostics.size() == 1U);
+    MK_REQUIRE(malformed.diagnostics[0].code == Code::route_portal_count_mismatch);
+
+    mount_region_scene(mount_set, "dungeon", 3U);
+    auto stale_catalog_cache = matching_cache;
+    stale_catalog_cache.mount_generation = mount_set.generation();
+    const auto stale = mirakana::runtime::review_runtime_world_region_navigation_path_cache(
+        mount_set, catalog_cache,
+        mirakana::runtime::RuntimeWorldRegionNavigationPathCacheReviewRequest{
+            .regions = request.regions,
+            .route_region_ids = {"town", "forest"},
+            .route_portal_ids = {"road"},
+            .cache = stale_catalog_cache,
+        });
+
+    MK_REQUIRE(stale.status == Status::stale);
+    MK_REQUIRE(!stale.succeeded());
+    MK_REQUIRE(stale.cache_ready == false);
+    MK_REQUIRE(stale.diagnostics.size() == 1U);
+    MK_REQUIRE(stale.diagnostics[0].code == Code::catalog_cache_not_ready);
+    MK_REQUIRE(stale.current_mount_generation == mount_set.generation());
+    MK_REQUIRE(stale.current_catalog_generation == catalog_cache.catalog().generation());
+}
+
+MK_TEST("runtime world region navigation path cache review fails closed on stale generations") {
+    using Code = mirakana::runtime::RuntimeWorldRegionNavigationDiagnosticCode;
+    using Status = mirakana::runtime::RuntimeWorldRegionNavigationReviewStatus;
+
+    const auto town_scene = mirakana::AssetId::from_name("town/scene");
+    const auto forest_scene = mirakana::AssetId::from_name("forest/scene");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                .label = "town",
+                .package = make_package(make_record(town_scene, mirakana::AssetKind::scene,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1U}, "town scene")),
+            })
+            .succeeded());
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2U},
+                       .label = "forest",
+                       .package = make_package(make_record(forest_scene, mirakana::AssetKind::scene,
+                                                           mirakana::runtime::RuntimeAssetHandle{.value = 2U},
+                                                           "forest scene")),
+                   })
+                   .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+    const auto request = streaming_request();
+    const mirakana::runtime::RuntimeWorldRegionNavigationPathCacheEntry cache{
+        .region_path = {"town", "forest"},
+        .portal_path = {"road"},
+        .mount_generation = mount_set.generation() - 1U,
+        .catalog_generation = catalog_cache.catalog().generation(),
+    };
+
+    const auto stale = mirakana::runtime::review_runtime_world_region_navigation_path_cache(
+        mount_set, catalog_cache,
+        mirakana::runtime::RuntimeWorldRegionNavigationPathCacheReviewRequest{
+            .regions = request.regions,
+            .route_region_ids = {"town", "forest"},
+            .route_portal_ids = {"road"},
+            .cache = cache,
+        });
+
+    MK_REQUIRE(stale.status == Status::stale);
+    MK_REQUIRE(!stale.succeeded());
+    MK_REQUIRE(stale.cache_ready == false);
+    MK_REQUIRE(stale.diagnostics.size() == 1U);
+    MK_REQUIRE(stale.diagnostics[0].code == Code::mount_generation_mismatch);
+    MK_REQUIRE(stale.current_mount_generation == mount_set.generation());
+    MK_REQUIRE(stale.current_catalog_generation == catalog_cache.catalog().generation());
+
+    auto ready_cache = cache;
+    ready_cache.mount_generation = mount_set.generation();
+    const auto ready = mirakana::runtime::review_runtime_world_region_navigation_path_cache(
+        mount_set, catalog_cache,
+        mirakana::runtime::RuntimeWorldRegionNavigationPathCacheReviewRequest{
+            .regions = request.regions,
+            .route_region_ids = {"town", "forest"},
+            .route_portal_ids = {"road"},
+            .cache = ready_cache,
+        });
+
+    MK_REQUIRE(ready.status == Status::ready);
+    MK_REQUIRE(ready.succeeded());
+    MK_REQUIRE(ready.cache_ready);
+    MK_REQUIRE(ready.diagnostics.empty());
+    MK_REQUIRE(ready.resident_region_count == 2U);
 }
 
 int main() {

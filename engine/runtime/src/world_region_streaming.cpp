@@ -57,6 +57,16 @@ void add_diagnostic(RuntimeWorldRegionStreamingSafePointResult& result, RuntimeW
     });
 }
 
+template <typename Result>
+void add_navigation_diagnostic(Result& result, RuntimeWorldRegionNavigationDiagnosticCode code, std::string region_id,
+                               std::string message) {
+    result.diagnostics.push_back(RuntimeWorldRegionNavigationDiagnostic{
+        .code = code,
+        .region_id = std::move(region_id),
+        .message = std::move(message),
+    });
+}
+
 void validate_region_catalog(RuntimeWorldRegionStreamingPlan& plan,
                              const std::vector<RuntimeWorldRegionPackageDesc>& regions) {
     std::vector<std::string> seen;
@@ -88,6 +98,46 @@ void validate_region_catalog(RuntimeWorldRegionStreamingPlan& plan,
     }
 }
 
+void validate_navigation_region_catalog(RuntimeWorldRegionNavigationRefReviewResult& result,
+                                        const std::vector<RuntimeWorldRegionPackageDesc>& regions) {
+    std::vector<std::string> seen_regions;
+    std::vector<std::string> seen_package_refs;
+    std::vector<RuntimeResidentPackageMountIdV2> seen_mount_ids;
+    for (const auto& region : regions) {
+        if (!is_valid_region_id(region.region_id)) {
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::invalid_region_id,
+                                      region.region_id, "world region navigation catalog id must be path-safe");
+        }
+        if (contains_id(seen_regions, region.region_id)) {
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::duplicate_region,
+                                      region.region_id, "world region navigation catalog contains a duplicate id");
+        } else {
+            seen_regions.push_back(region.region_id);
+        }
+        if (!region.candidate.package_index_path.ends_with(".geindex")) {
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::invalid_package_index_path,
+                                      region.region_id, "world region navigation catalog must reference .geindex rows");
+        }
+        if (contains_id(seen_package_refs, region.candidate.package_index_path)) {
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::duplicate_region_ref,
+                                      region.region_id,
+                                      "world region navigation catalog contains a duplicate package index ref");
+        } else {
+            seen_package_refs.push_back(region.candidate.package_index_path);
+        }
+        if (region.mount_id.value == 0U) {
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::invalid_mount_id,
+                                      region.region_id, "world region navigation mount id must be non-zero");
+        } else if (contains_mount_id(seen_mount_ids, region.mount_id)) {
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::duplicate_mount_id,
+                                      region.region_id,
+                                      "world region navigation catalog contains a duplicate resident mount id");
+        } else {
+            seen_mount_ids.push_back(region.mount_id);
+        }
+    }
+}
+
 void validate_id_list(RuntimeWorldRegionStreamingPlan& plan, const std::vector<std::string>& ids,
                       const std::vector<RuntimeWorldRegionPackageDesc>& regions,
                       RuntimeWorldRegionStreamingDiagnosticCode duplicate_code,
@@ -111,6 +161,80 @@ void validate_id_list(RuntimeWorldRegionStreamingPlan& plan, const std::vector<s
 
 [[nodiscard]] bool is_protected(const RuntimeWorldRegionStreamingPlanRequest& request, std::string_view id) {
     return contains_id(request.protected_region_ids, id);
+}
+
+void validate_navigation_route(RuntimeWorldRegionNavigationRefReviewResult& result,
+                               const RuntimeWorldRegionNavigationRefReviewRequest& request) {
+    if (request.route_region_ids.empty()) {
+        add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::empty_route, {},
+                                  "world region navigation route must contain at least one region");
+        return;
+    }
+
+    std::vector<std::string> seen_route_regions;
+    for (const auto& id : request.route_region_ids) {
+        if (!is_valid_region_id(id)) {
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::invalid_region_id, id,
+                                      "world region navigation route id must be path-safe");
+        }
+        if (find_region(request.regions, id) == nullptr) {
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::missing_region_package, id,
+                                      "world region navigation route references a missing package region");
+        }
+        if (contains_id(seen_route_regions, id)) {
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::duplicate_route_region, id,
+                                      "world region navigation route contains a duplicate region id");
+        } else {
+            seen_route_regions.push_back(id);
+        }
+    }
+}
+
+void append_navigation_ref_rows(RuntimeWorldRegionNavigationRefReviewResult& result,
+                                const RuntimeResidentPackageMountSetV2& mount_set,
+                                const RuntimeWorldRegionNavigationRefReviewRequest& request) {
+    for (const auto& id : request.route_region_ids) {
+        const auto* region = find_region(request.regions, id);
+        if (region == nullptr) {
+            continue;
+        }
+        const auto resident = has_mount_id(mount_set, region->mount_id);
+        result.rows.push_back(RuntimeWorldRegionNavigationRefRow{
+            .region_id = region->region_id,
+            .mount_id = region->mount_id,
+            .package_index_path = region->candidate.package_index_path,
+            .content_root = region->candidate.content_root,
+            .resident = resident,
+        });
+        if (resident) {
+            ++result.resident_region_count;
+        } else {
+            ++result.missing_resident_region_count;
+            add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::route_region_not_resident,
+                                      region->region_id,
+                                      "world region navigation route references a package that is not resident");
+        }
+    }
+}
+
+void copy_navigation_ref_review(RuntimeWorldRegionNavigationPathCacheReviewResult& out,
+                                const RuntimeWorldRegionNavigationRefReviewResult& review) {
+    out.status = review.status;
+    out.diagnostics = review.diagnostics;
+    out.rows = review.rows;
+    out.resident_region_count = review.resident_region_count;
+    out.missing_resident_region_count = review.missing_resident_region_count;
+    out.current_mount_generation = review.current_mount_generation;
+}
+
+void validate_navigation_path_cache_route_shape(RuntimeWorldRegionNavigationPathCacheReviewResult& result,
+                                                const RuntimeWorldRegionNavigationPathCacheReviewRequest& request) {
+    const auto expected_portal_count =
+        request.route_region_ids.empty() ? 0U : static_cast<std::size_t>(request.route_region_ids.size() - 1U);
+    if (request.route_portal_ids.size() != expected_portal_count) {
+        add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::route_portal_count_mismatch, {},
+                                  "world region navigation path cache route portals must match region transitions");
+    }
 }
 
 void append_action_row(RuntimeWorldRegionStreamingPlan& plan, RuntimeWorldRegionStreamingActionKind action,
@@ -269,6 +393,14 @@ bool RuntimeWorldRegionStreamingSafePointResult::succeeded() const noexcept {
            status == RuntimeWorldRegionStreamingSafePointStatus::no_changes;
 }
 
+bool RuntimeWorldRegionNavigationRefReviewResult::succeeded() const noexcept {
+    return status == RuntimeWorldRegionNavigationReviewStatus::ready;
+}
+
+bool RuntimeWorldRegionNavigationPathCacheReviewResult::succeeded() const noexcept {
+    return status == RuntimeWorldRegionNavigationReviewStatus::ready;
+}
+
 RuntimeWorldRegionStreamingPlan
 plan_runtime_world_region_streaming(const RuntimeWorldRegionStreamingPlanRequest& request) {
     RuntimeWorldRegionStreamingPlan plan;
@@ -352,6 +484,85 @@ plan_runtime_world_region_streaming(const RuntimeWorldRegionStreamingPlanRequest
     plan.status = plan.rows.empty() ? RuntimeWorldRegionStreamingPlanStatus::no_changes
                                     : RuntimeWorldRegionStreamingPlanStatus::planned;
     return plan;
+}
+
+RuntimeWorldRegionNavigationRefReviewResult
+review_runtime_world_region_navigation_refs(const RuntimeResidentPackageMountSetV2& mount_set,
+                                            const RuntimeWorldRegionNavigationRefReviewRequest& request) {
+    RuntimeWorldRegionNavigationRefReviewResult result;
+    result.current_mount_generation = mount_set.generation();
+
+    validate_navigation_region_catalog(result, request.regions);
+    validate_navigation_route(result, request);
+    if (!result.diagnostics.empty()) {
+        result.status = RuntimeWorldRegionNavigationReviewStatus::invalid_request;
+        return result;
+    }
+
+    append_navigation_ref_rows(result, mount_set, request);
+    result.status = result.missing_resident_region_count > 0U ? RuntimeWorldRegionNavigationReviewStatus::not_resident
+                                                              : RuntimeWorldRegionNavigationReviewStatus::ready;
+    return result;
+}
+
+RuntimeWorldRegionNavigationPathCacheReviewResult
+review_runtime_world_region_navigation_path_cache(const RuntimeResidentPackageMountSetV2& mount_set,
+                                                  const RuntimeResidentCatalogCacheV2& catalog_cache,
+                                                  const RuntimeWorldRegionNavigationPathCacheReviewRequest& request) {
+    const auto ref_review = review_runtime_world_region_navigation_refs(
+        mount_set, RuntimeWorldRegionNavigationRefReviewRequest{.regions = request.regions,
+                                                                .route_region_ids = request.route_region_ids});
+    RuntimeWorldRegionNavigationPathCacheReviewResult result;
+    copy_navigation_ref_review(result, ref_review);
+    result.current_catalog_generation = catalog_cache.catalog().generation();
+    if (result.status != RuntimeWorldRegionNavigationReviewStatus::ready) {
+        result.cache_ready = false;
+        return result;
+    }
+
+    validate_navigation_path_cache_route_shape(result, request);
+    if (!result.diagnostics.empty()) {
+        result.status = RuntimeWorldRegionNavigationReviewStatus::invalid_request;
+        result.cache_ready = false;
+        return result;
+    }
+
+    if (request.cache.region_path != request.route_region_ids) {
+        add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::path_cache_region_path_mismatch,
+                                  {},
+                                  "world region navigation path cache region path does not match the reviewed route");
+    }
+    if (request.cache.portal_path != request.route_portal_ids) {
+        add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::path_cache_portal_path_mismatch,
+                                  {},
+                                  "world region navigation path cache portal path does not match the reviewed route");
+    }
+    if (request.cache.mount_generation != mount_set.generation()) {
+        add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::mount_generation_mismatch, {},
+                                  "world region navigation path cache mount generation is stale");
+    }
+    if (request.cache.catalog_generation != catalog_cache.catalog().generation()) {
+        add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::catalog_generation_mismatch, {},
+                                  "world region navigation path cache catalog generation is stale");
+    }
+    if (!catalog_cache.has_value()) {
+        add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::catalog_cache_not_ready, {},
+                                  "world region navigation path cache requires a refreshed resident catalog cache");
+    } else if (catalog_cache.cached_mount_generation() != mount_set.generation()) {
+        add_navigation_diagnostic(
+            result, RuntimeWorldRegionNavigationDiagnosticCode::catalog_cache_not_ready, {},
+            "world region navigation path cache resident catalog does not match the current mount generation");
+    }
+
+    if (!result.diagnostics.empty()) {
+        result.status = RuntimeWorldRegionNavigationReviewStatus::stale;
+        result.cache_ready = false;
+        return result;
+    }
+
+    result.status = RuntimeWorldRegionNavigationReviewStatus::ready;
+    result.cache_ready = true;
+    return result;
 }
 
 RuntimeWorldRegionStreamingSafePointResult
