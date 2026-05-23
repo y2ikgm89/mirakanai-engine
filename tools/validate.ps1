@@ -6,6 +6,9 @@ param(
     [ValidateRange(0, 64)]
     [int]$StaticJobs = 0,
 
+    [ValidateRange(1, 86400)]
+    [int]$StaticCheckTimeoutSeconds = 1800,
+
     [switch]$StaticOnly,
 
     [switch]$SkipStaticChecks,
@@ -37,7 +40,18 @@ function Resolve-ValidateStaticJobCount {
     return [Math]::Max(1, [Math]::Min(4, [Environment]::ProcessorCount))
 }
 
-function New-ValidateTask {
+function Write-ValidateInformation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Message
+    )
+
+    Write-Information $Message -InformationAction Continue
+}
+
+function Get-ValidateTask {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -64,11 +78,11 @@ function Invoke-ValidateToolScript {
     )
 
     $displayArguments = if ($Arguments.Count -gt 0) { " $($Arguments -join ' ')" } else { "" }
-    Write-Host "validate: running $ScriptFileName$displayArguments"
+    Write-ValidateInformation "validate: running $ScriptFileName$displayArguments"
     & (Join-Path $PSScriptRoot $ScriptFileName) @Arguments
 }
 
-function Start-ValidateBackgroundJob {
+function Invoke-ValidateBackgroundJob {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -96,25 +110,23 @@ function Invoke-ValidateToolScriptBatch {
 
         [Parameter(Mandatory = $true)]
         [ValidateRange(1, 64)]
-        [int]$Jobs
+        [int]$Jobs,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, 86400)]
+        [int]$TaskTimeoutSeconds
     )
 
     if ($Tasks.Count -eq 0) {
         return
     }
 
-    if ($Jobs -eq 1 -or $Tasks.Count -eq 1) {
-        foreach ($task in $Tasks) {
-            Invoke-ValidateToolScript -ScriptFileName $task.ScriptFileName -Arguments $task.Arguments
-        }
-        return
-    }
-
     $effectiveJobs = [Math]::Min($Jobs, $Tasks.Count)
-    Write-Host "validate: running $($Tasks.Count) independent static checks with $effectiveJobs parallel jobs"
+    Write-ValidateInformation "validate: running $($Tasks.Count) independent static checks with $effectiveJobs parallel jobs; per-check timeout ${TaskTimeoutSeconds}s"
 
     $validateOutputFirstLineCount = 200
     $validateOutputTailLineCount = 200
+    $validateJobPollSeconds = 2
     $pwshPath = (Get-Process -Id $PID).Path
     if ([string]::IsNullOrWhiteSpace($pwshPath)) {
         $pwshCommand = Get-Command pwsh -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -127,7 +139,7 @@ function Invoke-ValidateToolScriptBatch {
     $repositoryRoot = Get-RepoRoot
     $validationLogRoot = Join-Path $repositoryRoot (Join-Path "out" (Join-Path "validation-logs" ("validate-{0:yyyyMMdd-HHmmss}-{1}" -f (Get-Date), $PID)))
     $null = New-Item -ItemType Directory -Path $validationLogRoot -Force
-    Write-Host "validate: parallel static check logs: $validationLogRoot"
+    Write-ValidateInformation "validate: parallel static check logs: $validationLogRoot"
 
     $pending = [System.Collections.Generic.Queue[object]]::new()
     for ($taskIndex = 0; $taskIndex -lt $Tasks.Count; ++$taskIndex) {
@@ -148,10 +160,11 @@ function Invoke-ValidateToolScriptBatch {
             [Parameter(Mandatory = $true)][string]$OutputLogPath,
             [Parameter(Mandatory = $true)][ValidateRange(0, 10000)][int]$FirstLineCount,
             [Parameter(Mandatory = $true)][ValidateRange(0, 10000)][int]$TailLineCount,
+            [Parameter(Mandatory = $true)][ValidateRange(1, 86400)][int]$TimeoutSeconds,
             [string[]]$ChildArguments = @()
         )
 
-        function New-ValidateOutputCapture {
+        function Get-ValidateOutputCapture {
             [CmdletBinding()]
             param(
                 [Parameter(Mandatory = $true)][ValidateRange(0, 10000)][int]$FirstLineCount,
@@ -190,6 +203,43 @@ function Invoke-ValidateToolScriptBatch {
             }
         }
 
+        function Write-ValidateCapturedLine {
+            [CmdletBinding()]
+            param(
+                [Parameter(Mandatory = $true)]$Writer,
+                [Parameter(Mandatory = $true)]$Capture,
+                [Parameter(Mandatory = $true)][string]$Line
+            )
+
+            $Writer.WriteLine($Line)
+            Add-ValidateOutputLine -Capture $Capture -Line $Line
+        }
+
+        function Add-ValidateOutputText {
+            [CmdletBinding()]
+            param(
+                [AllowEmptyString()]
+                [string]$Text,
+
+                [Parameter(Mandatory = $true)]$Writer,
+                [Parameter(Mandatory = $true)]$Capture
+            )
+
+            if ($null -eq $Text) {
+                return
+            }
+
+            $normalizedText = $Text -replace "`r`n", "`n" -replace "`r", "`n"
+            $lines = $normalizedText -split "`n"
+            for ($lineIndex = 0; $lineIndex -lt $lines.Count; ++$lineIndex) {
+                $line = $lines[$lineIndex]
+                if ([string]::IsNullOrEmpty($line) -and $lineIndex -eq ($lines.Count - 1)) {
+                    continue
+                }
+                Write-ValidateCapturedLine -Writer $Writer -Capture $Capture -Line $line
+            }
+        }
+
         function Get-ValidateOutputSnapshot {
             [CmdletBinding()]
             param(
@@ -225,25 +275,72 @@ function Invoke-ValidateToolScriptBatch {
         }
 
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-        $capture = New-ValidateOutputCapture -FirstLineCount $FirstLineCount -TailLineCount $TailLineCount
+        $capture = Get-ValidateOutputCapture -FirstLineCount $FirstLineCount -TailLineCount $TailLineCount
         $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
         $writer = [System.IO.StreamWriter]::new($OutputLogPath, $false, $utf8NoBom)
+        $process = $null
         try {
-            & $PwshPath -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ChildArguments 2>&1 |
-                ForEach-Object {
-                    $line = [string]$_
-                    $writer.WriteLine($line)
-                    Add-ValidateOutputLine -Capture $capture -Line $line
+            $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+            $startInfo.FileName = $PwshPath
+            $startInfo.WorkingDirectory = $RepositoryRoot
+            $startInfo.UseShellExecute = $false
+            $startInfo.RedirectStandardOutput = $true
+            $startInfo.RedirectStandardError = $true
+            $startInfo.CreateNoWindow = $true
+            foreach ($argument in @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath)) {
+                $startInfo.ArgumentList.Add($argument)
+            }
+            foreach ($argument in @($ChildArguments)) {
+                $startInfo.ArgumentList.Add($argument)
+            }
+
+            $process = [System.Diagnostics.Process]::new()
+            $process.StartInfo = $startInfo
+
+            $null = $process.Start()
+            $standardOutputTask = $process.StandardOutput.ReadToEndAsync()
+            $standardErrorTask = $process.StandardError.ReadToEndAsync()
+
+            $timedOut = $false
+            while (-not $process.WaitForExit(250)) {
+                if ($stopwatch.Elapsed.TotalSeconds -gt $TimeoutSeconds) {
+                    $timedOut = $true
+                    Write-ValidateCapturedLine `
+                        -Writer $writer `
+                        -Capture $capture `
+                        -Line "validate: timed out after ${TimeoutSeconds}s while running $ScriptFileName"
+                    try {
+                        $process.Kill($true)
+                    }
+                    catch {
+                        $process.Kill()
+                    }
+                    break
                 }
-            $exitCode = $LASTEXITCODE
+            }
+
+            try {
+                $process.WaitForExit()
+            }
+            catch {
+                Write-ValidateCapturedLine `
+                    -Writer $writer `
+                    -Capture $capture `
+                    -Line "validate: failed while waiting for $ScriptFileName to exit after cancellation: $_"
+            }
+            Add-ValidateOutputText -Text $standardOutputTask.GetAwaiter().GetResult() -Writer $writer -Capture $capture
+            Add-ValidateOutputText -Text $standardErrorTask.GetAwaiter().GetResult() -Writer $writer -Capture $capture
+            $exitCode = if ($timedOut) { 124 } else { $process.ExitCode }
         }
         catch {
             $line = [string]$_
-            $writer.WriteLine($line)
-            Add-ValidateOutputLine -Capture $capture -Line $line
+            Write-ValidateCapturedLine -Writer $writer -Capture $capture -Line $line
             $exitCode = 1
         }
         finally {
+            if ($null -ne $process) {
+                $process.Dispose()
+            }
             $writer.Dispose()
             $stopwatch.Stop()
         }
@@ -267,11 +364,11 @@ function Invoke-ValidateToolScriptBatch {
             $entry = $pending.Dequeue()
             $task = $entry.Task
             $displayArguments = if ($task.Arguments.Count -gt 0) { " $($task.Arguments -join ' ')" } else { "" }
-            Write-Host "validate: starting $($task.ScriptFileName)$displayArguments"
+            Write-ValidateInformation "validate: starting $($task.ScriptFileName)$displayArguments"
             $scriptPath = Join-Path $PSScriptRoot $task.ScriptFileName
             $safeScriptFileName = $task.ScriptFileName -replace "[^A-Za-z0-9._-]", "_"
             $outputLogPath = Join-Path $validationLogRoot ("{0:D2}-{1}.log" -f ($entry.Order + 1), $safeScriptFileName)
-            $job = Start-ValidateBackgroundJob `
+            $job = Invoke-ValidateBackgroundJob `
                 -Name "validate-$($entry.Order)-$($task.ScriptFileName)" `
                 -ScriptBlock $jobScript `
                 -ArgumentList @(
@@ -282,17 +379,44 @@ function Invoke-ValidateToolScriptBatch {
                     $outputLogPath,
                     $validateOutputFirstLineCount,
                     $validateOutputTailLineCount,
+                    $TaskTimeoutSeconds,
                     [string[]]$task.Arguments
                 )
             $running.Add([pscustomobject]@{
                 Order = $entry.Order
                 Task = $task
                 Job = $job
+                StartedAtUtc = [DateTimeOffset]::UtcNow
                 OutputLogPath = $outputLogPath
             }) | Out-Null
         }
 
-        $finishedJob = Wait-Job -Job @($running | ForEach-Object { $_.Job }) -Any
+        $finishedJob = Wait-Job -Job @($running | ForEach-Object { $_.Job }) -Any -Timeout $validateJobPollSeconds
+        if (-not $finishedJob) {
+            $nowUtc = [DateTimeOffset]::UtcNow
+            foreach ($timedOutRecord in @($running | Where-Object {
+                        ($nowUtc - $_.StartedAtUtc).TotalSeconds -ge $TaskTimeoutSeconds
+                    })) {
+                $elapsedSeconds = [Math]::Round(($nowUtc - $timedOutRecord.StartedAtUtc).TotalSeconds, 2)
+                Stop-Job -Job $timedOutRecord.Job -ErrorAction SilentlyContinue
+                Remove-Job -Job $timedOutRecord.Job -Force -ErrorAction SilentlyContinue
+                $resultsByOrder[$timedOutRecord.Order] = [pscustomobject]@{
+                    ScriptFileName = $timedOutRecord.Task.ScriptFileName
+                    Arguments = @($timedOutRecord.Task.Arguments)
+                    ExitCode = 124
+                    ElapsedSeconds = $elapsedSeconds
+                    Output = @(
+                        "validate: timed out after ${TaskTimeoutSeconds}s while running $($timedOutRecord.Task.ScriptFileName)",
+                        "validate: partial log: $($timedOutRecord.OutputLogPath)"
+                    )
+                    OutputLineCount = 2
+                    OmittedOutputLineCount = 0
+                    OutputLogPath = $timedOutRecord.OutputLogPath
+                }
+                $running.Remove($timedOutRecord) | Out-Null
+            }
+            continue
+        }
         foreach ($completedJob in @($finishedJob)) {
             $record = @($running | Where-Object { $_.Job.Id -eq $completedJob.Id } | Select-Object -First 1)[0]
             $jobErrors = @()
@@ -316,6 +440,22 @@ function Invoke-ValidateToolScriptBatch {
                         OutputLogPath = $record.OutputLogPath
                     })
             }
+            if ($result[0].ExitCode -ne 124 -and $result[0].ElapsedSeconds -gt $TaskTimeoutSeconds) {
+                $timeoutOutput = @(
+                    "validate: timed out after ${TaskTimeoutSeconds}s while running $($record.Task.ScriptFileName)",
+                    "validate: completed after timeout; full log: $($record.OutputLogPath)"
+                ) + @($result[0].Output)
+                $result = @([pscustomobject]@{
+                        ScriptFileName = $record.Task.ScriptFileName
+                        Arguments = @($record.Task.Arguments)
+                        ExitCode = 124
+                        ElapsedSeconds = $result[0].ElapsedSeconds
+                        Output = [string[]]$timeoutOutput
+                        OutputLineCount = $result[0].OutputLineCount
+                        OmittedOutputLineCount = $result[0].OmittedOutputLineCount
+                        OutputLogPath = $record.OutputLogPath
+                    })
+            }
             $resultsByOrder[$record.Order] = $result[0]
             Remove-Job -Job $completedJob
             $running.Remove($record) | Out-Null
@@ -325,11 +465,11 @@ function Invoke-ValidateToolScriptBatch {
     $failedScripts = [System.Collections.Generic.List[string]]::new()
     for ($taskIndex = 0; $taskIndex -lt $Tasks.Count; ++$taskIndex) {
         $result = $resultsByOrder[$taskIndex]
-        Write-Host "validate: output from $($result.ScriptFileName) (log: $($result.OutputLogPath); lines: $($result.OutputLineCount); omitted: $($result.OmittedOutputLineCount))"
+        Write-ValidateInformation "validate: output from $($result.ScriptFileName) (log: $($result.OutputLogPath); lines: $($result.OutputLineCount); omitted: $($result.OmittedOutputLineCount))"
         foreach ($line in @($result.Output)) {
-            $line | Out-Host
+            Write-ValidateInformation $line
         }
-        Write-Host "validate: finished $($result.ScriptFileName) in $($result.ElapsedSeconds)s"
+        Write-ValidateInformation "validate: finished $($result.ScriptFileName) in $($result.ElapsedSeconds)s"
         if ($result.ExitCode -ne 0) {
             $failedScripts.Add($result.ScriptFileName) | Out-Null
         }
@@ -343,33 +483,36 @@ function Invoke-ValidateToolScriptBatch {
 Invoke-ValidateToolScript -ScriptFileName "check-toolchain.ps1"
 
 $staticTasks = @(
-    New-ValidateTask -ScriptFileName "check-license.ps1"
-    New-ValidateTask -ScriptFileName "check-agents.ps1"
-    New-ValidateTask -ScriptFileName "check-json-contracts.ps1"
-    New-ValidateTask -ScriptFileName "check-validation-recipe-runner.ps1"
-    New-ValidateTask -ScriptFileName "check-installed-sdk-validation.ps1"
-    New-ValidateTask -ScriptFileName "check-release-package-artifacts.ps1"
-    New-ValidateTask -ScriptFileName "check-ai-integration.ps1"
-    New-ValidateTask -ScriptFileName "check-production-readiness-audit.ps1"
-    New-ValidateTask -ScriptFileName "check-ci-matrix.ps1"
-    New-ValidateTask -ScriptFileName "check-dependency-policy.ps1"
-    New-ValidateTask -ScriptFileName "check-vcpkg-environment.ps1"
-    New-ValidateTask -ScriptFileName "check-text-format-contract.ps1"
-    New-ValidateTask -ScriptFileName "check-format.ps1"
-    New-ValidateTask -ScriptFileName "check-cpp-standard-policy.ps1"
-    New-ValidateTask -ScriptFileName "check-coverage-thresholds.ps1"
-    New-ValidateTask -ScriptFileName "check-shader-toolchain.ps1"
-    New-ValidateTask -ScriptFileName "check-mobile-packaging.ps1"
-    New-ValidateTask -ScriptFileName "check-apple-host-evidence.ps1"
-    New-ValidateTask -ScriptFileName "check-public-api-boundaries.ps1"
+    Get-ValidateTask -ScriptFileName "check-license.ps1"
+    Get-ValidateTask -ScriptFileName "check-agents.ps1"
+    Get-ValidateTask -ScriptFileName "check-json-contracts.ps1"
+    Get-ValidateTask -ScriptFileName "check-validation-recipe-runner.ps1"
+    Get-ValidateTask -ScriptFileName "check-installed-sdk-validation.ps1"
+    Get-ValidateTask -ScriptFileName "check-release-package-artifacts.ps1"
+    Get-ValidateTask -ScriptFileName "check-ai-integration.ps1"
+    Get-ValidateTask -ScriptFileName "check-production-readiness-audit.ps1"
+    Get-ValidateTask -ScriptFileName "check-ci-matrix.ps1"
+    Get-ValidateTask -ScriptFileName "check-dependency-policy.ps1"
+    Get-ValidateTask -ScriptFileName "check-vcpkg-environment.ps1"
+    Get-ValidateTask -ScriptFileName "check-text-format-contract.ps1"
+    Get-ValidateTask -ScriptFileName "check-format.ps1"
+    Get-ValidateTask -ScriptFileName "check-cpp-standard-policy.ps1"
+    Get-ValidateTask -ScriptFileName "check-coverage-thresholds.ps1"
+    Get-ValidateTask -ScriptFileName "check-shader-toolchain.ps1"
+    Get-ValidateTask -ScriptFileName "check-mobile-packaging.ps1"
+    Get-ValidateTask -ScriptFileName "check-apple-host-evidence.ps1"
+    Get-ValidateTask -ScriptFileName "check-public-api-boundaries.ps1"
 )
 
 if (-not $SkipStaticChecks.IsPresent) {
-    Invoke-ValidateToolScriptBatch -Tasks $staticTasks -Jobs (Resolve-ValidateStaticJobCount -Jobs $StaticJobs)
+    Invoke-ValidateToolScriptBatch `
+        -Tasks $staticTasks `
+        -Jobs (Resolve-ValidateStaticJobCount -Jobs $StaticJobs) `
+        -TaskTimeoutSeconds $StaticCheckTimeoutSeconds
 }
 
 if ($StaticOnly.IsPresent) {
-    Write-Host "validate: static ok"
+    Write-ValidateInformation "validate: static ok"
     exit 0
 }
 
@@ -381,14 +524,14 @@ foreach ($scriptFileName in @(
 }
 
 if ($SkipTidySmoke.IsPresent) {
-    Write-Host "validate: skipping check-tidy.ps1 smoke"
+    Write-ValidateInformation "validate: skipping check-tidy.ps1 smoke"
 }
 else {
-    Write-Host "validate: running check-tidy.ps1 -MaxFiles 1 -ReuseExistingFileApiReply"
+    Write-ValidateInformation "validate: running check-tidy.ps1 -MaxFiles 1 -ReuseExistingFileApiReply"
     & (Join-Path $PSScriptRoot "check-tidy.ps1") -MaxFiles 1 -ReuseExistingFileApiReply
 }
-Write-Host "validate: running test.ps1 -SkipBuild"
+Write-ValidateInformation "validate: running test.ps1 -SkipBuild"
 & (Join-Path $PSScriptRoot "test.ps1") -SkipBuild
 
-Write-Host "validate: ok"
+Write-ValidateInformation "validate: ok"
 exit 0

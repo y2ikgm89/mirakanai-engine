@@ -13,8 +13,35 @@ if (-not $format) {
 $root = Get-RepoRoot
 $files = Get-CxxSourceFile -Root $root
 
+function Write-FormatInformation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$Message
+    )
+
+    Write-Information $Message -InformationAction Continue
+}
+
+function Invoke-FormatBackgroundJob {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$ScriptBlock,
+
+        [object[]]$ArgumentList = @()
+    )
+
+    if (Get-Command Start-ThreadJob -ErrorAction SilentlyContinue) {
+        return Start-ThreadJob -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
+    }
+
+    return Start-Job -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
+}
+
 if (-not $files) {
-    Write-Host "format-check: no C++ files found"
+    Write-FormatInformation "format-check: no C++ files found"
 } else {
     # Windows `CreateProcess` has a short command-line limit; passing every file in one argv
     # triggers "The command line is too long." Split into batches (LLVM/clang-format best practice:
@@ -51,7 +78,7 @@ if (-not $files) {
     while ($pending.Count -gt 0 -or $running.Count -gt 0) {
         while ($pending.Count -gt 0 -and $running.Count -lt $formatJobs) {
             $entry = $pending.Dequeue()
-            $job = Start-ThreadJob -ScriptBlock $formatScript -ArgumentList $format, $entry.Paths
+            $job = Invoke-FormatBackgroundJob -ScriptBlock $formatScript -ArgumentList @($format, [string[]]$entry.Paths)
             $running.Add([pscustomobject]@{
                 Index = $entry.Index
                 Job = $job
@@ -67,7 +94,7 @@ if (-not $files) {
             Remove-Job -Job $finishedJob
             $running.Remove($record) | Out-Null
             foreach ($line in $diagnostics) {
-                $line | Out-Host
+                Write-FormatInformation ([string]$line)
             }
             if ($exitCode -ne 0) {
                 Write-Error "format-check failed: clang-format failed for batch $($record.Index). Run pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1 to apply clang-format."
@@ -78,4 +105,4 @@ if (-not $files) {
 
 & (Join-Path $PSScriptRoot "check-text-format.ps1")
 
-Write-Host "format-check: ok"
+Write-FormatInformation "format-check: ok"

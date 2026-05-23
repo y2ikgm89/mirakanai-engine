@@ -36,6 +36,28 @@ function Assert-FileContainsText {
     }
 }
 
+function Get-AppleHostEvidenceBlocker {
+    param(
+        [Parameter(Mandatory = $true)][string]$Kind,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    return [pscustomobject]@{
+        Kind = $Kind
+        Message = $Message
+    }
+}
+
+function Add-AppleHostEvidenceBlocker {
+    param(
+        [Parameter(Mandatory = $true)]$Blockers,
+        [Parameter(Mandatory = $true)][string]$Kind,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    $Blockers.Add((Get-AppleHostEvidenceBlocker -Kind $Kind -Message $Message)) | Out-Null
+}
+
 foreach ($file in @(
     "platform/ios/CMakeLists.txt",
     "platform/ios/Info.plist.in",
@@ -92,33 +114,33 @@ $metallibAvailable = Test-XcrunToolAvailable $xcrun "macosx" "metallib"
 $iosSigningConfigured = -not [string]::IsNullOrWhiteSpace((Get-EnvironmentVariableAnyScope "MK_IOS_DEVELOPMENT_TEAM")) -and
     -not [string]::IsNullOrWhiteSpace((Get-EnvironmentVariableAnyScope "MK_IOS_CODE_SIGN_IDENTITY"))
 
-$blockers = [System.Collections.Generic.List[string]]::new()
+$blockers = [System.Collections.Generic.List[object]]::new()
 if (-not $hostIsMacOS) {
-    $blockers.Add("Apple host evidence requires macOS.") | Out-Null
+    Add-AppleHostEvidenceBlocker -Blockers $blockers -Kind "not_macos" -Message "Apple host evidence requires macOS."
 }
 if (-not $xcodeBuild) {
-    $blockers.Add("xcodebuild not found; install full Xcode and select it with xcode-select.") | Out-Null
+    Add-AppleHostEvidenceBlocker -Blockers $blockers -Kind "missing_xcodebuild" -Message "xcodebuild not found; install full Xcode and select it with xcode-select."
 }
 if (-not $xcrun) {
-    $blockers.Add("xcrun not found; full Xcode is required for simctl and Metal tool resolution.") | Out-Null
+    Add-AppleHostEvidenceBlocker -Blockers $blockers -Kind "missing_xcrun" -Message "xcrun not found; full Xcode is required for simctl and Metal tool resolution."
 }
 if (-not $fullXcodeSelected) {
-    $blockers.Add("Full Xcode is not selected as the active developer directory; Command Line Tools alone are insufficient for iOS Simulator validation.") | Out-Null
+    Add-AppleHostEvidenceBlocker -Blockers $blockers -Kind "full_xcode_not_selected" -Message "Full Xcode is not selected as the active developer directory; Command Line Tools alone are insufficient for iOS Simulator validation."
 }
 if (-not $simulatorSdkAvailable) {
-    $blockers.Add("iphonesimulator SDK is unavailable through xcrun.") | Out-Null
+    Add-AppleHostEvidenceBlocker -Blockers $blockers -Kind "missing_iphonesimulator_sdk" -Message "iphonesimulator SDK is unavailable through xcrun."
 }
 if (-not $deviceSdkAvailable) {
-    $blockers.Add("iphoneos SDK is unavailable through xcrun.") | Out-Null
+    Add-AppleHostEvidenceBlocker -Blockers $blockers -Kind "missing_iphoneos_sdk" -Message "iphoneos SDK is unavailable through xcrun."
 }
 if (-not $simulatorRuntimeAvailable) {
-    $blockers.Add("No available iOS Simulator runtime was reported by xcrun simctl.") | Out-Null
+    Add-AppleHostEvidenceBlocker -Blockers $blockers -Kind "missing_ios_simulator_runtime" -Message "No available iOS Simulator runtime was reported by xcrun simctl."
 }
 if (-not $metalCompilerAvailable) {
-    $blockers.Add("Metal compiler tool 'metal' is unavailable through xcrun.") | Out-Null
+    Add-AppleHostEvidenceBlocker -Blockers $blockers -Kind "missing_metal" -Message "Metal compiler tool 'metal' is unavailable through xcrun."
 }
 if (-not $metallibAvailable) {
-    $blockers.Add("Metal library tool 'metallib' is unavailable through xcrun.") | Out-Null
+    Add-AppleHostEvidenceBlocker -Blockers $blockers -Kind "missing_metallib" -Message "Metal library tool 'metallib' is unavailable through xcrun."
 }
 
 $xcodeReady = $hostIsMacOS -and $xcodeBuild -and $xcrun -and $fullXcodeSelected
@@ -134,7 +156,7 @@ Write-Host "apple-host-evidence: ios-signing=$(if ($iosSigningConfigured) { "con
 Write-Host "apple-host-evidence: workflow-ios=present"
 Write-Host "apple-host-evidence: workflow-macos-metal=present"
 foreach ($blocker in $blockers) {
-    Write-Host "apple-host-evidence: blocker - $blocker"
+    Write-Host "apple-host-evidence: blocker kind=$($blocker.Kind) - $($blocker.Message)"
 }
 
 if ($status -eq "ready") {

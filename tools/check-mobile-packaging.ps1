@@ -41,6 +41,39 @@ function Assert-TemplateText {
     }
 }
 
+function Get-MobilePackagingBlocker {
+    param(
+        [Parameter(Mandatory = $true)][string]$Kind,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    return [pscustomobject]@{
+        Kind = $Kind
+        Message = $Message
+    }
+}
+
+function Add-MobilePackagingBlocker {
+    param(
+        [Parameter(Mandatory = $true)]$Blockers,
+        [Parameter(Mandatory = $true)][string]$Kind,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    $Blockers.Add((Get-MobilePackagingBlocker -Kind $Kind -Message $Message)) | Out-Null
+}
+
+function Write-MobilePackagingBlockers {
+    param(
+        [Parameter(Mandatory = $true)][string]$Prefix,
+        [Parameter(Mandatory = $true)]$Blockers
+    )
+
+    foreach ($blocker in $Blockers) {
+        Write-Host "${Prefix}: blocker kind=$($blocker.Kind) - $($blocker.Message)"
+    }
+}
+
 function Find-AndroidSdk {
     $localAppData = Get-LocalApplicationDataRoot
     $candidates = @(
@@ -288,38 +321,35 @@ Assert-TemplateText "platform/ios/Info.plist.in" @(
     '${MACOSX_BUNDLE_EXECUTABLE_NAME}'
 )
 
-$androidBlockers = [System.Collections.Generic.List[string]]::new()
-$appleBlockers = [System.Collections.Generic.List[string]]::new()
+$androidBlockers = [System.Collections.Generic.List[object]]::new()
+$appleBlockers = [System.Collections.Generic.List[object]]::new()
 
 $androidSdk = Find-AndroidSdk
 if (-not $androidSdk) {
-    $androidBlockers.Add("Android SDK not found; set ANDROID_HOME or ANDROID_SDK_ROOT") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_android_sdk" -Message "Android SDK not found; set ANDROID_HOME or ANDROID_SDK_ROOT"
 }
 
 $androidNdk = Find-AndroidNdk $androidSdk
 if (-not $androidNdk) {
-    $androidBlockers.Add("Android NDK not found; install it through the Android SDK manager or set ANDROID_NDK_HOME") |
-        Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_android_ndk" -Message "Android NDK not found; install it through the Android SDK manager or set ANDROID_NDK_HOME"
 }
 
 if (-not (Find-GradleCommand)) {
-    $androidBlockers.Add("Gradle not found on PATH; install official Gradle or add a reviewed Gradle wrapper later") |
-        Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_gradle" -Message "Gradle not found on PATH; install official Gradle or add a reviewed Gradle wrapper later"
 }
 
 if (-not (Find-JavaCommand)) {
-    $androidBlockers.Add("JDK not found on PATH; Android Gradle Plugin requires a compatible JDK") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_jdk" -Message "JDK not found on PATH; Android Gradle Plugin requires a compatible JDK"
 }
 
 $adb = Find-AndroidPlatformToolCommand "adb"
 if (-not $adb) {
-    $androidBlockers.Add("adb not found; install Android SDK Platform Tools for device/emulator smoke") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_adb" -Message "adb not found; install Android SDK Platform Tools for device/emulator smoke"
 }
 
 $apksigner = Find-AndroidBuildToolCommand "apksigner"
 if (-not $apksigner) {
-    $androidBlockers.Add("apksigner not found; install Android SDK Build Tools for Release signing verification") |
-        Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_apksigner" -Message "apksigner not found; install Android SDK Build Tools for Release signing verification"
 }
 
 $emulator = Find-AndroidEmulatorCommand
@@ -352,7 +382,7 @@ $androidReleaseSigningEnvironment = @(
 $androidReleaseSigningReady = Test-EnvironmentSet $androidReleaseSigningEnvironment
 $androidKeystore = Get-EnvironmentVariableAnyScope "MK_ANDROID_KEYSTORE"
 if ($androidReleaseSigningReady -and -not (Test-Path $androidKeystore)) {
-    $androidBlockers.Add("MK_ANDROID_KEYSTORE does not point to an existing keystore file") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_android_keystore" -Message "MK_ANDROID_KEYSTORE does not point to an existing keystore file"
     $androidReleaseSigningReady = $false
 }
 
@@ -362,32 +392,29 @@ $xcrun = Find-CommandOnCombinedPath "xcrun"
 $appleSimulatorReady = $false
 
 if (-not $hostIsAppleOs) {
-    $appleBlockers.Add("Apple packaging requires macOS with Xcode command line tools") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "not_macos" -Message "Apple packaging requires macOS with Xcode command line tools"
 }
 
 if (-not $xcodebuild) {
-    $appleBlockers.Add("xcodebuild not found") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "missing_xcodebuild" -Message "xcodebuild not found"
 }
 
 if (-not $xcrun) {
-    $appleBlockers.Add("xcrun not found") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "missing_xcrun" -Message "xcrun not found"
 }
 
 if ($hostIsAppleOs -and $xcodebuild -and $xcrun) {
     $developerDirectory = Get-AppleDeveloperDirectory
     if (-not (Test-FullXcodeDeveloperDirectory $developerDirectory)) {
-        $appleBlockers.Add("Full Xcode must be selected as the active developer directory; Command Line Tools alone are not enough for iOS packaging") |
-            Out-Null
+        Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "full_xcode_not_selected" -Message "Full Xcode must be selected as the active developer directory; Command Line Tools alone are not enough for iOS packaging"
     }
 
     if (-not (Test-XcrunSdkAvailable -Xcrun $xcrun -SdkName "iphonesimulator")) {
-        $appleBlockers.Add("iPhone Simulator SDK not available; install iOS platform support through Xcode components") |
-            Out-Null
+        Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "missing_iphonesimulator_sdk" -Message "iPhone Simulator SDK not available; install iOS platform support through Xcode components"
     }
 
     if (-not (Test-XcrunSdkAvailable -Xcrun $xcrun -SdkName "iphoneos")) {
-        $appleBlockers.Add("iPhoneOS SDK not available; install iOS platform support through Xcode components") |
-            Out-Null
+        Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "missing_iphoneos_sdk" -Message "iPhoneOS SDK not available; install iOS platform support through Xcode components"
     }
 
     $appleSimulatorReady = Test-IosSimulatorRuntimeAvailable -Xcrun $xcrun
@@ -400,9 +427,7 @@ if ($androidBlockers.Count -eq 0) {
 }
 else {
     Write-Host "mobile-packaging: android=blocked"
-    foreach ($blocker in $androidBlockers) {
-        Write-Host "mobile-packaging: blocker - $blocker"
-    }
+    Write-MobilePackagingBlockers -Prefix "mobile-packaging" -Blockers $androidBlockers
 }
 
 if ($appleBlockers.Count -eq 0) {
@@ -410,9 +435,7 @@ if ($appleBlockers.Count -eq 0) {
 }
 else {
     Write-Host "mobile-packaging: apple=blocked"
-    foreach ($blocker in $appleBlockers) {
-        Write-Host "mobile-packaging: blocker - $blocker"
-    }
+    Write-MobilePackagingBlockers -Prefix "mobile-packaging" -Blockers $appleBlockers
 }
 
 if ($androidReleaseSigningReady) {
