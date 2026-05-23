@@ -1521,6 +1521,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_2d_desktop_runtime_package.geindex
             --require-sprite-animation
+            --require-sprite-sorting-layer
             --require-tilemap-runtime-ux
             --require-gameplay-systems
             --require-procedural-generation
@@ -1542,6 +1543,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-d3d12-renderer
             --require-native-2d-sprites
             --require-sprite-animation
+            --require-sprite-sorting-layer
             --require-tilemap-runtime-ux
             --require-gameplay-systems
             --require-procedural-generation

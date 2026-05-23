@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -194,6 +195,40 @@ LightType parse_light_type(std::string_view value) {
     throw std::invalid_argument("light type is unsupported");
 }
 
+std::string_view sprite_sorting_space_name(SpriteSortingSpace space) noexcept {
+    switch (space) {
+    case SpriteSortingSpace::world_space:
+        return "world_space";
+    case SpriteSortingSpace::camera_space:
+        return "camera_space";
+    }
+    return "world_space";
+}
+
+SpriteSortingSpace parse_sprite_sorting_space(std::string_view value) {
+    if (value == "world_space") {
+        return SpriteSortingSpace::world_space;
+    }
+    if (value == "camera_space") {
+        return SpriteSortingSpace::camera_space;
+    }
+    throw std::invalid_argument("sprite sorting space is unsupported");
+}
+
+std::int32_t parse_i32(std::string_view value, const char* name) {
+    try {
+        std::size_t parsed = 0;
+        const auto number = std::stoll(std::string(value), &parsed, 10);
+        if (parsed != value.size() || number < static_cast<long long>(std::numeric_limits<std::int32_t>::min()) ||
+            number > static_cast<long long>(std::numeric_limits<std::int32_t>::max())) {
+            throw std::invalid_argument("invalid int32");
+        }
+        return static_cast<std::int32_t>(number);
+    } catch (const std::exception&) {
+        throw std::invalid_argument(std::string(name) + " must be a signed integer");
+    }
+}
+
 CameraComponent& ensure_camera(SceneNodeComponents& components) {
     if (!components.camera.has_value()) {
         components.camera = CameraComponent{};
@@ -287,6 +322,12 @@ void assign_sprite_renderer_field(SceneNodeComponents& components, std::string_v
         renderer.tint = parse_rgba(value, "sprite renderer tint");
     } else if (field == "visible") {
         renderer.visible = parse_bool(value, "sprite renderer visible");
+    } else if (field == "sorting_layer") {
+        renderer.sorting_layer = parse_i32(value, "sprite renderer sorting layer");
+    } else if (field == "order_in_layer") {
+        renderer.order_in_layer = parse_i32(value, "sprite renderer order in layer");
+    } else if (field == "sorting_space") {
+        renderer.sorting_space = parse_sprite_sorting_space(value);
     } else {
         throw std::invalid_argument("unknown scene sprite renderer field");
     }
@@ -443,6 +484,10 @@ void write_sprite_renderer(std::ostringstream& output, SceneNodeId node, const S
     output << "node." << node.value << ".sprite_renderer.tint=" << renderer.tint[0] << ',' << renderer.tint[1] << ','
            << renderer.tint[2] << ',' << renderer.tint[3] << '\n';
     output << "node." << node.value << ".sprite_renderer.visible=" << (renderer.visible ? "true" : "false") << '\n';
+    output << "node." << node.value << ".sprite_renderer.sorting_layer=" << renderer.sorting_layer << '\n';
+    output << "node." << node.value << ".sprite_renderer.order_in_layer=" << renderer.order_in_layer << '\n';
+    output << "node." << node.value
+           << ".sprite_renderer.sorting_space=" << sprite_sorting_space_name(renderer.sorting_space) << '\n';
 }
 
 void write_prefab_source(std::ostringstream& output, SceneNodeId node, const ScenePrefabSourceLink& link) {

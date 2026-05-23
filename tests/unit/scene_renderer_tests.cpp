@@ -353,6 +353,112 @@ MK_TEST("scene renderer converts scene sprite packets into sprite commands") {
     MK_REQUIRE(command.texture.uv_rect.v1 == 1.0F);
 }
 
+MK_TEST("scene render packet sorts sprites by sorting layer order and node id") {
+    mirakana::Scene scene("sorting");
+    const auto back = scene.create_node("Back");
+    const auto front = scene.create_node("Front");
+    const auto middle = scene.create_node("Middle");
+
+    mirakana::SceneNodeComponents back_components;
+    back_components.sprite_renderer = mirakana::SpriteRendererComponent{
+        .sprite = mirakana::AssetId::from_name("sprites/back"),
+        .material = mirakana::AssetId::from_name("materials/sprite"),
+        .size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+        .visible = true,
+        .sorting_layer = 1,
+        .order_in_layer = 0,
+    };
+    scene.set_components(back, back_components);
+
+    mirakana::SceneNodeComponents front_components;
+    front_components.sprite_renderer = mirakana::SpriteRendererComponent{
+        .sprite = mirakana::AssetId::from_name("sprites/front"),
+        .material = mirakana::AssetId::from_name("materials/sprite"),
+        .size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+        .visible = true,
+        .sorting_layer = 2,
+        .order_in_layer = 0,
+    };
+    scene.set_components(front, front_components);
+
+    mirakana::SceneNodeComponents middle_components;
+    middle_components.sprite_renderer = mirakana::SpriteRendererComponent{
+        .sprite = mirakana::AssetId::from_name("sprites/middle"),
+        .material = mirakana::AssetId::from_name("materials/sprite"),
+        .size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+        .visible = true,
+        .sorting_layer = 1,
+        .order_in_layer = 5,
+    };
+    scene.set_components(middle, middle_components);
+
+    const auto packet = mirakana::build_scene_render_packet(scene);
+
+    MK_REQUIRE(packet.sprites.size() == 3);
+    MK_REQUIRE(packet.sprites[0].node == back);
+    MK_REQUIRE(packet.sprites[1].node == middle);
+    MK_REQUIRE(packet.sprites[2].node == front);
+}
+
+MK_TEST("scene sprite sort stats count layers and reordering") {
+    std::vector<mirakana::SceneRenderSprite> sprites;
+    sprites.push_back(mirakana::SceneRenderSprite{
+        .node = mirakana::SceneNodeId{3},
+        .world_from_node = mirakana::Mat4::identity(),
+        .renderer =
+            mirakana::SpriteRendererComponent{
+                .sprite = mirakana::AssetId::from_name("sprites/c"),
+                .material = mirakana::AssetId::from_name("materials/sprite"),
+                .size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+                .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                .visible = true,
+                .sorting_layer = 0,
+                .order_in_layer = 0,
+            },
+    });
+    sprites.push_back(mirakana::SceneRenderSprite{
+        .node = mirakana::SceneNodeId{1},
+        .world_from_node = mirakana::Mat4::identity(),
+        .renderer =
+            mirakana::SpriteRendererComponent{
+                .sprite = mirakana::AssetId::from_name("sprites/a"),
+                .material = mirakana::AssetId::from_name("materials/sprite"),
+                .size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+                .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                .visible = true,
+                .sorting_layer = 0,
+                .order_in_layer = 0,
+            },
+    });
+    sprites.push_back(mirakana::SceneRenderSprite{
+        .node = mirakana::SceneNodeId{2},
+        .world_from_node = mirakana::Mat4::identity(),
+        .renderer =
+            mirakana::SpriteRendererComponent{
+                .sprite = mirakana::AssetId::from_name("sprites/b"),
+                .material = mirakana::AssetId::from_name("materials/sprite"),
+                .size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+                .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                .visible = true,
+                .sorting_layer = 1,
+                .order_in_layer = 0,
+            },
+    });
+
+    const auto stats = mirakana::sort_scene_render_sprites(sprites);
+
+    MK_REQUIRE(stats.sprite_count == 3);
+    MK_REQUIRE(stats.sorting_layers_applied == 2);
+    MK_REQUIRE(stats.sorted_draws == 3);
+    MK_REQUIRE(stats.reordered_count == 2);
+    MK_REQUIRE(sprites[0].node.value == 1);
+    MK_REQUIRE(sprites[1].node.value == 3);
+    MK_REQUIRE(sprites[2].node.value == 2);
+}
+
 MK_TEST("scene sprite batch telemetry plans scene packet sprite batches") {
     mirakana::SceneRenderPacket packet;
     packet.sprites.push_back(mirakana::SceneRenderSprite{

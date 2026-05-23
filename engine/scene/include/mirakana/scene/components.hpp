@@ -41,12 +41,17 @@ struct MeshRendererComponent {
     bool visible{true};
 };
 
+enum class SpriteSortingSpace : std::uint8_t { world_space, camera_space };
+
 struct SpriteRendererComponent {
     AssetId sprite;
     AssetId material;
     Vec2 size{.x = 1.0F, .y = 1.0F};
     std::array<float, 4> tint{1.0F, 1.0F, 1.0F, 1.0F};
     bool visible{true};
+    std::int32_t sorting_layer{0};
+    std::int32_t order_in_layer{0};
+    SpriteSortingSpace sorting_space{SpriteSortingSpace::world_space};
 };
 
 struct SceneNodeComponents {

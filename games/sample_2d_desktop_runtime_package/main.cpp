@@ -67,6 +67,7 @@ struct DesktopRuntimeOptions {
     bool require_vulkan_renderer{false};
     bool require_native_2d_sprites{false};
     bool require_sprite_animation{false};
+    bool require_sprite_sorting_layer{false};
     bool require_tilemap_runtime_ux{false};
     bool require_gameplay_systems{false};
     bool require_procedural_generation{false};
@@ -3038,6 +3039,17 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
             const auto validation = mirakana::validate_playable_2d_scene(*scene_.scene);
             validation_ok_ = validation.succeeded();
             package_scene_sprites_ = validation.visible_sprite_count;
+
+            std::int32_t next_sorting_layer = 0;
+            for (const auto& node : scene_.scene->nodes()) {
+                if (!node.components.sprite_renderer.has_value() || !node.components.sprite_renderer->visible) {
+                    continue;
+                }
+                auto components = node.components;
+                components.sprite_renderer->sorting_layer = next_sorting_layer;
+                ++next_sorting_layer;
+                scene_.scene->set_components(node.id, components);
+            }
         }
 
         const auto tilemap_sample = mirakana::runtime::sample_runtime_tilemap_visible_cells(tilemap_);
@@ -3131,6 +3143,12 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
         renderer_.begin_frame();
         const auto packet = mirakana::build_scene_render_packet(*scene_.scene);
+        auto sorted_sprites = packet.sprites;
+        const auto sort_stats = mirakana::sort_scene_render_sprites(sorted_sprites);
+        if (sort_stats.sorting_layers_applied > sprite_sort_layers_applied_) {
+            sprite_sort_layers_applied_ = sort_stats.sorting_layers_applied;
+        }
+        sprite_sorted_draws_ += sort_stats.sorted_draws;
         const auto batch_plan = mirakana::plan_scene_sprite_batches(packet);
         const auto scene_submit = mirakana::submit_scene_render_packet(
             renderer_, packet, mirakana::SceneRenderSubmitDesc{.material_palette = &scene_.material_palette});
@@ -3271,6 +3289,14 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t sprite_batch_plan_diagnostics() const noexcept {
         return sprite_batch_plan_diagnostics_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_sort_layers_applied() const noexcept {
+        return sprite_sort_layers_applied_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_sorted_draws() const noexcept {
+        return sprite_sorted_draws_;
     }
 
     [[nodiscard]] std::uint64_t sprite_animation_frames_sampled() const noexcept {
@@ -3700,6 +3726,8 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     std::uint64_t sprite_batch_plan_repeated_atlas_batches_{0};
     std::uint64_t sprite_batch_plan_repeated_atlas_sprites_{0};
     std::size_t sprite_batch_plan_diagnostics_{0};
+    std::uint64_t sprite_sort_layers_applied_{0};
+    std::uint64_t sprite_sorted_draws_{0};
     std::uint64_t sprite_animation_frames_sampled_{0};
     std::uint64_t sprite_animation_frames_applied_{0};
     std::uint64_t sprite_animation_selected_frame_sum_{0};
@@ -3746,7 +3774,8 @@ void print_usage() {
                  "[--require-config PATH] --require-scene-package PATH "
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
-                 "[--require-sprite-animation] [--require-tilemap-runtime-ux] [--require-gameplay-systems] "
+                 "[--require-sprite-animation] [--require-sprite-sorting-layer] [--require-tilemap-runtime-ux] "
+                 "[--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
@@ -3789,6 +3818,10 @@ void print_usage() {
         }
         if (arg == "--require-sprite-animation") {
             options.require_sprite_animation = true;
+            continue;
+        }
+        if (arg == "--require-sprite-sorting-layer") {
+            options.require_sprite_sorting_layer = true;
             continue;
         }
         if (arg == "--require-tilemap-runtime-ux") {
@@ -4539,6 +4572,8 @@ int main(int argc, char** argv) {
         << " sprite_batch_plan_repeated_atlas_batches=" << game.sprite_batch_plan_repeated_atlas_batches()
         << " sprite_batch_plan_repeated_atlas_sprites=" << game.sprite_batch_plan_repeated_atlas_sprites()
         << " sprite_batch_plan_diagnostics=" << game.sprite_batch_plan_diagnostics()
+        << " sprite_sort_layers_applied=" << game.sprite_sort_layers_applied()
+        << " sprite_sorted_draws=" << game.sprite_sorted_draws()
         << " sprite_animation_frames_sampled=" << game.sprite_animation_frames_sampled()
         << " sprite_animation_frames_applied=" << game.sprite_animation_frames_applied()
         << " sprite_animation_selected_frame_sum=" << game.sprite_animation_selected_frame_sum()
@@ -4818,6 +4853,14 @@ int main(int argc, char** argv) {
                   << " sprite_flipbook_frames_applied=" << game.sprite_flipbook_frames_applied()
                   << " sprite_flipbook_diagnostics=" << game.sprite_flipbook_diagnostics() << '\n';
         return 10;
+    }
+
+    if (options.require_sprite_sorting_layer &&
+        (game.sprite_sort_layers_applied() < 2U || game.sprite_sorted_draws() == 0U)) {
+        std::cout << "sample_2d_desktop_runtime_package required_sprite_sorting_layer_unavailable"
+                  << " sprite_sort_layers_applied=" << game.sprite_sort_layers_applied()
+                  << " sprite_sorted_draws=" << game.sprite_sorted_draws() << '\n';
+        return 23;
     }
 
     if (options.require_tilemap_runtime_ux &&

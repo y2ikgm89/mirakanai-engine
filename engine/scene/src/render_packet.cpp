@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
+#include <unordered_set>
 #include <vector>
 
 namespace mirakana {
@@ -55,6 +56,44 @@ const SceneRenderCamera* SceneRenderPacket::primary_camera() const noexcept {
     return &*camera;
 }
 
+SceneRenderSpriteSortStats sort_scene_render_sprites(std::vector<SceneRenderSprite>& sprites) {
+    SceneRenderSpriteSortStats stats{.sprite_count = sprites.size()};
+    if (sprites.size() < 2) {
+        stats.sorting_layers_applied = sprites.empty() ? 0 : 1;
+        stats.sorted_draws = sprites.size();
+        return stats;
+    }
+
+    std::vector<SceneRenderSprite> original = sprites;
+    std::ranges::stable_sort(sprites, [](const SceneRenderSprite& left, const SceneRenderSprite& right) {
+        if (left.renderer.sorting_layer != right.renderer.sorting_layer) {
+            return left.renderer.sorting_layer < right.renderer.sorting_layer;
+        }
+        if (left.renderer.order_in_layer != right.renderer.order_in_layer) {
+            return left.renderer.order_in_layer < right.renderer.order_in_layer;
+        }
+        return left.node.value < right.node.value;
+    });
+
+    std::unordered_set<std::int32_t> layers;
+    for (const auto& sprite : sprites) {
+        layers.insert(sprite.renderer.sorting_layer);
+    }
+    stats.sorting_layers_applied = layers.size();
+    stats.sorted_draws = sprites.size();
+
+    for (std::size_t index = 0; index < sprites.size(); ++index) {
+        const auto original_index = std::ranges::find_if(
+            original, [&](const SceneRenderSprite& sprite) { return sprite.node == sprites[index].node; });
+        if (original_index == original.end() ||
+            static_cast<std::size_t>(std::distance(original.begin(), original_index)) != index) {
+            ++stats.reordered_count;
+        }
+    }
+
+    return stats;
+}
+
 SceneRenderPacket build_scene_render_packet(const Scene& scene) {
     const auto& nodes = scene.nodes();
     std::vector<VisitState> visit_states(nodes.size(), VisitState::unvisited);
@@ -90,6 +129,8 @@ SceneRenderPacket build_scene_render_packet(const Scene& scene) {
                 .node = node.id, .world_from_node = world_from_node, .renderer = *node.components.sprite_renderer});
         }
     }
+
+    [[maybe_unused]] const auto sort_stats = sort_scene_render_sprites(packet.sprites);
 
     return packet;
 }
