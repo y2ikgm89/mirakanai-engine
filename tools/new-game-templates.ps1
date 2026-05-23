@@ -57,88 +57,8 @@ int main() {
 "@
 }
 
-function New-DesktopRuntimeMainCpp {
-    param(
-        [string]$GameName,
-        [string]$TargetName,
-        [string]$Title
-    )
-
-    $escapedTitle = ConvertTo-CppStringLiteralContent -Text $Title
-
-    return @"
-// SPDX-FileCopyrightText: 2026 GameEngine contributors
-// SPDX-License-Identifier: LicenseRef-Proprietary
-
-#include "mirakana/core/application.hpp"
-#include "mirakana/math/transform.hpp"
-#include "mirakana/platform/filesystem.hpp"
-#include "mirakana/platform/input.hpp"
-#include "mirakana/renderer/renderer.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-
-#include <charconv>
-#include <chrono>
-#include <cstdint>
-#include <exception>
-#include <filesystem>
-#include <iostream>
-#include <string>
-#include <string_view>
-#include <system_error>
-#include <thread>
-
-namespace {
-
-struct DesktopRuntimeOptions {
-    bool smoke{false};
-    bool show_help{false};
-    bool throttle{true};
-    std::uint32_t max_frames{0};
-    std::string video_driver_hint;
-    std::string required_config_path;
-};
-
-constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.GeneratedDesktopRuntimePackage.Config.v1"};
-
-class ${TargetName}_Game final : public mirakana::GameApp {
-  public:
-    ${TargetName}_Game(mirakana::VirtualInput& input, mirakana::IRenderer& renderer, bool throttle)
-        : input_(input), renderer_(renderer), throttle_(throttle) {}
-
-    void on_start(mirakana::EngineContext&) override {
-        renderer_.set_clear_color(mirakana::Color{0.025F, 0.035F, 0.045F, 1.0F});
-    }
-
-    bool on_update(mirakana::EngineContext&, double) override {
-        renderer_.begin_frame();
-
-        const auto axis = input_.digital_axis(mirakana::Key::left, mirakana::Key::right, mirakana::Key::down, mirakana::Key::up);
-        transform_.position = transform_.position + axis;
-        renderer_.draw_sprite(mirakana::SpriteCommand{transform_, mirakana::Color{0.35F, 0.75F, 0.45F, 1.0F}});
-
-        renderer_.end_frame();
-        ++frames_;
-
-        if (throttle_) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(16));
-        }
-        return !input_.key_down(mirakana::Key::escape);
-    }
-
-    [[nodiscard]] std::uint32_t frames() const noexcept {
-        return frames_;
-    }
-
-  private:
-    mirakana::VirtualInput& input_;
-    mirakana::IRenderer& renderer_;
-    mirakana::Transform2D transform_;
-    bool throttle_{true};
-    std::uint32_t frames_{0};
-};
-
+function Get-DesktopRuntimeHostCommonCpp {
+    return @'
 [[nodiscard]] bool parse_positive_uint32(std::string_view text, std::uint32_t& value) noexcept {
     std::uint32_t parsed{};
     const auto* begin = text.data();
@@ -148,65 +68,6 @@ class ${TargetName}_Game final : public mirakana::GameApp {
         return false;
     }
     value = parsed;
-    return true;
-}
-
-void print_usage() {
-    std::cout << "$TargetName [--smoke] [--max-frames N] [--video-driver NAME] "
-                 "[--require-config PATH]\n";
-}
-
-[[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
-    for (int index = 1; index < argc; ++index) {
-        const std::string_view arg{argv[index]};
-        if (arg == "--help" || arg == "-h") {
-            options.show_help = true;
-            return true;
-        }
-        if (arg == "--smoke") {
-            options.smoke = true;
-            continue;
-        }
-        if (arg == "--max-frames") {
-            if (index + 1 >= argc || !parse_positive_uint32(argv[index + 1], options.max_frames)) {
-                std::cerr << "--max-frames requires a positive integer\n";
-                return false;
-            }
-            ++index;
-            continue;
-        }
-        if (arg == "--video-driver") {
-            if (index + 1 >= argc) {
-                std::cerr << "--video-driver requires a driver name\n";
-                return false;
-            }
-            options.video_driver_hint = argv[index + 1];
-            ++index;
-            continue;
-        }
-        if (arg == "--require-config") {
-            if (index + 1 >= argc) {
-                std::cerr << "--require-config requires a relative path\n";
-                return false;
-            }
-            options.required_config_path = argv[index + 1];
-            ++index;
-            continue;
-        }
-
-        std::cerr << "unknown argument: " << arg << '\n';
-        return false;
-    }
-
-    if (options.smoke) {
-        if (options.max_frames == 0) {
-            options.max_frames = 2;
-        }
-        if (options.video_driver_hint.empty()) {
-            options.video_driver_hint = "dummy";
-        }
-        options.throttle = false;
-    }
     return true;
 }
 
@@ -286,6 +147,187 @@ void print_presentation_report(std::string_view prefix, const mirakana::SdlDeskt
                   << backend_report.message << '\n';
     }
 }
+'@
+}
+
+function Get-DesktopRuntimeHostArgsCpp {
+    param(
+        [string]$TargetName,
+        [string]$UsageSegments,
+        [string]$AdditionalFlagParsing = "",
+        [string]$AdditionalPathParsing = "",
+        [string]$PostParseValidation = ""
+    )
+
+    $additionalFlagParsingText = if ([string]::IsNullOrWhiteSpace($AdditionalFlagParsing)) {
+        ""
+    } else {
+        "$AdditionalFlagParsing`n"
+    }
+    $additionalPathParsingText = if ([string]::IsNullOrWhiteSpace($AdditionalPathParsing)) {
+        ""
+    } else {
+        "$AdditionalPathParsing`n"
+    }
+    $postParseValidationText = if ([string]::IsNullOrWhiteSpace($PostParseValidation)) {
+        ""
+    } else {
+        "$PostParseValidation`n"
+    }
+
+    return @"
+void print_usage() {
+    std::cout << "$TargetName [--smoke] [--max-frames N] [--video-driver NAME] "
+$UsageSegments
+}
+
+[[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
+    for (int index = 1; index < argc; ++index) {
+        const std::string_view arg{argv[index]};
+        if (arg == "--help" || arg == "-h") {
+            options.show_help = true;
+            return true;
+        }
+        if (arg == "--smoke") {
+            options.smoke = true;
+            continue;
+        }
+$additionalFlagParsingText        if (arg == "--max-frames") {
+            if (index + 1 >= argc || !parse_positive_uint32(argv[index + 1], options.max_frames)) {
+                std::cerr << "--max-frames requires a positive integer\n";
+                return false;
+            }
+            ++index;
+            continue;
+        }
+        if (arg == "--video-driver") {
+            if (index + 1 >= argc) {
+                std::cerr << "--video-driver requires a driver name\n";
+                return false;
+            }
+            options.video_driver_hint = argv[index + 1];
+            ++index;
+            continue;
+        }
+        if (arg == "--require-config") {
+            if (index + 1 >= argc) {
+                std::cerr << "--require-config requires a relative path\n";
+                return false;
+            }
+            options.required_config_path = argv[index + 1];
+            ++index;
+            continue;
+        }
+$additionalPathParsingText
+        std::cerr << "unknown argument: " << arg << '\n';
+        return false;
+    }
+
+$postParseValidationText    if (options.smoke) {
+        if (options.max_frames == 0) {
+            options.max_frames = 2;
+        }
+        if (options.video_driver_hint.empty()) {
+            options.video_driver_hint = "dummy";
+        }
+        options.throttle = false;
+    }
+    return true;
+}
+"@
+}
+
+function New-DesktopRuntimeMainCpp {
+    param(
+        [string]$GameName,
+        [string]$TargetName,
+        [string]$Title
+    )
+
+    $escapedTitle = ConvertTo-CppStringLiteralContent -Text $Title
+    $desktopRuntimeHostCommonCpp = Get-DesktopRuntimeHostCommonCpp
+    $desktopRuntimeHostUsageSegments = @'
+                 "[--require-config PATH]\n";
+'@
+    $desktopRuntimeHostArgsCpp =
+        Get-DesktopRuntimeHostArgsCpp -TargetName $TargetName -UsageSegments $desktopRuntimeHostUsageSegments
+
+    return @"
+// SPDX-FileCopyrightText: 2026 GameEngine contributors
+// SPDX-License-Identifier: LicenseRef-Proprietary
+
+#include "mirakana/core/application.hpp"
+#include "mirakana/math/transform.hpp"
+#include "mirakana/platform/filesystem.hpp"
+#include "mirakana/platform/input.hpp"
+#include "mirakana/renderer/renderer.hpp"
+#include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
+#include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
+
+#include <charconv>
+#include <chrono>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <iostream>
+#include <string>
+#include <string_view>
+#include <system_error>
+#include <thread>
+
+namespace {
+
+struct DesktopRuntimeOptions {
+    bool smoke{false};
+    bool show_help{false};
+    bool throttle{true};
+    std::uint32_t max_frames{0};
+    std::string video_driver_hint;
+    std::string required_config_path;
+};
+
+constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.GeneratedDesktopRuntimePackage.Config.v1"};
+
+class ${TargetName}_Game final : public mirakana::GameApp {
+  public:
+    ${TargetName}_Game(mirakana::VirtualInput& input, mirakana::IRenderer& renderer, bool throttle)
+        : input_(input), renderer_(renderer), throttle_(throttle) {}
+
+    void on_start(mirakana::EngineContext&) override {
+        renderer_.set_clear_color(mirakana::Color{0.025F, 0.035F, 0.045F, 1.0F});
+    }
+
+    bool on_update(mirakana::EngineContext&, double) override {
+        renderer_.begin_frame();
+
+        const auto axis = input_.digital_axis(mirakana::Key::left, mirakana::Key::right, mirakana::Key::down, mirakana::Key::up);
+        transform_.position = transform_.position + axis;
+        renderer_.draw_sprite(mirakana::SpriteCommand{transform_, mirakana::Color{0.35F, 0.75F, 0.45F, 1.0F}});
+
+        renderer_.end_frame();
+        ++frames_;
+
+        if (throttle_) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+        }
+        return !input_.key_down(mirakana::Key::escape);
+    }
+
+    [[nodiscard]] std::uint32_t frames() const noexcept {
+        return frames_;
+    }
+
+  private:
+    mirakana::VirtualInput& input_;
+    mirakana::IRenderer& renderer_;
+    mirakana::Transform2D transform_;
+    bool throttle_{true};
+    std::uint32_t frames_{0};
+};
+
+$desktopRuntimeHostCommonCpp
+
+$desktopRuntimeHostArgsCpp
 
 } // namespace
 
@@ -349,6 +391,63 @@ function New-DesktopRuntimeCookedSceneMainCpp {
 
     $escapedTitle = ConvertTo-CppStringLiteralContent -Text $Title
     $escapedSceneAssetName = ConvertTo-CppStringLiteralContent -Text $SceneAssetName
+    $desktopRuntimeHostCommonCpp = Get-DesktopRuntimeHostCommonCpp
+    $desktopRuntimeHostUsageSegments = @'
+                 "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
+                 "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
+                 "[--require-scene-gpu-bindings] [--require-postprocess]\n";
+'@
+    $desktopRuntimeHostAdditionalFlagParsing = @'
+        if (arg == "--require-d3d12-scene-shaders") {
+            options.require_d3d12_scene_shaders = true;
+            continue;
+        }
+        if (arg == "--require-vulkan-scene-shaders") {
+            options.require_vulkan_scene_shaders = true;
+            continue;
+        }
+        if (arg == "--require-d3d12-renderer") {
+            options.require_d3d12_renderer = true;
+            continue;
+        }
+        if (arg == "--require-vulkan-renderer") {
+            options.require_vulkan_renderer = true;
+            continue;
+        }
+        if (arg == "--require-scene-gpu-bindings") {
+            options.require_scene_gpu_bindings = true;
+            continue;
+        }
+        if (arg == "--require-postprocess") {
+            options.require_postprocess = true;
+            continue;
+        }
+'@
+    $desktopRuntimeHostAdditionalPathParsing = @'
+        if (arg == "--require-scene-package") {
+            if (index + 1 >= argc) {
+                std::cerr << "--require-scene-package requires a relative path\n";
+                return false;
+            }
+            options.required_scene_package_path = argv[index + 1];
+            ++index;
+            continue;
+        }
+'@
+    $desktopRuntimeHostPostParseValidation = @'
+    if (options.require_d3d12_renderer && options.require_vulkan_renderer) {
+        std::cerr << "--require-d3d12-renderer and --require-vulkan-renderer are mutually exclusive\n";
+        return false;
+    }
+
+'@
+    $desktopRuntimeHostArgsCpp =
+        Get-DesktopRuntimeHostArgsCpp `
+            -TargetName $TargetName `
+            -UsageSegments $desktopRuntimeHostUsageSegments `
+            -AdditionalFlagParsing $desktopRuntimeHostAdditionalFlagParsing `
+            -AdditionalPathParsing $desktopRuntimeHostAdditionalPathParsing `
+            -PostParseValidation $desktopRuntimeHostPostParseValidation
 
     return @"
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
@@ -628,117 +727,9 @@ class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
     std::size_t scene_materials_resolved_{0};
 };
 
-[[nodiscard]] bool parse_positive_uint32(std::string_view text, std::uint32_t& value) noexcept {
-    std::uint32_t parsed{};
-    const auto* begin = text.data();
-    const auto* end = text.data() + text.size();
-    const auto result = std::from_chars(begin, end, parsed);
-    if (result.ec != std::errc{} || result.ptr != end || parsed == 0) {
-        return false;
-    }
-    value = parsed;
-    return true;
-}
+$desktopRuntimeHostCommonCpp
 
-void print_usage() {
-    std::cout
-        << "$TargetName [--smoke] [--max-frames N] [--video-driver NAME] "
-           "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
-           "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
-           "[--require-scene-gpu-bindings] [--require-postprocess]\n";
-}
-
-[[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
-    for (int index = 1; index < argc; ++index) {
-        const std::string_view arg{argv[index]};
-        if (arg == "--help" || arg == "-h") {
-            options.show_help = true;
-            return true;
-        }
-        if (arg == "--smoke") {
-            options.smoke = true;
-            continue;
-        }
-        if (arg == "--require-d3d12-scene-shaders") {
-            options.require_d3d12_scene_shaders = true;
-            continue;
-        }
-        if (arg == "--require-vulkan-scene-shaders") {
-            options.require_vulkan_scene_shaders = true;
-            continue;
-        }
-        if (arg == "--require-d3d12-renderer") {
-            options.require_d3d12_renderer = true;
-            continue;
-        }
-        if (arg == "--require-vulkan-renderer") {
-            options.require_vulkan_renderer = true;
-            continue;
-        }
-        if (arg == "--require-scene-gpu-bindings") {
-            options.require_scene_gpu_bindings = true;
-            continue;
-        }
-        if (arg == "--require-postprocess") {
-            options.require_postprocess = true;
-            continue;
-        }
-        if (arg == "--max-frames") {
-            if (index + 1 >= argc || !parse_positive_uint32(argv[index + 1], options.max_frames)) {
-                std::cerr << "--max-frames requires a positive integer\n";
-                return false;
-            }
-            ++index;
-            continue;
-        }
-        if (arg == "--video-driver") {
-            if (index + 1 >= argc) {
-                std::cerr << "--video-driver requires a driver name\n";
-                return false;
-            }
-            options.video_driver_hint = argv[index + 1];
-            ++index;
-            continue;
-        }
-        if (arg == "--require-config") {
-            if (index + 1 >= argc) {
-                std::cerr << "--require-config requires a relative path\n";
-                return false;
-            }
-            options.required_config_path = argv[index + 1];
-            ++index;
-            continue;
-        }
-        if (arg == "--require-scene-package") {
-            if (index + 1 >= argc) {
-                std::cerr << "--require-scene-package requires a relative path\n";
-                return false;
-            }
-            options.required_scene_package_path = argv[index + 1];
-            ++index;
-            continue;
-        }
-
-        std::cerr << "unknown argument: " << arg << '\n';
-        return false;
-    }
-
-    if (options.require_d3d12_renderer && options.require_vulkan_renderer) {
-        std::cerr << "--require-d3d12-renderer and --require-vulkan-renderer are mutually exclusive\n";
-        return false;
-    }
-
-    if (options.smoke) {
-        if (options.max_frames == 0) {
-            options.max_frames = 2;
-        }
-        if (options.video_driver_hint.empty()) {
-            options.video_driver_hint = "dummy";
-        }
-        options.throttle = false;
-    }
-    return true;
-}
+$desktopRuntimeHostArgsCpp
 
 void print_package_failures(const std::vector<mirakana::runtime::RuntimeAssetPackageLoadFailure>& failures) {
     for (const auto& failure : failures) {
@@ -751,49 +742,6 @@ void print_scene_failures(const std::vector<mirakana::RuntimeSceneRenderLoadFail
     for (const auto& failure : failures) {
         std::cerr << "runtime scene failure asset=" << failure.asset.value << ": " << failure.diagnostic << '\n';
     }
-}
-
-[[nodiscard]] std::filesystem::path executable_directory(const char* executable_path) {
-    try {
-        if (executable_path != nullptr && std::string_view{executable_path}.size() > 0) {
-            const auto absolute_path = std::filesystem::absolute(std::filesystem::path{executable_path});
-            if (absolute_path.has_parent_path()) {
-                return absolute_path.parent_path();
-            }
-        }
-        return std::filesystem::current_path();
-    } catch (const std::exception&) {
-        return std::filesystem::path{"."};
-    }
-}
-
-[[nodiscard]] bool verify_required_config(const char* executable_path, std::string_view config_path) {
-    if (config_path.empty()) {
-        return true;
-    }
-
-    try {
-        mirakana::RootedFileSystem filesystem(executable_directory(executable_path));
-        if (!filesystem.exists(config_path)) {
-            std::cerr << "required config was not found: " << config_path << '\n';
-            return false;
-        }
-
-        const auto config_text = filesystem.read_text(config_path);
-        if (config_text.empty()) {
-            std::cerr << "required config is empty: " << config_path << '\n';
-            return false;
-        }
-        if (config_text.rfind(kExpectedConfigFormat, 0) != 0) {
-            std::cerr << "required config has unexpected format: " << config_path << '\n';
-            return false;
-        }
-    } catch (const std::exception& exception) {
-        std::cerr << "failed to read required config '" << config_path << "': " << exception.what() << '\n';
-        return false;
-    }
-
-    return true;
 }
 
 [[nodiscard]] bool load_required_scene_package(const char* executable_path, std::string_view package_path,
@@ -883,40 +831,6 @@ load_packaged_vulkan_postprocess_shaders(const char* executable_path) {
         .vertex_entry_point = "vs_postprocess",
         .fragment_entry_point = "ps_postprocess",
     });
-}
-
-[[nodiscard]] std::string_view status_name(mirakana::DesktopRunStatus status) noexcept {
-    switch (status) {
-    case mirakana::DesktopRunStatus::completed:
-        return "completed";
-    case mirakana::DesktopRunStatus::stopped_by_app:
-        return "stopped_by_app";
-    case mirakana::DesktopRunStatus::window_closed:
-        return "window_closed";
-    case mirakana::DesktopRunStatus::lifecycle_quit:
-        return "lifecycle_quit";
-    }
-    return "unknown";
-}
-
-void print_presentation_report(std::string_view prefix, const mirakana::SdlDesktopGameHost& host) {
-    const auto report = host.presentation_report();
-    std::cout << prefix << " presentation_report=requested="
-              << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
-              << " used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
-              << " diagnostics=" << report.diagnostics_count << " backend_reports=" << report.backend_reports_count
-              << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
-              << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
-    for (const auto& backend_report : host.presentation_backend_reports()) {
-        std::cout << prefix << " presentation_backend_report="
-                  << mirakana::sdl_desktop_presentation_backend_name(backend_report.backend) << ":"
-                  << mirakana::sdl_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
-                  << backend_report.message << '\n';
-    }
 }
 
 } // namespace
