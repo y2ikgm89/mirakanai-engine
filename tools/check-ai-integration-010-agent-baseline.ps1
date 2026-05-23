@@ -335,6 +335,8 @@ Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'OutputLogPath' 
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'OmittedOutputLineCount' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'out" (Join-Path "validation-logs"' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'validate: parallel static check logs' "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/check-ai-integration-030-runtime-rendering.ps1") '$historicalVerdictArchiveText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"' "tools/check-ai-integration-030-runtime-rendering.ps1"
+Assert-DoesNotContainText (Get-AgentSurfaceText "tools/check-ai-integration-030-runtime-rendering.ps1") 'Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"' "tools/check-ai-integration-030-runtime-rendering.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/build.ps1") 'New-CMakeFileApiCodemodelQuery' "tools/build.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/build.ps1") '[int]$Jobs = 0' "tools/build.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/build.ps1") '--parallel' "tools/build.ps1"
