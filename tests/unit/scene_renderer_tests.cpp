@@ -487,11 +487,10 @@ MK_TEST("scene sprite nine slice expansion emits nine sub sprite commands with c
     MK_REQUIRE(stats.expanded_sprite_count == 9);
     MK_REQUIRE(commands.size() == 9);
 
-    const auto bottom_left_it = std::find_if(commands.begin(), commands.end(),
-                                            [](const mirakana::SpriteCommand& command) {
-                                                return command.texture.uv_rect.u1 <= 0.26F &&
-                                                       command.texture.uv_rect.v1 <= 0.26F;
-                                            });
+    const auto bottom_left_it =
+        std::find_if(commands.begin(), commands.end(), [](const mirakana::SpriteCommand& command) {
+            return command.texture.uv_rect.u1 <= 0.26F && command.texture.uv_rect.v1 <= 0.26F;
+        });
     MK_REQUIRE(bottom_left_it != commands.end());
     MK_REQUIRE(bottom_left_it->transform.scale.x == 1.0F);
     MK_REQUIRE(bottom_left_it->transform.scale.y == 0.75F);
