@@ -56,11 +56,7 @@ if ($Release) {
 }
 
 if ($Gui) {
-    $root = Get-RepoRoot
-    $vcpkgExe = Join-Path $root "external/vcpkg/vcpkg.exe"
-    if (-not (Test-Path $vcpkgExe)) {
-        Write-Error "vcpkg is required for the C++23 desktop GUI verification. Run 'pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1' first."
-    }
+    $null = Assert-VcpkgExecutable -Purpose "the C++23 desktop GUI verification"
 
     Set-MirakanaiVcpkgEnvironment | Out-Null
 

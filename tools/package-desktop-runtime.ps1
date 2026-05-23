@@ -13,11 +13,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
 
 $root = Get-RepoRoot
-$vcpkgExe = Join-Path $root "external/vcpkg/vcpkg.exe"
-
-if (-not (Test-Path $vcpkgExe)) {
-    Write-Error "vcpkg is required for the desktop runtime package. Run 'pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1' first."
-}
+$null = Assert-VcpkgExecutable -Purpose "the desktop runtime package"
 
 Set-MirakanaiVcpkgEnvironment | Out-Null
 

@@ -185,6 +185,29 @@ function Get-VcpkgDefaultTriplet {
     return "x64-windows"
 }
 
+function Get-VcpkgRoot {
+    return Join-Path (Get-RepoRoot) "external/vcpkg"
+}
+
+function Get-VcpkgExecutablePath {
+    return Join-Path (Get-VcpkgRoot) "vcpkg.exe"
+}
+
+function Assert-VcpkgExecutable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Purpose
+    )
+
+    $vcpkgExe = Get-VcpkgExecutablePath
+    if (-not (Test-Path -LiteralPath $vcpkgExe -PathType Leaf)) {
+        Write-Error "vcpkg is required for $Purpose. Run 'pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1' first."
+    }
+
+    return $vcpkgExe
+}
+
 function Get-CombinedPathEntries {
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($scope in @("Process", "User", "Machine")) {

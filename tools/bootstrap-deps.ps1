@@ -6,17 +6,17 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
 
 $root = Get-RepoRoot
-$vcpkgRoot = Join-Path $root "external/vcpkg"
-$vcpkgExe = Join-Path $vcpkgRoot "vcpkg.exe"
+$vcpkgRoot = Get-VcpkgRoot
+$vcpkgExe = Get-VcpkgExecutablePath
 
-if (-not (Test-Path $vcpkgRoot)) {
+if (-not (Test-Path -LiteralPath $vcpkgRoot -PathType Container)) {
     Write-Error "Missing vcpkg checkout at external/vcpkg. This tree is the Microsoft vcpkg tool sources (gitignored), not CMake output—do not delete it as part of cleaning out/. Clone first: git clone https://github.com/microsoft/vcpkg.git external/vcpkg"
 }
 
 Set-MirakanaiVcpkgEnvironment | Out-Null
 $triplet = Get-VcpkgDefaultTriplet
 
-if (-not (Test-Path $vcpkgExe)) {
+if (-not (Test-Path -LiteralPath $vcpkgExe -PathType Leaf)) {
     $cmd = if ([string]::IsNullOrWhiteSpace($env:ComSpec)) { "cmd.exe" } else { $env:ComSpec }
     Invoke-CheckedCommand $cmd "/d" "/c" (Join-Path $vcpkgRoot "bootstrap-vcpkg.bat") "-disableMetrics"
 }

@@ -5,12 +5,7 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "common.ps1")
 
-$root = Get-RepoRoot
-$vcpkgExe = Join-Path $root "external/vcpkg/vcpkg.exe"
-
-if (-not (Test-Path $vcpkgExe)) {
-    Write-Error "vcpkg is required for the desktop GUI build. Run 'pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1' first."
-}
+$null = Assert-VcpkgExecutable -Purpose "the desktop GUI build"
 
 Set-MirakanaiVcpkgEnvironment | Out-Null
 
