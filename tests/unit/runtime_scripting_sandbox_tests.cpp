@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -76,6 +77,84 @@ make_module(std::string module_id, std::string source_uri,
     }
     return false;
 }
+
+[[nodiscard]] mirakana::runtime::RuntimeScriptSandboxPolicyDesc make_reviewed_execution_policy() {
+    using EntryKind = mirakana::runtime::RuntimeScriptSandboxEntrypointKind;
+    using Permission = mirakana::runtime::RuntimeScriptSandboxPermissionKind;
+
+    return mirakana::runtime::RuntimeScriptSandboxPolicyDesc{
+        .modules =
+            {
+                make_module("gameplay", "scripts/gameplay.mkscript",
+                            {make_entrypoint("tick", EntryKind::update, 120U, 4096U, 7U,
+                                             {
+                                                 make_permission(Permission::emit_diagnostic, {}, 3U),
+                                                 make_permission(Permission::host_api, "gameplay.quest", 5U),
+                                                 make_permission(Permission::read_runtime_state, {}, 4U),
+                                             },
+                                             2U)},
+                            1U),
+            },
+        .allowed_host_apis = {"gameplay.quest"},
+        .max_instruction_budget_per_entrypoint = 256U,
+        .max_memory_budget_bytes_per_entrypoint = 8192U,
+    };
+}
+
+class RecordingScriptAdapter final : public mirakana::runtime::IRuntimeScriptExecutionAdapter {
+  public:
+    std::size_t call_count{0U};
+    bool fail{false};
+    std::uint64_t instructions_consumed{80U};
+    std::uint64_t memory_bytes_touched{2048U};
+
+    [[nodiscard]] mirakana::runtime::RuntimeScriptAdapterResult
+    execute(const mirakana::runtime::RuntimeScriptExecutionRequest& request,
+            const mirakana::runtime::RuntimeScriptSandboxEntrypointPlanRow& entrypoint,
+            std::span<const mirakana::runtime::RuntimeScriptSandboxPermissionPlanRow> permissions) override {
+        ++call_count;
+        last_module_id = entrypoint.module_id;
+        last_entrypoint_id = entrypoint.entrypoint_id;
+        last_input_event_id = request.input_event_id;
+        observed_permission_count = permissions.size();
+        if (fail) {
+            return mirakana::runtime::RuntimeScriptAdapterResult{
+                .completed = false,
+                .stats =
+                    mirakana::runtime::RuntimeScriptExecutionStats{
+                        .instructions_consumed = instructions_consumed,
+                        .memory_bytes_touched = memory_bytes_touched,
+                        .host_api_call_count = 0U,
+                    },
+                .diagnostic_message = "adapter rejected script bytecode",
+            };
+        }
+
+        return mirakana::runtime::RuntimeScriptAdapterResult{
+            .completed = true,
+            .stats =
+                mirakana::runtime::RuntimeScriptExecutionStats{
+                    .instructions_consumed = instructions_consumed,
+                    .memory_bytes_touched = memory_bytes_touched,
+                    .host_api_call_count = 1U,
+                },
+            .host_api_calls =
+                {
+                    mirakana::runtime::RuntimeScriptHostApiCall{
+                        .host_api_id = "gameplay.quest",
+                        .payload = "advance",
+                        .source_index = 11U,
+                    },
+                },
+            .output_rows = {"quest.progressed"},
+        };
+    }
+
+    std::string last_module_id;
+    std::string last_entrypoint_id;
+    std::string last_input_event_id;
+    std::size_t observed_permission_count{0U};
+};
 
 } // namespace
 
@@ -382,6 +461,193 @@ MK_TEST("runtime scripting sandbox treats empty module set as no modules") {
     MK_REQUIRE(plan.entrypoints.empty());
     MK_REQUIRE(plan.permissions.empty());
     MK_REQUIRE(plan.diagnostics.empty());
+}
+
+MK_TEST("runtime scripting sandbox dispatches reviewed entrypoints through host adapter") {
+    using ExecutionStatus = mirakana::runtime::RuntimeScriptExecutionStatus;
+
+    const auto plan = mirakana::runtime::plan_runtime_script_sandbox(make_reviewed_execution_policy());
+    RecordingScriptAdapter adapter;
+
+    const auto result = mirakana::runtime::execute_runtime_script_entrypoint(
+        mirakana::runtime::RuntimeScriptExecutionRequest{
+            .plan = &plan,
+            .module_id = "gameplay",
+            .entrypoint_id = "tick",
+            .input_event_id = "frame.0001",
+            .instruction_budget = 80U,
+            .memory_budget_bytes = 2048U,
+            .replay_seed = 7U,
+        },
+        adapter);
+
+    MK_REQUIRE(result.status == ExecutionStatus::completed);
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.dispatched);
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(result.stats.instructions_consumed == 80U);
+    MK_REQUIRE(result.stats.memory_bytes_touched == 2048U);
+    MK_REQUIRE(result.stats.host_api_call_count == 1U);
+    MK_REQUIRE(result.host_api_calls.size() == 1U);
+    MK_REQUIRE(result.host_api_calls[0].host_api_id == "gameplay.quest");
+    MK_REQUIRE(result.output_rows.size() == 1U);
+    MK_REQUIRE(result.output_rows[0] == "quest.progressed");
+    MK_REQUIRE(result.replay_signature != 0U);
+    MK_REQUIRE(adapter.call_count == 1U);
+    MK_REQUIRE(adapter.last_module_id == "gameplay");
+    MK_REQUIRE(adapter.last_entrypoint_id == "tick");
+    MK_REQUIRE(adapter.last_input_event_id == "frame.0001");
+    MK_REQUIRE(adapter.observed_permission_count == 3U);
+}
+
+MK_TEST("runtime scripting sandbox execution is replay stable for same seed and input") {
+    const auto plan = mirakana::runtime::plan_runtime_script_sandbox(make_reviewed_execution_policy());
+    RecordingScriptAdapter first_adapter;
+    RecordingScriptAdapter second_adapter;
+
+    const auto request = mirakana::runtime::RuntimeScriptExecutionRequest{
+        .plan = &plan,
+        .module_id = "gameplay",
+        .entrypoint_id = "tick",
+        .input_event_id = "frame.0001",
+        .instruction_budget = 80U,
+        .memory_budget_bytes = 2048U,
+        .replay_seed = 7U,
+    };
+
+    const auto first = mirakana::runtime::execute_runtime_script_entrypoint(request, first_adapter);
+    const auto second = mirakana::runtime::execute_runtime_script_entrypoint(request, second_adapter);
+
+    MK_REQUIRE(first.succeeded());
+    MK_REQUIRE(second.succeeded());
+    MK_REQUIRE(first.replay_signature == second.replay_signature);
+}
+
+MK_TEST("runtime scripting sandbox execution rejects failed policy before dispatch") {
+    using Code = mirakana::runtime::RuntimeScriptExecutionDiagnosticCode;
+    using EntryKind = mirakana::runtime::RuntimeScriptSandboxEntrypointKind;
+    using ExecutionStatus = mirakana::runtime::RuntimeScriptExecutionStatus;
+    using Permission = mirakana::runtime::RuntimeScriptSandboxPermissionKind;
+
+    const auto policy = mirakana::runtime::RuntimeScriptSandboxPolicyDesc{
+        .modules =
+            {
+                make_module("unsafe", "scripts/unsafe.mkscript",
+                            {make_entrypoint("main", EntryKind::command, 64U, 1024U, 12U,
+                                             {make_permission(Permission::network, {}, 3U)}, 8U)},
+                            9U),
+            },
+        .allowed_host_apis = {},
+        .max_instruction_budget_per_entrypoint = 256U,
+        .max_memory_budget_bytes_per_entrypoint = 4096U,
+    };
+    const auto plan = mirakana::runtime::plan_runtime_script_sandbox(policy);
+    RecordingScriptAdapter adapter;
+
+    const auto result = mirakana::runtime::execute_runtime_script_entrypoint(
+        mirakana::runtime::RuntimeScriptExecutionRequest{
+            .plan = &plan,
+            .module_id = "unsafe",
+            .entrypoint_id = "main",
+            .input_event_id = "frame.0001",
+            .instruction_budget = 64U,
+            .memory_budget_bytes = 1024U,
+            .replay_seed = 12U,
+        },
+        adapter);
+
+    MK_REQUIRE(result.status == ExecutionStatus::invalid_request);
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.dispatched);
+    MK_REQUIRE(adapter.call_count == 0U);
+    MK_REQUIRE(result.diagnostics.size() == 1U);
+    MK_REQUIRE(result.diagnostics[0].code == Code::policy_not_planned);
+}
+
+MK_TEST("runtime scripting sandbox execution rejects missing entrypoint and replay seed mismatch before dispatch") {
+    using Code = mirakana::runtime::RuntimeScriptExecutionDiagnosticCode;
+    using ExecutionStatus = mirakana::runtime::RuntimeScriptExecutionStatus;
+
+    const auto plan = mirakana::runtime::plan_runtime_script_sandbox(make_reviewed_execution_policy());
+    RecordingScriptAdapter adapter;
+
+    const auto missing = mirakana::runtime::execute_runtime_script_entrypoint(
+        mirakana::runtime::RuntimeScriptExecutionRequest{
+            .plan = &plan,
+            .module_id = "gameplay",
+            .entrypoint_id = "missing",
+            .input_event_id = "frame.0001",
+            .instruction_budget = 80U,
+            .memory_budget_bytes = 2048U,
+            .replay_seed = 7U,
+        },
+        adapter);
+    const auto mismatch = mirakana::runtime::execute_runtime_script_entrypoint(
+        mirakana::runtime::RuntimeScriptExecutionRequest{
+            .plan = &plan,
+            .module_id = "gameplay",
+            .entrypoint_id = "tick",
+            .input_event_id = "frame.0001",
+            .instruction_budget = 80U,
+            .memory_budget_bytes = 2048U,
+            .replay_seed = 8U,
+        },
+        adapter);
+
+    MK_REQUIRE(missing.status == ExecutionStatus::invalid_request);
+    MK_REQUIRE(missing.diagnostics.size() == 1U);
+    MK_REQUIRE(missing.diagnostics[0].code == Code::missing_entrypoint);
+    MK_REQUIRE(mismatch.status == ExecutionStatus::invalid_request);
+    MK_REQUIRE(mismatch.diagnostics.size() == 1U);
+    MK_REQUIRE(mismatch.diagnostics[0].code == Code::replay_seed_mismatch);
+    MK_REQUIRE(adapter.call_count == 0U);
+}
+
+MK_TEST("runtime scripting sandbox execution reports adapter failures and budget traps") {
+    using Code = mirakana::runtime::RuntimeScriptExecutionDiagnosticCode;
+    using ExecutionStatus = mirakana::runtime::RuntimeScriptExecutionStatus;
+
+    const auto plan = mirakana::runtime::plan_runtime_script_sandbox(make_reviewed_execution_policy());
+    RecordingScriptAdapter failing_adapter;
+    failing_adapter.fail = true;
+    const auto adapter_failure = mirakana::runtime::execute_runtime_script_entrypoint(
+        mirakana::runtime::RuntimeScriptExecutionRequest{
+            .plan = &plan,
+            .module_id = "gameplay",
+            .entrypoint_id = "tick",
+            .input_event_id = "frame.0001",
+            .instruction_budget = 80U,
+            .memory_budget_bytes = 2048U,
+            .replay_seed = 7U,
+        },
+        failing_adapter);
+
+    RecordingScriptAdapter over_budget_adapter;
+    over_budget_adapter.instructions_consumed = 81U;
+    over_budget_adapter.memory_bytes_touched = 2049U;
+    const auto budget_failure = mirakana::runtime::execute_runtime_script_entrypoint(
+        mirakana::runtime::RuntimeScriptExecutionRequest{
+            .plan = &plan,
+            .module_id = "gameplay",
+            .entrypoint_id = "tick",
+            .input_event_id = "frame.0001",
+            .instruction_budget = 80U,
+            .memory_budget_bytes = 2048U,
+            .replay_seed = 7U,
+        },
+        over_budget_adapter);
+
+    MK_REQUIRE(adapter_failure.status == ExecutionStatus::adapter_failed);
+    MK_REQUIRE(adapter_failure.dispatched);
+    MK_REQUIRE(adapter_failure.diagnostics.size() == 1U);
+    MK_REQUIRE(adapter_failure.diagnostics[0].code == Code::adapter_failed);
+    MK_REQUIRE(failing_adapter.call_count == 1U);
+    MK_REQUIRE(budget_failure.status == ExecutionStatus::budget_exceeded);
+    MK_REQUIRE(budget_failure.dispatched);
+    MK_REQUIRE(budget_failure.diagnostics.size() == 2U);
+    MK_REQUIRE(budget_failure.diagnostics[0].code == Code::instruction_budget_exceeded);
+    MK_REQUIRE(budget_failure.diagnostics[1].code == Code::memory_budget_exceeded);
+    MK_REQUIRE(over_budget_adapter.call_count == 1U);
 }
 
 int main() {

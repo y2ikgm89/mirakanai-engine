@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -51,6 +52,26 @@ enum class RuntimeScriptSandboxDiagnosticCode : std::uint8_t {
     default_denied_permission,
     missing_host_api_id,
     unsupported_host_api_id,
+};
+
+enum class RuntimeScriptExecutionStatus : std::uint8_t {
+    completed = 0,
+    invalid_request,
+    budget_exceeded,
+    adapter_failed,
+};
+
+enum class RuntimeScriptExecutionDiagnosticCode : std::uint8_t {
+    missing_plan = 0,
+    policy_not_planned,
+    missing_entrypoint,
+    replay_seed_mismatch,
+    invalid_instruction_budget,
+    invalid_memory_budget,
+    instruction_budget_exceeded,
+    memory_budget_exceeded,
+    denied_permission,
+    adapter_failed,
 };
 
 struct RuntimeScriptSandboxPermissionDesc {
@@ -127,9 +148,74 @@ struct RuntimeScriptSandboxPlan {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct RuntimeScriptExecutionStats {
+    std::uint64_t instructions_consumed{0U};
+    std::uint64_t memory_bytes_touched{0U};
+    std::size_t host_api_call_count{0U};
+};
+
+struct RuntimeScriptHostApiCall {
+    std::string host_api_id;
+    std::string payload;
+    std::uint32_t source_index{0U};
+};
+
+struct RuntimeScriptAdapterResult {
+    bool completed{false};
+    RuntimeScriptExecutionStats stats;
+    std::vector<RuntimeScriptHostApiCall> host_api_calls;
+    std::vector<std::string> output_rows;
+    std::string diagnostic_message;
+};
+
+struct RuntimeScriptExecutionRequest {
+    const RuntimeScriptSandboxPlan* plan{nullptr};
+    std::string module_id;
+    std::string entrypoint_id;
+    std::string input_event_id;
+    std::uint64_t instruction_budget{0U};
+    std::uint64_t memory_budget_bytes{0U};
+    std::uint64_t replay_seed{0U};
+};
+
+struct RuntimeScriptExecutionDiagnostic {
+    RuntimeScriptExecutionDiagnosticCode code{RuntimeScriptExecutionDiagnosticCode::missing_plan};
+    std::string module_id;
+    std::string entrypoint_id;
+    std::string message;
+};
+
+struct RuntimeScriptExecutionResult {
+    RuntimeScriptExecutionStatus status{RuntimeScriptExecutionStatus::invalid_request};
+    std::vector<RuntimeScriptExecutionDiagnostic> diagnostics;
+    RuntimeScriptExecutionStats stats;
+    std::vector<RuntimeScriptHostApiCall> host_api_calls;
+    std::vector<std::string> output_rows;
+    std::uint64_t replay_signature{0U};
+    bool dispatched{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
+class IRuntimeScriptExecutionAdapter {
+  public:
+    virtual ~IRuntimeScriptExecutionAdapter() = default;
+
+    [[nodiscard]] virtual RuntimeScriptAdapterResult
+    execute(const RuntimeScriptExecutionRequest& request, const RuntimeScriptSandboxEntrypointPlanRow& entrypoint,
+            std::span<const RuntimeScriptSandboxPermissionPlanRow> permissions) = 0;
+};
+
 /// Plans reviewed, deterministic script-module sandbox metadata for generated gameplay.
 /// This does not interpret scripts, load code, open files, access the network, spawn processes, bind native plugins,
 /// mutate package state, expose native handles, or grant unreviewed host APIs.
 [[nodiscard]] RuntimeScriptSandboxPlan plan_runtime_script_sandbox(const RuntimeScriptSandboxPolicyDesc& policy);
+
+/// Dispatches one reviewed script entrypoint through a caller-owned adapter.
+/// This does not provide a script interpreter, open files, access sockets, spawn processes, bind native plugins,
+/// mutate packages, expose native handles, or grant permissions beyond the reviewed sandbox plan rows.
+[[nodiscard]] RuntimeScriptExecutionResult
+execute_runtime_script_entrypoint(const RuntimeScriptExecutionRequest& request,
+                                  IRuntimeScriptExecutionAdapter& adapter);
 
 } // namespace mirakana::runtime
