@@ -23,8 +23,15 @@ function Assert-DoesNotContainText($text, $needle, $label) {
     }
 }
 
+$script:jsonContractSurfaceTextCache = @{}
+$script:jsonGameAgentManifestCache = $null
+
 function Get-JsonContractSurfaceText([Parameter(Mandatory)][string]$relativePath) {
     $normalizedRelativePath = $relativePath -replace '\\', '/'
+    if ($script:jsonContractSurfaceTextCache.ContainsKey($normalizedRelativePath)) {
+        return $script:jsonContractSurfaceTextCache[$normalizedRelativePath]
+    }
+
     $fullPath = Join-Path $root $normalizedRelativePath
     $parts = [System.Collections.Generic.List[string]]::new()
     $parts.Add((Get-Content -LiteralPath $fullPath -Raw))
@@ -36,7 +43,44 @@ function Get-JsonContractSurfaceText([Parameter(Mandatory)][string]$relativePath
                 ForEach-Object { $parts.Add((Get-Content -LiteralPath $_.FullName -Raw)) }
         }
     }
-    return $parts -join "`n"
+    $surfaceText = $parts -join "`n"
+    $script:jsonContractSurfaceTextCache[$normalizedRelativePath] = $surfaceText
+    return $surfaceText
+}
+
+function Get-GameAgentManifests {
+    if ($null -ne $script:jsonGameAgentManifestCache) {
+        return @($script:jsonGameAgentManifestCache)
+    }
+
+    $gamesRoot = Join-Path $root "games"
+    $manifests = @()
+    if (Test-Path -LiteralPath $gamesRoot -PathType Container) {
+        $manifests = @(Get-ChildItem -LiteralPath $gamesRoot -Recurse -Filter "game.agent.json" -File |
+            Sort-Object FullName |
+            ForEach-Object {
+                $manifestText = Get-Content -LiteralPath $_.FullName -Raw
+                [pscustomobject]@{
+                    RelativePath = Get-RelativeRepoPath $_.FullName
+                    FullPath = $_.FullName
+                    Text = $manifestText
+                    Game = $manifestText | ConvertFrom-Json
+                }
+            })
+    }
+
+    $script:jsonGameAgentManifestCache = $manifests
+    return @($script:jsonGameAgentManifestCache)
+}
+
+function Get-GameAgentManifest([Parameter(Mandatory)][string]$RelativePath) {
+    $normalizedRelativePath = $RelativePath -replace '\\', '/'
+    foreach ($manifest in Get-GameAgentManifests) {
+        if ($manifest.RelativePath -eq $normalizedRelativePath) {
+            return $manifest
+        }
+    }
+    return $null
 }
 
 function Get-ActiveChildProductionPlans {

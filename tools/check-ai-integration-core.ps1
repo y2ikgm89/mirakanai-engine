@@ -60,6 +60,41 @@ function Get-AgentSurfaceText([Parameter(Mandatory)][string]$relativePath) {
     return $text
 }
 
+$script:agentGameManifestCache = $null
+
+function Get-AgentGameManifests {
+    if ($null -ne $script:agentGameManifestCache) {
+        return @($script:agentGameManifestCache)
+    }
+
+    $gamesRoot = Resolve-RequiredAgentPath "games"
+    $manifests = @(Get-ChildItem -LiteralPath $gamesRoot -Recurse -Filter "game.agent.json" -File |
+        Sort-Object FullName |
+        ForEach-Object {
+            $manifestText = Get-Content -LiteralPath $_.FullName -Raw
+            [pscustomobject]@{
+                RelativePath = Get-RelativeRepoPath $_.FullName
+                FullPath = $_.FullName
+                Text = $manifestText
+                Game = $manifestText | ConvertFrom-Json
+            }
+        })
+
+    $script:agentGameManifestCache = $manifests
+    return @($script:agentGameManifestCache)
+}
+
+function Get-AgentGameManifest([Parameter(Mandatory)][string]$RelativePath) {
+    $normalizedRelativePath = $RelativePath -replace '\\', '/'
+    foreach ($manifest in Get-AgentGameManifests) {
+        if ($manifest.RelativePath -eq $normalizedRelativePath) {
+            return $manifest
+        }
+    }
+
+    Write-Error "Missing game manifest: $normalizedRelativePath"
+}
+
 function Assert-SkillFrontmatter($skillFile) {
     $head = (Get-Content -LiteralPath $skillFile -TotalCount 8) -join "`n"
     if ($head -notmatch "---\s*\nname:\s*[a-z0-9-]+" -or $head -notmatch "description:\s*.+") {
@@ -111,14 +146,10 @@ function Assert-JsonProperty($object, [string[]]$properties, $label) {
 function Assert-NoGameSourceRawAssetIdFromName {
     $rawAssetIdMatches = @()
     $gamesRoot = Resolve-RequiredAgentPath "games"
-    foreach ($sourceFile in Get-ChildItem -LiteralPath $gamesRoot -Filter "*.cpp" -Recurse -File) {
-        foreach ($match in Select-String -LiteralPath $sourceFile.FullName -Pattern "AssetId::from_name(" -SimpleMatch) {
-            $rawAssetIdMatches += "$(Get-RelativeRepoPath $match.Path):$($match.LineNumber)"
-        }
-    }
-
+    $sourceFiles = @(Get-ChildItem -LiteralPath $gamesRoot -Filter "*.cpp" -Recurse -File | ForEach-Object { $_.FullName })
     $newGameScript = Resolve-RequiredAgentPath "tools/new-game.ps1"
-    foreach ($match in Select-String -LiteralPath $newGameScript -Pattern "AssetId::from_name(" -SimpleMatch) {
+    $sourceFiles += $newGameScript
+    foreach ($match in Select-String -LiteralPath $sourceFiles -Pattern "AssetId::from_name(" -SimpleMatch) {
         $rawAssetIdMatches += "$(Get-RelativeRepoPath $match.Path):$($match.LineNumber)"
     }
 

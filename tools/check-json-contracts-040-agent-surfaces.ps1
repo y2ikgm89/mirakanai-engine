@@ -611,7 +611,8 @@ $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-O
 if ($editorProductizationGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+$historicalVerdictArchiveText = Get-JsonContractSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+$editorProductizationCloseoutText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Editor Productization 1.0 Host-Gated Exclusion Closeout",
     "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
@@ -628,7 +629,7 @@ $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps |
 if ($productionUiImporterPlatformGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+$productionUiCloseoutText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Production UI Importer Platform Adapters 1.0 Closeout",
     "reviewed adapter-boundary and package evidence",
@@ -662,7 +663,7 @@ $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($fullRepoQualityGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+$fullRepoQualityCloseoutText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Full Repository Quality Gate 1.0 Closeout",
     "local full validate",
@@ -702,6 +703,8 @@ $testScriptText = Get-Content -LiteralPath (Join-Path $root "tools/test.ps1") -R
 $tidyScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-tidy.ps1") -Raw
 $evaluateCpp23ScriptText = Get-Content -LiteralPath (Join-Path $root "tools/evaluate-cpp23.ps1") -Raw
 $checkAiIntegrationText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration.ps1") -Raw
+$checkAiIntegrationCoreText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-core.ps1") -Raw
+$checkAiProductionLedgerText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-070-production-ledger.ps1") -Raw
 $checkAiBaselineText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-010-agent-baseline.ps1") -Raw
 $checkJsonContractsText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts.ps1") -Raw
 $mobilePackagingScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-mobile-packaging.ps1") -Raw
@@ -816,8 +819,29 @@ foreach ($staticContractLedger in Get-StaticContractLedger) {
     }
 }
 $generatedGamesContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-050-generated-games.ps1") -Raw
+$gameDesignSpecContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-060-game-design-spec.ps1") -Raw
 Assert-ContainsText $generatedGamesContractText '$historicalVerdictArchiveText = Get-JsonContractSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"' "tools/check-json-contracts-050-generated-games.ps1"
 Assert-DoesNotContainText $generatedGamesContractText 'Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw' "tools/check-json-contracts-050-generated-games.ps1"
+Assert-ContainsText $coreText '$script:jsonContractSurfaceTextCache = @{}' "tools/check-json-contracts-core.ps1"
+Assert-ContainsText $coreText '$script:jsonContractSurfaceTextCache.ContainsKey($normalizedRelativePath)' "tools/check-json-contracts-core.ps1"
+Assert-ContainsText $coreText '$script:jsonContractSurfaceTextCache[$normalizedRelativePath] = $surfaceText' "tools/check-json-contracts-core.ps1"
+Assert-ContainsText $coreText '$script:jsonGameAgentManifestCache = $null' "tools/check-json-contracts-core.ps1"
+Assert-ContainsText $coreText 'function Get-GameAgentManifests' "tools/check-json-contracts-core.ps1"
+Assert-ContainsText $coreText 'function Get-GameAgentManifest' "tools/check-json-contracts-core.ps1"
+Assert-ContainsText $generatedGamesContractText 'foreach ($gameManifestEntry in Get-GameAgentManifests)' "tools/check-json-contracts-050-generated-games.ps1"
+Assert-ContainsText $gameDesignSpecContractText 'foreach ($gameManifestEntry in Get-GameAgentManifests)' "tools/check-json-contracts-060-game-design-spec.ps1"
+foreach ($gameManifestContractText in @($generatedGamesContractText, $gameDesignSpecContractText)) {
+    Assert-DoesNotContainText $gameManifestContractText 'Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json"' "check-json-contracts game manifest chapters"
+}
+$agentSurfacesContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-040-agent-surfaces.ps1") -Raw
+$historicalArchiveContractPath = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+Assert-ContainsText $agentSurfacesContractText ('$historicalVerdictArchiveText = Get-JsonContractSurfaceText "' + $historicalArchiveContractPath + '"') "tools/check-json-contracts-040-agent-surfaces.ps1"
+foreach ($forbiddenNeedle in @(
+    'Get-Content -Raw "' + $historicalArchiveContractPath + '"',
+    'Get-Content -LiteralPath (Join-Path $root "' + $historicalArchiveContractPath + '") -Raw'
+)) {
+    Assert-DoesNotContainText $agentSurfacesContractText $forbiddenNeedle "tools/check-json-contracts-040-agent-surfaces.ps1"
+}
 foreach ($forbiddenNeedle in @(
     'Join-Path $env:LOCALAPPDATA',
     'Join-Path $env:ProgramFiles'
@@ -826,6 +850,14 @@ foreach ($forbiddenNeedle in @(
     Assert-DoesNotContainText $mobilePackagingScriptText $forbiddenNeedle "tools/check-mobile-packaging.ps1"
     Assert-DoesNotContainText $androidReleasePackageScriptText $forbiddenNeedle "tools/check-android-release-package.ps1"
 }
+Assert-ContainsText $checkAiIntegrationCoreText '$sourceFiles += $newGameScript' "tools/check-ai-integration-core.ps1"
+Assert-ContainsText $checkAiIntegrationCoreText 'Select-String -LiteralPath $sourceFiles -Pattern "AssetId::from_name(" -SimpleMatch' "tools/check-ai-integration-core.ps1"
+Assert-DoesNotContainText $checkAiIntegrationCoreText 'foreach ($sourceFile in Get-ChildItem -LiteralPath $gamesRoot -Filter "*.cpp" -Recurse -File)' "tools/check-ai-integration-core.ps1"
+Assert-ContainsText $checkAiIntegrationCoreText '$script:agentGameManifestCache = $null' "tools/check-ai-integration-core.ps1"
+Assert-ContainsText $checkAiIntegrationCoreText 'function Get-AgentGameManifests' "tools/check-ai-integration-core.ps1"
+Assert-ContainsText $checkAiIntegrationCoreText 'function Get-AgentGameManifest' "tools/check-ai-integration-core.ps1"
+Assert-ContainsText $checkAiProductionLedgerText 'foreach ($gameManifestEntry in Get-AgentGameManifests)' "tools/check-ai-integration-070-production-ledger.ps1"
+Assert-DoesNotContainText $checkAiProductionLedgerText 'Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json"' "tools/check-ai-integration-070-production-ledger.ps1"
 foreach ($needle in @(
     ".github/workflows/validate.yml",
     ".github/workflows/ios-validate.yml",
@@ -885,7 +917,7 @@ foreach ($needle in @(
         Write-Error ".github/workflows/validate.yml missing required static-analysis lane text: $needle"
     }
 }
-$fullRepoStaticAnalysisPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$fullRepoStaticAnalysisPlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Full Repository Static Analysis CI Contract v1 Implementation Plan",
     "**Status:** Completed.",
@@ -900,7 +932,7 @@ foreach ($needle in @(
     }
 }
 
-$runtimeUiAccessibilityPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeUiAccessibilityPlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime UI Accessibility Publish Plan v1",
     "**Status:** Completed",
@@ -916,7 +948,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI accessibility publish plan missing required evidence: $needle"
     }
 }
-$runtimeUiImePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeUiImePlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime UI IME Composition Publish Plan v1",
     "**Status:** Completed",
@@ -932,7 +964,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI IME composition publish plan missing required evidence: $needle"
     }
 }
-$runtimeUiPlatformTextInputSessionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeUiPlatformTextInputSessionPlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime UI Platform Text Input Session Plan v1",
     "**Status:** Completed",
@@ -950,7 +982,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI platform text input session plan missing required evidence: $needle"
     }
 }
-$runtimeUiFontRasterizationRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeUiFontRasterizationRequestPlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime UI Font Rasterization Request Plan v1",
     "**Status:** Completed",
@@ -966,7 +998,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI font rasterization request plan missing required evidence: $needle"
     }
 }
-$runtimeUiTextShapingRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeUiTextShapingRequestPlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime UI Text Shaping Request Plan v1",
     "**Status:** Completed",
@@ -982,7 +1014,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI text shaping request plan missing required evidence: $needle"
     }
 }
-$runtimeUiImageDecodeRequestPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeUiImageDecodeRequestPlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime UI Image Decode Request Plan v1",
     "**Status:** Completed",
@@ -999,7 +1031,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI image decode request plan missing required evidence: $needle"
     }
 }
-$runtimeUiPngImageDecodingAdapterPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeUiPngImageDecodingAdapterPlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime UI PNG Image Decoding Adapter v1",
     "**Status:** Completed",
@@ -1014,7 +1046,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI PNG image decoding adapter plan missing required evidence: $needle"
     }
 }
-$runtimeUiDecodedImageAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeUiDecodedImageAtlasPackageBridgePlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime UI Decoded Image Atlas Package Bridge v1",
     "**Status:** Completed",
@@ -1031,7 +1063,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI decoded image atlas package bridge plan missing required evidence: $needle"
     }
 }
-$runtimeUiGlyphAtlasPackageBridgePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeUiGlyphAtlasPackageBridgePlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime UI Glyph Atlas Package Bridge v1",
     "**Status:** Completed",
@@ -1050,7 +1082,7 @@ foreach ($needle in @(
         Write-Error "Runtime UI glyph atlas package bridge plan missing required evidence: $needle"
     }
 }
-$runtimeInputRebindingCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeInputRebindingCapturePlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime Input Rebinding Capture Contract v1",
     "**Status:** Completed",
@@ -1063,7 +1095,7 @@ foreach ($needle in @(
         Write-Error "Runtime input rebinding capture plan missing required evidence: $needle"
     }
 }
-$runtimeInputRebindingFocusConsumptionPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeInputRebindingFocusConsumptionPlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime Input Rebinding Focus Consumption v1",
     "**Status:** Completed",
@@ -1078,7 +1110,7 @@ foreach ($needle in @(
         Write-Error "Runtime input rebinding focus consumption plan missing required evidence: $needle"
     }
 }
-$runtimeInputRebindingPresentationRowsPlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$runtimeInputRebindingPresentationRowsPlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Runtime Input Rebinding Presentation Rows v1",
     "**Status:** Completed",
@@ -1096,7 +1128,7 @@ foreach ($needle in @(
         Write-Error "Runtime input rebinding presentation rows plan missing required evidence: $needle"
     }
 }
-$editorInputRebindingActionCapturePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$editorInputRebindingActionCapturePlanText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Editor Input Rebinding Action Capture Panel v1",
     "**Status:** Completed",

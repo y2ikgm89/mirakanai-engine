@@ -721,22 +721,21 @@ foreach ($check in $prefabVariantConflictReviewChecks) {
     }
 }
 
-Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json" | ForEach-Object {
-    $gameManifest = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
+foreach ($gameManifestEntry in Get-AgentGameManifests) {
+    $gameManifest = $gameManifestEntry.Game
     foreach ($field in @("schemaVersion", "name", "entryPoint", "target", "aiWorkflow", "gameplayContract", "backendReadiness", "importerRequirements", "packagingTargets", "validationRecipes")) {
         if (-not $gameManifest.PSObject.Properties.Name.Contains($field)) {
-            Write-Error "Game manifest missing required field '$field': $($_.FullName)"
+            Write-Error "Game manifest missing required field '$field': $($gameManifestEntry.FullPath)"
         }
     }
     $entryPath = Join-Path $root $gameManifest.entryPoint
-    if (-not (Test-Path $entryPath)) {
+    if (-not (Test-Path -LiteralPath $entryPath)) {
         Write-Error "Game manifest entryPoint does not exist: $($gameManifest.entryPoint)"
     }
 }
 
 $sample2dManifestPath = "games/sample_2d_playable_foundation/game.agent.json"
-$sample2dManifestFullPath = Resolve-RequiredAgentPath $sample2dManifestPath
-$sample2dManifest = Get-Content -LiteralPath $sample2dManifestFullPath -Raw | ConvertFrom-Json
+$sample2dManifest = (Get-AgentGameManifest $sample2dManifestPath).Game
 if ($sample2dManifest.target -ne "sample_2d_playable_foundation") {
     Write-Error "$sample2dManifestPath target must be sample_2d_playable_foundation"
 }
@@ -756,8 +755,8 @@ if (@($sample2dManifest.packagingTargets) -contains "desktop-game-runtime") {
 }
 
 $sample2dDesktopManifestPath = "games/sample_2d_desktop_runtime_package/game.agent.json"
-$sample2dDesktopManifestFullPath = Resolve-RequiredAgentPath $sample2dDesktopManifestPath
-$sample2dDesktopManifest = Get-Content -LiteralPath $sample2dDesktopManifestFullPath -Raw | ConvertFrom-Json
+$sample2dDesktopManifestEntry = Get-AgentGameManifest $sample2dDesktopManifestPath
+$sample2dDesktopManifest = $sample2dDesktopManifestEntry.Game
 if ($sample2dDesktopManifest.target -ne "sample_2d_desktop_runtime_package") {
     Write-Error "$sample2dDesktopManifestPath target must be sample_2d_desktop_runtime_package"
 }
@@ -799,7 +798,7 @@ foreach ($attributeRule in @(
 )) {
     Assert-ContainsText $sample2dDesktopGitAttributes $attributeRule "games/sample_2d_desktop_runtime_package/runtime/.gitattributes"
 }
-$sample2dDesktopManifestText = Get-Content -LiteralPath $sample2dDesktopManifestFullPath -Raw
+$sample2dDesktopManifestText = $sample2dDesktopManifestEntry.Text
 foreach ($needle in @(
     "native 2D sprite package proof",
     "installed-native-2d-sprite-smoke",
@@ -1008,8 +1007,8 @@ Assert-AtlasTilemapAuthoringTarget `
     "runtime/assets/2d/player.texture.geasset"
 
 $sample3dManifestPath = "games/sample_desktop_runtime_game/game.agent.json"
-$sample3dManifestFullPath = Resolve-RequiredAgentPath $sample3dManifestPath
-$sample3dManifest = Get-Content -LiteralPath $sample3dManifestFullPath -Raw | ConvertFrom-Json
+$sample3dManifestEntry = Get-AgentGameManifest $sample3dManifestPath
+$sample3dManifest = $sample3dManifestEntry.Game
 if ($sample3dManifest.target -ne "sample_desktop_runtime_game") {
     Write-Error "$sample3dManifestPath target must be sample_desktop_runtime_game"
 }
@@ -1067,7 +1066,7 @@ foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", 
         Write-Error "$sample3dManifestPath validationRecipes missing $recipe"
     }
 }
-$sample3dManifestText = Get-Content -LiteralPath $sample3dManifestFullPath -Raw
+$sample3dManifestText = $sample3dManifestEntry.Text
 foreach ($needle in @(
     "material instance intent",
     "camera/controller movement",
