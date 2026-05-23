@@ -68,6 +68,7 @@ struct DesktopRuntimeOptions {
     bool require_native_2d_sprites{false};
     bool require_sprite_animation{false};
     bool require_sprite_sorting_layer{false};
+    bool require_sprite_9slice_tiled{false};
     bool require_tilemap_runtime_ux{false};
     bool require_gameplay_systems{false};
     bool require_procedural_generation{false};
@@ -3041,6 +3042,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
             package_scene_sprites_ = validation.visible_sprite_count;
 
             std::int32_t next_sorting_layer = 0;
+            std::size_t slice_config_index = 0;
             for (const auto& node : scene_.scene->nodes()) {
                 if (!node.components.sprite_renderer.has_value() || !node.components.sprite_renderer->visible) {
                     continue;
@@ -3048,6 +3050,19 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
                 auto components = node.components;
                 components.sprite_renderer->sorting_layer = next_sorting_layer;
                 ++next_sorting_layer;
+                if (slice_config_index == 0U) {
+                    components.sprite_renderer->draw_mode = mirakana::SpriteDrawMode::nine_slice;
+                    components.sprite_renderer->slice_border =
+                        mirakana::SpriteSliceBorder{.left = 0.25F, .bottom = 0.25F, .right = 0.25F, .top = 0.25F};
+                    components.sprite_renderer->size = mirakana::Vec2{.x = 4.0F, .y = 3.0F};
+                } else if (slice_config_index == 1U) {
+                    components.sprite_renderer->draw_mode = mirakana::SpriteDrawMode::tiled;
+                    components.sprite_renderer->slice_border =
+                        mirakana::SpriteSliceBorder{.left = 0.25F, .bottom = 0.25F, .right = 0.25F, .top = 0.25F};
+                    components.sprite_renderer->tile_size = mirakana::Vec2{.x = 1.0F, .y = 1.0F};
+                    components.sprite_renderer->size = mirakana::Vec2{.x = 6.0F, .y = 4.0F};
+                }
+                ++slice_config_index;
                 scene_.scene->set_components(node.id, components);
             }
         }
@@ -3149,7 +3164,8 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
             sprite_sort_layers_applied_ = sort_stats.sorting_layers_applied;
         }
         sprite_sorted_draws_ += sort_stats.sorted_draws;
-        const auto batch_plan = mirakana::plan_scene_sprite_batches(packet);
+        mirakana::SceneSpriteExpansionStats sprite_expansion_stats{};
+        const auto batch_plan = mirakana::plan_scene_sprite_batches(packet, &sprite_expansion_stats);
         const auto scene_submit = mirakana::submit_scene_render_packet(
             renderer_, packet, mirakana::SceneRenderSubmitDesc{.material_palette = &scene_.material_palette});
         sprite_batch_plan_ok_ = sprite_batch_plan_ok_ && batch_plan.succeeded();
@@ -3158,7 +3174,22 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         sprite_batch_plan_draws_ += batch_plan.draw_count;
         sprite_batch_plan_texture_binds_ += batch_plan.texture_bind_count;
         sprite_batch_plan_diagnostics_ += batch_plan.diagnostics.size();
+        scene_sprite_sources_submitted_ += sprite_expansion_stats.source_sprite_count;
         scene_sprites_submitted_ += scene_submit.sprites_submitted;
+        const auto& sprite_expansion = scene_submit.sprite_expansion;
+        sprite_9slice_tiled_source_sprites_ += sprite_expansion.source_sprite_count;
+        const auto nine_slice_expanded_quads = sprite_expansion.nine_slice_count * 9U;
+        const auto non_sliced_source_sprites =
+            sprite_expansion.source_sprite_count > (sprite_expansion.nine_slice_count + sprite_expansion.tiled_count)
+                ? sprite_expansion.source_sprite_count -
+                      (sprite_expansion.nine_slice_count + sprite_expansion.tiled_count)
+                : 0U;
+        const auto tiled_expanded_quads =
+            sprite_expansion.expanded_sprite_count > (non_sliced_source_sprites + nine_slice_expanded_quads)
+                ? sprite_expansion.expanded_sprite_count - non_sliced_source_sprites - nine_slice_expanded_quads
+                : 0U;
+        sprite_9slice_expanded_quads_ += nine_slice_expanded_quads;
+        sprite_tiled_expanded_quads_ += tiled_expanded_quads;
         sprite_batch_plan_atlas_backed_batches_ += batch_plan.atlas_backed_batch_count;
         sprite_batch_plan_repeated_atlas_batches_ += batch_plan.repeated_atlas_batch_count;
         sprite_batch_plan_repeated_atlas_sprites_ += batch_plan.repeated_atlas_sprite_count;
@@ -3208,15 +3239,13 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         return ui_ok_ && ui_text_updates_ok_ && validation_ok_ && audio_clip_registered_ &&
                jump_voice_ != mirakana::null_audio_voice && frames_ == expected_frames &&
                final_x_ == static_cast<float>(expected_frames) && primary_camera_seen_ &&
-               scene_sprites_submitted_ == expected_sprite_submissions && hud_boxes_submitted_ == expected_frames &&
-               sprite_batch_plan_ok_ && sprite_batch_plan_sprites_ == expected_sprite_submissions &&
-               sprite_batch_plan_textured_sprites_ == expected_sprite_submissions &&
-               sprite_batch_plan_draws_ == expected_frames && sprite_batch_plan_texture_binds_ == expected_frames &&
+               scene_sprite_sources_submitted_ == expected_sprite_submissions &&
+               scene_sprites_submitted_ > expected_sprite_submissions && hud_boxes_submitted_ == expected_frames &&
+               sprite_batch_plan_ok_ && sprite_batch_plan_draws_ == expected_frames &&
+               sprite_batch_plan_texture_binds_ == expected_frames &&
                sprite_batch_plan_atlas_backed_batches_ == expected_frames &&
-               sprite_batch_plan_repeated_atlas_batches_ == expected_frames &&
-               sprite_batch_plan_repeated_atlas_sprites_ == expected_sprite_submissions &&
-               sprite_batch_plan_diagnostics_ == 0 && sprite_animation_ok_ &&
-               sprite_animation_frames_sampled_ == expected_frames &&
+               sprite_batch_plan_repeated_atlas_batches_ == expected_frames && sprite_batch_plan_diagnostics_ == 0 &&
+               sprite_animation_ok_ && sprite_animation_frames_sampled_ == expected_frames &&
                sprite_animation_frames_applied_ == expected_frames && sprite_animation_diagnostics_ == 0 &&
                sprite_animation_selected_frame_sum_ > 0 && sprite_flipbook_ok_ &&
                sprite_flipbook_ticks_ == expected_frames && sprite_flipbook_frames_sampled_ == expected_frames &&
@@ -3357,6 +3386,22 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t tilemap_diagnostics() const noexcept {
         return tilemap_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t scene_sprite_sources_submitted() const noexcept {
+        return scene_sprite_sources_submitted_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_9slice_tiled_source_sprites() const noexcept {
+        return sprite_9slice_tiled_source_sprites_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_9slice_expanded_quads() const noexcept {
+        return sprite_9slice_expanded_quads_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_tiled_expanded_quads() const noexcept {
+        return sprite_tiled_expanded_quads_;
     }
 
     [[nodiscard]] bool gameplay_systems_passed(std::uint32_t expected_frames) const {
@@ -3714,10 +3759,14 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     mirakana::runtime::RuntimeTilemapPayload tilemap_;
     mirakana::AudioVoiceId jump_voice_;
     std::size_t scene_sprites_submitted_{0};
+    std::size_t scene_sprite_sources_submitted_{0};
     std::size_t hud_boxes_submitted_{0};
     std::size_t audio_commands_{0};
     std::size_t audio_underruns_{0};
     std::size_t package_scene_sprites_{0};
+    std::uint64_t sprite_9slice_tiled_source_sprites_{0};
+    std::uint64_t sprite_9slice_expanded_quads_{0};
+    std::uint64_t sprite_tiled_expanded_quads_{0};
     std::uint64_t sprite_batch_plan_sprites_{0};
     std::uint64_t sprite_batch_plan_textured_sprites_{0};
     std::uint64_t sprite_batch_plan_draws_{0};
@@ -3774,7 +3823,8 @@ void print_usage() {
                  "[--require-config PATH] --require-scene-package PATH "
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
-                 "[--require-sprite-animation] [--require-sprite-sorting-layer] [--require-tilemap-runtime-ux] "
+                 "[--require-sprite-animation] [--require-sprite-sorting-layer] [--require-sprite-9slice-tiled] "
+                 "[--require-tilemap-runtime-ux] "
                  "[--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
@@ -3822,6 +3872,10 @@ void print_usage() {
         }
         if (arg == "--require-sprite-sorting-layer") {
             options.require_sprite_sorting_layer = true;
+            continue;
+        }
+        if (arg == "--require-sprite-9slice-tiled") {
+            options.require_sprite_9slice_tiled = true;
             continue;
         }
         if (arg == "--require-tilemap-runtime-ux") {
@@ -4564,6 +4618,10 @@ int main(int argc, char** argv) {
         << " native_2d_sprite_batch_texture_binds=" << report.renderer_stats.native_sprite_batch_texture_binds
         << " frames=" << result.frames_run << " game_frames=" << game.frames() << " final_x=" << game.final_x()
         << " scene_sprites=" << game.scene_sprites_submitted()
+        << " scene_sprite_sources=" << game.scene_sprite_sources_submitted()
+        << " sprite_9slice_tiled_source_sprites=" << game.sprite_9slice_tiled_source_sprites()
+        << " sprite_9slice_expanded_quads=" << game.sprite_9slice_expanded_quads()
+        << " sprite_tiled_expanded_quads=" << game.sprite_tiled_expanded_quads()
         << " sprite_batch_plan_sprites=" << game.sprite_batch_plan_sprites()
         << " sprite_batch_plan_textured_sprites=" << game.sprite_batch_plan_textured_sprites()
         << " sprite_batch_plan_draws=" << game.sprite_batch_plan_draws()
@@ -4861,6 +4919,16 @@ int main(int argc, char** argv) {
                   << " sprite_sort_layers_applied=" << game.sprite_sort_layers_applied()
                   << " sprite_sorted_draws=" << game.sprite_sorted_draws() << '\n';
         return 23;
+    }
+
+    if (options.require_sprite_9slice_tiled &&
+        (game.sprite_9slice_tiled_source_sprites() == 0U || game.sprite_9slice_expanded_quads() == 0U ||
+         game.sprite_tiled_expanded_quads() == 0U)) {
+        std::cout << "sample_2d_desktop_runtime_package required_sprite_9slice_tiled_unavailable"
+                  << " sprite_9slice_tiled_source_sprites=" << game.sprite_9slice_tiled_source_sprites()
+                  << " sprite_9slice_expanded_quads=" << game.sprite_9slice_expanded_quads()
+                  << " sprite_tiled_expanded_quads=" << game.sprite_tiled_expanded_quads() << '\n';
+        return 24;
     }
 
     if (options.require_tilemap_runtime_ux &&

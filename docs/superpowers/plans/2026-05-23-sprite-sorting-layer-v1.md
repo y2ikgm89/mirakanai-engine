@@ -6,7 +6,7 @@
 
 **Plan ID:** `sprite-sorting-layer-v1`
 
-**Status:** Active.
+**Status:** Merged (PR #196).
 
 **Gap:** `sprite-sorting-layer-v1`
 

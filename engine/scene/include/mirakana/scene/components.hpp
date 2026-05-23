@@ -43,6 +43,15 @@ struct MeshRendererComponent {
 
 enum class SpriteSortingSpace : std::uint8_t { world_space, camera_space };
 
+enum class SpriteDrawMode : std::uint8_t { simple, nine_slice, tiled };
+
+struct SpriteSliceBorder {
+    float left{0.0F};
+    float bottom{0.0F};
+    float right{0.0F};
+    float top{0.0F};
+};
+
 struct SpriteRendererComponent {
     AssetId sprite;
     AssetId material;
@@ -52,6 +61,9 @@ struct SpriteRendererComponent {
     std::int32_t sorting_layer{0};
     std::int32_t order_in_layer{0};
     SpriteSortingSpace sorting_space{SpriteSortingSpace::world_space};
+    SpriteDrawMode draw_mode{SpriteDrawMode::simple};
+    SpriteSliceBorder slice_border{};
+    Vec2 tile_size{.x = 1.0F, .y = 1.0F};
 };
 
 struct SceneNodeComponents {
@@ -64,6 +76,9 @@ struct SceneNodeComponents {
 [[nodiscard]] bool is_valid_camera_component(const CameraComponent& camera) noexcept;
 [[nodiscard]] bool is_valid_light_component(const LightComponent& light) noexcept;
 [[nodiscard]] bool is_valid_mesh_renderer_component(const MeshRendererComponent& renderer) noexcept;
+[[nodiscard]] bool is_valid_sprite_draw_mode(SpriteDrawMode mode) noexcept;
+[[nodiscard]] bool is_valid_sprite_slice_border(const SpriteSliceBorder& border) noexcept;
+[[nodiscard]] bool is_valid_sprite_tile_size(Vec2 tile_size) noexcept;
 [[nodiscard]] bool is_valid_sprite_renderer_component(const SpriteRendererComponent& renderer) noexcept;
 [[nodiscard]] bool is_valid_scene_node_components(const SceneNodeComponents& components) noexcept;
 

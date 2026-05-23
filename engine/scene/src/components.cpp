@@ -99,13 +99,52 @@ namespace {
     return value >= -100000 && value <= 100000;
 }
 
+[[nodiscard]] bool valid_slice_border_component(float value) noexcept {
+    return finite_range(value, 0.0F, 0.49F);
+}
+
 } // namespace
 
+bool is_valid_sprite_draw_mode(SpriteDrawMode mode) noexcept {
+    switch (mode) {
+    case SpriteDrawMode::simple:
+    case SpriteDrawMode::nine_slice:
+    case SpriteDrawMode::tiled:
+        return true;
+    }
+    return false;
+}
+
+bool is_valid_sprite_slice_border(const SpriteSliceBorder& border) noexcept {
+    if (!valid_slice_border_component(border.left) || !valid_slice_border_component(border.bottom) ||
+        !valid_slice_border_component(border.right) || !valid_slice_border_component(border.top)) {
+        return false;
+    }
+    return border.left + border.right < 0.98F && border.bottom + border.top < 0.98F;
+}
+
+bool is_valid_sprite_tile_size(Vec2 tile_size) noexcept {
+    return finite_range(tile_size.x, 0.0001F, 1000000.0F) && finite_range(tile_size.y, 0.0001F, 1000000.0F);
+}
+
 bool is_valid_sprite_renderer_component(const SpriteRendererComponent& renderer) noexcept {
-    return renderer.sprite.value != 0 && renderer.material.value != 0 &&
-           finite_range(renderer.size.x, 0.0001F, 1000000.0F) && finite_range(renderer.size.y, 0.0001F, 1000000.0F) &&
-           valid_tint(renderer.tint) && valid_sprite_sorting_space(renderer.sorting_space) &&
-           valid_sorting_layer(renderer.sorting_layer) && valid_sorting_layer(renderer.order_in_layer);
+    if (renderer.sprite.value == 0 || renderer.material.value == 0 ||
+        !finite_range(renderer.size.x, 0.0001F, 1000000.0F) || !finite_range(renderer.size.y, 0.0001F, 1000000.0F) ||
+        !valid_tint(renderer.tint) || !valid_sprite_sorting_space(renderer.sorting_space) ||
+        !valid_sorting_layer(renderer.sorting_layer) || !valid_sorting_layer(renderer.order_in_layer) ||
+        !is_valid_sprite_draw_mode(renderer.draw_mode)) {
+        return false;
+    }
+    if (renderer.draw_mode == SpriteDrawMode::simple) {
+        return true;
+    }
+    if (!is_valid_sprite_slice_border(renderer.slice_border)) {
+        return false;
+    }
+    if (renderer.draw_mode == SpriteDrawMode::tiled) {
+        return is_valid_sprite_tile_size(renderer.tile_size);
+    }
+    return true;
 }
 
 bool is_valid_scene_node_components(const SceneNodeComponents& components) noexcept {

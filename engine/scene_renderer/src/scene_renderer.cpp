@@ -6,6 +6,8 @@
 #include "mirakana/animation/morph.hpp"
 #include "mirakana/renderer/sprite_batch.hpp"
 #include "mirakana/runtime_scene/runtime_scene.hpp"
+#include "mirakana/scene/components.hpp"
+#include "mirakana/scene/render_packet.hpp"
 
 #include <algorithm>
 #include <array>
@@ -13,6 +15,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -1001,11 +1004,194 @@ SpriteCommand make_scene_sprite_command(const SceneRenderSprite& sprite) noexcep
     };
 }
 
-SpriteBatchPlan plan_scene_sprite_batches(const SceneRenderPacket& packet) {
-    std::vector<SpriteCommand> sprites;
-    sprites.reserve(packet.sprites.size());
+namespace {
+
+constexpr float kSpriteSliceEpsilon = 0.000001F;
+
+struct SpriteSliceLayout {
+    float left_width{0.0F};
+    float center_width{0.0F};
+    float right_width{0.0F};
+    float bottom_height{0.0F};
+    float center_height{0.0F};
+    float top_height{0.0F};
+};
+
+[[nodiscard]] Vec2 rotate_local_offset(float local_x, float local_y, float rotation_radians) noexcept {
+    const auto cos_r = std::cos(rotation_radians);
+    const auto sin_r = std::sin(rotation_radians);
+    return Vec2{.x = (local_x * cos_r) - (local_y * sin_r), .y = (local_x * sin_r) + (local_y * cos_r)};
+}
+
+[[nodiscard]] std::optional<SpriteSliceLayout> make_sprite_slice_layout(float width, float height,
+                                                                        const SpriteSliceBorder& border) noexcept {
+    const auto left_width = border.left * width;
+    const auto right_width = border.right * width;
+    const auto bottom_height = border.bottom * height;
+    const auto top_height = border.top * height;
+    const auto center_width = width - left_width - right_width;
+    const auto center_height = height - bottom_height - top_height;
+    if (center_width <= kSpriteSliceEpsilon || center_height <= kSpriteSliceEpsilon) {
+        return std::nullopt;
+    }
+    return SpriteSliceLayout{
+        .left_width = left_width,
+        .center_width = center_width,
+        .right_width = right_width,
+        .bottom_height = bottom_height,
+        .center_height = center_height,
+        .top_height = top_height,
+    };
+}
+
+void append_scene_sprite_command(const SpriteCommand& base, float local_center_x, float local_center_y, float width,
+                                 float height, float u0, float v0, float u1, float v1,
+                                 std::vector<SpriteCommand>& out) {
+    if (width <= kSpriteSliceEpsilon || height <= kSpriteSliceEpsilon) {
+        return;
+    }
+
+    const auto offset = rotate_local_offset(local_center_x, local_center_y, base.transform.rotation_radians);
+    SpriteCommand command = base;
+    command.transform.position =
+        Vec2{.x = base.transform.position.x + offset.x, .y = base.transform.position.y + offset.y};
+    command.transform.scale = Vec2{.x = width, .y = height};
+    command.texture.uv_rect = SpriteUvRect{.u0 = u0, .v0 = v0, .u1 = u1, .v1 = v1};
+    out.push_back(command);
+}
+
+void append_stretched_slice_region(const SpriteCommand& base, const SpriteSliceLayout& layout, float region_left,
+                                   float region_bottom, float region_width, float region_height, float u0, float v0,
+                                   float u1, float v1, std::vector<SpriteCommand>& out) {
+    const auto total_width = layout.left_width + layout.center_width + layout.right_width;
+    const auto total_height = layout.bottom_height + layout.center_height + layout.top_height;
+    const auto local_center_x = (-total_width * 0.5F) + region_left + (region_width * 0.5F);
+    const auto local_center_y = (-total_height * 0.5F) + region_bottom + (region_height * 0.5F);
+    append_scene_sprite_command(base, local_center_x, local_center_y, region_width, region_height, u0, v0, u1, v1, out);
+}
+
+void append_tiled_slice_region(const SpriteCommand& base, const SpriteSliceLayout& layout, float region_left,
+                               float region_bottom, float region_width, float region_height, float tile_width,
+                               float tile_height, float u0, float v0, float u1, float v1,
+                               std::vector<SpriteCommand>& out) {
+    if (tile_width <= kSpriteSliceEpsilon || tile_height <= kSpriteSliceEpsilon) {
+        return;
+    }
+
+    const auto tiles_x = static_cast<std::uint32_t>(std::ceil(region_width / tile_width - kSpriteSliceEpsilon));
+    const auto tiles_y = static_cast<std::uint32_t>(std::ceil(region_height / tile_height - kSpriteSliceEpsilon));
+    for (std::uint32_t tile_y = 0; tile_y < tiles_y; ++tile_y) {
+        for (std::uint32_t tile_x = 0; tile_x < tiles_x; ++tile_x) {
+            const auto tile_left = region_left + (static_cast<float>(tile_x) * tile_width);
+            const auto tile_bottom = region_bottom + (static_cast<float>(tile_y) * tile_height);
+            const auto remaining_width = region_width - (static_cast<float>(tile_x) * tile_width);
+            const auto remaining_height = region_height - (static_cast<float>(tile_y) * tile_height);
+            const auto draw_width = std::min(tile_width, remaining_width);
+            const auto draw_height = std::min(tile_height, remaining_height);
+            append_stretched_slice_region(base, layout, tile_left, tile_bottom, draw_width, draw_height, u0, v0, u1, v1,
+                                          out);
+        }
+    }
+}
+
+void append_nine_slice_sprite_commands(const SpriteCommand& base, const SpriteSliceLayout& layout,
+                                       const SpriteSliceBorder& border, SpriteDrawMode draw_mode, Vec2 tile_size,
+                                       std::vector<SpriteCommand>& out) {
+    const float column_uv[4] = {0.0F, border.left, 1.0F - border.right, 1.0F};
+    const float row_uv[4] = {0.0F, border.bottom, 1.0F - border.top, 1.0F};
+    const float column_width[3] = {layout.left_width, layout.center_width, layout.right_width};
+    const float row_height[3] = {layout.bottom_height, layout.center_height, layout.top_height};
+
+    float region_left = 0.0F;
+    for (std::size_t column = 0; column < 3; ++column) {
+        float region_bottom = 0.0F;
+        for (std::size_t row = 0; row < 3; ++row) {
+            const auto region_width = column_width[column];
+            const auto region_height = row_height[row];
+            const auto u0 = column_uv[column];
+            const auto u1 = column_uv[column + 1U];
+            const auto v0 = row_uv[row];
+            const auto v1 = row_uv[row + 1U];
+            const bool is_center = column == 1U && row == 1U;
+            const bool is_edge = !is_center && (column == 1U || row == 1U);
+
+            if (draw_mode == SpriteDrawMode::tiled && (is_center || is_edge)) {
+                auto tile_width = region_width;
+                auto tile_height = region_height;
+                if (is_center) {
+                    tile_width = tile_size.x;
+                    tile_height = tile_size.y;
+                } else if (column == 1U) {
+                    tile_width = tile_size.x;
+                } else if (row == 1U) {
+                    tile_height = tile_size.y;
+                }
+                append_tiled_slice_region(base, layout, region_left, region_bottom, region_width, region_height,
+                                          tile_width, tile_height, u0, v0, u1, v1, out);
+            } else {
+                append_stretched_slice_region(base, layout, region_left, region_bottom, region_width, region_height, u0,
+                                              v0, u1, v1, out);
+            }
+            region_bottom += region_height;
+        }
+        region_left += column_width[column];
+    }
+}
+
+void append_expanded_scene_sprite_commands(const SceneRenderSprite& sprite, std::vector<SpriteCommand>& out,
+                                           SceneSpriteExpansionStats& stats) {
+    ++stats.source_sprite_count;
+    const auto base = make_scene_sprite_command(sprite);
+    const auto& renderer = sprite.renderer;
+
+    if (renderer.draw_mode == SpriteDrawMode::simple) {
+        out.push_back(base);
+        ++stats.expanded_sprite_count;
+        return;
+    }
+    if (!is_valid_sprite_slice_border(renderer.slice_border) ||
+        (renderer.draw_mode == SpriteDrawMode::tiled && !is_valid_sprite_tile_size(renderer.tile_size))) {
+        out.push_back(base);
+        ++stats.expanded_sprite_count;
+        return;
+    }
+
+    const auto layout = make_sprite_slice_layout(base.transform.scale.x, base.transform.scale.y, renderer.slice_border);
+    if (!layout.has_value()) {
+        out.push_back(base);
+        ++stats.expanded_sprite_count;
+        return;
+    }
+
+    if (renderer.draw_mode == SpriteDrawMode::nine_slice) {
+        ++stats.nine_slice_count;
+    } else if (renderer.draw_mode == SpriteDrawMode::tiled) {
+        ++stats.tiled_count;
+    }
+
+    const auto before = out.size();
+    append_nine_slice_sprite_commands(base, *layout, renderer.slice_border, renderer.draw_mode, renderer.tile_size,
+                                      out);
+    stats.expanded_sprite_count += out.size() - before;
+}
+
+} // namespace
+
+SceneSpriteExpansionStats expand_scene_sprite_commands(const SceneRenderPacket& packet,
+                                                       std::vector<SpriteCommand>& out) {
+    SceneSpriteExpansionStats stats;
+    out.reserve(out.size() + packet.sprites.size() * 9U);
     for (const auto& sprite : packet.sprites) {
-        sprites.push_back(make_scene_sprite_command(sprite));
+        append_expanded_scene_sprite_commands(sprite, out, stats);
+    }
+    return stats;
+}
+
+SpriteBatchPlan plan_scene_sprite_batches(const SceneRenderPacket& packet, SceneSpriteExpansionStats* expansion_stats) {
+    std::vector<SpriteCommand> sprites;
+    const auto stats = expand_scene_sprite_commands(packet, sprites);
+    if (expansion_stats != nullptr) {
+        *expansion_stats = stats;
     }
     return plan_sprite_batches(sprites);
 }
@@ -1393,8 +1579,10 @@ SceneRenderSubmitResult submit_scene_render_packet(IRenderer& renderer, const Sc
         ++result.meshes_submitted;
     }
 
-    for (const auto& sprite : packet.sprites) {
-        renderer.draw_sprite(make_scene_sprite_command(sprite));
+    std::vector<SpriteCommand> expanded_sprites;
+    result.sprite_expansion = expand_scene_sprite_commands(packet, expanded_sprites);
+    for (const auto& command : expanded_sprites) {
+        renderer.draw_sprite(command);
         ++result.sprites_submitted;
     }
 
