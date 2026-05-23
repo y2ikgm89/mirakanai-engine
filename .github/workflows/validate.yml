@@ -13,7 +13,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   changes:
@@ -153,7 +153,8 @@ jobs:
           Write-Information "windows-toolchain-cache-identity=$identity" -InformationAction Continue
 
       - name: Restore vcpkg package cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        id: restore-vcpkg-package
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: out/vcpkg
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
@@ -161,7 +162,8 @@ jobs:
             ${{ runner.os }}-vcpkg-
 
       - name: Restore vcpkg installed cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        id: restore-vcpkg-installed
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: vcpkg_installed
           key: ${{ runner.os }}-vcpkg-installed-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
@@ -185,6 +187,22 @@ jobs:
       - name: Validate
         shell: pwsh
         run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke
+
+      - name: Save vcpkg package cache
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-package.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/vcpkg
+          key: ${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}
+
+      - name: Save vcpkg installed cache
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-installed.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: vcpkg_installed
+          key: ${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}
 
       - name: Save Windows dev build cache
         if: ${{ success() && !cancelled() && steps.restore-dev-build.outputs.cache-hit != 'true' }}
@@ -283,7 +301,8 @@ jobs:
           Write-Information "windows-toolchain-cache-identity=$identity" -InformationAction Continue
 
       - name: Restore vcpkg package cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        id: restore-vcpkg-package
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: out/vcpkg
           key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
@@ -291,7 +310,8 @@ jobs:
             ${{ runner.os }}-vcpkg-
 
       - name: Restore vcpkg installed cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        id: restore-vcpkg-installed
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: vcpkg_installed
           key: ${{ runner.os }}-vcpkg-installed-${{ hashFiles('vcpkg.json', 'tools/bootstrap-deps.ps1') }}
@@ -318,6 +338,22 @@ jobs:
       - name: C++23 Release Evaluation
         shell: pwsh
         run: ./tools/evaluate-cpp23.ps1 -Release
+
+      - name: Save vcpkg package cache
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-package.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: out/vcpkg
+          key: ${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}
+
+      - name: Save vcpkg installed cache
+        if: ${{ success() && !cancelled() && steps.restore-vcpkg-installed.outputs.cache-hit != 'true' }}
+        continue-on-error: true
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: vcpkg_installed
+          key: ${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}
 
       - name: Save Windows C++23 build cache
         if: ${{ success() && !cancelled() && steps.restore-cpp23-build.outputs.cache-hit != 'true' }}
@@ -347,6 +383,7 @@ jobs:
         with:
           name: windows-packages
           retention-days: 14
+          compression-level: 0
           include-hidden-files: false
           path: |
             out/build/cpp23-release-preset-eval/*.zip
@@ -651,7 +688,7 @@ jobs:
         if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: static-analysis-tidy-logs
+          name: static-analysis-tidy-logs-${{ matrix.shard_index }}
           retention-days: 14
           include-hidden-files: false
           path: |

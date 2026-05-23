@@ -363,7 +363,7 @@ Assert-ContainsAll $validateWorkflow @(
     "contents: read",
     "concurrency:",
     'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
-    "cancel-in-progress: `${{ github.event_name == 'pull_request' }}"
+    "cancel-in-progress: true"
 ) ".github/workflows/validate.yml triggers"
 
 $changesJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "changes" -Label ".github/workflows/validate.yml"
@@ -408,6 +408,8 @@ Assert-ContainsAll $windowsJob @(
     "windows-toolchain-cache-identity",
     "Restore vcpkg installed cache",
     "Restore vcpkg package cache",
+    "id: restore-vcpkg-package",
+    "id: restore-vcpkg-installed",
     "path: out/vcpkg",
     "path: vcpkg_installed",
     "Restore Windows dev build cache",
@@ -419,6 +421,12 @@ Assert-ContainsAll $windowsJob @(
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke",
+    "Save vcpkg package cache",
+    "Save vcpkg installed cache",
+    "steps.restore-vcpkg-package.outputs.cache-hit != 'true'",
+    "steps.restore-vcpkg-installed.outputs.cache-hit != 'true'",
+    "key: `${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}",
     "Save Windows dev build cache",
     "continue-on-error: true",
     $cacheSaveActionRef,
@@ -455,6 +463,8 @@ Assert-ContainsAll $windowsCpp23Job @(
     "windows-toolchain-cache-identity",
     "Restore vcpkg installed cache",
     "Restore vcpkg package cache",
+    "id: restore-vcpkg-package",
+    "id: restore-vcpkg-installed",
     "path: out/vcpkg",
     "path: vcpkg_installed",
     "Restore Windows C++23 build cache",
@@ -468,6 +478,12 @@ Assert-ContainsAll $windowsCpp23Job @(
     "restore-cpp23-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/evaluate-cpp23.ps1 -Release",
+    "Save vcpkg package cache",
+    "Save vcpkg installed cache",
+    "steps.restore-vcpkg-package.outputs.cache-hit != 'true'",
+    "steps.restore-vcpkg-installed.outputs.cache-hit != 'true'",
+    "key: `${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}",
     "Save Windows C++23 build cache",
     "continue-on-error: true",
     $cacheSaveActionRef,
@@ -482,6 +498,7 @@ Assert-ContainsAll $windowsCpp23Job @(
     "if-no-files-found: warn",
     "name: windows-packages",
     "retention-days: 14",
+    "compression-level: 0",
     "include-hidden-files: false",
     "out/build/cpp23-release-preset-eval/*.zip",
     "out/build/cpp23-release-preset-eval/*.zip.sha256",
@@ -729,7 +746,7 @@ Assert-ContainsAll $staticAnalysisJob @(
     'if: ${{ always() && !cancelled() }}',
     'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
-    "name: static-analysis-tidy-logs",
+    'name: static-analysis-tidy-logs-${{ matrix.shard_index }}',
     "retention-days: 14",
     "include-hidden-files: false",
     "out/build/ci-linux-tidy/compile_commands.json",
@@ -784,7 +801,7 @@ Assert-ContainsAll $iosWorkflow @(
     "contents: read",
     "concurrency:",
     'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
-    "cancel-in-progress: `${{ github.event_name == 'pull_request' }}"
+    "cancel-in-progress: true"
 ) ".github/workflows/ios-validate.yml triggers and path filters"
 
 $iosJob = Get-WorkflowJobText -WorkflowText $iosWorkflow -JobName "simulator-smoke" -Label ".github/workflows/ios-validate.yml"

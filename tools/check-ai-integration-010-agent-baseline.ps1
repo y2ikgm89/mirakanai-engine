@@ -1814,6 +1814,7 @@ Assert-ContainsText $mobilePackagingScriptText 'Kill($true)' "tools/check-mobile
 Assert-ContainsText $mobilePackagingScriptText "OutputWaitMilliseconds" "tools/check-mobile-packaging.ps1"
 Assert-ContainsText $mobilePackagingScriptText "probe-timeout" "tools/check-mobile-packaging.ps1"
 Assert-ContainsText $mobilePackagingScriptText "blocker kind=" "tools/check-mobile-packaging.ps1"
+Assert-DoesNotContainText $mobilePackagingScriptText '$childProcess.WaitForExit()' "tools/check-mobile-packaging.ps1"
 Assert-ContainsText $workflowsContent "kind=<slug>" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "probe-timeout" "docs/workflows.md"
 Assert-ContainsText $appleHostEvidenceScriptText "apple-host-helpers.ps1" "tools/check-apple-host-evidence.ps1"

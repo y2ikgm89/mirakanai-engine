@@ -63,14 +63,14 @@ function Add-MobilePackagingBlocker {
     $Blockers.Add((Get-MobilePackagingBlocker -Kind $Kind -Message $Message)) | Out-Null
 }
 
-function Write-MobilePackagingBlockers {
+function Write-MobilePackagingBlocker {
     param(
         [Parameter(Mandatory = $true)][string]$Prefix,
         [Parameter(Mandatory = $true)]$Blockers
     )
 
     foreach ($blocker in $Blockers) {
-        Write-Host "${Prefix}: blocker kind=$($blocker.Kind) - $($blocker.Message)"
+        Write-Information "${Prefix}: blocker kind=$($blocker.Kind) - $($blocker.Message)" -InformationAction Continue
     }
 }
 
@@ -231,12 +231,24 @@ function Invoke-MobilePackagingProbe {
                 }
             }
         }
-        else {
-            $childProcess.WaitForExit()
-        }
-
         $standardOutputCompleted = $standardOutputTask.Wait($OutputWaitMilliseconds)
         $standardErrorCompleted = $standardErrorTask.Wait($OutputWaitMilliseconds)
+        if (-not $standardOutputCompleted) {
+            try {
+                $childProcess.StandardOutput.Dispose()
+            }
+            catch {
+                $null = $_.Exception
+            }
+        }
+        if (-not $standardErrorCompleted) {
+            try {
+                $childProcess.StandardError.Dispose()
+            }
+            catch {
+                $null = $_.Exception
+            }
+        }
         $standardOutput = if ($standardOutputCompleted) { $standardOutputTask.Result } else { "" }
         $standardError = if ($standardErrorCompleted) { $standardErrorTask.Result } else { "" }
         $probeTimedOut = $timedOut -or -not $standardOutputCompleted -or -not $standardErrorCompleted
@@ -262,7 +274,7 @@ function Invoke-MobilePackagingProbe {
     }
 }
 
-function Get-MobilePackagingAndroidAvdNames {
+function Get-MobilePackagingAndroidAvdNameList {
     param(
         [string]$Emulator,
         [int]$TimeoutSeconds = 5
@@ -356,7 +368,7 @@ $emulator = Find-AndroidEmulatorCommand
 $androidAvdProbeTimedOut = $false
 $androidAvds = @()
 if ($emulator) {
-    $androidAvdProbe = Get-MobilePackagingAndroidAvdNames -Emulator $emulator
+    $androidAvdProbe = Get-MobilePackagingAndroidAvdNameList -Emulator $emulator
     $androidAvdProbeTimedOut = $androidAvdProbe.TimedOut
     $androidAvds = @($androidAvdProbe.Names)
 }
@@ -423,67 +435,67 @@ if ($hostIsAppleOs -and $xcodebuild -and $xcrun) {
 $appleSigningReady = -not [string]::IsNullOrWhiteSpace($env:MK_IOS_DEVELOPMENT_TEAM)
 
 if ($androidBlockers.Count -eq 0) {
-    Write-Host "mobile-packaging: android=ready"
+    Write-Information "mobile-packaging: android=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android=blocked"
-    Write-MobilePackagingBlockers -Prefix "mobile-packaging" -Blockers $androidBlockers
+    Write-Information "mobile-packaging: android=blocked" -InformationAction Continue
+    Write-MobilePackagingBlocker -Prefix "mobile-packaging" -Blockers $androidBlockers
 }
 
 if ($appleBlockers.Count -eq 0) {
-    Write-Host "mobile-packaging: apple=ready"
+    Write-Information "mobile-packaging: apple=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: apple=blocked"
-    Write-MobilePackagingBlockers -Prefix "mobile-packaging" -Blockers $appleBlockers
+    Write-Information "mobile-packaging: apple=blocked" -InformationAction Continue
+    Write-MobilePackagingBlocker -Prefix "mobile-packaging" -Blockers $appleBlockers
 }
 
 if ($androidReleaseSigningReady) {
-    Write-Host "mobile-packaging: android-release-signing=ready"
+    Write-Information "mobile-packaging: android-release-signing=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android-release-signing=not-configured"
+    Write-Information "mobile-packaging: android-release-signing=not-configured" -InformationAction Continue
 }
 
 if ($emulator) {
-    Write-Host "mobile-packaging: android-emulator=ready"
+    Write-Information "mobile-packaging: android-emulator=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android-emulator=not-installed"
+    Write-Information "mobile-packaging: android-emulator=not-installed" -InformationAction Continue
 }
 
 if ($androidAvdProbeTimedOut) {
-    Write-Host "mobile-packaging: android-avd=probe-timeout"
+    Write-Information "mobile-packaging: android-avd=probe-timeout" -InformationAction Continue
 }
 elseif ($androidAvds.Count -gt 0) {
-    Write-Host "mobile-packaging: android-avd=ready ($($androidAvds -join ', '))"
+    Write-Information "mobile-packaging: android-avd=ready ($($androidAvds -join ', '))" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android-avd=not-configured"
+    Write-Information "mobile-packaging: android-avd=not-configured" -InformationAction Continue
 }
 
 if ($androidDeviceProbeTimedOut) {
-    Write-Host "mobile-packaging: android-device-smoke=probe-timeout"
+    Write-Information "mobile-packaging: android-device-smoke=probe-timeout" -InformationAction Continue
 }
 elseif ($androidDeviceReady) {
-    Write-Host "mobile-packaging: android-device-smoke=ready"
+    Write-Information "mobile-packaging: android-device-smoke=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android-device-smoke=not-connected"
+    Write-Information "mobile-packaging: android-device-smoke=not-connected" -InformationAction Continue
 }
 
 if ($appleSimulatorReady) {
-    Write-Host "mobile-packaging: apple-simulator=ready"
+    Write-Information "mobile-packaging: apple-simulator=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: apple-simulator=not-installed"
+    Write-Information "mobile-packaging: apple-simulator=not-installed" -InformationAction Continue
 }
 
 if ($appleSigningReady) {
-    Write-Host "mobile-packaging: apple-signing=ready"
+    Write-Information "mobile-packaging: apple-signing=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: apple-signing=not-configured"
+    Write-Information "mobile-packaging: apple-signing=not-configured" -InformationAction Continue
 }
 
 if ($RequireAndroid -and $androidBlockers.Count -gt 0) {
@@ -494,4 +506,4 @@ if ($RequireApple -and $appleBlockers.Count -gt 0) {
     Write-Error "Apple mobile packaging is blocked by missing local tools."
 }
 
-Write-Host "mobile-packaging-check: diagnostic-only"
+Write-Information "mobile-packaging-check: diagnostic-only" -InformationAction Continue
