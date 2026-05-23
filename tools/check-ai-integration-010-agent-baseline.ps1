@@ -129,6 +129,7 @@ Assert-ContainsText $agentsContent "-Jobs 0" "AGENTS.md"
 Assert-ContainsText $agentsContent "lcov --ignore-errors unused" "AGENTS.md"
 Assert-ContainsText $agentsContent "runtime/.gitattributes" "AGENTS.md"
 Assert-ContainsText $agentsContent "tools/new-game-templates.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "tools/static-contract-common.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "tools/static-contract-ledger.ps1" "AGENTS.md"
 Assert-ContainsText $agentsContent "numeric-prefix discovery" "AGENTS.md"
 Assert-ContainsText $agentsContent "GitHub account billing/spending-limit" "AGENTS.md"
@@ -149,6 +150,7 @@ foreach ($productionPromptNeedle in @("Production Completion Prompt", "currentAc
 }
 Assert-ContainsText $workflowsContent "Agent Surface Governance" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "agent-surface drift check" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "tools/static-contract-common.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "without hand-listed chapter rosters" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Keep drift checks targeted" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "OpenAI developer documentation MCP" "docs/workflows.md"
@@ -448,7 +450,7 @@ foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "c
     Assert-ContainsText $planRegistryContent $planVolumeNeedle "docs/superpowers/plans/README.md"
 }
 Assert-ProductionCompletionCorpus
-Assert-SpecStatusSections
+Assert-SpecStatusSection
 
 $aiIntegrationContent = Get-AgentSurfaceText "docs/ai-integration.md"
 Assert-ContainsText $aiIntegrationContent "Codex rules: https://developers.openai.com/codex/rules" "docs/ai-integration.md"

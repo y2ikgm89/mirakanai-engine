@@ -697,6 +697,8 @@ $classifierScriptText = Get-Content -LiteralPath (Join-Path $root "tools/classif
 $validateWorkflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw
 $validateScriptText = Get-Content -LiteralPath (Join-Path $root "tools/validate.ps1") -Raw
 $commonScriptText = Get-Content -LiteralPath (Join-Path $root "tools/common.ps1") -Raw
+$checkAiIntegrationText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration.ps1") -Raw
+$checkJsonContractsText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts.ps1") -Raw
 $mobilePackagingScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-mobile-packaging.ps1") -Raw
 $androidReleasePackageScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-android-release-package.ps1") -Raw
 if (-not $validateScriptText.Contains("check-ci-matrix.ps1")) {
@@ -716,6 +718,19 @@ foreach ($commonHelperNeedle in @(
     )) {
     Assert-ContainsText $commonScriptText $commonHelperNeedle "tools/common.ps1"
 }
+$staticContractCommonPath = Join-Path $root "tools/static-contract-common.ps1"
+if (-not (Test-Path -LiteralPath $staticContractCommonPath -PathType Leaf)) {
+    Write-Error "tools/static-contract-common.ps1 must exist for shared static contract assertions"
+}
+$staticContractCommonText = Get-Content -LiteralPath $staticContractCommonPath -Raw
+$staticContractCommonLineCount = (Get-Content -LiteralPath $staticContractCommonPath).Count
+if ($staticContractCommonLineCount -gt 240) {
+    Write-Error "tools/static-contract-common.ps1 must stay below 240 lines; found $staticContractCommonLineCount"
+}
+Assert-ContainsText $staticContractCommonText "function Assert-ProductionCompletionCorpus" "tools/static-contract-common.ps1"
+Assert-ContainsText $staticContractCommonText "function Assert-SpecStatusSection" "tools/static-contract-common.ps1"
+Assert-ContainsText $checkAiIntegrationText 'static-contract-common.ps1' "tools/check-ai-integration.ps1"
+Assert-ContainsText $checkJsonContractsText 'static-contract-common.ps1' "tools/check-json-contracts.ps1"
 $staticContractLedgerText = Get-Content -LiteralPath (Join-Path $root "tools/static-contract-ledger.ps1") -Raw
 Assert-ContainsText $staticContractLedgerText "function Get-StaticContractSectionFile" "tools/static-contract-ledger.ps1"
 Assert-ContainsText $staticContractLedgerText "Get-ChildItem -LiteralPath" "tools/static-contract-ledger.ps1"
@@ -745,6 +760,9 @@ foreach ($staticContractLedger in Get-StaticContractLedger) {
     if ($coreLineCount -gt $staticContractLedger.MaximumCoreLines) {
         Write-Error "$($staticContractLedger.CoreScript) must keep reusable helpers bounded; found $coreLineCount lines"
     }
+    Assert-DoesNotContainText $coreText "function Assert-ProductionCompletionCorpus" $staticContractLedger.CoreScript
+    Assert-DoesNotContainText $coreText "function Assert-SpecStatusSection" $staticContractLedger.CoreScript
+    Assert-DoesNotContainText $coreText "function Assert-SpecStatusSections" $staticContractLedger.CoreScript
 
     foreach ($sectionFile in $staticContractLedger.SectionFiles) {
         Assert-DoesNotContainText $entryText $sectionFile $staticContractLedger.EntryScript
