@@ -4,7 +4,7 @@
 
 **Plan ID:** `candidate-backlog-burn-down-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Parent index:** [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
@@ -43,7 +43,7 @@ Implement all 7 canonical `candidate` rows in [04-developer-owned-engine-capabil
 - [x] 4. [sprite-effects-particles-v1](2026-05-23-sprite-effects-particles-v1.md) — runtime, scene renderer, selected package counters
 - [x] 5. [sprite-editor-preview-diagnostics-v1](2026-05-23-sprite-editor-preview-diagnostics-v1.md) — editor core, runtime diagnostics
 - [x] 6. [navigation-hierarchical-world-v1](2026-05-23-navigation-hierarchical-world-v1.md) — navigation, world-region streaming refs (PR #203)
-- [x] 7. [simulation-persistence-v1](2026-05-24-simulation-persistence-v1.md) — session/snapshot layer on `MK_runtime` (local validation complete; PR pending)
+- [x] 7. [simulation-persistence-v1](2026-05-24-simulation-persistence-v1.md) — session/snapshot layer on `MK_runtime` (PR #204)
 
 ## Done when
 
@@ -60,4 +60,4 @@ Implement all 7 canonical `candidate` rows in [04-developer-owned-engine-capabil
 | sprite-effects-particles-v1 | #201 | `817915966a293fca645bb593a9714efda558419a` | pass | `RuntimeSpriteEffectParticleRequest`, deterministic active/spawn/render rows, scene renderer bridge, selected package counters, focused test/smoke evidence, and 76/76 `validate.ps1` tests |
 | sprite-editor-preview-diagnostics-v1 | #202 | `0ec60fa33ed2915aee5603c92b4f1243c4be9346` | pass | `EditorSpritePreviewDiagnosticsModel`, host-owned `EditorSpritePreviewExecutionSnapshot`, selected sprite/atlas/animation/sorting/dependency/collision diagnostics, retained UI rows, focused `MK_editor_core_tests`/`check-tidy` evidence, full `validate.ps1` 76/76 test evidence, and D3D12 queue-qualified lifetime CI fix from PR #202 |
 | navigation-hierarchical-world-v1 | #203 | `01d87b1e13691585aac6b27572b1c05d278896cf` | pass | `NavigationHierarchicalWorldPathRequest`, `plan_navigation_hierarchical_world_path`, `RuntimeWorldRegionNavigationRefReviewRequest`, `RuntimeWorldRegionNavigationPathCacheReviewRequest`, `review_runtime_world_region_navigation_refs`, `review_runtime_world_region_navigation_path_cache`, focused `MK_navigation_tests`/`MK_runtime_world_region_streaming_tests`, focused static checks, full `validate.ps1` 76/76 test evidence, hosted Windows cache restore/save hardening, and merged PR evidence |
-| simulation-persistence-v1 | pending | pending | pass | `RuntimeSimulationPersistenceRequest`, `RuntimeSimulationPersistencePlan`, `RuntimeSimulationPersistentEntityRow`, `RuntimeSimulationPersistenceMigrationStep`, `RuntimeSimulationPersistenceRemediationAction`, and `plan_runtime_simulation_persistence` for value-only save-slot/world/snapshot/tick review, deterministic entity rows, reachable schema migration chains, non-save document recovery, corrupt/unsupported save remediation, docs/manifest/static-check synchronization, focused validation, and full `validate.ps1` 76/76 test evidence; PR publication pending |
+| simulation-persistence-v1 | #204 | `971cee3f6c5b42965721c06974bc506f1b35508c` | pass | `RuntimeSimulationPersistenceRequest`, `RuntimeSimulationPersistencePlan`, `RuntimeSimulationPersistentEntityRow`, `RuntimeSimulationPersistenceMigrationStep`, `RuntimeSimulationPersistenceRemediationAction`, and `plan_runtime_simulation_persistence` for value-only save-slot/world/snapshot/tick review, deterministic entity rows, reachable schema migration chains, non-save document recovery, corrupt/unsupported save remediation, docs/manifest/static-check synchronization, focused validation, full `validate.ps1` 76/76 test evidence, hosted PR Gate success, and merged PR evidence |

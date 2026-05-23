@@ -2245,6 +2245,19 @@ if ($runtimeResourceGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop runtime-resource-v2 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
+}
+if ($productionLoop.recommendedNextPlan.id -eq "simulation-persistence-v1") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.id must not point at merged simulation-persistence-v1"
+}
+Assert-ContainsText $recommendedText "Candidate Backlog Burn-down v1 completed all seven canonical post-1.0 candidate rows" "engine/agent/manifest.json candidate backlog closeout evidence"
+Assert-ContainsText $recommendedText "PR #204" "engine/agent/manifest.json simulation persistence PR closeout evidence"
+Assert-ContainsText $recommendedText "971cee3f6c5b42965721c06974bc506f1b35508c" "engine/agent/manifest.json simulation persistence merge evidence"
+Assert-ContainsText $recommendedText "plan_runtime_simulation_persistence" "engine/agent/manifest.json simulation persistence closeout evidence"
+$candidateBacklogPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md"
+Assert-ContainsText $candidateBacklogPlanText "**Status:** Completed." "Candidate Backlog Burn-down v1 status"
+Assert-ContainsText $candidateBacklogPlanText '| simulation-persistence-v1 | #204 | `971cee3f6c5b42965721c06974bc506f1b35508c` | pass |' "Candidate Backlog Burn-down v1 simulation persistence closeout row"
 foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
