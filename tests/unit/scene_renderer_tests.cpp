@@ -522,10 +522,13 @@ MK_TEST("scene sprite tiled expansion emits repeated center tiles") {
     MK_REQUIRE(stats.expanded_sprite_count == 20);
     MK_REQUIRE(commands.size() == stats.expanded_sprite_count);
 
-    const auto center_tiles = std::ranges::count_if(commands, [](const mirakana::SpriteCommand& command) {
-        return command.texture.uv_rect.u0 >= 0.24F && command.texture.uv_rect.u1 <= 0.76F &&
-               command.texture.uv_rect.v0 >= 0.24F && command.texture.uv_rect.v1 <= 0.76F;
-    });
+    std::size_t center_tiles = 0;
+    for (const mirakana::SpriteCommand& command : commands) {
+        if (command.texture.uv_rect.u0 >= 0.24F && command.texture.uv_rect.u1 <= 0.76F &&
+            command.texture.uv_rect.v0 >= 0.24F && command.texture.uv_rect.v1 <= 0.76F) {
+            ++center_tiles;
+        }
+    }
     MK_REQUIRE(center_tiles == 6);
 }
 
