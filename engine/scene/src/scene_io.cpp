@@ -215,6 +215,48 @@ SpriteSortingSpace parse_sprite_sorting_space(std::string_view value) {
     throw std::invalid_argument("sprite sorting space is unsupported");
 }
 
+std::string_view sprite_draw_mode_name(SpriteDrawMode mode) noexcept {
+    switch (mode) {
+    case SpriteDrawMode::simple:
+        return "simple";
+    case SpriteDrawMode::nine_slice:
+        return "nine_slice";
+    case SpriteDrawMode::tiled:
+        return "tiled";
+    }
+    return "simple";
+}
+
+SpriteDrawMode parse_sprite_draw_mode(std::string_view value) {
+    if (value == "simple") {
+        return SpriteDrawMode::simple;
+    }
+    if (value == "nine_slice") {
+        return SpriteDrawMode::nine_slice;
+    }
+    if (value == "tiled") {
+        return SpriteDrawMode::tiled;
+    }
+    throw std::invalid_argument("sprite draw mode is unsupported");
+}
+
+SpriteSliceBorder parse_sprite_slice_border(std::string_view value) {
+    const auto first = value.find(',');
+    const auto second = first == std::string_view::npos ? std::string_view::npos : value.find(',', first + 1);
+    const auto third = second == std::string_view::npos ? std::string_view::npos : value.find(',', second + 1);
+    if (first == std::string_view::npos || second == std::string_view::npos || third == std::string_view::npos ||
+        value.find(',', third + 1) != std::string_view::npos) {
+        throw std::invalid_argument("sprite renderer slice border must use left,bottom,right,top");
+    }
+
+    return SpriteSliceBorder{
+        .left = parse_float(value.substr(0, first), "sprite renderer slice border left"),
+        .bottom = parse_float(value.substr(first + 1, second - first - 1), "sprite renderer slice border bottom"),
+        .right = parse_float(value.substr(second + 1, third - second - 1), "sprite renderer slice border right"),
+        .top = parse_float(value.substr(third + 1), "sprite renderer slice border top"),
+    };
+}
+
 std::int32_t parse_i32(std::string_view value, const char* name) {
     try {
         std::size_t parsed = 0;
@@ -328,6 +370,12 @@ void assign_sprite_renderer_field(SceneNodeComponents& components, std::string_v
         renderer.order_in_layer = parse_i32(value, "sprite renderer order in layer");
     } else if (field == "sorting_space") {
         renderer.sorting_space = parse_sprite_sorting_space(value);
+    } else if (field == "draw_mode") {
+        renderer.draw_mode = parse_sprite_draw_mode(value);
+    } else if (field == "slice_border") {
+        renderer.slice_border = parse_sprite_slice_border(value);
+    } else if (field == "tile_size") {
+        renderer.tile_size = parse_vec2(value, "sprite renderer tile size");
     } else {
         throw std::invalid_argument("unknown scene sprite renderer field");
     }
@@ -488,6 +536,17 @@ void write_sprite_renderer(std::ostringstream& output, SceneNodeId node, const S
     output << "node." << node.value << ".sprite_renderer.order_in_layer=" << renderer.order_in_layer << '\n';
     output << "node." << node.value
            << ".sprite_renderer.sorting_space=" << sprite_sorting_space_name(renderer.sorting_space) << '\n';
+    if (renderer.draw_mode != SpriteDrawMode::simple) {
+        output << "node." << node.value << ".sprite_renderer.draw_mode=" << sprite_draw_mode_name(renderer.draw_mode)
+               << '\n';
+        output << "node." << node.value << ".sprite_renderer.slice_border=" << renderer.slice_border.left << ','
+               << renderer.slice_border.bottom << ',' << renderer.slice_border.right << ',' << renderer.slice_border.top
+               << '\n';
+        if (renderer.draw_mode == SpriteDrawMode::tiled) {
+            output << "node." << node.value << ".sprite_renderer.tile_size=" << renderer.tile_size.x << ','
+                   << renderer.tile_size.y << '\n';
+        }
+    }
 }
 
 void write_prefab_source(std::ostringstream& output, SceneNodeId node, const ScenePrefabSourceLink& link) {

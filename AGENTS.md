@@ -11,7 +11,7 @@
 - Keep instructions specific, concise, verifiable, and grouped under clear Markdown headings.
 - Keep this always-loaded file under Codex's default 32 KiB `project_doc_max_bytes` budget; `tools/check-agents.ps1` enforces this. Move long procedures to skills/docs/subagents/manifest.
 - Do not put long procedures, stale status snapshots, personal preferences, credentials, API keys, MCP connection state, or machine-specific paths in tracked instructions.
-- Put reusable workflows in skills, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the **composed** `engine/agent/manifest.json` (maintain them by editing `engine/agent/manifest.fragments/*.json` and running `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; see `engine/agent/manifest.fragments/README.md` and `docs/adr/0002-agent-manifest-fragments-compose.md`).
+- Put reusable workflows in skills, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the **composed** `engine/agent/manifest.json` (edit `engine/agent/manifest.fragments/*.json` and run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`).
 - Every implementation change, improvement, bug fix, refactor, or architecture/toolchain/workflow/validation/packaging change must include an **agent-surface drift check** before completion. If durable guidance or AI-operable contracts are stale, update the affected docs, skills, rules, subagents, manifest fragments + compose output, schemas, validation checks, and tracked `.clangd` in the same task; do not wait for a follow-up.
 - **Expanded validation, editor shell, plan lifecycle, production-completion, and game-lane procedures** live in [docs/agent-operational-reference.md](docs/agent-operational-reference.md) (English). Cursor file-scoped rules live under [`.cursor/rules/`](.cursor/rules/). Keep needles enforced by `tools/check-ai-integration.ps1` in this file when you change policy.
 
@@ -88,7 +88,7 @@
 - Do not add C++20 compatibility shims or lower the engine standard without a new architecture decision.
 - `MK_apply_common_target_options` uses MSVC `/MP2`+`/Zf`, `COMPILE_PDB_OUTPUT_DIRECTORY`, `/INCREMENTAL:NO`; wrappers serialize builds and clear stale MSVC `.tlog` roots.
 - Follow `docs/cpp-style.md` for naming, source layout, public include paths, CMake target naming, and installable package targets.
-- When changing **aggregate** types used from many tests (for example `mirakana::editor::ScenePrefabInstanceRefreshPolicy` in `editor/core/include/mirakana/editor/scene_authoring.hpp`), update every **designated** braced initializer in the same task so **all members appear in declaration order**, including empty **`std::function`** members (`{}`); see **`docs/cpp-style.md`** (**Unit tests** → **Aggregate literals**) and clang `-Wmissing-field-initializers` / IDE diagnostics.
+- When changing **aggregate** types used from many tests, update every **designated** braced initializer in the same task so **all members appear in declaration order**, including empty **`std::function`** members (`{}`); see **`docs/cpp-style.md`** (**Unit tests** → **Aggregate literals**) and clang `-Wmissing-field-initializers`.
 - Prefer RAII and value types.
 - Use `std::unique_ptr` / `std::make_unique` for ownership; raw pointers are non-owning.
 - Avoid global mutable state.
@@ -163,7 +163,7 @@
 - Treat Codex command policy as session-scoped: after editing `.codex/rules/*.rules`, wait for policy reload or a new session when newly allowed commands still require a prompt and approvals are unavailable; do not retry by weakening rules.
 - Do not push directly to default/protected branches, force-push without explicit branch-owned request, use admin bypasses, or bypass GitHub branch protection/status checks.
 - Auto-merge registration must use `gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>` after the preceding `gh pr view <pr> --json ...`. Require clean local worktree, task-owned open PR, fresh validation, expected base, current `headRefOid`, and no conflicts/requested changes/failed checks; `DIRTY`/`UNKNOWN` `mergeStateStatus` blocks. Runtime/build/public-contract PRs wait for selected hosted checks to complete and `PR Gate` `SUCCESS`; no auto-merge while `Full Repository Static Analysis` is pending. Fetch/prune after merge; commits pushed after a PR merged need a new PR.
-- Draft-to-ready automation must use `tools/ready-task-pr.ps1`, not raw `gh pr ready`. It requires a clean task branch, local/remote/PR head match, open draft, base, `MERGEABLE`/`CLEAN`, no requested changes or failed/pending checks, and `PR Gate` `SUCCESS`.
+- Draft-to-ready automation must use `tools/ready-task-pr.ps1`, not raw `gh pr ready`.
 - After a PR merges into `main`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch]` for linked worktree cleanup; it fetches/prunes, requires a clean base checkout, fast-forwards it, accepts standard roots, unlinks worktree-local vcpkg links, and keeps Windows fallback guarded/non-following. No ad hoc deletion; record no target.
 - Raw PR state changes through `gh pr edit`, immediate `gh pr merge` without `--auto`, raw `gh pr ready`, `gh pr close`, or `gh pr reopen` remain prompt-gated. If the wrapper blocks, use GitHub Desktop/Web or an approval-capable session.
 - Git warnings are local maintenance. Missing `credential-manager-core`: inspect `git config --show-origin --get-all credential.helper`, prefer `manager`, no repo overrides. Auto-GC loose objects: clean `git status --short --branch`, inspect `git count-objects -vH`, run `git maintenance run --task=gc`; avoid `git prune` / `git gc --prune=now` unless requested.
@@ -199,22 +199,6 @@
 - Validation has run: focused checks for docs/agent-only/non-runtime slices, full `tools/validate.ps1` for C++/runtime/build/packaging/public-contract slices, or a concrete blocker is recorded.
 - Legal and third-party records are updated for any external material.
 
-## Learned User Preferences
+## Learned Preferences And Workspace Facts
 
-- Prefer long-running autonomous burn-down sessions with operator auto-approval: run each capability slice end-to-end (worktree, validate, push, draft PR, `ready-task-pr.ps1`, auto-merge, babysit until MERGED) without pausing between capabilities unless a hard blocker is recorded.
-- Do not stop multi-capability programs at intermediate checkpoints; continue until all plan to-dos are complete or a documented hard blocker stops the run.
-- Avoid partial APIs, placeholder ready claims, and ambiguous intermediate capability states; promote backlog rows only after `validate.ps1`, static guards, and package-counter evidence.
-- When executing backlog burn-down, use repository subagents per the milestone plan Tasks A–E dispatch model (`explorer`, `gameplay-builder`, `cpp-reviewer`, `agent-surface-auditor`, `ci-watcher`, capability-specific auditors).
-- Implement unimplemented plan items in canonical backlog priority order until none remain; in auto-approval sessions, do not ask for re-approval between slices.
-- Consult official documentation and Context7 before capability implementation; capability-specific docs review belongs in dated child plans before write work.
-- Proactively update `AGENTS.md`, skills, rules, and subagents in the same slice when implementation reveals durable agent-surface drift; do not defer to follow-up docs-only PRs.
-
-## Learned Workspace Facts
-
-- Engine 1.0 production completion is closed; `unsupportedProductionGaps` is empty; next work is developer-owned capability backlog `candidate` rows.
-- Canonical backlog in `docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md` defines 7 `candidate` capabilities (not 8; the status vocabulary row is not a capability).
-- Active milestone is Candidate Backlog Burn-down Program v1 (`docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md`, Status Active).
-- Capability burn-down cadence: one linked worktree, one dated child plan, one focused PR, one full `validate.ps1` per capability closeout.
-- Seven candidates in order: `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, `sprite-collision-hitbox-v1`, `sprite-effects-particles-v1`, `sprite-editor-preview-diagnostics-v1`, `navigation-hierarchical-world-v1`, `simulation-persistence-v1`.
-- Milestone progress is tracked via checkbox checklist in the milestone plan; resume from the first unchecked capability after `git pull --ff-only origin/main`.
-- `docs/superpowers/plans/README.md` Active slice row and manifest `currentActivePlan` pointer must stay synced with the active milestone (enforced by `tools/check-json-contracts.ps1`).
+- Autonomous backlog burn-down cadence, canonical seven-capability order, and plan/manifest sync rules live in `docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md` and `docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md`.

@@ -2825,6 +2825,13 @@ MK_TEST("ui atlas tooling authors deterministic cooked metadata and package rows
     MK_REQUIRE(verification.failures.empty());
 }
 
+MK_TEST("ui atlas tooling validates nine slice border insets") {
+    MK_REQUIRE(mirakana::validate_sprite_nine_slice_borders(
+        mirakana::SpriteSliceBorder{.left = 0.25F, .bottom = 0.25F, .right = 0.25F, .top = 0.25F}));
+    MK_REQUIRE(!mirakana::validate_sprite_nine_slice_borders(
+        mirakana::SpriteSliceBorder{.left = 0.5F, .bottom = 0.1F, .right = 0.5F, .top = 0.1F}));
+}
+
 MK_TEST("ui atlas tooling rejects duplicate bindings malformed uvs and unsupported claims") {
     auto desc = make_cooked_ui_atlas_authoring_desc();
     desc.images[1].resource_id = desc.images[0].resource_id;

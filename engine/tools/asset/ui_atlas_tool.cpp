@@ -1164,4 +1164,12 @@ apply_packed_ui_glyph_atlas_package_update(IFileSystem& filesystem, const Packed
     return result;
 }
 
+bool validate_sprite_nine_slice_borders(const SpriteSliceBorder& border) noexcept {
+    return is_valid_sprite_slice_border(border);
+}
+
+bool is_valid_cooked_ui_atlas_slice_border(const SpriteSliceBorder& border) noexcept {
+    return validate_sprite_nine_slice_borders(border);
+}
+
 } // namespace mirakana

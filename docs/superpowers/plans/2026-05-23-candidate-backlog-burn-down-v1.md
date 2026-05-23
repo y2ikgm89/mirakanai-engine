@@ -37,8 +37,8 @@ Implement all 7 canonical `candidate` rows in [04-developer-owned-engine-capabil
 
 ## Capability burn-down checklist
 
-- [ ] 1. [sprite-sorting-layer-v1](2026-05-23-sprite-sorting-layer-v1.md) — `MK_scene`, `MK_scene_renderer`, `MK_renderer`
-- [ ] 2. [sprite-9slice-and-tiled-v1](2026-05-23-sprite-9slice-and-tiled-v1.md) — assets/UI/scene renderer/tools
+- [x] 1. [sprite-sorting-layer-v1](2026-05-23-sprite-sorting-layer-v1.md) — `MK_scene`, `MK_scene_renderer`, `MK_renderer` (PR #196)
+- [x] 2. [sprite-9slice-and-tiled-v1](2026-05-23-sprite-9slice-and-tiled-v1.md) — assets/UI/scene renderer/tools
 - [ ] 3. [sprite-collision-hitbox-v1](2026-05-23-sprite-collision-hitbox-v1.md) — runtime, physics, gameplay interaction
 - [ ] 4. [sprite-effects-particles-v1](2026-05-23-sprite-effects-particles-v1.md) — runtime, scene renderer, renderer stats
 - [ ] 5. [sprite-editor-preview-diagnostics-v1](2026-05-23-sprite-editor-preview-diagnostics-v1.md) — editor core, runtime diagnostics

@@ -141,6 +141,7 @@ struct SceneRenderSubmitResult {
     std::size_t material_gpu_bindings_resolved{0};
     std::size_t skinned_mesh_gpu_bindings_resolved{0};
     bool has_primary_camera{false};
+    SceneSpriteExpansionStats sprite_expansion{};
 };
 
 enum class SceneMeshDrawPlanDiagnosticCode : std::uint8_t {
@@ -305,7 +306,10 @@ build_scene_directional_shadow_light_space_plan(const SceneRenderPacket& packet,
                                                   const SceneRenderSubmitDesc& desc) noexcept;
 [[nodiscard]] SceneMeshDrawPlan plan_scene_mesh_draws(const SceneRenderPacket& packet);
 [[nodiscard]] SpriteCommand make_scene_sprite_command(const SceneRenderSprite& sprite) noexcept;
-[[nodiscard]] SpriteBatchPlan plan_scene_sprite_batches(const SceneRenderPacket& packet);
+[[nodiscard]] SceneSpriteExpansionStats expand_scene_sprite_commands(const SceneRenderPacket& packet,
+                                                                     std::vector<SpriteCommand>& out);
+[[nodiscard]] SpriteBatchPlan plan_scene_sprite_batches(const SceneRenderPacket& packet,
+                                                        SceneSpriteExpansionStats* expansion_stats = nullptr);
 [[nodiscard]] RuntimeSceneRenderLoadResult load_runtime_scene_render_data(const runtime::RuntimeAssetPackage& package,
                                                                           AssetId scene);
 [[nodiscard]] RuntimeSceneRenderInstance

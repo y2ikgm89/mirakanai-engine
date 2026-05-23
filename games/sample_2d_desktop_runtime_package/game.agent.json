@@ -1845,7 +1845,7 @@
     },
     {
       "name": "installed-native-2d-sprite-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review --require-runtime-profile-resume --require-runtime-menu-hud"
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-sprite-9slice-tiled --require-tilemap-runtime-ux --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review --require-runtime-profile-resume --require-runtime-menu-hud"
     },
     {
       "name": "installed-vulkan-window-smoke",

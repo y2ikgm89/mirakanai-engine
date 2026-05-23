@@ -1522,6 +1522,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             runtime/sample_2d_desktop_runtime_package.geindex
             --require-sprite-animation
             --require-sprite-sorting-layer
+            --require-sprite-9slice-tiled
             --require-tilemap-runtime-ux
             --require-gameplay-systems
             --require-procedural-generation
@@ -1544,6 +1545,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-native-2d-sprites
             --require-sprite-animation
             --require-sprite-sorting-layer
+            --require-sprite-9slice-tiled
             --require-tilemap-runtime-ux
             --require-gameplay-systems
             --require-procedural-generation

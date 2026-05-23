@@ -51,6 +51,17 @@ struct SceneRenderSpriteSortStats {
     std::uint64_t reordered_count{0};
 };
 
+struct SceneSpriteExpansionStats {
+    std::uint64_t source_sprite_count{0};
+    std::uint64_t expanded_sprite_count{0};
+    std::uint64_t nine_slice_count{0};
+    std::uint64_t tiled_count{0};
+
+    [[nodiscard]] std::uint64_t expansion_count() const noexcept {
+        return expanded_sprite_count > source_sprite_count ? expanded_sprite_count - source_sprite_count : 0U;
+    }
+};
+
 [[nodiscard]] SceneRenderSpriteSortStats sort_scene_render_sprites(std::vector<SceneRenderSprite>& sprites);
 [[nodiscard]] SceneRenderPacket build_scene_render_packet(const Scene& scene);
 
