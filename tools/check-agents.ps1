@@ -7,6 +7,60 @@ $ErrorActionPreference = "Stop"
 
 $root = Get-RepoRoot
 
+function Test-ToolScriptAutomaticVariableAssignment {
+    param(
+        [Parameter(Mandatory)][System.Management.Automation.Language.Ast]$Ast,
+        [Parameter(Mandatory)][string]$Label
+    )
+
+    $forbiddenAutomaticVariableNames = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($name in @(
+            "args",
+            "foreach",
+            "home",
+            "input",
+            "IsLinux",
+            "IsMacOS",
+            "IsWindows",
+            "matches"
+        )) {
+        [void]$forbiddenAutomaticVariableNames.Add($name)
+    }
+
+    $assignments = $Ast.FindAll(
+        {
+            param($node)
+
+            if ($node -isnot [System.Management.Automation.Language.AssignmentStatementAst]) {
+                return $false
+            }
+
+            $variableExpression = $node.Left
+            while ($variableExpression -is [System.Management.Automation.Language.ConvertExpressionAst]) {
+                $variableExpression = $variableExpression.Child
+            }
+
+            if ($variableExpression -isnot [System.Management.Automation.Language.VariableExpressionAst]) {
+                return $false
+            }
+
+            return $forbiddenAutomaticVariableNames.Contains($variableExpression.VariablePath.UserPath)
+        },
+        $true
+    )
+
+    foreach ($assignment in @($assignments)) {
+        $variableExpression = $assignment.Left
+        while ($variableExpression -is [System.Management.Automation.Language.ConvertExpressionAst]) {
+            $variableExpression = $variableExpression.Child
+        }
+        $variableName = $variableExpression.VariablePath.UserPath
+        Write-Error ("{0} must not assign to PowerShell automatic variable '{1}' at line {2}; use a distinct local name." -f $Label, $variableName, $assignment.Extent.StartLineNumber)
+    }
+}
+
 function Test-RepositoryLineEndingContract {
     param([Parameter(Mandatory)][string]$Root)
 
@@ -85,22 +139,22 @@ foreach ($script in Get-ChildItem -LiteralPath $toolsScriptRoot -Filter "*.ps1" 
     }
 
     $lines = [System.IO.File]::ReadAllLines($script.FullName)
-    $versionIdx = 0..($lines.Length - 1) | Where-Object { $lines[$_] -eq "#requires -Version 7.0" } | Select-Object -First 1
-    if ($null -eq $versionIdx) {
-        Write-Error "tools/$($script.Name) must declare exactly: #requires -Version 7.0 (missing)"
+    if ($lines.Length -lt 2 -or $lines[0] -ne "#requires -Version 7.0") {
+        Write-Error "tools/$($script.Name) must declare exactly '#requires -Version 7.0' on line 1."
     }
-    $nextIdx = $versionIdx + 1
-    if ($nextIdx -ge $lines.Length -or $lines[$nextIdx] -ne "#requires -PSEdition Core") {
-        Write-Error ("tools/{0} must declare #requires -PSEdition Core on the line immediately after #requires -Version 7.0 " -f $script.Name)
+    if ($lines.Length -lt 2 -or $lines[1] -ne "#requires -PSEdition Core") {
+        Write-Error "tools/$($script.Name) must declare exactly '#requires -PSEdition Core' on line 2."
     }
 
     $parseTokens = $null
     $parseErrors = $null
-    $null = [System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$parseTokens, [ref]$parseErrors)
+    $parseAst = [System.Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$parseTokens, [ref]$parseErrors)
     if (@($parseErrors).Count -gt 0) {
         $firstParseError = @($parseErrors)[0]
         Write-Error ("tools/{0} has PowerShell parse error at line {1}: {2}" -f $script.Name, $firstParseError.Extent.StartLineNumber, $firstParseError.Message)
     }
+
+    Test-ToolScriptAutomaticVariableAssignment -Ast $parseAst -Label "tools/$($script.Name)"
 }
 
 function Get-SkillFrontmatterBlock {
@@ -178,6 +232,39 @@ function Test-SkillReferenceTarget {
     }
 }
 
+function Assert-RequiredDirectoryChild {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$Label,
+        [string]$RequiredLeaf = ""
+    )
+
+    $childPath = Join-Path $Root $Name
+    if (-not (Test-Path -LiteralPath $childPath -PathType Container)) {
+        Write-Error "$Label missing required directory: $Name"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($RequiredLeaf)) {
+        $leafPath = Join-Path $childPath $RequiredLeaf
+        if (-not (Test-Path -LiteralPath $leafPath -PathType Leaf)) {
+            Write-Error "$Label required directory '$Name' missing $RequiredLeaf"
+        }
+    }
+}
+
+function Assert-RequiredArrayEntry {
+    param(
+        [Parameter(Mandatory)][object[]]$Actual,
+        [Parameter(Mandatory)][string]$Expected,
+        [Parameter(Mandatory)][string]$Label
+    )
+
+    if (@($Actual | Where-Object { [string]$_ -eq $Expected }).Count -eq 0) {
+        Write-Error "$Label missing required entry: $Expected"
+    }
+}
+
 $skillRoot = Join-Path $root ".agents/skills"
 $agentRoot = Join-Path $root ".codex/agents"
 $codexRuleRoot = Join-Path $root ".codex/rules"
@@ -186,11 +273,23 @@ $claudeSkillRoot = Join-Path $root ".claude/skills"
 $claudeAgentRoot = Join-Path $root ".claude/agents"
 $cursorSkillRoot = Join-Path $root ".cursor/skills"
 $cursorAgentRoot = Join-Path $root ".cursor/agents"
+$aiSurfacesFragmentPath = Join-Path $root "engine/agent/manifest.fragments/011-aiSurfaces.json"
+$aiSurfacesFragment = Get-Content -LiteralPath $aiSurfacesFragmentPath -Raw | ConvertFrom-Json
 
-if (Test-Path $skillRoot) {
-    Get-ChildItem -Path $skillRoot -Directory | ForEach-Object {
+foreach ($skillName in @($aiSurfacesFragment.aiSurfaces.codex.requiredSkills)) {
+    Assert-RequiredDirectoryChild -Root $skillRoot -Name ([string]$skillName) -Label "Codex required skills from 011-aiSurfaces.json" -RequiredLeaf "SKILL.md"
+}
+foreach ($skillName in @($aiSurfacesFragment.aiSurfaces.claudeCode.requiredSkills)) {
+    Assert-RequiredDirectoryChild -Root $claudeSkillRoot -Name ([string]$skillName) -Label "Claude required skills from 011-aiSurfaces.json" -RequiredLeaf "SKILL.md"
+}
+foreach ($skillName in @($aiSurfacesFragment.aiSurfaces.cursor.requiredSkills)) {
+    Assert-RequiredDirectoryChild -Root $cursorSkillRoot -Name ([string]$skillName) -Label "Cursor required skills from 011-aiSurfaces.json" -RequiredLeaf "SKILL.md"
+}
+
+if (Test-Path -LiteralPath $skillRoot) {
+    Get-ChildItem -LiteralPath $skillRoot -Directory | ForEach-Object {
         $skillFile = Join-Path $_.FullName "SKILL.md"
-        if (-not (Test-Path $skillFile)) {
+        if (-not (Test-Path -LiteralPath $skillFile)) {
             Write-Error "Skill folder missing SKILL.md: $($_.FullName)"
         }
         Test-AgentFileSizeBudget `
@@ -203,8 +302,8 @@ if (Test-Path $skillRoot) {
     }
 }
 
-if (Test-Path $agentRoot) {
-    Get-ChildItem -Path $agentRoot -Filter "*.toml" | ForEach-Object {
+if (Test-Path -LiteralPath $agentRoot) {
+    Get-ChildItem -LiteralPath $agentRoot -Filter "*.toml" | ForEach-Object {
         Test-AgentFileSizeBudget `
             -Path $_.FullName `
             -MaxBytes (16 * 1024) `
@@ -219,8 +318,8 @@ if (Test-Path $agentRoot) {
     }
 }
 
-if (Test-Path $codexRuleRoot) {
-    Get-ChildItem -Path $codexRuleRoot -Filter "*.rules" | ForEach-Object {
+if (Test-Path -LiteralPath $codexRuleRoot) {
+    Get-ChildItem -LiteralPath $codexRuleRoot -Filter "*.rules" | ForEach-Object {
         $content = Get-Content -LiteralPath $_.FullName -Raw
         if ($content -notmatch "prefix_rule\(" -or $content -notmatch "match\s*=" -or $content -notmatch "not_match\s*=") {
             Write-Error "Codex rule files must use prefix_rule with match and not_match examples: $($_.FullName)"
@@ -275,12 +374,59 @@ if (Test-Path $claudeSettingsPath) {
     if (-not $settings.permissions.PSObject.Properties.Name.Contains("ask") -or @($settings.permissions.ask).Count -lt 1) {
         Write-Error "Claude settings must ask before sensitive commands: $claudeSettingsPath"
     }
+
+    foreach ($requiredDenyEntry in @(
+            "Bash(git push origin main:*)",
+            "Bash(git push origin master:*)",
+            "Bash(git push --force origin main:*)",
+            "Bash(git push --force-with-lease origin main:*)",
+            "Bash(git push origin HEAD:main:*)",
+            "Read(./.env)",
+            "Read(./.env.*)",
+            "Read(./.mcp.json)",
+            "Read(./secrets/**)",
+            "Read(./.codex/auth.json)",
+            "Read(./.claude/settings.local.json)",
+            "Read(./platform/android/*.jks)",
+            "Read(./platform/android/*.keystore)",
+            "Read(./**/*.p12)",
+            "Read(./**/*.pfx)",
+            "Read(./**/*.pem)",
+            "Read(./**/*.key)"
+        )) {
+        Assert-RequiredArrayEntry -Actual @($settings.permissions.deny) -Expected $requiredDenyEntry -Label ".claude/settings.json permissions.deny"
+    }
+
+    foreach ($requiredAskEntry in @(
+            "Bash(git reset:*)",
+            "Bash(git restore:*)",
+            "Bash(git clean:*)",
+            "Bash(git worktree remove:*)",
+            "Bash(git push --force:*)",
+            "Bash(git push --force-with-lease:*)",
+            "Bash(gh pr ready:*)",
+            "Bash(gh pr close:*)",
+            "Bash(gh pr reopen:*)",
+            "Bash(rm:*)",
+            "Bash(Remove-Item:*)",
+            "Bash(curl:*)",
+            "Bash(wget:*)",
+            "Bash(Invoke-WebRequest:*)",
+            "Bash(Invoke-RestMethod:*)",
+            "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)",
+            "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-android.ps1:*)",
+            "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-android-package.ps1:*)",
+            "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-apple.ps1:*)",
+            "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1:*)"
+        )) {
+        Assert-RequiredArrayEntry -Actual @($settings.permissions.ask) -Expected $requiredAskEntry -Label ".claude/settings.json permissions.ask"
+    }
 }
 
-if (Test-Path $claudeSkillRoot) {
-    Get-ChildItem -Path $claudeSkillRoot -Directory | ForEach-Object {
+if (Test-Path -LiteralPath $claudeSkillRoot) {
+    Get-ChildItem -LiteralPath $claudeSkillRoot -Directory | ForEach-Object {
         $skillFile = Join-Path $_.FullName "SKILL.md"
-        if (-not (Test-Path $skillFile)) {
+        if (-not (Test-Path -LiteralPath $skillFile)) {
             Write-Error "Claude skill folder missing SKILL.md: $($_.FullName)"
         }
         Test-AgentFileSizeBudget `
@@ -293,10 +439,10 @@ if (Test-Path $claudeSkillRoot) {
     }
 }
 
-if (Test-Path $cursorSkillRoot) {
-    Get-ChildItem -Path $cursorSkillRoot -Directory | ForEach-Object {
+if (Test-Path -LiteralPath $cursorSkillRoot) {
+    Get-ChildItem -LiteralPath $cursorSkillRoot -Directory | ForEach-Object {
         $skillFile = Join-Path $_.FullName "SKILL.md"
-        if (-not (Test-Path $skillFile)) {
+        if (-not (Test-Path -LiteralPath $skillFile)) {
             Write-Error "Cursor skill folder missing SKILL.md: $($_.FullName)"
         }
         Test-AgentFileSizeBudget `
@@ -461,8 +607,8 @@ if ((Test-Path -LiteralPath $cursorSkillRoot) -and (Test-Path -LiteralPath $clau
     }
 }
 
-if (Test-Path $claudeAgentRoot) {
-    Get-ChildItem -Path $claudeAgentRoot -Filter "*.md" | ForEach-Object {
+if (Test-Path -LiteralPath $claudeAgentRoot) {
+    Get-ChildItem -LiteralPath $claudeAgentRoot -Filter "*.md" | ForEach-Object {
         Test-AgentFileSizeBudget `
             -Path $_.FullName `
             -MaxBytes (16 * 1024) `

@@ -41,6 +41,39 @@ function Assert-TemplateText {
     }
 }
 
+function Get-MobilePackagingBlocker {
+    param(
+        [Parameter(Mandatory = $true)][string]$Kind,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    return [pscustomobject]@{
+        Kind = $Kind
+        Message = $Message
+    }
+}
+
+function Add-MobilePackagingBlocker {
+    param(
+        [Parameter(Mandatory = $true)]$Blockers,
+        [Parameter(Mandatory = $true)][string]$Kind,
+        [Parameter(Mandatory = $true)][string]$Message
+    )
+
+    $Blockers.Add((Get-MobilePackagingBlocker -Kind $Kind -Message $Message)) | Out-Null
+}
+
+function Write-MobilePackagingBlocker {
+    param(
+        [Parameter(Mandatory = $true)][string]$Prefix,
+        [Parameter(Mandatory = $true)]$Blockers
+    )
+
+    foreach ($blocker in $Blockers) {
+        Write-Information "${Prefix}: blocker kind=$($blocker.Kind) - $($blocker.Message)" -InformationAction Continue
+    }
+}
+
 function Find-AndroidSdk {
     $localAppData = Get-LocalApplicationDataRoot
     $candidates = @(
@@ -79,8 +112,8 @@ function Find-AndroidNdk {
 
     if (-not [string]::IsNullOrWhiteSpace($SdkRoot)) {
         $ndkRoot = Join-Path $SdkRoot "ndk"
-        if (Test-Path $ndkRoot) {
-            $latest = Get-ChildItem -Path $ndkRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1
+        if (Test-Path -LiteralPath $ndkRoot) {
+            $latest = Get-ChildItem -LiteralPath $ndkRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1
             if ($latest) {
                 return $latest.FullName
             }
@@ -97,8 +130,8 @@ function Find-GradleCommand {
     }
 
     $toolchainsRoot = Join-OptionalPath (Get-LocalApplicationDataRoot) "GameEngineToolchains"
-    if (-not [string]::IsNullOrWhiteSpace($toolchainsRoot) -and (Test-Path $toolchainsRoot)) {
-        $candidate = Get-ChildItem -Path $toolchainsRoot -Directory -Filter "gradle-*" |
+    if (-not [string]::IsNullOrWhiteSpace($toolchainsRoot) -and (Test-Path -LiteralPath $toolchainsRoot)) {
+        $candidate = Get-ChildItem -LiteralPath $toolchainsRoot -Directory -Filter "gradle-*" |
             Sort-Object Name -Descending |
             ForEach-Object { Join-Path $_.FullName "bin\gradle.bat" } |
             Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
@@ -126,8 +159,8 @@ function Find-JavaCommand {
     }
 
     $adoptiumRoot = Join-OptionalPath (Get-EnvironmentVariableAnyScope "ProgramFiles") "Eclipse Adoptium"
-    if (-not [string]::IsNullOrWhiteSpace($adoptiumRoot) -and (Test-Path $adoptiumRoot)) {
-        $candidate = Get-ChildItem -Path $adoptiumRoot -Directory -Filter "jdk-*" |
+    if (-not [string]::IsNullOrWhiteSpace($adoptiumRoot) -and (Test-Path -LiteralPath $adoptiumRoot)) {
+        $candidate = Get-ChildItem -LiteralPath $adoptiumRoot -Directory -Filter "jdk-*" |
             Sort-Object Name -Descending |
             ForEach-Object { Join-Path $_.FullName "bin\java.exe" } |
             Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
@@ -150,6 +183,24 @@ function Test-EnvironmentSet {
     }
 
     return $true
+}
+
+function Test-MobilePackagingDeviceProbeEnabled {
+    param([bool]$RequireAndroidPackaging = $false)
+
+    $override = Get-EnvironmentVariableAnyScope "MK_MOBILE_DEVICE_PROBE"
+    if ($override -match "^(1|true|yes|on)$") {
+        return $true
+    }
+    if ($override -match "^(0|false|no|off)$") {
+        return $false
+    }
+
+    if ($RequireAndroidPackaging) {
+        return $true
+    }
+
+    return (Get-EnvironmentVariableAnyScope "GITHUB_ACTIONS") -ine "true"
 }
 
 function Invoke-MobilePackagingProbe {
@@ -198,12 +249,24 @@ function Invoke-MobilePackagingProbe {
                 }
             }
         }
-        else {
-            $childProcess.WaitForExit()
-        }
-
         $standardOutputCompleted = $standardOutputTask.Wait($OutputWaitMilliseconds)
         $standardErrorCompleted = $standardErrorTask.Wait($OutputWaitMilliseconds)
+        if (-not $standardOutputCompleted) {
+            try {
+                $childProcess.StandardOutput.Dispose()
+            }
+            catch {
+                $null = $_.Exception
+            }
+        }
+        if (-not $standardErrorCompleted) {
+            try {
+                $childProcess.StandardError.Dispose()
+            }
+            catch {
+                $null = $_.Exception
+            }
+        }
         $standardOutput = if ($standardOutputCompleted) { $standardOutputTask.Result } else { "" }
         $standardError = if ($standardErrorCompleted) { $standardErrorTask.Result } else { "" }
         $probeTimedOut = $timedOut -or -not $standardOutputCompleted -or -not $standardErrorCompleted
@@ -229,7 +292,7 @@ function Invoke-MobilePackagingProbe {
     }
 }
 
-function Get-MobilePackagingAndroidAvdNames {
+function Get-MobilePackagingAndroidAvdNameList {
     param(
         [string]$Emulator,
         [int]$TimeoutSeconds = 5
@@ -288,52 +351,50 @@ Assert-TemplateText "platform/ios/Info.plist.in" @(
     '${MACOSX_BUNDLE_EXECUTABLE_NAME}'
 )
 
-$androidBlockers = [System.Collections.Generic.List[string]]::new()
-$appleBlockers = [System.Collections.Generic.List[string]]::new()
+$androidBlockers = [System.Collections.Generic.List[object]]::new()
+$appleBlockers = [System.Collections.Generic.List[object]]::new()
 
 $androidSdk = Find-AndroidSdk
 if (-not $androidSdk) {
-    $androidBlockers.Add("Android SDK not found; set ANDROID_HOME or ANDROID_SDK_ROOT") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_android_sdk" -Message "Android SDK not found; set ANDROID_HOME or ANDROID_SDK_ROOT"
 }
 
 $androidNdk = Find-AndroidNdk $androidSdk
 if (-not $androidNdk) {
-    $androidBlockers.Add("Android NDK not found; install it through the Android SDK manager or set ANDROID_NDK_HOME") |
-        Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_android_ndk" -Message "Android NDK not found; install it through the Android SDK manager or set ANDROID_NDK_HOME"
 }
 
 if (-not (Find-GradleCommand)) {
-    $androidBlockers.Add("Gradle not found on PATH; install official Gradle or add a reviewed Gradle wrapper later") |
-        Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_gradle" -Message "Gradle not found on PATH; install official Gradle or add a reviewed Gradle wrapper later"
 }
 
 if (-not (Find-JavaCommand)) {
-    $androidBlockers.Add("JDK not found on PATH; Android Gradle Plugin requires a compatible JDK") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_jdk" -Message "JDK not found on PATH; Android Gradle Plugin requires a compatible JDK"
 }
 
 $adb = Find-AndroidPlatformToolCommand "adb"
 if (-not $adb) {
-    $androidBlockers.Add("adb not found; install Android SDK Platform Tools for device/emulator smoke") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_adb" -Message "adb not found; install Android SDK Platform Tools for device/emulator smoke"
 }
 
 $apksigner = Find-AndroidBuildToolCommand "apksigner"
 if (-not $apksigner) {
-    $androidBlockers.Add("apksigner not found; install Android SDK Build Tools for Release signing verification") |
-        Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_apksigner" -Message "apksigner not found; install Android SDK Build Tools for Release signing verification"
 }
 
 $emulator = Find-AndroidEmulatorCommand
 $androidAvdProbeTimedOut = $false
 $androidAvds = @()
 if ($emulator) {
-    $androidAvdProbe = Get-MobilePackagingAndroidAvdNames -Emulator $emulator
+    $androidAvdProbe = Get-MobilePackagingAndroidAvdNameList -Emulator $emulator
     $androidAvdProbeTimedOut = $androidAvdProbe.TimedOut
     $androidAvds = @($androidAvdProbe.Names)
 }
 
 $androidDeviceReady = $false
 $androidDeviceProbeTimedOut = $false
-if ($adb) {
+$androidDeviceProbeSkipped = $false
+if ($adb -and (Test-MobilePackagingDeviceProbeEnabled -RequireAndroidPackaging:$RequireAndroid.IsPresent)) {
     $deviceProbe = Invoke-MobilePackagingProbe -FilePath $adb -ArgumentList @("devices")
     $androidDeviceProbeTimedOut = $deviceProbe.TimedOut
     if (-not $deviceProbe.TimedOut -and $deviceProbe.ExitCode -eq 0) {
@@ -341,6 +402,8 @@ if ($adb) {
                 [string]$_ -match "^\S+\s+device$"
             }).Count -gt 0
     }
+} elseif ($adb) {
+    $androidDeviceProbeSkipped = $true
 }
 
 $androidReleaseSigningEnvironment = @(
@@ -352,7 +415,7 @@ $androidReleaseSigningEnvironment = @(
 $androidReleaseSigningReady = Test-EnvironmentSet $androidReleaseSigningEnvironment
 $androidKeystore = Get-EnvironmentVariableAnyScope "MK_ANDROID_KEYSTORE"
 if ($androidReleaseSigningReady -and -not (Test-Path $androidKeystore)) {
-    $androidBlockers.Add("MK_ANDROID_KEYSTORE does not point to an existing keystore file") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $androidBlockers -Kind "missing_android_keystore" -Message "MK_ANDROID_KEYSTORE does not point to an existing keystore file"
     $androidReleaseSigningReady = $false
 }
 
@@ -362,32 +425,29 @@ $xcrun = Find-CommandOnCombinedPath "xcrun"
 $appleSimulatorReady = $false
 
 if (-not $hostIsAppleOs) {
-    $appleBlockers.Add("Apple packaging requires macOS with Xcode command line tools") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "not_macos" -Message "Apple packaging requires macOS with Xcode command line tools"
 }
 
 if (-not $xcodebuild) {
-    $appleBlockers.Add("xcodebuild not found") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "missing_xcodebuild" -Message "xcodebuild not found"
 }
 
 if (-not $xcrun) {
-    $appleBlockers.Add("xcrun not found") | Out-Null
+    Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "missing_xcrun" -Message "xcrun not found"
 }
 
 if ($hostIsAppleOs -and $xcodebuild -and $xcrun) {
     $developerDirectory = Get-AppleDeveloperDirectory
     if (-not (Test-FullXcodeDeveloperDirectory $developerDirectory)) {
-        $appleBlockers.Add("Full Xcode must be selected as the active developer directory; Command Line Tools alone are not enough for iOS packaging") |
-            Out-Null
+        Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "full_xcode_not_selected" -Message "Full Xcode must be selected as the active developer directory; Command Line Tools alone are not enough for iOS packaging"
     }
 
     if (-not (Test-XcrunSdkAvailable -Xcrun $xcrun -SdkName "iphonesimulator")) {
-        $appleBlockers.Add("iPhone Simulator SDK not available; install iOS platform support through Xcode components") |
-            Out-Null
+        Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "missing_iphonesimulator_sdk" -Message "iPhone Simulator SDK not available; install iOS platform support through Xcode components"
     }
 
     if (-not (Test-XcrunSdkAvailable -Xcrun $xcrun -SdkName "iphoneos")) {
-        $appleBlockers.Add("iPhoneOS SDK not available; install iOS platform support through Xcode components") |
-            Out-Null
+        Add-MobilePackagingBlocker -Blockers $appleBlockers -Kind "missing_iphoneos_sdk" -Message "iPhoneOS SDK not available; install iOS platform support through Xcode components"
     }
 
     $appleSimulatorReady = Test-IosSimulatorRuntimeAvailable -Xcrun $xcrun
@@ -396,71 +456,70 @@ if ($hostIsAppleOs -and $xcodebuild -and $xcrun) {
 $appleSigningReady = -not [string]::IsNullOrWhiteSpace($env:MK_IOS_DEVELOPMENT_TEAM)
 
 if ($androidBlockers.Count -eq 0) {
-    Write-Host "mobile-packaging: android=ready"
+    Write-Information "mobile-packaging: android=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android=blocked"
-    foreach ($blocker in $androidBlockers) {
-        Write-Host "mobile-packaging: blocker - $blocker"
-    }
+    Write-Information "mobile-packaging: android=blocked" -InformationAction Continue
+    Write-MobilePackagingBlocker -Prefix "mobile-packaging" -Blockers $androidBlockers
 }
 
 if ($appleBlockers.Count -eq 0) {
-    Write-Host "mobile-packaging: apple=ready"
+    Write-Information "mobile-packaging: apple=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: apple=blocked"
-    foreach ($blocker in $appleBlockers) {
-        Write-Host "mobile-packaging: blocker - $blocker"
-    }
+    Write-Information "mobile-packaging: apple=blocked" -InformationAction Continue
+    Write-MobilePackagingBlocker -Prefix "mobile-packaging" -Blockers $appleBlockers
 }
 
 if ($androidReleaseSigningReady) {
-    Write-Host "mobile-packaging: android-release-signing=ready"
+    Write-Information "mobile-packaging: android-release-signing=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android-release-signing=not-configured"
+    Write-Information "mobile-packaging: android-release-signing=not-configured" -InformationAction Continue
 }
 
 if ($emulator) {
-    Write-Host "mobile-packaging: android-emulator=ready"
+    Write-Information "mobile-packaging: android-emulator=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android-emulator=not-installed"
+    Write-Information "mobile-packaging: android-emulator=not-installed" -InformationAction Continue
 }
 
 if ($androidAvdProbeTimedOut) {
-    Write-Host "mobile-packaging: android-avd=probe-timeout"
+    Write-Information "mobile-packaging: android-avd=probe-timeout" -InformationAction Continue
 }
 elseif ($androidAvds.Count -gt 0) {
-    Write-Host "mobile-packaging: android-avd=ready ($($androidAvds -join ', '))"
+    Write-Information "mobile-packaging: android-avd=ready ($($androidAvds -join ', '))" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android-avd=not-configured"
+    Write-Information "mobile-packaging: android-avd=not-configured" -InformationAction Continue
 }
 
 if ($androidDeviceProbeTimedOut) {
-    Write-Host "mobile-packaging: android-device-smoke=probe-timeout"
+    Write-Information "mobile-packaging: android-device-smoke=probe-timeout" -InformationAction Continue
+}
+elseif ($androidDeviceProbeSkipped) {
+    Write-Information "mobile-packaging: android-device-smoke=probe-skipped-ci" -InformationAction Continue
 }
 elseif ($androidDeviceReady) {
-    Write-Host "mobile-packaging: android-device-smoke=ready"
+    Write-Information "mobile-packaging: android-device-smoke=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: android-device-smoke=not-connected"
+    Write-Information "mobile-packaging: android-device-smoke=not-connected" -InformationAction Continue
 }
 
 if ($appleSimulatorReady) {
-    Write-Host "mobile-packaging: apple-simulator=ready"
+    Write-Information "mobile-packaging: apple-simulator=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: apple-simulator=not-installed"
+    Write-Information "mobile-packaging: apple-simulator=not-installed" -InformationAction Continue
 }
 
 if ($appleSigningReady) {
-    Write-Host "mobile-packaging: apple-signing=ready"
+    Write-Information "mobile-packaging: apple-signing=ready" -InformationAction Continue
 }
 else {
-    Write-Host "mobile-packaging: apple-signing=not-configured"
+    Write-Information "mobile-packaging: apple-signing=not-configured" -InformationAction Continue
 }
 
 if ($RequireAndroid -and $androidBlockers.Count -gt 0) {
@@ -471,4 +530,4 @@ if ($RequireApple -and $appleBlockers.Count -gt 0) {
     Write-Error "Apple mobile packaging is blocked by missing local tools."
 }
 
-Write-Host "mobile-packaging-check: diagnostic-only"
+Write-Information "mobile-packaging-check: diagnostic-only" -InformationAction Continue

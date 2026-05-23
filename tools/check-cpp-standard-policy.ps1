@@ -28,7 +28,7 @@ function Assert-MsvcCxx23Option([string]$value, [string]$label) {
         Write-Error "$label must set MK_MSVC_CXX23_STANDARD_OPTION to /std:c++23preview or /std:c++23"
     }
 
-    if ($script:expectedMsvcCxx23Option -eq $null) {
+    if ($null -eq $script:expectedMsvcCxx23Option) {
         $script:expectedMsvcCxx23Option = $value
     } elseif ($script:expectedMsvcCxx23Option -ne $value) {
         Write-Error "$label must use the same MK_MSVC_CXX23_STANDARD_OPTION as other presets"

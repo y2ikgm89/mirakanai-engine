@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
 
 $repoRoot = Get-RepoRoot
+$script:validationTierSelectionCache = @{}
 
 function Read-RequiredText {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
@@ -94,19 +95,17 @@ function Get-WorkflowJobText {
     return $match.Value
 }
 
-function Assert-ValidationTierSelection {
+function Get-ValidationTierSelection {
     param(
         [Parameter(Mandatory = $true)][string]$Label,
         [string[]]$ChangedPath = @(),
-        [switch]$RunAll,
-        [Parameter(Mandatory = $true)][bool]$ExpectedWindows,
-    [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
-    [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
-    [bool]$ExpectedLinuxCoverage = $false,
-    [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
-    [bool]$ExpectedWindowsCpp23 = $false,
-    [Parameter(Mandatory = $true)][bool]$ExpectedMacos
+        [switch]$RunAll
     )
+
+    $cacheKey = "RunAll=$($RunAll.IsPresent);ChangedPath=$([string]::Join('|', $ChangedPath))"
+    if ($script:validationTierSelectionCache.ContainsKey($cacheKey)) {
+        return $script:validationTierSelectionCache[$cacheKey]
+    }
 
     $classifierPath = Join-Path $repoRoot "tools/classify-pr-validation-tier.ps1"
     if (-not (Test-Path -LiteralPath $classifierPath -PathType Leaf)) {
@@ -134,6 +133,25 @@ function Assert-ValidationTierSelection {
     }
 
     $selection = $output | ConvertFrom-Json
+    $script:validationTierSelectionCache[$cacheKey] = $selection
+    return $selection
+}
+
+function Assert-ValidationTierSelection {
+    param(
+        [Parameter(Mandatory = $true)][string]$Label,
+        [string[]]$ChangedPath = @(),
+        [switch]$RunAll,
+        [Parameter(Mandatory = $true)][bool]$ExpectedWindows,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
+        [bool]$ExpectedLinuxCoverage = $false,
+        [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
+        [bool]$ExpectedWindowsCpp23 = $false,
+        [Parameter(Mandatory = $true)][bool]$ExpectedMacos
+    )
+
+    $selection = Get-ValidationTierSelection -Label $Label -ChangedPath $ChangedPath -RunAll:$RunAll.IsPresent
     $expectations = @{
         windows = $ExpectedWindows
         linux = $ExpectedLinux
@@ -166,8 +184,7 @@ Assert-ContainsAll $cpp23EvaluationScript @(
     "[switch]`$Debug",
     "[ValidateRange(0, 1024)]",
     "[int]`$Jobs = 0",
-    "Resolve-Cpp23EvaluationJobCount",
-    "`$effectiveJobs = Resolve-Cpp23EvaluationJobCount -Jobs `$Jobs",
+    "`$effectiveJobs = Resolve-ParallelJobCount -Jobs `$Jobs",
     "cpp23-verification: cmake/ctest parallel jobs=`$effectiveJobs",
     "`$runDebug = `$Debug.IsPresent -or (-not `$Release.IsPresent -and -not `$Gui.IsPresent)",
     "if (`$runDebug) {",
@@ -181,6 +198,8 @@ Assert-ContainsAll $cpp23EvaluationScript @(
     "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-desktop-gui-eval --parallel `$effectiveJobs",
     "Invoke-CheckedCommand `$tools.CTest --preset cpp23-desktop-gui-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs"
 ) "tools/evaluate-cpp23.ps1 release artifact validation"
+Assert-DoesNotContainText $cpp23EvaluationScript "Resolve-Cpp23EvaluationJobCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
+Assert-DoesNotContainText $cpp23EvaluationScript "[Environment]::ProcessorCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
 $cpp23CpackCallIndex = $cpp23EvaluationScript.IndexOf('Invoke-CheckedCommand $tools.CPack --preset cpp23-release-eval', [System.StringComparison]::Ordinal)
 $cpp23ArtifactAssertIndex = $cpp23EvaluationScript.IndexOf('Assert-ReleasePackageArtifacts -BuildDir $releaseBuildDir', [System.StringComparison]::Ordinal)
 if ($cpp23CpackCallIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt $cpp23CpackCallIndex) {
@@ -344,7 +363,7 @@ Assert-ContainsAll $validateWorkflow @(
     "contents: read",
     "concurrency:",
     'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
-    "cancel-in-progress: `${{ github.event_name == 'pull_request' }}"
+    "cancel-in-progress: true"
 ) ".github/workflows/validate.yml triggers"
 
 $changesJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "changes" -Label ".github/workflows/validate.yml"
@@ -389,6 +408,8 @@ Assert-ContainsAll $windowsJob @(
     "windows-toolchain-cache-identity",
     "Restore vcpkg installed cache",
     "Restore vcpkg package cache",
+    "id: restore-vcpkg-package",
+    "id: restore-vcpkg-installed",
     "path: out/vcpkg",
     "path: vcpkg_installed",
     "Restore Windows dev build cache",
@@ -400,6 +421,12 @@ Assert-ContainsAll $windowsJob @(
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke",
+    "Save vcpkg package cache",
+    "Save vcpkg installed cache",
+    "steps.restore-vcpkg-package.outputs.cache-hit != 'true'",
+    "steps.restore-vcpkg-installed.outputs.cache-hit != 'true'",
+    "key: `${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}",
     "Save Windows dev build cache",
     "continue-on-error: true",
     $cacheSaveActionRef,
@@ -436,6 +463,8 @@ Assert-ContainsAll $windowsCpp23Job @(
     "windows-toolchain-cache-identity",
     "Restore vcpkg installed cache",
     "Restore vcpkg package cache",
+    "id: restore-vcpkg-package",
+    "id: restore-vcpkg-installed",
     "path: out/vcpkg",
     "path: vcpkg_installed",
     "Restore Windows C++23 build cache",
@@ -449,6 +478,12 @@ Assert-ContainsAll $windowsCpp23Job @(
     "restore-cpp23-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/evaluate-cpp23.ps1 -Release",
+    "Save vcpkg package cache",
+    "Save vcpkg installed cache",
+    "steps.restore-vcpkg-package.outputs.cache-hit != 'true'",
+    "steps.restore-vcpkg-installed.outputs.cache-hit != 'true'",
+    "key: `${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}",
+    "key: `${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}",
     "Save Windows C++23 build cache",
     "continue-on-error: true",
     $cacheSaveActionRef,
@@ -463,6 +498,7 @@ Assert-ContainsAll $windowsCpp23Job @(
     "if-no-files-found: warn",
     "name: windows-packages",
     "retention-days: 14",
+    "compression-level: 0",
     "include-hidden-files: false",
     "out/build/cpp23-release-preset-eval/*.zip",
     "out/build/cpp23-release-preset-eval/*.zip.sha256",
@@ -482,7 +518,7 @@ Assert-ContainsAll $agentStaticJob @(
     'if: ${{ github.event_name == ''pull_request'' }}',
     'git diff --check ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }}',
     "Run static validation",
-    "run: ./tools/validate.ps1 -StaticOnly -StaticJobs 1"
+    "run: ./tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120"
 ) ".github/workflows/validate.yml agent-static job"
 
 $linuxJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "linux" -Label ".github/workflows/validate.yml"
@@ -710,7 +746,7 @@ Assert-ContainsAll $staticAnalysisJob @(
     'if: ${{ always() && !cancelled() }}',
     'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
-    "name: static-analysis-tidy-logs",
+    'name: static-analysis-tidy-logs-${{ matrix.shard_index }}',
     "retention-days: 14",
     "include-hidden-files: false",
     "out/build/ci-linux-tidy/compile_commands.json",
@@ -765,7 +801,7 @@ Assert-ContainsAll $iosWorkflow @(
     "contents: read",
     "concurrency:",
     'group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
-    "cancel-in-progress: `${{ github.event_name == 'pull_request' }}"
+    "cancel-in-progress: true"
 ) ".github/workflows/ios-validate.yml triggers and path filters"
 
 $iosJob = Get-WorkflowJobText -WorkflowText $iosWorkflow -JobName "simulator-smoke" -Label ".github/workflows/ios-validate.yml"

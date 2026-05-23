@@ -120,19 +120,35 @@ function Get-ModuleOwnership($manifest) {
 
 function Get-RelativeFiles($path, $filter) {
     $fullPath = Join-Path $root $path
-    if (-not (Test-Path $fullPath)) {
+    if (-not (Test-Path -LiteralPath $fullPath)) {
         return @()
     }
 
-    return @(Get-ChildItem -Path $fullPath -Recurse -File -Filter $filter | ForEach-Object {
+    return @(Get-ChildItem -LiteralPath $fullPath -Recurse -File -Filter $filter | ForEach-Object {
             $_.FullName.Substring($root.Length + 1).Replace("\", "/")
         })
 }
 
+$script:agentContextGameManifestFiles = $null
+
+function Get-GameManifestFiles() {
+    if ($null -ne $script:agentContextGameManifestFiles) {
+        return @($script:agentContextGameManifestFiles)
+    }
+
+    $gamesPath = Join-Path $root "games"
+    if (-not (Test-Path -LiteralPath $gamesPath)) {
+        $script:agentContextGameManifestFiles = @()
+        return @()
+    }
+
+    $script:agentContextGameManifestFiles = @(Get-ChildItem -LiteralPath $gamesPath -Recurse -File -Filter "game.agent.json" | Sort-Object FullName)
+    return @($script:agentContextGameManifestFiles)
+}
+
 function Get-GameManifestSummaries() {
-    $gameManifestPaths = @(Get-ChildItem -Path (Join-Path $root "games") -Recurse -File -Filter "game.agent.json")
     $summaries = @()
-    foreach ($gameManifestPath in $gameManifestPaths) {
+    foreach ($gameManifestPath in Get-GameManifestFiles) {
         $relativePath = $gameManifestPath.FullName.Substring($root.Length + 1).Replace("\", "/")
         $game = Get-Content -LiteralPath $gameManifestPath.FullName -Raw | ConvertFrom-Json
         $summaries += [ordered]@{
@@ -166,7 +182,7 @@ $context = [ordered]@{
     docs                      = @(Get-RelativeFiles "docs" "*.md")
     publicHeaders             = @(Get-ManifestPublicHeaders $manifestFull)
     moduleOwnership           = @(Get-ModuleOwnership $manifestFull)
-    games                     = @(Get-RelativeFiles "games" "game.agent.json")
+    games                     = @(Get-GameManifestFiles | ForEach-Object { $_.FullName.Substring($root.Length + 1).Replace("\", "/") })
     sampleGames               = @(Get-GameManifestSummaries)
     assets                    = $manifestFull.importerCapabilities
     platformTargets           = @($manifestFull.packagingTargets)

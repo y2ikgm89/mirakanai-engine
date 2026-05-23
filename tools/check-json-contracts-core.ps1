@@ -23,44 +23,15 @@ function Assert-DoesNotContainText($text, $needle, $label) {
     }
 }
 
-function Assert-ProductionCompletionCorpus {
-    $splitRoot = Join-Path $root "docs/superpowers/master-plans/production-completion-v1"
-    if (-not (Test-Path -LiteralPath $splitRoot -PathType Container)) {
-        Write-Error "Missing production-completion split corpus: docs/superpowers/master-plans/production-completion-v1"
-    }
-    $expectedNames = @(
-        "01-one-dot-zero-readiness-ledger.md",
-        "04-developer-owned-engine-capability-backlog.md",
-        "05-projections-and-scenarios.md",
-        "99-historical-verdict-archive.md"
-    )
-    $actualNames = @(Get-ChildItem -LiteralPath $splitRoot -Filter "*.md" -File | ForEach-Object { $_.Name } | Sort-Object)
-    $expectedSortedNames = @($expectedNames | Sort-Object)
-    if (($actualNames -join "|") -ne ($expectedSortedNames -join "|")) {
-        Write-Error "docs/superpowers/master-plans/production-completion-v1 must contain exactly: $($expectedSortedNames -join ', ')"
-    }
-}
+$script:jsonContractSurfaceTextCache = @{}
+$script:jsonGameAgentManifestCache = $null
 
-function Assert-SpecStatusSections {
-    $specRoot = Join-Path $root "docs/specs"
-    if (-not (Test-Path -LiteralPath $specRoot -PathType Container)) {
-        Write-Error "Missing specs directory: docs/specs"
-    }
-    foreach ($specFile in Get-ChildItem -LiteralPath $specRoot -Filter "*.md" -File | Sort-Object Name) {
-        if ($specFile.Name -eq "README.md") {
-            continue
-        }
-        $specText = Get-Content -LiteralPath $specFile.FullName -Raw
-        if (-not [System.Text.RegularExpressions.Regex]::IsMatch($specText, "(?m)^## Status$")) {
-            Write-Error "Spec file must contain a ## Status section: docs/specs/$($specFile.Name)"
-        }
-    }
-}
-
-function Get-ActiveChildProductionPlans {
-    $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 function Get-JsonContractSurfaceText([Parameter(Mandatory)][string]$relativePath) {
     $normalizedRelativePath = $relativePath -replace '\\', '/'
+    if ($script:jsonContractSurfaceTextCache.ContainsKey($normalizedRelativePath)) {
+        return $script:jsonContractSurfaceTextCache[$normalizedRelativePath]
+    }
+
     $fullPath = Join-Path $root $normalizedRelativePath
     $parts = [System.Collections.Generic.List[string]]::new()
     $parts.Add((Get-Content -LiteralPath $fullPath -Raw))
@@ -72,8 +43,48 @@ function Get-JsonContractSurfaceText([Parameter(Mandatory)][string]$relativePath
                 ForEach-Object { $parts.Add((Get-Content -LiteralPath $_.FullName -Raw)) }
         }
     }
-    return $parts -join "`n"
+    $surfaceText = $parts -join "`n"
+    $script:jsonContractSurfaceTextCache[$normalizedRelativePath] = $surfaceText
+    return $surfaceText
 }
+
+function Get-GameAgentManifests {
+    if ($null -ne $script:jsonGameAgentManifestCache) {
+        return @($script:jsonGameAgentManifestCache)
+    }
+
+    $gamesRoot = Join-Path $root "games"
+    $manifests = @()
+    if (Test-Path -LiteralPath $gamesRoot -PathType Container) {
+        $manifests = @(Get-ChildItem -LiteralPath $gamesRoot -Recurse -Filter "game.agent.json" -File |
+            Sort-Object FullName |
+            ForEach-Object {
+                $manifestText = Get-Content -LiteralPath $_.FullName -Raw
+                [pscustomobject]@{
+                    RelativePath = Get-RelativeRepoPath $_.FullName
+                    FullPath = $_.FullName
+                    Text = $manifestText
+                    Game = $manifestText | ConvertFrom-Json
+                }
+            })
+    }
+
+    $script:jsonGameAgentManifestCache = $manifests
+    return @($script:jsonGameAgentManifestCache)
+}
+
+function Get-GameAgentManifest([Parameter(Mandatory)][string]$RelativePath) {
+    $normalizedRelativePath = $RelativePath -replace '\\', '/'
+    foreach ($manifest in Get-GameAgentManifests) {
+        if ($manifest.RelativePath -eq $normalizedRelativePath) {
+            return $manifest
+        }
+    }
+    return $null
+}
+
+function Get-ActiveChildProductionPlans {
+    $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
     $plansRoot = Join-Path $root "docs/superpowers/plans"
     if (-not (Test-Path -LiteralPath $plansRoot -PathType Container)) {
         Write-Error "Missing production plan directory: docs/superpowers/plans"

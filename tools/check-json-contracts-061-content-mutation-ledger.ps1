@@ -239,9 +239,9 @@ function Assert-JsonMutationLedger {
     }
 }
 
-Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json" | ForEach-Object {
-    $relative = Get-RelativeRepoPath $_.FullName
-    $game = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
+foreach ($gameManifestEntry in Get-GameAgentManifests) {
+    $relative = $gameManifestEntry.RelativePath
+    $game = $gameManifestEntry.Game
     $requiresMutationLedger = @("2d-desktop-runtime-package", "3d-playable-desktop-package") -contains $game.gameplayContract.productionRecipe
     Assert-JsonMutationLedger $game $relative $requiresMutationLedger
 }

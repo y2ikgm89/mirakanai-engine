@@ -135,8 +135,8 @@ function Split-CompileCommandFragment {
         return $tokens
     }
 
-    $matches = [regex]::Matches($Fragment, '"(?:[^"\\]|\\.)*"|\S+')
-    foreach ($match in $matches) {
+    $fragmentMatches = [regex]::Matches($Fragment, '"(?:[^"\\]|\\.)*"|\S+')
+    foreach ($match in $fragmentMatches) {
         $token = $match.Value
         if ($token.Length -ge 2 -and $token.StartsWith('"') -and $token.EndsWith('"')) {
             $token = $token.Substring(1, $token.Length - 2)
@@ -299,7 +299,7 @@ function Convert-FileApiCodemodelToCompileDatabase {
     return $entries.Count
 }
 
-function Ensure-ClangTidyCompileDatabase {
+function Resolve-ClangTidyCompileDatabase {
     param(
         [Parameter(Mandatory = $true)][string]$Preset,
         [Parameter(Mandatory = $true)][string]$Configuration,
@@ -392,7 +392,7 @@ if (-not $configurePreset) {
 
 $buildDir = ([string]$configurePreset.binaryDir).Replace('${sourceDir}', $root)
 $compileCommands = Join-Path $buildDir "compile_commands.json"
-if (-not (Ensure-ClangTidyCompileDatabase -Preset $Preset -Configuration $Configuration -BuildDir $buildDir -CompileCommands $compileCommands -ReuseExistingFileApiReply:$ReuseExistingFileApiReply -RequireStrict:$Strict)) {
+if (-not (Resolve-ClangTidyCompileDatabase -Preset $Preset -Configuration $Configuration -BuildDir $buildDir -CompileCommands $compileCommands -ReuseExistingFileApiReply:$ReuseExistingFileApiReply -RequireStrict:$Strict)) {
     Write-Host "tidy-check: config ok"
     exit 0
 }
@@ -474,16 +474,7 @@ if ($Jobs -lt 0) {
     Write-Error "tidy-check: -Jobs must be 0 for automatic CPU-count parallelism or a positive explicit job count"
 }
 
-$effectiveJobs = if ($Jobs -eq 0) {
-    [Math]::Max(1, [Environment]::ProcessorCount)
-}
-else {
-    $Jobs
-}
-$effectiveJobs = [Math]::Max(1, $effectiveJobs)
-if ($tidyFiles.Count -gt 0) {
-    $effectiveJobs = [Math]::Min($effectiveJobs, $tidyFiles.Count)
-}
+$effectiveJobs = Resolve-ParallelJobCount -Jobs $Jobs -MaximumJobs $tidyFiles.Count
 
 $suppressedWarningSummaryCount = 0
 $failedTidyFiles = [System.Collections.Generic.List[string]]::new()

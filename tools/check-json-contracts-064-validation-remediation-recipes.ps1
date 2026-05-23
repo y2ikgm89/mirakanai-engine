@@ -185,9 +185,9 @@ function Assert-JsonValidationRemediationRecipes {
     }
 }
 
-Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json" | ForEach-Object {
-    $relative = Get-RelativeRepoPath $_.FullName
-    $game = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
+foreach ($gameManifestEntry in Get-GameAgentManifests) {
+    $relative = $gameManifestEntry.RelativePath
+    $game = $gameManifestEntry.Game
     $requiresValidationRemediation = @("2d-desktop-runtime-package", "3d-playable-desktop-package") -contains $game.gameplayContract.productionRecipe
     Assert-JsonValidationRemediationRecipes $game $relative $requiresValidationRemediation
 }

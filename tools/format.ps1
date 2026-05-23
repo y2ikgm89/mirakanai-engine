@@ -11,13 +11,7 @@ if (-not $format) {
 }
 
 $root = Get-RepoRoot
-$sourceRoots = @("engine", "editor", "examples", "games", "tests")
-$files = foreach ($sourceRoot in $sourceRoots) {
-    $path = Join-Path $root $sourceRoot
-    if (Test-Path $path) {
-        Get-ChildItem $path -Recurse -File -Include *.cpp, *.hpp, *.h
-    }
-}
+$files = Get-CxxSourceFile -Root $root
 
 if (-not $files) {
     Write-Host "format: no C++ files found"

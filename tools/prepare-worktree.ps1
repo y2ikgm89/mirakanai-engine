@@ -24,15 +24,6 @@ function Get-GitOutput {
     return @($output)
 }
 
-function ConvertTo-ComparablePath {
-    param(
-        [Parameter(Mandatory = $true)][string]$Path
-    )
-
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    return $fullPath.TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar))
-}
-
 function Test-GitIgnoredPath {
     param(
         [Parameter(Mandatory = $true)][string]$RepoRoot,

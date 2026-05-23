@@ -133,6 +133,15 @@ function Join-OptionalPath {
     return Join-Path $Path $ChildPath
 }
 
+function ConvertTo-ComparablePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    return $fullPath.TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar))
+}
+
 function Get-LocalApplicationDataRoot {
     $localAppData = Get-EnvironmentVariableAnyScope "LOCALAPPDATA"
     if (-not [string]::IsNullOrWhiteSpace($localAppData)) {
@@ -144,9 +153,9 @@ function Get-LocalApplicationDataRoot {
         return $specialFolder
     }
 
-    $home = Get-EnvironmentVariableAnyScope "HOME"
-    if (-not [string]::IsNullOrWhiteSpace($home)) {
-        return Join-Path $home ".local/share"
+    $homeRoot = Get-EnvironmentVariableAnyScope "HOME"
+    if (-not [string]::IsNullOrWhiteSpace($homeRoot)) {
+        return Join-Path $homeRoot ".local/share"
     }
 
     return $null
@@ -174,6 +183,29 @@ function Get-VcpkgDefaultTriplet {
     }
 
     return "x64-windows"
+}
+
+function Get-VcpkgRoot {
+    return Join-Path (Get-RepoRoot) "external/vcpkg"
+}
+
+function Get-VcpkgExecutablePath {
+    return Join-Path (Get-VcpkgRoot) "vcpkg.exe"
+}
+
+function Assert-VcpkgExecutable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Purpose
+    )
+
+    $vcpkgExe = Get-VcpkgExecutablePath
+    if (-not (Test-Path -LiteralPath $vcpkgExe -PathType Leaf)) {
+        Write-Error "vcpkg is required for $Purpose. Run 'pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1' first."
+    }
+
+    return $vcpkgExe
 }
 
 function Get-CombinedPathEntries {
@@ -725,6 +757,43 @@ function Get-ClangFormatCommand {
     }
 
     return $null
+}
+
+function Get-CxxSourceFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root,
+
+        [string[]]$SourceRoots = @("engine", "editor", "examples", "games", "tests")
+    )
+
+    foreach ($sourceRoot in $SourceRoots) {
+        $path = Join-Path $Root $sourceRoot
+        if (Test-Path -LiteralPath $path) {
+            Get-ChildItem -LiteralPath $path -Recurse -File -Include *.cpp, *.hpp, *.h
+        }
+    }
+}
+
+function Resolve-ParallelJobCount {
+    [CmdletBinding()]
+    param(
+        [Parameter()][ValidateRange(0, 1024)][int]$Jobs = 0,
+
+        [Parameter()][ValidateRange(0, 1048576)][int]$MaximumJobs = 0
+    )
+
+    $effectiveJobs = if ($Jobs -eq 0) {
+        [Math]::Max(1, [Environment]::ProcessorCount)
+    } else {
+        $Jobs
+    }
+
+    if ($MaximumJobs -gt 0) {
+        $effectiveJobs = [Math]::Min($effectiveJobs, $MaximumJobs)
+    }
+
+    return [Math]::Max(1, $effectiveJobs)
 }
 
 function Get-ClangTidyCommand {

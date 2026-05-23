@@ -98,41 +98,44 @@ $moduleBoundaryRules = @(
     }
 )
 
-$violations = New-Object System.Collections.Generic.List[string]
+function Get-PublicApiHeaderFile {
+    param(
+        [string[]]$RelativeRoots
+    )
 
-foreach ($relativeRoot in $publicRoots) {
-    $absoluteRoot = Join-Path $root $relativeRoot
-    if (-not (Test-Path $absoluteRoot)) {
-        continue
-    }
-
-    Get-ChildItem -LiteralPath $absoluteRoot -Recurse -File -Include *.h, *.hpp, *.hh, *.hxx | ForEach-Object {
-        $relativeFile = $_.FullName.Substring($root.Length + 1)
-        $lineNumber = 0
-        foreach ($line in Get-Content -LiteralPath $_.FullName) {
-            $lineNumber += 1
-            foreach ($entry in $forbiddenPatterns) {
-                if ($line -cmatch $entry.Pattern) {
-                    $violations.Add("${relativeFile}:${lineNumber}: public API exposes $($entry.Label): $line") | Out-Null
-                }
-            }
+    foreach ($relativeRoot in $RelativeRoots) {
+        $absoluteRoot = Join-Path $root $relativeRoot
+        if (-not (Test-Path $absoluteRoot)) {
+            continue
         }
+
+        Get-ChildItem -LiteralPath $absoluteRoot -Recurse -File -Include *.h, *.hpp, *.hh, *.hxx
     }
 }
 
-foreach ($rule in $moduleBoundaryRules) {
-    $absoluteRoot = Join-Path $root $rule.Root
-    if (-not (Test-Path $absoluteRoot)) {
-        continue
-    }
+$violations = New-Object System.Collections.Generic.List[string]
 
-    Get-ChildItem -LiteralPath $absoluteRoot -Recurse -File -Include *.h, *.hpp, *.hh, *.hxx | ForEach-Object {
-        $relativeFile = $_.FullName.Substring($root.Length + 1)
-        $lineNumber = 0
-        foreach ($line in Get-Content -LiteralPath $_.FullName) {
-            $lineNumber += 1
+foreach ($file in Get-PublicApiHeaderFile -RelativeRoots $publicRoots) {
+    $relativeFile = $file.FullName.Substring($root.Length + 1)
+    $relativeFileForMatching = $relativeFile.Replace("\", "/")
+    $applicableModuleBoundaryRules = @(
+        $moduleBoundaryRules | Where-Object {
+            $relativeFileForMatching.StartsWith("$($_.Root)/", [System.StringComparison]::Ordinal)
+        }
+    )
+
+    $lineNumber = 0
+    foreach ($line in Get-Content -LiteralPath $file.FullName) {
+        $lineNumber += 1
+        foreach ($entry in $forbiddenPatterns) {
+            if ($line -cmatch $entry.Pattern) {
+                $violations.Add("${relativeFile}:${lineNumber}: public API exposes $($entry.Label): $line") | Out-Null
+            }
+        }
+        foreach ($rule in $applicableModuleBoundaryRules) {
             if ($line -cmatch $rule.Pattern) {
-                $violations.Add("${relativeFile}:${lineNumber}: public API boundary violation: $($rule.Label): $line") | Out-Null
+                $violations.Add("${relativeFile}:${lineNumber}: public API boundary violation: $($rule.Label): $line") |
+                    Out-Null
             }
         }
     }

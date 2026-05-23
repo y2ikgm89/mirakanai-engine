@@ -3,11 +3,13 @@
 
 # Chapter 3 for check-ai-integration.ps1 static contracts.
 
+$historicalVerdictArchiveText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })
 if ($editorProductizationGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop editor-productization gap must leave unsupportedProductionGaps after 1.0 host-gated exclusion closeout"
 }
-$editorProductizationCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+$editorProductizationCloseoutText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Editor Productization 1.0 Host-Gated Exclusion Closeout",
     "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
@@ -27,7 +29,7 @@ $productionUiImporterPlatformGap = @($productionLoop.unsupportedProductionGaps |
 if ($productionUiImporterPlatformGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop production-ui-importer-platform-adapters gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$productionUiCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+$productionUiCloseoutText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Production UI Importer Platform Adapters 1.0 Closeout",
     "reviewed adapter-boundary and package evidence",
@@ -59,7 +61,7 @@ $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($fullRepoQualityGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$fullRepoQualityCloseoutText = Get-Content -Raw "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+$fullRepoQualityCloseoutText = $historicalVerdictArchiveText
 foreach ($needle in @(
     "Full Repository Quality Gate 1.0 Closeout",
     "local full validate",

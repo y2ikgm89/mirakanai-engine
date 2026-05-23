@@ -450,6 +450,66 @@ if ($runtimeSceneValidationCommand.Count -ne 1 -or $runtimeSceneValidationComman
         }
     }
 }
+$publicApiBoundaryScriptPath = Join-Path $root "tools/check-public-api-boundaries.ps1"
+if (-not (Test-Path -LiteralPath $publicApiBoundaryScriptPath -PathType Leaf)) {
+    Write-Error "tools/check-public-api-boundaries.ps1 is missing"
+} else {
+    $publicApiBoundaryText = Get-Content -LiteralPath $publicApiBoundaryScriptPath -Raw
+    if (-not $publicApiBoundaryText.Contains("function Get-PublicApiHeaderFile")) {
+        Write-Error "tools/check-public-api-boundaries.ps1 must use one shared Get-PublicApiHeaderFile enumeration helper"
+    }
+    $publicApiHeaderScanMatches = [System.Text.RegularExpressions.Regex]::Matches(
+        $publicApiBoundaryText,
+        "Get-ChildItem\s+-LiteralPath\s+\`$absoluteRoot\s+-Recurse\s+-File\s+-Include\s+\*\.h,\s+\*\.hpp,\s+\*\.hh,\s+\*\.hxx")
+    if ($publicApiHeaderScanMatches.Count -ne 1) {
+        Write-Error "tools/check-public-api-boundaries.ps1 must enumerate public headers once; found $($publicApiHeaderScanMatches.Count) recursive header scans"
+    }
+}
+$commonScriptPath = Join-Path $root "tools/common.ps1"
+$commonScriptText = Get-Content -LiteralPath $commonScriptPath -Raw
+if (-not $commonScriptText.Contains("function Get-CxxSourceFile")) {
+    Write-Error "tools/common.ps1 must expose shared Get-CxxSourceFile for format entrypoints"
+}
+foreach ($formatScriptName in @("check-format.ps1", "format.ps1")) {
+    $formatScriptPath = Join-Path $root "tools/$formatScriptName"
+    $formatScriptText = Get-Content -LiteralPath $formatScriptPath -Raw
+    if (-not $formatScriptText.Contains("Get-CxxSourceFile -Root `$root")) {
+        Write-Error "tools/$formatScriptName must use shared Get-CxxSourceFile"
+    }
+    if ($formatScriptText.Contains('$sourceRoots = @("engine", "editor", "examples", "games", "tests")')) {
+        Write-Error "tools/$formatScriptName must not duplicate C++ source root lists"
+    }
+}
+$checkFormatScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-format.ps1") -Raw
+foreach ($needle in @(
+        "Invoke-FormatBackgroundJob",
+        "Start-ThreadJob",
+        "Start-Job",
+        "Resolve-ParallelJobCount -Jobs 0 -MaximumJobs 4",
+        "Wait-Job -Job @(`$running | ForEach-Object { `$_.Job }) -Any",
+        "clang-format failed for batch"
+    )) {
+    if (-not $checkFormatScriptText.Contains($needle)) {
+        Write-Error "tools/check-format.ps1 must use bounded parallel clang-format dry-run batches: $needle"
+    }
+}
+$licenseScriptPath = Join-Path $root "tools/check-license.ps1"
+$licenseScriptText = Get-Content -LiteralPath $licenseScriptPath -Raw
+if (-not $licenseScriptText.Contains("function Get-LicenseCheckedSourceFile")) {
+    Write-Error "tools/check-license.ps1 must use one shared Get-LicenseCheckedSourceFile enumeration helper"
+}
+if (-not $licenseScriptText.Contains("git -C `$Root ls-files --cached --others --exclude-standard -- '*.cpp' '*.hpp'")) {
+    Write-Error "tools/check-license.ps1 must enumerate tracked and unignored C++ license inputs through git ls-files"
+}
+if (-not $licenseScriptText.Contains('Write-Information "license-check: ok" -InformationAction Continue')) {
+    Write-Error "tools/check-license.ps1 must report success through the information stream"
+}
+if ($licenseScriptText.Contains('Get-ChildItem -LiteralPath $directory.FullName')) {
+    Write-Error "tools/check-license.ps1 must not traverse directory trees after switching to git ls-files enumeration"
+}
+if ($licenseScriptText.Contains('Get-ChildItem -Path $Root -Recurse -File -Include')) {
+    Write-Error "tools/check-license.ps1 must not recursively scan excluded trees before filtering"
+}
 $validationRunnerCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq "run-validation-recipe" })
 if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status -ne "ready") {
     Write-Error "engine manifest aiOperableProductionLoop must expose one ready run-validation-recipe command surface"

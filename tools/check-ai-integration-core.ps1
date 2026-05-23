@@ -60,6 +60,41 @@ function Get-AgentSurfaceText([Parameter(Mandatory)][string]$relativePath) {
     return $text
 }
 
+$script:agentGameManifestCache = $null
+
+function Get-AgentGameManifests {
+    if ($null -ne $script:agentGameManifestCache) {
+        return @($script:agentGameManifestCache)
+    }
+
+    $gamesRoot = Resolve-RequiredAgentPath "games"
+    $manifests = @(Get-ChildItem -LiteralPath $gamesRoot -Recurse -Filter "game.agent.json" -File |
+        Sort-Object FullName |
+        ForEach-Object {
+            $manifestText = Get-Content -LiteralPath $_.FullName -Raw
+            [pscustomobject]@{
+                RelativePath = Get-RelativeRepoPath $_.FullName
+                FullPath = $_.FullName
+                Text = $manifestText
+                Game = $manifestText | ConvertFrom-Json
+            }
+        })
+
+    $script:agentGameManifestCache = $manifests
+    return @($script:agentGameManifestCache)
+}
+
+function Get-AgentGameManifest([Parameter(Mandatory)][string]$RelativePath) {
+    $normalizedRelativePath = $RelativePath -replace '\\', '/'
+    foreach ($manifest in Get-AgentGameManifests) {
+        if ($manifest.RelativePath -eq $normalizedRelativePath) {
+            return $manifest
+        }
+    }
+
+    Write-Error "Missing game manifest: $normalizedRelativePath"
+}
+
 function Assert-SkillFrontmatter($skillFile) {
     $head = (Get-Content -LiteralPath $skillFile -TotalCount 8) -join "`n"
     if ($head -notmatch "---\s*\nname:\s*[a-z0-9-]+" -or $head -notmatch "description:\s*.+") {
@@ -94,34 +129,6 @@ function Assert-DoesNotContainText($text, $needle, $label) {
     }
 }
 
-function Assert-ProductionCompletionCorpus {
-    $splitRoot = Resolve-RequiredAgentPath "docs/superpowers/master-plans/production-completion-v1"
-    $expectedNames = @(
-        "01-one-dot-zero-readiness-ledger.md",
-        "04-developer-owned-engine-capability-backlog.md",
-        "05-projections-and-scenarios.md",
-        "99-historical-verdict-archive.md"
-    )
-    $actualNames = @(Get-ChildItem -LiteralPath $splitRoot -Filter "*.md" -File | ForEach-Object { $_.Name } | Sort-Object)
-    $expectedSortedNames = @($expectedNames | Sort-Object)
-    if (($actualNames -join "|") -ne ($expectedSortedNames -join "|")) {
-        Write-Error "docs/superpowers/master-plans/production-completion-v1 must contain exactly: $($expectedSortedNames -join ', ')"
-    }
-}
-
-function Assert-SpecStatusSections {
-    $specRoot = Resolve-RequiredAgentPath "docs/specs"
-    foreach ($specFile in Get-ChildItem -LiteralPath $specRoot -Filter "*.md" -File | Sort-Object Name) {
-        if ($specFile.Name -eq "README.md") {
-            continue
-        }
-        $specText = Get-Content -LiteralPath $specFile.FullName -Raw
-        if (-not [System.Text.RegularExpressions.Regex]::IsMatch($specText, "(?m)^## Status$")) {
-            Write-Error "Spec file must contain a ## Status section: docs/specs/$($specFile.Name)"
-        }
-    }
-}
-
 function Assert-MatchesText($text, $pattern, $label) {
     if (-not [System.Text.RegularExpressions.Regex]::IsMatch($text, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
         Write-Error "$label did not match expected pattern: $pattern"
@@ -139,14 +146,10 @@ function Assert-JsonProperty($object, [string[]]$properties, $label) {
 function Assert-NoGameSourceRawAssetIdFromName {
     $rawAssetIdMatches = @()
     $gamesRoot = Resolve-RequiredAgentPath "games"
-    foreach ($sourceFile in Get-ChildItem -LiteralPath $gamesRoot -Filter "*.cpp" -Recurse -File) {
-        foreach ($match in Select-String -LiteralPath $sourceFile.FullName -Pattern "AssetId::from_name(" -SimpleMatch) {
-            $rawAssetIdMatches += "$(Get-RelativeRepoPath $match.Path):$($match.LineNumber)"
-        }
-    }
-
+    $sourceFiles = @(Get-ChildItem -LiteralPath $gamesRoot -Filter "*.cpp" -Recurse -File | ForEach-Object { $_.FullName })
     $newGameScript = Resolve-RequiredAgentPath "tools/new-game.ps1"
-    foreach ($match in Select-String -LiteralPath $newGameScript -Pattern "AssetId::from_name(" -SimpleMatch) {
+    $sourceFiles += $newGameScript
+    foreach ($match in Select-String -LiteralPath $sourceFiles -Pattern "AssetId::from_name(" -SimpleMatch) {
         $rawAssetIdMatches += "$(Get-RelativeRepoPath $match.Path):$($match.LineNumber)"
     }
 
@@ -692,13 +695,53 @@ function Assert-ClaudeReadOnlyAgent($relativePath) {
         Write-Error "Read-only Claude agent must declare tools: Read, Grep, Glob, LS: $relativePath"
     }
 }
+
+function Assert-CursorReadOnlyAgent($relativePath) {
+    $path = Resolve-RequiredAgentPath $relativePath
+    $head = (Get-Content -LiteralPath $path -TotalCount 8) -join "`n"
+    if ($head -notmatch '(?m)^readonly:\s*true\s*$') {
+        Write-Error "Read-only Cursor agent must declare readonly: true: $relativePath"
+    }
+}
+
+function Assert-ReadOnlyAgentRoleSet {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$ActualRoles,
+        [Parameter(Mandatory = $true)][object[]]$ExpectedRoles,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    $actual = @($ActualRoles | ForEach-Object { [string]$_ } | Sort-Object)
+    $expected = @($ExpectedRoles | ForEach-Object { [string]$_ } | Sort-Object)
+    if (($actual -join "|") -ne ($expected -join "|")) {
+        Write-Error "$Label readOnlyAgents must match crossToolAlignment.requiredReadOnlyRoles. actual=[$($actual -join ', ')] expected=[$($expected -join ', ')]"
+    }
+}
+
+function Assert-ReadOnlyAgentContracts {
+    $fragmentPath = Resolve-RequiredAgentPath "engine/agent/manifest.fragments/011-aiSurfaces.json"
+    $fragment = Get-Content -LiteralPath $fragmentPath -Raw | ConvertFrom-Json
+    $expectedReadOnlyRoles = @($fragment.aiSurfaces.crossToolAlignment.requiredReadOnlyRoles)
+
+    Assert-ReadOnlyAgentRoleSet -ActualRoles @($fragment.aiSurfaces.codex.readOnlyAgents) -ExpectedRoles $expectedReadOnlyRoles -Label "Codex"
+    Assert-ReadOnlyAgentRoleSet -ActualRoles @($fragment.aiSurfaces.claudeCode.readOnlyAgents) -ExpectedRoles $expectedReadOnlyRoles -Label "Claude"
+    Assert-ReadOnlyAgentRoleSet -ActualRoles @($fragment.aiSurfaces.cursor.readOnlyAgents) -ExpectedRoles $expectedReadOnlyRoles -Label "Cursor"
+
+    foreach ($agentName in @($expectedReadOnlyRoles | ForEach-Object { [string]$_ })) {
+        Assert-CodexReadOnlyAgent ".codex/agents/$agentName.toml"
+        Assert-ClaudeReadOnlyAgent ".claude/agents/$agentName.md"
+        Assert-CursorReadOnlyAgent ".cursor/agents/$agentName.md"
+    }
+}
 function Get-CheckAiIntegrationSectionFiles {
     $ledger = Get-StaticContractLedgerById -Id "check-ai-integration"
     return @($ledger.SectionFiles)
 }
 
 function Invoke-CheckAiIntegrationSections {
+    Assert-ReadOnlyAgentContracts
     foreach ($sectionFile in Get-CheckAiIntegrationSectionFiles) {
         . (Join-Path $PSScriptRoot $sectionFile)
     }
+    Write-Information "ai-integration-check: ok" -InformationAction Continue
 }

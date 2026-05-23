@@ -130,7 +130,10 @@ function Find-ShaderTool($name) {
 
 function Test-DxcSpirvCodegen($path) {
     if ([string]::IsNullOrWhiteSpace($path) -or -not (Test-Path -LiteralPath $path -PathType Leaf)) {
-        return $false
+        return [pscustomobject]@{
+            Ready = $false
+            Diagnostics = @("DXC executable path is missing or not a file.")
+        }
     }
 
     $probeRoot = Join-Path $root "out\shader-toolchain-probe"
@@ -156,11 +159,31 @@ float4 vs_main(uint vertex_id : SV_VertexID) : SV_Position {
     try {
         $output = & $path -spirv "-fspv-target-env=vulkan1.3" -T vs_6_7 -E vs_main -Fo $artifact $source 2>&1
         if ($LASTEXITCODE -ne 0) {
-            return $false
+            return [pscustomobject]@{
+                Ready = $false
+                Diagnostics = @(
+                    "DXC SPIR-V probe exited with code $LASTEXITCODE.",
+                    @($output | ForEach-Object { [string]$_ } | Select-Object -First 8)
+                )
+            }
         }
-        return (Test-Path -LiteralPath $artifact -PathType Leaf) -and ((Get-Item -LiteralPath $artifact).Length -gt 0)
+        $artifactReady = (Test-Path -LiteralPath $artifact -PathType Leaf) -and ((Get-Item -LiteralPath $artifact).Length -gt 0)
+        if ($artifactReady) {
+            return [pscustomobject]@{
+                Ready = $true
+                Diagnostics = @()
+            }
+        }
+
+        return [pscustomobject]@{
+            Ready = $false
+            Diagnostics = @("DXC SPIR-V probe did not produce a non-empty artifact at $artifact.")
+        }
     } catch {
-        return $false
+        return [pscustomobject]@{
+            Ready = $false
+            Diagnostics = @("DXC SPIR-V probe failed: $_")
+        }
     }
 }
 
@@ -187,8 +210,11 @@ $results = @()
 foreach ($tool in $toolRequests) {
     $command = Find-ShaderTool $tool.Name
     $supportsSpirvCodegen = $false
+    $spirvCodegenDiagnostics = @()
     if ($tool.Name -eq "dxc" -and $null -ne $command) {
-        $supportsSpirvCodegen = Test-DxcSpirvCodegen $command.Path
+        $spirvCodegenProbe = Test-DxcSpirvCodegen $command.Path
+        $supportsSpirvCodegen = $spirvCodegenProbe.Ready
+        $spirvCodegenDiagnostics = @($spirvCodegenProbe.Diagnostics)
     }
     $results += [pscustomobject]@{
         Name = $tool.Name
@@ -197,6 +223,7 @@ foreach ($tool in $toolRequests) {
         Path = if ($null -ne $command) { $command.Path } else { "" }
         Source = if ($null -ne $command) { $command.Source } else { "" }
         SupportsSpirvCodegen = $supportsSpirvCodegen
+        SpirvCodegenDiagnostics = $spirvCodegenDiagnostics
     }
 }
 
@@ -232,6 +259,9 @@ if (-not (Test-ShaderToolAvailable "dxc")) {
     $missing += "Missing dxc for D3D12 DXIL and Vulkan SPIR-V shader compilation"
 } elseif (-not $dxcSpirvCodegenReady) {
     $missing += "DXC SPIR-V CodeGen is unavailable; install a DXC build compiled with ENABLE_SPIRV_CODEGEN=ON for Vulkan SPIR-V shader compilation"
+    foreach ($diagnostic in @($dxcResult.SpirvCodegenDiagnostics)) {
+        $missing += "DXC SPIR-V CodeGen diagnostic: $diagnostic"
+    }
 }
 if (-not (Test-ShaderToolAvailable "spirv-val")) {
     $missing += "Missing spirv-val for Vulkan SPIR-V validation"

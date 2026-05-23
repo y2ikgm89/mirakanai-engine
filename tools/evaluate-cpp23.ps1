@@ -14,21 +14,8 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
 . (Join-Path $PSScriptRoot "release-package-artifacts.ps1")
 
-function Resolve-Cpp23EvaluationJobCount {
-    [CmdletBinding()]
-    param(
-        [Parameter()][ValidateRange(0, 1024)][int]$Jobs = 0
-    )
-
-    if ($Jobs -eq 0) {
-        return [Math]::Max(1, [Environment]::ProcessorCount)
-    }
-
-    return $Jobs
-}
-
 $tools = Assert-CppBuildTools
-$effectiveJobs = Resolve-Cpp23EvaluationJobCount -Jobs $Jobs
+$effectiveJobs = Resolve-ParallelJobCount -Jobs $Jobs
 Write-Information "cpp23-verification: cmake/ctest parallel jobs=$effectiveJobs" -InformationAction Continue
 
 $runDebug = $Debug.IsPresent -or (-not $Release.IsPresent -and -not $Gui.IsPresent)
@@ -56,11 +43,7 @@ if ($Release) {
 }
 
 if ($Gui) {
-    $root = Get-RepoRoot
-    $vcpkgExe = Join-Path $root "external/vcpkg/vcpkg.exe"
-    if (-not (Test-Path $vcpkgExe)) {
-        Write-Error "vcpkg is required for the C++23 desktop GUI verification. Run 'pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1' first."
-    }
+    $null = Assert-VcpkgExecutable -Purpose "the C++23 desktop GUI verification"
 
     Set-MirakanaiVcpkgEnvironment | Out-Null
 

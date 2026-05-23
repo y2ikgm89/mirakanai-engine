@@ -266,9 +266,9 @@ foreach ($workflowDoc in @($engine.aiDrivenGameWorkflow.templateSpec, $engine.ai
 
 $desktopRuntimeGameRegistrations = Get-DesktopRuntimeGameRegistrations
 
-Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json" | ForEach-Object {
-    $relative = Get-RelativeRepoPath $_.FullName
-    $game = Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json
+foreach ($gameManifestEntry in Get-GameAgentManifests) {
+    $relative = $gameManifestEntry.RelativePath
+    $game = $gameManifestEntry.Game
     Assert-Properties $game @("schemaVersion", "name", "displayName", "language", "entryPoint", "target", "engineModules", "aiWorkflow", "gameplayContract", "backendReadiness", "importerRequirements", "packagingTargets", "validationRecipes") $relative
     Assert-Properties $game.backendReadiness @("platform", "graphics", "audio", "ui") "$relative backendReadiness"
     Assert-Properties $game.importerRequirements @("sourceFormats", "cookedOnlyRuntime", "externalImportersRequired") "$relative importerRequirements"
@@ -342,11 +342,11 @@ Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json"
 }
 
 $sample2dManifestPath = "games/sample_2d_playable_foundation/game.agent.json"
-$sample2dManifestFullPath = Join-Path $root $sample2dManifestPath
-if (-not (Test-Path $sample2dManifestFullPath)) {
+$sample2dManifestEntry = Get-GameAgentManifest $sample2dManifestPath
+if ($null -eq $sample2dManifestEntry) {
     Write-Error "2d-playable-source-tree recipe must have a sample game manifest: $sample2dManifestPath"
 } else {
-    $sample2dManifest = Get-Content -LiteralPath $sample2dManifestFullPath -Raw | ConvertFrom-Json
+    $sample2dManifest = $sample2dManifestEntry.Game
     if ($sample2dManifest.target -ne "sample_2d_playable_foundation") {
         Write-Error "$sample2dManifestPath target must be sample_2d_playable_foundation"
     }
@@ -367,11 +367,11 @@ if (-not (Test-Path $sample2dManifestFullPath)) {
 }
 
 $sample2dDesktopManifestPath = "games/sample_2d_desktop_runtime_package/game.agent.json"
-$sample2dDesktopManifestFullPath = Join-Path $root $sample2dDesktopManifestPath
-if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
+$sample2dDesktopManifestEntry = Get-GameAgentManifest $sample2dDesktopManifestPath
+if ($null -eq $sample2dDesktopManifestEntry) {
     Write-Error "2d-desktop-runtime-package recipe must have a sample game manifest: $sample2dDesktopManifestPath"
 } else {
-    $sample2dDesktopManifest = Get-Content -LiteralPath $sample2dDesktopManifestFullPath -Raw | ConvertFrom-Json
+    $sample2dDesktopManifest = $sample2dDesktopManifestEntry.Game
     if ($sample2dDesktopManifest.target -ne "sample_2d_desktop_runtime_package") {
         Write-Error "$sample2dDesktopManifestPath target must be sample_2d_desktop_runtime_package"
     }
@@ -404,7 +404,7 @@ if (-not (Test-Path $sample2dDesktopManifestFullPath)) {
     if (-not $desktopRuntimeGameRegistrations.ContainsKey($sample2dDesktopManifest.target)) {
         Write-Error "$sample2dDesktopManifestPath target must be registered with MK_add_desktop_runtime_game"
     }
-    $sample2dManifestText = Get-Content -LiteralPath $sample2dDesktopManifestFullPath -Raw
+    $sample2dManifestText = $sample2dDesktopManifestEntry.Text
     foreach ($needle in @(
         "D3D12 package window smoke",
         "Vulkan package window smoke",
@@ -714,15 +714,12 @@ $runtimeSceneRhiHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/r
 $runtimeSceneRhiSourceText = Get-Content -LiteralPath (Join-Path $root "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp") -Raw
 $runtimeRhiTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/runtime_rhi_tests.cpp") -Raw
 $runtimeSceneRhiTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/runtime_scene_rhi_tests.cpp") -Raw
-$runtimeUploadFencePlanText = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
-$frameGraphRhiTextureSchedulePlanText =
-    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
-$rhiUploadStaleGenerationPlanText =
-    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
-$runtimeUploadQueueWaitPlanText =
-    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
-$runtimePackageUploadStagingEvidencePlanText =
-    Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw
+$historicalVerdictArchiveText = Get-JsonContractSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
+$runtimeUploadFencePlanText = $historicalVerdictArchiveText
+$frameGraphRhiTextureSchedulePlanText = $historicalVerdictArchiveText
+$rhiUploadStaleGenerationPlanText = $historicalVerdictArchiveText
+$runtimeUploadQueueWaitPlanText = $historicalVerdictArchiveText
+$runtimePackageUploadStagingEvidencePlanText = $historicalVerdictArchiveText
 $rendererCmakeText = Get-Content -LiteralPath (Join-Path $root "engine/renderer/CMakeLists.txt") -Raw
 $engineManifestText = Get-Content -LiteralPath (Join-Path $root "engine/agent/manifest.json") -Raw
 foreach ($needle in @("FrameGraphPassExecutionBinding", "FrameGraphExecutionCallbacks", "FrameGraphExecutionResult", "execute_frame_graph_v1_schedule")) {
@@ -1071,11 +1068,11 @@ if ($engineManifestText.Contains("production sprite batching ready")) {
 }
 
 $sample3dManifestPath = "games/sample_desktop_runtime_game/game.agent.json"
-$sample3dManifestFullPath = Join-Path $root $sample3dManifestPath
-if (-not (Test-Path $sample3dManifestFullPath)) {
+$sample3dManifestEntry = Get-GameAgentManifest $sample3dManifestPath
+if ($null -eq $sample3dManifestEntry) {
     Write-Error "3d-playable-desktop-package recipe must have a sample game manifest: $sample3dManifestPath"
 } else {
-    $sample3dManifest = Get-Content -LiteralPath $sample3dManifestFullPath -Raw | ConvertFrom-Json
+    $sample3dManifest = $sample3dManifestEntry.Game
     if ($sample3dManifest.target -ne "sample_desktop_runtime_game") {
         Write-Error "$sample3dManifestPath target must be sample_desktop_runtime_game"
     }
@@ -1108,7 +1105,7 @@ if (-not (Test-Path $sample3dManifestFullPath)) {
     if (-not $desktopRuntimeGameRegistrations.ContainsKey($sample3dManifest.target)) {
         Write-Error "$sample3dManifestPath target must be registered with MK_add_desktop_runtime_game"
     }
-    $sample3dManifestText = Get-Content -LiteralPath $sample3dManifestFullPath -Raw
+    $sample3dManifestText = $sample3dManifestEntry.Text
     foreach ($needle in @(
         "material instance intent",
         "camera/controller movement",
@@ -1321,12 +1318,12 @@ if (-not (Test-Path $sample3dManifestFullPath)) {
 }
 
 $generated3dPackageManifestPath = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
-$generated3dPackageManifestFullPath = Join-Path $root $generated3dPackageManifestPath
-if (-not (Test-Path -LiteralPath $generated3dPackageManifestFullPath)) {
+$generated3dPackageManifestEntry = Get-GameAgentManifest $generated3dPackageManifestPath
+if ($null -eq $generated3dPackageManifestEntry) {
     Write-Error "Generated 3D package gameplay systems smoke must have a sample game manifest: $generated3dPackageManifestPath"
 } else {
-    $generated3dPackageManifest = Get-Content -LiteralPath $generated3dPackageManifestFullPath -Raw | ConvertFrom-Json
-    $generated3dPackageManifestText = Get-Content -LiteralPath $generated3dPackageManifestFullPath -Raw
+    $generated3dPackageManifest = $generated3dPackageManifestEntry.Game
+    $generated3dPackageManifestText = $generated3dPackageManifestEntry.Text
     $generated3dPackageReadmeText = Get-Content -LiteralPath (Join-Path $root "games/sample_generated_desktop_runtime_3d_package/README.md") -Raw
     $generated3dPackageMainText = Get-Content -LiteralPath (Join-Path $root "games/sample_generated_desktop_runtime_3d_package/main.cpp") -Raw
     $gamesCMakeText = Get-Content -LiteralPath (Join-Path $root "games/CMakeLists.txt") -Raw
@@ -1478,11 +1475,12 @@ if (-not (Test-Path -LiteralPath $generated3dPackageManifestFullPath)) {
 
 foreach ($registration in $desktopRuntimeGameRegistrations.Values) {
     $manifestRelativePath = Assert-DesktopRuntimeGameManifestPath $registration.gameManifest "desktop runtime target '$($registration.target)'"
-    $manifestPath = Join-Path $root $manifestRelativePath
-    if (-not (Test-Path $manifestPath)) {
+    $manifest = Get-GameAgentManifest $manifestRelativePath
+    if ($null -eq $manifest) {
         Write-Error "desktop runtime target '$($registration.target)' references missing GAME_MANIFEST: $manifestRelativePath"
+        continue
     }
-    $game = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+    $game = $manifest.Game
     if ($game.target -ne $registration.target) {
         Write-Error "$manifestRelativePath target '$($game.target)' does not match desktop runtime registration '$($registration.target)'"
     }

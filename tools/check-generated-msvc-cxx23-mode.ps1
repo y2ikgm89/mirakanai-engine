@@ -13,7 +13,7 @@ if (-not (Test-Path $buildRoot)) {
     exit 0
 }
 
-$projects = Get-ChildItem -Path $buildRoot -Recurse -Filter "*.vcxproj"
+$projects = Get-ChildItem -LiteralPath $buildRoot -Recurse -Filter "*.vcxproj"
 if (-not $projects) {
     Write-Host "generated-msvc-cxx23-mode-check: skipped (not a Visual Studio generator build)"
     exit 0
