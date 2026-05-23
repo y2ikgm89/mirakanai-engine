@@ -740,4 +740,5 @@ function Invoke-CheckAiIntegrationSections {
     foreach ($sectionFile in Get-CheckAiIntegrationSectionFiles) {
         . (Join-Path $PSScriptRoot $sectionFile)
     }
+    Write-Information "ai-integration-check: ok" -InformationAction Continue
 }

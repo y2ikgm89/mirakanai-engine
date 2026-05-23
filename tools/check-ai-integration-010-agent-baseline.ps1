@@ -333,6 +333,8 @@ Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'independent sta
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'New-ValidateOutputCapture' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'OutputLogPath' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'OmittedOutputLineCount' "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'out" (Join-Path "validation-logs"' "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'validate: parallel static check logs' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/build.ps1") 'New-CMakeFileApiCodemodelQuery' "tools/build.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/build.ps1") '[int]$Jobs = 0' "tools/build.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/build.ps1") '--parallel' "tools/build.ps1"

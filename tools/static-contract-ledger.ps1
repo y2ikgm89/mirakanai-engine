@@ -16,6 +16,7 @@ function Get-StaticContractLedger {
                 "check-ai-integration-060-editor-workflows.ps1",
                 "check-ai-integration-070-production-ledger.ps1",
                 "check-ai-integration-080-scaffold-smokes.ps1",
+                "check-ai-integration-081-scaffold-tooling.ps1",
                 "check-ai-integration-090-generated-game-quality-rubric.ps1",
                 "check-ai-integration-091-agent-surface-alignment.ps1",
                 "check-ai-integration-092-gameplay-interaction-framework.ps1"

@@ -94,7 +94,9 @@ function Assert-AgentSurfaceJsonContract {
     foreach ($guard in @(
             "tools/check-agents.ps1",
             "tools/check-ai-integration.ps1",
-            "tools/check-json-contracts.ps1"
+            "tools/check-json-contracts.ps1",
+            "tools/check-format.ps1",
+            "tools/validate.ps1"
         )) {
         Assert-StringArrayContains @($aiSurfaces.crossToolAlignment.validationGuards) $guard "aiSurfaces.crossToolAlignment.validationGuards"
     }
