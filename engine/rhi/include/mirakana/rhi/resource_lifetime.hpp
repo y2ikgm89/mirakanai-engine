@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,13 @@ enum class RhiResourceKind : std::uint8_t {
 };
 
 enum class RhiResourceLifetimeState : std::uint8_t { live = 0, deferred_release };
+
+enum class RhiResourceLifetimeQueue : std::uint8_t { graphics = 0, compute, copy };
+
+struct RhiResourceLifetimeFence {
+    std::uint64_t value{0};
+    RhiResourceLifetimeQueue queue{RhiResourceLifetimeQueue::graphics};
+};
 
 enum class RhiResourceLifetimeEventKind : std::uint8_t {
     register_resource = 0,
@@ -97,7 +105,7 @@ struct RhiResourceLifetimeRecord {
     RhiResourceLifetimeState state{RhiResourceLifetimeState::live};
     std::string owner;
     std::string debug_name;
-    std::uint64_t release_frame{0};
+    RhiResourceLifetimeFence release_fence;
 };
 
 struct RhiResourceLifetimeEvent {
@@ -106,7 +114,7 @@ struct RhiResourceLifetimeEvent {
     RhiResourceKind resource_kind{RhiResourceKind::unknown};
     std::string owner;
     std::string debug_name;
-    std::uint64_t frame{0};
+    RhiResourceLifetimeFence fence;
 };
 
 class RhiResourceLifetimeRegistry {
@@ -114,8 +122,9 @@ class RhiResourceLifetimeRegistry {
     [[nodiscard]] RhiResourceRegistrationResult register_resource(RhiResourceRegistrationDesc desc);
     [[nodiscard]] RhiResourceLifetimeResult set_debug_name(RhiResourceHandle handle, std::string debug_name);
     [[nodiscard]] RhiResourceLifetimeResult release_resource_deferred(RhiResourceHandle handle,
-                                                                      std::uint64_t release_frame);
-    [[nodiscard]] std::uint32_t retire_released_resources(std::uint64_t completed_frame);
+                                                                      RhiResourceLifetimeFence release_fence);
+    [[nodiscard]] std::uint32_t retire_released_resources(RhiResourceLifetimeFence completed_fence);
+    [[nodiscard]] std::uint32_t retire_released_resources(std::span<const RhiResourceLifetimeFence> completed_fences);
     [[nodiscard]] bool is_live(RhiResourceHandle handle) const noexcept;
     [[nodiscard]] const std::vector<RhiResourceLifetimeRecord>& records() const noexcept;
     [[nodiscard]] const std::vector<RhiResourceLifetimeEvent>& events() const noexcept;

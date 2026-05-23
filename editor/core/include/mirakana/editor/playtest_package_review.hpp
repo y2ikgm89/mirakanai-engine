@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/editor/scene_authoring.hpp"
+#include "mirakana/runtime/sprite_collision_hitbox.hpp"
 #include "mirakana/tools/runtime_scene_package_validation_tool.hpp"
 #include "mirakana/ui/ui.hpp"
 
@@ -120,6 +121,113 @@ struct EditorTilemapPackageDiagnosticsModel {
     bool has_tilemap_payloads{false};
     bool has_blocking_diagnostics{false};
     std::size_t sampled_cell_count{0};
+    std::vector<std::string> diagnostics;
+};
+
+enum class EditorSpritePreviewExecutionStatus : std::uint8_t { unknown, host_required, ready, blocked };
+
+struct EditorSpritePreviewSelectionDesc {
+    std::string id;
+    std::string target_node_name;
+    std::string frame_id;
+    std::string entity_id;
+    SpriteRendererComponent renderer;
+};
+
+struct EditorSpritePreviewDiagnosticsDesc {
+    std::vector<EditorSpritePreviewSelectionDesc> selected_sprites;
+    runtime::RuntimeSpriteCollisionHitboxRequest hitbox_request;
+    bool request_package_mutation{false};
+    bool request_renderer_rhi_handle_exposure{false};
+    bool request_native_preview_handles{false};
+    bool request_arbitrary_shell_execution{false};
+};
+
+struct EditorSpritePreviewExecutionSnapshot {
+    EditorSpritePreviewExecutionStatus status{EditorSpritePreviewExecutionStatus::unknown};
+    std::string diagnostic;
+    std::string backend_label;
+    std::string display_path_label;
+    std::uint64_t frames_rendered{0};
+    bool executes{false};
+    bool exposes_native_handles{false};
+};
+
+struct EditorSpritePreviewSelectionRow {
+    std::string id;
+    std::string target_node_name;
+    std::string frame_id;
+    std::string entity_id;
+    EditorAiPackageAuthoringDiagnosticStatus status{EditorAiPackageAuthoringDiagnosticStatus::blocked};
+    AssetId sprite;
+    AssetId material;
+    std::string sprite_path;
+    std::string material_path;
+    bool visible{false};
+    std::int32_t sorting_layer{0};
+    std::int32_t order_in_layer{0};
+    std::string sorting_space;
+    std::string draw_mode;
+    std::size_t hitbox_count{0};
+    std::size_t hurtbox_count{0};
+    std::size_t animation_frame_count{0};
+    std::size_t package_dependency_count{0};
+    std::size_t diagnostic_count{0};
+    std::string diagnostic;
+};
+
+struct EditorSpritePreviewAtlasPageRow {
+    AssetId asset;
+    std::string path;
+    EditorAiPackageAuthoringDiagnosticStatus status{EditorAiPackageAuthoringDiagnosticStatus::blocked};
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+    std::size_t selected_sprite_count{0};
+    std::size_t animation_frame_count{0};
+    std::size_t dependency_count{0};
+    std::size_t diagnostic_count{0};
+    std::string diagnostic;
+};
+
+struct EditorSpritePreviewAnimationRow {
+    AssetId asset;
+    std::string path;
+    EditorAiPackageAuthoringDiagnosticStatus status{EditorAiPackageAuthoringDiagnosticStatus::blocked};
+    std::string target_node_name;
+    bool loop{false};
+    std::size_t frame_count{0};
+    float total_duration_seconds{0.0F};
+    std::size_t unique_sprite_count{0};
+    std::size_t unique_material_count{0};
+    std::size_t dependency_count{0};
+    std::size_t diagnostic_count{0};
+    std::string diagnostic;
+};
+
+struct EditorSpritePreviewDiagnosticsModel {
+    std::vector<EditorSpritePreviewSelectionRow> selected_sprites;
+    std::vector<EditorSpritePreviewAtlasPageRow> atlas_pages;
+    std::vector<EditorSpritePreviewAnimationRow> animations;
+    bool has_selected_sprites{false};
+    bool has_atlas_pages{false};
+    bool has_animation_payloads{false};
+    bool has_blocking_diagnostics{false};
+    std::size_t hitbox_count{0};
+    std::size_t hurtbox_count{0};
+    std::size_t collision_hit_count{0};
+    std::size_t hitbox_diagnostic_count{0};
+    std::string preview_execution_status_label;
+    std::string preview_execution_diagnostic;
+    std::string preview_execution_backend_label;
+    std::string preview_execution_display_path_label;
+    std::uint64_t preview_execution_frames_rendered{0};
+    bool preview_execution_host_owned{true};
+    bool preview_execution_ready{false};
+    bool preview_execution_rendered{false};
+    bool mutates{false};
+    bool executes{false};
+    bool exposes_native_handles{false};
+    std::vector<std::string> unsupported_claims;
     std::vector<std::string> diagnostics;
 };
 
@@ -628,5 +736,18 @@ make_editor_ai_playtest_operator_workflow_report_model(const EditorAiPlaytestOpe
 
 [[nodiscard]] EditorTilemapPackageDiagnosticsModel
 make_editor_tilemap_package_diagnostics_model(const runtime::RuntimeAssetPackage& package);
+
+[[nodiscard]] std::string_view
+editor_sprite_preview_execution_status_label(EditorSpritePreviewExecutionStatus status) noexcept;
+
+[[nodiscard]] EditorSpritePreviewDiagnosticsModel
+make_editor_sprite_preview_diagnostics_model(const runtime::RuntimeAssetPackage& package,
+                                             const EditorSpritePreviewDiagnosticsDesc& desc);
+
+void apply_editor_sprite_preview_execution_snapshot(EditorSpritePreviewDiagnosticsModel& model,
+                                                    const EditorSpritePreviewExecutionSnapshot& snapshot);
+
+[[nodiscard]] mirakana::ui::UiDocument
+make_editor_sprite_preview_diagnostics_ui_model(const EditorSpritePreviewDiagnosticsModel& model);
 
 } // namespace mirakana::editor

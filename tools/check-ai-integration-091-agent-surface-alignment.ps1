@@ -22,7 +22,7 @@ $agentSurfaceAlignmentChecks = @(
     },
     @{
         Path = "docs/ai-integration.md"
-        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "aiSurfaces.crossToolAlignment", "games/<game_name>/", "tools/create-game-recipe.ps1", "gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>", "direct default-branch push", "arbitrary shell or raw manifest command evaluation", "backend/native handle public game API", "validation weakening", "model: composer-2.5-fast", "500-line rule guidance", "OpenAI developer docs MCP")
+        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "aiSurfaces.crossToolAlignment", "games/<game_name>/", "tools/create-game-recipe.ps1", "gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>", "direct default-branch push", "arbitrary shell or raw manifest command evaluation", "backend/native handle public game API", "validation weakening", "model: composer-2.5-fast", "500-line rule guidance", "OpenAI developer docs MCP", "Close completed, obsolete, or no-longer-needed Codex subagents promptly after consuming their results")
     },
     @{
         Path = "docs/current-capabilities.md"
@@ -41,6 +41,18 @@ $agentSurfaceAlignmentChecks = @(
         Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "2026-05-23-ai-codex-claude-agent-surface-v1.md")
     },
     @{
+        Path = "AGENTS.md"
+        Needles = @("close completed/obsolete/no-longer-needed agents promptly after their result is consumed", "before spawning replacements")
+    },
+    @{
+        Path = "docs/agent-operational-reference.md"
+        Needles = @("Close completed, obsolete, or no-longer-needed agents promptly after consuming their results", "do not wait for the session to approach its subagent limit")
+    },
+    @{
+        Path = "docs/workflows.md"
+        Needles = @("Close completed, obsolete, or no-longer-needed delegated agents promptly after consuming their final output", "do not wait for the subagent limit to force cleanup")
+    },
+    @{
         Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
         Needles = @("ai-codex-claude-agent-surface-v1", "implemented-1x-foundation", "aiSurfaces.crossToolAlignment", "official docs anchors")
     },
@@ -50,15 +62,15 @@ $agentSurfaceAlignmentChecks = @(
     },
     @{
         Path = ".agents/skills/gameengine-agent-integration/SKILL.md"
-        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json")
+        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json", "after their results are consumed")
     },
     @{
         Path = ".claude/skills/gameengine-agent-integration/SKILL.md"
-        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json")
+        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json", "after their results are consumed")
     },
     @{
         Path = ".cursor/skills/gameengine-agent-integration/SKILL.md"
-        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json")
+        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json", "after their results are consumed")
     },
     @{
         Path = ".codex/rules/gameengine.rules"

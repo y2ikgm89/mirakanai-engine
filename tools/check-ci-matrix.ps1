@@ -79,6 +79,41 @@ function Assert-MatchesText {
     }
 }
 
+function Assert-CheckoutRetryContract {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Label,
+        [switch]$RequiresFetchDepthZero
+    )
+
+    Assert-ContainsAll $Text @(
+        "name: Checkout",
+        "id: checkout",
+        "continue-on-error: true",
+        "persist-credentials: false",
+        "Retry checkout after transient fetch/auth failure",
+        "if: steps.checkout.outcome != 'success'"
+    ) $Label
+
+    if ($RequiresFetchDepthZero) {
+        Assert-ContainsText -Text $Text -Needle "fetch-depth: 0" -Label $Label
+    }
+}
+
+function Assert-CcacheStatsGuard {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    Assert-ContainsAll $Text @(
+        "Show ccache stats",
+        "if command -v ccache >/dev/null 2>&1; then",
+        "ccache --show-stats",
+        "ccache is not installed; skipping stats after an earlier checkout or toolchain setup failure"
+    ) $Label
+}
+
 function Get-WorkflowJobText {
     param(
         [Parameter(Mandatory = $true)][string]$WorkflowText,
@@ -826,6 +861,23 @@ Assert-ContainsAll $iosJob @(
     "out/build/ios-Simulator-sample_headless-Debug/**/*.log",
     "if-no-files-found: warn"
 ) ".github/workflows/ios-validate.yml simulator-smoke job"
+
+Assert-CheckoutRetryContract -Text $changesJob -Label ".github/workflows/validate.yml changes checkout retry" -RequiresFetchDepthZero
+Assert-CheckoutRetryContract -Text $agentStaticJob -Label ".github/workflows/validate.yml agent-static checkout retry" -RequiresFetchDepthZero
+Assert-CheckoutRetryContract -Text $windowsJob -Label ".github/workflows/validate.yml windows checkout retry"
+Assert-CheckoutRetryContract -Text $windowsCpp23Job -Label ".github/workflows/validate.yml windows-cpp23 checkout retry"
+Assert-CheckoutRetryContract -Text $linuxJob -Label ".github/workflows/validate.yml linux checkout retry"
+Assert-CheckoutRetryContract -Text $linuxCoverageJob -Label ".github/workflows/validate.yml linux-coverage checkout retry"
+Assert-CheckoutRetryContract -Text $sanitizerJob -Label ".github/workflows/validate.yml linux-sanitizers checkout retry"
+Assert-CheckoutRetryContract -Text $staticAnalysisJob -Label ".github/workflows/validate.yml static-analysis checkout retry"
+Assert-CheckoutRetryContract -Text $macosJob -Label ".github/workflows/validate.yml macos checkout retry"
+Assert-CheckoutRetryContract -Text $iosJob -Label ".github/workflows/ios-validate.yml simulator-smoke checkout retry"
+
+Assert-CcacheStatsGuard -Text $linuxJob -Label ".github/workflows/validate.yml linux ccache stats guard"
+Assert-CcacheStatsGuard -Text $linuxCoverageJob -Label ".github/workflows/validate.yml linux-coverage ccache stats guard"
+Assert-CcacheStatsGuard -Text $sanitizerJob -Label ".github/workflows/validate.yml linux-sanitizers ccache stats guard"
+Assert-CcacheStatsGuard -Text $staticAnalysisJob -Label ".github/workflows/validate.yml static-analysis ccache stats guard"
+Assert-CcacheStatsGuard -Text $macosJob -Label ".github/workflows/validate.yml macos ccache stats guard"
 
 Assert-MatchesText $validateWorkflow "^  windows:\s*$" ".github/workflows/validate.yml windows job id"
 Assert-MatchesText $validateWorkflow "^  windows-cpp23:\s*$" ".github/workflows/validate.yml windows-cpp23 job id"

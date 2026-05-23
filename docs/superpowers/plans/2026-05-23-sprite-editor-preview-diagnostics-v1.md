@@ -6,7 +6,7 @@
 
 **Plan ID:** `sprite-editor-preview-diagnostics-v1`
 
-**Status:** Planned.
+**Status:** Validated; PR pending.
 
 **Gap:** `sprite-editor-preview-diagnostics-v1`
 
@@ -28,3 +28,26 @@
 - Unit tests prove retained diagnostics for selected sprite/package inputs and fail-closed malformed references.
 - Visible/editor or package-facing smoke evidence is host-gated and reports selected diagnostic rows without native handle exposure.
 - Backlog row promoted; manifest/docs/static checks synced; focused validation and `validate.ps1` green; PR merged.
+
+## Implementation Summary
+
+- Added retained `MK_editor_core` sprite preview diagnostics in `playtest_package_review`:
+  `EditorSpritePreviewDiagnosticsDesc`, `EditorSpritePreviewDiagnosticsModel`,
+  `EditorSpritePreviewExecutionSnapshot`, `make_editor_sprite_preview_diagnostics_model`,
+  `apply_editor_sprite_preview_execution_snapshot`, and
+  `make_editor_sprite_preview_diagnostics_ui_model`.
+- Diagnostics are value-only and package-facing: selected sprite texture/material readiness, atlas page size
+  and usage counts, sprite animation frame/dependency rows, sorting labels, collision hitbox/hurtbox/hit
+  counters, runtime package diagnostics, and retained UI row ids.
+- Visible preview execution stays host-owned. The model defaults to `Host Required`; snapshots can report
+  host-rendered evidence, while execution/native-handle claims are rejected and never flip editor-core
+  `executes` or native-handle flags.
+
+## Validation Evidence
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset dev --target MK_editor_core_tests` | pass | Focused editor-core build after implementation. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests"` | pass | Covers happy path, selected-sprite animation frame counting, animation dependency-edge propagation, fail-closed malformed sprite refs, missing selected frame/entity poses, sanitized selection-id collisions, collision diagnostics, retained UI rows, and unsafe host snapshot rejection. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -Files "editor/core/src/playtest_package_review.cpp,tests/unit/editor_core_tests.cpp"` | pass | Focused clang-tidy lane for the editor-core implementation and tests. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\validate.ps1` | pass | Re-run after final review fixes on 2026-05-24 JST; completed with `validate: ok`; `test.ps1 -SkipBuild` reported 76/76 tests passed. |

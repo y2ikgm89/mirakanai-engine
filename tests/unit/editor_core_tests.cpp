@@ -3,6 +3,7 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/assets/material.hpp"
 #include "mirakana/assets/material_graph.hpp"
 
 #include "mirakana/editor/ai_command_panel.hpp"
@@ -56,6 +57,7 @@
 #include "mirakana/assets/tilemap_metadata.hpp"
 #include "mirakana/core/diagnostics.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/sprite_collision_hitbox.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -143,6 +145,114 @@ namespace {
                 .dependency = atlas,
                 .kind = mirakana::AssetDependencyKind::tilemap_texture,
                 .path = "runtime/assets/2d/level.tilemap",
+            },
+        });
+}
+
+[[nodiscard]] std::string editor_test_material_payload(mirakana::AssetId asset) {
+    return mirakana::serialize_material_definition(mirakana::MaterialDefinition{
+        .id = asset,
+        .name = "Sprite Material",
+        .shading_model = mirakana::MaterialShadingModel::unlit,
+        .surface_mode = mirakana::MaterialSurfaceMode::transparent,
+        .factors = {},
+        .texture_bindings = {},
+        .double_sided = false,
+    });
+}
+
+[[nodiscard]] std::string editor_test_sprite_animation_payload(mirakana::AssetId animation, mirakana::AssetId sprite,
+                                                               mirakana::AssetId material,
+                                                               std::string_view target_node = "player") {
+    return "format=GameEngine.CookedSpriteAnimation.v1\n"
+           "asset.id=" +
+           std::to_string(animation.value) +
+           "\n"
+           "asset.kind=sprite_animation\n"
+           "target.node=" +
+           std::string(target_node) +
+           "\n"
+           "frame.count=2\n"
+           "playback.loop=true\n"
+           "frame.0.duration_seconds=0.08\n"
+           "frame.0.sprite=" +
+           std::to_string(sprite.value) +
+           "\n"
+           "frame.0.material=" +
+           std::to_string(material.value) +
+           "\n"
+           "frame.0.size=32,48\n"
+           "frame.0.tint=1,1,1,1\n"
+           "frame.1.duration_seconds=0.12\n"
+           "frame.1.sprite=" +
+           std::to_string(sprite.value) +
+           "\n"
+           "frame.1.material=" +
+           std::to_string(material.value) +
+           "\n"
+           "frame.1.size=32,48\n"
+           "frame.1.tint=1,1,1,1\n";
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeAssetPackage make_editor_sprite_preview_test_package() {
+    const auto sprite = mirakana::AssetId::from_name("textures/player-atlas");
+    const auto material = mirakana::AssetId::from_name("materials/player-sprite");
+    const auto animation = mirakana::AssetId::from_name("animations/player-run");
+    const auto texture_payload = editor_test_cooked_texture_payload(sprite);
+    const auto material_payload = editor_test_material_payload(material);
+    const auto animation_payload = editor_test_sprite_animation_payload(animation, sprite, material);
+
+    return mirakana::runtime::RuntimeAssetPackage(
+        {
+            mirakana::runtime::RuntimeAssetRecord{
+                .handle = mirakana::runtime::RuntimeAssetHandle{11},
+                .asset = sprite,
+                .kind = mirakana::AssetKind::texture,
+                .path = "runtime/assets/2d/player-atlas.texture",
+                .content_hash = mirakana::hash_asset_cooked_content(texture_payload),
+                .source_revision = 1,
+                .dependencies = {},
+                .content = texture_payload,
+            },
+            mirakana::runtime::RuntimeAssetRecord{
+                .handle = mirakana::runtime::RuntimeAssetHandle{12},
+                .asset = material,
+                .kind = mirakana::AssetKind::material,
+                .path = "runtime/assets/2d/player-sprite.material",
+                .content_hash = mirakana::hash_asset_cooked_content(material_payload),
+                .source_revision = 1,
+                .dependencies = {},
+                .content = material_payload,
+            },
+            mirakana::runtime::RuntimeAssetRecord{
+                .handle = mirakana::runtime::RuntimeAssetHandle{13},
+                .asset = animation,
+                .kind = mirakana::AssetKind::sprite_animation,
+                .path = "runtime/assets/2d/player-run.spriteanim",
+                .content_hash = mirakana::hash_asset_cooked_content(animation_payload),
+                .source_revision = 1,
+                .dependencies = {sprite, material},
+                .content = animation_payload,
+            },
+        },
+        {
+            mirakana::AssetDependencyEdge{
+                .asset = animation,
+                .dependency = sprite,
+                .kind = mirakana::AssetDependencyKind::sprite_animation_texture,
+                .path = "runtime/assets/2d/player-run.spriteanim",
+            },
+            mirakana::AssetDependencyEdge{
+                .asset = animation,
+                .dependency = material,
+                .kind = mirakana::AssetDependencyKind::sprite_animation_material,
+                .path = "runtime/assets/2d/player-run.spriteanim",
+            },
+            mirakana::AssetDependencyEdge{
+                .asset = mirakana::AssetId::from_name("scenes/player"),
+                .dependency = sprite,
+                .kind = mirakana::AssetDependencyKind::scene_sprite,
+                .path = "runtime/scenes/player.scene",
             },
         });
 }
@@ -9748,6 +9858,588 @@ MK_TEST("editor tilemap package diagnostics surface runtime tilemap rows") {
     MK_REQUIRE(model.rows[0].non_empty_cell_count == 3);
     MK_REQUIRE(model.rows[0].sampled_cell_count == 3);
     MK_REQUIRE(model.rows[0].diagnostic_count == 0);
+}
+
+MK_TEST("editor sprite preview diagnostics surface selected sprites animations hitboxes and package rows") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player-atlas");
+    const auto material = mirakana::AssetId::from_name("materials/player-sprite");
+
+    auto
+        model =
+            mirakana::editor::make_editor_sprite_preview_diagnostics_model(
+                make_editor_sprite_preview_test_package(),
+                mirakana::editor::EditorSpritePreviewDiagnosticsDesc{
+                    .selected_sprites =
+                        {
+                            mirakana::editor::EditorSpritePreviewSelectionDesc{
+                                .id = "player.idle",
+                                .target_node_name = "player",
+                                .frame_id = "idle",
+                                .entity_id = "player",
+                                .renderer =
+                                    mirakana::SpriteRendererComponent{
+                                        .sprite = sprite,
+                                        .material = material,
+                                        .size = mirakana::Vec2{.x = 32.0F, .y = 48.0F},
+                                        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                                        .visible = true,
+                                        .sorting_layer = 4,
+                                        .order_in_layer = 12,
+                                        .sorting_space = mirakana::SpriteSortingSpace::camera_space,
+                                        .draw_mode = mirakana::SpriteDrawMode::nine_slice,
+                                        .slice_border = mirakana::SpriteSliceBorder{.left = 0.1F,
+                                                                                    .bottom = 0.1F,
+                                                                                    .right = 0.1F,
+                                                                                    .top = 0.1F},
+                                        .tile_size = mirakana::Vec2{.x = 16.0F, .y = 16.0F},
+                                    },
+                            },
+                        },
+                    .hitbox_request =
+                        mirakana::runtime::RuntimeSpriteCollisionHitboxRequest{
+                            .boxes =
+                                {
+                                    mirakana::runtime::RuntimeSpriteCollisionBoxDesc{
+                                        .id = "player.attack",
+                                        .frame_id = "idle",
+                                        .entity_id = "player",
+                                        .kind = mirakana::runtime::RuntimeSpriteCollisionBoxKind::hitbox,
+                                        .center_x = 0.0F,
+                                        .center_y = 0.0F,
+                                        .half_width = 0.5F,
+                                        .half_height = 0.5F,
+                                        .layer = 1U,
+                                        .mask = 1U,
+                                        .gameplay_kind = mirakana::runtime::RuntimeGameplayInteractionKind::damage,
+                                        .gameplay_amount = 1,
+                                        .gameplay_feedback_id = "slash",
+                                        .source_index = 0U,
+                                    },
+                                    mirakana::runtime::RuntimeSpriteCollisionBoxDesc{
+                                        .id = "enemy.body",
+                                        .frame_id = "idle",
+                                        .entity_id = "enemy",
+                                        .kind = mirakana::runtime::RuntimeSpriteCollisionBoxKind::hurtbox,
+                                        .center_x = 0.0F,
+                                        .center_y = 0.0F,
+                                        .half_width = 0.5F,
+                                        .half_height = 0.5F,
+                                        .layer = 1U,
+                                        .mask = 1U,
+                                        .gameplay_kind = mirakana::runtime::RuntimeGameplayInteractionKind::damage,
+                                        .gameplay_amount = 1,
+                                        .gameplay_feedback_id = {},
+                                        .source_index = 1U,
+                                    },
+                                },
+                            .frame_poses =
+                                {
+                                    mirakana::runtime::RuntimeSpriteCollisionFramePoseDesc{
+                                        .frame_id = "idle",
+                                        .entity_id = "player",
+                                        .world_x = 0.0F,
+                                        .world_y = 0.0F,
+                                        .active = true,
+                                        .source_index = 0U,
+                                    },
+                                    mirakana::runtime::RuntimeSpriteCollisionFramePoseDesc{
+                                        .frame_id = "idle",
+                                        .entity_id = "enemy",
+                                        .world_x = 0.25F,
+                                        .world_y = 0.0F,
+                                        .active = true,
+                                        .source_index = 1U,
+                                    },
+                                },
+                            .max_hit_rows = 4U,
+                        },
+                    .request_package_mutation = false,
+                    .request_renderer_rhi_handle_exposure = false,
+                    .request_native_preview_handles = false,
+                    .request_arbitrary_shell_execution = false,
+                });
+
+    MK_REQUIRE(model.has_selected_sprites);
+    MK_REQUIRE(model.has_atlas_pages);
+    MK_REQUIRE(model.has_animation_payloads);
+    MK_REQUIRE(model.preview_execution_host_owned);
+    MK_REQUIRE(model.preview_execution_status_label == "Host Required");
+    MK_REQUIRE(!model.preview_execution_ready);
+    MK_REQUIRE(!model.preview_execution_rendered);
+    MK_REQUIRE(!model.has_blocking_diagnostics);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(model.hitbox_count == 1);
+    MK_REQUIRE(model.hurtbox_count == 1);
+    MK_REQUIRE(model.collision_hit_count == 1);
+    MK_REQUIRE(model.hitbox_diagnostic_count == 0);
+    MK_REQUIRE(model.selected_sprites.size() == 1);
+    MK_REQUIRE(model.selected_sprites[0].status == mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready);
+    MK_REQUIRE(model.selected_sprites[0].sprite == sprite);
+    MK_REQUIRE(model.selected_sprites[0].material == material);
+    MK_REQUIRE(model.selected_sprites[0].sorting_layer == 4);
+    MK_REQUIRE(model.selected_sprites[0].order_in_layer == 12);
+    MK_REQUIRE(model.selected_sprites[0].sorting_space == "camera_space");
+    MK_REQUIRE(model.selected_sprites[0].draw_mode == "nine_slice");
+    MK_REQUIRE(model.selected_sprites[0].hitbox_count == 1);
+    MK_REQUIRE(model.selected_sprites[0].hurtbox_count == 0);
+    MK_REQUIRE(model.selected_sprites[0].package_dependency_count == 3);
+    MK_REQUIRE(model.atlas_pages.size() == 1);
+    MK_REQUIRE(model.atlas_pages[0].asset == sprite);
+    MK_REQUIRE(model.atlas_pages[0].width == 16U);
+    MK_REQUIRE(model.atlas_pages[0].height == 16U);
+    MK_REQUIRE(model.atlas_pages[0].selected_sprite_count == 1);
+    MK_REQUIRE(model.atlas_pages[0].animation_frame_count == 2);
+    MK_REQUIRE(model.atlas_pages[0].dependency_count == 2);
+    MK_REQUIRE(model.animations.size() == 1);
+    MK_REQUIRE(model.animations[0].frame_count == 2);
+    MK_REQUIRE(model.animations[0].unique_sprite_count == 1);
+    MK_REQUIRE(model.animations[0].unique_material_count == 1);
+    MK_REQUIRE(model.animations[0].dependency_count == 2);
+    MK_REQUIRE(model.animations[0].total_duration_seconds > 0.19F);
+    MK_REQUIRE(model.animations[0].total_duration_seconds < 0.21F);
+
+    mirakana::editor::apply_editor_sprite_preview_execution_snapshot(
+        model, mirakana::editor::EditorSpritePreviewExecutionSnapshot{
+                   .status = mirakana::editor::EditorSpritePreviewExecutionStatus::ready,
+                   .diagnostic = "visible sprite preview rendered by the host editor shell",
+                   .backend_label = "D3D12",
+                   .display_path_label = "cpu-readback",
+                   .frames_rendered = 2,
+                   .executes = false,
+                   .exposes_native_handles = false,
+               });
+    MK_REQUIRE(model.preview_execution_status_label == "Ready");
+    MK_REQUIRE(model.preview_execution_backend_label == "D3D12");
+    MK_REQUIRE(model.preview_execution_display_path_label == "cpu-readback");
+    MK_REQUIRE(model.preview_execution_frames_rendered == 2);
+    MK_REQUIRE(model.preview_execution_ready);
+    MK_REQUIRE(model.preview_execution_rendered);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+
+    const auto ui = mirakana::editor::make_editor_sprite_preview_diagnostics_ui_model(model);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.execution.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.selected.player.idle.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.selected.player.idle.sorting"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.atlas." + std::to_string(sprite.value) +
+                                               ".size"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.animations." +
+                                               std::to_string(model.animations[0].asset.value) + ".frames"}) !=
+               nullptr);
+}
+
+MK_TEST("editor sprite preview diagnostics counts only matching selected animation frames") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player-atlas");
+    const auto material = mirakana::AssetId::from_name("materials/player-sprite");
+    const auto alternate_sprite = mirakana::AssetId::from_name("textures/alternate-atlas");
+    const auto alternate_material = mirakana::AssetId::from_name("materials/alternate-sprite");
+    const auto alternate_animation = mirakana::AssetId::from_name("animations/player-special");
+    const auto alternate_texture_payload = editor_test_cooked_texture_payload(alternate_sprite);
+    const auto alternate_material_payload = editor_test_material_payload(alternate_material);
+    const auto alternate_animation_payload =
+        editor_test_sprite_animation_payload(alternate_animation, alternate_sprite, alternate_material, "player");
+
+    const auto ready_package = make_editor_sprite_preview_test_package();
+    std::vector<mirakana::runtime::RuntimeAssetRecord> records(ready_package.records().begin(),
+                                                               ready_package.records().end());
+    std::vector<mirakana::AssetDependencyEdge> edges(ready_package.dependency_edges().begin(),
+                                                     ready_package.dependency_edges().end());
+    records.push_back(mirakana::runtime::RuntimeAssetRecord{
+        .handle = mirakana::runtime::RuntimeAssetHandle{31},
+        .asset = alternate_sprite,
+        .kind = mirakana::AssetKind::texture,
+        .path = "runtime/assets/2d/alternate-atlas.texture",
+        .content_hash = mirakana::hash_asset_cooked_content(alternate_texture_payload),
+        .source_revision = 1,
+        .dependencies = {},
+        .content = alternate_texture_payload,
+    });
+    records.push_back(mirakana::runtime::RuntimeAssetRecord{
+        .handle = mirakana::runtime::RuntimeAssetHandle{32},
+        .asset = alternate_material,
+        .kind = mirakana::AssetKind::material,
+        .path = "runtime/assets/2d/alternate-sprite.material",
+        .content_hash = mirakana::hash_asset_cooked_content(alternate_material_payload),
+        .source_revision = 1,
+        .dependencies = {},
+        .content = alternate_material_payload,
+    });
+    records.push_back(mirakana::runtime::RuntimeAssetRecord{
+        .handle = mirakana::runtime::RuntimeAssetHandle{33},
+        .asset = alternate_animation,
+        .kind = mirakana::AssetKind::sprite_animation,
+        .path = "runtime/assets/2d/player-special.spriteanim",
+        .content_hash = mirakana::hash_asset_cooked_content(alternate_animation_payload),
+        .source_revision = 1,
+        .dependencies = {alternate_sprite, alternate_material},
+        .content = alternate_animation_payload,
+    });
+    edges.push_back(mirakana::AssetDependencyEdge{
+        .asset = alternate_animation,
+        .dependency = alternate_sprite,
+        .kind = mirakana::AssetDependencyKind::sprite_animation_texture,
+        .path = "runtime/assets/2d/player-special.spriteanim",
+    });
+    edges.push_back(mirakana::AssetDependencyEdge{
+        .asset = alternate_animation,
+        .dependency = alternate_material,
+        .kind = mirakana::AssetDependencyKind::sprite_animation_material,
+        .path = "runtime/assets/2d/player-special.spriteanim",
+    });
+
+    const mirakana::runtime::RuntimeAssetPackage package(std::move(records), std::move(edges));
+    const auto
+        model =
+            mirakana::editor::make_editor_sprite_preview_diagnostics_model(
+                package, mirakana::editor::EditorSpritePreviewDiagnosticsDesc{
+                             .selected_sprites =
+                                 {
+                                     mirakana::editor::EditorSpritePreviewSelectionDesc{
+                                         .id = "player.idle",
+                                         .target_node_name = "player",
+                                         .frame_id = "idle",
+                                         .entity_id = "player",
+                                         .renderer =
+                                             mirakana::SpriteRendererComponent{
+                                                 .sprite = sprite,
+                                                 .material = material,
+                                                 .size = mirakana::Vec2{.x = 32.0F, .y = 48.0F},
+                                                 .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                                                 .visible = true,
+                                                 .sorting_layer = 0,
+                                                 .order_in_layer = 0,
+                                                 .sorting_space = mirakana::SpriteSortingSpace::world_space,
+                                                 .draw_mode = mirakana::SpriteDrawMode::simple,
+                                                 .slice_border = {},
+                                                 .tile_size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+                                             },
+                                     },
+                                 },
+                             .hitbox_request = {},
+                             .request_package_mutation = false,
+                             .request_renderer_rhi_handle_exposure = false,
+                             .request_native_preview_handles = false,
+                             .request_arbitrary_shell_execution = false,
+                         });
+
+    MK_REQUIRE(model.animations.size() == 2);
+    MK_REQUIRE(model.selected_sprites.size() == 1);
+    MK_REQUIRE(model.selected_sprites[0].animation_frame_count == 2);
+    MK_REQUIRE(model.selected_sprites[0].status == mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready);
+}
+
+MK_TEST("editor sprite preview diagnostics reflect sprite animation package edge failures") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player-atlas");
+    const auto material = mirakana::AssetId::from_name("materials/player-sprite");
+    const auto ready_package = make_editor_sprite_preview_test_package();
+    const mirakana::runtime::RuntimeAssetPackage package(ready_package.records(),
+                                                         {
+                                                             ready_package.dependency_edges()[0],
+                                                             ready_package.dependency_edges()[2],
+                                                         });
+
+    const auto
+        model =
+            mirakana::editor::make_editor_sprite_preview_diagnostics_model(
+                package, mirakana::editor::EditorSpritePreviewDiagnosticsDesc{
+                             .selected_sprites =
+                                 {
+                                     mirakana::editor::EditorSpritePreviewSelectionDesc{
+                                         .id = "player.run",
+                                         .target_node_name = "player",
+                                         .frame_id = "run",
+                                         .entity_id = "player",
+                                         .renderer =
+                                             mirakana::SpriteRendererComponent{
+                                                 .sprite = sprite,
+                                                 .material = material,
+                                                 .size = mirakana::Vec2{.x = 32.0F, .y = 48.0F},
+                                                 .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                                                 .visible = true,
+                                                 .sorting_layer = 0,
+                                                 .order_in_layer = 0,
+                                                 .sorting_space = mirakana::SpriteSortingSpace::world_space,
+                                                 .draw_mode = mirakana::SpriteDrawMode::simple,
+                                                 .slice_border = {},
+                                                 .tile_size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+                                             },
+                                     },
+                                 },
+                             .hitbox_request = {},
+                             .request_package_mutation = false,
+                             .request_renderer_rhi_handle_exposure = false,
+                             .request_native_preview_handles = false,
+                             .request_arbitrary_shell_execution = false,
+                         });
+
+    MK_REQUIRE(model.has_blocking_diagnostics);
+    MK_REQUIRE(model.animations.size() == 1);
+    MK_REQUIRE(model.animations[0].status == mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::blocked);
+    MK_REQUIRE(model.animations[0].diagnostic.contains("sprite_animation_material dependency edge"));
+    MK_REQUIRE(model.selected_sprites.size() == 1);
+    MK_REQUIRE(model.selected_sprites[0].status == mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready);
+}
+
+MK_TEST("editor sprite preview diagnostics fail closed on missing selected frame entity pose") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player-atlas");
+    const auto material = mirakana::AssetId::from_name("materials/player-sprite");
+
+    const auto
+        model =
+            mirakana::editor::make_editor_sprite_preview_diagnostics_model(
+                make_editor_sprite_preview_test_package(),
+                mirakana::editor::EditorSpritePreviewDiagnosticsDesc{
+                    .selected_sprites =
+                        {
+                            mirakana::editor::EditorSpritePreviewSelectionDesc{
+                                .id = "player.missing",
+                                .target_node_name = "player",
+                                .frame_id = "missing-frame",
+                                .entity_id = "player",
+                                .renderer =
+                                    mirakana::SpriteRendererComponent{
+                                        .sprite = sprite,
+                                        .material = material,
+                                        .size = mirakana::Vec2{.x = 32.0F, .y = 48.0F},
+                                        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                                        .visible = true,
+                                        .sorting_layer = 0,
+                                        .order_in_layer = 0,
+                                        .sorting_space = mirakana::SpriteSortingSpace::world_space,
+                                        .draw_mode = mirakana::SpriteDrawMode::simple,
+                                        .slice_border = {},
+                                        .tile_size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+                                    },
+                            },
+                        },
+                    .hitbox_request =
+                        mirakana::runtime::RuntimeSpriteCollisionHitboxRequest{
+                            .boxes =
+                                {
+                                    mirakana::runtime::RuntimeSpriteCollisionBoxDesc{
+                                        .id = "player.attack",
+                                        .frame_id = "idle",
+                                        .entity_id = "player",
+                                        .kind = mirakana::runtime::RuntimeSpriteCollisionBoxKind::hitbox,
+                                        .center_x = 0.0F,
+                                        .center_y = 0.0F,
+                                        .half_width = 0.5F,
+                                        .half_height = 0.5F,
+                                        .layer = 1U,
+                                        .mask = 1U,
+                                        .gameplay_kind = mirakana::runtime::RuntimeGameplayInteractionKind::damage,
+                                        .gameplay_amount = 1,
+                                        .gameplay_feedback_id = "slash",
+                                        .source_index = 0U,
+                                    },
+                                },
+                            .frame_poses =
+                                {
+                                    mirakana::runtime::RuntimeSpriteCollisionFramePoseDesc{
+                                        .frame_id = "idle",
+                                        .entity_id = "player",
+                                        .world_x = 0.0F,
+                                        .world_y = 0.0F,
+                                        .active = true,
+                                        .source_index = 0U,
+                                    },
+                                },
+                            .max_hit_rows = 4U,
+                        },
+                    .request_package_mutation = false,
+                    .request_renderer_rhi_handle_exposure = false,
+                    .request_native_preview_handles = false,
+                    .request_arbitrary_shell_execution = false,
+                });
+
+    MK_REQUIRE(model.has_blocking_diagnostics);
+    MK_REQUIRE(model.selected_sprites.size() == 1);
+    MK_REQUIRE(model.selected_sprites[0].status == mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::blocked);
+    MK_REQUIRE(model.selected_sprites[0].diagnostic.contains("selected sprite frame/entity pose is missing"));
+    MK_REQUIRE(model.diagnostics[0].contains("selected sprite row"));
+}
+
+MK_TEST("editor sprite preview diagnostics fail closed on malformed selected sprite references") {
+    const auto material = mirakana::AssetId::from_name("materials/player-sprite");
+    const auto material_payload = editor_test_material_payload(material);
+    const mirakana::runtime::RuntimeAssetPackage package(
+        {
+            mirakana::runtime::RuntimeAssetRecord{
+                .handle = mirakana::runtime::RuntimeAssetHandle{21},
+                .asset = material,
+                .kind = mirakana::AssetKind::material,
+                .path = "runtime/assets/2d/player-sprite.material",
+                .content_hash = mirakana::hash_asset_cooked_content(material_payload),
+                .source_revision = 1,
+                .dependencies = {},
+                .content = material_payload,
+            },
+        },
+        {});
+
+    auto
+        model =
+            mirakana::editor::make_editor_sprite_preview_diagnostics_model(
+                package,
+                mirakana::editor::EditorSpritePreviewDiagnosticsDesc{
+                    .selected_sprites =
+                        {
+                            mirakana::editor::EditorSpritePreviewSelectionDesc{
+                                .id = "broken",
+                                .target_node_name = "player",
+                                .frame_id = "missing-pose",
+                                .entity_id = "player",
+                                .renderer =
+                                    mirakana::SpriteRendererComponent{
+                                        .sprite = mirakana::AssetId{},
+                                        .material = material,
+                                        .size = mirakana::Vec2{.x = 0.0F, .y = 48.0F},
+                                        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                                        .visible = true,
+                                        .sorting_layer = 0,
+                                        .order_in_layer = 0,
+                                        .sorting_space = mirakana::SpriteSortingSpace::world_space,
+                                        .draw_mode = mirakana::SpriteDrawMode::simple,
+                                        .slice_border = {},
+                                        .tile_size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+                                    },
+                            },
+                        },
+                    .hitbox_request =
+                        mirakana::runtime::RuntimeSpriteCollisionHitboxRequest{
+                            .boxes =
+                                {
+                                    mirakana::runtime::RuntimeSpriteCollisionBoxDesc{
+                                        .id = "broken.attack",
+                                        .frame_id = "missing-pose",
+                                        .entity_id = "player",
+                                        .kind = mirakana::runtime::RuntimeSpriteCollisionBoxKind::hitbox,
+                                        .center_x = 0.0F,
+                                        .center_y = 0.0F,
+                                        .half_width = 0.5F,
+                                        .half_height = 0.5F,
+                                        .layer =
+                                            1U,
+                                        .mask = 1U,
+                                        .gameplay_kind = mirakana::runtime::RuntimeGameplayInteractionKind::damage,
+                                        .gameplay_amount = 1,
+                                        .gameplay_feedback_id = {},
+                                        .source_index = 0U,
+                                    },
+                                },
+                            .frame_poses = {},
+                            .max_hit_rows = 4U,
+                        },
+                    .request_package_mutation = true,
+                    .request_renderer_rhi_handle_exposure = true,
+                    .request_native_preview_handles = true,
+                    .request_arbitrary_shell_execution = true,
+                });
+
+    MK_REQUIRE(model.has_selected_sprites);
+    MK_REQUIRE(model.has_blocking_diagnostics);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(model.unsupported_claims.size() == 4);
+    MK_REQUIRE(model.hitbox_diagnostic_count > 0);
+    MK_REQUIRE(model.selected_sprites.size() == 1);
+    MK_REQUIRE(model.selected_sprites[0].status == mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::blocked);
+    MK_REQUIRE(model.selected_sprites[0].diagnostic.contains("sprite renderer component is invalid"));
+    MK_REQUIRE(model.selected_sprites[0].diagnostic.contains("sprite package entry is missing"));
+    MK_REQUIRE(model.diagnostics.size() >= 4);
+
+    mirakana::editor::apply_editor_sprite_preview_execution_snapshot(
+        model, mirakana::editor::EditorSpritePreviewExecutionSnapshot{
+                   .status = mirakana::editor::EditorSpritePreviewExecutionStatus::ready,
+                   .diagnostic = "unsafe host claim should be rejected",
+                   .backend_label = "native",
+                   .display_path_label = "native-handle",
+                   .frames_rendered = 1,
+                   .executes = true,
+                   .exposes_native_handles = true,
+               });
+    MK_REQUIRE(model.preview_execution_status_label == "Blocked");
+    MK_REQUIRE(model.preview_execution_backend_label == "-");
+    MK_REQUIRE(model.preview_execution_display_path_label == "-");
+    MK_REQUIRE(model.preview_execution_frames_rendered == 0);
+    MK_REQUIRE(!model.preview_execution_ready);
+    MK_REQUIRE(!model.preview_execution_rendered);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+
+    const auto ui = mirakana::editor::make_editor_sprite_preview_diagnostics_ui_model(model);
+    const auto* execution_backend = ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.execution.backend"});
+    const auto* execution_display_path =
+        ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.execution.display_path"});
+    MK_REQUIRE(execution_backend != nullptr);
+    MK_REQUIRE(execution_display_path != nullptr);
+    MK_REQUIRE(execution_backend->text.label == "-");
+    MK_REQUIRE(execution_display_path->text.label == "-");
+    const auto* first_diagnostic = ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.diagnostics.0"});
+    MK_REQUIRE(first_diagnostic != nullptr);
+    MK_REQUIRE(first_diagnostic->text.label.contains("package mutation"));
+}
+
+MK_TEST("editor sprite preview diagnostics fail closed sanitized selection id collisions") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player-atlas");
+    const auto material = mirakana::AssetId::from_name("materials/player-sprite");
+    const auto package = make_editor_sprite_preview_test_package();
+    const auto renderer = mirakana::SpriteRendererComponent{
+        .sprite = sprite,
+        .material = material,
+        .size = mirakana::Vec2{.x = 32.0F, .y = 48.0F},
+        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+        .visible = true,
+        .sorting_layer = 0,
+        .order_in_layer = 0,
+        .sorting_space = mirakana::SpriteSortingSpace::world_space,
+        .draw_mode = mirakana::SpriteDrawMode::simple,
+        .slice_border = {},
+        .tile_size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+    };
+
+    const auto model = mirakana::editor::make_editor_sprite_preview_diagnostics_model(
+        package, mirakana::editor::EditorSpritePreviewDiagnosticsDesc{
+                     .selected_sprites =
+                         {
+                             mirakana::editor::EditorSpritePreviewSelectionDesc{
+                                 .id = "player/run",
+                                 .target_node_name = "player",
+                                 .frame_id = "run-0",
+                                 .entity_id = "player",
+                                 .renderer = renderer,
+                             },
+                             mirakana::editor::EditorSpritePreviewSelectionDesc{
+                                 .id = "player_run",
+                                 .target_node_name = "player",
+                                 .frame_id = "run-1",
+                                 .entity_id = "player",
+                                 .renderer = renderer,
+                             },
+                         },
+                     .hitbox_request = {},
+                     .request_package_mutation = false,
+                     .request_renderer_rhi_handle_exposure = false,
+                     .request_native_preview_handles = false,
+                     .request_arbitrary_shell_execution = false,
+                 });
+
+    MK_REQUIRE(model.has_blocking_diagnostics);
+    MK_REQUIRE(model.selected_sprites.size() == 2);
+    MK_REQUIRE(model.selected_sprites[0].id == "player_run");
+    MK_REQUIRE(model.selected_sprites[1].id == "player_run.2");
+    MK_REQUIRE(model.selected_sprites[1].status == mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::blocked);
+    MK_REQUIRE(model.selected_sprites[1].diagnostic.contains("selected sprite row id collides"));
+
+    const auto ui = mirakana::editor::make_editor_sprite_preview_diagnostics_ui_model(model);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.selected.player_run.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.selected.player_run.2.status"}) != nullptr);
+    const auto* diagnostic = ui.find(mirakana::ui::ElementId{"sprite_preview_diagnostics.diagnostics.0"});
+    MK_REQUIRE(diagnostic != nullptr);
+    MK_REQUIRE(diagnostic->text.label.contains("selected sprite row id"));
 }
 
 MK_TEST("editor ai package authoring diagnostics reject mutation and execution claims") {

@@ -5,6 +5,7 @@
 
 #include "mirakana/rhi/rhi.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -513,7 +514,9 @@ class DeviceContext final {
     [[nodiscard]] bool reset_command_list(NativeCommandListHandle handle);
     [[nodiscard]] FenceValue execute_command_list(NativeCommandListHandle handle);
     [[nodiscard]] FenceValue completed_fence() const noexcept;
-    /// Highest fence value signaled on the graphics queue after `execute_command_list` (0 if none yet).
+    [[nodiscard]] std::array<FenceValue, 3> completed_queue_fences() const noexcept;
+    [[nodiscard]] std::array<FenceValue, 3> last_submitted_queue_fences() const noexcept;
+    /// Most recent queue-qualified fence signaled by `execute_command_list` (0 if none yet).
     [[nodiscard]] FenceValue last_submitted_fence() const noexcept;
     /// Releases the committed resource slot after the GPU has finished using it. Safe to call multiple times.
     void destroy_committed_resource(NativeResourceHandle handle) noexcept;

@@ -79,6 +79,159 @@ void append_unique(std::vector<std::string>& target, const std::string& value) {
     }
 }
 
+[[nodiscard]] std::string_view sprite_sorting_space_label(SpriteSortingSpace space) noexcept {
+    switch (space) {
+    case SpriteSortingSpace::world_space:
+        return "world_space";
+    case SpriteSortingSpace::camera_space:
+        return "camera_space";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view sprite_draw_mode_label(SpriteDrawMode mode) noexcept {
+    switch (mode) {
+    case SpriteDrawMode::simple:
+        return "simple";
+    case SpriteDrawMode::nine_slice:
+        return "nine_slice";
+    case SpriteDrawMode::tiled:
+        return "tiled";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+sprite_collision_diagnostic_code_label(runtime::RuntimeSpriteCollisionDiagnosticCode code) noexcept {
+    switch (code) {
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::none:
+        return "none";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::invalid_box_id:
+        return "invalid_box_id";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::duplicate_box_id:
+        return "duplicate_box_id";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::invalid_frame_id:
+        return "invalid_frame_id";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::invalid_entity_id:
+        return "invalid_entity_id";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::invalid_box_bounds:
+        return "invalid_box_bounds";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::invalid_layer_mask:
+        return "invalid_layer_mask";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::missing_frame_pose:
+        return "missing_frame_pose";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::invalid_frame_pose:
+        return "invalid_frame_pose";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::duplicate_frame_pose:
+        return "duplicate_frame_pose";
+    case runtime::RuntimeSpriteCollisionDiagnosticCode::hit_budget_exceeded:
+        return "hit_budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] bool has_asset_id(const std::vector<AssetId>& values, AssetId asset) {
+    return std::ranges::find(values, asset) != values.end();
+}
+
+[[nodiscard]] std::size_t package_error_diagnostics_for_asset(const runtime::RuntimeDiagnosticReport& report,
+                                                              AssetId asset, std::string& diagnostic) {
+    std::size_t count{0};
+    for (const auto& entry : report.diagnostics) {
+        if (entry.asset == asset && entry.severity == runtime::RuntimeDiagnosticSeverity::error) {
+            ++count;
+            append_diagnostic(diagnostic, entry.message);
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] std::size_t dependency_edge_count_for_dependency(const runtime::RuntimeAssetPackage& package,
+                                                               AssetId dependency) noexcept {
+    return static_cast<std::size_t>(
+        std::ranges::count_if(package.dependency_edges(),
+                              [dependency](const AssetDependencyEdge& edge) { return edge.dependency == dependency; }));
+}
+
+[[nodiscard]] std::size_t dependency_edge_count_for_asset(const runtime::RuntimeAssetPackage& package,
+                                                          AssetId asset) noexcept {
+    return static_cast<std::size_t>(std::ranges::count_if(
+        package.dependency_edges(), [asset](const AssetDependencyEdge& edge) { return edge.asset == asset; }));
+}
+
+[[nodiscard]] std::size_t selection_dependency_edge_count(const runtime::RuntimeAssetPackage& package, AssetId sprite,
+                                                          AssetId material) noexcept {
+    return static_cast<std::size_t>(
+        std::ranges::count_if(package.dependency_edges(), [sprite, material](const AssetDependencyEdge& edge) {
+            return edge.dependency == sprite || edge.dependency == material;
+        }));
+}
+
+struct SpritePreviewTextureUsage {
+    AssetId asset;
+    std::size_t selected_sprite_count{0};
+    std::size_t animation_frame_count{0};
+};
+
+void add_texture_usage(std::vector<SpritePreviewTextureUsage>& usages, AssetId asset, bool selected, bool animation) {
+    if (asset.value == 0U) {
+        return;
+    }
+    auto usage = std::ranges::find_if(
+        usages, [asset](const SpritePreviewTextureUsage& candidate) { return candidate.asset == asset; });
+    if (usage == usages.end()) {
+        usage = usages.insert(usages.end(), SpritePreviewTextureUsage{.asset = asset});
+    }
+    if (selected) {
+        ++usage->selected_sprite_count;
+    }
+    if (animation) {
+        ++usage->animation_frame_count;
+    }
+}
+
+struct SpritePreviewAnimationFrameUsage {
+    std::string target_node_name;
+    AssetId sprite;
+    AssetId material;
+    std::size_t frame_count{0};
+};
+
+void add_animation_frame_usage(std::vector<SpritePreviewAnimationFrameUsage>& usages, std::string_view target,
+                               AssetId sprite, AssetId material) {
+    auto match =
+        std::ranges::find_if(usages, [target, sprite, material](const SpritePreviewAnimationFrameUsage& candidate) {
+            return candidate.target_node_name == target && candidate.sprite == sprite && candidate.material == material;
+        });
+    if (match == usages.end()) {
+        usages.push_back(SpritePreviewAnimationFrameUsage{
+            .target_node_name = std::string(target), .sprite = sprite, .material = material, .frame_count = 1U});
+    } else {
+        ++match->frame_count;
+    }
+}
+
+[[nodiscard]] std::size_t animation_frames_for_selection(const std::vector<SpritePreviewAnimationFrameUsage>& usages,
+                                                         std::string_view target, AssetId sprite, AssetId material) {
+    const auto match =
+        std::ranges::find_if(usages, [target, sprite, material](const SpritePreviewAnimationFrameUsage& candidate) {
+            return candidate.target_node_name == target && candidate.sprite == sprite && candidate.material == material;
+        });
+    return match == usages.end() ? 0U : match->frame_count;
+}
+
+[[nodiscard]] bool
+sprite_collision_request_has_selection_scope(const runtime::RuntimeSpriteCollisionHitboxRequest& request) noexcept {
+    return !request.boxes.empty() || !request.frame_poses.empty();
+}
+
+[[nodiscard]] bool has_sprite_collision_frame_pose(const runtime::RuntimeSpriteCollisionHitboxRequest& request,
+                                                   std::string_view frame_id, std::string_view entity_id) {
+    return std::ranges::any_of(request.frame_poses, [frame_id, entity_id](const auto& pose) {
+        return pose.frame_id == frame_id && pose.entity_id == entity_id;
+    });
+}
+
 void append_unique(std::vector<std::string>& target, const std::vector<std::string>& values) {
     for (const auto& value : values) {
         append_unique(target, value);
@@ -2409,6 +2562,385 @@ make_editor_tilemap_package_diagnostics_model(const runtime::RuntimeAssetPackage
     }
 
     return model;
+}
+
+std::string_view editor_sprite_preview_execution_status_label(EditorSpritePreviewExecutionStatus status) noexcept {
+    switch (status) {
+    case EditorSpritePreviewExecutionStatus::unknown:
+        return "Unknown";
+    case EditorSpritePreviewExecutionStatus::host_required:
+        return "Host Required";
+    case EditorSpritePreviewExecutionStatus::ready:
+        return "Ready";
+    case EditorSpritePreviewExecutionStatus::blocked:
+        return "Blocked";
+    }
+    return "Unknown";
+}
+
+EditorSpritePreviewDiagnosticsModel
+make_editor_sprite_preview_diagnostics_model(const runtime::RuntimeAssetPackage& package,
+                                             const EditorSpritePreviewDiagnosticsDesc& desc) {
+    EditorSpritePreviewDiagnosticsModel model;
+    model.preview_execution_status_label =
+        std::string(editor_sprite_preview_execution_status_label(EditorSpritePreviewExecutionStatus::host_required));
+    model.preview_execution_diagnostic = "sprite preview execution is host-owned by the optional editor shell";
+    model.preview_execution_backend_label = "-";
+    model.preview_execution_display_path_label = "-";
+
+    const auto package_report = runtime::inspect_runtime_asset_package(package);
+
+    if (desc.request_package_mutation) {
+        model.unsupported_claims.emplace_back("package mutation is unsupported by sprite preview diagnostics");
+    }
+    if (desc.request_renderer_rhi_handle_exposure) {
+        model.unsupported_claims.emplace_back(
+            "renderer/RHI handle exposure is unsupported by sprite preview diagnostics");
+    }
+    if (desc.request_native_preview_handles) {
+        model.unsupported_claims.emplace_back(
+            "native preview handle exposure is unsupported by sprite preview diagnostics");
+    }
+    if (desc.request_arbitrary_shell_execution) {
+        model.unsupported_claims.emplace_back("arbitrary shell execution is unsupported by sprite preview diagnostics");
+    }
+    for (const auto& unsupported : model.unsupported_claims) {
+        model.has_blocking_diagnostics = true;
+        model.diagnostics.push_back(unsupported);
+    }
+
+    if (desc.selected_sprites.empty()) {
+        model.has_blocking_diagnostics = true;
+        model.diagnostics.emplace_back("sprite preview diagnostics require at least one selected sprite row");
+    }
+
+    const auto hitbox_plan = runtime::plan_runtime_sprite_collision_hitboxes(desc.hitbox_request);
+    model.collision_hit_count = hitbox_plan.rows.size();
+    model.hitbox_diagnostic_count = hitbox_plan.diagnostics.size();
+    for (const auto& box : desc.hitbox_request.boxes) {
+        if (box.kind == runtime::RuntimeSpriteCollisionBoxKind::hitbox) {
+            ++model.hitbox_count;
+        } else {
+            ++model.hurtbox_count;
+        }
+    }
+    for (const auto& diagnostic : hitbox_plan.diagnostics) {
+        model.has_blocking_diagnostics = true;
+        model.diagnostics.push_back("sprite collision hitbox diagnostic '" +
+                                    std::string(sprite_collision_diagnostic_code_label(diagnostic.code)) + "' for '" +
+                                    diagnostic.box_id + "'");
+    }
+
+    std::vector<SpritePreviewTextureUsage> texture_usages;
+    std::vector<SpritePreviewAnimationFrameUsage> animation_frame_usages;
+
+    for (const auto& record : package.records()) {
+        if (record.kind != AssetKind::sprite_animation) {
+            continue;
+        }
+
+        model.has_animation_payloads = true;
+        EditorSpritePreviewAnimationRow row;
+        row.asset = record.asset;
+        row.path = record.path;
+        row.dependency_count = dependency_edge_count_for_asset(package, record.asset);
+        row.diagnostic_count += package_error_diagnostics_for_asset(package_report, record.asset, row.diagnostic);
+
+        const auto payload = runtime::runtime_sprite_animation_payload(record);
+        if (!payload.succeeded()) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, payload.diagnostic);
+        } else {
+            row.target_node_name = payload.payload.target_node;
+            row.loop = payload.payload.loop;
+            row.frame_count = payload.payload.frames.size();
+
+            std::vector<AssetId> unique_sprites;
+            std::vector<AssetId> unique_materials;
+            for (const auto& frame : payload.payload.frames) {
+                row.total_duration_seconds += frame.duration_seconds;
+                add_texture_usage(texture_usages, frame.sprite, false, true);
+                add_animation_frame_usage(animation_frame_usages, row.target_node_name, frame.sprite, frame.material);
+                if (!has_asset_id(unique_sprites, frame.sprite)) {
+                    unique_sprites.push_back(frame.sprite);
+                }
+                if (!has_asset_id(unique_materials, frame.material)) {
+                    unique_materials.push_back(frame.material);
+                }
+            }
+            row.unique_sprite_count = unique_sprites.size();
+            row.unique_material_count = unique_materials.size();
+        }
+
+        if (row.diagnostic.empty()) {
+            row.diagnostic = "runtime sprite animation package row is ready";
+        }
+        row.status = row.diagnostic_count == 0U ? EditorAiPackageAuthoringDiagnosticStatus::ready
+                                                : EditorAiPackageAuthoringDiagnosticStatus::blocked;
+        if (row.status == EditorAiPackageAuthoringDiagnosticStatus::blocked) {
+            model.has_blocking_diagnostics = true;
+            model.diagnostics.push_back("sprite animation package row '" + row.path +
+                                        "' is blocked: " + row.diagnostic);
+        }
+        model.animations.push_back(std::move(row));
+    }
+
+    std::unordered_map<std::string, std::size_t> selected_row_id_counts;
+    for (const auto& selection : desc.selected_sprites) {
+        model.has_selected_sprites = true;
+        EditorSpritePreviewSelectionRow row;
+        const auto sanitized_id = sanitize_element_id(selection.id);
+        auto& sanitized_id_count = selected_row_id_counts[sanitized_id];
+        ++sanitized_id_count;
+        row.id = sanitized_id_count == 1U ? sanitized_id : sanitized_id + "." + std::to_string(sanitized_id_count);
+        row.target_node_name = selection.target_node_name;
+        row.frame_id = selection.frame_id;
+        row.entity_id = selection.entity_id;
+        row.sprite = selection.renderer.sprite;
+        row.material = selection.renderer.material;
+        row.visible = selection.renderer.visible;
+        row.sorting_layer = selection.renderer.sorting_layer;
+        row.order_in_layer = selection.renderer.order_in_layer;
+        row.sorting_space = std::string(sprite_sorting_space_label(selection.renderer.sorting_space));
+        row.draw_mode = std::string(sprite_draw_mode_label(selection.renderer.draw_mode));
+        row.animation_frame_count =
+            animation_frames_for_selection(animation_frame_usages, row.target_node_name, row.sprite, row.material);
+        row.package_dependency_count = selection_dependency_edge_count(package, row.sprite, row.material);
+
+        if (sanitized_id_count > 1U) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "selected sprite row id collides after sanitization");
+        }
+        if (!is_valid_sprite_renderer_component(selection.renderer)) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "sprite renderer component is invalid");
+        }
+        if (selection.target_node_name.empty()) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "selected sprite target node name is empty");
+        }
+        if (selection.frame_id.empty()) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "selected sprite frame id is empty");
+        }
+        if (selection.entity_id.empty()) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "selected sprite entity id is empty");
+        }
+        if (sprite_collision_request_has_selection_scope(desc.hitbox_request) &&
+            !has_sprite_collision_frame_pose(desc.hitbox_request, selection.frame_id, selection.entity_id)) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "selected sprite frame/entity pose is missing");
+        }
+
+        for (const auto& box : desc.hitbox_request.boxes) {
+            if (box.frame_id == selection.frame_id && box.entity_id == selection.entity_id) {
+                if (box.kind == runtime::RuntimeSpriteCollisionBoxKind::hitbox) {
+                    ++row.hitbox_count;
+                } else {
+                    ++row.hurtbox_count;
+                }
+            }
+        }
+
+        const auto* sprite_record = package.find(row.sprite);
+        if (sprite_record == nullptr) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "sprite package entry is missing");
+        } else if (sprite_record->kind != AssetKind::texture) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "sprite package entry is not a texture record");
+        } else {
+            row.sprite_path = sprite_record->path;
+            add_texture_usage(texture_usages, row.sprite, true, false);
+        }
+
+        const auto* material_record = package.find(row.material);
+        if (material_record == nullptr) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "material package entry is missing");
+        } else if (material_record->kind != AssetKind::material) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "material package entry is not a material record");
+        } else {
+            row.material_path = material_record->path;
+        }
+
+        row.diagnostic_count += package_error_diagnostics_for_asset(package_report, row.sprite, row.diagnostic);
+        row.diagnostic_count += package_error_diagnostics_for_asset(package_report, row.material, row.diagnostic);
+
+        if (row.diagnostic.empty()) {
+            row.diagnostic = "selected sprite texture and material rows are ready";
+        }
+        row.status = row.diagnostic_count == 0U ? EditorAiPackageAuthoringDiagnosticStatus::ready
+                                                : EditorAiPackageAuthoringDiagnosticStatus::blocked;
+        if (row.status == EditorAiPackageAuthoringDiagnosticStatus::blocked) {
+            model.has_blocking_diagnostics = true;
+            model.diagnostics.push_back("selected sprite row '" + row.id + "' is blocked: " + row.diagnostic);
+        }
+        model.selected_sprites.push_back(std::move(row));
+    }
+
+    for (const auto& usage : texture_usages) {
+        EditorSpritePreviewAtlasPageRow row;
+        row.asset = usage.asset;
+        row.selected_sprite_count = usage.selected_sprite_count;
+        row.animation_frame_count = usage.animation_frame_count;
+        row.dependency_count = dependency_edge_count_for_dependency(package, usage.asset);
+        row.diagnostic_count += package_error_diagnostics_for_asset(package_report, usage.asset, row.diagnostic);
+
+        const auto* record = package.find(usage.asset);
+        if (record == nullptr) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "atlas texture package entry is missing");
+        } else if (record->kind != AssetKind::texture) {
+            ++row.diagnostic_count;
+            append_diagnostic(row.diagnostic, "atlas package entry is not a texture record");
+            row.path = record->path;
+        } else {
+            row.path = record->path;
+            const auto payload = runtime::runtime_texture_payload(*record);
+            if (!payload.succeeded()) {
+                ++row.diagnostic_count;
+                append_diagnostic(row.diagnostic, payload.diagnostic);
+            } else {
+                row.width = payload.payload.width;
+                row.height = payload.payload.height;
+            }
+        }
+
+        if (row.diagnostic.empty()) {
+            row.diagnostic = "sprite atlas texture page is ready";
+        }
+        row.status = row.diagnostic_count == 0U ? EditorAiPackageAuthoringDiagnosticStatus::ready
+                                                : EditorAiPackageAuthoringDiagnosticStatus::blocked;
+        if (row.status == EditorAiPackageAuthoringDiagnosticStatus::blocked) {
+            model.has_blocking_diagnostics = true;
+            model.diagnostics.push_back("sprite atlas page row '" + row.path + "' is blocked: " + row.diagnostic);
+        }
+        model.atlas_pages.push_back(std::move(row));
+    }
+
+    model.has_atlas_pages = !model.atlas_pages.empty();
+    return model;
+}
+
+void apply_editor_sprite_preview_execution_snapshot(EditorSpritePreviewDiagnosticsModel& model,
+                                                    const EditorSpritePreviewExecutionSnapshot& snapshot) {
+    model.preview_execution_host_owned = true;
+
+    if (snapshot.executes || snapshot.exposes_native_handles) {
+        model.preview_execution_status_label =
+            std::string(editor_sprite_preview_execution_status_label(EditorSpritePreviewExecutionStatus::blocked));
+        model.preview_execution_diagnostic =
+            "sprite preview execution snapshot must not claim editor-core execution or native handle exposure";
+        model.preview_execution_backend_label = "-";
+        model.preview_execution_display_path_label = "-";
+        model.preview_execution_frames_rendered = 0;
+        model.preview_execution_ready = false;
+        model.preview_execution_rendered = false;
+        model.has_blocking_diagnostics = true;
+        model.executes = false;
+        model.exposes_native_handles = false;
+        model.unsupported_claims.emplace_back(
+            "unsafe sprite preview execution snapshot claimed execution or native handles");
+        model.diagnostics.push_back(model.preview_execution_diagnostic);
+        return;
+    }
+
+    model.preview_execution_backend_label = snapshot.backend_label.empty() ? "-" : snapshot.backend_label;
+    model.preview_execution_display_path_label =
+        snapshot.display_path_label.empty() ? "-" : snapshot.display_path_label;
+    model.preview_execution_frames_rendered = snapshot.frames_rendered;
+    model.preview_execution_status_label = std::string(editor_sprite_preview_execution_status_label(snapshot.status));
+    model.preview_execution_diagnostic = snapshot.diagnostic.empty() ? "-" : snapshot.diagnostic;
+    model.preview_execution_ready = snapshot.status == EditorSpritePreviewExecutionStatus::ready;
+    model.preview_execution_rendered = model.preview_execution_ready && snapshot.frames_rendered > 0U;
+    model.executes = false;
+    model.exposes_native_handles = false;
+}
+
+mirakana::ui::UiDocument
+make_editor_sprite_preview_diagnostics_ui_model(const EditorSpritePreviewDiagnosticsModel& model) {
+    mirakana::ui::UiDocument document;
+    add_ui_or_throw(document, make_ui_root("sprite_preview_diagnostics", mirakana::ui::SemanticRole::panel));
+    const mirakana::ui::ElementId root{"sprite_preview_diagnostics"};
+
+    add_ui_or_throw(document,
+                    make_ui_child("sprite_preview_diagnostics.execution", root, mirakana::ui::SemanticRole::panel));
+    const mirakana::ui::ElementId execution_root{"sprite_preview_diagnostics.execution"};
+    append_ui_label(document, execution_root, "sprite_preview_diagnostics.execution.status",
+                    model.preview_execution_status_label);
+    append_ui_label(document, execution_root, "sprite_preview_diagnostics.execution.backend",
+                    model.preview_execution_backend_label);
+    append_ui_label(document, execution_root, "sprite_preview_diagnostics.execution.display_path",
+                    model.preview_execution_display_path_label);
+    append_ui_label(document, execution_root, "sprite_preview_diagnostics.execution.frames",
+                    std::to_string(model.preview_execution_frames_rendered));
+    append_ui_label(document, execution_root, "sprite_preview_diagnostics.execution.diagnostic",
+                    model.preview_execution_diagnostic);
+
+    add_ui_or_throw(document,
+                    make_ui_child("sprite_preview_diagnostics.diagnostics", root, mirakana::ui::SemanticRole::panel));
+    const mirakana::ui::ElementId diagnostics_root{"sprite_preview_diagnostics.diagnostics"};
+    for (std::size_t index = 0; index < model.diagnostics.size(); ++index) {
+        append_ui_label(document, diagnostics_root, "sprite_preview_diagnostics.diagnostics." + std::to_string(index),
+                        model.diagnostics[index]);
+    }
+
+    add_ui_or_throw(document,
+                    make_ui_child("sprite_preview_diagnostics.selected", root, mirakana::ui::SemanticRole::panel));
+    const mirakana::ui::ElementId selected_root{"sprite_preview_diagnostics.selected"};
+    for (const auto& row : model.selected_sprites) {
+        const auto row_id = "sprite_preview_diagnostics.selected." + sanitize_element_id(row.id);
+        add_ui_or_throw(document, make_ui_child(row_id, selected_root, mirakana::ui::SemanticRole::panel));
+        const mirakana::ui::ElementId row_root{row_id};
+        append_ui_label(document, row_root, row_id + ".status",
+                        std::string(editor_ai_package_authoring_diagnostic_status_label(row.status)));
+        append_ui_label(document, row_root, row_id + ".sprite", std::to_string(row.sprite.value));
+        append_ui_label(document, row_root, row_id + ".material", std::to_string(row.material.value));
+        append_ui_label(document, row_root, row_id + ".sorting",
+                        row.sorting_space + ":" + std::to_string(row.sorting_layer) + ":" +
+                            std::to_string(row.order_in_layer));
+        append_ui_label(document, row_root, row_id + ".hitboxes", std::to_string(row.hitbox_count));
+        append_ui_label(document, row_root, row_id + ".hurtboxes", std::to_string(row.hurtbox_count));
+        append_ui_label(document, row_root, row_id + ".animation_frames", std::to_string(row.animation_frame_count));
+        append_ui_label(document, row_root, row_id + ".diagnostic", row.diagnostic);
+    }
+
+    add_ui_or_throw(document,
+                    make_ui_child("sprite_preview_diagnostics.atlas", root, mirakana::ui::SemanticRole::panel));
+    const mirakana::ui::ElementId atlas_root{"sprite_preview_diagnostics.atlas"};
+    for (const auto& row : model.atlas_pages) {
+        const auto row_id = "sprite_preview_diagnostics.atlas." + std::to_string(row.asset.value);
+        add_ui_or_throw(document, make_ui_child(row_id, atlas_root, mirakana::ui::SemanticRole::panel));
+        const mirakana::ui::ElementId row_root{row_id};
+        append_ui_label(document, row_root, row_id + ".status",
+                        std::string(editor_ai_package_authoring_diagnostic_status_label(row.status)));
+        append_ui_label(document, row_root, row_id + ".path", row.path);
+        append_ui_label(document, row_root, row_id + ".size",
+                        std::to_string(row.width) + "x" + std::to_string(row.height));
+        append_ui_label(document, row_root, row_id + ".selected_sprites", std::to_string(row.selected_sprite_count));
+        append_ui_label(document, row_root, row_id + ".animation_frames", std::to_string(row.animation_frame_count));
+        append_ui_label(document, row_root, row_id + ".diagnostic", row.diagnostic);
+    }
+
+    add_ui_or_throw(document,
+                    make_ui_child("sprite_preview_diagnostics.animations", root, mirakana::ui::SemanticRole::panel));
+    const mirakana::ui::ElementId animation_root{"sprite_preview_diagnostics.animations"};
+    for (const auto& row : model.animations) {
+        const auto row_id = "sprite_preview_diagnostics.animations." + std::to_string(row.asset.value);
+        add_ui_or_throw(document, make_ui_child(row_id, animation_root, mirakana::ui::SemanticRole::panel));
+        const mirakana::ui::ElementId row_root{row_id};
+        append_ui_label(document, row_root, row_id + ".status",
+                        std::string(editor_ai_package_authoring_diagnostic_status_label(row.status)));
+        append_ui_label(document, row_root, row_id + ".target", row.target_node_name);
+        append_ui_label(document, row_root, row_id + ".frames", std::to_string(row.frame_count));
+        append_ui_label(document, row_root, row_id + ".duration", std::to_string(row.total_duration_seconds));
+        append_ui_label(document, row_root, row_id + ".diagnostic", row.diagnostic);
+    }
+
+    return document;
 }
 
 } // namespace mirakana::editor

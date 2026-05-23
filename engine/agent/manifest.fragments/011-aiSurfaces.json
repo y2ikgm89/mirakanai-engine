@@ -151,7 +151,8 @@
           "appliesTo": [
             ".codex/agents",
             "read-only sandbox_mode",
-            "delegated context"
+            "delegated context",
+            "completed thread cleanup"
           ]
         },
         {
@@ -181,7 +182,8 @@
           "appliesTo": [
             ".claude/agents",
             "read-only tool restrictions",
-            "isolated subagent work"
+            "isolated subagent work",
+            "delegated lifecycle cleanup"
           ]
         },
         {
@@ -211,7 +213,8 @@
           "appliesTo": [
             ".cursor/agents",
             "readonly frontmatter",
-            "model frontmatter"
+            "model frontmatter",
+            "delegated lifecycle cleanup"
           ]
         },
         {
