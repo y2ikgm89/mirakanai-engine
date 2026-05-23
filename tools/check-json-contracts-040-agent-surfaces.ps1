@@ -812,6 +812,9 @@ foreach ($needle in @(
     ".github/workflows/ios-validate.yml",
     "tools/classify-pr-validation-tier.ps1",
     "Assert-ValidationTierSelection",
+    "Get-ValidationTierSelection",
+    '-Label $Label',
+    '$script:validationTierSelectionCache',
     "docs-only PR",
     "static policy PR",
     "runtime PR",
@@ -829,6 +832,10 @@ foreach ($needle in @(
     if (-not $ciMatrixCheckText.Contains($needle)) {
         Write-Error "tools/check-ci-matrix.ps1 missing required CI matrix contract text: $needle"
     }
+}
+$ciMatrixClassifierInvocationMatches = [System.Text.RegularExpressions.Regex]::Matches($ciMatrixCheckText, '&\s+pwsh\s+@arguments')
+if ($ciMatrixClassifierInvocationMatches.Count -ne 1) {
+    Write-Error "tools/check-ci-matrix.ps1 must invoke the PR validation tier classifier in one cached helper; found $($ciMatrixClassifierInvocationMatches.Count) direct invocations"
 }
 foreach ($needle in @(
     "Test-CiWorkflowPath",

@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common.ps1")
 
 $repoRoot = Get-RepoRoot
+$script:validationTierSelectionCache = @{}
 
 function Read-RequiredText {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
@@ -94,19 +95,17 @@ function Get-WorkflowJobText {
     return $match.Value
 }
 
-function Assert-ValidationTierSelection {
+function Get-ValidationTierSelection {
     param(
         [Parameter(Mandatory = $true)][string]$Label,
         [string[]]$ChangedPath = @(),
-        [switch]$RunAll,
-        [Parameter(Mandatory = $true)][bool]$ExpectedWindows,
-    [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
-    [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
-    [bool]$ExpectedLinuxCoverage = $false,
-    [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
-    [bool]$ExpectedWindowsCpp23 = $false,
-    [Parameter(Mandatory = $true)][bool]$ExpectedMacos
+        [switch]$RunAll
     )
+
+    $cacheKey = "RunAll=$($RunAll.IsPresent);ChangedPath=$([string]::Join('|', $ChangedPath))"
+    if ($script:validationTierSelectionCache.ContainsKey($cacheKey)) {
+        return $script:validationTierSelectionCache[$cacheKey]
+    }
 
     $classifierPath = Join-Path $repoRoot "tools/classify-pr-validation-tier.ps1"
     if (-not (Test-Path -LiteralPath $classifierPath -PathType Leaf)) {
@@ -134,6 +133,25 @@ function Assert-ValidationTierSelection {
     }
 
     $selection = $output | ConvertFrom-Json
+    $script:validationTierSelectionCache[$cacheKey] = $selection
+    return $selection
+}
+
+function Assert-ValidationTierSelection {
+    param(
+        [Parameter(Mandatory = $true)][string]$Label,
+        [string[]]$ChangedPath = @(),
+        [switch]$RunAll,
+        [Parameter(Mandatory = $true)][bool]$ExpectedWindows,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinux,
+        [Parameter(Mandatory = $true)][bool]$ExpectedLinuxSanitizers,
+        [bool]$ExpectedLinuxCoverage = $false,
+        [Parameter(Mandatory = $true)][bool]$ExpectedStaticAnalysis,
+        [bool]$ExpectedWindowsCpp23 = $false,
+        [Parameter(Mandatory = $true)][bool]$ExpectedMacos
+    )
+
+    $selection = Get-ValidationTierSelection -Label $Label -ChangedPath $ChangedPath -RunAll:$RunAll.IsPresent
     $expectations = @{
         windows = $ExpectedWindows
         linux = $ExpectedLinux
