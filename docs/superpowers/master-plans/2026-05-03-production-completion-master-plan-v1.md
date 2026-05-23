@@ -15,9 +15,9 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: Candidate Backlog Burn-down v1 is selected as the active milestone for the canonical post-1.0 candidate rows; completed child evidence is recorded in the plan registry.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = simulation-persistence-v1` after the sprite sorting, 9-slice/tiled, sprite collision hitbox, sprite effects/particles, sprite editor preview diagnostics, and navigation hierarchical world slices. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
-- Current gap cluster: post-1.0 candidate burn-down is active; finish the next remaining child row before switching clusters.
+- Current active plan: this master plan index is selected again after Candidate Backlog Burn-down v1 completed all seven canonical post-1.0 candidate rows through PR #204 / merge commit `971cee3f6c5b42965721c06974bc506f1b35508c`; completed child evidence is recorded in the plan registry.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = next-production-gap-selection` after sprite sorting, 9-slice/tiled, sprite collision hitbox, sprite effects/particles, sprite editor preview diagnostics, navigation hierarchical world, and simulation persistence completed. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
+- Current gap cluster: none selected; choose the next production gap or developer-owned backlog row through a new dated plan before implementation.
 
 ## Plan map
 

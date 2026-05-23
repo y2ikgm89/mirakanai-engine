@@ -6,7 +6,7 @@
 
 **Plan ID:** `simulation-persistence-v1`
 
-**Status:** Local validation complete; PR hosted checks and merge pending.
+**Status:** Completed.
 
 **Gap:** `simulation-persistence-v1`
 
@@ -34,7 +34,7 @@
 - [x] Update docs, manifest fragments, composed manifest, and static guards for the new `runtime-simulation-persistence-v1` authoring surface.
 - [x] Run focused public API, tidy, format, agent, JSON, AI integration, and `MK_runtime_tests` gates.
 - [x] Run full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
-- [ ] Commit, push, open PR, wait for hosted checks, merge, and clean the linked worktree through repository wrappers.
+- [x] Commit, push, open PR, wait for hosted checks, merge, and clean the linked worktree through repository wrappers.
 
 ## Validation Evidence
 
@@ -46,6 +46,8 @@
 | Focused static | pass | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/session_services.cpp -Jobs 2`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`. |
 | Agent-surface audit | pass after fixes | `agent-surface-auditor` found missing static protection for plan prose pointers and `currentRuntimeSimulationPersistence`; both are guarded in `tools/check-json-contracts-010-engine-manifest.ps1` and `tools/check-ai-integration-020-engine-manifest.ps1`. |
 | Full validation | pass | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with 76/76 CTest passing; Apple/Metal host gates remain diagnostic-only/host-gated as before. |
+| Hosted PR checks | pass | PR #204 completed CodeQL, Agent Static Guards, Windows MSVC, Linux CMake, Linux Coverage, Linux Clang ASan/UBSan, Full Repository Static Analysis shards 0-3, macOS Metal CMake, iOS Simulator smoke, and PR Gate successfully for head `4a77135ea0d9d0fa86f3bdd7b22caae037041ed8`; merged as `971cee3f6c5b42965721c06974bc506f1b35508c`. |
+| Worktree cleanup | pass | `tools/remove-merged-worktree.ps1` fast-forwarded `main` to `origin/main`, removed the linked worktree, deleted the local branch, and the merged remote topic branch was deleted after ancestry verification. |
 
 ## Done When
 

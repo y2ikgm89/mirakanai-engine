@@ -662,9 +662,15 @@ if ($productionLoop.recommendedNextPlan.PSObject.Properties.Name.Contains("path"
     Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan references missing document: $($productionLoop.recommendedNextPlan.path)"
 }
 $planRegistryTextForPointers = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/README.md") -Raw
-Assert-ContainsText $planRegistryTextForPointers 'next remaining child is `simulation-persistence-v1`' "docs/superpowers/plans/README.md active child pointer"
+Assert-ContainsText $planRegistryTextForPointers "Completed all seven canonical post-1.0 candidate rows" "docs/superpowers/plans/README.md candidate backlog closeout pointer"
 $productionMasterPlanTextForPointers = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") -Raw
-Assert-ContainsText $productionMasterPlanTextForPointers 'recommendedNextPlan.id = simulation-persistence-v1' "production completion master plan recommended next pointer"
+Assert-ContainsText $productionMasterPlanTextForPointers "recommendedNextPlan.id = next-production-gap-selection" "production completion master plan recommended next pointer"
+if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
+    Write-Error "engine manifest aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
+}
+if ($productionLoop.recommendedNextPlan.id -eq "simulation-persistence-v1") {
+    Write-Error "engine manifest aiOperableProductionLoop.recommendedNextPlan.id must not point at merged simulation-persistence-v1"
+}
 Assert-Properties $engine.gameCodeGuidance @("currentRuntimeSimulationPersistence") "engine manifest gameCodeGuidance"
 $runtimeSimulationPersistenceGuidance = [string]$engine.gameCodeGuidance.currentRuntimeSimulationPersistence
 foreach ($runtimeSimulationPersistenceGuidanceNeedle in @(
