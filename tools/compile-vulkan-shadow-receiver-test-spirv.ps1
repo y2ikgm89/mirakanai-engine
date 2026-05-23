@@ -1,3 +1,6 @@
+#requires -Version 7.0
+#requires -PSEdition Core
+
 # SPDX-FileCopyrightText: 2026 GameEngine contributors
 # SPDX-License-Identifier: LicenseRef-Proprietary
 #
@@ -6,9 +9,6 @@
 # change, set MK_VULKAN_TEST_SHADOW_RECEIVER_VERTEX_SPV and
 # MK_VULKAN_TEST_SHADOW_RECEIVER_FRAGMENT_SPV to the emitted file paths (or copy
 # the artifacts into your CI secret store).
-
-#requires -Version 7.0
-#requires -PSEdition Core
 
 param(
     [string]$OutDir = ""

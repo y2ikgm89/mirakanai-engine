@@ -133,6 +133,15 @@ function Join-OptionalPath {
     return Join-Path $Path $ChildPath
 }
 
+function ConvertTo-ComparablePath {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    return $fullPath.TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar))
+}
+
 function Get-LocalApplicationDataRoot {
     $localAppData = Get-EnvironmentVariableAnyScope "LOCALAPPDATA"
     if (-not [string]::IsNullOrWhiteSpace($localAppData)) {
@@ -144,9 +153,9 @@ function Get-LocalApplicationDataRoot {
         return $specialFolder
     }
 
-    $home = Get-EnvironmentVariableAnyScope "HOME"
-    if (-not [string]::IsNullOrWhiteSpace($home)) {
-        return Join-Path $home ".local/share"
+    $homeRoot = Get-EnvironmentVariableAnyScope "HOME"
+    if (-not [string]::IsNullOrWhiteSpace($homeRoot)) {
+        return Join-Path $homeRoot ".local/share"
     }
 
     return $null

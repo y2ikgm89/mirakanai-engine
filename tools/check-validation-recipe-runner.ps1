@@ -183,12 +183,12 @@ function Assert-DryRunRecipe {
         [string[]]$HostGateAcknowledgements = @()
     )
 
-    $args = @("-Mode", "DryRun", "-Recipe", $Recipe)
+    $runnerArguments = @("-Mode", "DryRun", "-Recipe", $Recipe)
     foreach ($acknowledgement in $HostGateAcknowledgements) {
-        $args += @("-HostGateAcknowledgements", $acknowledgement)
+        $runnerArguments += @("-HostGateAcknowledgements", $acknowledgement)
     }
 
-    $result = Invoke-RunnerJson -Arguments $args
+    $result = Invoke-RunnerJson -Arguments $runnerArguments
     foreach ($property in @("recipe", "status", "command", "argv", "hostGates", "diagnostics", "blockedBy")) {
         Assert-HasProperty $result $property "dry-run result for $Recipe"
     }

@@ -1,22 +1,118 @@
-function Get-JsonContractSurfaceText([Parameter(Mandatory)][string]$relativePath) {
-    $normalizedRelativePath = $relativePath -replace '\\', '/'
-    $fullPath = Join-Path $root $normalizedRelativePath
-    $parts = [System.Collections.Generic.List[string]]::new()
-    $parts.Add((Get-Content -LiteralPath $fullPath -Raw))
-    if ($normalizedRelativePath -eq "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
-        $splitRoot = Join-Path $root "docs/superpowers/master-plans/production-completion-v1"
-        if (Test-Path -LiteralPath $splitRoot) {
-            Get-ChildItem -LiteralPath $splitRoot -Filter "*.md" -File |
-                Sort-Object Name |
-                ForEach-Object { $parts.Add((Get-Content -LiteralPath $_.FullName -Raw)) }
-        }
-    }
-    return $parts -join "`n"
-}
 #requires -Version 7.0
 #requires -PSEdition Core
 
 # Chapter 4 for check-json-contracts.ps1 static contracts.
+
+function Assert-UniqueStringArray {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$Values,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    $strings = @($Values | ForEach-Object { [string]$_ })
+    if ($strings.Count -eq 0) {
+        Write-Error "$Label must not be empty"
+    }
+
+    $duplicates = @($strings | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })
+    if ($duplicates.Count -gt 0) {
+        Write-Error "$Label must not contain duplicate entries: $($duplicates -join ', ')"
+    }
+}
+
+function Assert-StringSetEquals {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$Actual,
+        [Parameter(Mandatory = $true)][object[]]$Expected,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    $actualSet = @($Actual | ForEach-Object { [string]$_ } | Sort-Object)
+    $expectedSet = @($Expected | ForEach-Object { [string]$_ } | Sort-Object)
+    if (($actualSet -join "|") -ne ($expectedSet -join "|")) {
+        Write-Error "$Label mismatch. actual=[$($actualSet -join ', ')] expected=[$($expectedSet -join ', ')]"
+    }
+}
+
+function Assert-StringArrayContains {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$Values,
+        [Parameter(Mandatory = $true)][string]$Expected,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    if (@($Values | Where-Object { [string]$_ -eq $Expected }).Count -eq 0) {
+        Write-Error "$Label missing required entry: $Expected"
+    }
+}
+
+function Assert-AgentSurfaceJsonContract {
+    $fragmentPath = Join-Path $root "engine/agent/manifest.fragments/011-aiSurfaces.json"
+    $fragment = Get-Content -LiteralPath $fragmentPath -Raw | ConvertFrom-Json
+    Assert-Properties $fragment @("aiSurfaces") "engine/agent/manifest.fragments/011-aiSurfaces.json"
+
+    $aiSurfaces = $fragment.aiSurfaces
+    Assert-Properties $aiSurfaces @("codex", "claudeCode", "cursor", "crossToolAlignment") "aiSurfaces"
+
+    foreach ($surfaceName in @("codex", "claudeCode", "cursor")) {
+        $surface = $aiSurfaces.$surfaceName
+        Assert-Properties $surface @("instructions", "skills", "agents", "requiredSkills", "requiredAgents", "readOnlyAgents") "aiSurfaces.$surfaceName"
+        Assert-UniqueStringArray @($surface.requiredSkills) "aiSurfaces.$surfaceName.requiredSkills"
+        Assert-UniqueStringArray @($surface.requiredAgents) "aiSurfaces.$surfaceName.requiredAgents"
+        Assert-UniqueStringArray @($surface.readOnlyAgents) "aiSurfaces.$surfaceName.readOnlyAgents"
+        Assert-StringSetEquals @($surface.readOnlyAgents) @($aiSurfaces.crossToolAlignment.requiredReadOnlyRoles) "aiSurfaces.$surfaceName.readOnlyAgents"
+    }
+
+    Assert-Properties $aiSurfaces.crossToolAlignment @(
+        "schemaVersion",
+        "capabilityId",
+        "officialDocs",
+        "toolSurfaces",
+        "validationGuards",
+        "requiredReadOnlyRoles",
+        "forbiddenBroadGrants",
+        "unsupportedClaims"
+    ) "aiSurfaces.crossToolAlignment"
+
+    Assert-UniqueStringArray @($aiSurfaces.crossToolAlignment.requiredReadOnlyRoles) "aiSurfaces.crossToolAlignment.requiredReadOnlyRoles"
+    foreach ($officialDocId in @(
+            "openai-codex-agents-md",
+            "openai-codex-rules",
+            "openai-codex-skills",
+            "openai-codex-subagents",
+            "openai-developer-docs-mcp",
+            "anthropic-claude-code-settings",
+            "anthropic-claude-code-subagents",
+            "cursor-rules-agents-md",
+            "cursor-skills",
+            "cursor-subagents",
+            "cursor-composer-2-5"
+        )) {
+        Assert-StringArrayContains @($aiSurfaces.crossToolAlignment.officialDocs | ForEach-Object { $_.id }) $officialDocId "aiSurfaces.crossToolAlignment.officialDocs.id"
+    }
+
+    foreach ($guard in @(
+            "tools/check-agents.ps1",
+            "tools/check-ai-integration.ps1",
+            "tools/check-json-contracts.ps1"
+        )) {
+        Assert-StringArrayContains @($aiSurfaces.crossToolAlignment.validationGuards) $guard "aiSurfaces.crossToolAlignment.validationGuards"
+    }
+
+    foreach ($surfaceName in @("codex", "claudeCode", "cursor")) {
+        $toolSurface = @($aiSurfaces.crossToolAlignment.toolSurfaces | Where-Object { [string]$_.id -eq $surfaceName })
+        if ($toolSurface.Count -ne 1) {
+            Write-Error "aiSurfaces.crossToolAlignment.toolSurfaces must contain exactly one '$surfaceName' row"
+        }
+        Assert-StringSetEquals @($toolSurface[0].validationGuards) @(
+            "tools/check-agents.ps1",
+            "tools/check-ai-integration.ps1",
+            "tools/check-json-contracts.ps1"
+        ) "aiSurfaces.crossToolAlignment.toolSurfaces[$surfaceName].validationGuards"
+    }
+}
+
+Assert-AgentSurfaceJsonContract
 
 foreach ($check in @(
     @{

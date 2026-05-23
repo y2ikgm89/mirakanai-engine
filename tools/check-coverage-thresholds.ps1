@@ -1,6 +1,7 @@
-# Validates tools/coverage-thresholds.json structure for coverage gate policy (runs on any host).
 #requires -Version 7.0
 #requires -PSEdition Core
+
+# Validates tools/coverage-thresholds.json structure for coverage gate policy (runs on any host).
 
 $ErrorActionPreference = "Stop"
 

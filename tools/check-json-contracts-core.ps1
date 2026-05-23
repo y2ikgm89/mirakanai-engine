@@ -57,8 +57,6 @@ function Assert-SpecStatusSections {
     }
 }
 
-function Get-ActiveChildProductionPlans {
-    $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 function Get-JsonContractSurfaceText([Parameter(Mandatory)][string]$relativePath) {
     $normalizedRelativePath = $relativePath -replace '\\', '/'
     $fullPath = Join-Path $root $normalizedRelativePath
@@ -74,6 +72,9 @@ function Get-JsonContractSurfaceText([Parameter(Mandatory)][string]$relativePath
     }
     return $parts -join "`n"
 }
+
+function Get-ActiveChildProductionPlans {
+    $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
     $plansRoot = Join-Path $root "docs/superpowers/plans"
     if (-not (Test-Path -LiteralPath $plansRoot -PathType Container)) {
         Write-Error "Missing production plan directory: docs/superpowers/plans"

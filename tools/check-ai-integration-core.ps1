@@ -692,12 +692,51 @@ function Assert-ClaudeReadOnlyAgent($relativePath) {
         Write-Error "Read-only Claude agent must declare tools: Read, Grep, Glob, LS: $relativePath"
     }
 }
+
+function Assert-CursorReadOnlyAgent($relativePath) {
+    $path = Resolve-RequiredAgentPath $relativePath
+    $head = (Get-Content -LiteralPath $path -TotalCount 8) -join "`n"
+    if ($head -notmatch '(?m)^readonly:\s*true\s*$') {
+        Write-Error "Read-only Cursor agent must declare readonly: true: $relativePath"
+    }
+}
+
+function Assert-ReadOnlyAgentRoleSet {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$ActualRoles,
+        [Parameter(Mandatory = $true)][object[]]$ExpectedRoles,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    $actual = @($ActualRoles | ForEach-Object { [string]$_ } | Sort-Object)
+    $expected = @($ExpectedRoles | ForEach-Object { [string]$_ } | Sort-Object)
+    if (($actual -join "|") -ne ($expected -join "|")) {
+        Write-Error "$Label readOnlyAgents must match crossToolAlignment.requiredReadOnlyRoles. actual=[$($actual -join ', ')] expected=[$($expected -join ', ')]"
+    }
+}
+
+function Assert-ReadOnlyAgentContracts {
+    $fragmentPath = Resolve-RequiredAgentPath "engine/agent/manifest.fragments/011-aiSurfaces.json"
+    $fragment = Get-Content -LiteralPath $fragmentPath -Raw | ConvertFrom-Json
+    $expectedReadOnlyRoles = @($fragment.aiSurfaces.crossToolAlignment.requiredReadOnlyRoles)
+
+    Assert-ReadOnlyAgentRoleSet -ActualRoles @($fragment.aiSurfaces.codex.readOnlyAgents) -ExpectedRoles $expectedReadOnlyRoles -Label "Codex"
+    Assert-ReadOnlyAgentRoleSet -ActualRoles @($fragment.aiSurfaces.claudeCode.readOnlyAgents) -ExpectedRoles $expectedReadOnlyRoles -Label "Claude"
+    Assert-ReadOnlyAgentRoleSet -ActualRoles @($fragment.aiSurfaces.cursor.readOnlyAgents) -ExpectedRoles $expectedReadOnlyRoles -Label "Cursor"
+
+    foreach ($agentName in @($expectedReadOnlyRoles | ForEach-Object { [string]$_ })) {
+        Assert-CodexReadOnlyAgent ".codex/agents/$agentName.toml"
+        Assert-ClaudeReadOnlyAgent ".claude/agents/$agentName.md"
+        Assert-CursorReadOnlyAgent ".cursor/agents/$agentName.md"
+    }
+}
 function Get-CheckAiIntegrationSectionFiles {
     $ledger = Get-StaticContractLedgerById -Id "check-ai-integration"
     return @($ledger.SectionFiles)
 }
 
 function Invoke-CheckAiIntegrationSections {
+    Assert-ReadOnlyAgentContracts
     foreach ($sectionFile in Get-CheckAiIntegrationSectionFiles) {
         . (Join-Path $PSScriptRoot $sectionFile)
     }

@@ -135,8 +135,8 @@ function Split-CompileCommandFragment {
         return $tokens
     }
 
-    $matches = [regex]::Matches($Fragment, '"(?:[^"\\]|\\.)*"|\S+')
-    foreach ($match in $matches) {
+    $fragmentMatches = [regex]::Matches($Fragment, '"(?:[^"\\]|\\.)*"|\S+')
+    foreach ($match in $fragmentMatches) {
         $token = $match.Value
         if ($token.Length -ge 2 -and $token.StartsWith('"') -and $token.EndsWith('"')) {
             $token = $token.Substring(1, $token.Length - 2)
@@ -299,7 +299,7 @@ function Convert-FileApiCodemodelToCompileDatabase {
     return $entries.Count
 }
 
-function Ensure-ClangTidyCompileDatabase {
+function Resolve-ClangTidyCompileDatabase {
     param(
         [Parameter(Mandatory = $true)][string]$Preset,
         [Parameter(Mandatory = $true)][string]$Configuration,
@@ -392,7 +392,7 @@ if (-not $configurePreset) {
 
 $buildDir = ([string]$configurePreset.binaryDir).Replace('${sourceDir}', $root)
 $compileCommands = Join-Path $buildDir "compile_commands.json"
-if (-not (Ensure-ClangTidyCompileDatabase -Preset $Preset -Configuration $Configuration -BuildDir $buildDir -CompileCommands $compileCommands -ReuseExistingFileApiReply:$ReuseExistingFileApiReply -RequireStrict:$Strict)) {
+if (-not (Resolve-ClangTidyCompileDatabase -Preset $Preset -Configuration $Configuration -BuildDir $buildDir -CompileCommands $compileCommands -ReuseExistingFileApiReply:$ReuseExistingFileApiReply -RequireStrict:$Strict)) {
     Write-Host "tidy-check: config ok"
     exit 0
 }
