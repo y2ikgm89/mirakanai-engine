@@ -10,6 +10,7 @@
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/sprite_effect_particles.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 #include "mirakana/scene/render_packet.hpp"
 #include "mirakana/scene/scene.hpp"
@@ -487,10 +488,9 @@ MK_TEST("scene sprite nine slice expansion emits nine sub sprite commands with c
     MK_REQUIRE(stats.expanded_sprite_count == 9);
     MK_REQUIRE(commands.size() == 9);
 
-    const auto bottom_left_it =
-        std::find_if(commands.begin(), commands.end(), [](const mirakana::SpriteCommand& command) {
-            return command.texture.uv_rect.u1 <= 0.26F && command.texture.uv_rect.v1 <= 0.26F;
-        });
+    const auto bottom_left_it = std::ranges::find_if(commands, [](const mirakana::SpriteCommand& command) {
+        return command.texture.uv_rect.u1 <= 0.26F && command.texture.uv_rect.v1 <= 0.26F;
+    });
     MK_REQUIRE(bottom_left_it != commands.end());
     MK_REQUIRE(bottom_left_it->transform.scale.x == 1.0F);
     MK_REQUIRE(bottom_left_it->transform.scale.y == 0.75F);
@@ -640,6 +640,45 @@ MK_TEST("scene sprite batch telemetry forwards invalid texture diagnostics") {
     MK_REQUIRE(plan.diagnostics.size() == 1);
     MK_REQUIRE(plan.diagnostics[0].code == mirakana::SpriteBatchDiagnosticCode::missing_texture_atlas);
     MK_REQUIRE(plan.diagnostics[0].sprite_index == 0);
+}
+
+MK_TEST("scene renderer maps runtime sprite effect particle rows to sprite commands") {
+    const auto row = mirakana::runtime::RuntimeSpriteEffectParticleRenderRow{
+        .particle_id = "impact.1.0",
+        .template_id = "dust.burst",
+        .emitter_id = "enemy",
+        .kind = mirakana::runtime::RuntimeSpriteEffectParticleTemplateKind::radial_burst,
+        .sprite = mirakana::AssetId::from_name("sprites/effect"),
+        .x = 2.0F,
+        .y = 1.5F,
+        .size_x = 0.2F,
+        .size_y = 0.25F,
+        .color_r = 0.8F,
+        .color_g = 0.7F,
+        .color_b = 0.45F,
+        .color_a = 0.75F,
+        .normalized_lifetime = 0.25F,
+        .layer = 1,
+        .order = 5,
+        .particle_index = 0U,
+        .source_index = 1U,
+    };
+
+    const auto command = mirakana::make_runtime_sprite_effect_particle_command(row);
+    mirakana::NullRenderer renderer(mirakana::Extent2D{.width = 320, .height = 180});
+
+    renderer.begin_frame();
+    const auto submitted =
+        mirakana::submit_runtime_sprite_effect_particle_rows(renderer, std::span<const decltype(row)>{&row, 1U});
+    renderer.end_frame();
+
+    MK_REQUIRE(command.texture.enabled);
+    MK_REQUIRE(command.texture.atlas_page == mirakana::AssetId::from_name("sprites/effect"));
+    MK_REQUIRE(command.transform.position == (mirakana::Vec2{2.0F, 1.5F}));
+    MK_REQUIRE(command.transform.scale == (mirakana::Vec2{0.2F, 0.25F}));
+    MK_REQUIRE(command.color.a == 0.75F);
+    MK_REQUIRE(submitted == 1U);
+    MK_REQUIRE(renderer.stats().sprites_submitted == 1U);
 }
 
 MK_TEST("scene mesh package telemetry plans scene packet mesh draws") {

@@ -26,6 +26,7 @@
 #include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime/simulation_orchestration.hpp"
 #include "mirakana/runtime/sprite_collision_hitbox.hpp"
+#include "mirakana/runtime/sprite_effect_particles.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
@@ -39,6 +40,7 @@
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <chrono>
 #include <cmath>
@@ -71,6 +73,7 @@ struct DesktopRuntimeOptions {
     bool require_sprite_sorting_layer{false};
     bool require_sprite_9slice_tiled{false};
     bool require_sprite_collision_hitbox{false};
+    bool require_sprite_effects_particles{false};
     bool require_tilemap_runtime_ux{false};
     bool require_gameplay_systems{false};
     bool require_procedural_generation{false};
@@ -338,6 +341,21 @@ simulation_orchestration_status_name(mirakana::runtime::RuntimeSimulationOrchest
         return "budget_limited";
     case mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus::invalid_request:
         return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+sprite_effect_particle_status_name(mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus::no_spawns:
+        return "no_spawns";
+    case mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus::budget_exceeded:
+        return "budget_exceeded";
     }
     return "unknown";
 }
@@ -3304,9 +3322,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         const auto packet = mirakana::build_scene_render_packet(*scene_.scene);
         auto sorted_sprites = packet.sprites;
         const auto sort_stats = mirakana::sort_scene_render_sprites(sorted_sprites);
-        if (sort_stats.sorting_layers_applied > sprite_sort_layers_applied_) {
-            sprite_sort_layers_applied_ = sort_stats.sorting_layers_applied;
-        }
+        sprite_sort_layers_applied_ = std::max(sort_stats.sorting_layers_applied, sprite_sort_layers_applied_);
         sprite_sorted_draws_ += sort_stats.sorted_draws;
         mirakana::SceneSpriteExpansionStats sprite_expansion_stats{};
         const auto batch_plan = mirakana::plan_scene_sprite_batches(packet, &sprite_expansion_stats);
@@ -3338,6 +3354,8 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         sprite_batch_plan_repeated_atlas_batches_ += batch_plan.repeated_atlas_batch_count;
         sprite_batch_plan_repeated_atlas_sprites_ += batch_plan.repeated_atlas_sprite_count;
         primary_camera_seen_ = primary_camera_seen_ || scene_submit.has_primary_camera;
+
+        update_sprite_effect_particles();
 
         update_hud_text();
         const auto layout =
@@ -3397,7 +3415,8 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
                sprite_flipbook_diagnostics_ == 0 && audio_commands_ == 1 && audio_underruns_ == 0 &&
                package_scene_sprites_ == 2 && tilemap_runtime_ok_ && tilemap_layers_ == 1 &&
                tilemap_visible_layers_ == 1 && tilemap_tiles_ == 2 && tilemap_non_empty_cells_ == 3 &&
-               tilemap_sampled_cells_ == 3 && tilemap_diagnostics_ == 0 && gameplay_systems_.passed(expected_frames);
+               tilemap_sampled_cells_ == 3 && tilemap_diagnostics_ == 0 && sprite_effect_particles_ready() &&
+               gameplay_systems_.passed(expected_frames);
     }
 
     [[nodiscard]] std::uint32_t frames() const noexcept {
@@ -3762,6 +3781,55 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         return gameplay_systems_.sprite_collision_hitbox_diagnostic_count();
     }
 
+    [[nodiscard]] mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus
+    sprite_effect_particles_status() const noexcept {
+        return sprite_effect_particles_status_;
+    }
+
+    [[nodiscard]] bool sprite_effect_particles_ready() const noexcept {
+        return sprite_effect_particles_ok_ && sprite_effect_particles_spawn_events_ == 1U &&
+               sprite_effect_particles_spawned_particles_ == 3U && sprite_effect_particles_render_rows_ >= 3U &&
+               sprite_effect_particles_submitted_ == sprite_effect_particles_render_rows_ &&
+               sprite_effect_particles_draws_ > 0U && sprite_effect_particles_diagnostics_ == 0U &&
+               sprite_effect_particles_budget_diagnostics_ == 0U;
+    }
+
+    [[nodiscard]] std::size_t sprite_effect_particles_spawn_events() const noexcept {
+        return sprite_effect_particles_spawn_events_;
+    }
+
+    [[nodiscard]] std::size_t sprite_effect_particles_spawned_particles() const noexcept {
+        return sprite_effect_particles_spawned_particles_;
+    }
+
+    [[nodiscard]] std::size_t sprite_effect_particles_surviving_particles() const noexcept {
+        return sprite_effect_particles_surviving_particles_;
+    }
+
+    [[nodiscard]] std::size_t sprite_effect_particles_render_rows() const noexcept {
+        return sprite_effect_particles_render_rows_;
+    }
+
+    [[nodiscard]] std::size_t sprite_effect_particles_expired_particles() const noexcept {
+        return sprite_effect_particles_expired_particles_;
+    }
+
+    [[nodiscard]] std::size_t sprite_effect_particles_submitted() const noexcept {
+        return sprite_effect_particles_submitted_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_effect_particles_draws() const noexcept {
+        return sprite_effect_particles_draws_;
+    }
+
+    [[nodiscard]] std::size_t sprite_effect_particles_diagnostics() const noexcept {
+        return sprite_effect_particles_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t sprite_effect_particles_budget_diagnostics() const noexcept {
+        return sprite_effect_particles_budget_diagnostics_;
+    }
+
     [[nodiscard]] bool gameplay_systems_runtime_profile_resume_ready() const noexcept {
         return gameplay_systems_.runtime_profile_resume_ready();
     }
@@ -3911,6 +3979,85 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
                               .label = score, .localization_key = "hud.score", .font_family = "engine-default"});
     }
 
+    [[nodiscard]] std::vector<mirakana::runtime::RuntimeSpriteEffectParticleTemplateDesc>
+    sprite_effect_particle_templates() const {
+        return std::vector<mirakana::runtime::RuntimeSpriteEffectParticleTemplateDesc>{
+            mirakana::runtime::RuntimeSpriteEffectParticleTemplateDesc{
+                .id = "sample_2d.impact_dust",
+                .kind = mirakana::runtime::RuntimeSpriteEffectParticleTemplateKind::radial_burst,
+                .sprite = packaged_sprite_texture_asset_id(),
+                .lifetime_seconds = 0.8F,
+                .size_x = 0.22F,
+                .size_y = 0.22F,
+                .color_r = 0.85F,
+                .color_g = 0.75F,
+                .color_b = 0.45F,
+                .color_a = 1.0F,
+                .velocity_x = 0.0F,
+                .velocity_y = 0.0F,
+                .radial_speed = 0.8F,
+                .layer = 10,
+                .order = 0,
+                .source_index = 0U,
+            },
+        };
+    }
+
+    [[nodiscard]] std::vector<mirakana::runtime::RuntimeSpriteEffectParticleSpawnEvent>
+    sprite_effect_particle_spawn_events() const {
+        if (frames_ != 0U || !gameplay_systems_.sprite_collision_hitbox_ready()) {
+            return {};
+        }
+        return std::vector<mirakana::runtime::RuntimeSpriteEffectParticleSpawnEvent>{
+            mirakana::runtime::RuntimeSpriteEffectParticleSpawnEvent{
+                .id = "sample_2d.enemy_hit.0",
+                .template_id = "sample_2d.impact_dust",
+                .emitter_id = "enemy",
+                .x = 1.75F,
+                .y = 0.75F,
+                .spawn_count = 3U,
+                .source_index = 0U,
+            },
+        };
+    }
+
+    void update_sprite_effect_particles() {
+        auto request = mirakana::runtime::RuntimeSpriteEffectParticleRequest{
+            .templates = sprite_effect_particle_templates(),
+            .active_particles = sprite_effect_particles_,
+            .spawn_events = sprite_effect_particle_spawn_events(),
+            .delta_seconds = 0.25F,
+            .max_spawn_events = 4U,
+            .max_active_particles = 16U,
+            .max_render_rows = 16U,
+        };
+        const auto plan = mirakana::runtime::plan_runtime_sprite_effect_particles(request);
+        sprite_effect_particles_status_ = plan.status;
+        sprite_effect_particles_spawn_events_ += plan.counters.spawn_events;
+        sprite_effect_particles_spawned_particles_ += plan.counters.spawned_particles;
+        sprite_effect_particles_surviving_particles_ = plan.counters.surviving_particles;
+        sprite_effect_particles_render_rows_ += plan.counters.render_rows;
+        sprite_effect_particles_expired_particles_ += plan.counters.expired_particles;
+        sprite_effect_particles_diagnostics_ += plan.diagnostics.size();
+        sprite_effect_particles_budget_diagnostics_ += plan.counters.budget_diagnostics;
+        sprite_effect_particles_ = plan.next_active_particles;
+        if (!plan.succeeded()) {
+            sprite_effect_particles_ok_ = false;
+            return;
+        }
+
+        std::vector<mirakana::SpriteCommand> commands;
+        commands.reserve(plan.render_rows.size());
+        for (const auto& row : plan.render_rows) {
+            commands.push_back(mirakana::make_runtime_sprite_effect_particle_command(row));
+        }
+        const auto batch_plan = mirakana::plan_sprite_batches(commands);
+        sprite_effect_particles_ok_ = sprite_effect_particles_ok_ && batch_plan.succeeded();
+        sprite_effect_particles_draws_ += batch_plan.draw_count;
+        sprite_effect_particles_submitted_ +=
+            mirakana::submit_runtime_sprite_effect_particle_rows(renderer_, plan.render_rows);
+    }
+
     mirakana::VirtualInput& input_;
     mirakana::IRenderer& renderer_;
     mirakana::runtime::RuntimeInputActionMap actions_;
@@ -3925,6 +4072,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     std::vector<mirakana::RuntimeSpriteFlipbookClipDesc> sprite_flipbook_clips_;
     mirakana::RuntimeSpriteFlipbookState sprite_flipbook_state_;
     mirakana::runtime::RuntimeTilemapPayload tilemap_;
+    std::vector<mirakana::runtime::RuntimeSpriteEffectParticleState> sprite_effect_particles_;
     mirakana::AudioVoiceId jump_voice_;
     std::size_t scene_sprites_submitted_{0};
     std::size_t scene_sprite_sources_submitted_{0};
@@ -3953,6 +4101,15 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     std::uint64_t sprite_flipbook_frames_applied_{0};
     std::uint64_t sprite_flipbook_selected_frame_sum_{0};
     std::size_t sprite_flipbook_diagnostics_{0};
+    std::size_t sprite_effect_particles_spawn_events_{0};
+    std::size_t sprite_effect_particles_spawned_particles_{0};
+    std::size_t sprite_effect_particles_surviving_particles_{0};
+    std::size_t sprite_effect_particles_render_rows_{0};
+    std::size_t sprite_effect_particles_expired_particles_{0};
+    std::size_t sprite_effect_particles_submitted_{0};
+    std::uint64_t sprite_effect_particles_draws_{0};
+    std::size_t sprite_effect_particles_diagnostics_{0};
+    std::size_t sprite_effect_particles_budget_diagnostics_{0};
     std::size_t tilemap_layers_{0};
     std::size_t tilemap_visible_layers_{0};
     std::size_t tilemap_tiles_{0};
@@ -3970,8 +4127,11 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     bool sprite_batch_plan_ok_{true};
     bool sprite_animation_ok_{true};
     bool sprite_flipbook_ok_{true};
+    bool sprite_effect_particles_ok_{true};
     bool tilemap_runtime_ok_{false};
     bool throttle_{true};
+    mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus sprite_effect_particles_status_{
+        mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus::no_spawns};
 };
 
 [[nodiscard]] bool parse_positive_uint32(std::string_view text, std::uint32_t& value) noexcept {
@@ -3992,7 +4152,8 @@ void print_usage() {
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
                  "[--require-sprite-animation] [--require-sprite-sorting-layer] [--require-sprite-9slice-tiled] "
-                 "[--require-sprite-collision-hitbox] [--require-tilemap-runtime-ux] "
+                 "[--require-sprite-collision-hitbox] [--require-sprite-effects-particles] "
+                 "[--require-tilemap-runtime-ux] "
                  "[--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
@@ -4048,6 +4209,10 @@ void print_usage() {
         }
         if (arg == "--require-sprite-collision-hitbox") {
             options.require_sprite_collision_hitbox = true;
+            continue;
+        }
+        if (arg == "--require-sprite-effects-particles") {
+            options.require_sprite_effects_particles = true;
             continue;
         }
         if (arg == "--require-tilemap-runtime-ux") {
@@ -4880,6 +5045,18 @@ int main(int argc, char** argv) {
         << " sprite_collision_hitbox_interaction_rows=" << game.sprite_collision_hitbox_interaction_rows()
         << " sprite_collision_hitbox_feedback_rows=" << game.sprite_collision_hitbox_feedback_rows()
         << " sprite_collision_hitbox_diagnostics=" << game.sprite_collision_hitbox_diagnostics()
+        << " sprite_effect_particles_status="
+        << sprite_effect_particle_status_name(game.sprite_effect_particles_status())
+        << " sprite_effect_particles_ready=" << (game.sprite_effect_particles_ready() ? 1 : 0)
+        << " sprite_effect_particles_spawn_events=" << game.sprite_effect_particles_spawn_events()
+        << " sprite_effect_particles_spawned_particles=" << game.sprite_effect_particles_spawned_particles()
+        << " sprite_effect_particles_surviving_particles=" << game.sprite_effect_particles_surviving_particles()
+        << " sprite_effect_particles_render_rows=" << game.sprite_effect_particles_render_rows()
+        << " sprite_effect_particles_expired_particles=" << game.sprite_effect_particles_expired_particles()
+        << " sprite_effect_particles_submitted=" << game.sprite_effect_particles_submitted()
+        << " sprite_effect_particles_draws=" << game.sprite_effect_particles_draws()
+        << " sprite_effect_particles_diagnostics=" << game.sprite_effect_particles_diagnostics()
+        << " sprite_effect_particles_budget_diagnostics=" << game.sprite_effect_particles_budget_diagnostics()
         << " runtime_profile_resume_status="
         << runtime_session_profile_resume_status_name(game.gameplay_systems_runtime_profile_resume_status())
         << " runtime_profile_resume_ready=" << (game.gameplay_systems_runtime_profile_resume_ready() ? 1 : 0)
@@ -5122,6 +5299,21 @@ int main(int argc, char** argv) {
                   << " sprite_collision_hitbox_feedback_rows=" << game.sprite_collision_hitbox_feedback_rows()
                   << " sprite_collision_hitbox_diagnostics=" << game.sprite_collision_hitbox_diagnostics() << '\n';
         return 25;
+    }
+
+    if (options.require_sprite_effects_particles && !game.sprite_effect_particles_ready()) {
+        std::cout << "sample_2d_desktop_runtime_package required_sprite_effects_particles_unavailable"
+                  << " sprite_effect_particles_status="
+                  << sprite_effect_particle_status_name(game.sprite_effect_particles_status())
+                  << " sprite_effect_particles_ready=" << (game.sprite_effect_particles_ready() ? 1 : 0)
+                  << " sprite_effect_particles_spawn_events=" << game.sprite_effect_particles_spawn_events()
+                  << " sprite_effect_particles_spawned_particles=" << game.sprite_effect_particles_spawned_particles()
+                  << " sprite_effect_particles_render_rows=" << game.sprite_effect_particles_render_rows()
+                  << " sprite_effect_particles_submitted=" << game.sprite_effect_particles_submitted()
+                  << " sprite_effect_particles_diagnostics=" << game.sprite_effect_particles_diagnostics()
+                  << " sprite_effect_particles_budget_diagnostics=" << game.sprite_effect_particles_budget_diagnostics()
+                  << '\n';
+        return 26;
     }
 
     if (options.require_tilemap_runtime_ux &&
