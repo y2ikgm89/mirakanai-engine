@@ -707,6 +707,7 @@ $checkAiIntegrationCoreText = Get-Content -LiteralPath (Join-Path $root "tools/c
 $checkAiProductionLedgerText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-070-production-ledger.ps1") -Raw
 $checkAiBaselineText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-010-agent-baseline.ps1") -Raw
 $checkJsonContractsText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts.ps1") -Raw
+$agentContextText = Get-Content -LiteralPath (Join-Path $root "tools/agent-context.ps1") -Raw
 $mobilePackagingScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-mobile-packaging.ps1") -Raw
 $androidReleasePackageScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-android-release-package.ps1") -Raw
 if (-not $validateScriptText.Contains("check-ci-matrix.ps1")) {
@@ -820,6 +821,11 @@ foreach ($staticContractLedger in Get-StaticContractLedger) {
 }
 $generatedGamesContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-050-generated-games.ps1") -Raw
 $gameDesignSpecContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-060-game-design-spec.ps1") -Raw
+$contentMutationLedgerContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-061-content-mutation-ledger.ps1") -Raw
+$placeholderAssetPipelineContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-062-placeholder-asset-pipeline.ps1") -Raw
+$generatedGamePlaytestLoopContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-063-generated-game-playtest-loop.ps1") -Raw
+$validationRemediationRecipesContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-064-validation-remediation-recipes.ps1") -Raw
+$generatedGameQualityRubricContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-065-generated-game-quality-rubric.ps1") -Raw
 Assert-ContainsText $generatedGamesContractText '$historicalVerdictArchiveText = Get-JsonContractSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"' "tools/check-json-contracts-050-generated-games.ps1"
 Assert-DoesNotContainText $generatedGamesContractText 'Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md") -Raw' "tools/check-json-contracts-050-generated-games.ps1"
 Assert-ContainsText $coreText '$script:jsonContractSurfaceTextCache = @{}' "tools/check-json-contracts-core.ps1"
@@ -828,10 +834,18 @@ Assert-ContainsText $coreText '$script:jsonContractSurfaceTextCache[$normalizedR
 Assert-ContainsText $coreText '$script:jsonGameAgentManifestCache = $null' "tools/check-json-contracts-core.ps1"
 Assert-ContainsText $coreText 'function Get-GameAgentManifests' "tools/check-json-contracts-core.ps1"
 Assert-ContainsText $coreText 'function Get-GameAgentManifest' "tools/check-json-contracts-core.ps1"
-Assert-ContainsText $generatedGamesContractText 'foreach ($gameManifestEntry in Get-GameAgentManifests)' "tools/check-json-contracts-050-generated-games.ps1"
-Assert-ContainsText $gameDesignSpecContractText 'foreach ($gameManifestEntry in Get-GameAgentManifests)' "tools/check-json-contracts-060-game-design-spec.ps1"
-foreach ($gameManifestContractText in @($generatedGamesContractText, $gameDesignSpecContractText)) {
-    Assert-DoesNotContainText $gameManifestContractText 'Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json"' "check-json-contracts game manifest chapters"
+$gameManifestContractChapters = @{
+    "tools/check-json-contracts-050-generated-games.ps1" = $generatedGamesContractText
+    "tools/check-json-contracts-060-game-design-spec.ps1" = $gameDesignSpecContractText
+    "tools/check-json-contracts-061-content-mutation-ledger.ps1" = $contentMutationLedgerContractText
+    "tools/check-json-contracts-062-placeholder-asset-pipeline.ps1" = $placeholderAssetPipelineContractText
+    "tools/check-json-contracts-063-generated-game-playtest-loop.ps1" = $generatedGamePlaytestLoopContractText
+    "tools/check-json-contracts-064-validation-remediation-recipes.ps1" = $validationRemediationRecipesContractText
+    "tools/check-json-contracts-065-generated-game-quality-rubric.ps1" = $generatedGameQualityRubricContractText
+}
+foreach ($gameManifestContractChapter in $gameManifestContractChapters.GetEnumerator()) {
+    Assert-ContainsText $gameManifestContractChapter.Value 'foreach ($gameManifestEntry in Get-GameAgentManifests)' $gameManifestContractChapter.Key
+    Assert-DoesNotContainText $gameManifestContractChapter.Value 'Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json"' $gameManifestContractChapter.Key
 }
 $agentSurfacesContractText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-040-agent-surfaces.ps1") -Raw
 $historicalArchiveContractPath = "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
@@ -858,6 +872,11 @@ Assert-ContainsText $checkAiIntegrationCoreText 'function Get-AgentGameManifests
 Assert-ContainsText $checkAiIntegrationCoreText 'function Get-AgentGameManifest' "tools/check-ai-integration-core.ps1"
 Assert-ContainsText $checkAiProductionLedgerText 'foreach ($gameManifestEntry in Get-AgentGameManifests)' "tools/check-ai-integration-070-production-ledger.ps1"
 Assert-DoesNotContainText $checkAiProductionLedgerText 'Get-ChildItem -Path (Join-Path $root "games") -Recurse -Filter "game.agent.json"' "tools/check-ai-integration-070-production-ledger.ps1"
+Assert-ContainsText $agentContextText '$script:agentContextGameManifestFiles = $null' "tools/agent-context.ps1"
+Assert-ContainsText $agentContextText 'function Get-GameManifestFiles' "tools/agent-context.ps1"
+Assert-ContainsText $agentContextText 'Get-ChildItem -LiteralPath $fullPath -Recurse -File -Filter $filter' "tools/agent-context.ps1"
+Assert-DoesNotContainText $agentContextText 'Get-ChildItem -Path $fullPath -Recurse -File -Filter $filter' "tools/agent-context.ps1"
+Assert-DoesNotContainText $agentContextText '$gameManifestPaths = @(Get-ChildItem -Path (Join-Path $root "games") -Recurse -File -Filter "game.agent.json")' "tools/agent-context.ps1"
 foreach ($needle in @(
     ".github/workflows/validate.yml",
     ".github/workflows/ios-validate.yml",

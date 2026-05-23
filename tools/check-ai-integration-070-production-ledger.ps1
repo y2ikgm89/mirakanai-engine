@@ -1205,11 +1205,11 @@ foreach ($unsupportedClaim in @(
     Assert-ContainsText $engineManifestText $unsupportedClaim "engine/agent/manifest.json"
 }
 
-Get-ChildItem -Path (Resolve-RequiredAgentPath ".agents/skills") -Recurse -Filter "SKILL.md" | ForEach-Object {
+Get-ChildItem -LiteralPath (Resolve-RequiredAgentPath ".agents/skills") -Recurse -Filter "SKILL.md" | ForEach-Object {
     Assert-SkillFrontmatter $_.FullName
 }
 
-Get-ChildItem -Path (Resolve-RequiredAgentPath ".claude/skills") -Recurse -Filter "SKILL.md" | ForEach-Object {
+Get-ChildItem -LiteralPath (Resolve-RequiredAgentPath ".claude/skills") -Recurse -Filter "SKILL.md" | ForEach-Object {
     Assert-SkillFrontmatter $_.FullName
 }
 
@@ -1603,11 +1603,11 @@ Assert-ContainsText $aiAgentRuleText "Windows Graphics Tools" ".claude/rules/ai-
 Assert-ContainsText $aiAgentRuleText "PIX on Windows" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $aiAgentRuleText "Windows Performance Toolkit" ".claude/rules/ai-agent-integration.md"
 
-Get-ChildItem -Path (Resolve-RequiredAgentPath ".claude/agents") -Filter "*.md" | ForEach-Object {
+Get-ChildItem -LiteralPath (Resolve-RequiredAgentPath ".claude/agents") -Filter "*.md" | ForEach-Object {
     Assert-ClaudeAgentFrontmatter $_.FullName
 }
 
-Get-ChildItem -Path (Resolve-RequiredAgentPath ".codex/agents") -Filter "*.toml" | ForEach-Object {
+Get-ChildItem -LiteralPath (Resolve-RequiredAgentPath ".codex/agents") -Filter "*.toml" | ForEach-Object {
     $content = Get-Content -LiteralPath $_.FullName -Raw
     foreach ($field in @("name", "description", "developer_instructions")) {
         if ($content -notmatch "(?m)^$field\s*=") {

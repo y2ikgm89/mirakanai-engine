@@ -79,8 +79,8 @@ function Find-AndroidNdk {
 
     if (-not [string]::IsNullOrWhiteSpace($SdkRoot)) {
         $ndkRoot = Join-Path $SdkRoot "ndk"
-        if (Test-Path $ndkRoot) {
-            $latest = Get-ChildItem -Path $ndkRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1
+        if (Test-Path -LiteralPath $ndkRoot) {
+            $latest = Get-ChildItem -LiteralPath $ndkRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1
             if ($latest) {
                 return $latest.FullName
             }
@@ -97,8 +97,8 @@ function Find-GradleCommand {
     }
 
     $toolchainsRoot = Join-OptionalPath (Get-LocalApplicationDataRoot) "GameEngineToolchains"
-    if (-not [string]::IsNullOrWhiteSpace($toolchainsRoot) -and (Test-Path $toolchainsRoot)) {
-        $candidate = Get-ChildItem -Path $toolchainsRoot -Directory -Filter "gradle-*" |
+    if (-not [string]::IsNullOrWhiteSpace($toolchainsRoot) -and (Test-Path -LiteralPath $toolchainsRoot)) {
+        $candidate = Get-ChildItem -LiteralPath $toolchainsRoot -Directory -Filter "gradle-*" |
             Sort-Object Name -Descending |
             ForEach-Object { Join-Path $_.FullName "bin\gradle.bat" } |
             Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
@@ -126,8 +126,8 @@ function Find-JavaCommand {
     }
 
     $adoptiumRoot = Join-OptionalPath (Get-EnvironmentVariableAnyScope "ProgramFiles") "Eclipse Adoptium"
-    if (-not [string]::IsNullOrWhiteSpace($adoptiumRoot) -and (Test-Path $adoptiumRoot)) {
-        $candidate = Get-ChildItem -Path $adoptiumRoot -Directory -Filter "jdk-*" |
+    if (-not [string]::IsNullOrWhiteSpace($adoptiumRoot) -and (Test-Path -LiteralPath $adoptiumRoot)) {
+        $candidate = Get-ChildItem -LiteralPath $adoptiumRoot -Directory -Filter "jdk-*" |
             Sort-Object Name -Descending |
             ForEach-Object { Join-Path $_.FullName "bin\java.exe" } |
             Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |

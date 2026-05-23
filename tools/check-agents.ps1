@@ -286,10 +286,10 @@ foreach ($skillName in @($aiSurfacesFragment.aiSurfaces.cursor.requiredSkills)) 
     Assert-RequiredDirectoryChild -Root $cursorSkillRoot -Name ([string]$skillName) -Label "Cursor required skills from 011-aiSurfaces.json" -RequiredLeaf "SKILL.md"
 }
 
-if (Test-Path $skillRoot) {
-    Get-ChildItem -Path $skillRoot -Directory | ForEach-Object {
+if (Test-Path -LiteralPath $skillRoot) {
+    Get-ChildItem -LiteralPath $skillRoot -Directory | ForEach-Object {
         $skillFile = Join-Path $_.FullName "SKILL.md"
-        if (-not (Test-Path $skillFile)) {
+        if (-not (Test-Path -LiteralPath $skillFile)) {
             Write-Error "Skill folder missing SKILL.md: $($_.FullName)"
         }
         Test-AgentFileSizeBudget `
@@ -302,8 +302,8 @@ if (Test-Path $skillRoot) {
     }
 }
 
-if (Test-Path $agentRoot) {
-    Get-ChildItem -Path $agentRoot -Filter "*.toml" | ForEach-Object {
+if (Test-Path -LiteralPath $agentRoot) {
+    Get-ChildItem -LiteralPath $agentRoot -Filter "*.toml" | ForEach-Object {
         Test-AgentFileSizeBudget `
             -Path $_.FullName `
             -MaxBytes (16 * 1024) `
@@ -318,8 +318,8 @@ if (Test-Path $agentRoot) {
     }
 }
 
-if (Test-Path $codexRuleRoot) {
-    Get-ChildItem -Path $codexRuleRoot -Filter "*.rules" | ForEach-Object {
+if (Test-Path -LiteralPath $codexRuleRoot) {
+    Get-ChildItem -LiteralPath $codexRuleRoot -Filter "*.rules" | ForEach-Object {
         $content = Get-Content -LiteralPath $_.FullName -Raw
         if ($content -notmatch "prefix_rule\(" -or $content -notmatch "match\s*=" -or $content -notmatch "not_match\s*=") {
             Write-Error "Codex rule files must use prefix_rule with match and not_match examples: $($_.FullName)"
@@ -423,10 +423,10 @@ if (Test-Path $claudeSettingsPath) {
     }
 }
 
-if (Test-Path $claudeSkillRoot) {
-    Get-ChildItem -Path $claudeSkillRoot -Directory | ForEach-Object {
+if (Test-Path -LiteralPath $claudeSkillRoot) {
+    Get-ChildItem -LiteralPath $claudeSkillRoot -Directory | ForEach-Object {
         $skillFile = Join-Path $_.FullName "SKILL.md"
-        if (-not (Test-Path $skillFile)) {
+        if (-not (Test-Path -LiteralPath $skillFile)) {
             Write-Error "Claude skill folder missing SKILL.md: $($_.FullName)"
         }
         Test-AgentFileSizeBudget `
@@ -439,10 +439,10 @@ if (Test-Path $claudeSkillRoot) {
     }
 }
 
-if (Test-Path $cursorSkillRoot) {
-    Get-ChildItem -Path $cursorSkillRoot -Directory | ForEach-Object {
+if (Test-Path -LiteralPath $cursorSkillRoot) {
+    Get-ChildItem -LiteralPath $cursorSkillRoot -Directory | ForEach-Object {
         $skillFile = Join-Path $_.FullName "SKILL.md"
-        if (-not (Test-Path $skillFile)) {
+        if (-not (Test-Path -LiteralPath $skillFile)) {
             Write-Error "Cursor skill folder missing SKILL.md: $($_.FullName)"
         }
         Test-AgentFileSizeBudget `
@@ -607,8 +607,8 @@ if ((Test-Path -LiteralPath $cursorSkillRoot) -and (Test-Path -LiteralPath $clau
     }
 }
 
-if (Test-Path $claudeAgentRoot) {
-    Get-ChildItem -Path $claudeAgentRoot -Filter "*.md" | ForEach-Object {
+if (Test-Path -LiteralPath $claudeAgentRoot) {
+    Get-ChildItem -LiteralPath $claudeAgentRoot -Filter "*.md" | ForEach-Object {
         Test-AgentFileSizeBudget `
             -Path $_.FullName `
             -MaxBytes (16 * 1024) `
