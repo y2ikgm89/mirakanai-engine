@@ -716,8 +716,17 @@ foreach ($commonHelperNeedle in @(
     )) {
     Assert-ContainsText $commonScriptText $commonHelperNeedle "tools/common.ps1"
 }
+$staticContractLedgerText = Get-Content -LiteralPath (Join-Path $root "tools/static-contract-ledger.ps1") -Raw
+Assert-ContainsText $staticContractLedgerText "function Get-StaticContractSectionFile" "tools/static-contract-ledger.ps1"
+Assert-ContainsText $staticContractLedgerText "Get-ChildItem -LiteralPath" "tools/static-contract-ledger.ps1"
+Assert-ContainsText $staticContractLedgerText "-File" "tools/static-contract-ledger.ps1"
+Assert-ContainsText $staticContractLedgerText "[regex]::Escape(`$Prefix)" "tools/static-contract-ledger.ps1"
+Assert-ContainsText $staticContractLedgerText '"^$escapedPrefix-\d{3}-.+\.ps1$"' "tools/static-contract-ledger.ps1"
+Assert-ContainsText $staticContractLedgerText "Sort-Object Name" "tools/static-contract-ledger.ps1"
+Assert-DoesNotContainText $staticContractLedgerText '"check-ai-integration-081-scaffold-tooling.ps1"' "tools/static-contract-ledger.ps1"
+Assert-DoesNotContainText $staticContractLedgerText '"check-json-contracts-067-gameplay-interaction-framework.ps1"' "tools/static-contract-ledger.ps1"
 foreach ($staticContractLedger in Get-StaticContractLedger) {
-    foreach ($ledgerPath in @($staticContractLedger.EntryScript) + @(Get-StaticContractLedgerRepoPaths -Ledger $staticContractLedger)) {
+    foreach ($ledgerPath in @($staticContractLedger.EntryScript) + @(Get-StaticContractLedgerRepoPath -Ledger $staticContractLedger)) {
         $fullLedgerPath = Join-Path $root $ledgerPath
         if (-not (Test-Path -LiteralPath $fullLedgerPath -PathType Leaf)) {
             Write-Error "$ledgerPath must exist so static contract ledgers stay chapterized instead of growing monolithic entry scripts"

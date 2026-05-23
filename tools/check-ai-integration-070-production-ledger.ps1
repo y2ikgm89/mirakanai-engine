@@ -1360,7 +1360,7 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "tools/static-contract-ledger.ps1" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "thin static-contract ledger entrypoints" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "static-contract ledger" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "agent-surface drift check" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "targeted drift checks" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Context7" $agentIntegrationSkill

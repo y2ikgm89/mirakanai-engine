@@ -1,26 +1,37 @@
 #requires -Version 7.0
 #requires -PSEdition Core
 
+$script:StaticContractLedgerToolsRoot = $PSScriptRoot
+
+function Get-StaticContractSectionFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Prefix
+    )
+
+    $escapedPrefix = [regex]::Escape($Prefix)
+    $sectionNamePattern = "^$escapedPrefix-\d{3}-.+\.ps1$"
+    $sectionFiles = @(
+        Get-ChildItem -LiteralPath $script:StaticContractLedgerToolsRoot -Filter "$Prefix-*.ps1" -File |
+            Where-Object { [regex]::IsMatch($_.Name, $sectionNamePattern) } |
+            Sort-Object Name |
+            ForEach-Object { $_.Name }
+    )
+    if ($sectionFiles.Count -eq 0) {
+        Write-Error "No static contract section files found for prefix '$Prefix'"
+    }
+
+    return @($sectionFiles)
+}
+
 function Get-StaticContractLedger {
     return @(
         [pscustomobject]@{
             Id = "check-ai-integration"
             EntryScript = "tools/check-ai-integration.ps1"
             CoreScript = "tools/check-ai-integration-core.ps1"
-            SectionFiles = @(
-                "check-ai-integration-010-agent-baseline.ps1",
-                "check-ai-integration-020-engine-manifest.ps1",
-                "check-ai-integration-030-runtime-rendering.ps1",
-                "check-ai-integration-040-agent-surfaces.ps1",
-                "check-ai-integration-050-game-generation.ps1",
-                "check-ai-integration-060-editor-workflows.ps1",
-                "check-ai-integration-070-production-ledger.ps1",
-                "check-ai-integration-080-scaffold-smokes.ps1",
-                "check-ai-integration-081-scaffold-tooling.ps1",
-                "check-ai-integration-090-generated-game-quality-rubric.ps1",
-                "check-ai-integration-091-agent-surface-alignment.ps1",
-                "check-ai-integration-092-gameplay-interaction-framework.ps1"
-            )
+            SectionFiles = Get-StaticContractSectionFile -Prefix "check-ai-integration"
             MaximumEntryLines = 80
             MaximumCoreLines = 1600
             MaximumSectionLines = 2600
@@ -29,21 +40,7 @@ function Get-StaticContractLedger {
             Id = "check-json-contracts"
             EntryScript = "tools/check-json-contracts.ps1"
             CoreScript = "tools/check-json-contracts-core.ps1"
-            SectionFiles = @(
-                "check-json-contracts-010-engine-manifest.ps1",
-                "check-json-contracts-020-game-contracts.ps1",
-                "check-json-contracts-030-tooling-contracts.ps1",
-                "check-json-contracts-040-agent-surfaces.ps1",
-                "check-json-contracts-050-generated-games.ps1",
-                "check-json-contracts-060-game-design-spec.ps1",
-                "check-json-contracts-061-content-mutation-ledger.ps1",
-                "check-json-contracts-062-placeholder-asset-pipeline.ps1",
-                "check-json-contracts-063-generated-game-playtest-loop.ps1",
-                "check-json-contracts-064-validation-remediation-recipes.ps1",
-                "check-json-contracts-065-generated-game-quality-rubric.ps1",
-                "check-json-contracts-066-agent-surface-alignment.ps1",
-                "check-json-contracts-067-gameplay-interaction-framework.ps1"
-            )
+            SectionFiles = Get-StaticContractSectionFile -Prefix "check-json-contracts"
             MaximumEntryLines = 80
             MaximumCoreLines = 1600
             MaximumSectionLines = 1500
@@ -65,7 +62,7 @@ function Get-StaticContractLedgerById {
     return $matchingLedgers[0]
 }
 
-function Get-StaticContractLedgerRepoPaths {
+function Get-StaticContractLedgerRepoPath {
     param(
         [Parameter(Mandatory = $true)]
         $Ledger
