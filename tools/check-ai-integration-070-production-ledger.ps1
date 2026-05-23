@@ -1410,17 +1410,16 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "Debugging Tools for Windows" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "PIX on Windows" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Git/GitHub publishing workflow changes" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "merge/delete-branch" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "merge registration" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "auto-merge registration" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "official GitHub Flow" $agentIntegrationSkill
-    foreach ($agentIntegrationCadenceNeedle in @("purpose/checkpoint-based cadence", "validated phase commits", "one PR per focused capability/gap-cluster/milestone", "early draft PRs")) {
+    foreach ($agentIntegrationCadenceNeedle in @("validated commits", "one PR per focused capability/gap-cluster/milestone", 'early `--draft` PRs')) {
         Assert-ContainsText $agentIntegrationSkillText $agentIntegrationCadenceNeedle $agentIntegrationSkill
     }
     Assert-ContainsText $agentIntegrationSkillText "final completion report must not stop after local validation" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Direct default-branch pushes are forbidden" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "selected hosted checks to complete" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText '`PR Gate` to report `SUCCESS`' $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "mergeStateStatus" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText '--match-head-commit <headRefOid>' $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Hosted PR failure hardening" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "CI check selection changes" $agentIntegrationSkill
@@ -1432,9 +1431,8 @@ foreach ($agentIntegrationSkill in @(
     Assert-ContainsText $agentIntegrationSkillText "HeaderFilterRegex" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "NN warnings generated." $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "not troubleshooting playbooks" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "post-merge remote-tracking cleanup" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "post-merge worktree cleanup" $agentIntegrationSkill
-    Assert-ContainsText $agentIntegrationSkillText "local checkout fast-forward" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText "guarded merged-worktree cleanup" $agentIntegrationSkill
+    Assert-ContainsText $agentIntegrationSkillText 'merged head reaches `origin/main`' $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "Git main worktree porcelain records" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "worktree-local vcpkg reparse points" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "guarded/non-following" $agentIntegrationSkill
@@ -1478,10 +1476,10 @@ Assert-ContainsText $codexRuleText 'decision = "allow"' ".codex/rules/gameengine
 Assert-ContainsText $codexRuleText "gh pr view" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr create" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "gh pr merge" ".codex/rules/gameengine.rules"
-Assert-ContainsText $codexRuleText "gh pr merge --merge --delete-branch" ".codex/rules/gameengine.rules"
-Assert-ContainsText $codexRuleText "gh pr merge --auto --merge --delete-branch" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "gh pr merge --auto --merge --match-head-commit" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "--match-head-commit" ".codex/rules/gameengine.rules"
-Assert-ContainsText $codexRuleText 'pattern = ["gh", "pr", "merge", "--auto", "--merge", "--delete-branch", "--match-head-commit"]' ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText 'pattern = ["gh", "pr", "merge", "--auto", "--merge", "--match-head-commit"]' ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRuleText "branch cleanup stays in tools/remove-merged-worktree.ps1" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Remove-Item" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-WebRequest" ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRuleText "Invoke-RestMethod" ".codex/rules/gameengine.rules"
@@ -1499,20 +1497,23 @@ if (-not $claudeSettings.PSObject.Properties.Name.Contains("permissions")) {
 if (-not $claudeSettings.PSObject.Properties.Name.Contains("worktree") -or $claudeSettings.worktree.baseRef -ne "head") {
     Write-Error ".claude/settings.json must set worktree.baseRef to head for project subagent worktree isolation"
 }
-foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
+foreach ($allowRule in @("Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
     if (@($claudeSettings.permissions.allow) -notcontains $allowRule) {
         Write-Error ".claude/settings.json permissions.allow missing $allowRule"
     }
 }
 if (@($claudeSettings.permissions.allow) -contains "Bash(gh pr merge --auto --merge --delete-branch:*)") {
-    Write-Error ".claude/settings.json permissions.allow must require --match-head-commit for gh pr merge --auto"
+    Write-Error ".claude/settings.json permissions.allow must keep branch deletion in guarded cleanup"
 }
-foreach ($askRule in @("Bash(git push --force:*)", "Bash(git push --force-with-lease:*)", "Bash(git restore:*)", "Bash(git checkout:*)", "Bash(git worktree remove:*)", "Bash(git worktree prune:*)", "Bash(git worktree repair:*)", "Bash(gh pr edit:*)", "Bash(gh pr merge --merge:*)", "Bash(gh pr merge --squash:*)", "Bash(gh pr merge --rebase:*)", "Bash(gh pr merge --admin:*)", "Bash(gh pr ready:*)", "Bash(gh pr close:*)", "Bash(gh pr reopen:*)", "Bash(Remove-Item:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1:*)", "Bash(curl:*)", "Bash(Invoke-WebRequest:*)", "Bash(Invoke-RestMethod:*)", "Bash(Add-WindowsCapability:*)", "Bash(dism:*)", "Bash(msiexec:*)")) {
+if (@($claudeSettings.permissions.allow) -contains "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)") {
+    Write-Error ".claude/settings.json permissions.allow must not use gh pr merge --delete-branch in linked-worktree automation"
+}
+foreach ($askRule in @("Bash(git push --force:*)", "Bash(git push --force-with-lease:*)", "Bash(git restore:*)", "Bash(git checkout:*)", "Bash(git worktree remove:*)", "Bash(git worktree prune:*)", "Bash(git worktree repair:*)", "Bash(gh pr edit:*)", "Bash(gh pr merge --merge:*)", "Bash(gh pr merge --squash:*)", "Bash(gh pr merge --rebase:*)", "Bash(gh pr merge --admin:*)", "Bash(gh pr merge --auto --merge --delete-branch:*)", "Bash(gh pr ready:*)", "Bash(gh pr close:*)", "Bash(gh pr reopen:*)", "Bash(Remove-Item:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1:*)", "Bash(curl:*)", "Bash(Invoke-WebRequest:*)", "Bash(Invoke-RestMethod:*)", "Bash(Add-WindowsCapability:*)", "Bash(dism:*)", "Bash(msiexec:*)")) {
     if (@($claudeSettings.permissions.ask) -notcontains $askRule) {
         Write-Error ".claude/settings.json permissions.ask missing $askRule"
     }
 }
-foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --delete-branch --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
+foreach ($automaticGitRule in @("Bash(git commit:*)", "Bash(git push:*)", "Bash(gh pr view:*)", "Bash(gh pr create:*)", "Bash(gh pr merge --auto --merge --match-head-commit:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)", "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)")) {
     if (@($claudeSettings.permissions.ask) -contains $automaticGitRule) {
         Write-Error ".claude/settings.json permissions.ask should not prompt routine automatic checkpoint command $automaticGitRule"
     }
@@ -1733,7 +1734,7 @@ foreach ($buildFixerAgent in @(
     Assert-ContainsText $buildFixerText 'Do not repair generated `out/build/<preset>` trees' $buildFixerAgent
     Assert-ContainsText $buildFixerText "CMakeCache.txt" $buildFixerAgent
     Assert-ContainsText $buildFixerText "LinkIncremental=false" $buildFixerAgent
-    Assert-ContainsText $buildFixerText "gh pr view <pr> --json headRefOid,statusCheckRollup,url" $buildFixerAgent
+    Assert-ContainsText $buildFixerText 'gh pr view <pr> --json headRefOid,statusCheckRollup,url' $buildFixerAgent
     Assert-ContainsText $buildFixerText "billing or account limits" $buildFixerAgent
 }
 

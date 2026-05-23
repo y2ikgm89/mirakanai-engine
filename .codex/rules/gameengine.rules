@@ -190,15 +190,17 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["gh", "pr", "merge", "--auto", "--merge", "--delete-branch", "--match-head-commit"],
+    pattern = ["gh", "pr", "merge", "--auto", "--merge", "--match-head-commit"],
     decision = "allow",
-    justification = "Register GitHub auto-merge only after docs/workflows.md PR preflight confirms a task-owned PR, clean local worktree, fresh validation, current headRefOid, PR Gate success for runtime/C++ slices, and no failed or pending selected hosted checks.",
+    justification = "Register GitHub auto-merge only after docs/workflows.md PR preflight confirms a task-owned PR, clean local worktree, fresh validation, current headRefOid, PR Gate success for runtime/C++ slices, and no failed or pending selected hosted checks; branch cleanup stays in tools/remove-merged-worktree.ps1 so linked-worktree local branch deletion cannot fail after a successful merge.",
     match = [
-        "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
-        "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567 42",
+        "gh pr merge --auto --merge --match-head-commit 0123456789abcdef0123456789abcdef01234567",
+        "gh pr merge --auto --merge --match-head-commit 0123456789abcdef0123456789abcdef01234567 42",
     ],
     not_match = [
+        "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
         "gh pr merge --auto --merge --delete-branch",
+        "gh pr merge --auto --merge",
         "gh pr merge --merge --delete-branch",
         "gh pr merge --squash --delete-branch",
         "gh pr merge --admin --merge --delete-branch",
@@ -216,7 +218,7 @@ prefix_rule(
         "gh pr merge --admin --merge --delete-branch",
     ],
     not_match = [
-        "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
+        "gh pr merge --auto --merge --match-head-commit 0123456789abcdef0123456789abcdef01234567",
     ],
 )
 
@@ -236,7 +238,7 @@ prefix_rule(
         "gh auth status",
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1 -PullRequest 120 -ExpectedBase main",
         "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
-        "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
+        "gh pr merge --auto --merge --match-head-commit 0123456789abcdef0123456789abcdef01234567",
     ],
 )
 

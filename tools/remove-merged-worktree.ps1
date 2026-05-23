@@ -14,7 +14,9 @@ param(
 
     [string]$LocalCheckoutPath = "",
 
-    [switch]$DeleteLocalBranch
+    [switch]$DeleteLocalBranch,
+
+    [switch]$DeleteRemoteBranch
 )
 
 $ErrorActionPreference = "Stop"
@@ -327,6 +329,30 @@ if ($mergeBaseResult.ExitCode -ne 0) {
     Write-Error "git merge-base --is-ancestor failed with exit code $($mergeBaseResult.ExitCode): $(@($mergeBaseResult.Output) -join "`n")"
 }
 
+$remoteBranchCommit = ""
+if ($DeleteRemoteBranch.IsPresent) {
+    $remoteBranchRef = "refs/remotes/$Remote/$($record.Branch)"
+    $remoteBranchResult = Invoke-GitCommand -RepoRoot $root -Arguments @("rev-parse", "--verify", "--quiet", "$remoteBranchRef^{commit}") -AllowFailure
+    if ($remoteBranchResult.ExitCode -eq 0) {
+        $remoteBranchCommit = $remoteBranchResult.Output | Select-Object -First 1
+        if ($remoteBranchCommit -ne $branchCommit) {
+            Write-Error "Refusing to delete remote branch '$Remote/$($record.Branch)' because it does not match local branch '$($record.Branch)'. Fetch/prune and inspect the PR head before cleanup."
+        }
+
+        $remoteMergeBaseResult = Invoke-GitCommand -RepoRoot $root -Arguments @("merge-base", "--is-ancestor", $remoteBranchCommit, $baseCommit) -AllowFailure
+        if ($remoteMergeBaseResult.ExitCode -eq 1) {
+            Write-Error "Refusing to delete remote branch '$Remote/$($record.Branch)' because it is not fully merged into '$BaseRef'."
+        }
+        if ($remoteMergeBaseResult.ExitCode -ne 0) {
+            Write-Error "git merge-base --is-ancestor failed for remote branch '$Remote/$($record.Branch)' with exit code $($remoteMergeBaseResult.ExitCode): $(@($remoteMergeBaseResult.Output) -join "`n")"
+        }
+    } elseif ($remoteBranchResult.ExitCode -eq 1) {
+        Write-Information "remove-merged-worktree: remote-branch=already-absent" -InformationAction Continue
+    } else {
+        Write-Error "git rev-parse failed for remote branch '$Remote/$($record.Branch)' with exit code $($remoteBranchResult.ExitCode): $(@($remoteBranchResult.Output) -join "`n")"
+    }
+}
+
 Write-Information "remove-merged-worktree: repo-root=$root" -InformationAction Continue
 Write-Information "remove-merged-worktree: worktree=$resolvedWorktreePath" -InformationAction Continue
 Write-Information "remove-merged-worktree: branch=$($record.Branch)" -InformationAction Continue
@@ -360,6 +386,12 @@ if ($DeleteLocalBranch.IsPresent) {
     if ($PSCmdlet.ShouldProcess($record.Branch, "Delete merged local branch")) {
         # The script already proved ancestry against BaseRef; -D avoids branch -d using the runner's current HEAD as the merge target.
         $null = Invoke-GitCommand -RepoRoot $root -Arguments @("branch", "-D", $record.Branch)
+    }
+}
+
+if ($DeleteRemoteBranch.IsPresent -and -not [string]::IsNullOrWhiteSpace($remoteBranchCommit)) {
+    if ($PSCmdlet.ShouldProcess("$Remote/$($record.Branch)", "Delete merged remote branch")) {
+        $null = Invoke-GitCommand -RepoRoot $root -Arguments @("push", $Remote, "--delete", $record.Branch)
     }
 }
 
