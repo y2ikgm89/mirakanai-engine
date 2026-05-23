@@ -61,7 +61,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Status | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | Master index selected; no child slice is active; `unsupportedProductionGaps = []`; next developer-owned capability selection is open. |
+| Active slice (`currentActivePlan`) | [Scripting And Mod Sandbox v1](2026-05-24-scripting-and-mod-sandbox-v1.md) | Selected optional-adapter candidate row; first-party runtime execution facade, deny-by-default adapter dispatch, replay evidence, package counters, docs/manifest/static synchronization, and PR evidence are in progress while `unsupportedProductionGaps = []`. |
 | Completed milestone | [Candidate Backlog Burn-down v1](2026-05-23-candidate-backlog-burn-down-v1.md) | Completed all seven canonical post-1.0 candidate rows through PR #204 / merge commit `971cee3f6c5b42965721c06974bc506f1b35508c`. |
 
 ## Current Evidence Pointers

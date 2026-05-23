@@ -1627,7 +1627,13 @@ if ($requiresScriptingSandboxPolicy) {
             "scripting_sandbox_budget_diagnostics",
             "scripting_sandbox_replay_seed_rows",
             "scripting_sandbox_replay_seed_sum",
-            "scripting_sandbox_diagnostics"
+            "scripting_sandbox_diagnostics",
+            "scripting_sandbox_execution_status",
+            "scripting_sandbox_execution_ready",
+            "scripting_sandbox_execution_dispatches",
+            "scripting_sandbox_execution_host_api_calls",
+            "scripting_sandbox_execution_replay_signature",
+            "scripting_sandbox_execution_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed desktop runtime smoke status line did not include scripting sandbox field: $field"
@@ -1649,12 +1655,20 @@ if ($requiresScriptingSandboxPolicy) {
         "scripting_sandbox_replay_seed_rows" = "2"
         "scripting_sandbox_replay_seed_sum" = "3003"
         "scripting_sandbox_diagnostics" = "0"
+        "scripting_sandbox_execution_status" = "completed"
+        "scripting_sandbox_execution_ready" = "1"
+        "scripting_sandbox_execution_dispatches" = "1"
+        "scripting_sandbox_execution_host_api_calls" = "1"
+        "scripting_sandbox_execution_diagnostics" = "0"
     }
     foreach ($field in $expectedScriptingSandboxFields.Keys) {
         $expectedValue = $expectedScriptingSandboxFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove scripting sandbox field $field=$expectedValue."
         }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bscripting_sandbox_execution_replay_signature=[1-9][0-9]*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove a non-zero scripting sandbox execution replay signature."
     }
 }
 if ($requiresNetworkingFoundationPolicy) {

@@ -305,10 +305,104 @@ void sort_diagnostics(RuntimeScriptSandboxPlan& plan) {
     });
 }
 
+void add_execution_diagnostic(RuntimeScriptExecutionResult& result, RuntimeScriptExecutionDiagnosticCode code,
+                              std::string module_id, std::string entrypoint_id, std::string message) {
+    result.diagnostics.push_back(RuntimeScriptExecutionDiagnostic{
+        .code = code,
+        .module_id = std::move(module_id),
+        .entrypoint_id = std::move(entrypoint_id),
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] const RuntimeScriptSandboxEntrypointPlanRow*
+find_entrypoint(const RuntimeScriptSandboxPlan& plan, std::string_view module_id, std::string_view entrypoint_id) {
+    const auto iter = std::ranges::find_if(plan.entrypoints, [module_id, entrypoint_id](const auto& row) {
+        return row.module_id == module_id && row.entrypoint_id == entrypoint_id;
+    });
+    return iter == plan.entrypoints.end() ? nullptr : &*iter;
+}
+
+[[nodiscard]] std::vector<RuntimeScriptSandboxPermissionPlanRow>
+matching_permissions(const RuntimeScriptSandboxPlan& plan, std::string_view module_id, std::string_view entrypoint_id) {
+    std::vector<RuntimeScriptSandboxPermissionPlanRow> permissions;
+    for (const auto& row : plan.permissions) {
+        if (row.module_id == module_id && row.entrypoint_id == entrypoint_id) {
+            permissions.push_back(row);
+        }
+    }
+    return permissions;
+}
+
+[[nodiscard]] const RuntimeScriptSandboxPermissionPlanRow*
+find_denied_permission(const std::vector<RuntimeScriptSandboxPermissionPlanRow>& permissions) {
+    const auto iter = std::ranges::find_if(permissions, [](const auto& row) { return !row.allowed; });
+    return iter == permissions.end() ? nullptr : &*iter;
+}
+
+void hash_byte(std::uint64_t& hash, std::uint8_t value) noexcept {
+    constexpr std::uint64_t prime{1099511628211ULL};
+    hash ^= value;
+    hash *= prime;
+}
+
+void hash_uint32(std::uint64_t& hash, std::uint32_t value) noexcept {
+    for (std::uint32_t offset = 0U; offset < 32U; offset += 8U) {
+        hash_byte(hash, static_cast<std::uint8_t>((value >> offset) & 0xffU));
+    }
+}
+
+void hash_uint64(std::uint64_t& hash, std::uint64_t value) noexcept {
+    for (std::uint32_t offset = 0U; offset < 64U; offset += 8U) {
+        hash_byte(hash, static_cast<std::uint8_t>((value >> offset) & 0xffU));
+    }
+}
+
+void hash_size(std::uint64_t& hash, std::size_t value) noexcept {
+    hash_uint64(hash, static_cast<std::uint64_t>(value));
+}
+
+void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
+    hash_size(hash, value.size());
+    for (char ch : value) {
+        hash_byte(hash, static_cast<std::uint8_t>(static_cast<unsigned char>(ch)));
+    }
+}
+
+[[nodiscard]] std::uint64_t compute_replay_signature(const RuntimeScriptExecutionRequest& request,
+                                                     const RuntimeScriptAdapterResult& adapter_result) noexcept {
+    constexpr std::uint64_t offset_basis{1469598103934665603ULL};
+    std::uint64_t hash{offset_basis};
+    hash_string(hash, request.module_id);
+    hash_string(hash, request.entrypoint_id);
+    hash_string(hash, request.input_event_id);
+    hash_uint64(hash, request.instruction_budget);
+    hash_uint64(hash, request.memory_budget_bytes);
+    hash_uint64(hash, request.replay_seed);
+    hash_uint64(hash, adapter_result.stats.instructions_consumed);
+    hash_uint64(hash, adapter_result.stats.memory_bytes_touched);
+    hash_size(hash, adapter_result.stats.host_api_call_count);
+    hash_size(hash, adapter_result.host_api_calls.size());
+    for (const auto& call : adapter_result.host_api_calls) {
+        hash_string(hash, call.host_api_id);
+        hash_string(hash, call.payload);
+        hash_uint32(hash, call.source_index);
+    }
+    hash_size(hash, adapter_result.output_rows.size());
+    for (const auto& row : adapter_result.output_rows) {
+        hash_string(hash, row);
+    }
+    return hash == 0U ? offset_basis : hash;
+}
+
 } // namespace
 
 bool RuntimeScriptSandboxPlan::succeeded() const noexcept {
     return status == RuntimeScriptSandboxPlanStatus::planned || status == RuntimeScriptSandboxPlanStatus::no_modules;
+}
+
+bool RuntimeScriptExecutionResult::succeeded() const noexcept {
+    return status == RuntimeScriptExecutionStatus::completed;
 }
 
 RuntimeScriptSandboxPlan plan_runtime_script_sandbox(const RuntimeScriptSandboxPolicyDesc& policy) {
@@ -333,6 +427,114 @@ RuntimeScriptSandboxPlan plan_runtime_script_sandbox(const RuntimeScriptSandboxP
     plan.status =
         policy.modules.empty() ? RuntimeScriptSandboxPlanStatus::no_modules : RuntimeScriptSandboxPlanStatus::planned;
     return plan;
+}
+
+RuntimeScriptExecutionResult execute_runtime_script_entrypoint(const RuntimeScriptExecutionRequest& request,
+                                                               IRuntimeScriptExecutionAdapter& adapter) {
+    RuntimeScriptExecutionResult result;
+    if (request.plan == nullptr) {
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::missing_plan, request.module_id,
+                                 request.entrypoint_id, "script execution requires a reviewed sandbox plan");
+        return result;
+    }
+
+    const RuntimeScriptSandboxPlan& plan = *request.plan;
+    if (plan.status != RuntimeScriptSandboxPlanStatus::planned || !plan.succeeded()) {
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::policy_not_planned, request.module_id,
+                                 request.entrypoint_id,
+                                 "script execution requires a successful planned sandbox policy");
+        return result;
+    }
+
+    const RuntimeScriptSandboxEntrypointPlanRow* entrypoint =
+        find_entrypoint(plan, request.module_id, request.entrypoint_id);
+    if (entrypoint == nullptr) {
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::missing_entrypoint, request.module_id,
+                                 request.entrypoint_id, "script execution entrypoint is not present in the plan");
+        return result;
+    }
+
+    if (request.replay_seed != entrypoint->replay_seed) {
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::replay_seed_mismatch, request.module_id,
+                                 request.entrypoint_id,
+                                 "script execution replay seed must match the reviewed entrypoint seed");
+        return result;
+    }
+
+    if (request.instruction_budget == 0U) {
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::invalid_instruction_budget,
+                                 request.module_id, request.entrypoint_id,
+                                 "script execution instruction budget must be non-zero");
+        return result;
+    }
+
+    if (request.memory_budget_bytes == 0U) {
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::invalid_memory_budget, request.module_id,
+                                 request.entrypoint_id, "script execution memory budget must be non-zero");
+        return result;
+    }
+
+    if (request.instruction_budget > entrypoint->instruction_budget) {
+        result.status = RuntimeScriptExecutionStatus::budget_exceeded;
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::instruction_budget_exceeded,
+                                 request.module_id, request.entrypoint_id,
+                                 "script execution instruction budget exceeds the reviewed entrypoint cap");
+        return result;
+    }
+
+    if (request.memory_budget_bytes > entrypoint->memory_budget_bytes) {
+        result.status = RuntimeScriptExecutionStatus::budget_exceeded;
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::memory_budget_exceeded,
+                                 request.module_id, request.entrypoint_id,
+                                 "script execution memory budget exceeds the reviewed entrypoint cap");
+        return result;
+    }
+
+    std::vector<RuntimeScriptSandboxPermissionPlanRow> permissions =
+        matching_permissions(plan, request.module_id, request.entrypoint_id);
+    if (const RuntimeScriptSandboxPermissionPlanRow* denied = find_denied_permission(permissions)) {
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::denied_permission, denied->module_id,
+                                 denied->entrypoint_id,
+                                 "script execution permission row is denied by the reviewed sandbox plan");
+        return result;
+    }
+
+    result.dispatched = true;
+    RuntimeScriptAdapterResult adapter_result =
+        adapter.execute(request, *entrypoint,
+                        std::span<const RuntimeScriptSandboxPermissionPlanRow>{permissions.data(), permissions.size()});
+    result.stats = adapter_result.stats;
+    result.host_api_calls = adapter_result.host_api_calls;
+    result.output_rows = adapter_result.output_rows;
+
+    if (!adapter_result.completed) {
+        result.status = RuntimeScriptExecutionStatus::adapter_failed;
+        add_execution_diagnostic(
+            result, RuntimeScriptExecutionDiagnosticCode::adapter_failed, request.module_id, request.entrypoint_id,
+            adapter_result.diagnostic_message.empty() ? "script execution adapter failed"
+                                                      : std::move(adapter_result.diagnostic_message));
+        return result;
+    }
+
+    if (adapter_result.stats.instructions_consumed > request.instruction_budget) {
+        result.status = RuntimeScriptExecutionStatus::budget_exceeded;
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::instruction_budget_exceeded,
+                                 request.module_id, request.entrypoint_id,
+                                 "script execution adapter consumed more instructions than requested");
+    }
+    if (adapter_result.stats.memory_bytes_touched > request.memory_budget_bytes) {
+        result.status = RuntimeScriptExecutionStatus::budget_exceeded;
+        add_execution_diagnostic(result, RuntimeScriptExecutionDiagnosticCode::memory_budget_exceeded,
+                                 request.module_id, request.entrypoint_id,
+                                 "script execution adapter touched more memory than requested");
+    }
+    if (result.status == RuntimeScriptExecutionStatus::budget_exceeded) {
+        return result;
+    }
+
+    result.status = RuntimeScriptExecutionStatus::completed;
+    result.replay_signature = compute_replay_signature(request, adapter_result);
+    return result;
 }
 
 } // namespace mirakana::runtime

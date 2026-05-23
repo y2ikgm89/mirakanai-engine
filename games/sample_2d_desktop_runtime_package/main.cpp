@@ -179,6 +179,13 @@ struct ScriptingSandboxProbeResult {
     std::size_t replay_seed_rows{0U};
     std::uint64_t replay_seed_sum{0U};
     std::size_t diagnostics{0U};
+    mirakana::runtime::RuntimeScriptExecutionStatus execution_status{
+        mirakana::runtime::RuntimeScriptExecutionStatus::invalid_request};
+    std::size_t execution_dispatches{0U};
+    std::size_t execution_host_api_calls{0U};
+    std::uint64_t execution_replay_signature{0U};
+    std::size_t execution_diagnostics{0U};
+    bool execution_ready{false};
     bool ready{false};
 };
 
@@ -313,6 +320,21 @@ scripting_sandbox_status_name(mirakana::runtime::RuntimeScriptSandboxPlanStatus 
         return "invalid_request";
     case mirakana::runtime::RuntimeScriptSandboxPlanStatus::budget_exceeded:
         return "budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+scripting_sandbox_execution_status_name(mirakana::runtime::RuntimeScriptExecutionStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeScriptExecutionStatus::completed:
+        return "completed";
+    case mirakana::runtime::RuntimeScriptExecutionStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::runtime::RuntimeScriptExecutionStatus::budget_exceeded:
+        return "budget_exceeded";
+    case mirakana::runtime::RuntimeScriptExecutionStatus::adapter_failed:
+        return "adapter_failed";
     }
     return "unknown";
 }
@@ -1852,6 +1874,53 @@ count_scripting_sandbox_diagnostics(const mirakana::runtime::RuntimeScriptSandbo
     return count;
 }
 
+class SampleScriptingSandboxAdapter final : public mirakana::runtime::IRuntimeScriptExecutionAdapter {
+  public:
+    [[nodiscard]] mirakana::runtime::RuntimeScriptAdapterResult
+    execute(const mirakana::runtime::RuntimeScriptExecutionRequest& request,
+            const mirakana::runtime::RuntimeScriptSandboxEntrypointPlanRow& entrypoint,
+            std::span<const mirakana::runtime::RuntimeScriptSandboxPermissionPlanRow> permissions) override {
+        const auto quest_api = std::ranges::find_if(permissions, [](const auto& row) {
+            return row.allowed && row.kind == mirakana::runtime::RuntimeScriptSandboxPermissionKind::host_api &&
+                   row.host_api_id == "sample2d.quest";
+        });
+        if (quest_api == permissions.end()) {
+            return mirakana::runtime::RuntimeScriptAdapterResult{
+                .completed = false,
+                .stats =
+                    mirakana::runtime::RuntimeScriptExecutionStats{
+                        .instructions_consumed = 0U,
+                        .memory_bytes_touched = 0U,
+                        .host_api_call_count = 0U,
+                    },
+                .diagnostic_message = "sample script adapter needs the reviewed sample2d.quest host API",
+            };
+        }
+
+        return mirakana::runtime::RuntimeScriptAdapterResult{
+            .completed = true,
+            .stats =
+                mirakana::runtime::RuntimeScriptExecutionStats{
+                    .instructions_consumed = 96U,
+                    .memory_bytes_touched = 1536U,
+                    .host_api_call_count = 1U,
+                },
+            .host_api_calls =
+                {
+                    mirakana::runtime::RuntimeScriptHostApiCall{
+                        .host_api_id = quest_api->host_api_id,
+                        .payload = request.input_event_id,
+                        .source_index = quest_api->source_index,
+                    },
+                },
+            .output_rows =
+                {
+                    entrypoint.module_id + "." + entrypoint.entrypoint_id + ".completed",
+                },
+        };
+    }
+};
+
 [[nodiscard]] ScriptingSandboxProbeResult validate_scripting_sandbox_package_evidence() {
     using Code = mirakana::runtime::RuntimeScriptSandboxDiagnosticCode;
     using EntryKind = mirakana::runtime::RuntimeScriptSandboxEntrypointKind;
@@ -1943,6 +2012,27 @@ count_scripting_sandbox_diagnostics(const mirakana::runtime::RuntimeScriptSandbo
         }
     }
 
+    SampleScriptingSandboxAdapter adapter;
+    const auto execution_result = mirakana::runtime::execute_runtime_script_entrypoint(
+        mirakana::runtime::RuntimeScriptExecutionRequest{
+            .plan = &reviewed_plan,
+            .module_id = "gameplay",
+            .entrypoint_id = "tick",
+            .input_event_id = "frame.0001",
+            .instruction_budget = 120U,
+            .memory_budget_bytes = 2048U,
+            .replay_seed = 1001U,
+        },
+        adapter);
+    result.execution_status = execution_result.status;
+    result.execution_dispatches = execution_result.dispatched ? 1U : 0U;
+    result.execution_host_api_calls = execution_result.stats.host_api_call_count;
+    result.execution_replay_signature = execution_result.replay_signature;
+    result.execution_diagnostics = execution_result.diagnostics.size();
+    result.execution_ready = execution_result.succeeded() && execution_result.dispatched &&
+                             result.execution_host_api_calls == 1U && result.execution_replay_signature != 0U &&
+                             result.execution_diagnostics == 0U;
+
     const auto unsafe_policy =
         mirakana::runtime::RuntimeScriptSandboxPolicyDesc{
             .modules =
@@ -2031,7 +2121,8 @@ count_scripting_sandbox_diagnostics(const mirakana::runtime::RuntimeScriptSandbo
                    result.budget_rows == 2U && result.projected_instruction_budget == 1800U &&
                    result.projected_memory_budget_bytes == 6144U && result.budget_diagnostics == 2U &&
                    result.replay_seed_rows == 2U && result.replay_seed_sum == 3003U && result.diagnostics == 0U &&
-                   unsafe_plan.status == Status::invalid_request && budget_plan.status == Status::budget_exceeded;
+                   result.execution_ready && unsafe_plan.status == Status::invalid_request &&
+                   budget_plan.status == Status::budget_exceeded;
     return result;
 }
 
@@ -5155,6 +5246,13 @@ int main(int argc, char** argv) {
         << " scripting_sandbox_replay_seed_rows=" << scripting_sandbox_probe.replay_seed_rows
         << " scripting_sandbox_replay_seed_sum=" << scripting_sandbox_probe.replay_seed_sum
         << " scripting_sandbox_diagnostics=" << scripting_sandbox_probe.diagnostics
+        << " scripting_sandbox_execution_status="
+        << scripting_sandbox_execution_status_name(scripting_sandbox_probe.execution_status)
+        << " scripting_sandbox_execution_ready=" << (scripting_sandbox_probe.execution_ready ? 1 : 0)
+        << " scripting_sandbox_execution_dispatches=" << scripting_sandbox_probe.execution_dispatches
+        << " scripting_sandbox_execution_host_api_calls=" << scripting_sandbox_probe.execution_host_api_calls
+        << " scripting_sandbox_execution_replay_signature=" << scripting_sandbox_probe.execution_replay_signature
+        << " scripting_sandbox_execution_diagnostics=" << scripting_sandbox_probe.execution_diagnostics
         << " networking_foundation_status=" << networking_foundation_status_name(networking_foundation_probe.status)
         << " networking_foundation_ready=" << (networking_foundation_probe.ready ? 1 : 0)
         << " networking_foundation_session_rows=" << networking_foundation_probe.session_rows
@@ -5505,7 +5603,12 @@ int main(int argc, char** argv) {
                   << scripting_sandbox_probe.rejected_unsafe_capability_rows
                   << " scripting_sandbox_budget_diagnostics=" << scripting_sandbox_probe.budget_diagnostics
                   << " scripting_sandbox_replay_seed_rows=" << scripting_sandbox_probe.replay_seed_rows
-                  << " scripting_sandbox_diagnostics=" << scripting_sandbox_probe.diagnostics << '\n';
+                  << " scripting_sandbox_diagnostics=" << scripting_sandbox_probe.diagnostics
+                  << " scripting_sandbox_execution_status="
+                  << scripting_sandbox_execution_status_name(scripting_sandbox_probe.execution_status)
+                  << " scripting_sandbox_execution_dispatches=" << scripting_sandbox_probe.execution_dispatches
+                  << " scripting_sandbox_execution_diagnostics=" << scripting_sandbox_probe.execution_diagnostics
+                  << '\n';
         return 16;
     }
 
