@@ -4776,6 +4776,13 @@ MK_TEST("scene components validate camera lighting and renderer references") {
         .visible = true,
     };
     MK_REQUIRE(mirakana::is_valid_sprite_renderer_component(sprite));
+    sprite.draw_mode = mirakana::SpriteDrawMode::tiled;
+    sprite.slice_border = mirakana::SpriteSliceBorder{.left = 0.25F, .bottom = 0.25F, .right = 0.25F, .top = 0.25F};
+    sprite.tile_size = mirakana::Vec2{.x = 1.0F, .y = 1.0F};
+    MK_REQUIRE(mirakana::is_valid_sprite_renderer_component(sprite));
+    sprite.tile_size.x = 0.0F;
+    MK_REQUIRE(!mirakana::is_valid_sprite_renderer_component(sprite));
+    sprite.tile_size.x = 1.0F;
     sprite.size.x = 0.0F;
     MK_REQUIRE(!mirakana::is_valid_sprite_renderer_component(sprite));
 }
@@ -4847,6 +4854,47 @@ MK_TEST("scene serializes and restores camera light mesh and sprite components")
     MK_REQUIRE(restored_sprite->components.sprite_renderer.has_value());
     MK_REQUIRE(restored_sprite->components.sprite_renderer->sprite == mirakana::AssetId::from_name("sprites/hud-icon"));
     MK_REQUIRE(restored_sprite->components.sprite_renderer->size == (mirakana::Vec2{2.0F, 3.0F}));
+}
+
+MK_TEST("scene serializes and restores sprite tiled metadata") {
+    mirakana::Scene scene("ui-level");
+    const auto panel = scene.create_node("Panel");
+
+    mirakana::SceneNodeComponents components;
+    components.sprite_renderer = mirakana::SpriteRendererComponent{
+        .sprite = mirakana::AssetId::from_name("sprites/panel"),
+        .material = mirakana::AssetId::from_name("materials/sprite"),
+        .size = mirakana::Vec2{.x = 4.0F, .y = 3.0F},
+        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+        .visible = true,
+        .draw_mode = mirakana::SpriteDrawMode::tiled,
+        .slice_border = mirakana::SpriteSliceBorder{.left = 0.25F, .bottom = 0.2F, .right = 0.25F, .top = 0.2F},
+        .tile_size = mirakana::Vec2{.x = 0.5F, .y = 0.25F},
+    };
+    scene.set_components(panel, components);
+
+    const auto serialized = mirakana::serialize_scene(scene);
+    MK_REQUIRE(serialized.contains("node.1.sprite_renderer.draw_mode=tiled"));
+    MK_REQUIRE(serialized.contains("node.1.sprite_renderer.slice_border=0.25,0.2,0.25,0.2"));
+    MK_REQUIRE(serialized.contains("node.1.sprite_renderer.tile_size=0.5,0.25"));
+
+    const auto restored = mirakana::deserialize_scene(serialized);
+    const auto* restored_panel = restored.find_node(panel);
+    MK_REQUIRE(restored_panel != nullptr);
+    MK_REQUIRE(restored_panel->components.sprite_renderer.has_value());
+    MK_REQUIRE(restored_panel->components.sprite_renderer->draw_mode == mirakana::SpriteDrawMode::tiled);
+    MK_REQUIRE(restored_panel->components.sprite_renderer->slice_border.left == 0.25F);
+    MK_REQUIRE(restored_panel->components.sprite_renderer->slice_border.top == 0.2F);
+    MK_REQUIRE(restored_panel->components.sprite_renderer->tile_size == (mirakana::Vec2{0.5F, 0.25F}));
+}
+
+MK_TEST("sprite slice border validation rejects overlapping insets") {
+    MK_REQUIRE(mirakana::is_valid_sprite_slice_border(
+        mirakana::SpriteSliceBorder{.left = 0.25F, .bottom = 0.25F, .right = 0.25F, .top = 0.25F}));
+    MK_REQUIRE(!mirakana::is_valid_sprite_slice_border(
+        mirakana::SpriteSliceBorder{.left = 0.6F, .bottom = 0.1F, .right = 0.6F, .top = 0.1F}));
+    MK_REQUIRE(mirakana::is_valid_sprite_tile_size(mirakana::Vec2{.x = 0.5F, .y = 0.5F}));
+    MK_REQUIRE(!mirakana::is_valid_sprite_tile_size(mirakana::Vec2{.x = 0.0F, .y = 0.5F}));
 }
 
 MK_TEST("scene render packet extracts renderable components with world transforms") {

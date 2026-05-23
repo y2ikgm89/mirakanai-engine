@@ -8,6 +8,7 @@
 #include "mirakana/assets/sprite_atlas_packing.hpp"
 #include "mirakana/assets/ui_atlas_metadata.hpp"
 #include "mirakana/platform/filesystem.hpp"
+#include "mirakana/scene/components.hpp"
 #include "mirakana/ui/ui.hpp"
 
 #include <array>
@@ -242,5 +243,8 @@ author_packed_ui_glyph_atlas_from_rasterized_glyphs(const PackedUiGlyphAtlasAuth
 plan_packed_ui_glyph_atlas_package_update(const PackedUiGlyphAtlasPackageUpdateDesc& desc);
 [[nodiscard]] PackedUiGlyphAtlasPackageUpdateResult
 apply_packed_ui_glyph_atlas_package_update(IFileSystem& filesystem, const PackedUiGlyphAtlasPackageApplyDesc& desc);
+
+[[nodiscard]] bool validate_sprite_nine_slice_borders(const SpriteSliceBorder& border) noexcept;
+[[nodiscard]] bool is_valid_cooked_ui_atlas_slice_border(const SpriteSliceBorder& border) noexcept;
 
 } // namespace mirakana

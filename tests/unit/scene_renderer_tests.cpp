@@ -15,6 +15,7 @@
 #include "mirakana/scene/scene.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -457,6 +458,107 @@ MK_TEST("scene sprite sort stats count layers and reordering") {
     MK_REQUIRE(sprites[0].node.value == 1);
     MK_REQUIRE(sprites[1].node.value == 3);
     MK_REQUIRE(sprites[2].node.value == 2);
+}
+
+MK_TEST("scene sprite nine slice expansion emits nine sub sprite commands with corner uvs") {
+    mirakana::SceneRenderPacket packet;
+    packet.sprites.push_back(mirakana::SceneRenderSprite{
+        .node = mirakana::SceneNodeId{1},
+        .world_from_node = mirakana::Mat4::identity(),
+        .renderer =
+            mirakana::SpriteRendererComponent{
+                .sprite = mirakana::AssetId::from_name("sprites/panel"),
+                .material = mirakana::AssetId::from_name("materials/sprite"),
+                .size = mirakana::Vec2{.x = 4.0F, .y = 3.0F},
+                .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                .visible = true,
+                .draw_mode = mirakana::SpriteDrawMode::nine_slice,
+                .slice_border =
+                    mirakana::SpriteSliceBorder{.left = 0.25F, .bottom = 0.25F, .right = 0.25F, .top = 0.25F},
+            },
+    });
+
+    std::vector<mirakana::SpriteCommand> commands;
+    const auto stats = mirakana::expand_scene_sprite_commands(packet, commands);
+
+    MK_REQUIRE(stats.source_sprite_count == 1);
+    MK_REQUIRE(stats.nine_slice_count == 1);
+    MK_REQUIRE(stats.tiled_count == 0);
+    MK_REQUIRE(stats.expanded_sprite_count == 9);
+    MK_REQUIRE(commands.size() == 9);
+
+    const auto bottom_left_it =
+        std::find_if(commands.begin(), commands.end(), [](const mirakana::SpriteCommand& command) {
+            return command.texture.uv_rect.u1 <= 0.26F && command.texture.uv_rect.v1 <= 0.26F;
+        });
+    MK_REQUIRE(bottom_left_it != commands.end());
+    MK_REQUIRE(bottom_left_it->transform.scale.x == 1.0F);
+    MK_REQUIRE(bottom_left_it->transform.scale.y == 0.75F);
+}
+
+MK_TEST("scene sprite tiled expansion emits repeated center tiles") {
+    mirakana::SceneRenderPacket packet;
+    packet.sprites.push_back(mirakana::SceneRenderSprite{
+        .node = mirakana::SceneNodeId{1},
+        .world_from_node = mirakana::Mat4::identity(),
+        .renderer =
+            mirakana::SpriteRendererComponent{
+                .sprite = mirakana::AssetId::from_name("sprites/floor"),
+                .material = mirakana::AssetId::from_name("materials/sprite"),
+                .size = mirakana::Vec2{.x = 6.0F, .y = 4.0F},
+                .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                .visible = true,
+                .draw_mode = mirakana::SpriteDrawMode::tiled,
+                .slice_border =
+                    mirakana::SpriteSliceBorder{.left = 0.25F, .bottom = 0.25F, .right = 0.25F, .top = 0.25F},
+                .tile_size = mirakana::Vec2{.x = 1.0F, .y = 1.0F},
+            },
+    });
+
+    std::vector<mirakana::SpriteCommand> commands;
+    const auto stats = mirakana::expand_scene_sprite_commands(packet, commands);
+
+    MK_REQUIRE(stats.source_sprite_count == 1);
+    MK_REQUIRE(stats.nine_slice_count == 0);
+    MK_REQUIRE(stats.tiled_count == 1);
+    MK_REQUIRE(stats.expanded_sprite_count == 20);
+    MK_REQUIRE(commands.size() == stats.expanded_sprite_count);
+
+    std::size_t center_tiles = 0;
+    for (const mirakana::SpriteCommand& command : commands) {
+        if (command.texture.uv_rect.u0 >= 0.24F && command.texture.uv_rect.u1 <= 0.76F &&
+            command.texture.uv_rect.v0 >= 0.24F && command.texture.uv_rect.v1 <= 0.76F) {
+            ++center_tiles;
+        }
+    }
+    MK_REQUIRE(center_tiles == 6);
+}
+
+MK_TEST("scene sprite expansion fails closed for invalid nine slice borders") {
+    mirakana::SceneRenderPacket packet;
+    packet.sprites.push_back(mirakana::SceneRenderSprite{
+        .node = mirakana::SceneNodeId{1},
+        .world_from_node = mirakana::Mat4::identity(),
+        .renderer =
+            mirakana::SpriteRendererComponent{
+                .sprite = mirakana::AssetId::from_name("sprites/panel"),
+                .material = mirakana::AssetId::from_name("materials/sprite"),
+                .size = mirakana::Vec2{.x = 4.0F, .y = 3.0F},
+                .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+                .visible = true,
+                .draw_mode = mirakana::SpriteDrawMode::nine_slice,
+                .slice_border = mirakana::SpriteSliceBorder{.left = 0.6F, .bottom = 0.25F, .right = 0.6F, .top = 0.25F},
+            },
+    });
+
+    std::vector<mirakana::SpriteCommand> commands;
+    const auto stats = mirakana::expand_scene_sprite_commands(packet, commands);
+
+    MK_REQUIRE(stats.source_sprite_count == 1);
+    MK_REQUIRE(stats.expanded_sprite_count == 1);
+    MK_REQUIRE(stats.nine_slice_count == 0);
+    MK_REQUIRE(stats.tiled_count == 0);
+    MK_REQUIRE(commands.size() == 1);
 }
 
 MK_TEST("scene sprite batch telemetry plans scene packet sprite batches") {
