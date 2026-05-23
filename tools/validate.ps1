@@ -320,14 +320,10 @@ function Invoke-ValidateToolScriptBatch {
     }
 }
 
-foreach ($scriptFileName in @(
-        "check-license.ps1",
-        "check-toolchain.ps1"
-    )) {
-    Invoke-ValidateToolScript -ScriptFileName $scriptFileName
-}
+Invoke-ValidateToolScript -ScriptFileName "check-toolchain.ps1"
 
 $staticTasks = @(
+    New-ValidateTask -ScriptFileName "check-license.ps1"
     New-ValidateTask -ScriptFileName "check-agents.ps1"
     New-ValidateTask -ScriptFileName "check-json-contracts.ps1"
     New-ValidateTask -ScriptFileName "check-validation-recipe-runner.ps1"

@@ -708,6 +708,9 @@ $androidReleasePackageScriptText = Get-Content -LiteralPath (Join-Path $root "to
 if (-not $validateScriptText.Contains("check-ci-matrix.ps1")) {
     Write-Error "tools/validate.ps1 must run check-ci-matrix.ps1"
 }
+Assert-ContainsText $validateScriptText 'Invoke-ValidateToolScript -ScriptFileName "check-toolchain.ps1"' "tools/validate.ps1"
+Assert-ContainsText $validateScriptText 'New-ValidateTask -ScriptFileName "check-license.ps1"' "tools/validate.ps1"
+Assert-DoesNotContainText $validateScriptText 'Invoke-ValidateToolScript -ScriptFileName "check-license.ps1"' "tools/validate.ps1"
 Assert-ContainsText $commonScriptText "function Join-OptionalPath" "tools/common.ps1"
 Assert-ContainsText $commonScriptText "function Get-LocalApplicationDataRoot" "tools/common.ps1"
 Assert-ContainsText $commonScriptText "function Resolve-ParallelJobCount" "tools/common.ps1"
