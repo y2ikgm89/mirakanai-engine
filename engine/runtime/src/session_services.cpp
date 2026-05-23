@@ -183,6 +183,16 @@ void add_runtime_session_profile_resume_diagnostic(std::vector<RuntimeSessionPro
                                                                 .message = std::move(message)});
 }
 
+void add_runtime_simulation_persistence_diagnostic(std::vector<RuntimeSimulationPersistenceDiagnostic>& diagnostics,
+                                                   RuntimeSimulationPersistenceDiagnosticCode code, std::string field,
+                                                   std::string expected, std::string actual, std::string message) {
+    diagnostics.push_back(RuntimeSimulationPersistenceDiagnostic{.code = code,
+                                                                 .field = std::move(field),
+                                                                 .expected = std::move(expected),
+                                                                 .actual = std::move(actual),
+                                                                 .message = std::move(message)});
+}
+
 void validate_entry_key(std::string_view key, std::string_view diagnostic_name) {
     if (key.empty()) {
         throw std::invalid_argument(std::string(diagnostic_name) + " key must not be empty");
@@ -216,6 +226,15 @@ void validate_locale(std::string_view locale) {
         throw std::invalid_argument(std::string(diagnostic_name) + " integer value is invalid");
     }
     return static_cast<std::uint32_t>(parsed);
+}
+
+[[nodiscard]] std::uint64_t parse_u64(std::string_view value, std::string_view diagnostic_name) {
+    std::uint64_t parsed = 0;
+    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
+    if (error != std::errc{} || end != value.data() + value.size()) {
+        throw std::invalid_argument(std::string(diagnostic_name) + " integer value is invalid");
+    }
+    return parsed;
 }
 
 [[nodiscard]] float parse_float(std::string_view value, std::string_view diagnostic_name) {
@@ -1740,6 +1759,10 @@ bool RuntimeSessionProfileResumePlan::ready() const noexcept {
     return status == RuntimeSessionProfileResumeStatus::ready && diagnostics.empty();
 }
 
+bool RuntimeSimulationPersistencePlan::ready() const noexcept {
+    return status == RuntimeSimulationPersistenceStatus::ready && diagnostics.empty();
+}
+
 void RuntimeLocalizationCatalog::set_text(std::string key, std::string text) {
     set_sorted_entry(entries_, std::move(key), std::move(text), "runtime localization");
 }
@@ -2991,6 +3014,299 @@ RuntimeSessionProfileResumePlan plan_runtime_session_profile_resume(const Runtim
     if (plan.diagnostics.empty()) {
         plan.status = RuntimeSessionProfileResumeStatus::ready;
     }
+    return plan;
+}
+
+RuntimeSimulationPersistencePlan
+plan_runtime_simulation_persistence(const RuntimeSimulationPersistenceRequest& request) {
+    struct EntityAccumulator {
+        std::string entity_id;
+        std::string entity_type;
+        std::string region_id;
+        std::string state_hash;
+        bool has_type{false};
+        bool has_region{false};
+        bool has_state_hash{false};
+    };
+
+    RuntimeSimulationPersistencePlan plan;
+    plan.save_schema_version = request.documents.save_data.schema_version;
+    plan.settings_schema_version = request.documents.settings.schema_version;
+
+    bool saw_save_document_row = false;
+    bool loaded_save_document = false;
+    for (const auto& row : request.documents.rows) {
+        if (row.kind != RuntimeSessionProfileDocumentKind::save_data) {
+            continue;
+        }
+        saw_save_document_row = true;
+        if (row.status == RuntimeSessionProfileDocumentStatus::loaded) {
+            loaded_save_document = true;
+            continue;
+        }
+        add_runtime_simulation_persistence_diagnostic(
+            plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::blocking_document_status,
+            std::string(runtime_session_profile_document_kind_name(row.kind)), {},
+            std::string(runtime_session_profile_document_status_name(row.status)),
+            row.diagnostic.empty() ? "runtime simulation persistence requires loaded profile documents"
+                                   : row.diagnostic);
+        if (row.kind == RuntimeSessionProfileDocumentKind::save_data &&
+            row.status == RuntimeSessionProfileDocumentStatus::failed_corrupt) {
+            add_runtime_simulation_persistence_diagnostic(
+                plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::corrupt_save_document, "save_data", {},
+                row.diagnostic, "runtime simulation persistence requires corrupt save remediation");
+            plan.status = RuntimeSimulationPersistenceStatus::remediation_required;
+            plan.remediation_action = RuntimeSimulationPersistenceRemediationAction::quarantine_corrupt_save;
+        } else if (row.kind == RuntimeSessionProfileDocumentKind::save_data &&
+                   row.status == RuntimeSessionProfileDocumentStatus::failed_unsupported_version) {
+            plan.status = RuntimeSimulationPersistenceStatus::remediation_required;
+            plan.remediation_action = RuntimeSimulationPersistenceRemediationAction::reset_unsupported_save;
+        }
+    }
+    if (!saw_save_document_row) {
+        add_runtime_simulation_persistence_diagnostic(
+            plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::blocking_document_status, "save_data", {},
+            "missing_document_row", "runtime simulation persistence requires a loaded save document row");
+    } else if (!loaded_save_document &&
+               plan.remediation_action == RuntimeSimulationPersistenceRemediationAction::none) {
+        plan.status = RuntimeSimulationPersistenceStatus::blocked;
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+
+    if (request.minimum_supported_schema_version == 0U ||
+        request.current_schema_version < request.minimum_supported_schema_version) {
+        add_runtime_simulation_persistence_diagnostic(
+            plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::invalid_migration_step,
+            "current_schema_version", std::to_string(request.minimum_supported_schema_version),
+            std::to_string(request.current_schema_version), "runtime simulation persistence schema policy is invalid");
+        return plan;
+    }
+
+    if (plan.save_schema_version < request.minimum_supported_schema_version ||
+        plan.save_schema_version > request.current_schema_version) {
+        add_runtime_simulation_persistence_diagnostic(
+            plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::unsupported_schema_version, "schema.version",
+            std::to_string(request.current_schema_version), std::to_string(plan.save_schema_version),
+            "runtime simulation persistence save schema version is unsupported");
+        plan.status = RuntimeSimulationPersistenceStatus::remediation_required;
+        plan.remediation_action = RuntimeSimulationPersistenceRemediationAction::reset_unsupported_save;
+        return plan;
+    }
+
+    const auto require_save_value =
+        [&](std::string_view key, std::string_view expected, RuntimeSimulationPersistenceDiagnosticCode missing_code,
+            RuntimeSimulationPersistenceDiagnosticCode mismatch_code, std::string& output, std::string_view label) {
+            const auto* actual = request.documents.save_data.find_value(key);
+            if (actual == nullptr || actual->empty()) {
+                add_runtime_simulation_persistence_diagnostic(
+                    plan.diagnostics, missing_code, std::string(key), std::string(expected), {},
+                    std::string("runtime simulation persistence missing ") + std::string(label));
+                return;
+            }
+            output = *actual;
+            if (!expected.empty() && *actual != expected) {
+                add_runtime_simulation_persistence_diagnostic(
+                    plan.diagnostics, mismatch_code, std::string(key), std::string(expected), *actual,
+                    std::string("runtime simulation persistence mismatched ") + std::string(label));
+            }
+        };
+
+    require_save_value(request.save_slot_key, request.expected_save_slot,
+                       RuntimeSimulationPersistenceDiagnosticCode::missing_save_slot,
+                       RuntimeSimulationPersistenceDiagnosticCode::save_slot_mismatch, plan.save_slot, "save slot");
+    require_save_value(request.world_id_key, request.expected_world_id,
+                       RuntimeSimulationPersistenceDiagnosticCode::missing_world_id,
+                       RuntimeSimulationPersistenceDiagnosticCode::world_id_mismatch, plan.world_id, "world id");
+    const auto* snapshot_id = request.documents.save_data.find_value(request.snapshot_id_key);
+    if (snapshot_id == nullptr || snapshot_id->empty()) {
+        add_runtime_simulation_persistence_diagnostic(
+            plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::missing_snapshot_id, request.snapshot_id_key,
+            {}, {}, "runtime simulation persistence missing snapshot id");
+    } else {
+        plan.snapshot_id = *snapshot_id;
+    }
+
+    const auto* world_tick = request.documents.save_data.find_value(request.world_tick_key);
+    if (world_tick == nullptr || world_tick->empty()) {
+        add_runtime_simulation_persistence_diagnostic(
+            plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::missing_world_tick, request.world_tick_key,
+            {}, {}, "runtime simulation persistence missing world tick");
+    } else {
+        try {
+            plan.world_tick = parse_u64(*world_tick, "runtime simulation persistence world tick");
+        } catch (const std::exception& error) {
+            add_runtime_simulation_persistence_diagnostic(
+                plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::invalid_world_tick,
+                request.world_tick_key, {}, *world_tick, error.what());
+        }
+    }
+
+    std::vector<EntityAccumulator> entities;
+    const auto find_entity = [&entities](std::string_view entity_id) {
+        return std::ranges::find(entities, entity_id, &EntityAccumulator::entity_id);
+    };
+    for (const auto& entry : request.documents.save_data.entries()) {
+        if (!entry.key.starts_with(request.entity_key_prefix)) {
+            continue;
+        }
+        const auto suffix = std::string_view{entry.key}.substr(request.entity_key_prefix.size());
+        const auto separator = suffix.find('.');
+        if (separator == std::string_view::npos || separator == 0U || separator + 1U == suffix.size()) {
+            add_runtime_simulation_persistence_diagnostic(
+                plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::malformed_entity_state, entry.key, {},
+                entry.value, "runtime simulation persistence entity state key is malformed");
+            continue;
+        }
+        const auto entity_id = suffix.substr(0, separator);
+        const auto field = suffix.substr(separator + 1U);
+        if (!is_valid_runtime_profile_path_identifier(entity_id)) {
+            add_runtime_simulation_persistence_diagnostic(
+                plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::malformed_entity_state, entry.key, {},
+                entry.value, "runtime simulation persistence entity id is invalid");
+            continue;
+        }
+        auto it = find_entity(entity_id);
+        if (it == entities.end()) {
+            it = entities.insert(entities.end(), EntityAccumulator{.entity_id = std::string(entity_id)});
+        }
+        const auto set_entity_field = [&](std::string& output, bool& present, std::string_view field_name) {
+            if (present) {
+                add_runtime_simulation_persistence_diagnostic(
+                    plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::duplicate_entity_state,
+                    std::string(request.entity_key_prefix) + std::string(entity_id) + "." + std::string(field_name), {},
+                    entry.value, "runtime simulation persistence entity state field is duplicate");
+                return;
+            }
+            output = entry.value;
+            present = true;
+        };
+        if (field == "type") {
+            set_entity_field(it->entity_type, it->has_type, "type");
+        } else if (field == "region") {
+            set_entity_field(it->region_id, it->has_region, "region");
+        } else if (field == "state_hash") {
+            set_entity_field(it->state_hash, it->has_state_hash, "state_hash");
+        } else {
+            add_runtime_simulation_persistence_diagnostic(
+                plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::malformed_entity_state, entry.key,
+                "type|region|state_hash", std::string(field),
+                "runtime simulation persistence entity state field is unsupported");
+        }
+    }
+
+    std::ranges::sort(entities, {}, &EntityAccumulator::entity_id);
+    for (const auto& entity : entities) {
+        if (!entity.has_type || !entity.has_region || !entity.has_state_hash || entity.entity_type.empty() ||
+            entity.region_id.empty() || entity.state_hash.empty()) {
+            add_runtime_simulation_persistence_diagnostic(
+                plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::missing_entity_state,
+                std::string(request.entity_key_prefix) + entity.entity_id, "type,region,state_hash", {},
+                "runtime simulation persistence entity row is incomplete");
+            continue;
+        }
+        plan.entity_rows.push_back(RuntimeSimulationPersistentEntityRow{.entity_id = entity.entity_id,
+                                                                        .entity_type = entity.entity_type,
+                                                                        .region_id = entity.region_id,
+                                                                        .state_hash = entity.state_hash});
+    }
+
+    for (const auto& required_entity_id : request.required_entity_ids) {
+        const auto row =
+            std::ranges::find(plan.entity_rows, required_entity_id, &RuntimeSimulationPersistentEntityRow::entity_id);
+        if (row == plan.entity_rows.end()) {
+            add_runtime_simulation_persistence_diagnostic(
+                plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::missing_required_entity,
+                std::string(request.entity_key_prefix) + required_entity_id, {}, {},
+                "runtime simulation persistence required entity state is missing");
+        }
+    }
+
+    if (plan.save_schema_version < request.current_schema_version) {
+        std::vector<RuntimeSimulationPersistenceMigrationStep> valid_migrations;
+        for (const auto& migration : request.supported_migrations) {
+            if (migration.migration_id.empty() || migration.from_schema_version >= migration.to_schema_version) {
+                add_runtime_simulation_persistence_diagnostic(
+                    plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::invalid_migration_step,
+                    "supported_migrations", {}, migration.migration_id,
+                    "runtime simulation persistence migration step is invalid");
+                continue;
+            }
+            valid_migrations.push_back(migration);
+        }
+        std::ranges::sort(valid_migrations, [](const RuntimeSimulationPersistenceMigrationStep& lhs,
+                                               const RuntimeSimulationPersistenceMigrationStep& rhs) {
+            if (lhs.from_schema_version != rhs.from_schema_version) {
+                return lhs.from_schema_version < rhs.from_schema_version;
+            }
+            if (lhs.to_schema_version != rhs.to_schema_version) {
+                return lhs.to_schema_version < rhs.to_schema_version;
+            }
+            return lhs.migration_id < rhs.migration_id;
+        });
+
+        const auto chain_is_better = [](const std::vector<RuntimeSimulationPersistenceMigrationStep>& lhs,
+                                        const std::vector<RuntimeSimulationPersistenceMigrationStep>& rhs) {
+            if (lhs.size() != rhs.size()) {
+                return lhs.size() < rhs.size();
+            }
+            for (std::size_t index = 0; index < lhs.size(); ++index) {
+                if (lhs[index].from_schema_version != rhs[index].from_schema_version) {
+                    return lhs[index].from_schema_version < rhs[index].from_schema_version;
+                }
+                if (lhs[index].to_schema_version != rhs[index].to_schema_version) {
+                    return lhs[index].to_schema_version < rhs[index].to_schema_version;
+                }
+                if (lhs[index].migration_id != rhs[index].migration_id) {
+                    return lhs[index].migration_id < rhs[index].migration_id;
+                }
+            }
+            return false;
+        };
+
+        std::function<std::optional<std::vector<RuntimeSimulationPersistenceMigrationStep>>(std::uint32_t)>
+            build_chain = [&](std::uint32_t schema_version)
+            -> std::optional<std::vector<RuntimeSimulationPersistenceMigrationStep>> {
+            if (schema_version == request.current_schema_version) {
+                return std::vector<RuntimeSimulationPersistenceMigrationStep>{};
+            }
+
+            std::optional<std::vector<RuntimeSimulationPersistenceMigrationStep>> best_chain;
+            for (const auto& migration : valid_migrations) {
+                if (migration.from_schema_version != schema_version ||
+                    migration.to_schema_version > request.current_schema_version) {
+                    continue;
+                }
+                auto suffix = build_chain(migration.to_schema_version);
+                if (!suffix.has_value()) {
+                    continue;
+                }
+                std::vector<RuntimeSimulationPersistenceMigrationStep> candidate{migration};
+                candidate.insert(candidate.end(), suffix->begin(), suffix->end());
+                if (!best_chain.has_value() || chain_is_better(candidate, *best_chain)) {
+                    best_chain = std::move(candidate);
+                }
+            }
+            return best_chain;
+        };
+
+        if (auto migration_chain = build_chain(plan.save_schema_version)) {
+            plan.migration_rows = std::move(*migration_chain);
+        } else {
+            add_runtime_simulation_persistence_diagnostic(
+                plan.diagnostics, RuntimeSimulationPersistenceDiagnosticCode::missing_migration_step, "schema.version",
+                std::to_string(request.current_schema_version), std::to_string(plan.save_schema_version),
+                "runtime simulation persistence migration chain is incomplete");
+        }
+    }
+
+    if (!plan.diagnostics.empty()) {
+        return plan;
+    }
+    plan.status = plan.migration_rows.empty() ? RuntimeSimulationPersistenceStatus::ready
+                                              : RuntimeSimulationPersistenceStatus::migration_required;
     return plan;
 }
 

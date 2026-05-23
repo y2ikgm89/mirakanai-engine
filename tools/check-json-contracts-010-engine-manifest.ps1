@@ -661,6 +661,22 @@ if ($productionLoop.recommendedNextPlan.PSObject.Properties.Name.Contains("path"
     -not (Test-Path (Join-Path $root $productionLoop.recommendedNextPlan.path))) {
     Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan references missing document: $($productionLoop.recommendedNextPlan.path)"
 }
+$planRegistryTextForPointers = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/plans/README.md") -Raw
+Assert-ContainsText $planRegistryTextForPointers 'next remaining child is `simulation-persistence-v1`' "docs/superpowers/plans/README.md active child pointer"
+$productionMasterPlanTextForPointers = Get-Content -LiteralPath (Join-Path $root "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") -Raw
+Assert-ContainsText $productionMasterPlanTextForPointers 'recommendedNextPlan.id = simulation-persistence-v1' "production completion master plan recommended next pointer"
+Assert-Properties $engine.gameCodeGuidance @("currentRuntimeSimulationPersistence") "engine manifest gameCodeGuidance"
+$runtimeSimulationPersistenceGuidance = [string]$engine.gameCodeGuidance.currentRuntimeSimulationPersistence
+foreach ($runtimeSimulationPersistenceGuidanceNeedle in @(
+        "RuntimeSimulationPersistenceRequest",
+        "RuntimeSimulationPersistencePlan",
+        "RuntimeSimulationPersistenceRemediationAction",
+        "plan_runtime_simulation_persistence",
+        "blocking save document status",
+        "binary compatibility policy"
+    )) {
+    Assert-ContainsText $runtimeSimulationPersistenceGuidance $runtimeSimulationPersistenceGuidanceNeedle "engine manifest gameCodeGuidance.currentRuntimeSimulationPersistence"
+}
 Assert-ProductionCompletionCorpus
 Assert-SpecStatusSection
 Assert-ActiveProductionPlanDrift $productionLoop
