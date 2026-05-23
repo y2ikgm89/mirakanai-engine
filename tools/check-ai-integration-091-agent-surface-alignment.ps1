@@ -22,7 +22,7 @@ $agentSurfaceAlignmentChecks = @(
     },
     @{
         Path = "docs/ai-integration.md"
-        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "aiSurfaces.crossToolAlignment", "games/<game_name>/", "tools/create-game-recipe.ps1", "gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>", "direct default-branch push", "arbitrary shell or raw manifest command evaluation", "backend/native handle public game API", "validation weakening")
+        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "aiSurfaces.crossToolAlignment", "games/<game_name>/", "tools/create-game-recipe.ps1", "gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>", "direct default-branch push", "arbitrary shell or raw manifest command evaluation", "backend/native handle public game API", "validation weakening", "model: composer-2.5-fast", "500-line rule guidance", "OpenAI developer docs MCP")
     },
     @{
         Path = "docs/current-capabilities.md"
@@ -70,7 +70,15 @@ $agentSurfaceAlignmentChecks = @(
     },
     @{
         Path = ".cursor/rules/mirakana-repository-baseline.mdc"
-        Needles = @("AGENTS.md", ".cursor/skills/", "tools/*.ps1", "never push directly to the default branch")
+        Needles = @("AGENTS.md", ".cursor/skills/", "tools/*.ps1", "never push directly to the default branch", "500-line budget")
+    },
+    @{
+        Path = ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+        Needles = @("model: composer-2.5-fast", "500-line rule budget", "Cursor subagent frontmatter")
+    },
+    @{
+        Path = "tools/check-agents.ps1"
+        Needles = @('Cursor rule exceeds official 500-line guidance', 'model: ${RequiredModel}', 'composer-2.5-fast')
     }
 )
 

@@ -2,13 +2,14 @@
 
 ## Language
 
-- Respond to the user in Japanese.
-- Keep code, commands, paths, and public API names in ASCII.
+- Respond in Japanese.
+- Keep code, commands, paths, and public API names ASCII.
 
 ## Instruction Hygiene
 
-- Treat this file as the shared, repository-wide baseline for durable project instructions.
-- Keep instructions specific, concise, verifiable, and grouped under clear Markdown headings.
+- Treat this file as the shared durable project baseline.
+- Keep instructions specific, concise, verifiable, and grouped.
+- Follow the AGENTS.md open format: standard Markdown, no required metadata, focused on setup, validation, style, architecture, and security. Put scoped or long guidance elsewhere.
 - Keep this always-loaded file under Codex's default 32 KiB `project_doc_max_bytes` budget; `tools/check-agents.ps1` enforces this. Move long procedures to skills/docs/subagents/manifest.
 - Do not put long procedures, stale status snapshots, personal preferences, credentials, API keys, MCP connection state, or machine-specific paths in tracked instructions.
 - Put reusable workflows in skills, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the **composed** `engine/agent/manifest.json` (maintain them by editing `engine/agent/manifest.fragments/*.json` and running `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; see `engine/agent/manifest.fragments/README.md` and `docs/adr/0002-agent-manifest-fragments-compose.md`).
@@ -112,11 +113,7 @@
 - For Linux coverage policy changes, remember hosted `lcov` 2.x treats unmatched remove filters as errors. Keep optional `lcovRemovePatterns` guarded with `lcov --ignore-errors unused`, and update `tools/check-coverage-thresholds.ps1` when changing coverage filtering.
 - Windows diagnostics use official host tools: Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit. Treat them as host diagnostics, not repository runtime dependencies.
 - If CMake, `clang-format`, or a compiler is missing, report that validation is blocked by missing local tools and include the exact failing command.
-- For C++ changes, the intended validation loop is:
-  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`
-  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
-  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev`
-  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure`
+- For C++ changes, the intended loop is `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev`, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure`.
 
 ## Dependency Bootstrap and vcpkg
 
@@ -155,9 +152,9 @@
 
 ## Git Workflow
 
-- Keep shared ignores in `.gitignore`, repository-local ignores in `.git/info/exclude`, and user-wide editor/backup ignores in readable user `core.excludesFile`. If sandboxed Git reports unreadable global ignore such as `$HOME/.config/git/ignore`, prefer a repo-local `core.excludesFile` in `.git/config` instead of weakening repo permissions.
-- If Git author identity is missing, set `user.name` and `user.email` with `git config --local` unless the user explicitly requests global identity.
-- Use validated commit checkpoints: commit only task-owned, complete, validated phases. Never commit broken work, scratch output, secrets, credentials, or unrelated changes. Runtime/C++/build/toolchain/public-contract commits need one fresh `tools/validate.ps1`; run `tools/build.ps1` only when standalone build evidence is requested. Docs/non-runtime slices may record narrower justified checks.
+- Keep shared ignores in `.gitignore`, repo-local ignores in `.git/info/exclude`, and user editor/backup ignores in readable user `core.excludesFile`; if unreadable, prefer a repo-local `core.excludesFile` in `.git/config` instead of weakening permissions.
+- If Git author identity is missing, set `user.name` and `user.email` with `git config --local` unless global identity is explicitly requested.
+- Use validated commit checkpoints: commit only task-owned, complete, validated phases; never commit broken work, scratch output, secrets, credentials, or unrelated changes. Runtime/C++/build/toolchain/public-contract commits need one fresh `tools/validate.ps1`; run `tools/build.ps1` only when standalone build evidence is requested. Docs/non-runtime slices may record narrower justified checks.
 - Follow official GitHub Flow: topic branch, reviewable PR, review/checks, merge, branch deletion. Cadence is purpose/checkpoint-based, not commit-count-based: commit validated phases, push validated checkpoints for backup/CI/review/handoff, keep one PR per focused capability/gap-cluster/milestone, and split unrelated work. Inspect status, staged diff, `git diff --cached --check`, and remote state before pushing.
 - A slice is **not publication-complete after local validation alone**. Unless local-only/no-PR, publish validated changes through `gh pr create` with evidence/blocker before final report; open draft PRs for large slices; use `codex-<topic>` on ref conflict; use `tools/ready-task-pr.ps1` for ready after preflight. Leave unrelated changes unstaged.
 - Treat Codex command policy as session-scoped: after editing `.codex/rules/*.rules`, wait for policy reload or a new session when newly allowed commands still require a prompt and approvals are unavailable; do not retry by weakening rules.
@@ -166,14 +163,15 @@
 - Draft-to-ready automation must use `tools/ready-task-pr.ps1`, not raw `gh pr ready`. It requires a clean task branch, local/remote/PR head match, open draft, base, `MERGEABLE`/`CLEAN`, no requested changes or failed/pending checks, and `PR Gate` `SUCCESS`.
 - After a PR merges into `main`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch]` for linked worktree cleanup; it fetches/prunes, requires a clean base checkout, fast-forwards it, accepts standard roots, unlinks worktree-local vcpkg links, and keeps Windows fallback guarded/non-following. No ad hoc deletion; record no target.
 - Raw PR state changes through `gh pr edit`, immediate `gh pr merge` without `--auto`, raw `gh pr ready`, `gh pr close`, or `gh pr reopen` remain prompt-gated. If the wrapper blocks, use GitHub Desktop/Web or an approval-capable session.
-- Git warnings are local maintenance. Missing `credential-manager-core`: inspect `git config --show-origin --get-all credential.helper`, prefer `manager`, no repo overrides. Auto-GC loose objects: clean `git status --short --branch`, inspect `git count-objects -vH`, run `git maintenance run --task=gc`; avoid `git prune` / `git gc --prune=now` unless requested.
+- Git warnings are local maintenance. Missing `credential-manager-core`: inspect `git config --show-origin --get-all credential.helper`, prefer `manager`, and avoid repo overrides. Auto-GC loose objects: clean `git status --short --branch`, inspect `git count-objects -vH`, then `git maintenance run --task=gc`; avoid `git prune` / `git gc --prune=now` unless requested.
 
 ## AI Tool Integration
 
 - Codex reads `AGENTS.md`, `.agents/skills/`, `.codex/agents/`, and `.codex/rules/`; Claude Code reads `CLAUDE.md`, `.claude/settings.json`, `.claude/skills/`, and `.claude/agents/`; Cursor reads root `AGENTS.md`, `.cursor/rules/`, `.cursor/skills/`, and `.cursor/agents/`. Treat `AGENTS.md` as the authoritative baseline.
 - Codex project escalation policy lives in `.codex/rules/`. Keep rules narrow, covered by `match` / `not_match` examples, and aligned with **PowerShell 7** (`pwsh`) for `tools/*.ps1`; do not add broad allow rules for shells, package managers, network tools, destructive commands, force-pushes, or immediate PR merges. Direct default-branch pushes are outside the official GitHub Flow path and must be blocked by project policy and repository branch protection.
 - Claude Code shared permissions live in `.claude/settings.json` with the official JSON schema. Deny secrets and direct default-branch pushes; allow read-only PR preflight, task-owned PR creation, guarded `tools/ready-task-pr.ps1`, and auto-merge registration after validation; keep destructive, network, dependency-bootstrap, mobile signing/smoke, force-push, immediate PR merge, raw `gh pr ready`, and other PR state changes behind approval. Keep `.claude/settings.local.json`, `.mcp.json`, and `AGENTS.override.md` uncommitted.
-- Use Context7 MCP for library, SDK, build-system, and toolchain docs such as CMake, vcpkg, SDL3, Dear ImGui, Direct3D 12, Vulkan, Metal, and C++ tooling. Use the OpenAI developer documentation MCP, or official OpenAI documentation when MCP is unavailable, for OpenAI API, Codex, ChatGPT Apps SDK, OpenAI agent, and OpenAI model questions. Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagent behavior. Keep MCP keys and connector state user-local.
+- Cursor project rules belong in focused `.cursor/rules/*.mdc` files with metadata, concrete examples, scoped content, and Cursor's 500-line rule budget. Cursor treats root `AGENTS.md` as plain Markdown global guidance; use `.cursor/rules/` for scoped instructions, `.cursor/skills/*/SKILL.md` for on-demand workflows, and `.cursor/agents/*.md` for focused subagents. Cursor project subagents pin `model: composer-2.5-fast` unless the operator names another supported Cursor model.
+- Use Context7 MCP for library, SDK, build-system, and toolchain docs such as CMake, vcpkg, SDL3, Dear ImGui, Direct3D 12, Vulkan, Metal, and C++ tooling. Always use the OpenAI developer documentation MCP server for OpenAI API, ChatGPT Apps SDK, Codex, OpenAI agent, and OpenAI model questions when available; otherwise use official OpenAI docs. Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagent behavior. Keep MCP keys and connector state user-local.
 - Keep Codex/Claude/Cursor overlapping instructions behaviorally equivalent. Do not change one Codex/Claude skill pair without updating shared docs or validation checks; update `.cursor/skills/` and `.cursor/agents/` when the workflow also applies inside Cursor.
 - The engine-facing AI integration contract is composed `engine/agent/manifest.json`; **do not hand-edit** it. Edit `engine/agent/manifest.fragments/` and run `tools/compose-agent-manifest.ps1 -Write`. Keep runtime backend readiness, importer capabilities, packaging targets, validation recipes, and JSON Schema entrypoint `schemas/engine-agent.schema.json` honest and machine-readable.
 - When adding/renaming retained editor UI row ids such as `play_in_editor.*`, CMake target names, or other AI-contract literals enforced in `tools/check-ai-integration.ps1`, extend the relevant Needles and keep `.agents/skills/editor-change/SKILL.md`, `.claude/skills/gameengine-editor/SKILL.md`, and manifest checks aligned.
@@ -183,12 +181,11 @@
 ## AI-Driven Game Development
 
 - Games, manifests, scaffolding, desktop runtime, and Android lanes live in [docs/agent-operational-reference.md](docs/agent-operational-reference.md#ai-driven-game-development-expanded).
-- Games live under `games/<game_name>/`; `game_name` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-game.ps1 -Name <game_name>` values match `^[a-z][a-z0-9_]*$`. Source-tree game directories and `runtimePackageFiles` path segments stay lowercase snake_case; JSON manifest IDs, display names, and package ids may use kebab-case.
-- Every game has `game.agent.json` with backend readiness, importer requirements, packaging targets, runtime package files, runtime scene validation targets, and validation recipes.
-- Most sample games are headless validation executables. Only `sample_desktop_runtime_shell` and `sample_desktop_runtime_game` are optional windowed SDL3 desktop runtime samples; use `mirakana_editor` for broader visible desktop/editor smoke.
-- Use `tools/new-game.ps1` plus `tools/new-game-helpers.ps1` and `tools/new-game-templates.ps1` for scaffolding, and register games with `MK_add_game` or `MK_add_desktop_runtime_game` in `games/CMakeLists.txt`.
-- For `desktop-game-runtime`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`; package selected registered targets with `tools/package-desktop-runtime.ps1 -GameTarget <target>` or use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1` for the default sample shell. Runtime package files are hashed byte-for-byte; new text cooked/runtime extensions in `runtimePackageFiles` need matching `runtime/.gitattributes` `text eol=lf` coverage and static checks before package smoke evidence is trusted.
-- For `android-gameactivity`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` first, then Android-ready hosts may run `tools/build-mobile-android.ps1`, `tools/check-android-release-package.ps1`, and `tools/smoke-android-package.ps1`; never store Android keystores, passwords, SDKs, Gradle caches, or AVD images in the repo.
+- Games live under `games/<game_name>/`; `game_name` and `tools/new-game.ps1 -Name <game_name>` values match `^[a-z][a-z0-9_]*$`. Source-tree directories and `runtimePackageFiles` path segments stay lowercase snake_case; JSON manifest IDs may use kebab-case.
+- Every game has `game.agent.json` with backend readiness, importer requirements, packaging targets, runtime package files, runtime scene validation targets, and validation recipes. Use `tools/new-game.ps1`, `tools/new-game-helpers.ps1`, and `tools/new-game-templates.ps1`, then register with `MK_add_game` or `MK_add_desktop_runtime_game`.
+- Most sample games are headless validation executables; only `sample_desktop_runtime_shell` and `sample_desktop_runtime_game` are optional windowed SDL3 runtime samples. Use `mirakana_editor` for broader visible editor smoke.
+- For `desktop-game-runtime`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`; package targets with `tools/package-desktop-runtime.ps1 -GameTarget <target>` or the default `tools/package-desktop-runtime.ps1`. New text cooked/runtime extensions in `runtimePackageFiles` need matching `runtime/.gitattributes` `text eol=lf` coverage and static checks.
+- For `android-gameactivity`, run `tools/check-mobile-packaging.ps1` first; Android-ready hosts may run build/release/smoke scripts. Never store Android keystores, passwords, SDKs, Gradle caches, or AVD images in the repo.
 - Game code should include only public engine headers unless implementing engine internals.
 
 ## Done Definition
@@ -198,23 +195,3 @@
 - Relevant tests are added or updated when behavior/API/regression risk changed, and they cover the smallest durable external guarantee.
 - Validation has run: focused checks for docs/agent-only/non-runtime slices, full `tools/validate.ps1` for C++/runtime/build/packaging/public-contract slices, or a concrete blocker is recorded.
 - Legal and third-party records are updated for any external material.
-
-## Learned User Preferences
-
-- Prefer long-running autonomous burn-down sessions with operator auto-approval: run each capability slice end-to-end (worktree, validate, push, draft PR, `ready-task-pr.ps1`, auto-merge, babysit until MERGED) without pausing between capabilities unless a hard blocker is recorded.
-- Do not stop multi-capability programs at intermediate checkpoints; continue until all plan to-dos are complete or a documented hard blocker stops the run.
-- Avoid partial APIs, placeholder ready claims, and ambiguous intermediate capability states; promote backlog rows only after `validate.ps1`, static guards, and package-counter evidence.
-- When executing backlog burn-down, use repository subagents per the milestone plan Tasks A–E dispatch model (`explorer`, `gameplay-builder`, `cpp-reviewer`, `agent-surface-auditor`, `ci-watcher`, capability-specific auditors).
-- Implement unimplemented plan items in canonical backlog priority order until none remain; in auto-approval sessions, do not ask for re-approval between slices.
-- Consult official documentation and Context7 before capability implementation; capability-specific docs review belongs in dated child plans before write work.
-- Proactively update `AGENTS.md`, skills, rules, and subagents in the same slice when implementation reveals durable agent-surface drift; do not defer to follow-up docs-only PRs.
-
-## Learned Workspace Facts
-
-- Engine 1.0 production completion is closed; `unsupportedProductionGaps` is empty; next work is developer-owned capability backlog `candidate` rows.
-- Canonical backlog in `docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md` defines 7 `candidate` capabilities (not 8; the status vocabulary row is not a capability).
-- Active milestone is Candidate Backlog Burn-down Program v1 (`docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md`, Status Active).
-- Capability burn-down cadence: one linked worktree, one dated child plan, one focused PR, one full `validate.ps1` per capability closeout.
-- Seven candidates in order: `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, `sprite-collision-hitbox-v1`, `sprite-effects-particles-v1`, `sprite-editor-preview-diagnostics-v1`, `navigation-hierarchical-world-v1`, `simulation-persistence-v1`.
-- Milestone progress is tracked via checkbox checklist in the milestone plan; resume from the first unchecked capability after `git pull --ff-only origin/main`.
-- `docs/superpowers/plans/README.md` Active slice row and manifest `currentActivePlan` pointer must stay synced with the active milestone (enforced by `tools/check-json-contracts.ps1`).

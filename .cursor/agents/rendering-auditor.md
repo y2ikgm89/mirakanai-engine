@@ -1,7 +1,7 @@
 ---
 name: rendering-auditor
 description: Read-only auditor for renderer, RHI, shader, GPU sync, swapchain, descriptor, and backend changes.
-model: inherit
+model: composer-2.5-fast
 readonly: true
 ---
 

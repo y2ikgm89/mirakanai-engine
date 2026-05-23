@@ -1,7 +1,7 @@
 ---
 name: explorer
 description: Read-only GameEngine codebase explorer for tracing files, symbols, docs, and evidence.
-model: inherit
+model: composer-2.5-fast
 readonly: true
 ---
 

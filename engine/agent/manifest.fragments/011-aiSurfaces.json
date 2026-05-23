@@ -125,6 +125,46 @@
           ]
         },
         {
+          "id": "openai-codex-rules",
+          "surface": "codex",
+          "url": "https://developers.openai.com/codex/rules",
+          "appliesTo": [
+            ".codex/rules",
+            "prefix_rule",
+            "match/not_match examples"
+          ]
+        },
+        {
+          "id": "openai-codex-skills",
+          "surface": "codex",
+          "url": "https://developers.openai.com/codex/skills",
+          "appliesTo": [
+            ".agents/skills",
+            "SKILL.md",
+            "concise skill routers"
+          ]
+        },
+        {
+          "id": "openai-codex-subagents",
+          "surface": "codex",
+          "url": "https://developers.openai.com/codex/subagents",
+          "appliesTo": [
+            ".codex/agents",
+            "read-only sandbox_mode",
+            "delegated context"
+          ]
+        },
+        {
+          "id": "openai-developer-docs-mcp",
+          "surface": "codex",
+          "url": "https://developers.openai.com/learn/docs-mcp",
+          "appliesTo": [
+            "OpenAI developer documentation MCP",
+            "OpenAI API questions",
+            "Codex documentation lookups"
+          ]
+        },
+        {
           "id": "anthropic-claude-code-settings",
           "surface": "claudeCode",
           "url": "https://docs.anthropic.com/en/docs/claude-code/settings",
@@ -152,6 +192,35 @@
             ".cursor/rules",
             "AGENTS.md",
             "project rules"
+          ]
+        },
+        {
+          "id": "cursor-skills",
+          "surface": "cursor",
+          "url": "https://cursor.com/docs/skills",
+          "appliesTo": [
+            ".cursor/skills",
+            "SKILL.md",
+            "Agent Skills"
+          ]
+        },
+        {
+          "id": "cursor-subagents",
+          "surface": "cursor",
+          "url": "https://cursor.com/docs/subagents",
+          "appliesTo": [
+            ".cursor/agents",
+            "readonly frontmatter",
+            "model frontmatter"
+          ]
+        },
+        {
+          "id": "cursor-composer-2-5",
+          "surface": "cursor",
+          "url": "https://cursor.com/changelog/composer-2-5",
+          "appliesTo": [
+            "model: composer-2.5-fast",
+            "Cursor project subagents"
           ]
         }
       ],
