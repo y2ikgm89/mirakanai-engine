@@ -474,16 +474,7 @@ if ($Jobs -lt 0) {
     Write-Error "tidy-check: -Jobs must be 0 for automatic CPU-count parallelism or a positive explicit job count"
 }
 
-$effectiveJobs = if ($Jobs -eq 0) {
-    [Math]::Max(1, [Environment]::ProcessorCount)
-}
-else {
-    $Jobs
-}
-$effectiveJobs = [Math]::Max(1, $effectiveJobs)
-if ($tidyFiles.Count -gt 0) {
-    $effectiveJobs = [Math]::Min($effectiveJobs, $tidyFiles.Count)
-}
+$effectiveJobs = Resolve-ParallelJobCount -Jobs $Jobs -MaximumJobs $tidyFiles.Count
 
 $suppressedWarningSummaryCount = 0
 $failedTidyFiles = [System.Collections.Generic.List[string]]::new()

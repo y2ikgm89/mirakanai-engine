@@ -697,6 +697,9 @@ $classifierScriptText = Get-Content -LiteralPath (Join-Path $root "tools/classif
 $validateWorkflowText = Get-Content -LiteralPath (Join-Path $root ".github/workflows/validate.yml") -Raw
 $validateScriptText = Get-Content -LiteralPath (Join-Path $root "tools/validate.ps1") -Raw
 $commonScriptText = Get-Content -LiteralPath (Join-Path $root "tools/common.ps1") -Raw
+$buildScriptText = Get-Content -LiteralPath (Join-Path $root "tools/build.ps1") -Raw
+$testScriptText = Get-Content -LiteralPath (Join-Path $root "tools/test.ps1") -Raw
+$tidyScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-tidy.ps1") -Raw
 $checkAiIntegrationText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration.ps1") -Raw
 $checkAiBaselineText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-010-agent-baseline.ps1") -Raw
 $checkJsonContractsText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts.ps1") -Raw
@@ -707,6 +710,16 @@ if (-not $validateScriptText.Contains("check-ci-matrix.ps1")) {
 }
 Assert-ContainsText $commonScriptText "function Join-OptionalPath" "tools/common.ps1"
 Assert-ContainsText $commonScriptText "function Get-LocalApplicationDataRoot" "tools/common.ps1"
+Assert-ContainsText $commonScriptText "function Resolve-ParallelJobCount" "tools/common.ps1"
+foreach ($parallelScript in @(
+        @{ Name = "tools/build.ps1"; Text = $buildScriptText },
+        @{ Name = "tools/test.ps1"; Text = $testScriptText },
+        @{ Name = "tools/check-tidy.ps1"; Text = $tidyScriptText }
+    )) {
+    Assert-ContainsText $parallelScript.Text "Resolve-ParallelJobCount -Jobs `$Jobs" $parallelScript.Name
+    Assert-DoesNotContainText $parallelScript.Text "function Resolve-ParallelJobCount" $parallelScript.Name
+    Assert-DoesNotContainText $parallelScript.Text "[Environment]::ProcessorCount" $parallelScript.Name
+}
 foreach ($commonHelperNeedle in @(
         "function Read-Json",
         "function ConvertTo-LfText",

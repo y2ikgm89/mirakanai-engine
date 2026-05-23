@@ -10,19 +10,6 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "common.ps1")
 
-function Resolve-ParallelJobCount {
-    [CmdletBinding()]
-    param(
-        [Parameter()][ValidateRange(0, 1024)][int]$Jobs = 0
-    )
-
-    if ($Jobs -eq 0) {
-        return [Math]::Max(1, [Environment]::ProcessorCount)
-    }
-
-    return $Jobs
-}
-
 $tools = Assert-CppBuildTools
 $repositoryRoot = Get-RepoRoot
 $presets = Read-CMakePresets

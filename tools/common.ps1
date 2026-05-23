@@ -752,6 +752,27 @@ function Get-CxxSourceFile {
     }
 }
 
+function Resolve-ParallelJobCount {
+    [CmdletBinding()]
+    param(
+        [Parameter()][ValidateRange(0, 1024)][int]$Jobs = 0,
+
+        [Parameter()][ValidateRange(0, 1048576)][int]$MaximumJobs = 0
+    )
+
+    $effectiveJobs = if ($Jobs -eq 0) {
+        [Math]::Max(1, [Environment]::ProcessorCount)
+    } else {
+        $Jobs
+    }
+
+    if ($MaximumJobs -gt 0) {
+        $effectiveJobs = [Math]::Min($effectiveJobs, $MaximumJobs)
+    }
+
+    return [Math]::Max(1, $effectiveJobs)
+}
+
 function Get-ClangTidyCommand {
     $fromPath = Get-Command clang-tidy -ErrorAction SilentlyContinue
     if ($fromPath) {
