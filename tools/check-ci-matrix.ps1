@@ -130,6 +130,22 @@ function Get-WorkflowJobText {
     return $match.Value
 }
 
+function Get-WorkflowStepText {
+    param(
+        [Parameter(Mandatory = $true)][string]$JobText,
+        [Parameter(Mandatory = $true)][string]$StepName,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    $pattern = "(?ms)^      - name: " + [System.Text.RegularExpressions.Regex]::Escape($StepName) + "\s*\r?\n(?<body>.*?)(?=^      - name: |\z)"
+    $match = [System.Text.RegularExpressions.Regex]::Match($JobText, $pattern)
+    if (-not $match.Success) {
+        Write-Error "ci-matrix-check: $Label missing required step: $StepName"
+    }
+
+    return $match.Value
+}
+
 function Get-ValidationTierSelection {
     param(
         [Parameter(Mandatory = $true)][string]$Label,
@@ -433,6 +449,7 @@ Assert-ContainsAll $windowsJob @(
     "Restore vcpkg tool checkout cache",
     "path: external/vcpkg",
     "steps.restore-vcpkg-tool.outputs.cache-hit",
+    "steps.restore-vcpkg-tool.outcome == 'success'",
     "Update vcpkg tool baseline",
     "git -C external/vcpkg fetch --depth 1 origin",
     "git -C external/vcpkg checkout --force",
@@ -449,6 +466,8 @@ Assert-ContainsAll $windowsJob @(
     "path: vcpkg_installed",
     "Restore Windows dev build cache",
     $cacheRestoreActionRef,
+    "Save vcpkg tool checkout cache",
+    "key: `${{ steps.restore-vcpkg-tool.outputs.cache-primary-key }}",
     "path: out/build/dev",
     'key: ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}-${{ github.sha }}',
     '${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles(''CMakePresets.json'', ''vcpkg.json'', ''**/CMakeLists.txt'') }}-',
@@ -460,12 +479,15 @@ Assert-ContainsAll $windowsJob @(
     "Save vcpkg installed cache",
     "steps.restore-vcpkg-package.outputs.cache-hit != 'true'",
     "steps.restore-vcpkg-installed.outputs.cache-hit != 'true'",
+    "steps.restore-vcpkg-package.outcome == 'success'",
+    "steps.restore-vcpkg-installed.outcome == 'success'",
     "key: `${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}",
     "key: `${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}",
     "Save Windows dev build cache",
     "continue-on-error: true",
     $cacheSaveActionRef,
     "steps.restore-dev-build.outputs.cache-hit != 'true'",
+    "steps.restore-dev-build.outcome == 'success'",
     "key: `${{ steps.restore-dev-build.outputs.cache-primary-key }}",
     'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
@@ -475,6 +497,28 @@ Assert-ContainsAll $windowsJob @(
     "out/build/dev/Testing/**/*.log",
     "if-no-files-found: warn"
 ) ".github/workflows/validate.yml windows job"
+
+$windowsCacheRestoreSteps = @(
+    "Restore vcpkg tool checkout cache",
+    "Restore vcpkg package cache",
+    "Restore vcpkg installed cache",
+    "Restore Windows dev build cache"
+)
+foreach ($restoreStepName in $windowsCacheRestoreSteps) {
+    $restoreStepText = Get-WorkflowStepText -JobText $windowsJob -StepName $restoreStepName -Label ".github/workflows/validate.yml windows job"
+    Assert-ContainsAll $restoreStepText @(
+        "continue-on-error: true",
+        $cacheRestoreActionRef
+    ) ".github/workflows/validate.yml windows job $restoreStepName"
+}
+
+$windowsVcpkgToolSaveStep = Get-WorkflowStepText -JobText $windowsJob -StepName "Save vcpkg tool checkout cache" -Label ".github/workflows/validate.yml windows job"
+Assert-ContainsAll $windowsVcpkgToolSaveStep @(
+    "continue-on-error: true",
+    $cacheSaveActionRef,
+    "steps.restore-vcpkg-tool.outcome == 'success'",
+    "key: `${{ steps.restore-vcpkg-tool.outputs.cache-primary-key }}"
+) ".github/workflows/validate.yml windows job Save vcpkg tool checkout cache"
 
 $windowsCpp23Job = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "windows-cpp23" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $windowsCpp23Job @(
@@ -488,6 +532,7 @@ Assert-ContainsAll $windowsCpp23Job @(
     "Restore vcpkg tool checkout cache",
     "path: external/vcpkg",
     "steps.restore-vcpkg-tool.outputs.cache-hit",
+    "steps.restore-vcpkg-tool.outcome == 'success'",
     "Update vcpkg tool baseline",
     "git -C external/vcpkg fetch --depth 1 origin",
     "git -C external/vcpkg checkout --force",
@@ -504,6 +549,8 @@ Assert-ContainsAll $windowsCpp23Job @(
     "path: vcpkg_installed",
     "Restore Windows C++23 build cache",
     $cacheRestoreActionRef,
+    "Save vcpkg tool checkout cache",
+    "key: `${{ steps.restore-vcpkg-tool.outputs.cache-primary-key }}",
     "out/build/cpp23-release-preset-eval",
     "out/build/installed-consumer-cpp23-release-eval",
     "out/install/cpp23-release-eval",
@@ -517,12 +564,15 @@ Assert-ContainsAll $windowsCpp23Job @(
     "Save vcpkg installed cache",
     "steps.restore-vcpkg-package.outputs.cache-hit != 'true'",
     "steps.restore-vcpkg-installed.outputs.cache-hit != 'true'",
+    "steps.restore-vcpkg-package.outcome == 'success'",
+    "steps.restore-vcpkg-installed.outcome == 'success'",
     "key: `${{ steps.restore-vcpkg-package.outputs.cache-primary-key }}",
     "key: `${{ steps.restore-vcpkg-installed.outputs.cache-primary-key }}",
     "Save Windows C++23 build cache",
     "continue-on-error: true",
     $cacheSaveActionRef,
     "steps.restore-cpp23-build.outputs.cache-hit != 'true'",
+    "steps.restore-cpp23-build.outcome == 'success'",
     "key: `${{ steps.restore-cpp23-build.outputs.cache-primary-key }}",
     'if: ${{ failure() && !cancelled() }}',
     $uploadArtifactActionRef,
@@ -540,6 +590,28 @@ Assert-ContainsAll $windowsCpp23Job @(
     "if-no-files-found: error",
     'if: ${{ success() && !cancelled() }}'
 ) ".github/workflows/validate.yml windows-cpp23 job"
+
+$windowsCpp23CacheRestoreSteps = @(
+    "Restore vcpkg tool checkout cache",
+    "Restore vcpkg package cache",
+    "Restore vcpkg installed cache",
+    "Restore Windows C++23 build cache"
+)
+foreach ($restoreStepName in $windowsCpp23CacheRestoreSteps) {
+    $restoreStepText = Get-WorkflowStepText -JobText $windowsCpp23Job -StepName $restoreStepName -Label ".github/workflows/validate.yml windows-cpp23 job"
+    Assert-ContainsAll $restoreStepText @(
+        "continue-on-error: true",
+        $cacheRestoreActionRef
+    ) ".github/workflows/validate.yml windows-cpp23 job $restoreStepName"
+}
+
+$windowsCpp23VcpkgToolSaveStep = Get-WorkflowStepText -JobText $windowsCpp23Job -StepName "Save vcpkg tool checkout cache" -Label ".github/workflows/validate.yml windows-cpp23 job"
+Assert-ContainsAll $windowsCpp23VcpkgToolSaveStep @(
+    "continue-on-error: true",
+    $cacheSaveActionRef,
+    "steps.restore-vcpkg-tool.outcome == 'success'",
+    "key: `${{ steps.restore-vcpkg-tool.outputs.cache-primary-key }}"
+) ".github/workflows/validate.yml windows-cpp23 job Save vcpkg tool checkout cache"
 
 $agentStaticJob = Get-WorkflowJobText -WorkflowText $validateWorkflow -JobName "agent-static" -Label ".github/workflows/validate.yml"
 Assert-ContainsAll $agentStaticJob @(

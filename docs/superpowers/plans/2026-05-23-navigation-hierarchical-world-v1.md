@@ -48,6 +48,7 @@
 | C++ review | pass after fixes | `cpp-reviewer` found cache-readiness fail-open, route-shape validation, result-type ambiguity, and one brittle test assertion; all were addressed before static/full validation. |
 | Focused static | pass | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/navigation/src/navigation_hierarchical_world.cpp,engine/runtime/src/world_region_streaming.cpp -Jobs 2`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`. |
 | Full validation | pass | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with 76/76 CTest passing and diagnostic-only Apple/Metal host gates unchanged. |
+| Hosted PR failure hardening | in progress | PR #203 initial Windows MSVC failed before validation in `actions/cache` restore for `external/vcpkg`; the branch updates Windows lanes to non-blocking `actions/cache/restore` plus guarded `actions/cache/save` for tool/package/install/build caches and extends `tools/check-ci-matrix.ps1` to keep that contract from drifting. |
 
 ## Done When
 
