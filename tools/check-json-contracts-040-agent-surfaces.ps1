@@ -698,6 +698,7 @@ $validateWorkflowText = Get-Content -LiteralPath (Join-Path $root ".github/workf
 $validateScriptText = Get-Content -LiteralPath (Join-Path $root "tools/validate.ps1") -Raw
 $commonScriptText = Get-Content -LiteralPath (Join-Path $root "tools/common.ps1") -Raw
 $checkAiIntegrationText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration.ps1") -Raw
+$checkAiBaselineText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-010-agent-baseline.ps1") -Raw
 $checkJsonContractsText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts.ps1") -Raw
 $mobilePackagingScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-mobile-packaging.ps1") -Raw
 $androidReleasePackageScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-android-release-package.ps1") -Raw
@@ -731,6 +732,13 @@ Assert-ContainsText $staticContractCommonText "function Assert-ProductionComplet
 Assert-ContainsText $staticContractCommonText "function Assert-SpecStatusSection" "tools/static-contract-common.ps1"
 Assert-ContainsText $checkAiIntegrationText 'static-contract-common.ps1' "tools/check-ai-integration.ps1"
 Assert-ContainsText $checkJsonContractsText 'static-contract-common.ps1' "tools/check-json-contracts.ps1"
+Assert-DoesNotContainText $checkAiBaselineText '(Get-Content -LiteralPath $manifestPath -Raw)' "tools/check-ai-integration-010-agent-baseline.ps1"
+$checkAiBaselineManifestReadMatches = [System.Text.RegularExpressions.Regex]::Matches(
+    $checkAiBaselineText,
+    '\$manifestRaw\s*=\s*Get-Content\s+-LiteralPath\s+\$manifestPath\s+-Raw')
+if ($checkAiBaselineManifestReadMatches.Count -ne 1) {
+    Write-Error "tools/check-ai-integration-010-agent-baseline.ps1 must read engine/agent/manifest.json raw text exactly once; found $($checkAiBaselineManifestReadMatches.Count)"
+}
 $staticContractLedgerText = Get-Content -LiteralPath (Join-Path $root "tools/static-contract-ledger.ps1") -Raw
 Assert-ContainsText $staticContractLedgerText "function Get-StaticContractSectionFile" "tools/static-contract-ledger.ps1"
 Assert-ContainsText $staticContractLedgerText "Get-ChildItem -LiteralPath" "tools/static-contract-ledger.ps1"
