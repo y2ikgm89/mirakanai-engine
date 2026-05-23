@@ -198,3 +198,23 @@
 - Relevant tests are added or updated when behavior/API/regression risk changed, and they cover the smallest durable external guarantee.
 - Validation has run: focused checks for docs/agent-only/non-runtime slices, full `tools/validate.ps1` for C++/runtime/build/packaging/public-contract slices, or a concrete blocker is recorded.
 - Legal and third-party records are updated for any external material.
+
+## Learned User Preferences
+
+- Prefer long-running autonomous burn-down sessions with operator auto-approval: run each capability slice end-to-end (worktree, validate, push, draft PR, `ready-task-pr.ps1`, auto-merge, babysit until MERGED) without pausing between capabilities unless a hard blocker is recorded.
+- Do not stop multi-capability programs at intermediate checkpoints; continue until all plan to-dos are complete or a documented hard blocker stops the run.
+- Avoid partial APIs, placeholder ready claims, and ambiguous intermediate capability states; promote backlog rows only after `validate.ps1`, static guards, and package-counter evidence.
+- When executing backlog burn-down, use repository subagents per the milestone plan Tasks A–E dispatch model (`explorer`, `gameplay-builder`, `cpp-reviewer`, `agent-surface-auditor`, `ci-watcher`, capability-specific auditors).
+- Implement unimplemented plan items in canonical backlog priority order until none remain; in auto-approval sessions, do not ask for re-approval between slices.
+- Consult official documentation and Context7 before capability implementation; capability-specific docs review belongs in dated child plans before write work.
+- Proactively update `AGENTS.md`, skills, rules, and subagents in the same slice when implementation reveals durable agent-surface drift; do not defer to follow-up docs-only PRs.
+
+## Learned Workspace Facts
+
+- Engine 1.0 production completion is closed; `unsupportedProductionGaps` is empty; next work is developer-owned capability backlog `candidate` rows.
+- Canonical backlog in `docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md` defines 7 `candidate` capabilities (not 8; the status vocabulary row is not a capability).
+- Active milestone is Candidate Backlog Burn-down Program v1 (`docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md`, Status Active).
+- Capability burn-down cadence: one linked worktree, one dated child plan, one focused PR, one full `validate.ps1` per capability closeout.
+- Seven candidates in order: `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, `sprite-collision-hitbox-v1`, `sprite-effects-particles-v1`, `sprite-editor-preview-diagnostics-v1`, `navigation-hierarchical-world-v1`, `simulation-persistence-v1`.
+- Milestone progress is tracked via checkbox checklist in the milestone plan; resume from the first unchecked capability after `git pull --ff-only origin/main`.
+- `docs/superpowers/plans/README.md` Active slice row and manifest `currentActivePlan` pointer must stay synced with the active milestone (enforced by `tools/check-json-contracts.ps1`).
