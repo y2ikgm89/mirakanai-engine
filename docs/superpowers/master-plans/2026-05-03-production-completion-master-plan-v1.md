@@ -15,9 +15,9 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: this production-completion master plan; no dated capability plan is active after Post-1.0 Capability Program v1 closed at Phase 2 through PR #178 / merge commit `f4faf787`.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = next-production-gap-selection` after Phase 1 `physics-constraints-and-joints-v1` and Phase 2 `physics-vehicles-and-kinematics-v1` implementation evidence landed through PR #178 / merge commit `f4faf787`. Recent developer-owned capability evidence remains discoverable through the plan registry, with AI Gameplay Authoring Tools v1 implementation completed by PR #174 / merge commit `9bffa2b8` and selection-gate closeout pointer sync completed by PR #175 / merge commit `f05136e2`, Gameplay Simulation Orchestration v1 completed by PR #172 / merge commit `eb6a34b5`, closeout pointer sync completed by PR #173 / merge commit `3b9e36f7`, and Engine Networking Foundation v1 completed by PR #171 / merge commit `987016f1`.
-- Current gap cluster: no 1.0 unsupported gap cluster and no post-1.0 developer-owned capability are selected; choose the next coherent row through a new dated plan.
+- Current active plan: Candidate Backlog Burn-down v1 is selected as the active milestone for the canonical post-1.0 candidate rows; completed child evidence is recorded in the plan registry.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = sprite-effects-particles-v1` after the sprite sorting, 9-slice/tiled, and sprite collision hitbox slices. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
+- Current gap cluster: post-1.0 candidate burn-down is active; finish the next remaining child row before switching clusters.
 
 ## Plan map
 

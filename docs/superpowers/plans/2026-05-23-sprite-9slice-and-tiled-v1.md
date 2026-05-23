@@ -6,7 +6,7 @@
 
 **Plan ID:** `sprite-9slice-and-tiled-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Gap:** `sprite-9slice-and-tiled-v1`
 
@@ -36,3 +36,4 @@
 | --- | --- | --- |
 | implementation | pass | Engine draw_mode/slice_border, expand_scene_sprite_commands, scene IO, tools border validation, package counters |
 | validate.ps1 | pass | 74/74 tests, sample_2d_desktop_runtime_package_smoke with --require-sprite-9slice-tiled exit 0 |
+| PR | merged | PR #197 merged as `e4dcbbac2dd2114b8441d5de8f967f2f1b03d1f8`. |
