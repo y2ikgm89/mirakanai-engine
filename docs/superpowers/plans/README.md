@@ -79,6 +79,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 | AI generated game quality rubric implementation evidence | [AI Generated Game Quality Rubric v1](2026-05-23-ai-generated-game-quality-rubric-v1.md) |
 | AI Codex/Claude/Cursor agent surface implementation evidence | [AI Codex/Claude/Cursor Agent Surface v1](2026-05-23-ai-codex-claude-agent-surface-v1.md) |
 | Engine gameplay interaction framework implementation evidence | [Engine Gameplay Interaction Framework v1](2026-05-23-engine-gameplay-interaction-framework-v1.md) |
+| Engine save settings profile implementation evidence | [Engine Save Settings Profile v1](2026-05-23-engine-save-settings-profile-v1.md) |
 | AI engine capability handoff implementation evidence | [AI Engine Capability Handoff v1](2026-05-22-ai-engine-capability-handoff-v1.md) |
 | Historical/static-check retained literals | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
 | Recent completed implementation evidence | Search [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) and Git history; do not treat this registry as a changelog. |

@@ -507,6 +507,57 @@ struct RuntimeSessionProfileDocumentWriteResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+enum class RuntimeSessionProfileResumeStatus : std::uint8_t {
+    ready,
+    blocked,
+};
+
+enum class RuntimeSessionProfileResumeDiagnosticCode : std::uint8_t {
+    blocking_document_status,
+    missing_save_slot,
+    save_slot_mismatch,
+    missing_progression_checkpoint,
+    progression_checkpoint_mismatch,
+    missing_package_id,
+    package_id_mismatch,
+    missing_profile_id,
+    profile_id_mismatch,
+};
+
+struct RuntimeSessionProfileResumeDiagnostic {
+    RuntimeSessionProfileResumeDiagnosticCode code{RuntimeSessionProfileResumeDiagnosticCode::blocking_document_status};
+    std::string field;
+    std::string expected;
+    std::string actual;
+    std::string message;
+};
+
+struct RuntimeSessionProfileResumeRequest {
+    RuntimeSessionProfileDocumentLoadResult documents;
+    std::string expected_save_slot;
+    std::string expected_progression_checkpoint;
+    std::string expected_package_id;
+    std::string expected_profile_id;
+    std::string save_slot_key{"save.slot"};
+    std::string progression_checkpoint_key{"progression.checkpoint"};
+    std::string package_id_key{"package.id"};
+};
+
+struct RuntimeSessionProfileResumePlan {
+    RuntimeSessionProfileResumeStatus status{RuntimeSessionProfileResumeStatus::blocked};
+    std::string save_slot;
+    std::string progression_checkpoint;
+    std::string package_id;
+    std::string profile_id;
+    std::uint32_t save_schema_version{0};
+    std::uint32_t settings_schema_version{0};
+    std::size_t loaded_document_rows{0};
+    std::size_t defaulted_document_rows{0};
+    std::vector<RuntimeSessionProfileResumeDiagnostic> diagnostics;
+
+    [[nodiscard]] bool ready() const noexcept;
+};
+
 [[nodiscard]] std::string serialize_runtime_save_data(const RuntimeSaveData& data);
 [[nodiscard]] RuntimeSaveDataLoadResult deserialize_runtime_save_data(std::string_view text);
 [[nodiscard]] RuntimeSaveDataLoadResult load_runtime_save_data(IFileSystem& filesystem, std::string_view path);
@@ -562,6 +613,8 @@ load_runtime_session_profile_documents(IFileSystem& filesystem,
 [[nodiscard]] RuntimeSessionProfileDocumentWriteResult
 write_runtime_session_profile_documents(IFileSystem& filesystem,
                                         const RuntimeSessionProfileDocumentWriteRequest& request);
+[[nodiscard]] RuntimeSessionProfileResumePlan
+plan_runtime_session_profile_resume(const RuntimeSessionProfileResumeRequest& request);
 [[nodiscard]] std::string serialize_runtime_input_rebinding_profile(const RuntimeInputRebindingProfile& profile);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult deserialize_runtime_input_rebinding_profile(std::string_view text);
 [[nodiscard]] RuntimeInputRebindingProfileLoadResult load_runtime_input_rebinding_profile(IFileSystem& filesystem,

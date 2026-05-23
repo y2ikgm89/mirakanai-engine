@@ -103,6 +103,29 @@ runtime_session_profile_document_kind_name(RuntimeSessionProfileDocumentKind kin
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+runtime_session_profile_document_status_name(RuntimeSessionProfileDocumentStatus status) noexcept {
+    switch (status) {
+    case RuntimeSessionProfileDocumentStatus::loaded:
+        return "loaded";
+    case RuntimeSessionProfileDocumentStatus::defaulted_missing:
+        return "defaulted_missing";
+    case RuntimeSessionProfileDocumentStatus::written:
+        return "written";
+    case RuntimeSessionProfileDocumentStatus::failed_invalid_path:
+        return "failed_invalid_path";
+    case RuntimeSessionProfileDocumentStatus::failed_corrupt:
+        return "failed_corrupt";
+    case RuntimeSessionProfileDocumentStatus::failed_unsupported_version:
+        return "failed_unsupported_version";
+    case RuntimeSessionProfileDocumentStatus::failed_invalid_document:
+        return "failed_invalid_document";
+    case RuntimeSessionProfileDocumentStatus::failed_write:
+        return "failed_write";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::string runtime_session_profile_document_path(const RuntimeSessionProfilePathPlan& paths,
                                                                 RuntimeSessionProfileDocumentKind kind) {
     switch (kind) {
@@ -148,6 +171,16 @@ void add_runtime_session_profile_document_row(std::vector<RuntimeSessionProfileD
                                                     .path = std::move(path),
                                                     .diagnostic = std::move(diagnostic),
                                                     .defaulted = defaulted});
+}
+
+void add_runtime_session_profile_resume_diagnostic(std::vector<RuntimeSessionProfileResumeDiagnostic>& diagnostics,
+                                                   RuntimeSessionProfileResumeDiagnosticCode code, std::string field,
+                                                   std::string expected, std::string actual, std::string message) {
+    diagnostics.push_back(RuntimeSessionProfileResumeDiagnostic{.code = code,
+                                                                .field = std::move(field),
+                                                                .expected = std::move(expected),
+                                                                .actual = std::move(actual),
+                                                                .message = std::move(message)});
 }
 
 void validate_entry_key(std::string_view key, std::string_view diagnostic_name) {
@@ -1703,6 +1736,10 @@ bool RuntimeSessionProfileDocumentWriteResult::succeeded() const noexcept {
            });
 }
 
+bool RuntimeSessionProfileResumePlan::ready() const noexcept {
+    return status == RuntimeSessionProfileResumeStatus::ready && diagnostics.empty();
+}
+
 void RuntimeLocalizationCatalog::set_text(std::string key, std::string text) {
     set_sorted_entry(entries_, std::move(key), std::move(text), "runtime localization");
 }
@@ -2877,6 +2914,84 @@ write_runtime_session_profile_documents(IFileSystem& filesystem,
     write_document(RuntimeSessionProfileDocumentKind::settings, settings_path, settings_text);
     write_document(RuntimeSessionProfileDocumentKind::input_rebinding_profile, input_path, input_text);
     return result;
+}
+
+RuntimeSessionProfileResumePlan plan_runtime_session_profile_resume(const RuntimeSessionProfileResumeRequest& request) {
+    RuntimeSessionProfileResumePlan plan;
+    plan.save_schema_version = request.documents.save_data.schema_version;
+    plan.settings_schema_version = request.documents.settings.schema_version;
+
+    for (const auto& row : request.documents.rows) {
+        if (row.status == RuntimeSessionProfileDocumentStatus::loaded) {
+            ++plan.loaded_document_rows;
+        } else if (row.status == RuntimeSessionProfileDocumentStatus::defaulted_missing) {
+            ++plan.defaulted_document_rows;
+        }
+    }
+
+    for (const auto& row : request.documents.rows) {
+        if (row.status == RuntimeSessionProfileDocumentStatus::loaded) {
+            continue;
+        }
+        const bool defaulted = row.status == RuntimeSessionProfileDocumentStatus::defaulted_missing;
+        add_runtime_session_profile_resume_diagnostic(
+            plan.diagnostics, RuntimeSessionProfileResumeDiagnosticCode::blocking_document_status,
+            std::string(runtime_session_profile_document_kind_name(row.kind)), {},
+            std::string(runtime_session_profile_document_status_name(row.status)),
+            defaulted                ? "runtime session profile resume requires a loaded document, not caller defaults"
+            : row.diagnostic.empty() ? "runtime session profile document status blocks package resume"
+                                     : row.diagnostic);
+    }
+
+    if (!plan.diagnostics.empty() || !request.documents.succeeded()) {
+        return plan;
+    }
+
+    const auto require_save_value =
+        [&](std::string_view key, std::string_view expected, RuntimeSessionProfileResumeDiagnosticCode missing_code,
+            RuntimeSessionProfileResumeDiagnosticCode mismatch_code, std::string& output, std::string_view label) {
+            const auto* actual = request.documents.save_data.find_value(key);
+            if (actual == nullptr || actual->empty()) {
+                add_runtime_session_profile_resume_diagnostic(
+                    plan.diagnostics, missing_code, std::string(key), std::string(expected), {},
+                    std::string("runtime session profile resume missing ") + std::string(label));
+                return;
+            }
+            output = *actual;
+            if (!expected.empty() && *actual != expected) {
+                add_runtime_session_profile_resume_diagnostic(
+                    plan.diagnostics, mismatch_code, std::string(key), std::string(expected), *actual,
+                    std::string("runtime session profile resume mismatched ") + std::string(label));
+            }
+        };
+
+    require_save_value(request.save_slot_key, request.expected_save_slot,
+                       RuntimeSessionProfileResumeDiagnosticCode::missing_save_slot,
+                       RuntimeSessionProfileResumeDiagnosticCode::save_slot_mismatch, plan.save_slot, "save slot");
+    require_save_value(request.progression_checkpoint_key, request.expected_progression_checkpoint,
+                       RuntimeSessionProfileResumeDiagnosticCode::missing_progression_checkpoint,
+                       RuntimeSessionProfileResumeDiagnosticCode::progression_checkpoint_mismatch,
+                       plan.progression_checkpoint, "progression checkpoint");
+    require_save_value(request.package_id_key, request.expected_package_id,
+                       RuntimeSessionProfileResumeDiagnosticCode::missing_package_id,
+                       RuntimeSessionProfileResumeDiagnosticCode::package_id_mismatch, plan.package_id, "package id");
+
+    plan.profile_id = request.documents.input_rebinding_profile.profile_id;
+    if (plan.profile_id.empty()) {
+        add_runtime_session_profile_resume_diagnostic(
+            plan.diagnostics, RuntimeSessionProfileResumeDiagnosticCode::missing_profile_id, "profile_id",
+            request.expected_profile_id, {}, "runtime session profile resume missing profile id");
+    } else if (!request.expected_profile_id.empty() && plan.profile_id != request.expected_profile_id) {
+        add_runtime_session_profile_resume_diagnostic(
+            plan.diagnostics, RuntimeSessionProfileResumeDiagnosticCode::profile_id_mismatch, "profile_id",
+            request.expected_profile_id, plan.profile_id,
+            "runtime session profile resume profile id does not match expected profile");
+    }
+
+    if (plan.diagnostics.empty()) {
+        plan.status = RuntimeSessionProfileResumeStatus::ready;
+    }
+    return plan;
 }
 
 std::string serialize_runtime_input_rebinding_profile(const RuntimeInputRebindingProfile& profile) {
