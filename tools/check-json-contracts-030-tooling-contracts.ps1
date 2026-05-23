@@ -487,9 +487,18 @@ if (-not $licenseScriptText.Contains("function Get-LicenseCheckedSourceFile")) {
 }
 $licenseSourceScanMatches = [System.Text.RegularExpressions.Regex]::Matches(
     $licenseScriptText,
-    "Get-ChildItem\s+-Path\s+\`$Root\s+-Recurse\s+-File\s+-Include\s+\*\.hpp,\s+\*\.cpp")
+    "Get-ChildItem\s+-LiteralPath\s+\`$directory\.FullName\s+-File")
 if ($licenseSourceScanMatches.Count -ne 1) {
     Write-Error "tools/check-license.ps1 must enumerate C++ license inputs once; found $($licenseSourceScanMatches.Count) source scans"
+}
+if (-not $licenseScriptText.Contains("[System.Collections.Generic.Queue[System.IO.DirectoryInfo]]")) {
+    Write-Error "tools/check-license.ps1 must use bounded directory traversal so excluded trees are not scanned before filtering"
+}
+if (-not $licenseScriptText.Contains('Get-ChildItem -LiteralPath $directory.FullName -Directory -Force')) {
+    Write-Error "tools/check-license.ps1 must enumerate child directories explicitly so excluded roots can be pruned"
+}
+if ($licenseScriptText.Contains('Get-ChildItem -Path $Root -Recurse -File -Include')) {
+    Write-Error "tools/check-license.ps1 must not recursively scan excluded trees before filtering"
 }
 $validationRunnerCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq "run-validation-recipe" })
 if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status -ne "ready") {

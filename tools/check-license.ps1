@@ -26,8 +26,26 @@ function Get-LicenseCheckedSourceFile {
         [string]$Root
     )
 
-    Get-ChildItem -Path $Root -Recurse -File -Include *.hpp, *.cpp |
-        Where-Object { -not (Test-IsExcludedPath $_.FullName) }
+    $extensions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $extensions.Add(".hpp") | Out-Null
+    $extensions.Add(".cpp") | Out-Null
+
+    $pendingDirectories = [System.Collections.Generic.Queue[System.IO.DirectoryInfo]]::new()
+    $pendingDirectories.Enqueue((Get-Item -LiteralPath $Root))
+    while ($pendingDirectories.Count -gt 0) {
+        $directory = $pendingDirectories.Dequeue()
+        foreach ($file in Get-ChildItem -LiteralPath $directory.FullName -File) {
+            if ($extensions.Contains($file.Extension)) {
+                $file
+            }
+        }
+
+        foreach ($childDirectory in Get-ChildItem -LiteralPath $directory.FullName -Directory -Force) {
+            if (-not (Test-IsExcludedPath $childDirectory.FullName)) {
+                $pendingDirectories.Enqueue($childDirectory)
+            }
+        }
+    }
 }
 
 Get-LicenseCheckedSourceFile -Root $root |
