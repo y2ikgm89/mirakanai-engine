@@ -93,6 +93,7 @@ struct DesktopRuntimeOptions {
     bool require_scene_collision_package{false};
     bool require_entity_scale_culling{false};
     bool require_runtime_profile_resume{false};
+    bool require_runtime_menu_hud{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -1144,6 +1145,7 @@ class GeneratedGameplaySystemsProbe final {
         render_audio_stream_probe();
         build_gameplay_interaction_probe();
         build_runtime_profile_resume_probe();
+        build_runtime_menu_hud_probe();
         (void)animation_.trigger("move");
         started_ = true;
     }
@@ -1239,7 +1241,10 @@ class GeneratedGameplaySystemsProbe final {
                gameplay_systems_near(audio_stream_sample_abs_sum_, 0.7F) && interaction_ready() &&
                interaction_plan_.rows.size() == 10U && interaction_plan_.feedback_rows.size() == 10U &&
                interaction_plan_.state.session_state == mirakana::runtime::RuntimeGameplaySessionState::running &&
-               runtime_profile_resume_ready() && final_animation_sample_.to_state == "walk" &&
+               runtime_profile_resume_ready() && runtime_menu_hud_ready() &&
+               runtime_menu_hud_diagnostic_count() == 0U && runtime_menu_hud_display_row_count() == 6U &&
+               runtime_menu_hud_command_row_count() == 2U && runtime_menu_hud_dialogue_row_count() == 1U &&
+               runtime_menu_hud_input_binding_prompt_row_count() == 1U && final_animation_sample_.to_state == "walk" &&
                !final_animation_sample_.blending && final_actor_position_.x > 0.0F;
     }
 
@@ -1339,6 +1344,12 @@ class GeneratedGameplaySystemsProbe final {
             interaction_plan_.feedback_rows.size() == 10U,
             interaction_plan_.state.session_state == mirakana::runtime::RuntimeGameplaySessionState::running,
             runtime_profile_resume_ready(),
+            runtime_menu_hud_ready(),
+            runtime_menu_hud_diagnostic_count() == 0U,
+            runtime_menu_hud_display_row_count() == 6U,
+            runtime_menu_hud_command_row_count() == 2U,
+            runtime_menu_hud_dialogue_row_count() == 1U,
+            runtime_menu_hud_input_binding_prompt_row_count() == 1U,
             final_animation_sample_.to_state == "walk" && !final_animation_sample_.blending,
             final_actor_position_.x > 0.0F,
         };
@@ -1763,6 +1774,30 @@ class GeneratedGameplaySystemsProbe final {
         return runtime_profile_resume_plan_.settings_schema_version;
     }
 
+    [[nodiscard]] bool runtime_menu_hud_ready() const noexcept {
+        return runtime_menu_hud_plan_.succeeded();
+    }
+
+    [[nodiscard]] std::size_t runtime_menu_hud_diagnostic_count() const noexcept {
+        return runtime_menu_hud_plan_.diagnostics.size();
+    }
+
+    [[nodiscard]] std::size_t runtime_menu_hud_display_row_count() const noexcept {
+        return runtime_menu_hud_plan_.display_rows.size();
+    }
+
+    [[nodiscard]] std::size_t runtime_menu_hud_command_row_count() const noexcept {
+        return runtime_menu_hud_plan_.command_rows.size();
+    }
+
+    [[nodiscard]] std::size_t runtime_menu_hud_dialogue_row_count() const noexcept {
+        return runtime_menu_hud_display_row_count(mirakana::ui::RuntimeMenuHudRowKind::dialogue_box);
+    }
+
+    [[nodiscard]] std::size_t runtime_menu_hud_input_binding_prompt_row_count() const noexcept {
+        return runtime_menu_hud_display_row_count(mirakana::ui::RuntimeMenuHudRowKind::input_binding_prompt);
+    }
+
     [[nodiscard]] std::string_view animation_state() const noexcept {
         return final_animation_sample_.to_state;
     }
@@ -1772,6 +1807,13 @@ class GeneratedGameplaySystemsProbe final {
     }
 
   private:
+    [[nodiscard]] std::size_t
+    runtime_menu_hud_display_row_count(mirakana::ui::RuntimeMenuHudRowKind kind) const noexcept {
+        return static_cast<std::size_t>(
+            std::count_if(runtime_menu_hud_plan_.display_rows.begin(), runtime_menu_hud_plan_.display_rows.end(),
+                          [kind](const mirakana::ui::RuntimeMenuHudDisplayRow& row) { return row.kind == kind; }));
+    }
+
     void build_gameplay_interaction_probe() {
         using namespace mirakana::runtime;
 
@@ -1928,6 +1970,47 @@ class GeneratedGameplaySystemsProbe final {
         if (!write.succeeded()) {
             runtime_profile_resume_plan_.status = mirakana::runtime::RuntimeSessionProfileResumeStatus::blocked;
         }
+    }
+
+    void build_runtime_menu_hud_probe() {
+        runtime_menu_hud_plan_ = mirakana::ui::plan_runtime_menu_hud({
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "hud.prompt",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::prompt,
+                .label = "Move through the generated scene",
+            },
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "dialogue.intro",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::dialogue_box,
+                .label = "Generated runtime scene ready",
+            },
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "bindings.jump",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::input_binding_prompt,
+                .label = "Space: jump",
+            },
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "menu.pause",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+                .label = "Pause",
+                .command_id = "game.pause",
+                .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::pause_game,
+                .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+            },
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "menu.restart",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::command,
+                .label = "Restart",
+                .command_id = "game.restart",
+                .command_intent = mirakana::ui::RuntimeMenuHudCommandIntent::restart_session,
+                .command_target = mirakana::ui::RuntimeMenuHudCommandTarget::game_session,
+            },
+            mirakana::ui::RuntimeMenuHudRowDesc{
+                .id = "hud.meshes",
+                .kind = mirakana::ui::RuntimeMenuHudRowKind::counter,
+                .label = "Scene meshes",
+            },
+        });
     }
 
     void build_authored_collision_probe() {
@@ -2661,6 +2744,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::PhysicsSimpleVehicle3DResult simple_vehicle_result_;
     mirakana::runtime::RuntimeGameplayInteractionPlan interaction_plan_;
     mirakana::runtime::RuntimeSessionProfileResumePlan runtime_profile_resume_plan_;
+    mirakana::ui::RuntimeMenuHudPlan runtime_menu_hud_plan_;
     mirakana::NavigationNavmeshPathResult navigation_navmesh_result_;
     mirakana::NavigationCrowdPlanResult navigation_crowd_result_;
     mirakana::NavigationAgentState navigation_agent_;
@@ -3471,6 +3555,30 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
         return gameplay_systems_.runtime_profile_resume_settings_schema_version();
     }
 
+    [[nodiscard]] bool gameplay_systems_runtime_menu_hud_ready() const noexcept {
+        return gameplay_systems_.runtime_menu_hud_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_runtime_menu_hud_diagnostics() const noexcept {
+        return gameplay_systems_.runtime_menu_hud_diagnostic_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_runtime_menu_hud_display_rows() const noexcept {
+        return gameplay_systems_.runtime_menu_hud_display_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_runtime_menu_hud_command_rows() const noexcept {
+        return gameplay_systems_.runtime_menu_hud_command_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_runtime_menu_hud_dialogue_rows() const noexcept {
+        return gameplay_systems_.runtime_menu_hud_dialogue_row_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_runtime_menu_hud_input_binding_prompt_rows() const noexcept {
+        return gameplay_systems_.runtime_menu_hud_input_binding_prompt_row_count();
+    }
+
     [[nodiscard]] std::string_view gameplay_systems_animation_state() const noexcept {
         return gameplay_systems_.animation_state();
     }
@@ -3641,7 +3749,8 @@ void print_usage() {
                  "[--require-quaternion-animation] [--require-package-streaming-safe-point] "
                  "[--require-package-upload-staging] "
                  "[--require-gameplay-systems] [--require-scene-collision-package] "
-                 "[--require-entity-scale-culling] [--require-runtime-profile-resume]\n";
+                 "[--require-entity-scale-culling] [--require-runtime-profile-resume] "
+                 "[--require-runtime-menu-hud]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -3868,6 +3977,10 @@ void print_usage() {
         }
         if (arg == "--require-runtime-profile-resume") {
             options.require_runtime_profile_resume = true;
+            continue;
+        }
+        if (arg == "--require-runtime-menu-hud") {
+            options.require_runtime_menu_hud = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -6309,6 +6422,13 @@ int main(int argc, char** argv) {
         << game.gameplay_systems_runtime_profile_resume_save_schema_version()
         << " runtime_profile_resume_settings_schema_version="
         << game.gameplay_systems_runtime_profile_resume_settings_schema_version()
+        << " runtime_menu_hud_ready=" << (game.gameplay_systems_runtime_menu_hud_ready() ? 1 : 0)
+        << " runtime_menu_hud_diagnostics=" << game.gameplay_systems_runtime_menu_hud_diagnostics()
+        << " runtime_menu_hud_display_rows=" << game.gameplay_systems_runtime_menu_hud_display_rows()
+        << " runtime_menu_hud_command_rows=" << game.gameplay_systems_runtime_menu_hud_command_rows()
+        << " runtime_menu_hud_dialogue_rows=" << game.gameplay_systems_runtime_menu_hud_dialogue_rows()
+        << " runtime_menu_hud_input_binding_prompt_rows="
+        << game.gameplay_systems_runtime_menu_hud_input_binding_prompt_rows()
         << " gameplay_systems_animation_state=" << game.gameplay_systems_animation_state()
         << " gameplay_systems_final_actor_x=" << game.gameplay_systems_final_actor_x()
         << " hud_boxes=" << game.hud_boxes_submitted() << " hud_images=" << game.hud_images_submitted()
@@ -6456,6 +6576,23 @@ int main(int argc, char** argv) {
                       << " runtime_profile_resume_settings_schema_version="
                       << game.gameplay_systems_runtime_profile_resume_settings_schema_version() << '\n';
             return 16;
+        }
+        if (options.require_runtime_menu_hud &&
+            (!game.gameplay_systems_runtime_menu_hud_ready() ||
+             game.gameplay_systems_runtime_menu_hud_diagnostics() != 0U ||
+             game.gameplay_systems_runtime_menu_hud_display_rows() != 6U ||
+             game.gameplay_systems_runtime_menu_hud_command_rows() != 2U ||
+             game.gameplay_systems_runtime_menu_hud_dialogue_rows() != 1U ||
+             game.gameplay_systems_runtime_menu_hud_input_binding_prompt_rows() != 1U)) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_runtime_menu_hud_unavailable"
+                      << " runtime_menu_hud_ready=" << (game.gameplay_systems_runtime_menu_hud_ready() ? 1 : 0)
+                      << " runtime_menu_hud_diagnostics=" << game.gameplay_systems_runtime_menu_hud_diagnostics()
+                      << " runtime_menu_hud_display_rows=" << game.gameplay_systems_runtime_menu_hud_display_rows()
+                      << " runtime_menu_hud_command_rows=" << game.gameplay_systems_runtime_menu_hud_command_rows()
+                      << " runtime_menu_hud_dialogue_rows=" << game.gameplay_systems_runtime_menu_hud_dialogue_rows()
+                      << " runtime_menu_hud_input_binding_prompt_rows="
+                      << game.gameplay_systems_runtime_menu_hud_input_binding_prompt_rows() << '\n';
+            return 17;
         }
         if (options.require_gameplay_systems && !gameplay_systems_ready) {
             return 3;
