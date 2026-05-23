@@ -41,7 +41,7 @@ Implement all 7 canonical `candidate` rows in [04-developer-owned-engine-capabil
 - [x] 2. [sprite-9slice-and-tiled-v1](2026-05-23-sprite-9slice-and-tiled-v1.md) — assets/UI/scene renderer/tools (PR #197)
 - [x] 3. [sprite-collision-hitbox-v1](2026-05-23-sprite-collision-hitbox-v1.md) — runtime, physics, gameplay interaction
 - [x] 4. [sprite-effects-particles-v1](2026-05-23-sprite-effects-particles-v1.md) — runtime, scene renderer, selected package counters
-- [ ] 5. [sprite-editor-preview-diagnostics-v1](2026-05-23-sprite-editor-preview-diagnostics-v1.md) — editor core, runtime diagnostics
+- [x] 5. [sprite-editor-preview-diagnostics-v1](2026-05-23-sprite-editor-preview-diagnostics-v1.md) — editor core, runtime diagnostics
 - [ ] 6. [navigation-hierarchical-world-v1](2026-05-23-navigation-hierarchical-world-v1.md) — navigation, world-region streaming refs
 - [ ] 7. [simulation-persistence-v1](2026-05-23-simulation-persistence-v1.md) — session/snapshot layer on `MK_runtime`
 
@@ -57,4 +57,5 @@ Implement all 7 canonical `candidate` rows in [04-developer-owned-engine-capabil
 | sprite-sorting-layer-v1 | #196 | `e587e1a45fd3e750d79364a17764735d81b3496f` | pass | deterministic sorting layers and package counters |
 | sprite-9slice-and-tiled-v1 | #197 | `e4dcbbac2dd2114b8441d5de8f967f2f1b03d1f8` | pass | 9-slice/tiled expansion and package counters |
 | sprite-collision-hitbox-v1 | #200 | `8f94c16624b0677870248ed256a07a9e2cd730f5` | pass | `RuntimeSpriteCollisionHitboxRequest`, deterministic hit/gameplay rows, selected package counters, and 75/75 `validate.ps1` tests |
-| sprite-effects-particles-v1 | pending | pending | pass | `RuntimeSpriteEffectParticleRequest`, deterministic active/spawn/render rows, scene renderer bridge, selected package counters, focused test/smoke evidence, and 76/76 `validate.ps1` tests |
+| sprite-effects-particles-v1 | #201 | `817915966a293fca645bb593a9714efda558419a` | pass | `RuntimeSpriteEffectParticleRequest`, deterministic active/spawn/render rows, scene renderer bridge, selected package counters, focused test/smoke evidence, and 76/76 `validate.ps1` tests |
+| sprite-editor-preview-diagnostics-v1 | pending | pending | pass | `EditorSpritePreviewDiagnosticsModel`, host-owned `EditorSpritePreviewExecutionSnapshot`, selected sprite/atlas/animation/sorting/dependency/collision diagnostics, retained UI rows, focused `MK_editor_core_tests`/`check-tidy` evidence, and full `validate.ps1` 76/76 test evidence |

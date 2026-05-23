@@ -972,6 +972,28 @@ foreach ($needle in @(
 }
 Assert-ContainsText $editorCoreTests "editor tilemap package diagnostics surface runtime tilemap rows" "editor tilemap package diagnostics tests"
 foreach ($needle in @(
+    "EditorSpritePreviewDiagnosticsModel",
+    "EditorSpritePreviewExecutionSnapshot",
+    "make_editor_sprite_preview_diagnostics_model",
+    "apply_editor_sprite_preview_execution_snapshot",
+    "make_editor_sprite_preview_diagnostics_ui_model"
+)) {
+    Assert-ContainsText $editorCoreHeader $needle "editor sprite preview diagnostics header"
+    Assert-ContainsText $editorCoreSource $needle "editor sprite preview diagnostics source"
+}
+foreach ($needle in @(
+    "editor sprite preview diagnostics surface selected sprites animations hitboxes and package rows",
+    "editor sprite preview diagnostics counts only matching selected animation frames",
+    "editor sprite preview diagnostics reflect sprite animation package edge failures",
+    "editor sprite preview diagnostics fail closed on missing selected frame entity pose",
+    "editor sprite preview diagnostics fail closed on malformed selected sprite references",
+    "editor sprite preview diagnostics fail closed sanitized selection id collisions",
+    "sprite_preview_diagnostics.diagnostics.0",
+    "sprite_preview_diagnostics.selected.player.idle.status"
+)) {
+    Assert-ContainsText $editorCoreTests $needle "editor sprite preview diagnostics tests"
+}
+foreach ($needle in @(
     "EditorInputRebindingProfileReviewModel",
     "make_editor_input_rebinding_profile_review_model"
 )) {
