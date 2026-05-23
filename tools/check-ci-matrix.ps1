@@ -184,8 +184,7 @@ Assert-ContainsAll $cpp23EvaluationScript @(
     "[switch]`$Debug",
     "[ValidateRange(0, 1024)]",
     "[int]`$Jobs = 0",
-    "Resolve-Cpp23EvaluationJobCount",
-    "`$effectiveJobs = Resolve-Cpp23EvaluationJobCount -Jobs `$Jobs",
+    "`$effectiveJobs = Resolve-ParallelJobCount -Jobs `$Jobs",
     "cpp23-verification: cmake/ctest parallel jobs=`$effectiveJobs",
     "`$runDebug = `$Debug.IsPresent -or (-not `$Release.IsPresent -and -not `$Gui.IsPresent)",
     "if (`$runDebug) {",
@@ -199,6 +198,8 @@ Assert-ContainsAll $cpp23EvaluationScript @(
     "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-desktop-gui-eval --parallel `$effectiveJobs",
     "Invoke-CheckedCommand `$tools.CTest --preset cpp23-desktop-gui-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs"
 ) "tools/evaluate-cpp23.ps1 release artifact validation"
+Assert-DoesNotContainText $cpp23EvaluationScript "Resolve-Cpp23EvaluationJobCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
+Assert-DoesNotContainText $cpp23EvaluationScript "[Environment]::ProcessorCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
 $cpp23CpackCallIndex = $cpp23EvaluationScript.IndexOf('Invoke-CheckedCommand $tools.CPack --preset cpp23-release-eval', [System.StringComparison]::Ordinal)
 $cpp23ArtifactAssertIndex = $cpp23EvaluationScript.IndexOf('Assert-ReleasePackageArtifacts -BuildDir $releaseBuildDir', [System.StringComparison]::Ordinal)
 if ($cpp23CpackCallIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt $cpp23CpackCallIndex) {
