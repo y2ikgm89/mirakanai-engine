@@ -30,6 +30,15 @@ jobs:
       windows_cpp23: ${{ steps.classify.outputs.windows_cpp23 }}
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -61,6 +70,15 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
@@ -83,6 +101,14 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -231,6 +257,14 @@ jobs:
     timeout-minutes: 150
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -406,6 +440,14 @@ jobs:
       CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -453,7 +495,12 @@ jobs:
 
       - name: Show ccache stats
         if: ${{ always() && !cancelled() }}
-        run: ccache --show-stats
+        run: |
+          if command -v ccache >/dev/null 2>&1; then
+            ccache --show-stats
+          else
+            echo "ccache is not installed; skipping stats after an earlier checkout or toolchain setup failure"
+          fi
 
       - name: Upload Linux test logs
         if: ${{ failure() && !cancelled() }}
@@ -482,6 +529,14 @@ jobs:
       CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -526,7 +581,12 @@ jobs:
 
       - name: Show ccache stats
         if: ${{ always() && !cancelled() }}
-        run: ccache --show-stats
+        run: |
+          if command -v ccache >/dev/null 2>&1; then
+            ccache --show-stats
+          else
+            echo "ccache is not installed; skipping stats after an earlier checkout or toolchain setup failure"
+          fi
 
       - name: Upload Linux coverage logs
         if: ${{ failure() && !cancelled() }}
@@ -556,6 +616,14 @@ jobs:
       CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -604,7 +672,12 @@ jobs:
 
       - name: Show ccache stats
         if: ${{ always() && !cancelled() }}
-        run: ccache --show-stats
+        run: |
+          if command -v ccache >/dev/null 2>&1; then
+            ccache --show-stats
+          else
+            echo "ccache is not installed; skipping stats after an earlier checkout or toolchain setup failure"
+          fi
 
       - name: Upload sanitizer test logs
         if: ${{ failure() && !cancelled() }}
@@ -640,6 +713,14 @@ jobs:
       CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -682,7 +763,12 @@ jobs:
 
       - name: Show ccache stats
         if: ${{ always() && !cancelled() }}
-        run: ccache --show-stats
+        run: |
+          if command -v ccache >/dev/null 2>&1; then
+            ccache --show-stats
+          else
+            echo "ccache is not installed; skipping stats after an earlier checkout or toolchain setup failure"
+          fi
 
       - name: Upload static analysis logs
         if: ${{ failure() && !cancelled() }}
@@ -712,6 +798,14 @@ jobs:
       CMAKE_C_COMPILER_LAUNCHER: ccache
     steps:
       - name: Checkout
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Retry checkout after transient fetch/auth failure
+        if: steps.checkout.outcome != 'success'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
@@ -759,7 +853,12 @@ jobs:
 
       - name: Show ccache stats
         if: ${{ always() && !cancelled() }}
-        run: ccache --show-stats
+        run: |
+          if command -v ccache >/dev/null 2>&1; then
+            ccache --show-stats
+          else
+            echo "ccache is not installed; skipping stats after an earlier checkout or toolchain setup failure"
+          fi
 
       - name: Upload macOS test logs
         if: ${{ failure() && !cancelled() }}
