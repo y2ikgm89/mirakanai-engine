@@ -93,6 +93,8 @@ function Invoke-ValidateToolScriptBatch {
     $effectiveJobs = [Math]::Min($Jobs, $Tasks.Count)
     Write-Host "validate: running $($Tasks.Count) independent static checks with $effectiveJobs parallel jobs"
 
+    $validateOutputFirstLineCount = 200
+    $validateOutputTailLineCount = 200
     $pwshPath = (Get-Process -Id $PID).Path
     if ([string]::IsNullOrWhiteSpace($pwshPath)) {
         $pwshCommand = Get-Command pwsh -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -103,6 +105,10 @@ function Invoke-ValidateToolScriptBatch {
     }
 
     $repositoryRoot = Get-RepoRoot
+    $validationLogRoot = Join-Path $repositoryRoot (Join-Path "out" (Join-Path "validation-logs" ("validate-{0:yyyyMMdd-HHmmss}-{1}" -f (Get-Date), $PID)))
+    $null = New-Item -ItemType Directory -Path $validationLogRoot -Force
+    Write-Host "validate: parallel static check logs: $validationLogRoot"
+
     $pending = [System.Collections.Generic.Queue[object]]::new()
     for ($taskIndex = 0; $taskIndex -lt $Tasks.Count; ++$taskIndex) {
         $pending.Enqueue([pscustomobject]@{
@@ -119,22 +125,120 @@ function Invoke-ValidateToolScriptBatch {
             [Parameter(Mandatory = $true)][string]$RepositoryRoot,
             [Parameter(Mandatory = $true)][string]$ScriptPath,
             [Parameter(Mandatory = $true)][string]$ScriptFileName,
+            [Parameter(Mandatory = $true)][string]$OutputLogPath,
+            [Parameter(Mandatory = $true)][ValidateRange(0, 10000)][int]$FirstLineCount,
+            [Parameter(Mandatory = $true)][ValidateRange(0, 10000)][int]$TailLineCount,
             [string[]]$ChildArguments = @()
         )
 
+        function New-ValidateOutputCapture {
+            [CmdletBinding()]
+            param(
+                [Parameter(Mandatory = $true)][ValidateRange(0, 10000)][int]$FirstLineCount,
+                [Parameter(Mandatory = $true)][ValidateRange(0, 10000)][int]$TailLineCount
+            )
+
+            return [pscustomobject]@{
+                FirstLines = [System.Collections.Generic.List[string]]::new()
+                TailLines = [System.Collections.Generic.Queue[string]]::new()
+                TotalLineCount = 0
+                FirstLineCount = $FirstLineCount
+                TailLineCount = $TailLineCount
+            }
+        }
+
+        function Add-ValidateOutputLine {
+            [CmdletBinding()]
+            param(
+                [Parameter(Mandatory = $true)]$Capture,
+                [Parameter(Mandatory = $true)][string]$Line
+            )
+
+            $Capture.TotalLineCount += 1
+            if ($Capture.FirstLines.Count -lt $Capture.FirstLineCount) {
+                $Capture.FirstLines.Add($Line) | Out-Null
+                return
+            }
+
+            if ($Capture.TailLineCount -le 0) {
+                return
+            }
+
+            $Capture.TailLines.Enqueue($Line)
+            while ($Capture.TailLines.Count -gt $Capture.TailLineCount) {
+                $null = $Capture.TailLines.Dequeue()
+            }
+        }
+
+        function Get-ValidateOutputSnapshot {
+            [CmdletBinding()]
+            param(
+                [Parameter(Mandatory = $true)]$Capture,
+                [Parameter(Mandatory = $true)][string]$OutputLogPath
+            )
+
+            $capturedLines = [System.Collections.Generic.List[string]]::new()
+            foreach ($line in $Capture.FirstLines) {
+                $capturedLines.Add($line) | Out-Null
+            }
+
+            $omittedOutputLineCount = [Math]::Max(0, $Capture.TotalLineCount - $Capture.FirstLines.Count - $Capture.TailLines.Count)
+            if ($omittedOutputLineCount -gt 0) {
+                $capturedLines.Add("validate: omitted $omittedOutputLineCount output line(s); see $OutputLogPath") | Out-Null
+            }
+
+            foreach ($line in $Capture.TailLines) {
+                $capturedLines.Add($line) | Out-Null
+            }
+
+            return [pscustomobject]@{
+                Output = [string[]]$capturedLines.ToArray()
+                OutputLineCount = $Capture.TotalLineCount
+                OmittedOutputLineCount = $omittedOutputLineCount
+            }
+        }
+
         Set-Location -LiteralPath $RepositoryRoot
+        $outputLogDirectory = Split-Path -Path $OutputLogPath -Parent
+        if (-not [string]::IsNullOrWhiteSpace($outputLogDirectory)) {
+            $null = New-Item -ItemType Directory -Path $outputLogDirectory -Force
+        }
+
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-        $output = @(& $PwshPath -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ChildArguments 2>&1 |
-                ForEach-Object { [string]$_ })
-        $exitCode = $LASTEXITCODE
-        $stopwatch.Stop()
+        $capture = New-ValidateOutputCapture -FirstLineCount $FirstLineCount -TailLineCount $TailLineCount
+        $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+        $writer = [System.IO.StreamWriter]::new($OutputLogPath, $false, $utf8NoBom)
+        try {
+            & $PwshPath -NoProfile -ExecutionPolicy Bypass -File $ScriptPath @ChildArguments 2>&1 |
+                ForEach-Object {
+                    $line = [string]$_
+                    $writer.WriteLine($line)
+                    Add-ValidateOutputLine -Capture $capture -Line $line
+                }
+            $exitCode = $LASTEXITCODE
+        }
+        catch {
+            $line = [string]$_
+            $writer.WriteLine($line)
+            Add-ValidateOutputLine -Capture $capture -Line $line
+            $exitCode = 1
+        }
+        finally {
+            $writer.Dispose()
+            $stopwatch.Stop()
+        }
+
+        $outputSnapshot = Get-ValidateOutputSnapshot -Capture $capture -OutputLogPath $OutputLogPath
 
         [pscustomobject]@{
             ScriptFileName = $ScriptFileName
             Arguments = @($ChildArguments)
             ExitCode = $exitCode
             ElapsedSeconds = [Math]::Round($stopwatch.Elapsed.TotalSeconds, 2)
-            Output = @($output)
+            Output = [string[]]$outputSnapshot.Output
+            OutputLineCount = $outputSnapshot.OutputLineCount
+            OmittedOutputLineCount = $outputSnapshot.OmittedOutputLineCount
+            OutputLogPath = $OutputLogPath
         }
     }
 
@@ -145,14 +249,26 @@ function Invoke-ValidateToolScriptBatch {
             $displayArguments = if ($task.Arguments.Count -gt 0) { " $($task.Arguments -join ' ')" } else { "" }
             Write-Host "validate: starting $($task.ScriptFileName)$displayArguments"
             $scriptPath = Join-Path $PSScriptRoot $task.ScriptFileName
+            $safeScriptFileName = $task.ScriptFileName -replace "[^A-Za-z0-9._-]", "_"
+            $outputLogPath = Join-Path $validationLogRoot ("{0:D2}-{1}.log" -f ($entry.Order + 1), $safeScriptFileName)
             $job = Start-Job `
                 -Name "validate-$($entry.Order)-$($task.ScriptFileName)" `
                 -ScriptBlock $jobScript `
-                -ArgumentList @($pwshPath, $repositoryRoot, $scriptPath, $task.ScriptFileName, [string[]]$task.Arguments)
+                -ArgumentList @(
+                    $pwshPath,
+                    $repositoryRoot,
+                    $scriptPath,
+                    $task.ScriptFileName,
+                    $outputLogPath,
+                    $validateOutputFirstLineCount,
+                    $validateOutputTailLineCount,
+                    [string[]]$task.Arguments
+                )
             $running.Add([pscustomobject]@{
                 Order = $entry.Order
                 Task = $task
                 Job = $job
+                OutputLogPath = $outputLogPath
             }) | Out-Null
         }
 
@@ -175,6 +291,9 @@ function Invoke-ValidateToolScriptBatch {
                         ExitCode = 1
                         ElapsedSeconds = 0
                         Output = @($received | ForEach-Object { [string]$_ })
+                        OutputLineCount = $received.Count
+                        OmittedOutputLineCount = 0
+                        OutputLogPath = $record.OutputLogPath
                     })
             }
             $resultsByOrder[$record.Order] = $result[0]
@@ -186,7 +305,7 @@ function Invoke-ValidateToolScriptBatch {
     $failedScripts = [System.Collections.Generic.List[string]]::new()
     for ($taskIndex = 0; $taskIndex -lt $Tasks.Count; ++$taskIndex) {
         $result = $resultsByOrder[$taskIndex]
-        Write-Host "validate: output from $($result.ScriptFileName)"
+        Write-Host "validate: output from $($result.ScriptFileName) (log: $($result.OutputLogPath); lines: $($result.OutputLineCount); omitted: $($result.OmittedOutputLineCount))"
         foreach ($line in @($result.Output)) {
             $line | Out-Host
         }
