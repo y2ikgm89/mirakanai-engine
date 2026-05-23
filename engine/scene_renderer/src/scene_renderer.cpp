@@ -1004,6 +1004,28 @@ SpriteCommand make_scene_sprite_command(const SceneRenderSprite& sprite) noexcep
     };
 }
 
+SpriteCommand
+make_runtime_sprite_effect_particle_command(const runtime::RuntimeSpriteEffectParticleRenderRow& row) noexcept {
+    return SpriteCommand{
+        .transform = Transform2D{.position = Vec2{.x = row.x, .y = row.y},
+                                 .scale = Vec2{.x = row.size_x, .y = row.size_y},
+                                 .rotation_radians = 0.0F},
+        .color = Color{.r = row.color_r, .g = row.color_g, .b = row.color_b, .a = row.color_a},
+        .texture = SpriteTextureRegion{.enabled = row.sprite.value != 0U,
+                                       .atlas_page = row.sprite,
+                                       .uv_rect = SpriteUvRect{.u0 = 0.0F, .v0 = 0.0F, .u1 = 1.0F, .v1 = 1.0F}},
+    };
+}
+
+std::size_t
+submit_runtime_sprite_effect_particle_rows(IRenderer& renderer,
+                                           std::span<const runtime::RuntimeSpriteEffectParticleRenderRow> rows) {
+    for (const auto& row : rows) {
+        renderer.draw_sprite(make_runtime_sprite_effect_particle_command(row));
+    }
+    return rows.size();
+}
+
 namespace {
 
 constexpr float kSpriteSliceEpsilon = 0.000001F;
@@ -1078,8 +1100,8 @@ void append_tiled_slice_region(const SpriteCommand& base, const SpriteSliceLayou
         return;
     }
 
-    const auto tiles_x = static_cast<std::uint32_t>(std::ceil(region_width / tile_width - kSpriteSliceEpsilon));
-    const auto tiles_y = static_cast<std::uint32_t>(std::ceil(region_height / tile_height - kSpriteSliceEpsilon));
+    const auto tiles_x = static_cast<std::uint32_t>(std::ceil((region_width / tile_width) - kSpriteSliceEpsilon));
+    const auto tiles_y = static_cast<std::uint32_t>(std::ceil((region_height / tile_height) - kSpriteSliceEpsilon));
     for (std::uint32_t tile_y = 0; tile_y < tiles_y; ++tile_y) {
         for (std::uint32_t tile_x = 0; tile_x < tiles_x; ++tile_x) {
             const auto tile_left = region_left + (static_cast<float>(tile_x) * tile_width);
@@ -1180,7 +1202,7 @@ void append_expanded_scene_sprite_commands(const SceneRenderSprite& sprite, std:
 SceneSpriteExpansionStats expand_scene_sprite_commands(const SceneRenderPacket& packet,
                                                        std::vector<SpriteCommand>& out) {
     SceneSpriteExpansionStats stats;
-    out.reserve(out.size() + packet.sprites.size() * 9U);
+    out.reserve(out.size() + (packet.sprites.size() * 9U));
     for (const auto& sprite : packet.sprites) {
         append_expanded_scene_sprite_commands(sprite, out, stats);
     }

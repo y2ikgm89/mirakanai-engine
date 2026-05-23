@@ -8,6 +8,7 @@
 #include "mirakana/renderer/shadow_map.hpp"
 #include "mirakana/renderer/sprite_batch.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/sprite_effect_particles.hpp"
 #include "mirakana/runtime_scene/runtime_scene.hpp"
 #include "mirakana/scene/render_packet.hpp"
 
@@ -306,6 +307,11 @@ build_scene_directional_shadow_light_space_plan(const SceneRenderPacket& packet,
                                                   const SceneRenderSubmitDesc& desc) noexcept;
 [[nodiscard]] SceneMeshDrawPlan plan_scene_mesh_draws(const SceneRenderPacket& packet);
 [[nodiscard]] SpriteCommand make_scene_sprite_command(const SceneRenderSprite& sprite) noexcept;
+[[nodiscard]] SpriteCommand
+make_runtime_sprite_effect_particle_command(const runtime::RuntimeSpriteEffectParticleRenderRow& row) noexcept;
+[[nodiscard]] std::size_t
+submit_runtime_sprite_effect_particle_rows(IRenderer& renderer,
+                                           std::span<const runtime::RuntimeSpriteEffectParticleRenderRow> rows);
 [[nodiscard]] SceneSpriteExpansionStats expand_scene_sprite_commands(const SceneRenderPacket& packet,
                                                                      std::vector<SpriteCommand>& out);
 [[nodiscard]] SpriteBatchPlan plan_scene_sprite_batches(const SceneRenderPacket& packet,

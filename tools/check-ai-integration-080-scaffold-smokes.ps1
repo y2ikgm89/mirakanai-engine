@@ -259,9 +259,20 @@ try {
     Assert-ContainsText $sample2dDesktopMain "--require-sprite-collision-hitbox" "sample_2d_desktop_runtime_package main.cpp"
     Assert-ContainsText $sample2dDesktopMain "sprite_collision_hitbox_hits" "sample_2d_desktop_runtime_package main.cpp"
     Assert-ContainsText $sample2dDesktopMain "sprite_collision_hitbox_gameplay_events" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "--require-sprite-effects-particles" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "sprite_effect_particles_render_rows" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "sprite_effect_particles_spawned_particles" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "sprite_effect_particles_ready" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "sprite_effect_particles_submitted" "sample_2d_desktop_runtime_package main.cpp"
+    Assert-ContainsText $sample2dDesktopMain "sprite_effect_particles_budget_diagnostics" "sample_2d_desktop_runtime_package main.cpp"
+    $sample2dDesktopManifest = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json" | ConvertFrom-Json
+    if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-sprite-effects-particles-smoke") {
+        Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-sprite-effects-particles-smoke"
+    }
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-sorting-layer" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-9slice-tiled" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-collision-hitbox" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
+    Assert-ContainsText $repositoryGamesCmake "--require-sprite-effects-particles" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText ($materialShaderManifest.validationRecipes | ConvertTo-Json -Depth 12) "--require-vulkan-scene-shaders" "Desktop material/shader scaffold manifest validation recipes"
     Assert-ContainsText $materialShaderMain "load_runtime_asset_package" "Desktop material/shader scaffold main.cpp"
     Assert-ContainsText $materialShaderMain "plan_modern_material_variants" "Desktop material/shader scaffold main.cpp"

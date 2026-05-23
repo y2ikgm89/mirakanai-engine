@@ -1524,6 +1524,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-sprite-sorting-layer
             --require-sprite-9slice-tiled
             --require-sprite-collision-hitbox
+            --require-sprite-effects-particles
             --require-tilemap-runtime-ux
             --require-gameplay-systems
             --require-procedural-generation
@@ -1548,6 +1549,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-sprite-sorting-layer
             --require-sprite-9slice-tiled
             --require-sprite-collision-hitbox
+            --require-sprite-effects-particles
             --require-tilemap-runtime-ux
             --require-gameplay-systems
             --require-procedural-generation
