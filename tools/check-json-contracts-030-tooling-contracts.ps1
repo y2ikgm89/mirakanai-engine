@@ -480,6 +480,17 @@ foreach ($formatScriptName in @("check-format.ps1", "format.ps1")) {
         Write-Error "tools/$formatScriptName must not duplicate C++ source root lists"
     }
 }
+$checkFormatScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-format.ps1") -Raw
+foreach ($needle in @(
+        "Start-ThreadJob",
+        "Resolve-ParallelJobCount -Jobs 0 -MaximumJobs 4",
+        "Wait-Job -Job @(`$running | ForEach-Object { `$_.Job }) -Any",
+        "clang-format failed for batch"
+    )) {
+    if (-not $checkFormatScriptText.Contains($needle)) {
+        Write-Error "tools/check-format.ps1 must use bounded parallel clang-format dry-run batches: $needle"
+    }
+}
 $licenseScriptPath = Join-Path $root "tools/check-license.ps1"
 $licenseScriptText = Get-Content -LiteralPath $licenseScriptPath -Raw
 if (-not $licenseScriptText.Contains("function Get-LicenseCheckedSourceFile")) {

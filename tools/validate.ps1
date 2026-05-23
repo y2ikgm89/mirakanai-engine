@@ -68,6 +68,26 @@ function Invoke-ValidateToolScript {
     & (Join-Path $PSScriptRoot $ScriptFileName) @Arguments
 }
 
+function Start-ValidateBackgroundJob {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$ScriptBlock,
+
+        [object[]]$ArgumentList = @()
+    )
+
+    if (Get-Command Start-ThreadJob -ErrorAction SilentlyContinue) {
+        return Start-ThreadJob -Name $Name -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
+    }
+
+    return Start-Job -Name $Name -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
+}
+
 function Invoke-ValidateToolScriptBatch {
     [CmdletBinding()]
     param(
@@ -251,7 +271,7 @@ function Invoke-ValidateToolScriptBatch {
             $scriptPath = Join-Path $PSScriptRoot $task.ScriptFileName
             $safeScriptFileName = $task.ScriptFileName -replace "[^A-Za-z0-9._-]", "_"
             $outputLogPath = Join-Path $validationLogRoot ("{0:D2}-{1}.log" -f ($entry.Order + 1), $safeScriptFileName)
-            $job = Start-Job `
+            $job = Start-ValidateBackgroundJob `
                 -Name "validate-$($entry.Order)-$($task.ScriptFileName)" `
                 -ScriptBlock $jobScript `
                 -ArgumentList @(
