@@ -751,6 +751,20 @@ Assert-ContainsText $staticContractCommonText "function Assert-SpecStatusSection
 Assert-ContainsText $checkAiIntegrationText 'static-contract-common.ps1' "tools/check-ai-integration.ps1"
 Assert-ContainsText $checkJsonContractsText 'static-contract-common.ps1' "tools/check-json-contracts.ps1"
 Assert-DoesNotContainText $checkAiBaselineText '(Get-Content -LiteralPath $manifestPath -Raw)' "tools/check-ai-integration-010-agent-baseline.ps1"
+foreach ($cachedBaselineRead in @(
+        @{ Variable = "gameAgentSchemaText"; PathVariable = "gameAgentSchemaPath" },
+        @{ Variable = "currentCapabilitiesContent"; PathVariable = "currentCapabilitiesPath" },
+        @{ Variable = "aiGameDevelopmentContent"; PathVariable = "aiGameDevelopmentPath" },
+        @{ Variable = "roadmapContent"; PathVariable = "roadmapPath" }
+    )) {
+    $baselineReadMatches = [System.Text.RegularExpressions.Regex]::Matches(
+        $checkAiBaselineText,
+        "\`$$($cachedBaselineRead.Variable)\s*=\s*Get-Content\s+-LiteralPath\s+\`$$($cachedBaselineRead.PathVariable)\s+-Raw")
+    if ($baselineReadMatches.Count -ne 1) {
+        Write-Error "tools/check-ai-integration-010-agent-baseline.ps1 must read $($cachedBaselineRead.PathVariable) raw text exactly once; found $($baselineReadMatches.Count)"
+    }
+    Assert-DoesNotContainText $checkAiBaselineText "(Get-Content -LiteralPath `$$($cachedBaselineRead.PathVariable) -Raw)" "tools/check-ai-integration-010-agent-baseline.ps1"
+}
 $checkAiBaselineManifestReadMatches = [System.Text.RegularExpressions.Regex]::Matches(
     $checkAiBaselineText,
     '\$manifestRaw\s*=\s*Get-Content\s+-LiteralPath\s+\$manifestPath\s+-Raw')
