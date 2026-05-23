@@ -28,6 +28,7 @@ Use this skill for renderer, RHI, shaders, GPU resources, frame graph, materials
 - Read `references/full-guidance.md` only when detailed backend lanes, shader artifact rules, smoke counters, or detailed rendering needles are needed.
 - Use focused renderer/RHI/shader checks while iterating, then `tools/validate.ps1` at the slice gate.
 - Use official SDK/tool docs for backend/toolchain behavior and keep D3D12/Vulkan/Metal readiness claims evidence-backed.
+- Keep `MK_d3d12_rhi_tests` on Microsoft WARP for hosted CI determinism; hardware-adapter D3D12 proof needs explicit host diagnostics or package smoke evidence.
 
 ## Detailed Reference
 

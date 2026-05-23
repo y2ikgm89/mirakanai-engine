@@ -22,6 +22,13 @@ namespace {
     return RhiResourceLifetimeDiagnostic{.code = code, .handle = handle, .message = std::move(message)};
 }
 
+[[nodiscard]] bool fence_completed(RhiResourceLifetimeFence release_fence,
+                                   std::span<const RhiResourceLifetimeFence> completed_fences) noexcept {
+    return std::ranges::any_of(completed_fences, [release_fence](RhiResourceLifetimeFence completed_fence) {
+        return completed_fence.queue == release_fence.queue && completed_fence.value >= release_fence.value;
+    });
+}
+
 } // namespace
 
 RhiResourceRegistrationResult RhiResourceLifetimeRegistry::register_resource(RhiResourceRegistrationDesc desc) {
@@ -36,7 +43,7 @@ RhiResourceRegistrationResult RhiResourceLifetimeRegistry::register_resource(Rhi
             .resource_kind = desc.kind,
             .owner = std::move(desc.owner),
             .debug_name = std::move(desc.debug_name),
-            .frame = 0,
+            .fence = {},
         });
         return result;
     }
@@ -50,7 +57,7 @@ RhiResourceRegistrationResult RhiResourceLifetimeRegistry::register_resource(Rhi
             .resource_kind = desc.kind,
             .owner = std::move(desc.owner),
             .debug_name = std::move(desc.debug_name),
-            .frame = 0,
+            .fence = {},
         });
         return result;
     }
@@ -62,7 +69,7 @@ RhiResourceRegistrationResult RhiResourceLifetimeRegistry::register_resource(Rhi
         .state = RhiResourceLifetimeState::live,
         .owner = std::move(desc.owner),
         .debug_name = std::move(desc.debug_name),
-        .release_frame = 0,
+        .release_fence = {},
     });
     const auto& record = records_.back();
     events_.push_back(RhiResourceLifetimeEvent{
@@ -71,7 +78,7 @@ RhiResourceRegistrationResult RhiResourceLifetimeRegistry::register_resource(Rhi
         .resource_kind = record.kind,
         .owner = record.owner,
         .debug_name = record.debug_name,
-        .frame = 0,
+        .fence = {},
     });
     result.handle = handle;
     return result;
@@ -89,7 +96,7 @@ RhiResourceLifetimeResult RhiResourceLifetimeRegistry::set_debug_name(RhiResourc
                                                    .resource_kind = RhiResourceKind::unknown,
                                                    .owner = {},
                                                    .debug_name = std::move(debug_name),
-                                                   .frame = 0});
+                                                   .fence = {}});
         return result;
     }
 
@@ -103,7 +110,7 @@ RhiResourceLifetimeResult RhiResourceLifetimeRegistry::set_debug_name(RhiResourc
                                                    .resource_kind = RhiResourceKind::unknown,
                                                    .owner = {},
                                                    .debug_name = {},
-                                                   .frame = 0});
+                                                   .fence = {}});
         return result;
     }
     if (record->handle.generation != handle.generation) {
@@ -115,7 +122,7 @@ RhiResourceLifetimeResult RhiResourceLifetimeRegistry::set_debug_name(RhiResourc
                                                    .resource_kind = record->kind,
                                                    .owner = record->owner,
                                                    .debug_name = record->debug_name,
-                                                   .frame = 0});
+                                                   .fence = {}});
         return result;
     }
 
@@ -126,13 +133,14 @@ RhiResourceLifetimeResult RhiResourceLifetimeRegistry::set_debug_name(RhiResourc
         .resource_kind = record->kind,
         .owner = record->owner,
         .debug_name = record->debug_name,
-        .frame = 0,
+        .fence = {},
     });
     return result;
 }
 
-RhiResourceLifetimeResult RhiResourceLifetimeRegistry::release_resource_deferred(RhiResourceHandle handle,
-                                                                                 std::uint64_t release_frame) {
+RhiResourceLifetimeResult
+RhiResourceLifetimeRegistry::release_resource_deferred(RhiResourceHandle handle,
+                                                       RhiResourceLifetimeFence release_fence) {
     RhiResourceLifetimeResult result;
     const auto record = std::ranges::find_if(
         records_, [handle](const RhiResourceLifetimeRecord& candidate) { return candidate.handle.id == handle.id; });
@@ -144,7 +152,7 @@ RhiResourceLifetimeResult RhiResourceLifetimeRegistry::release_resource_deferred
                                                    .resource_kind = RhiResourceKind::unknown,
                                                    .owner = {},
                                                    .debug_name = {},
-                                                   .frame = release_frame});
+                                                   .fence = release_fence});
         return result;
     }
     if (record->handle.generation != handle.generation) {
@@ -156,7 +164,7 @@ RhiResourceLifetimeResult RhiResourceLifetimeRegistry::release_resource_deferred
                                                    .resource_kind = record->kind,
                                                    .owner = record->owner,
                                                    .debug_name = record->debug_name,
-                                                   .frame = release_frame});
+                                                   .fence = release_fence});
         return result;
     }
     if (record->state == RhiResourceLifetimeState::deferred_release) {
@@ -167,35 +175,41 @@ RhiResourceLifetimeResult RhiResourceLifetimeRegistry::release_resource_deferred
                                                    .resource_kind = record->kind,
                                                    .owner = record->owner,
                                                    .debug_name = record->debug_name,
-                                                   .frame = release_frame});
+                                                   .fence = release_fence});
         return result;
     }
 
     record->state = RhiResourceLifetimeState::deferred_release;
-    record->release_frame = release_frame;
+    record->release_fence = release_fence;
     events_.push_back(RhiResourceLifetimeEvent{
         .kind = RhiResourceLifetimeEventKind::defer_release,
         .handle = record->handle,
         .resource_kind = record->kind,
         .owner = record->owner,
         .debug_name = record->debug_name,
-        .frame = release_frame,
+        .fence = release_fence,
     });
     return result;
 }
 
-std::uint32_t RhiResourceLifetimeRegistry::retire_released_resources(std::uint64_t completed_frame) {
+std::uint32_t RhiResourceLifetimeRegistry::retire_released_resources(RhiResourceLifetimeFence completed_fence) {
+    return retire_released_resources(std::span<const RhiResourceLifetimeFence>(&completed_fence, 1));
+}
+
+std::uint32_t
+RhiResourceLifetimeRegistry::retire_released_resources(std::span<const RhiResourceLifetimeFence> completed_fences) {
     std::uint32_t retired_count = 0;
     auto record = records_.begin();
     while (record != records_.end()) {
-        if (record->state == RhiResourceLifetimeState::deferred_release && record->release_frame <= completed_frame) {
+        if (record->state == RhiResourceLifetimeState::deferred_release &&
+            fence_completed(record->release_fence, completed_fences)) {
             events_.push_back(RhiResourceLifetimeEvent{
                 .kind = RhiResourceLifetimeEventKind::retire,
                 .handle = record->handle,
                 .resource_kind = record->kind,
                 .owner = record->owner,
                 .debug_name = record->debug_name,
-                .frame = completed_frame,
+                .fence = record->release_fence,
             });
             record = records_.erase(record);
             ++retired_count;

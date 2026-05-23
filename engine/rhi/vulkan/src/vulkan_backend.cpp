@@ -83,6 +83,15 @@ void record_queue_wait(RhiStats& stats, QueueKind queue, FenceValue fence) noexc
     }
 }
 
+[[nodiscard]] RhiResourceLifetimeFence lifetime_fence(std::uint64_t value) noexcept {
+    return RhiResourceLifetimeFence{.value = value, .queue = RhiResourceLifetimeQueue::graphics};
+}
+
+[[nodiscard]] bool lifetime_fence_completed(RhiResourceLifetimeFence release_fence,
+                                            RhiResourceLifetimeFence completed_fence) noexcept {
+    return completed_fence.queue == release_fence.queue && completed_fence.value >= release_fence.value;
+}
+
 #if defined(_WIN32)
 #define MK_VULKAN_CALL __stdcall
 #else
@@ -3731,7 +3740,7 @@ class VulkanRhiDevice final : public IRhiDevice {
         if (record.kind == TransientResourceKind::buffer) {
             const auto index = record.buffer.value - 1U;
             if (buffer_active_.at(index)) {
-                const auto release_fence = stats_.last_submitted_fence_value;
+                const auto release_fence = lifetime_fence(stats_.last_submitted_fence_value);
                 (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_.at(index), release_fence);
                 buffer_active_.at(index) = false;
             }
@@ -3739,7 +3748,7 @@ class VulkanRhiDevice final : public IRhiDevice {
             for (const auto texture : record.textures) {
                 const auto index = texture.value - 1U;
                 if (texture_active_.at(index)) {
-                    const auto release_fence = stats_.last_submitted_fence_value;
+                    const auto release_fence = lifetime_fence(stats_.last_submitted_fence_value);
                     (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
                     texture_active_.at(index) = false;
                     texture_states_.at(index) = ResourceState::undefined;
@@ -3751,7 +3760,7 @@ class VulkanRhiDevice final : public IRhiDevice {
                 }
             }
         }
-        retire_deferred_native_resources(stats_.last_completed_fence_value);
+        retire_deferred_native_resources(lifetime_fence(stats_.last_completed_fence_value));
         ++stats_.transient_resources_released;
         --stats_.transient_resources_active;
     }
@@ -4299,10 +4308,10 @@ class VulkanRhiDevice final : public IRhiDevice {
         ++stats_.swapchain_frames_released;
     }
 
-    /// Destroys Vulkan buffer/image objects for lifetime records deferred through `release_frame`, then retires
-    /// those records from `resource_lifetime_`. `completed_frame` matches `RhiStats::last_completed_fence_value`
+    /// Destroys Vulkan buffer/image objects for queue-qualified lifetime records, then retires those records from
+    /// `resource_lifetime_`. `completed_fence` matches `RhiStats::last_completed_fence_value`
     /// semantics on this backend (advances on `wait` and on submits that drain the graphics queue).
-    void retire_deferred_native_resources(std::uint64_t completed_frame) noexcept;
+    void retire_deferred_native_resources(RhiResourceLifetimeFence completed_fence) noexcept;
 
     /// Blocks on `vkWaitForFences` until all GPU timeline entries through `target_timeline` have completed.
     void advance_gpu_timeline_completion(std::uint64_t target_timeline) noexcept;
@@ -5485,7 +5494,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
     std::uint32_t gpu_debug_scope_depth_{0};
 };
 
-void VulkanRhiDevice::retire_deferred_native_resources(std::uint64_t completed_frame) noexcept {
+void VulkanRhiDevice::retire_deferred_native_resources(RhiResourceLifetimeFence completed_fence) noexcept {
     struct PendingDestroy {
         RhiResourceHandle handle{};
         RhiResourceKind kind{RhiResourceKind::unknown};
@@ -5494,14 +5503,15 @@ void VulkanRhiDevice::retire_deferred_native_resources(std::uint64_t completed_f
     std::vector<PendingDestroy> pending;
     pending.reserve(32);
     for (const auto& rec : resource_lifetime_.records()) {
-        if (rec.state != RhiResourceLifetimeState::deferred_release || rec.release_frame > completed_frame) {
+        if (rec.state != RhiResourceLifetimeState::deferred_release ||
+            !lifetime_fence_completed(rec.release_fence, completed_fence)) {
             continue;
         }
         pending.push_back(
             PendingDestroy{.handle = rec.handle, .kind = rec.kind, .rank = deferred_vulkan_destroy_rank(rec.kind)});
     }
     if (pending.empty()) {
-        (void)resource_lifetime_.retire_released_resources(completed_frame);
+        (void)resource_lifetime_.retire_released_resources(completed_fence);
         return;
     }
     std::ranges::stable_sort(pending, [](const PendingDestroy& lhs, const PendingDestroy& rhs) {
@@ -5624,7 +5634,7 @@ void VulkanRhiDevice::retire_deferred_native_resources(std::uint64_t completed_f
         }
     }
 
-    (void)resource_lifetime_.retire_released_resources(completed_frame);
+    (void)resource_lifetime_.retire_released_resources(completed_fence);
 }
 
 void VulkanRhiDevice::advance_gpu_timeline_completion(std::uint64_t target_timeline) noexcept {
@@ -5870,58 +5880,62 @@ std::vector<VulkanRuntimeTexture> VulkanRhiDevice::create_transient_texture_alia
 
 VulkanRhiDevice::~VulkanRhiDevice() {
     advance_gpu_timeline_completion(std::numeric_limits<std::uint64_t>::max());
-    const auto flush_fence = std::numeric_limits<std::uint64_t>::max();
+    const auto flush_fence = lifetime_fence(std::numeric_limits<std::uint64_t>::max());
     for (std::size_t i = 0; i < graphics_pipeline_active_.size(); ++i) {
         if (graphics_pipeline_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(graphics_pipeline_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(graphics_pipeline_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             graphics_pipeline_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < compute_pipeline_active_.size(); ++i) {
         if (compute_pipeline_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(compute_pipeline_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(compute_pipeline_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             compute_pipeline_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < pipeline_layout_active_.size(); ++i) {
         if (pipeline_layout_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(pipeline_layout_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(pipeline_layout_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             pipeline_layout_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < descriptor_set_active_.size(); ++i) {
         if (descriptor_set_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(descriptor_set_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(descriptor_set_lifetime_[i], RhiResourceLifetimeFence{});
             descriptor_set_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < descriptor_set_layout_active_.size(); ++i) {
         if (descriptor_set_layout_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(descriptor_set_layout_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(descriptor_set_layout_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             descriptor_set_layout_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < shader_active_.size(); ++i) {
         if (shader_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(shader_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(shader_lifetime_[i], RhiResourceLifetimeFence{});
             shader_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < sampler_active_.size(); ++i) {
         if (sampler_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(sampler_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(sampler_lifetime_[i], RhiResourceLifetimeFence{});
             sampler_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < buffer_active_.size(); ++i) {
         if (buffer_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_[i], RhiResourceLifetimeFence{});
             buffer_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < texture_active_.size(); ++i) {
         if (texture_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(texture_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(texture_lifetime_[i], RhiResourceLifetimeFence{});
             texture_active_[i] = false;
         }
     }
@@ -5993,7 +6007,7 @@ FenceValue VulkanRhiDevice::submit(IRhiCommandList& commands) {
         ++stats_.fences_signaled;
         stats_.last_submitted_fence_value = timeline;
         record_queue_submit(stats_, vulkan_commands->queue_kind(), fence);
-        retire_deferred_native_resources(stats_.last_completed_fence_value);
+        retire_deferred_native_resources(lifetime_fence(stats_.last_completed_fence_value));
         return fence;
     }
     if (pending_frames.size() > 1) {
@@ -6035,7 +6049,7 @@ FenceValue VulkanRhiDevice::submit(IRhiCommandList& commands) {
     ++stats_.present_calls;
     stats_.last_submitted_fence_value = timeline;
     record_queue_submit(stats_, vulkan_commands->queue_kind(), fence);
-    retire_deferred_native_resources(stats_.last_completed_fence_value);
+    retire_deferred_native_resources(lifetime_fence(stats_.last_completed_fence_value));
     return fence;
 }
 
@@ -6046,7 +6060,7 @@ void VulkanRhiDevice::wait(FenceValue fence) {
         throw std::logic_error("vulkan rhi fence wait failed");
     }
     advance_gpu_timeline_completion(fence.value);
-    retire_deferred_native_resources(stats_.last_completed_fence_value);
+    retire_deferred_native_resources(lifetime_fence(stats_.last_completed_fence_value));
 }
 
 void VulkanRhiDevice::wait_for_queue(QueueKind queue, FenceValue fence) {

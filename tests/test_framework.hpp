@@ -46,13 +46,13 @@ inline int run_all() noexcept {
         for (const auto& test : cases()) {
             try {
                 test.run();
-                std::cout << "[PASS] " << test.name << '\n';
+                std::cout << "[PASS] " << test.name << '\n' << std::flush;
             } catch (const std::exception& error) {
                 ++failed;
-                std::cerr << "[FAIL] " << test.name << ": " << error.what() << '\n';
+                std::cerr << "[FAIL] " << test.name << ": " << error.what() << '\n' << std::flush;
             } catch (...) {
                 ++failed;
-                std::cerr << "[FAIL] " << test.name << ": unknown exception\n";
+                std::cerr << "[FAIL] " << test.name << ": unknown exception\n" << std::flush;
             }
         }
         return failed == 0 ? 0 : 1;

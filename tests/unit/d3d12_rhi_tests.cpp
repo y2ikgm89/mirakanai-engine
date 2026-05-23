@@ -853,6 +853,13 @@ make_d3d12_runtime_scene_package(mirakana::AssetId mesh, mirakana::AssetId mater
     return scene;
 }
 
+[[nodiscard]] mirakana::rhi::d3d12::DeviceBootstrapDesc d3d12_test_device_desc() noexcept {
+    return mirakana::rhi::d3d12::DeviceBootstrapDesc{
+        .prefer_warp = true,
+        .enable_debug_layer = false,
+    };
+}
+
 } // namespace
 
 MK_TEST("d3d12 backend scaffold reports windows sdk availability") {
@@ -871,12 +878,10 @@ MK_TEST("d3d12 backend probes dxgi and device support") {
 }
 
 MK_TEST("d3d12 backend bootstraps device command queue and fence") {
-    const auto result = mirakana::rhi::d3d12::bootstrap_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    const auto result = mirakana::rhi::d3d12::bootstrap_device(d3d12_test_device_desc());
 
     MK_REQUIRE(result.succeeded);
+    MK_REQUIRE(result.used_warp);
     MK_REQUIRE(result.device_created);
     MK_REQUIRE(result.command_queue_created);
     MK_REQUIRE(result.fence_created);
@@ -885,7 +890,7 @@ MK_TEST("d3d12 backend bootstraps device command queue and fence") {
 
 MK_TEST("d3d12 backend creates first gpu owned resources") {
     const auto result = mirakana::rhi::d3d12::bootstrap_resource_ownership(mirakana::rhi::d3d12::ResourceOwnershipDesc{
-        .device = mirakana::rhi::d3d12::DeviceBootstrapDesc{.prefer_warp = false, .enable_debug_layer = false},
+        .device = d3d12_test_device_desc(),
         .upload_buffer_size_bytes = 4096,
         .readback_buffer_size_bytes = 4096,
         .texture_extent = mirakana::rhi::Extent2D{.width = 4, .height = 4},
@@ -901,13 +906,11 @@ MK_TEST("d3d12 backend creates first gpu owned resources") {
 }
 
 MK_TEST("d3d12 device context reports graphics and compute timestamp measurement support") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
     MK_REQUIRE(context->valid());
+    MK_REQUIRE(context->used_warp());
 
     const auto graphics = context->queue_timestamp_measurement_support(mirakana::rhi::QueueKind::graphics);
     const auto compute = context->queue_timestamp_measurement_support(mirakana::rhi::QueueKind::compute);
@@ -923,10 +926,7 @@ MK_TEST("d3d12 device context reports graphics and compute timestamp measurement
 }
 
 MK_TEST("d3d12 device context records backend private queue timestamp intervals") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
     MK_REQUIRE(context->valid());
@@ -949,10 +949,7 @@ MK_TEST("d3d12 device context records backend private queue timestamp intervals"
 }
 
 MK_TEST("d3d12 device context reports graphics and compute queue clock calibration") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
     MK_REQUIRE(context->valid());
@@ -973,10 +970,7 @@ MK_TEST("d3d12 device context reports graphics and compute queue clock calibrati
 }
 
 MK_TEST("d3d12 device context records backend private calibrated queue timing diagnostics") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
     MK_REQUIRE(context->valid());
@@ -1008,7 +1002,7 @@ MK_TEST("d3d12 device context records backend private calibrated queue timing di
 
 MK_TEST("d3d12 backend rejects invalid resource ownership descriptions") {
     const auto result = mirakana::rhi::d3d12::bootstrap_resource_ownership(mirakana::rhi::d3d12::ResourceOwnershipDesc{
-        .device = mirakana::rhi::d3d12::DeviceBootstrapDesc{.prefer_warp = false, .enable_debug_layer = false},
+        .device = d3d12_test_device_desc(),
         .upload_buffer_size_bytes = 0,
         .readback_buffer_size_bytes = 4096,
         .texture_extent = mirakana::rhi::Extent2D{.width = 4, .height = 4},
@@ -1021,10 +1015,7 @@ MK_TEST("d3d12 backend rejects invalid resource ownership descriptions") {
 }
 
 MK_TEST("d3d12 device context owns committed resources across calls") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
     MK_REQUIRE(context->valid());
@@ -1048,10 +1039,7 @@ MK_TEST("d3d12 device context owns committed resources across calls") {
 }
 
 MK_TEST("d3d12 rhi exports shared textures for editor interop") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
     MK_REQUIRE(device != nullptr);
 
     const auto texture = device->create_texture(mirakana::rhi::TextureDesc{
@@ -1076,10 +1064,7 @@ MK_TEST("d3d12 rhi exports shared textures for editor interop") {
 }
 
 MK_TEST("d3d12 rhi rejects shared texture export without shared usage") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
     MK_REQUIRE(device != nullptr);
 
     const auto texture = device->create_texture(mirakana::rhi::TextureDesc{
@@ -1098,10 +1083,7 @@ MK_TEST("d3d12 rhi rejects shared texture export without shared usage") {
 }
 
 MK_TEST("d3d12 device context rejects invalid committed resource descriptions") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
     const auto invalid_buffer = context->create_committed_buffer(mirakana::rhi::BufferDesc{
@@ -1120,10 +1102,7 @@ MK_TEST("d3d12 device context rejects invalid committed resource descriptions") 
 }
 
 MK_TEST("d3d12 device context owns command allocators and lists") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1145,10 +1124,7 @@ MK_TEST("d3d12 device context owns command allocators and lists") {
 }
 
 MK_TEST("d3d12 device context records committed texture aliasing barrier intent") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1172,10 +1148,7 @@ MK_TEST("d3d12 device context records committed texture aliasing barrier intent"
 }
 
 MK_TEST("d3d12 device context records public null texture aliasing barriers") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1199,10 +1172,7 @@ MK_TEST("d3d12 device context records public null texture aliasing barriers") {
 }
 
 MK_TEST("d3d12 device context applies public null placed texture aliasing state updates") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1250,10 +1220,7 @@ MK_TEST("d3d12 device context applies public null placed texture aliasing state 
 }
 
 MK_TEST("d3d12 device context creates placed transient texture resources") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1297,10 +1264,7 @@ MK_TEST("d3d12 device context creates placed transient texture resources") {
 }
 
 MK_TEST("d3d12 device context keeps unrelated placed texture aliasing barriers conservative") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1332,10 +1296,7 @@ MK_TEST("d3d12 device context keeps unrelated placed texture aliasing barriers c
 }
 
 MK_TEST("d3d12 device context records non null placed resource aliasing barriers") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1419,10 +1380,7 @@ MK_TEST("d3d12 device context records non null placed resource aliasing barriers
 }
 
 MK_TEST("d3d12 device context records placed resource aliasing barriers on copy command lists") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1459,10 +1417,7 @@ MK_TEST("d3d12 device context records placed resource aliasing barriers on copy 
 }
 
 MK_TEST("d3d12 device context executes closed command lists and signals fences") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1481,10 +1436,7 @@ MK_TEST("d3d12 device context executes closed command lists and signals fences")
 }
 
 MK_TEST("d3d12 device context rejects invalid command list handles") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1497,10 +1449,7 @@ MK_TEST("d3d12 device context rejects invalid command list handles") {
 }
 
 MK_TEST("d3d12 device context waits for submitted fences before allocator reset") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1518,10 +1467,7 @@ MK_TEST("d3d12 device context waits for submitted fences before allocator reset"
 }
 
 MK_TEST("d3d12 device context rejects waits for unsignaled fences") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1532,10 +1478,7 @@ MK_TEST("d3d12 device context rejects waits for unsignaled fences") {
 }
 
 MK_TEST("d3d12 device context synchronizes copy queue with graphics fence") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1569,10 +1512,7 @@ MK_TEST("d3d12 device context synchronizes copy queue with graphics fence") {
 }
 
 MK_TEST("d3d12 device context rejects queue waits for unsignaled fences") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1581,14 +1521,49 @@ MK_TEST("d3d12 device context rejects queue waits for unsignaled fences") {
     MK_REQUIRE(context->stats().queue_wait_failures == 1);
 }
 
+MK_TEST("d3d12 device context reports per queue submitted and completed fences") {
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
+
+    MK_REQUIRE(context != nullptr);
+
+    const auto graphics_commands = context->create_command_list(mirakana::rhi::QueueKind::graphics);
+    const auto compute_commands = context->create_command_list(mirakana::rhi::QueueKind::compute);
+    const auto copy_commands = context->create_command_list(mirakana::rhi::QueueKind::copy);
+
+    MK_REQUIRE(context->close_command_list(graphics_commands));
+    MK_REQUIRE(context->close_command_list(compute_commands));
+    MK_REQUIRE(context->close_command_list(copy_commands));
+
+    const auto graphics_fence = context->execute_command_list(graphics_commands);
+    const auto compute_fence = context->execute_command_list(compute_commands);
+    const auto copy_fence = context->execute_command_list(copy_commands);
+
+    const auto submitted = context->last_submitted_queue_fences();
+    MK_REQUIRE(submitted[0].queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(submitted[0].value == graphics_fence.value);
+    MK_REQUIRE(submitted[1].queue == mirakana::rhi::QueueKind::compute);
+    MK_REQUIRE(submitted[1].value == compute_fence.value);
+    MK_REQUIRE(submitted[2].queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(submitted[2].value == copy_fence.value);
+
+    MK_REQUIRE(context->wait_for_fence(graphics_fence, 0xFFFFFFFFU));
+    MK_REQUIRE(context->wait_for_fence(compute_fence, 0xFFFFFFFFU));
+    MK_REQUIRE(context->wait_for_fence(copy_fence, 0xFFFFFFFFU));
+
+    const auto completed = context->completed_queue_fences();
+    MK_REQUIRE(completed[0].queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(completed[0].value >= graphics_fence.value);
+    MK_REQUIRE(completed[1].queue == mirakana::rhi::QueueKind::compute);
+    MK_REQUIRE(completed[1].value >= compute_fence.value);
+    MK_REQUIRE(completed[2].queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(completed[2].value >= copy_fence.value);
+}
+
 MK_TEST("d3d12 device context owns hwnd swapchain back buffers") {
     HiddenTestWindow window;
     MK_REQUIRE(window.valid());
 
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1624,10 +1599,7 @@ MK_TEST("d3d12 device context presents and resizes hwnd swapchains") {
     HiddenTestWindow window;
     MK_REQUIRE(window.valid());
 
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1661,10 +1633,7 @@ MK_TEST("d3d12 device context presents and resizes hwnd swapchains") {
 }
 
 MK_TEST("d3d12 device context rejects invalid swapchain descriptions") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1702,10 +1671,7 @@ MK_TEST("d3d12 device context records swapchain back buffer transitions") {
     HiddenTestWindow window;
     MK_REQUIRE(window.valid());
 
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1740,10 +1706,7 @@ MK_TEST("d3d12 device context records swapchain back buffer transitions") {
 }
 
 MK_TEST("d3d12 device context owns shader visible descriptor heaps") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1766,10 +1729,7 @@ MK_TEST("d3d12 device context owns shader visible descriptor heaps") {
 }
 
 MK_TEST("d3d12 device context creates descriptor table root signatures") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1810,10 +1770,7 @@ MK_TEST("d3d12 device context creates descriptor table root signatures") {
 }
 
 MK_TEST("d3d12 device context splits sampler descriptor tables by heap kind") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1852,10 +1809,7 @@ MK_TEST("d3d12 device context splits sampler descriptor tables by heap kind") {
 }
 
 MK_TEST("d3d12 device context writes native descriptor views") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1916,10 +1870,7 @@ MK_TEST("d3d12 device context writes native descriptor views") {
 }
 
 MK_TEST("d3d12 device context writes native sampler descriptors") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -1947,10 +1898,7 @@ MK_TEST("d3d12 device context writes native sampler descriptors") {
 }
 
 MK_TEST("d3d12 device context binds descriptor heaps root signatures and descriptor tables") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -2011,10 +1959,7 @@ MK_TEST("d3d12 device context binds descriptor heaps root signatures and descrip
 }
 
 MK_TEST("d3d12 device context rejects invalid descriptor and root signature work") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -2073,10 +2018,7 @@ MK_TEST("d3d12 device context rejects invalid descriptor and root signature work
 }
 
 MK_TEST("d3d12 device context rejects invalid native descriptor writes") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -2145,10 +2087,7 @@ MK_TEST("d3d12 device context rejects invalid native descriptor writes") {
 }
 
 MK_TEST("d3d12 device context owns shader bytecode and graphics pipeline state") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -2193,10 +2132,7 @@ MK_TEST("d3d12 device context records first triangle draw to hwnd swapchain") {
     HiddenTestWindow window;
     MK_REQUIRE(window.valid());
 
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -2261,10 +2197,7 @@ MK_TEST("d3d12 device context records first triangle draw to hwnd swapchain") {
 }
 
 MK_TEST("d3d12 device context rejects invalid graphics pipeline and draw work") {
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -2322,10 +2255,7 @@ MK_TEST("d3d12 device context rejects invalid graphics pipeline and draw work") 
 MK_TEST("d3d12 rhi device exposes backend neutral resources and pipeline creation") {
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
     MK_REQUIRE(device->backend_kind() == mirakana::rhi::BackendKind::d3d12);
@@ -2378,10 +2308,7 @@ MK_TEST("d3d12 rhi device exposes backend neutral resources and pipeline creatio
 
 MK_TEST("d3d12 rhi device dispatches a compute shader and reads back storage buffer bytes") {
     const auto compute_bytecode = compile_uav_write_compute_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -2463,10 +2390,7 @@ MK_TEST("d3d12 rhi device dispatches a compute shader and reads back storage buf
 
 MK_TEST("d3d12 rhi compute morph writes morphed runtime positions") {
     const auto compute_bytecode = compile_runtime_morph_position_compute_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -2590,10 +2514,7 @@ MK_TEST("d3d12 rhi compute morph writes morphed runtime positions") {
 
 MK_TEST("d3d12 rhi compute morph output ring writes a selected position slot") {
     const auto compute_bytecode = compile_runtime_morph_position_output_slot_compute_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -2722,10 +2643,7 @@ MK_TEST("d3d12 rhi compute morph output ring writes a selected position slot") {
 
 MK_TEST("d3d12 rhi compute morph writes morphed runtime normals and tangents") {
     const auto compute_bytecode = compile_runtime_morph_tangent_frame_compute_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -2907,10 +2825,7 @@ MK_TEST("d3d12 rhi frame renderer consumes compute morph output positions") {
     const auto compute_bytecode = compile_runtime_morph_position_compute_shader();
     const auto vertex_bytecode = compile_position_input_vertex_shader();
     const auto pixel_bytecode = compile_solid_position_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3107,10 +3022,7 @@ MK_TEST("d3d12 rhi frame renderer composes compute morphed positions with skinne
     const auto compute_bytecode = compile_runtime_morph_position_compute_shader();
     const auto vertex_bytecode = compile_compute_morph_skinned_position_vertex_shader();
     const auto pixel_bytecode = compile_solid_position_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3393,10 +3305,7 @@ MK_TEST("d3d12 rhi frame renderer composes compute morphed positions with skinne
 }
 
 MK_TEST("d3d12 rhi device submits closed command lists and waits for fences") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3420,10 +3329,7 @@ MK_TEST("d3d12 rhi device submits closed command lists and waits for fences") {
 }
 
 MK_TEST("d3d12 rhi device reports invalid fence wait attempts") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3441,11 +3347,36 @@ MK_TEST("d3d12 rhi device reports invalid fence wait attempts") {
     MK_REQUIRE(device->stats().last_completed_fence_value == 0);
 }
 
+MK_TEST("d3d12 rhi device reports completed telemetry for waited queue fence") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    auto copy_first_commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    copy_first_commands->close();
+    const auto copy_first_fence = device->submit(*copy_first_commands);
+
+    auto copy_second_commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    copy_second_commands->close();
+    const auto copy_second_fence = device->submit(*copy_second_commands);
+
+    auto graphics_commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    graphics_commands->close();
+    const auto graphics_fence = device->submit(*graphics_commands);
+
+    MK_REQUIRE(copy_first_fence.queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(copy_second_fence.queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(graphics_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(copy_first_fence.value == 1);
+    MK_REQUIRE(copy_second_fence.value > graphics_fence.value);
+
+    device->wait(copy_second_fence);
+
+    MK_REQUIRE(device->stats().last_completed_fence_value >= copy_second_fence.value);
+}
+
 MK_TEST("d3d12 rhi device synchronizes graphics queue with compute fence") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3478,10 +3409,7 @@ MK_TEST("d3d12 rhi device synchronizes graphics queue with compute fence") {
 }
 
 MK_TEST("d3d12 rhi device uses per queue fence identity for colliding fence values") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3520,10 +3448,7 @@ MK_TEST("d3d12 rhi device uses per queue fence identity for colliding fence valu
 }
 
 MK_TEST("d3d12 rhi device reports compute graphics async overlap as serial dependency when graphics waits") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3557,10 +3482,7 @@ MK_TEST("d3d12 rhi device reports compute graphics async overlap as serial depen
 MK_TEST("d3d12 rhi device reports pipelined compute graphics output slot scheduling as a timing candidate") {
     const auto previous_slot_bytecode = compile_runtime_morph_position_output_slot_compute_shader(0);
     const auto current_slot_bytecode = compile_runtime_morph_position_output_slot_compute_shader(1);
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3746,10 +3668,7 @@ MK_TEST("d3d12 rhi device reports pipelined compute graphics output slot schedul
 }
 
 MK_TEST("d3d12 rhi device reports invalid queue wait attempts") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3772,10 +3691,7 @@ MK_TEST("d3d12 rhi device rejects swapchain presents outside frame sequencing") 
     HiddenTestWindow window;
     MK_REQUIRE(window.valid());
 
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3850,10 +3766,7 @@ MK_TEST("d3d12 rhi device resizes swapchains between submitted frames") {
     HiddenTestWindow window;
     MK_REQUIRE(window.valid());
 
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3902,10 +3815,7 @@ MK_TEST("d3d12 rhi device rejects multiple pending frames for one swapchain") {
     HiddenTestWindow window;
     MK_REQUIRE(window.valid());
 
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -3988,10 +3898,7 @@ MK_TEST("d3d12 rhi device releases acquired swapchain frames before submit") {
     HiddenTestWindow window;
     MK_REQUIRE(window.valid());
 
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4041,10 +3948,7 @@ MK_TEST("d3d12 rhi device records swapchain render pass and first draw") {
 
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4113,10 +4017,7 @@ MK_TEST("d3d12 rhi frame renderer releases failed swapchain begin once") {
 
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4185,10 +4086,7 @@ MK_TEST("d3d12 rhi frame renderer releases failed swapchain begin once") {
 MK_TEST("d3d12 rhi device records texture render pass and first draw") {
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4246,10 +4144,7 @@ MK_TEST("d3d12 rhi device records texture render pass and first draw") {
 }
 
 MK_TEST("d3d12 rhi device clears texture render targets to requested color bytes") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4307,10 +4202,7 @@ MK_TEST("d3d12 rhi device clears texture render targets to requested color bytes
 MK_TEST("d3d12 rhi viewport surface readback reflects renderer clear color") {
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4362,10 +4254,7 @@ MK_TEST("d3d12 rhi viewport surface readback reflects renderer clear color") {
 MK_TEST("d3d12 rhi device draws first triangle into texture readback bytes") {
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_solid_orange_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4448,10 +4337,7 @@ MK_TEST("d3d12 rhi device draws first triangle into texture readback bytes") {
 MK_TEST("d3d12 rhi device depth tests overlapping geometry into texture readback bytes") {
     const auto vertex_bytecode = compile_depth_order_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4549,10 +4435,7 @@ MK_TEST("d3d12 rhi device depth tests overlapping geometry into texture readback
 MK_TEST("d3d12 rhi device visibly samples texture and sampler descriptors") {
     const auto vertex_bytecode = compile_textured_triangle_vertex_shader();
     const auto pixel_bytecode = compile_sampled_texture_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4703,10 +4586,7 @@ MK_TEST("d3d12 rhi device visibly samples depth textures after depth write") {
     const auto color_pixel_bytecode = compile_triangle_pixel_shader();
     const auto sample_vertex_bytecode = compile_textured_triangle_vertex_shader();
     const auto sample_pixel_bytecode = compile_sampled_depth_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -4887,10 +4767,7 @@ MK_TEST("d3d12 rhi device samples scene depth in a postprocess pass readback") {
     const auto color_pixel_bytecode = compile_triangle_pixel_shader();
     const auto postprocess_vertex_bytecode = compile_fullscreen_textured_vertex_shader();
     const auto postprocess_pixel_bytecode = compile_depth_aware_postprocess_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -5109,10 +4986,7 @@ MK_TEST("d3d12 rhi device darkens a directional shadow receiver from sampled dep
     const auto color_pixel_bytecode = compile_triangle_pixel_shader();
     const auto receiver_vertex_bytecode = compile_shadow_receiver_vertex_shader();
     const auto receiver_pixel_bytecode = compile_shadow_receiver_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -5323,10 +5197,7 @@ MK_TEST("d3d12 rhi device filters a directional shadow receiver from sampled dep
     const auto color_pixel_bytecode = compile_triangle_pixel_shader();
     const auto receiver_vertex_bytecode = compile_fullscreen_shadow_receiver_vertex_shader();
     const auto receiver_pixel_bytecode = compile_filtered_shadow_receiver_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -5539,10 +5410,7 @@ MK_TEST("d3d12 rhi device filters a directional shadow receiver from sampled dep
 MK_TEST("d3d12 rhi frame renderer visibly samples runtime material texture bindings") {
     const auto vertex_bytecode = compile_textured_triangle_vertex_shader();
     const auto pixel_bytecode = compile_runtime_material_sampled_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -5689,10 +5557,7 @@ MK_TEST("d3d12 rhi frame renderer visibly samples runtime material texture bindi
 MK_TEST("d3d12 rhi frame renderer visibly draws uploaded runtime mesh vertices") {
     const auto vertex_bytecode = compile_position_input_vertex_shader();
     const auto pixel_bytecode = compile_solid_position_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -5837,10 +5702,7 @@ MK_TEST("d3d12 rhi frame renderer visibly draws uploaded runtime mesh vertices")
 MK_TEST("d3d12 rhi frame renderer visibly draws uploaded runtime skinned mesh vertices") {
     const auto vertex_bytecode = compile_skinned_position_vertex_shader();
     const auto pixel_bytecode = compile_solid_position_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -6024,10 +5886,7 @@ MK_TEST("d3d12 rhi frame renderer visibly draws uploaded runtime skinned mesh ve
 MK_TEST("d3d12 rhi frame renderer visibly draws uploaded runtime morph mesh vertices") {
     const auto vertex_bytecode = compile_morph_position_vertex_shader();
     const auto pixel_bytecode = compile_solid_position_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -6216,10 +6075,7 @@ MK_TEST("d3d12 rhi frame renderer visibly draws uploaded runtime morph mesh vert
 MK_TEST("d3d12 rhi frame renderer visibly shades uploaded runtime morph normals") {
     const auto vertex_bytecode = compile_morph_normal_vertex_shader();
     const auto pixel_bytecode = compile_morph_lit_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -6428,10 +6284,7 @@ MK_TEST("d3d12 rhi frame renderer visibly shades uploaded runtime morph normals"
 MK_TEST("d3d12 rhi frame renderer visibly draws cooked runtime scene gpu palette") {
     const auto vertex_bytecode = compile_runtime_scene_material_vertex_shader();
     const auto pixel_bytecode = compile_runtime_material_sampled_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -6559,10 +6412,7 @@ MK_TEST("d3d12 rhi frame renderer visibly draws cooked runtime scene gpu palette
 MK_TEST("d3d12 rhi device submits a renderer texture frame") {
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -6621,10 +6471,7 @@ MK_TEST("d3d12 rhi device submits a renderer texture frame") {
 }
 
 MK_TEST("d3d12 rhi device allocates and validates descriptor set writes") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -6701,10 +6548,7 @@ MK_TEST("d3d12 rhi device binds descriptor sets during a swapchain draw") {
 
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -6812,10 +6656,7 @@ MK_TEST("d3d12 rhi device binds descriptor sets during a swapchain draw") {
 }
 
 MK_TEST("d3d12 rhi device rejects invalid descriptor set writes") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -6907,10 +6748,7 @@ MK_TEST("d3d12 rhi device rejects invalid descriptor set writes") {
 MK_TEST("d3d12 rhi device rejects invalid descriptor layouts pipeline layouts and pipeline descriptions") {
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7074,10 +6912,7 @@ MK_TEST("d3d12 rhi device rejects invalid descriptor layouts pipeline layouts an
 MK_TEST("d3d12 rhi device validates native depth attachments and render pass pipeline formats") {
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7382,10 +7217,7 @@ MK_TEST("d3d12 rhi device rejects incompatible descriptor set command binding") 
 
     const auto vertex_bytecode = compile_triangle_vertex_shader();
     const auto pixel_bytecode = compile_triangle_pixel_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7467,10 +7299,7 @@ MK_TEST("d3d12 rhi device rejects incompatible descriptor set command binding") 
 }
 
 MK_TEST("d3d12 rhi device records buffer copies on the copy queue") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7504,10 +7333,7 @@ MK_TEST("d3d12 rhi device records buffer copies on the copy queue") {
 }
 
 MK_TEST("d3d12 runtime rhi texture upload stages padded texture bytes") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7541,10 +7367,7 @@ MK_TEST("d3d12 runtime rhi texture upload stages padded texture bytes") {
 }
 
 MK_TEST("d3d12 rhi device rejects invalid buffer copy commands") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7587,10 +7410,7 @@ MK_TEST("d3d12 rhi device rejects invalid buffer copy commands") {
 }
 
 MK_TEST("d3d12 rhi device acquires releases and invalidates transient resources") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7662,11 +7482,90 @@ MK_TEST("d3d12 rhi device acquires releases and invalidates transient resources"
     MK_REQUIRE(device->stats().transient_texture_placed_resources_alive == 0);
 }
 
-MK_TEST("d3d12 rhi device transient texture alias group returns distinct placed handles") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
+MK_TEST("d3d12 rhi device releases transient resources at their last used queue fences") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    const auto transient_buffer = device->acquire_transient_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 128,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
     });
+    const auto destination = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 128,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+
+    auto copy_buffer_commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    copy_buffer_commands->copy_buffer(
+        transient_buffer.buffer, destination,
+        mirakana::rhi::BufferCopyRegion{.source_offset = 0, .destination_offset = 0, .size_bytes = 16});
+    copy_buffer_commands->close();
+    const auto buffer_copy_fence = device->submit(*copy_buffer_commands);
+
+    auto unrelated_compute_commands = device->begin_command_list(mirakana::rhi::QueueKind::compute);
+    unrelated_compute_commands->close();
+    const auto unrelated_compute_fence = device->submit(*unrelated_compute_commands);
+
+    device->release_transient(transient_buffer.lease);
+
+    const auto transient_texture = device->acquire_transient_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination,
+    });
+    const auto upload = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 4096,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
+    });
+    const mirakana::rhi::BufferTextureCopyRegion footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 8,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
+    };
+    auto copy_texture_commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    copy_texture_commands->copy_buffer_to_texture(upload, transient_texture.texture, footprint);
+    copy_texture_commands->close();
+    const auto texture_copy_fence = device->submit(*copy_texture_commands);
+
+    auto unrelated_graphics_commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    unrelated_graphics_commands->close();
+    const auto unrelated_graphics_fence = device->submit(*unrelated_graphics_commands);
+
+    device->release_transient(transient_texture.lease);
+
+    const auto* registry = device->resource_lifetime_registry();
+    MK_REQUIRE(registry != nullptr);
+
+    bool found_buffer_release = false;
+    bool found_texture_release = false;
+    for (const auto& event : registry->events()) {
+        if (event.kind == mirakana::rhi::RhiResourceLifetimeEventKind::defer_release &&
+            event.resource_kind == mirakana::rhi::RhiResourceKind::buffer &&
+            event.fence.queue == mirakana::rhi::RhiResourceLifetimeQueue::copy &&
+            event.fence.value == buffer_copy_fence.value) {
+            found_buffer_release = true;
+        }
+        if (event.kind == mirakana::rhi::RhiResourceLifetimeEventKind::defer_release &&
+            event.resource_kind == mirakana::rhi::RhiResourceKind::texture &&
+            event.fence.queue == mirakana::rhi::RhiResourceLifetimeQueue::copy &&
+            event.fence.value == texture_copy_fence.value) {
+            found_texture_release = true;
+        }
+    }
+
+    MK_REQUIRE(buffer_copy_fence.queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(texture_copy_fence.queue == mirakana::rhi::QueueKind::copy);
+    MK_REQUIRE(unrelated_compute_fence.queue == mirakana::rhi::QueueKind::compute);
+    MK_REQUIRE(unrelated_graphics_fence.queue == mirakana::rhi::QueueKind::graphics);
+    MK_REQUIRE(found_buffer_release);
+    MK_REQUIRE(found_texture_release);
+}
+
+MK_TEST("d3d12 rhi device transient texture alias group returns distinct placed handles") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7703,10 +7602,7 @@ MK_TEST("d3d12 rhi device transient texture alias group returns distinct placed 
 }
 
 MK_TEST("d3d12 rhi device records texture aliasing barrier commands") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7734,10 +7630,7 @@ MK_TEST("d3d12 rhi device records texture aliasing barrier commands") {
 }
 
 MK_TEST("d3d12 rhi device records public wildcard texture aliasing barrier commands") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7762,10 +7655,7 @@ MK_TEST("d3d12 rhi device records public wildcard texture aliasing barrier comma
 }
 
 MK_TEST("d3d12 rhi device records buffer texture copies with aligned footprints") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7809,10 +7699,7 @@ MK_TEST("d3d12 rhi device records buffer texture copies with aligned footprints"
 }
 
 MK_TEST("d3d12 rhi device reads copy destination buffer ranges") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7829,10 +7716,7 @@ MK_TEST("d3d12 rhi device reads copy destination buffer ranges") {
 }
 
 MK_TEST("d3d12 rhi device rejects unaligned buffer texture footprints") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7884,10 +7768,7 @@ MK_TEST("d3d12 rhi device rejects unaligned buffer texture footprints") {
 }
 
 MK_TEST("d3d12 rhi device records standalone texture transitions") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7910,10 +7791,7 @@ MK_TEST("d3d12 rhi device records standalone texture transitions") {
 }
 
 MK_TEST("d3d12 rhi device rejects invalid standalone texture transitions") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -7947,10 +7825,7 @@ MK_TEST("d3d12 rhi device rejects invalid standalone texture transitions") {
 }
 
 MK_TEST("d3d12 rhi device tracks texture states before render and copy commands") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -8014,10 +7889,7 @@ MK_TEST("d3d12 rhi device tracks texture states before render and copy commands"
 }
 
 MK_TEST("d3d12 rhi device rejects stale cross queue texture state submissions") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -8065,10 +7937,7 @@ MK_TEST("d3d12 rhi device rejects stale cross queue texture state submissions") 
 
 MK_TEST("d3d12 rhi device rejects unsupported or invalid backend neutral work") {
     const auto vertex_bytecode = compile_triangle_vertex_shader();
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
 
     MK_REQUIRE(device != nullptr);
 
@@ -8113,10 +7982,7 @@ MK_TEST("d3d12 device context rejects invalid swapchain transitions") {
     HiddenTestWindow window;
     MK_REQUIRE(window.valid());
 
-    auto context = mirakana::rhi::d3d12::DeviceContext::create(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
     MK_REQUIRE(context != nullptr);
 
@@ -8151,10 +8017,7 @@ MK_TEST("d3d12 device context rejects invalid swapchain transitions") {
 }
 
 MK_TEST("d3d12 rhi memory diagnostics reports committed resource bytes and optional DXGI video memory") {
-    auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
-        .prefer_warp = false,
-        .enable_debug_layer = false,
-    });
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
     MK_REQUIRE(device != nullptr);
 
     (void)device->create_buffer(mirakana::rhi::BufferDesc{

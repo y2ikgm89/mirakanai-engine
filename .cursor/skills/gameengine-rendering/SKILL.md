@@ -22,3 +22,4 @@ Full workflow lives in shared skills. Start with the short `SKILL.md` routers, t
 | Baseline | `AGENTS.md` |
 
 Shader and GPU toolchain: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1` when relevant.
+D3D12 CI policy: keep `MK_d3d12_rhi_tests` on Microsoft WARP for hosted determinism; use explicit host diagnostics or package smoke evidence for hardware-adapter proof.

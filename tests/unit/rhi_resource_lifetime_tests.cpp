@@ -5,6 +5,24 @@
 
 #include "mirakana/rhi/resource_lifetime.hpp"
 
+namespace {
+
+[[nodiscard]] constexpr mirakana::rhi::RhiResourceLifetimeFence graphics_fence(std::uint64_t value) noexcept {
+    return mirakana::rhi::RhiResourceLifetimeFence{
+        .value = value,
+        .queue = mirakana::rhi::RhiResourceLifetimeQueue::graphics,
+    };
+}
+
+[[nodiscard]] constexpr mirakana::rhi::RhiResourceLifetimeFence compute_fence(std::uint64_t value) noexcept {
+    return mirakana::rhi::RhiResourceLifetimeFence{
+        .value = value,
+        .queue = mirakana::rhi::RhiResourceLifetimeQueue::compute,
+    };
+}
+
+} // namespace
+
 MK_TEST("rhi resource lifetime registry assigns generations and debug names") {
     mirakana::rhi::RhiResourceLifetimeRegistry registry;
 
@@ -26,7 +44,7 @@ MK_TEST("rhi resource lifetime registry assigns generations and debug names") {
     MK_REQUIRE(registry.records()[0].debug_name == "player-albedo-streamed");
 }
 
-MK_TEST("rhi resource lifetime registry defers release until retire frame") {
+MK_TEST("rhi resource lifetime registry defers release until completed fence") {
     mirakana::rhi::RhiResourceLifetimeRegistry registry;
     const auto registration = registry.register_resource(mirakana::rhi::RhiResourceRegistrationDesc{
         .kind = mirakana::rhi::RhiResourceKind::buffer,
@@ -36,14 +54,33 @@ MK_TEST("rhi resource lifetime registry defers release until retire frame") {
     MK_REQUIRE(registration.succeeded());
     const auto buffer = registration.handle;
 
-    const auto release = registry.release_resource_deferred(buffer, 12);
+    const auto release = registry.release_resource_deferred(buffer, graphics_fence(12));
     MK_REQUIRE(release.succeeded());
     MK_REQUIRE(!registry.is_live(buffer));
     MK_REQUIRE(registry.records().size() == 1);
+    MK_REQUIRE(registry.records()[0].release_fence.value == 12);
+    MK_REQUIRE(registry.records()[0].release_fence.queue == mirakana::rhi::RhiResourceLifetimeQueue::graphics);
 
-    MK_REQUIRE(registry.retire_released_resources(11) == 0);
+    MK_REQUIRE(registry.retire_released_resources(graphics_fence(11)) == 0);
     MK_REQUIRE(registry.records().size() == 1);
-    MK_REQUIRE(registry.retire_released_resources(12) == 1);
+    MK_REQUIRE(registry.retire_released_resources(graphics_fence(12)) == 1);
+    MK_REQUIRE(registry.records().empty());
+}
+
+MK_TEST("rhi resource lifetime registry keeps queue fence identities separate") {
+    mirakana::rhi::RhiResourceLifetimeRegistry registry;
+    const auto registration = registry.register_resource(mirakana::rhi::RhiResourceRegistrationDesc{
+        .kind = mirakana::rhi::RhiResourceKind::texture,
+        .owner = "d3d12",
+        .debug_name = "copy-queue-texture",
+    });
+    MK_REQUIRE(registration.succeeded());
+    const auto texture = registration.handle;
+
+    MK_REQUIRE(registry.release_resource_deferred(texture, compute_fence(1)).succeeded());
+    MK_REQUIRE(registry.retire_released_resources(graphics_fence(1)) == 0);
+    MK_REQUIRE(registry.records().size() == 1);
+    MK_REQUIRE(registry.retire_released_resources(compute_fence(1)) == 1);
     MK_REQUIRE(registry.records().empty());
 }
 
@@ -54,9 +91,9 @@ MK_TEST("rhi resource lifetime registry diagnoses duplicate and stale releases")
     MK_REQUIRE(registration.succeeded());
     const auto texture = registration.handle;
 
-    MK_REQUIRE(registry.release_resource_deferred(texture, 4).succeeded());
+    MK_REQUIRE(registry.release_resource_deferred(texture, graphics_fence(4)).succeeded());
 
-    const auto duplicate = registry.release_resource_deferred(texture, 5);
+    const auto duplicate = registry.release_resource_deferred(texture, graphics_fence(5));
     MK_REQUIRE(!duplicate.succeeded());
     MK_REQUIRE(duplicate.diagnostics[0].code == mirakana::rhi::RhiResourceLifetimeDiagnosticCode::duplicate_release);
 
@@ -100,8 +137,8 @@ MK_TEST("rhi resource lifetime registry rejects ops on handles retired from the 
     MK_REQUIRE(registration.succeeded());
     const auto handle = registration.handle;
 
-    MK_REQUIRE(registry.release_resource_deferred(handle, 3).succeeded());
-    MK_REQUIRE(registry.retire_released_resources(3) == 1);
+    MK_REQUIRE(registry.release_resource_deferred(handle, graphics_fence(3)).succeeded());
+    MK_REQUIRE(registry.retire_released_resources(graphics_fence(3)) == 1);
     MK_REQUIRE(registry.records().empty());
 
     const auto rename_after_retire = registry.set_debug_name(handle, "too-late");
@@ -109,7 +146,7 @@ MK_TEST("rhi resource lifetime registry rejects ops on handles retired from the 
     MK_REQUIRE(rename_after_retire.diagnostics[0].code ==
                mirakana::rhi::RhiResourceLifetimeDiagnosticCode::invalid_resource);
 
-    const auto release_after_retire = registry.release_resource_deferred(handle, 4);
+    const auto release_after_retire = registry.release_resource_deferred(handle, graphics_fence(4));
     MK_REQUIRE(!release_after_retire.succeeded());
     MK_REQUIRE(release_after_retire.diagnostics[0].code ==
                mirakana::rhi::RhiResourceLifetimeDiagnosticCode::invalid_resource);
@@ -122,8 +159,8 @@ MK_TEST("rhi resource lifetime registry records marker-style event rows") {
     MK_REQUIRE(registration.succeeded());
     const auto pipeline = registration.handle;
     MK_REQUIRE(registry.set_debug_name(pipeline, "lit-pipeline-v2").succeeded());
-    MK_REQUIRE(registry.release_resource_deferred(pipeline, 8).succeeded());
-    MK_REQUIRE(registry.retire_released_resources(8) == 1);
+    MK_REQUIRE(registry.release_resource_deferred(pipeline, graphics_fence(8)).succeeded());
+    MK_REQUIRE(registry.retire_released_resources(graphics_fence(8)) == 1);
 
     MK_REQUIRE(registry.events().size() == 4);
     MK_REQUIRE(registry.events()[0].kind == mirakana::rhi::RhiResourceLifetimeEventKind::register_resource);

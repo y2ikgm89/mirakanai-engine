@@ -1060,69 +1060,107 @@ namespace {
     return out;
 }
 
+[[nodiscard]] RhiResourceLifetimeQueue lifetime_queue(QueueKind queue) noexcept {
+    switch (queue) {
+    case QueueKind::graphics:
+        return RhiResourceLifetimeQueue::graphics;
+    case QueueKind::compute:
+        return RhiResourceLifetimeQueue::compute;
+    case QueueKind::copy:
+        return RhiResourceLifetimeQueue::copy;
+    }
+    return RhiResourceLifetimeQueue::graphics;
+}
+
+[[nodiscard]] RhiResourceLifetimeFence lifetime_fence(FenceValue fence) noexcept {
+    return RhiResourceLifetimeFence{.value = fence.value, .queue = lifetime_queue(fence.queue)};
+}
+
+[[nodiscard]] std::array<RhiResourceLifetimeFence, 3>
+lifetime_fences(const std::array<FenceValue, 3>& fences) noexcept {
+    return {
+        lifetime_fence(fences[0]),
+        lifetime_fence(fences[1]),
+        lifetime_fence(fences[2]),
+    };
+}
+
+[[nodiscard]] std::array<RhiResourceLifetimeFence, 3> all_queue_lifetime_fences(std::uint64_t value) noexcept {
+    return {
+        RhiResourceLifetimeFence{.value = value, .queue = RhiResourceLifetimeQueue::graphics},
+        RhiResourceLifetimeFence{.value = value, .queue = RhiResourceLifetimeQueue::compute},
+        RhiResourceLifetimeFence{.value = value, .queue = RhiResourceLifetimeQueue::copy},
+    };
+}
+
 } // namespace
 
 NullRhiDevice::~NullRhiDevice() {
-    const auto flush_fence = std::numeric_limits<std::uint64_t>::max();
+    const auto flush_fences = all_queue_lifetime_fences(std::numeric_limits<std::uint64_t>::max());
     for (std::size_t i = 0; i < buffer_active_.size(); ++i) {
         if (buffer_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_[i], RhiResourceLifetimeFence{});
             buffer_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < texture_active_.size(); ++i) {
         if (texture_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(texture_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(texture_lifetime_[i], RhiResourceLifetimeFence{});
             texture_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < sampler_active_.size(); ++i) {
         if (sampler_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(sampler_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(sampler_lifetime_[i], RhiResourceLifetimeFence{});
             sampler_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < shader_active_.size(); ++i) {
         if (shader_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(shader_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(shader_lifetime_[i], RhiResourceLifetimeFence{});
             shader_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < descriptor_set_layout_active_.size(); ++i) {
         if (descriptor_set_layout_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(descriptor_set_layout_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(descriptor_set_layout_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             descriptor_set_layout_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < descriptor_set_active_.size(); ++i) {
         if (descriptor_set_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(descriptor_set_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(descriptor_set_lifetime_[i], RhiResourceLifetimeFence{});
             descriptor_set_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < pipeline_layout_active_.size(); ++i) {
         if (pipeline_layout_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(pipeline_layout_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(pipeline_layout_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             pipeline_layout_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < graphics_pipeline_active_.size(); ++i) {
         if (graphics_pipeline_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(graphics_pipeline_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(graphics_pipeline_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             graphics_pipeline_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < compute_pipeline_active_.size(); ++i) {
         if (compute_pipeline_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(compute_pipeline_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(compute_pipeline_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             compute_pipeline_active_[i] = false;
         }
     }
-    (void)resource_lifetime_.retire_released_resources(flush_fence);
+    (void)resource_lifetime_.retire_released_resources(flush_fences);
 }
 
 void NullRhiDevice::retire_resource_lifetime_to_completed_fence() noexcept {
-    (void)resource_lifetime_.retire_released_resources(completed_.value);
+    const auto completed_fences = lifetime_fences(completed_by_queue_);
+    (void)resource_lifetime_.retire_released_resources(completed_fences);
 }
 
 BackendKind NullRhiDevice::backend_kind() const noexcept {
@@ -1558,14 +1596,15 @@ void NullRhiDevice::release_transient(TransientResourceHandle lease) {
         const auto buffer = record.buffer;
         const auto index = buffer.value - 1U;
         if (buffer_active_.at(index)) {
-            (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_.at(index), completed_.value);
+            (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_.at(index), lifetime_fence(completed_));
             buffer_active_[index] = false;
         }
     } else {
         for (const auto texture : record.textures) {
             const auto index = texture.value - 1U;
             if (texture_active_.at(index)) {
-                (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), completed_.value);
+                (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index),
+                                                                   lifetime_fence(completed_));
                 texture_active_[index] = false;
             }
         }
@@ -1893,7 +1932,7 @@ bool NullRhiDevice::null_mark_buffer_released(BufferHandle buffer) noexcept {
     if (!buffer_active_.at(index)) {
         return false;
     }
-    (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_.at(index), completed_.value);
+    (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_.at(index), lifetime_fence(completed_));
     buffer_active_[index] = false;
     retire_resource_lifetime_to_completed_fence();
     return true;
@@ -1907,7 +1946,7 @@ bool NullRhiDevice::null_mark_texture_released(TextureHandle texture) noexcept {
     if (!texture_active_.at(index)) {
         return false;
     }
-    (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), completed_.value);
+    (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), lifetime_fence(completed_));
     texture_active_[index] = false;
     retire_resource_lifetime_to_completed_fence();
     return true;
@@ -1921,7 +1960,7 @@ bool NullRhiDevice::null_mark_sampler_released(SamplerHandle sampler) noexcept {
     if (!sampler_active_.at(index)) {
         return false;
     }
-    (void)resource_lifetime_.release_resource_deferred(sampler_lifetime_.at(index), completed_.value);
+    (void)resource_lifetime_.release_resource_deferred(sampler_lifetime_.at(index), lifetime_fence(completed_));
     sampler_active_[index] = false;
     retire_resource_lifetime_to_completed_fence();
     return true;
@@ -1935,7 +1974,7 @@ bool NullRhiDevice::null_mark_descriptor_set_released(DescriptorSetHandle set) n
     if (!descriptor_set_active_.at(index)) {
         return false;
     }
-    (void)resource_lifetime_.release_resource_deferred(descriptor_set_lifetime_.at(index), completed_.value);
+    (void)resource_lifetime_.release_resource_deferred(descriptor_set_lifetime_.at(index), lifetime_fence(completed_));
     descriptor_set_active_[index] = false;
     retire_resource_lifetime_to_completed_fence();
     return true;
@@ -1949,7 +1988,8 @@ bool NullRhiDevice::null_mark_descriptor_set_layout_released(DescriptorSetLayout
     if (!descriptor_set_layout_active_.at(index)) {
         return false;
     }
-    (void)resource_lifetime_.release_resource_deferred(descriptor_set_layout_lifetime_.at(index), completed_.value);
+    (void)resource_lifetime_.release_resource_deferred(descriptor_set_layout_lifetime_.at(index),
+                                                       lifetime_fence(completed_));
     descriptor_set_layout_active_[index] = false;
     retire_resource_lifetime_to_completed_fence();
     return true;
@@ -1963,7 +2003,7 @@ bool NullRhiDevice::null_mark_pipeline_layout_released(PipelineLayoutHandle layo
     if (!pipeline_layout_active_.at(index)) {
         return false;
     }
-    (void)resource_lifetime_.release_resource_deferred(pipeline_layout_lifetime_.at(index), completed_.value);
+    (void)resource_lifetime_.release_resource_deferred(pipeline_layout_lifetime_.at(index), lifetime_fence(completed_));
     pipeline_layout_active_[index] = false;
     retire_resource_lifetime_to_completed_fence();
     return true;
@@ -1977,7 +2017,7 @@ bool NullRhiDevice::null_mark_shader_released(ShaderHandle shader) noexcept {
     if (!shader_active_.at(index)) {
         return false;
     }
-    (void)resource_lifetime_.release_resource_deferred(shader_lifetime_.at(index), completed_.value);
+    (void)resource_lifetime_.release_resource_deferred(shader_lifetime_.at(index), lifetime_fence(completed_));
     shader_active_[index] = false;
     retire_resource_lifetime_to_completed_fence();
     return true;
@@ -1991,7 +2031,8 @@ bool NullRhiDevice::null_mark_graphics_pipeline_released(GraphicsPipelineHandle 
     if (!graphics_pipeline_active_.at(index)) {
         return false;
     }
-    (void)resource_lifetime_.release_resource_deferred(graphics_pipeline_lifetime_.at(index), completed_.value);
+    (void)resource_lifetime_.release_resource_deferred(graphics_pipeline_lifetime_.at(index),
+                                                       lifetime_fence(completed_));
     graphics_pipeline_active_[index] = false;
     retire_resource_lifetime_to_completed_fence();
     return true;
@@ -2005,7 +2046,8 @@ bool NullRhiDevice::null_mark_compute_pipeline_released(ComputePipelineHandle pi
     if (!compute_pipeline_active_.at(index)) {
         return false;
     }
-    (void)resource_lifetime_.release_resource_deferred(compute_pipeline_lifetime_.at(index), completed_.value);
+    (void)resource_lifetime_.release_resource_deferred(compute_pipeline_lifetime_.at(index),
+                                                       lifetime_fence(completed_));
     compute_pipeline_active_[index] = false;
     retire_resource_lifetime_to_completed_fence();
     return true;

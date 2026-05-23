@@ -59,7 +59,7 @@ Done when: Asset references use stable keys, source asset registrations use regi
 
 ```text
 Goal: Use Renderer/RHI Resource Foundation v1 only as a foundation-only backend-neutral lifetime contract.
-Context: Read mirakana/rhi/resource_lifetime.hpp and engine/agent/manifest.json.aiOperableProductionLoop.unsupportedProductionGaps. RhiResourceLifetimeRegistry provides generation-checked RHI resource ids, resource kinds, owner labels, debug names, deferred-release records, frame-indexed retirement, deterministic diagnostics, and marker-style lifetime events.
+Context: Read mirakana/rhi/resource_lifetime.hpp and engine/agent/manifest.json.aiOperableProductionLoop.unsupportedProductionGaps. RhiResourceLifetimeRegistry provides generation-checked RHI resource ids, resource kinds, owner labels, debug names, deferred-release records, queue-qualified fence retirement, deterministic diagnostics, and marker-style lifetime events.
 Constraints: Do not claim native backend destruction migration, GPU allocator/residency budgets, package streaming, native upload execution, production render graph scheduling, GPU markers, editor resource panels, production renderer readiness, production 2D atlas/batching/native GPU readiness, or 3D playable vertical-slice readiness from this foundation alone.
 Done when: Renderer/RHI lifetime references use RhiResourceLifetimeRegistry where this foundation is in scope, and unsupported production claims remain listed as follow-up work.
 ```

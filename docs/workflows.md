@@ -363,7 +363,7 @@ See [testing.md](testing.md) for the **CI validation matrix** (job ids, runners,
 GitHub Actions runs:
 
 - Windows PR lane: `tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke` after `Agent Static Guards` and `Full Repository Static Analysis` cover static evidence; local/default full validation remains `tools/validate.ps1`
-- Windows C++23 release: `tools/evaluate-cpp23.ps1 -Release`
+- Windows C++23 release: `tools/evaluate-cpp23.ps1 -Release`; D3D12 unit tests use Microsoft WARP for driver-independent CI evidence.
 - Linux: `cmake --preset ci-linux-clang`, build/CTest
 - Linux coverage: `tools/check-coverage.ps1 -Strict`
 - Linux sanitizers: `cmake --preset clang-asan-ubsan`, build, and CTest

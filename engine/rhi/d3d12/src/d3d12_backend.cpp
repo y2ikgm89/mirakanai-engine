@@ -923,6 +923,71 @@ struct D3d12LinearTextureFootprint {
     return false;
 }
 
+[[nodiscard]] RhiResourceLifetimeQueue lifetime_queue(QueueKind queue) noexcept {
+    switch (queue) {
+    case QueueKind::graphics:
+        return RhiResourceLifetimeQueue::graphics;
+    case QueueKind::compute:
+        return RhiResourceLifetimeQueue::compute;
+    case QueueKind::copy:
+        return RhiResourceLifetimeQueue::copy;
+    }
+    return RhiResourceLifetimeQueue::graphics;
+}
+
+[[nodiscard]] QueueKind queue_from_index(std::size_t index) noexcept {
+    switch (index) {
+    case 1:
+        return QueueKind::compute;
+    case 2:
+        return QueueKind::copy;
+    default:
+        return QueueKind::graphics;
+    }
+}
+
+[[nodiscard]] RhiResourceLifetimeFence lifetime_fence(FenceValue fence) noexcept {
+    return RhiResourceLifetimeFence{.value = fence.value, .queue = lifetime_queue(fence.queue)};
+}
+
+[[nodiscard]] std::uint64_t completed_fence_value_for_queue(const std::array<FenceValue, 3>& fences,
+                                                            QueueKind queue) noexcept {
+    const auto found = std::ranges::find_if(fences, [queue](FenceValue fence) { return fence.queue == queue; });
+    return found == fences.end() ? 0 : found->value;
+}
+
+[[nodiscard]] std::uint64_t max_completed_fence_value(const std::array<FenceValue, 3>& fences) noexcept {
+    std::uint64_t value = 0;
+    for (const auto fence : fences) {
+        value = std::max(value, fence.value);
+    }
+    return value;
+}
+
+[[nodiscard]] std::array<RhiResourceLifetimeFence, 3>
+lifetime_fences(const std::array<FenceValue, 3>& fences) noexcept {
+    return {
+        lifetime_fence(fences[0]),
+        lifetime_fence(fences[1]),
+        lifetime_fence(fences[2]),
+    };
+}
+
+[[nodiscard]] std::array<RhiResourceLifetimeFence, 3> all_queue_lifetime_fences(std::uint64_t value) noexcept {
+    return {
+        RhiResourceLifetimeFence{.value = value, .queue = RhiResourceLifetimeQueue::graphics},
+        RhiResourceLifetimeFence{.value = value, .queue = RhiResourceLifetimeQueue::compute},
+        RhiResourceLifetimeFence{.value = value, .queue = RhiResourceLifetimeQueue::copy},
+    };
+}
+
+[[nodiscard]] bool lifetime_fence_completed(RhiResourceLifetimeFence release_fence,
+                                            std::span<const RhiResourceLifetimeFence> completed_fences) noexcept {
+    return std::ranges::any_of(completed_fences, [release_fence](RhiResourceLifetimeFence completed_fence) {
+        return completed_fence.queue == release_fence.queue && completed_fence.value >= release_fence.value;
+    });
+}
+
 void record_queue_submit(DeviceContextStats& stats, QueueKind queue, FenceValue fence) noexcept {
     ++stats.queue_event_sequence;
     stats.last_submitted_fence_queue = fence.queue;
@@ -3750,8 +3815,12 @@ bool DeviceContext::reset_command_list(NativeCommandListHandle handle) {
         return false;
     }
 
-    if (record->submitted && impl_->fence->GetCompletedValue() < record->submitted_fence.value) {
-        return false;
+    if (record->submitted) {
+        ID3D12Fence* submitted_fence =
+            DeviceContext::Impl::queue_fence(impl_->queue_fences, record->submitted_fence.queue).Get();
+        if (submitted_fence == nullptr || submitted_fence->GetCompletedValue() < record->submitted_fence.value) {
+            return false;
+        }
     }
 
     if (FAILED(record->allocator->Reset())) {
@@ -4000,6 +4069,37 @@ FenceValue DeviceContext::completed_fence() const noexcept {
         return FenceValue{};
     }
     return FenceValue{.value = fence->GetCompletedValue(), .queue = impl_->last_submitted_fence.queue};
+}
+
+std::array<FenceValue, 3> DeviceContext::completed_queue_fences() const noexcept {
+    std::array<FenceValue, 3> fences{};
+    if (!valid()) {
+        return fences;
+    }
+
+    for (std::size_t index = 0; index < fences.size(); ++index) {
+        const QueueKind queue = queue_from_index(index);
+        fences[index].queue = queue;
+        ID3D12Fence* fence = DeviceContext::Impl::queue_fence(impl_->queue_fences, queue).Get();
+        fences[index].value = fence != nullptr ? fence->GetCompletedValue() : 0;
+    }
+    return fences;
+}
+
+std::array<FenceValue, 3> DeviceContext::last_submitted_queue_fences() const noexcept {
+    std::array<FenceValue, 3> fences{};
+    if (!valid()) {
+        return fences;
+    }
+
+    for (std::size_t index = 0; index < fences.size(); ++index) {
+        const QueueKind queue = queue_from_index(index);
+        fences[index] = FenceValue{
+            .value = DeviceContext::Impl::queue_fence_value(impl_->next_queue_fence_values, queue),
+            .queue = queue,
+        };
+    }
+    return fences;
 }
 
 FenceValue DeviceContext::last_submitted_fence() const noexcept {
@@ -4660,8 +4760,29 @@ struct D3d12DescriptorSetRootTables {
     std::uint32_t sampler{invalid_root_parameter};
 };
 
+struct D3d12DescriptorSetResourceRefs {
+    std::vector<BufferHandle> buffers;
+    std::vector<TextureHandle> textures;
+};
+
 [[nodiscard]] static bool has_root_parameter(std::uint32_t root_parameter) noexcept {
     return root_parameter != D3d12DescriptorSetRootTables::invalid_root_parameter;
+}
+
+void add_unique_handle(std::vector<BufferHandle>& handles, BufferHandle handle) {
+    const auto found =
+        std::ranges::find_if(handles, [handle](BufferHandle observed) { return observed.value == handle.value; });
+    if (found == handles.end()) {
+        handles.push_back(handle);
+    }
+}
+
+void add_unique_handle(std::vector<TextureHandle>& handles, TextureHandle handle) {
+    const auto found =
+        std::ranges::find_if(handles, [handle](TextureHandle observed) { return observed.value == handle.value; });
+    if (found == handles.end()) {
+        handles.push_back(handle);
+    }
 }
 
 class D3d12RhiCommandList final : public IRhiCommandList {
@@ -4682,6 +4803,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
                         const std::vector<NativeDescriptorHeapHandle>& descriptor_set_sampler_heaps,
                         const std::vector<std::uint32_t>& descriptor_set_sampler_base_descriptors,
                         const std::vector<DescriptorSetLayoutHandle>& descriptor_set_layouts,
+                        const std::vector<D3d12DescriptorSetResourceRefs>& descriptor_set_resource_refs,
                         const std::vector<NativeRootSignatureHandle>& pipeline_layouts,
                         const std::vector<std::vector<DescriptorSetLayoutHandle>>& pipeline_layout_descriptor_sets,
                         const std::vector<std::vector<D3d12DescriptorSetRootTables>>& pipeline_layout_descriptor_tables,
@@ -4706,7 +4828,8 @@ class D3d12RhiCommandList final : public IRhiCommandList {
           descriptor_set_cbv_srv_uav_base_descriptors_(&descriptor_set_cbv_srv_uav_base_descriptors),
           descriptor_set_sampler_heaps_(&descriptor_set_sampler_heaps),
           descriptor_set_sampler_base_descriptors_(&descriptor_set_sampler_base_descriptors),
-          descriptor_set_layouts_(&descriptor_set_layouts), pipeline_layouts_(&pipeline_layouts),
+          descriptor_set_layouts_(&descriptor_set_layouts),
+          descriptor_set_resource_refs_(&descriptor_set_resource_refs), pipeline_layouts_(&pipeline_layouts),
           pipeline_layout_descriptor_sets_(&pipeline_layout_descriptor_sets),
           pipeline_layout_descriptor_tables_(&pipeline_layout_descriptor_tables),
           graphics_pipelines_(&graphics_pipelines),
@@ -4800,6 +4923,8 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             throw std::invalid_argument("d3d12 rhi buffer copy destination must use copy_destination");
         }
         validate_buffer_copy_region(source_desc, destination_desc, region);
+        observe_buffer(source);
+        observe_buffer(destination);
         if (!context_->copy_buffer(native_, native_buffer(source), native_buffer(destination), region)) {
             throw std::logic_error("d3d12 rhi buffer copy recording failed");
         }
@@ -4824,6 +4949,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (texture_state(destination) != ResourceState::copy_destination) {
             throw std::invalid_argument("d3d12 rhi buffer texture copy destination must be in copy_destination state");
         }
+        observe_buffer(source);
         observe_texture(destination);
         validate_buffer_texture_region(destination_desc, region);
         const auto footprint = d3d12_linear_texture_footprint(destination_desc.format, region);
@@ -4854,6 +4980,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             throw std::invalid_argument("d3d12 rhi texture buffer copy source must be in copy_source state");
         }
         observe_texture(source);
+        observe_buffer(destination);
         validate_buffer_texture_region(source_desc, region);
         const auto footprint = d3d12_linear_texture_footprint(source_desc.format, region);
         if (footprint.required_bytes > destination_desc.size_bytes) {
@@ -4999,6 +5126,9 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             ++stats_->resource_transitions;
         } else {
             observe_texture(desc.color.texture);
+            if (desc.depth.texture.value != 0) {
+                observe_texture(desc.depth.texture);
+            }
             if (!context_->activate_placed_texture(native_, pass_color_texture)) {
                 throw std::logic_error("d3d12 rhi texture render pass placed color activation failed");
             }
@@ -5157,6 +5287,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
                                                            sampler_descriptor_base_for_set(set)))) {
             throw std::logic_error("d3d12 rhi sampler descriptor set bind failed");
         }
+        observe_descriptor_set_resources(set);
         ++stats_->descriptor_sets_bound;
     }
 
@@ -5178,6 +5309,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (binding.offset >= desc.size_bytes) {
             throw std::invalid_argument("d3d12 rhi vertex buffer offset is outside the buffer");
         }
+        observe_buffer(binding.buffer);
         if (!context_->bind_vertex_buffer(native_, native_buffer(binding.buffer), binding.offset, binding.stride,
                                           binding.binding)) {
             throw std::logic_error("d3d12 rhi vertex buffer bind failed");
@@ -5204,6 +5336,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (binding.offset >= desc.size_bytes) {
             throw std::invalid_argument("d3d12 rhi index buffer offset is outside the buffer");
         }
+        observe_buffer(binding.buffer);
         if (!context_->bind_index_buffer(native_, native_buffer(binding.buffer), binding.offset, binding.format)) {
             throw std::logic_error("d3d12 rhi index buffer bind failed");
         }
@@ -5345,6 +5478,14 @@ class D3d12RhiCommandList final : public IRhiCommandList {
 
     [[nodiscard]] const std::vector<NativeSwapchainHandle>& pending_presents() const noexcept {
         return pending_presents_;
+    }
+
+    [[nodiscard]] const std::vector<BufferHandle>& observed_buffers() const noexcept {
+        return observed_buffers_;
+    }
+
+    [[nodiscard]] const std::vector<TextureHandle>& observed_textures() const noexcept {
+        return observed_textures_;
     }
 
     void release_submitted_swapchain_frames() {
@@ -5574,12 +5715,28 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         texture_states_.at(handle.value - 1U) = state;
     }
 
+    void observe_buffer(BufferHandle handle) {
+        (void)buffer_desc(handle);
+        add_unique_handle(observed_buffers_, handle);
+    }
+
     void observe_texture(TextureHandle handle) {
         (void)texture_desc(handle);
-        const auto found = std::ranges::find_if(
-            observed_textures_, [handle](TextureHandle observed) { return observed.value == handle.value; });
-        if (found == observed_textures_.end()) {
-            observed_textures_.push_back(handle);
+        add_unique_handle(observed_textures_, handle);
+    }
+
+    void observe_descriptor_set_resources(DescriptorSetHandle handle) {
+        if (descriptor_set_resource_refs_ == nullptr || handle.value == 0 ||
+            handle.value > descriptor_set_resource_refs_->size()) {
+            throw std::invalid_argument("d3d12 rhi descriptor set handle is unknown");
+        }
+
+        const auto& refs = descriptor_set_resource_refs_->at(handle.value - 1U);
+        for (const auto buffer : refs.buffers) {
+            observe_buffer(buffer);
+        }
+        for (const auto texture : refs.textures) {
+            observe_texture(texture);
         }
     }
 
@@ -5740,12 +5897,14 @@ class D3d12RhiCommandList final : public IRhiCommandList {
     const std::vector<bool>* texture_active_{nullptr};
     std::vector<ResourceState> texture_states_;
     std::vector<ResourceState> initial_texture_states_;
+    std::vector<BufferHandle> observed_buffers_;
     std::vector<TextureHandle> observed_textures_;
     const std::vector<NativeDescriptorHeapHandle>* descriptor_set_cbv_srv_uav_heaps_{nullptr};
     const std::vector<std::uint32_t>* descriptor_set_cbv_srv_uav_base_descriptors_{nullptr};
     const std::vector<NativeDescriptorHeapHandle>* descriptor_set_sampler_heaps_{nullptr};
     const std::vector<std::uint32_t>* descriptor_set_sampler_base_descriptors_{nullptr};
     const std::vector<DescriptorSetLayoutHandle>* descriptor_set_layouts_{nullptr};
+    const std::vector<D3d12DescriptorSetResourceRefs>* descriptor_set_resource_refs_{nullptr};
     const std::vector<NativeRootSignatureHandle>* pipeline_layouts_{nullptr};
     const std::vector<std::vector<DescriptorSetLayoutHandle>>* pipeline_layout_descriptor_sets_{nullptr};
     const std::vector<std::vector<D3d12DescriptorSetRootTables>>* pipeline_layout_descriptor_tables_{nullptr};
@@ -5926,6 +6085,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         buffer_descs_.push_back(desc);
         buffer_active_.push_back(true);
         buffer_lifetime_.push_back(lifetime_registration.handle);
+        buffer_last_used_fences_.push_back(FenceValue{});
         ++stats_.buffers_created;
         return BufferHandle{static_cast<std::uint32_t>(buffer_handles_.size())};
     }
@@ -5952,6 +6112,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         texture_active_.push_back(true);
         texture_states_.push_back(initial_texture_state(desc.usage));
         texture_lifetime_.push_back(lifetime_registration.handle);
+        texture_last_used_fences_.push_back(FenceValue{});
         ++stats_.textures_created;
         return TextureHandle{static_cast<std::uint32_t>(texture_handles_.size())};
     }
@@ -6090,6 +6251,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         texture_active_.push_back(true);
         texture_states_.push_back(initial_texture_state(desc.usage));
         texture_lifetime_.push_back(lifetime_registration.handle);
+        texture_last_used_fences_.push_back(FenceValue{});
         ++stats_.textures_created;
         ++stats_.transient_texture_heap_allocations;
         ++stats_.transient_texture_placed_allocations;
@@ -6152,6 +6314,7 @@ class D3d12RhiDevice final : public IRhiDevice {
             texture_active_.push_back(true);
             texture_states_.push_back(initial_texture_state(desc.usage));
             texture_lifetime_.push_back(lifetime_handles[i]);
+            texture_last_used_fences_.push_back(FenceValue{});
             ++stats_.textures_created;
             ++stats_.transient_texture_placed_allocations;
             ++stats_.transient_texture_placed_resources_alive;
@@ -6185,7 +6348,7 @@ class D3d12RhiDevice final : public IRhiDevice {
             const auto buffer = record.buffer;
             const auto index = buffer.value - 1U;
             if (buffer_active_.at(index)) {
-                const auto release_fence = context_->last_submitted_fence().value;
+                const auto release_fence = buffer_release_fence(buffer);
                 (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_.at(index), release_fence);
                 buffer_active_.at(index) = false;
             }
@@ -6193,14 +6356,15 @@ class D3d12RhiDevice final : public IRhiDevice {
             for (const auto texture : record.textures) {
                 const auto index = texture.value - 1U;
                 if (texture_active_.at(index)) {
-                    const auto release_fence = context_->last_submitted_fence().value;
+                    const auto release_fence = texture_release_fence(texture);
                     (void)resource_lifetime_.release_resource_deferred(texture_lifetime_.at(index), release_fence);
                     texture_active_.at(index) = false;
                     texture_states_.at(index) = ResourceState::undefined;
                 }
             }
         }
-        retire_deferred_committed_resources(context_->completed_fence().value);
+        const auto completed_fences = lifetime_fences(context_->completed_queue_fences());
+        retire_deferred_committed_resources(completed_fences);
         ++stats_.transient_resources_released;
         --stats_.transient_resources_active;
     }
@@ -6303,6 +6467,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         descriptor_set_sampler_heaps_.push_back(sampler_heap);
         descriptor_set_sampler_base_descriptors_.push_back(sampler_base_descriptor);
         descriptor_set_layout_handles_.push_back(layout);
+        descriptor_set_resource_refs_.push_back(D3d12DescriptorSetResourceRefs{});
         descriptor_set_active_.push_back(true);
         const auto lifetime_registration = resource_lifetime_.register_resource(RhiResourceRegistrationDesc{
             .kind = RhiResourceKind::descriptor_set,
@@ -6312,6 +6477,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         });
         if (!lifetime_registration.succeeded()) {
             descriptor_set_active_.pop_back();
+            descriptor_set_resource_refs_.pop_back();
             descriptor_set_layout_handles_.pop_back();
             descriptor_set_sampler_base_descriptors_.pop_back();
             descriptor_set_sampler_heaps_.pop_back();
@@ -6344,6 +6510,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         }
 
         const auto& set_record = descriptor_sets_.at(write.set.value - 1U);
+        auto& set_resource_refs = descriptor_set_resource_refs_.at(write.set.value - 1U);
         const auto heap_kind = descriptor_heap_kind_for_type(binding.type);
         const auto binding_offset = descriptor_binding_offset(layout_desc, write.binding, heap_kind);
         for (std::uint32_t index = 0; index < resource_count; ++index) {
@@ -6370,6 +6537,11 @@ class D3d12RhiDevice final : public IRhiDevice {
                                    : SamplerDesc{},
                 })) {
                 throw std::invalid_argument("d3d12 rhi descriptor resource cannot be written natively");
+            }
+            if (is_buffer_descriptor(binding.type)) {
+                add_unique_handle(set_resource_refs.buffers, resource.buffer_handle);
+            } else if (is_texture_descriptor(binding.type)) {
+                add_unique_handle(set_resource_refs.textures, resource.texture_handle);
             }
         }
 
@@ -6527,11 +6699,11 @@ class D3d12RhiDevice final : public IRhiDevice {
             buffer_handles_, buffer_descs_, buffer_active_, texture_handles_, texture_descs_, texture_active_,
             texture_states_, descriptor_set_cbv_srv_uav_heaps_, descriptor_set_cbv_srv_uav_base_descriptors_,
             descriptor_set_sampler_heaps_, descriptor_set_sampler_base_descriptors_, descriptor_set_layout_handles_,
-            pipeline_layout_handles_, pipeline_layout_descriptor_sets_, pipeline_layout_descriptor_tables_,
-            graphics_pipeline_handles_, graphics_pipeline_root_signatures_, graphics_pipeline_layouts_,
-            graphics_pipeline_active_, compute_pipeline_handles_, compute_pipeline_root_signatures_,
-            compute_pipeline_layouts_, compute_pipeline_active_, pipeline_layout_active_, descriptor_set_active_,
-            stats_);
+            descriptor_set_resource_refs_, pipeline_layout_handles_, pipeline_layout_descriptor_sets_,
+            pipeline_layout_descriptor_tables_, graphics_pipeline_handles_, graphics_pipeline_root_signatures_,
+            graphics_pipeline_layouts_, graphics_pipeline_active_, compute_pipeline_handles_,
+            compute_pipeline_root_signatures_, compute_pipeline_layouts_, compute_pipeline_active_,
+            pipeline_layout_active_, descriptor_set_active_, stats_);
     }
 
     [[nodiscard]] FenceValue submit(IRhiCommandList& commands) override {
@@ -6553,6 +6725,7 @@ class D3d12RhiDevice final : public IRhiDevice {
 
         d3d12_commands->commit_texture_states(texture_states_);
         d3d12_commands->commit_swapchain_states(swapchain_states_, swapchain_presentable_);
+        mark_submitted_resource_usage(*d3d12_commands, fence);
         ++stats_.command_lists_submitted;
         ++stats_.fences_signaled;
         stats_.last_submitted_fence_value = fence.value;
@@ -6565,8 +6738,10 @@ class D3d12RhiDevice final : public IRhiDevice {
             ++stats_.present_calls;
         }
         d3d12_commands->release_submitted_swapchain_frames();
-        stats_.last_completed_fence_value = context_->completed_fence().value;
-        retire_deferred_committed_resources(stats_.last_completed_fence_value);
+        const auto completed_queue_fences = context_->completed_queue_fences();
+        stats_.last_completed_fence_value = max_completed_fence_value(completed_queue_fences);
+        const auto completed_fences = lifetime_fences(completed_queue_fences);
+        retire_deferred_committed_resources(completed_fences);
         return fence;
     }
 
@@ -6576,8 +6751,11 @@ class D3d12RhiDevice final : public IRhiDevice {
             ++stats_.fence_wait_failures;
             throw std::logic_error("d3d12 rhi fence wait failed");
         }
-        stats_.last_completed_fence_value = context_->completed_fence().value;
-        retire_deferred_committed_resources(stats_.last_completed_fence_value);
+        const auto completed_queue_fences = context_->completed_queue_fences();
+        stats_.last_completed_fence_value = std::max(
+            stats_.last_completed_fence_value, completed_fence_value_for_queue(completed_queue_fences, fence.queue));
+        const auto completed_fences = lifetime_fences(completed_queue_fences);
+        retire_deferred_committed_resources(completed_fences);
     }
 
     void wait_for_queue(QueueKind queue, FenceValue fence) override {
@@ -6657,7 +6835,7 @@ class D3d12RhiDevice final : public IRhiDevice {
 
     /// Destroys native committed resources whose lifetime records are eligible to retire at `completed_frame`,
     /// then removes those records from `resource_lifetime_`.
-    void retire_deferred_committed_resources(std::uint64_t completed_frame) noexcept;
+    void retire_deferred_committed_resources(std::span<const RhiResourceLifetimeFence> completed_fences) noexcept;
 
     [[nodiscard]] bool owns_descriptor_set_layout(DescriptorSetLayoutHandle handle) const noexcept {
         return handle.value > 0 && handle.value <= descriptor_set_layouts_.size() &&
@@ -6893,6 +7071,35 @@ class D3d12RhiDevice final : public IRhiDevice {
         throw std::invalid_argument("d3d12 rhi descriptor resource type is invalid");
     }
 
+    void mark_submitted_resource_usage(const D3d12RhiCommandList& commands, FenceValue fence) noexcept {
+        for (const auto buffer : commands.observed_buffers()) {
+            if (buffer.value == 0 || buffer.value > buffer_last_used_fences_.size()) {
+                continue;
+            }
+            buffer_last_used_fences_.at(buffer.value - 1U) = fence;
+        }
+        for (const auto texture : commands.observed_textures()) {
+            if (texture.value == 0 || texture.value > texture_last_used_fences_.size()) {
+                continue;
+            }
+            texture_last_used_fences_.at(texture.value - 1U) = fence;
+        }
+    }
+
+    [[nodiscard]] RhiResourceLifetimeFence buffer_release_fence(BufferHandle buffer) const noexcept {
+        if (buffer.value == 0 || buffer.value > buffer_last_used_fences_.size()) {
+            return RhiResourceLifetimeFence{};
+        }
+        return lifetime_fence(buffer_last_used_fences_.at(buffer.value - 1U));
+    }
+
+    [[nodiscard]] RhiResourceLifetimeFence texture_release_fence(TextureHandle texture) const noexcept {
+        if (texture.value == 0 || texture.value > texture_last_used_fences_.size()) {
+            return RhiResourceLifetimeFence{};
+        }
+        return lifetime_fence(texture_last_used_fences_.at(texture.value - 1U));
+    }
+
     static constexpr std::uint32_t default_descriptor_arena_capacity{4096};
     static constexpr std::uint32_t default_sampler_descriptor_arena_capacity{2048};
 
@@ -6902,11 +7109,13 @@ class D3d12RhiDevice final : public IRhiDevice {
     std::vector<BufferDesc> buffer_descs_;
     std::vector<bool> buffer_active_;
     std::vector<RhiResourceHandle> buffer_lifetime_;
+    std::vector<FenceValue> buffer_last_used_fences_;
     std::vector<NativeResourceHandle> texture_handles_;
     std::vector<TextureDesc> texture_descs_;
     std::vector<bool> texture_active_;
     std::vector<RhiResourceHandle> texture_lifetime_;
     std::vector<ResourceState> texture_states_;
+    std::vector<FenceValue> texture_last_used_fences_;
     std::vector<bool> sampler_active_;
     std::vector<RhiResourceHandle> sampler_lifetime_;
     std::vector<bool> shader_active_;
@@ -6945,6 +7154,7 @@ class D3d12RhiDevice final : public IRhiDevice {
     std::vector<NativeDescriptorHeapHandle> descriptor_set_sampler_heaps_;
     std::vector<std::uint32_t> descriptor_set_sampler_base_descriptors_;
     std::vector<DescriptorSetLayoutHandle> descriptor_set_layout_handles_;
+    std::vector<D3d12DescriptorSetResourceRefs> descriptor_set_resource_refs_;
     std::vector<NativeRootSignatureHandle> pipeline_layout_handles_;
     std::vector<std::vector<DescriptorSetLayoutHandle>> pipeline_layout_descriptor_sets_;
     std::vector<std::vector<D3d12DescriptorSetRootTables>> pipeline_layout_descriptor_tables_;
@@ -6960,7 +7170,8 @@ class D3d12RhiDevice final : public IRhiDevice {
     RhiResourceLifetimeRegistry resource_lifetime_{};
 };
 
-void D3d12RhiDevice::retire_deferred_committed_resources(std::uint64_t completed_frame) noexcept {
+void D3d12RhiDevice::retire_deferred_committed_resources(
+    std::span<const RhiResourceLifetimeFence> completed_fences) noexcept {
     if (!context_) {
         return;
     }
@@ -6973,14 +7184,15 @@ void D3d12RhiDevice::retire_deferred_committed_resources(std::uint64_t completed
     std::vector<PendingDestroy> pending;
     pending.reserve(32);
     for (const auto& rec : resource_lifetime_.records()) {
-        if (rec.state != RhiResourceLifetimeState::deferred_release || rec.release_frame > completed_frame) {
+        if (rec.state != RhiResourceLifetimeState::deferred_release ||
+            !lifetime_fence_completed(rec.release_fence, completed_fences)) {
             continue;
         }
         pending.push_back(
             PendingDestroy{.handle = rec.handle, .kind = rec.kind, .rank = deferred_d3d12_destroy_rank(rec.kind)});
     }
     if (pending.empty()) {
-        (void)resource_lifetime_.retire_released_resources(completed_frame);
+        (void)resource_lifetime_.retire_released_resources(completed_fences);
         return;
     }
     std::ranges::stable_sort(pending, [](const PendingDestroy& lhs, const PendingDestroy& rhs) {
@@ -7118,7 +7330,7 @@ void D3d12RhiDevice::retire_deferred_committed_resources(std::uint64_t completed
         }
     }
 
-    (void)resource_lifetime_.retire_released_resources(completed_frame);
+    (void)resource_lifetime_.retire_released_resources(completed_fences);
 }
 
 D3d12RhiDevice::~D3d12RhiDevice() {
@@ -7126,66 +7338,72 @@ D3d12RhiDevice::~D3d12RhiDevice() {
         return;
     }
 
-    if (last_submitted_fence_.value > 0) {
-        (void)context_->wait_for_fence(last_submitted_fence_, 0xFFFFFFFFU);
+    for (const auto fence : context_->last_submitted_queue_fences()) {
+        if (fence.value > 0) {
+            (void)context_->wait_for_fence(fence, 0xFFFFFFFFU);
+        }
     }
 
-    const auto flush_fence = std::numeric_limits<std::uint64_t>::max();
+    const auto flush_fences = all_queue_lifetime_fences(std::numeric_limits<std::uint64_t>::max());
     for (std::size_t i = 0; i < graphics_pipeline_active_.size(); ++i) {
         if (graphics_pipeline_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(graphics_pipeline_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(graphics_pipeline_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             graphics_pipeline_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < compute_pipeline_active_.size(); ++i) {
         if (compute_pipeline_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(compute_pipeline_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(compute_pipeline_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             compute_pipeline_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < pipeline_layout_active_.size(); ++i) {
         if (pipeline_layout_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(pipeline_layout_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(pipeline_layout_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             pipeline_layout_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < descriptor_set_active_.size(); ++i) {
         if (descriptor_set_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(descriptor_set_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(descriptor_set_lifetime_[i], RhiResourceLifetimeFence{});
             descriptor_set_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < descriptor_set_layout_active_.size(); ++i) {
         if (descriptor_set_layout_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(descriptor_set_layout_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(descriptor_set_layout_lifetime_[i],
+                                                               RhiResourceLifetimeFence{});
             descriptor_set_layout_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < shader_active_.size(); ++i) {
         if (shader_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(shader_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(shader_lifetime_[i], RhiResourceLifetimeFence{});
             shader_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < sampler_active_.size(); ++i) {
         if (sampler_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(sampler_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(sampler_lifetime_[i], RhiResourceLifetimeFence{});
             sampler_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < buffer_active_.size(); ++i) {
         if (buffer_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(buffer_lifetime_[i], RhiResourceLifetimeFence{});
             buffer_active_[i] = false;
         }
     }
     for (std::size_t i = 0; i < texture_active_.size(); ++i) {
         if (texture_active_[i]) {
-            (void)resource_lifetime_.release_resource_deferred(texture_lifetime_[i], 0);
+            (void)resource_lifetime_.release_resource_deferred(texture_lifetime_[i], RhiResourceLifetimeFence{});
             texture_active_[i] = false;
         }
     }
-    retire_deferred_committed_resources(flush_fence);
+    retire_deferred_committed_resources(flush_fences);
 }
 
 std::unique_ptr<IRhiDevice> create_rhi_device(const DeviceBootstrapDesc& desc) {
