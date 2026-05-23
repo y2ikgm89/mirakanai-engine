@@ -4,7 +4,7 @@
 
 **Plan ID:** `candidate-backlog-burn-down-v1`
 
-**Status:** In progress.
+**Status:** Active.
 
 **Parent index:** [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
@@ -38,8 +38,8 @@ Implement all 7 canonical `candidate` rows in [04-developer-owned-engine-capabil
 ## Capability burn-down checklist
 
 - [x] 1. [sprite-sorting-layer-v1](2026-05-23-sprite-sorting-layer-v1.md) — `MK_scene`, `MK_scene_renderer`, `MK_renderer` (PR #196)
-- [x] 2. [sprite-9slice-and-tiled-v1](2026-05-23-sprite-9slice-and-tiled-v1.md) — assets/UI/scene renderer/tools
-- [ ] 3. [sprite-collision-hitbox-v1](2026-05-23-sprite-collision-hitbox-v1.md) — runtime, physics, gameplay interaction
+- [x] 2. [sprite-9slice-and-tiled-v1](2026-05-23-sprite-9slice-and-tiled-v1.md) — assets/UI/scene renderer/tools (PR #197)
+- [x] 3. [sprite-collision-hitbox-v1](2026-05-23-sprite-collision-hitbox-v1.md) — runtime, physics, gameplay interaction
 - [ ] 4. [sprite-effects-particles-v1](2026-05-23-sprite-effects-particles-v1.md) — runtime, scene renderer, renderer stats
 - [ ] 5. [sprite-editor-preview-diagnostics-v1](2026-05-23-sprite-editor-preview-diagnostics-v1.md) — editor core, runtime diagnostics
 - [ ] 6. [navigation-hierarchical-world-v1](2026-05-23-navigation-hierarchical-world-v1.md) — navigation, world-region streaming refs
@@ -54,4 +54,6 @@ Implement all 7 canonical `candidate` rows in [04-developer-owned-engine-capabil
 
 | Capability | PR | Merge SHA | validate.ps1 | Notes |
 | --- | --- | --- | --- | --- |
-| program start | | | | milestone + registry + manifest pointer |
+| sprite-sorting-layer-v1 | #196 | `e587e1a45fd3e750d79364a17764735d81b3496f` | pass | deterministic sorting layers and package counters |
+| sprite-9slice-and-tiled-v1 | #197 | `e4dcbbac2dd2114b8441d5de8f967f2f1b03d1f8` | pass | 9-slice/tiled expansion and package counters |
+| sprite-collision-hitbox-v1 | pending | pending | pass | `RuntimeSpriteCollisionHitboxRequest`, deterministic hit/gameplay rows, selected package counters, and 75/75 `validate.ps1` tests |

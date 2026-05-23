@@ -25,6 +25,7 @@
 #include "mirakana/runtime/scripting_sandbox.hpp"
 #include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime/simulation_orchestration.hpp"
+#include "mirakana/runtime/sprite_collision_hitbox.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
@@ -69,6 +70,7 @@ struct DesktopRuntimeOptions {
     bool require_sprite_animation{false};
     bool require_sprite_sorting_layer{false};
     bool require_sprite_9slice_tiled{false};
+    bool require_sprite_collision_hitbox{false};
     bool require_tilemap_runtime_ux{false};
     bool require_gameplay_systems{false};
     bool require_procedural_generation{false};
@@ -548,6 +550,15 @@ struct Gameplay2DInteractionProbeResult {
     std::size_t feedback_rows{0U};
     mirakana::runtime::RuntimeGameplaySessionState final_session_state{
         mirakana::runtime::RuntimeGameplaySessionState::running};
+};
+
+struct Gameplay2DSpriteCollisionHitboxProbeResult {
+    bool ready{false};
+    std::size_t hits{0U};
+    std::size_t gameplay_events{0U};
+    std::size_t interaction_rows{0U};
+    std::size_t feedback_rows{0U};
+    std::size_t diagnostics{0U};
 };
 
 struct RuntimeProfileResumeProbeResult {
@@ -1060,6 +1071,98 @@ struct Gameplay2DProceduralGenerationProbeResult {
         result.final_session_state == RuntimeGameplaySessionState::running && plan.state.entities.size() == 2U &&
         plan.state.entities[0].health == 10 && plan.state.entities[1].health == 2 && plan.state.pickups.size() == 1U &&
         !plan.state.pickups[0].available && plan.state.objectives.size() == 1U && plan.state.objectives[0].completed;
+    return result;
+}
+
+[[nodiscard]] Gameplay2DSpriteCollisionHitboxProbeResult validate_gameplay_2d_sprite_collision_hitboxes() {
+    using namespace mirakana::runtime;
+
+    const RuntimeGameplayInteractionState state{
+        .session_state = RuntimeGameplaySessionState::running,
+        .entities =
+            std::vector<RuntimeGameplayEntityState>{
+                RuntimeGameplayEntityState{.id = "player", .health = 8, .max_health = 10, .active = true},
+                RuntimeGameplayEntityState{.id = "enemy", .health = 5, .max_health = 5, .active = true},
+            },
+        .pickups = {},
+        .objectives = {},
+    };
+    const RuntimeSpriteCollisionHitboxRequest request{
+        .boxes =
+            std::vector<RuntimeSpriteCollisionBoxDesc>{
+                RuntimeSpriteCollisionBoxDesc{
+                    .id = "sample_2d.player_slash",
+                    .frame_id = "sample_2d.player.attack.1",
+                    .entity_id = "player",
+                    .kind = RuntimeSpriteCollisionBoxKind::hitbox,
+                    .center_x = 0.35F,
+                    .center_y = 0.0F,
+                    .half_width = 0.35F,
+                    .half_height = 0.25F,
+                    .layer = 0x1U,
+                    .mask = 0x2U,
+                    .gameplay_kind = RuntimeGameplayInteractionKind::damage,
+                    .gameplay_amount = 2,
+                    .gameplay_feedback_id = "feedback.sprite_hit",
+                    .source_index = 0U,
+                },
+                RuntimeSpriteCollisionBoxDesc{
+                    .id = "sample_2d.enemy_body",
+                    .frame_id = "sample_2d.enemy.idle.0",
+                    .entity_id = "enemy",
+                    .kind = RuntimeSpriteCollisionBoxKind::hurtbox,
+                    .center_x = 0.0F,
+                    .center_y = 0.0F,
+                    .half_width = 0.45F,
+                    .half_height = 0.5F,
+                    .layer = 0x2U,
+                    .mask = 0x1U,
+                    .gameplay_kind = RuntimeGameplayInteractionKind::damage,
+                    .gameplay_amount = 0,
+                    .gameplay_feedback_id = {},
+                    .source_index = 1U,
+                },
+            },
+        .frame_poses =
+            std::vector<RuntimeSpriteCollisionFramePoseDesc>{
+                RuntimeSpriteCollisionFramePoseDesc{
+                    .frame_id = "sample_2d.player.attack.1",
+                    .entity_id = "player",
+                    .world_x = 0.0F,
+                    .world_y = 0.0F,
+                    .active = true,
+                    .source_index = 0U,
+                },
+                RuntimeSpriteCollisionFramePoseDesc{
+                    .frame_id = "sample_2d.enemy.idle.0",
+                    .entity_id = "enemy",
+                    .world_x = 0.6F,
+                    .world_y = 0.0F,
+                    .active = true,
+                    .source_index = 1U,
+                },
+            },
+        .max_hit_rows = 4U,
+    };
+
+    Gameplay2DSpriteCollisionHitboxProbeResult result;
+    const auto collision = plan_runtime_sprite_collision_hitboxes(request);
+    result.hits = collision.rows.size();
+    result.gameplay_events = collision.gameplay_events.size();
+    result.diagnostics += collision.diagnostics.size();
+    if (!collision.succeeded) {
+        return result;
+    }
+
+    const auto interaction = plan_runtime_gameplay_interactions(
+        state, std::span<const RuntimeGameplayInteractionEvent>{collision.gameplay_events});
+    result.interaction_rows = interaction.rows.size();
+    result.feedback_rows = interaction.feedback_rows.size();
+    result.diagnostics += interaction.diagnostics.size();
+    result.ready = interaction.succeeded && result.diagnostics == 0U && result.hits == 1U &&
+                   result.gameplay_events == 1U && result.interaction_rows == 1U && result.feedback_rows == 1U &&
+                   interaction.state.entities.size() == 2U && interaction.state.entities[1].id == "enemy" &&
+                   interaction.state.entities[1].health == 3;
     return result;
 }
 
@@ -2429,6 +2532,14 @@ class Gameplay2DSystemsProbe final {
         interaction_feedback_rows_ = interaction.feedback_rows;
         interaction_final_session_state_ = interaction.final_session_state;
 
+        const auto sprite_collision_hitbox = validate_gameplay_2d_sprite_collision_hitboxes();
+        sprite_collision_hitbox_ready_ = sprite_collision_hitbox.ready;
+        sprite_collision_hitbox_hits_ = sprite_collision_hitbox.hits;
+        sprite_collision_hitbox_gameplay_events_ = sprite_collision_hitbox.gameplay_events;
+        sprite_collision_hitbox_interaction_rows_ = sprite_collision_hitbox.interaction_rows;
+        sprite_collision_hitbox_feedback_rows_ = sprite_collision_hitbox.feedback_rows;
+        sprite_collision_hitbox_diagnostics_ = sprite_collision_hitbox.diagnostics;
+
         const auto runtime_profile_resume = validate_gameplay_2d_runtime_profile_resume();
         runtime_profile_resume_ready_ = runtime_profile_resume.ready;
         runtime_profile_resume_status_ = runtime_profile_resume.status;
@@ -2516,6 +2627,9 @@ class Gameplay2DSystemsProbe final {
                interaction_ready_ && interaction_diagnostics_ == 0U && interaction_rows_ == 10U &&
                interaction_feedback_rows_ == 10U &&
                interaction_final_session_state_ == mirakana::runtime::RuntimeGameplaySessionState::running &&
+               sprite_collision_hitbox_ready_ && sprite_collision_hitbox_hits_ == 1U &&
+               sprite_collision_hitbox_gameplay_events_ == 1U && sprite_collision_hitbox_interaction_rows_ == 1U &&
+               sprite_collision_hitbox_feedback_rows_ == 1U && sprite_collision_hitbox_diagnostics_ == 0U &&
                runtime_profile_resume_ready_ && runtime_menu_hud_ready_ && runtime_menu_hud_diagnostics_ == 0U &&
                runtime_menu_hud_display_rows_ == 6U && runtime_menu_hud_command_rows_ == 2U &&
                runtime_menu_hud_dialogue_rows_ == 1U && runtime_menu_hud_input_binding_prompt_rows_ == 1U &&
@@ -2716,6 +2830,30 @@ class Gameplay2DSystemsProbe final {
 
     [[nodiscard]] mirakana::runtime::RuntimeGameplaySessionState interaction_final_session_state() const noexcept {
         return interaction_final_session_state_;
+    }
+
+    [[nodiscard]] bool sprite_collision_hitbox_ready() const noexcept {
+        return sprite_collision_hitbox_ready_;
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_hit_count() const noexcept {
+        return sprite_collision_hitbox_hits_;
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_gameplay_event_count() const noexcept {
+        return sprite_collision_hitbox_gameplay_events_;
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_interaction_row_count() const noexcept {
+        return sprite_collision_hitbox_interaction_rows_;
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_feedback_row_count() const noexcept {
+        return sprite_collision_hitbox_feedback_rows_;
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_diagnostic_count() const noexcept {
+        return sprite_collision_hitbox_diagnostics_;
     }
 
     [[nodiscard]] bool runtime_profile_resume_ready() const noexcept {
@@ -2966,6 +3104,11 @@ class Gameplay2DSystemsProbe final {
     std::size_t interaction_diagnostics_{0U};
     std::size_t interaction_rows_{0U};
     std::size_t interaction_feedback_rows_{0U};
+    std::size_t sprite_collision_hitbox_hits_{0U};
+    std::size_t sprite_collision_hitbox_gameplay_events_{0U};
+    std::size_t sprite_collision_hitbox_interaction_rows_{0U};
+    std::size_t sprite_collision_hitbox_feedback_rows_{0U};
+    std::size_t sprite_collision_hitbox_diagnostics_{0U};
     std::size_t runtime_profile_resume_diagnostics_{0U};
     std::size_t runtime_profile_resume_loaded_documents_{0U};
     std::size_t runtime_profile_resume_defaulted_documents_{0U};
@@ -3004,6 +3147,7 @@ class Gameplay2DSystemsProbe final {
     bool quest_dialogue_ready_{false};
     bool inventory_items_ready_{false};
     bool interaction_ready_{false};
+    bool sprite_collision_hitbox_ready_{false};
     bool runtime_profile_resume_ready_{false};
     bool runtime_menu_hud_ready_{false};
     bool construction_placement_ready_{false};
@@ -3594,6 +3738,30 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         return gameplay_systems_.interaction_final_session_state();
     }
 
+    [[nodiscard]] bool sprite_collision_hitbox_ready() const noexcept {
+        return gameplay_systems_.sprite_collision_hitbox_ready();
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_hits() const noexcept {
+        return gameplay_systems_.sprite_collision_hitbox_hit_count();
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_gameplay_events() const noexcept {
+        return gameplay_systems_.sprite_collision_hitbox_gameplay_event_count();
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_interaction_rows() const noexcept {
+        return gameplay_systems_.sprite_collision_hitbox_interaction_row_count();
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_feedback_rows() const noexcept {
+        return gameplay_systems_.sprite_collision_hitbox_feedback_row_count();
+    }
+
+    [[nodiscard]] std::size_t sprite_collision_hitbox_diagnostics() const noexcept {
+        return gameplay_systems_.sprite_collision_hitbox_diagnostic_count();
+    }
+
     [[nodiscard]] bool gameplay_systems_runtime_profile_resume_ready() const noexcept {
         return gameplay_systems_.runtime_profile_resume_ready();
     }
@@ -3824,7 +3992,7 @@ void print_usage() {
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
                  "[--require-sprite-animation] [--require-sprite-sorting-layer] [--require-sprite-9slice-tiled] "
-                 "[--require-tilemap-runtime-ux] "
+                 "[--require-sprite-collision-hitbox] [--require-tilemap-runtime-ux] "
                  "[--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
@@ -3876,6 +4044,10 @@ void print_usage() {
         }
         if (arg == "--require-sprite-9slice-tiled") {
             options.require_sprite_9slice_tiled = true;
+            continue;
+        }
+        if (arg == "--require-sprite-collision-hitbox") {
+            options.require_sprite_collision_hitbox = true;
             continue;
         }
         if (arg == "--require-tilemap-runtime-ux") {
@@ -4702,6 +4874,12 @@ int main(int argc, char** argv) {
         << " gameplay_systems_interaction_feedback_rows=" << game.gameplay_systems_interaction_feedback_rows()
         << " gameplay_systems_interaction_final_session_state="
         << runtime_gameplay_session_state_name(game.gameplay_systems_interaction_final_session_state())
+        << " sprite_collision_hitbox_ready=" << (game.sprite_collision_hitbox_ready() ? 1 : 0)
+        << " sprite_collision_hitbox_hits=" << game.sprite_collision_hitbox_hits()
+        << " sprite_collision_hitbox_gameplay_events=" << game.sprite_collision_hitbox_gameplay_events()
+        << " sprite_collision_hitbox_interaction_rows=" << game.sprite_collision_hitbox_interaction_rows()
+        << " sprite_collision_hitbox_feedback_rows=" << game.sprite_collision_hitbox_feedback_rows()
+        << " sprite_collision_hitbox_diagnostics=" << game.sprite_collision_hitbox_diagnostics()
         << " runtime_profile_resume_status="
         << runtime_session_profile_resume_status_name(game.gameplay_systems_runtime_profile_resume_status())
         << " runtime_profile_resume_ready=" << (game.gameplay_systems_runtime_profile_resume_ready() ? 1 : 0)
@@ -4931,6 +5109,21 @@ int main(int argc, char** argv) {
         return 24;
     }
 
+    if (options.require_sprite_collision_hitbox &&
+        (!game.sprite_collision_hitbox_ready() || game.sprite_collision_hitbox_hits() != 1U ||
+         game.sprite_collision_hitbox_gameplay_events() != 1U ||
+         game.sprite_collision_hitbox_interaction_rows() != 1U || game.sprite_collision_hitbox_feedback_rows() != 1U ||
+         game.sprite_collision_hitbox_diagnostics() != 0U)) {
+        std::cout << "sample_2d_desktop_runtime_package required_sprite_collision_hitbox_unavailable"
+                  << " sprite_collision_hitbox_ready=" << (game.sprite_collision_hitbox_ready() ? 1 : 0)
+                  << " sprite_collision_hitbox_hits=" << game.sprite_collision_hitbox_hits()
+                  << " sprite_collision_hitbox_gameplay_events=" << game.sprite_collision_hitbox_gameplay_events()
+                  << " sprite_collision_hitbox_interaction_rows=" << game.sprite_collision_hitbox_interaction_rows()
+                  << " sprite_collision_hitbox_feedback_rows=" << game.sprite_collision_hitbox_feedback_rows()
+                  << " sprite_collision_hitbox_diagnostics=" << game.sprite_collision_hitbox_diagnostics() << '\n';
+        return 25;
+    }
+
     if (options.require_tilemap_runtime_ux &&
         (game.tilemap_layers() == 0 || game.tilemap_visible_layers() == 0 || game.tilemap_tiles() == 0 ||
          game.tilemap_non_empty_cells() == 0 || game.tilemap_sampled_cells() == 0 || game.tilemap_diagnostics() != 0)) {
@@ -4993,6 +5186,12 @@ int main(int argc, char** argv) {
             << " gameplay_systems_interaction_feedback_rows=" << game.gameplay_systems_interaction_feedback_rows()
             << " gameplay_systems_interaction_final_session_state="
             << runtime_gameplay_session_state_name(game.gameplay_systems_interaction_final_session_state())
+            << " sprite_collision_hitbox_ready=" << (game.sprite_collision_hitbox_ready() ? 1 : 0)
+            << " sprite_collision_hitbox_hits=" << game.sprite_collision_hitbox_hits()
+            << " sprite_collision_hitbox_gameplay_events=" << game.sprite_collision_hitbox_gameplay_events()
+            << " sprite_collision_hitbox_interaction_rows=" << game.sprite_collision_hitbox_interaction_rows()
+            << " sprite_collision_hitbox_feedback_rows=" << game.sprite_collision_hitbox_feedback_rows()
+            << " sprite_collision_hitbox_diagnostics=" << game.sprite_collision_hitbox_diagnostics()
             << " runtime_profile_resume_ready=" << (game.gameplay_systems_runtime_profile_resume_ready() ? 1 : 0)
             << " runtime_profile_resume_status="
             << runtime_session_profile_resume_status_name(game.gameplay_systems_runtime_profile_resume_status())

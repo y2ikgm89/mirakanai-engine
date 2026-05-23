@@ -61,7 +61,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Status | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [Sprite 9-Slice and Tiled v1](2026-05-23-sprite-9slice-and-tiled-v1.md) | 9-slice/tiled sprite metadata, scene expansion, and package-visible expansion counters. |
+| Active slice (`currentActivePlan`) | [Candidate Backlog Burn-down v1](2026-05-23-candidate-backlog-burn-down-v1.md) | Active milestone-style burn-down; next remaining child is `sprite-effects-particles-v1`. |
 | Active roadmap (parent) | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | Post-1.0 index; `unsupportedProductionGaps = []`. |
 
 ## Current Evidence Pointers
