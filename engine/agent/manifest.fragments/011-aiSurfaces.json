@@ -293,7 +293,7 @@
         "tools/remove-merged-worktree.ps1",
         "gh pr create",
         "gh pr view",
-        "gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>"
+        "gh pr merge --auto --merge --match-head-commit <headRefOid>"
       ],
       "validationGuards": [
         "tools/check-agents.ps1",

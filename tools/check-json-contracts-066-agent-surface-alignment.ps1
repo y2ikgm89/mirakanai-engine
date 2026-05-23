@@ -66,7 +66,7 @@ foreach ($needle in @(
         "tools/check-agents.ps1",
         "tools/check-ai-integration.ps1",
         "tools/check-json-contracts.ps1",
-        "gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>",
+        "gh pr merge --auto --merge --match-head-commit <headRefOid>",
         "direct default-branch push",
         "raw gh pr ready",
         "arbitrary shell or raw manifest command evaluation",

@@ -22,7 +22,7 @@ $agentSurfaceAlignmentChecks = @(
     },
     @{
         Path = "docs/ai-integration.md"
-        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "aiSurfaces.crossToolAlignment", "games/<game_name>/", "tools/create-game-recipe.ps1", "gh pr merge --auto --merge --delete-branch --match-head-commit <headRefOid>", "direct default-branch push", "arbitrary shell or raw manifest command evaluation", "backend/native handle public game API", "validation weakening", "model: composer-2.5-fast", "500-line rule guidance", "OpenAI developer docs MCP", "Close completed, obsolete, or no-longer-needed Codex subagents promptly after consuming their results")
+        Needles = @("AI Codex/Claude/Cursor Agent Surface v1", "aiSurfaces.crossToolAlignment", "games/<game_name>/", "tools/create-game-recipe.ps1", "gh pr merge --auto --merge --match-head-commit <headRefOid>", "direct default-branch push", "arbitrary shell or raw manifest command evaluation", "backend/native handle public game API", "validation weakening", "model: composer-2.5-fast", "500-line rule guidance", "OpenAI developer docs MCP", "Close completed, obsolete, or no-longer-needed Codex subagents promptly after consuming their results")
     },
     @{
         Path = "docs/current-capabilities.md"
@@ -74,11 +74,11 @@ $agentSurfaceAlignmentChecks = @(
     },
     @{
         Path = ".codex/rules/gameengine.rules"
-        Needles = @("Direct pushes to default or protected branches", "gh pr merge --auto --merge --delete-branch", "--match-head-commit", "gh pr ready")
+        Needles = @("Direct pushes to default or protected branches", "gh pr merge --auto --merge --match-head-commit", "branch cleanup stays in tools/remove-merged-worktree.ps1", "gh pr ready")
     },
     @{
         Path = ".claude/settings.json"
-        Needles = @("gh pr merge --auto --merge --delete-branch --match-head-commit", "tools/remove-merged-worktree.ps1", "Bash(git push origin main:*)", "Bash(gh pr ready:*)")
+        Needles = @("gh pr merge --auto --merge --match-head-commit", "tools/remove-merged-worktree.ps1", "Bash(git push origin main:*)", "Bash(gh pr ready:*)")
     },
     @{
         Path = ".cursor/rules/mirakana-repository-baseline.mdc"

@@ -331,7 +331,7 @@ if (Test-Path -LiteralPath $codexRuleRoot) {
         $approvedAllowPatterns = @(
             'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]',
             'pattern\s*=\s*\["gh",\s*"pr",\s*"create"\]',
-            'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--delete-branch",\s*"--match-head-commit"\]',
+            'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--match-head-commit"\]',
             'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/remove-merged-worktree\.ps1"\]',
             'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/ready-task-pr\.ps1"\]'
         )
@@ -404,6 +404,7 @@ if (Test-Path $claudeSettingsPath) {
             "Bash(git worktree remove:*)",
             "Bash(git push --force:*)",
             "Bash(git push --force-with-lease:*)",
+            "Bash(gh pr merge --auto --merge --delete-branch:*)",
             "Bash(gh pr ready:*)",
             "Bash(gh pr close:*)",
             "Bash(gh pr reopen:*)",
