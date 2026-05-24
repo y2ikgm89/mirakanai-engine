@@ -104,74 +104,59 @@ struct DesktopRuntimeOptions {
 };
 
 constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.GeneratedDesktopRuntime3DPackage.Config.v1"};
-constexpr std::string_view kRuntimeSceneVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene.vs.dxil"};
-constexpr std::string_view kRuntimeSceneMorphVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_morph.vs.dxil"};
+constexpr std::string_view kRuntimeSceneVertexShaderPath{"shaders/generated_3d_package_scene.vs.dxil"};
+constexpr std::string_view kRuntimeSceneMorphVertexShaderPath{"shaders/generated_3d_package_scene_morph.vs.dxil"};
 constexpr std::string_view kRuntimeSceneComputeMorphVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph.vs.dxil"};
+    "shaders/generated_3d_package_scene_compute_morph.vs.dxil"};
 constexpr std::string_view kRuntimeSceneComputeMorphShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph.cs.dxil"};
+    "shaders/generated_3d_package_scene_compute_morph.cs.dxil"};
 constexpr std::string_view kRuntimeSceneComputeMorphTangentFrameVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_tangent_frame.vs.dxil"};
+    "shaders/generated_3d_package_scene_compute_morph_tangent_frame.vs.dxil"};
 constexpr std::string_view kRuntimeSceneComputeMorphTangentFrameShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_tangent_frame.cs.dxil"};
+    "shaders/generated_3d_package_scene_compute_morph_tangent_frame.cs.dxil"};
 constexpr std::string_view kRuntimeSceneComputeMorphSkinnedVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_skinned.vs.dxil"};
+    "shaders/generated_3d_package_scene_compute_morph_skinned.vs.dxil"};
 constexpr std::string_view kRuntimeSceneComputeMorphSkinnedShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_skinned.cs.dxil"};
-constexpr std::string_view kRuntimeSceneFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene.ps.dxil"};
+    "shaders/generated_3d_package_scene_compute_morph_skinned.cs.dxil"};
+constexpr std::string_view kRuntimeSceneFragmentShaderPath{"shaders/generated_3d_package_scene.ps.dxil"};
 constexpr std::string_view kRuntimeShadowReceiverFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_shadow_receiver.ps.dxil"};
+    "shaders/generated_3d_package_shadow_receiver.ps.dxil"};
 constexpr std::string_view kRuntimeShiftedShadowReceiverFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_shadow_receiver_shifted.ps.dxil"};
-constexpr std::string_view kRuntimeShadowVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_shadow.vs.dxil"};
-constexpr std::string_view kRuntimeShadowFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_shadow.ps.dxil"};
-constexpr std::string_view kRuntimeSceneVulkanVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene.vs.spv"};
-constexpr std::string_view kRuntimeSceneVulkanMorphVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_morph.vs.spv"};
+    "shaders/generated_3d_package_shadow_receiver_shifted.ps.dxil"};
+constexpr std::string_view kRuntimeShadowVertexShaderPath{"shaders/generated_3d_package_shadow.vs.dxil"};
+constexpr std::string_view kRuntimeShadowFragmentShaderPath{"shaders/generated_3d_package_shadow.ps.dxil"};
+constexpr std::string_view kRuntimeSceneVulkanVertexShaderPath{"shaders/generated_3d_package_scene.vs.spv"};
+constexpr std::string_view kRuntimeSceneVulkanMorphVertexShaderPath{"shaders/generated_3d_package_scene_morph.vs.spv"};
 constexpr std::string_view kRuntimeSceneVulkanComputeMorphVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph.vs.spv"};
+    "shaders/generated_3d_package_scene_compute_morph.vs.spv"};
 constexpr std::string_view kRuntimeSceneVulkanComputeMorphShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph.cs.spv"};
+    "shaders/generated_3d_package_scene_compute_morph.cs.spv"};
 constexpr std::string_view kRuntimeSceneVulkanComputeMorphTangentFrameVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_tangent_frame.vs.spv"};
+    "shaders/generated_3d_package_scene_compute_morph_tangent_frame.vs.spv"};
 constexpr std::string_view kRuntimeSceneVulkanComputeMorphTangentFrameShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_tangent_frame.cs.spv"};
+    "shaders/generated_3d_package_scene_compute_morph_tangent_frame.cs.spv"};
 constexpr std::string_view kRuntimeSceneVulkanComputeMorphSkinnedVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_skinned.vs.spv"};
+    "shaders/generated_3d_package_scene_compute_morph_skinned.vs.spv"};
 constexpr std::string_view kRuntimeSceneVulkanComputeMorphSkinnedShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene_compute_morph_skinned.cs.spv"};
-constexpr std::string_view kRuntimeSceneVulkanFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_scene.ps.spv"};
+    "shaders/generated_3d_package_scene_compute_morph_skinned.cs.spv"};
+constexpr std::string_view kRuntimeSceneVulkanFragmentShaderPath{"shaders/generated_3d_package_scene.ps.spv"};
 constexpr std::string_view kRuntimeShadowReceiverVulkanFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_shadow_receiver.ps.spv"};
+    "shaders/generated_3d_package_shadow_receiver.ps.spv"};
 constexpr std::string_view kRuntimeShiftedShadowReceiverVulkanFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_shadow_receiver_shifted.ps.spv"};
-constexpr std::string_view kRuntimeShadowVulkanVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_shadow.vs.spv"};
-constexpr std::string_view kRuntimeShadowVulkanFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_shadow.ps.spv"};
-constexpr std::string_view kRuntimePostprocessVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_postprocess.vs.dxil"};
-constexpr std::string_view kRuntimePostprocessFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_postprocess.ps.dxil"};
-constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_postprocess.vs.spv"};
+    "shaders/generated_3d_package_shadow_receiver_shifted.ps.spv"};
+constexpr std::string_view kRuntimeShadowVulkanVertexShaderPath{"shaders/generated_3d_package_shadow.vs.spv"};
+constexpr std::string_view kRuntimeShadowVulkanFragmentShaderPath{"shaders/generated_3d_package_shadow.ps.spv"};
+constexpr std::string_view kRuntimePostprocessVertexShaderPath{"shaders/generated_3d_package_postprocess.vs.dxil"};
+constexpr std::string_view kRuntimePostprocessFragmentShaderPath{"shaders/generated_3d_package_postprocess.ps.dxil"};
+constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{"shaders/generated_3d_package_postprocess.vs.spv"};
 constexpr std::string_view kRuntimePostprocessVulkanFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_postprocess.ps.spv"};
-constexpr std::string_view kRuntimeNativeUiOverlayVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_ui_overlay.vs.dxil"};
-constexpr std::string_view kRuntimeNativeUiOverlayFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_ui_overlay.ps.dxil"};
+    "shaders/generated_3d_package_postprocess.ps.spv"};
+constexpr std::string_view kRuntimeNativeUiOverlayVertexShaderPath{"shaders/generated_3d_package_ui_overlay.vs.dxil"};
+constexpr std::string_view kRuntimeNativeUiOverlayFragmentShaderPath{"shaders/generated_3d_package_ui_overlay.ps.dxil"};
 constexpr std::string_view kRuntimeNativeUiOverlayVulkanVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_ui_overlay.vs.spv"};
+    "shaders/generated_3d_package_ui_overlay.vs.spv"};
 constexpr std::string_view kRuntimeNativeUiOverlayVulkanFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_3d_package_ui_overlay.ps.spv"};
+    "shaders/generated_3d_package_ui_overlay.ps.spv"};
 constexpr std::uint32_t kRuntimeSceneTangentSpaceStrideBytes{48};
 constexpr std::uint64_t kPackageStreamingResidentBudgetBytes{67108864};
 
@@ -1360,6 +1345,46 @@ physics_advanced_controller_diagnostic_name(mirakana::PhysicsAdvancedController3
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+physics_character_dynamics_readiness_status_name(mirakana::PhysicsCharacterDynamics3DReadinessStatus status) noexcept {
+    switch (status) {
+    case mirakana::PhysicsCharacterDynamics3DReadinessStatus::ready:
+        return "ready";
+    case mirakana::PhysicsCharacterDynamics3DReadinessStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::PhysicsCharacterDynamics3DReadinessStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view physics_character_dynamics_readiness_diagnostic_name(
+    mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::none:
+        return "none";
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::invalid_controller:
+        return "invalid_controller";
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_dynamic_push:
+        return "missing_dynamic_push";
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_step_up:
+        return "missing_step_up";
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_walkable_slope:
+        return "missing_walkable_slope";
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_ground_probe:
+        return "missing_ground_probe";
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_moving_platform:
+        return "missing_moving_platform";
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_constraint:
+        return "missing_constraint";
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::replay_signature_unchanged:
+        return "replay_signature_unchanged";
+    case mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::movement_row_budget_exceeded:
+        return "movement_row_budget_exceeded";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::string_view physics_constraint_status_name(mirakana::PhysicsConstraint3DStatus status) noexcept {
     switch (status) {
     case mirakana::PhysicsConstraint3DStatus::solved:
@@ -1640,15 +1665,26 @@ class GeneratedGameplaySystemsProbe final {
                physics_policy_solid_contact_count_ == 1U && physics_policy_trigger_overlap_count_ == 1U &&
                advanced_controller_result_.status == mirakana::PhysicsAdvancedController3DStatus::moved &&
                advanced_controller_result_.diagnostic == mirakana::PhysicsAdvancedController3DDiagnostic::none &&
-               advanced_controller_result_.movement.rows.size() == 3U &&
+               advanced_controller_result_.movement.rows.size() == 5U &&
                advanced_controller_result_.moving_platform_rows.size() == 1U &&
                advanced_controller_platform_applied_count_ == 1U &&
                advanced_controller_result_.constraints.status == mirakana::PhysicsJoint3DStatus::solved &&
                advanced_controller_result_.constraints.rows.size() == 1U &&
-               advanced_controller_result_.replay_before.body_count == 5U &&
-               advanced_controller_result_.replay_after.body_count == 5U &&
+               advanced_controller_result_.replay_before.body_count == 6U &&
+               advanced_controller_result_.replay_after.body_count == 6U &&
                advanced_controller_result_.replay_after.value != advanced_controller_result_.replay_before.value &&
                gameplay_systems_near(advanced_controller_result_.position.x, 3.25F) &&
+               character_dynamics_readiness_.status == mirakana::PhysicsCharacterDynamics3DReadinessStatus::ready &&
+               character_dynamics_readiness_.diagnostic ==
+                   mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::none &&
+               character_dynamics_readiness_.diagnostics.empty() && character_dynamics_readiness_.movement_rows == 5U &&
+               character_dynamics_readiness_.dynamic_push_rows == 1U &&
+               character_dynamics_readiness_.step_up_rows == 1U &&
+               character_dynamics_readiness_.walkable_slope_rows == 1U &&
+               character_dynamics_readiness_.ground_probe_rows == 1U &&
+               character_dynamics_readiness_.moving_platform_rows == 1U &&
+               character_dynamics_readiness_.applied_moving_platform_rows == 1U &&
+               character_dynamics_readiness_.constraint_rows == 1U && character_dynamics_readiness_.replay_changed &&
                physics_constraints_result_.status == mirakana::PhysicsConstraint3DStatus::solved &&
                physics_constraints_result_.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::none &&
                physics_constraints_result_.rows.size() == 2U && physics_constraints_fixed_row_count() == 1U &&
@@ -1731,15 +1767,27 @@ class GeneratedGameplaySystemsProbe final {
                 physics_policy_trigger_overlap_count_ == 1U,
             advanced_controller_result_.status == mirakana::PhysicsAdvancedController3DStatus::moved,
             advanced_controller_result_.diagnostic == mirakana::PhysicsAdvancedController3DDiagnostic::none,
-            advanced_controller_result_.movement.rows.size() == 3U,
+            advanced_controller_result_.movement.rows.size() == 5U,
             advanced_controller_result_.moving_platform_rows.size() == 1U,
             advanced_controller_platform_applied_count_ == 1U,
             advanced_controller_result_.constraints.status == mirakana::PhysicsJoint3DStatus::solved,
             advanced_controller_result_.constraints.rows.size() == 1U,
-            advanced_controller_result_.replay_before.body_count == 5U,
-            advanced_controller_result_.replay_after.body_count == 5U,
+            advanced_controller_result_.replay_before.body_count == 6U,
+            advanced_controller_result_.replay_after.body_count == 6U,
             advanced_controller_result_.replay_after.value != advanced_controller_result_.replay_before.value,
             gameplay_systems_near(advanced_controller_result_.position.x, 3.25F),
+            character_dynamics_readiness_.status == mirakana::PhysicsCharacterDynamics3DReadinessStatus::ready,
+            character_dynamics_readiness_.diagnostic == mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::none,
+            character_dynamics_readiness_.diagnostics.empty(),
+            character_dynamics_readiness_.movement_rows == 5U,
+            character_dynamics_readiness_.dynamic_push_rows == 1U,
+            character_dynamics_readiness_.step_up_rows == 1U,
+            character_dynamics_readiness_.walkable_slope_rows == 1U,
+            character_dynamics_readiness_.ground_probe_rows == 1U,
+            character_dynamics_readiness_.moving_platform_rows == 1U,
+            character_dynamics_readiness_.applied_moving_platform_rows == 1U,
+            character_dynamics_readiness_.constraint_rows == 1U,
+            character_dynamics_readiness_.replay_changed,
             physics_constraints_result_.status == mirakana::PhysicsConstraint3DStatus::solved,
             physics_constraints_result_.diagnostic == mirakana::PhysicsConstraint3DDiagnostic::none,
             physics_constraints_result_.rows.size() == 2U,
@@ -1974,6 +2022,55 @@ class GeneratedGameplaySystemsProbe final {
 
     [[nodiscard]] float advanced_controller_final_x() const noexcept {
         return advanced_controller_result_.position.x;
+    }
+
+    [[nodiscard]] mirakana::PhysicsCharacterDynamics3DReadinessStatus character_dynamics_status() const noexcept {
+        return character_dynamics_readiness_.status;
+    }
+
+    [[nodiscard]] mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic
+    character_dynamics_diagnostic() const noexcept {
+        return character_dynamics_readiness_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t character_dynamics_movement_rows() const noexcept {
+        return character_dynamics_readiness_.movement_rows;
+    }
+
+    [[nodiscard]] std::size_t character_dynamics_dynamic_pushes() const noexcept {
+        return character_dynamics_readiness_.dynamic_push_rows;
+    }
+
+    [[nodiscard]] std::size_t character_dynamics_step_ups() const noexcept {
+        return character_dynamics_readiness_.step_up_rows;
+    }
+
+    [[nodiscard]] std::size_t character_dynamics_walkable_slope_rows() const noexcept {
+        return character_dynamics_readiness_.walkable_slope_rows;
+    }
+
+    [[nodiscard]] std::size_t character_dynamics_ground_probes() const noexcept {
+        return character_dynamics_readiness_.ground_probe_rows;
+    }
+
+    [[nodiscard]] std::size_t character_dynamics_moving_platform_rows() const noexcept {
+        return character_dynamics_readiness_.moving_platform_rows;
+    }
+
+    [[nodiscard]] std::size_t character_dynamics_applied_platform_rows() const noexcept {
+        return character_dynamics_readiness_.applied_moving_platform_rows;
+    }
+
+    [[nodiscard]] std::size_t character_dynamics_constraint_rows() const noexcept {
+        return character_dynamics_readiness_.constraint_rows;
+    }
+
+    [[nodiscard]] bool character_dynamics_replay_changed() const noexcept {
+        return character_dynamics_readiness_.replay_changed;
+    }
+
+    [[nodiscard]] std::size_t character_dynamics_diagnostics_count() const noexcept {
+        return character_dynamics_readiness_.diagnostics.size();
     }
 
     [[nodiscard]] mirakana::PhysicsConstraint3DStatus physics_constraints_status() const noexcept {
@@ -2692,6 +2789,7 @@ class GeneratedGameplaySystemsProbe final {
         constexpr std::uint32_t platform_layer = 1U << 1U;
         constexpr std::uint32_t trigger_layer = 1U << 2U;
         constexpr std::uint32_t dynamic_layer = 1U << 3U;
+        constexpr std::uint32_t solid_layer = 1U << 4U;
 
         mirakana::PhysicsWorld3D world(mirakana::PhysicsWorld3DConfig{mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F}});
         const auto platform = world.create_body(mirakana::PhysicsBody3DDesc{
@@ -2739,6 +2837,21 @@ class GeneratedGameplaySystemsProbe final {
             .half_height = 0.5F,
             .trigger = false,
         });
+        (void)world.create_body(mirakana::PhysicsBody3DDesc{
+            .position = mirakana::Vec3{.x = 2.3F, .y = 0.25F, .z = 0.0F},
+            .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .mass = 0.0F,
+            .linear_damping = 0.0F,
+            .dynamic = false,
+            .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.25F, .z = 1.0F},
+            .collision_enabled = true,
+            .shape = mirakana::PhysicsShape3DKind::aabb,
+            .radius = 0.5F,
+            .collision_layer = solid_layer,
+            .collision_mask = character_layer,
+            .half_height = 0.5F,
+            .trigger = false,
+        });
         const auto controller_proxy = world.create_body(mirakana::PhysicsBody3DDesc{
             .position = mirakana::Vec3{.x = 0.0F, .y = 1.05F, .z = 0.0F},
             .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
@@ -2776,10 +2889,13 @@ class GeneratedGameplaySystemsProbe final {
         request.movement.radius = 0.5F;
         request.movement.half_height = 0.5F;
         request.movement.character_layer = character_layer;
-        request.movement.collision_mask = platform_layer | trigger_layer | dynamic_layer;
+        request.movement.collision_mask = platform_layer | trigger_layer | dynamic_layer | solid_layer;
         request.movement.include_triggers = true;
         request.movement.skin_width = 0.02F;
+        request.movement.step_height = 0.65F;
         request.movement.ground_probe_distance = 0.2F;
+        request.movement.grounded_normal_y = 0.70F;
+        request.movement.max_slope_normal_y = 0.70F;
         request.movement.dynamic_push_distance = 0.25F;
         request.moving_platforms.push_back(mirakana::PhysicsMovingPlatform3DDesc{
             .body = platform,
@@ -2800,6 +2916,17 @@ class GeneratedGameplaySystemsProbe final {
                 ++advanced_controller_platform_applied_count_;
             }
         }
+        mirakana::PhysicsCharacterDynamics3DReadinessConfig readiness_config;
+        readiness_config.require_dynamic_push = true;
+        readiness_config.require_step_up = true;
+        readiness_config.require_walkable_slope = true;
+        readiness_config.require_ground_probe = true;
+        readiness_config.require_moving_platform = true;
+        readiness_config.require_constraint = true;
+        readiness_config.require_replay_change = true;
+        readiness_config.max_movement_rows = 8U;
+        character_dynamics_readiness_ =
+            mirakana::evaluate_physics_character_dynamics_readiness_3d(advanced_controller_result_, readiness_config);
     }
 
     void build_physics_constraints_probe() {
@@ -3184,6 +3311,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::PhysicsCharacterController3DResult controller_result_;
     mirakana::PhysicsCharacterDynamicPolicy3DResult physics_policy_result_;
     mirakana::PhysicsAdvancedController3DResult advanced_controller_result_;
+    mirakana::PhysicsCharacterDynamics3DReadinessReport character_dynamics_readiness_;
     mirakana::PhysicsConstraintSolve3DResult physics_constraints_result_;
     mirakana::PhysicsKinematicMotion3DResult kinematic_motion_result_;
     mirakana::PhysicsSimpleVehicle3DResult simple_vehicle_result_;
@@ -3780,6 +3908,56 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] float gameplay_systems_advanced_controller_final_x() const noexcept {
         return gameplay_systems_.advanced_controller_final_x();
+    }
+
+    [[nodiscard]] mirakana::PhysicsCharacterDynamics3DReadinessStatus
+    gameplay_systems_character_dynamics_status() const noexcept {
+        return gameplay_systems_.character_dynamics_status();
+    }
+
+    [[nodiscard]] mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic
+    gameplay_systems_character_dynamics_diagnostic() const noexcept {
+        return gameplay_systems_.character_dynamics_diagnostic();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_character_dynamics_movement_rows() const noexcept {
+        return gameplay_systems_.character_dynamics_movement_rows();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_character_dynamics_dynamic_pushes() const noexcept {
+        return gameplay_systems_.character_dynamics_dynamic_pushes();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_character_dynamics_step_ups() const noexcept {
+        return gameplay_systems_.character_dynamics_step_ups();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_character_dynamics_walkable_slope_rows() const noexcept {
+        return gameplay_systems_.character_dynamics_walkable_slope_rows();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_character_dynamics_ground_probes() const noexcept {
+        return gameplay_systems_.character_dynamics_ground_probes();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_character_dynamics_moving_platform_rows() const noexcept {
+        return gameplay_systems_.character_dynamics_moving_platform_rows();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_character_dynamics_applied_platform_rows() const noexcept {
+        return gameplay_systems_.character_dynamics_applied_platform_rows();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_character_dynamics_constraint_rows() const noexcept {
+        return gameplay_systems_.character_dynamics_constraint_rows();
+    }
+
+    [[nodiscard]] bool gameplay_systems_character_dynamics_replay_changed() const noexcept {
+        return gameplay_systems_.character_dynamics_replay_changed();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_character_dynamics_diagnostics() const noexcept {
+        return gameplay_systems_.character_dynamics_diagnostics_count();
     }
 
     [[nodiscard]] mirakana::PhysicsConstraint3DStatus gameplay_systems_physics_constraints_status() const noexcept {
@@ -6590,6 +6768,7 @@ int main(int argc, char** argv) {
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
+    const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
     const auto renderer_quality =
         mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const auto playable_3d =
@@ -6675,7 +6854,19 @@ int main(int argc, char** argv) {
         << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved << " postprocess_status="
         << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
         << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
-        << " directional_shadow_status="
+        << " postprocess_policy_status="
+        << mirakana::sdl_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
+        << " postprocess_policy_ready=" << (postprocess_policy.ready ? 1 : 0)
+        << " postprocess_policy_diagnostics=" << postprocess_policy.diagnostics_count
+        << " postprocess_policy_effects=" << postprocess_policy.effect_count
+        << " postprocess_policy_postprocess_passes=" << postprocess_policy.postprocess_pass_count
+        << " postprocess_policy_framegraph_passes=" << postprocess_policy.framegraph_pass_count
+        << " postprocess_policy_framegraph_barrier_step_budget=" << postprocess_policy.framegraph_barrier_step_budget
+        << " postprocess_policy_scene_color_required=" << (postprocess_policy.scene_color_required ? 1 : 0)
+        << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
+        << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
+        << " postprocess_policy_backend_shader_evidence_ready="
+        << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0) << " directional_shadow_status="
         << mirakana::sdl_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
         << " directional_shadow_requested=" << (report.directional_shadow_requested ? 1 : 0)
         << " directional_shadow_ready=" << (report.directional_shadow_ready ? 1 : 0)
@@ -6911,6 +7102,28 @@ int main(int argc, char** argv) {
         << " gameplay_systems_advanced_controller_replay_after_bodies="
         << game.gameplay_systems_advanced_controller_replay_after_bodies()
         << " gameplay_systems_advanced_controller_final_x=" << game.gameplay_systems_advanced_controller_final_x()
+        << " gameplay_systems_character_dynamics_status="
+        << physics_character_dynamics_readiness_status_name(game.gameplay_systems_character_dynamics_status())
+        << " gameplay_systems_character_dynamics_diagnostic="
+        << physics_character_dynamics_readiness_diagnostic_name(game.gameplay_systems_character_dynamics_diagnostic())
+        << " gameplay_systems_character_dynamics_movement_rows="
+        << game.gameplay_systems_character_dynamics_movement_rows()
+        << " gameplay_systems_character_dynamics_dynamic_pushes="
+        << game.gameplay_systems_character_dynamics_dynamic_pushes()
+        << " gameplay_systems_character_dynamics_step_ups=" << game.gameplay_systems_character_dynamics_step_ups()
+        << " gameplay_systems_character_dynamics_walkable_slope_rows="
+        << game.gameplay_systems_character_dynamics_walkable_slope_rows()
+        << " gameplay_systems_character_dynamics_ground_probes="
+        << game.gameplay_systems_character_dynamics_ground_probes()
+        << " gameplay_systems_character_dynamics_moving_platform_rows="
+        << game.gameplay_systems_character_dynamics_moving_platform_rows()
+        << " gameplay_systems_character_dynamics_applied_platform_rows="
+        << game.gameplay_systems_character_dynamics_applied_platform_rows()
+        << " gameplay_systems_character_dynamics_constraint_rows="
+        << game.gameplay_systems_character_dynamics_constraint_rows()
+        << " gameplay_systems_character_dynamics_replay_changed="
+        << (game.gameplay_systems_character_dynamics_replay_changed() ? 1 : 0)
+        << " gameplay_systems_character_dynamics_diagnostics=" << game.gameplay_systems_character_dynamics_diagnostics()
         << " gameplay_systems_physics_constraints_status="
         << physics_constraint_status_name(game.gameplay_systems_physics_constraints_status())
         << " gameplay_systems_physics_constraints_diagnostic="
@@ -7315,6 +7528,12 @@ int main(int argc, char** argv) {
             options.require_directional_shadow, options.require_postprocess_depth_input, options.max_frames);
         if (options.require_postprocess &&
             (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
+             !postprocess_policy.ready || postprocess_policy.diagnostics_count != 0 ||
+             postprocess_policy.effect_count != 1 || postprocess_policy.postprocess_pass_count != 1 ||
+             postprocess_policy.framegraph_pass_count != 2 || postprocess_policy.framegraph_barrier_step_budget != 2 ||
+             !postprocess_policy.scene_color_required || !postprocess_policy.color_grading_effect ||
+             !postprocess_policy.backend_shader_evidence_ready ||
+             (options.require_postprocess_depth_input && !postprocess_policy.scene_depth_required) ||
              report.framegraph_passes != expected_framegraph_passes ||
              report.renderer_stats.framegraph_passes_executed !=
                  static_cast<std::uint64_t>(options.max_frames) * expected_framegraph_passes ||

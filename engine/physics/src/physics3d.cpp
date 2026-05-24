@@ -1738,6 +1738,23 @@ advanced_controller_status_for(PhysicsCharacterDynamicPolicy3DStatus movement_st
     return PhysicsAdvancedController3DStatus::moved;
 }
 
+void append_character_dynamics_readiness_diagnostic(PhysicsCharacterDynamics3DReadinessReport& report,
+                                                    PhysicsCharacterDynamics3DReadinessDiagnostic diagnostic) {
+    report.diagnostics.push_back(diagnostic);
+    if (report.diagnostic == PhysicsCharacterDynamics3DReadinessDiagnostic::none) {
+        report.diagnostic = diagnostic;
+    }
+}
+
+[[nodiscard]] bool
+has_invalid_advanced_controller_result(const PhysicsAdvancedController3DResult& controller) noexcept {
+    return controller.status == PhysicsAdvancedController3DStatus::invalid_request ||
+           controller.diagnostic != PhysicsAdvancedController3DDiagnostic::none ||
+           controller.movement.status == PhysicsCharacterDynamicPolicy3DStatus::invalid_request ||
+           controller.movement.diagnostic != PhysicsCharacterDynamicPolicy3DDiagnostic::none ||
+           controller.constraints.status == PhysicsJoint3DStatus::invalid_request;
+}
+
 inline constexpr std::uint64_t physics_replay_hash_offset_3d = 1469598103934665603ULL;
 inline constexpr std::uint64_t physics_replay_hash_prime_3d = 1099511628211ULL;
 
@@ -3224,6 +3241,80 @@ PhysicsAdvancedController3DResult plan_physics_advanced_controller_3d(const Phys
     result.status = advanced_controller_status_for(result.movement.status);
     result.diagnostic = PhysicsAdvancedController3DDiagnostic::none;
     return result;
+}
+
+PhysicsCharacterDynamics3DReadinessReport
+evaluate_physics_character_dynamics_readiness_3d(const PhysicsAdvancedController3DResult& controller,
+                                                 const PhysicsCharacterDynamics3DReadinessConfig& config) {
+    PhysicsCharacterDynamics3DReadinessReport report;
+    report.movement_rows = controller.movement.rows.size();
+    report.moving_platform_rows = controller.moving_platform_rows.size();
+    report.constraint_rows = controller.constraints.rows.size();
+    report.replay_changed = controller.replay_after.value != controller.replay_before.value;
+
+    for (const auto& row : controller.movement.rows) {
+        if (row.kind == PhysicsCharacterDynamicPolicy3DRowKind::dynamic_push) {
+            ++report.dynamic_push_rows;
+        } else if (row.kind == PhysicsCharacterDynamicPolicy3DRowKind::step_up) {
+            ++report.step_up_rows;
+        } else if (row.kind == PhysicsCharacterDynamicPolicy3DRowKind::ground_probe) {
+            ++report.ground_probe_rows;
+        }
+
+        if (row.walkable_slope) {
+            ++report.walkable_slope_rows;
+        }
+    }
+
+    for (const auto& row : controller.moving_platform_rows) {
+        if (row.applied) {
+            ++report.applied_moving_platform_rows;
+        }
+    }
+
+    if (has_invalid_advanced_controller_result(controller)) {
+        report.status = PhysicsCharacterDynamics3DReadinessStatus::invalid_request;
+        append_character_dynamics_readiness_diagnostic(
+            report, PhysicsCharacterDynamics3DReadinessDiagnostic::invalid_controller);
+        return report;
+    }
+
+    if (config.require_dynamic_push && report.dynamic_push_rows == 0U) {
+        append_character_dynamics_readiness_diagnostic(
+            report, PhysicsCharacterDynamics3DReadinessDiagnostic::missing_dynamic_push);
+    }
+    if (config.require_step_up && report.step_up_rows == 0U) {
+        append_character_dynamics_readiness_diagnostic(report,
+                                                       PhysicsCharacterDynamics3DReadinessDiagnostic::missing_step_up);
+    }
+    if (config.require_walkable_slope && report.walkable_slope_rows == 0U) {
+        append_character_dynamics_readiness_diagnostic(
+            report, PhysicsCharacterDynamics3DReadinessDiagnostic::missing_walkable_slope);
+    }
+    if (config.require_ground_probe && report.ground_probe_rows == 0U) {
+        append_character_dynamics_readiness_diagnostic(
+            report, PhysicsCharacterDynamics3DReadinessDiagnostic::missing_ground_probe);
+    }
+    if (config.require_moving_platform && report.applied_moving_platform_rows == 0U) {
+        append_character_dynamics_readiness_diagnostic(
+            report, PhysicsCharacterDynamics3DReadinessDiagnostic::missing_moving_platform);
+    }
+    if (config.require_constraint && report.constraint_rows == 0U) {
+        append_character_dynamics_readiness_diagnostic(
+            report, PhysicsCharacterDynamics3DReadinessDiagnostic::missing_constraint);
+    }
+    if (config.require_replay_change && !report.replay_changed) {
+        append_character_dynamics_readiness_diagnostic(
+            report, PhysicsCharacterDynamics3DReadinessDiagnostic::replay_signature_unchanged);
+    }
+    if (report.movement_rows > config.max_movement_rows) {
+        append_character_dynamics_readiness_diagnostic(
+            report, PhysicsCharacterDynamics3DReadinessDiagnostic::movement_row_budget_exceeded);
+    }
+
+    report.status = report.diagnostics.empty() ? PhysicsCharacterDynamics3DReadinessStatus::ready
+                                               : PhysicsCharacterDynamics3DReadinessStatus::diagnostics;
+    return report;
 }
 
 PhysicsDeterminismGate3DResult evaluate_physics_determinism_gate_3d(const PhysicsWorld3D& world,

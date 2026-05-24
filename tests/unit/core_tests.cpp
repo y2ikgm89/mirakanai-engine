@@ -10682,6 +10682,7 @@ MK_TEST("3d physics advanced controller composes movement platform constraints a
     constexpr std::uint32_t platform_layer = 1U << 1U;
     constexpr std::uint32_t trigger_layer = 1U << 2U;
     constexpr std::uint32_t dynamic_layer = 1U << 3U;
+    constexpr std::uint32_t solid_layer = 1U << 4U;
 
     const auto platform = world.create_body(mirakana::PhysicsBody3DDesc{
         .position = mirakana::Vec3{.x = 1.5F, .y = -0.5F, .z = 0.0F},
@@ -10724,6 +10725,19 @@ MK_TEST("3d physics advanced controller composes movement platform constraints a
         .collision_layer = dynamic_layer,
         .collision_mask = character_layer,
     });
+    const auto low_step = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 2.3F, .y = 0.25F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.1F, .y = 0.25F, .z = 1.0F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = solid_layer,
+        .collision_mask = character_layer,
+    });
     const auto controller_proxy = world.create_body(mirakana::PhysicsBody3DDesc{
         .position = mirakana::Vec3{.x = 0.0F, .y = 1.05F, .z = 0.0F},
         .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
@@ -10749,10 +10763,13 @@ MK_TEST("3d physics advanced controller composes movement platform constraints a
     request.movement.radius = 0.5F;
     request.movement.half_height = 0.5F;
     request.movement.character_layer = character_layer;
-    request.movement.collision_mask = platform_layer | trigger_layer | dynamic_layer;
+    request.movement.collision_mask = platform_layer | trigger_layer | dynamic_layer | solid_layer;
     request.movement.include_triggers = true;
     request.movement.skin_width = 0.02F;
+    request.movement.step_height = 0.65F;
     request.movement.ground_probe_distance = 0.2F;
+    request.movement.grounded_normal_y = 0.70F;
+    request.movement.max_slope_normal_y = 0.70F;
     request.movement.dynamic_push_distance = 0.25F;
     request.moving_platforms.push_back(mirakana::PhysicsMovingPlatform3DDesc{
         .body = platform,
@@ -10775,13 +10792,18 @@ MK_TEST("3d physics advanced controller composes movement platform constraints a
 
     MK_REQUIRE(trigger != mirakana::null_physics_body_3d);
     MK_REQUIRE(crate != mirakana::null_physics_body_3d);
+    MK_REQUIRE(low_step != mirakana::null_physics_body_3d);
     MK_REQUIRE(result.status == mirakana::PhysicsAdvancedController3DStatus::moved);
     MK_REQUIRE(result.diagnostic == mirakana::PhysicsAdvancedController3DDiagnostic::none);
-    MK_REQUIRE(result.movement.status == mirakana::PhysicsCharacterDynamicPolicy3DStatus::moved);
-    MK_REQUIRE(result.movement.rows.size() == 3);
+    MK_REQUIRE(result.movement.status == mirakana::PhysicsCharacterDynamicPolicy3DStatus::stepped);
+    MK_REQUIRE(result.movement.rows.size() == 5);
     MK_REQUIRE(result.movement.rows[0].kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::trigger_overlap);
     MK_REQUIRE(result.movement.rows[1].kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::dynamic_push);
-    MK_REQUIRE(result.movement.rows[2].kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::ground_probe);
+    MK_REQUIRE(result.movement.rows[2].kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::solid_contact);
+    MK_REQUIRE(result.movement.rows[2].body == low_step);
+    MK_REQUIRE(result.movement.rows[3].kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::step_up);
+    MK_REQUIRE(result.movement.rows[3].body == low_step);
+    MK_REQUIRE(result.movement.rows[4].kind == mirakana::PhysicsCharacterDynamicPolicy3DRowKind::ground_probe);
     MK_REQUIRE(result.moving_platform_rows.size() == 1);
     MK_REQUIRE(result.moving_platform_rows[0].source_index == 0U);
     MK_REQUIRE(result.moving_platform_rows[0].body == platform);
@@ -10795,6 +10817,8 @@ MK_TEST("3d physics advanced controller composes movement platform constraints a
     MK_REQUIRE(result.constraints.rows[0].diagnostic == mirakana::PhysicsJoint3DDiagnostic::none);
     MK_REQUIRE(result.replay_before.value == before_signature.value);
     MK_REQUIRE(result.replay_after.value != before_signature.value);
+    MK_REQUIRE(result.replay_before.body_count == 6U);
+    MK_REQUIRE(result.replay_after.body_count == 6U);
     MK_REQUIRE(repeated.replay_after.value == result.replay_after.value);
     MK_REQUIRE(world.find_body(controller_proxy)->position == before_controller.position);
     MK_REQUIRE(world.find_body(follower)->position == before_follower.position);
@@ -10828,6 +10852,95 @@ MK_TEST("3d physics advanced controller rejects missing controller constraint bo
     MK_REQUIRE(result.moving_platform_rows.empty());
     MK_REQUIRE(result.constraints.rows.empty());
     MK_REQUIRE(result.position == request.movement.position);
+}
+
+MK_TEST("3d physics character dynamics readiness summarizes tuning evidence and diagnostics") {
+    mirakana::PhysicsAdvancedController3DResult controller;
+    controller.status = mirakana::PhysicsAdvancedController3DStatus::moved;
+    controller.diagnostic = mirakana::PhysicsAdvancedController3DDiagnostic::none;
+    controller.movement.status = mirakana::PhysicsCharacterDynamicPolicy3DStatus::stepped;
+    controller.movement.diagnostic = mirakana::PhysicsCharacterDynamicPolicy3DDiagnostic::none;
+    controller.movement.rows.push_back(mirakana::PhysicsCharacterDynamicPolicy3DRow{
+        .kind = mirakana::PhysicsCharacterDynamicPolicy3DRowKind::dynamic_push,
+        .body = mirakana::PhysicsBody3DId{},
+        .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .normal = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+        .distance = 0.0F,
+        .initial_overlap = false,
+        .grounded = false,
+        .walkable_slope = false,
+        .suggested_displacement = mirakana::Vec3{.x = 0.25F, .y = 0.0F, .z = 0.0F},
+    });
+    controller.movement.rows.push_back(mirakana::PhysicsCharacterDynamicPolicy3DRow{
+        .kind = mirakana::PhysicsCharacterDynamicPolicy3DRowKind::step_up,
+        .body = mirakana::PhysicsBody3DId{},
+        .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .normal = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+        .distance = 0.0F,
+        .initial_overlap = false,
+        .grounded = false,
+        .walkable_slope = false,
+        .suggested_displacement = mirakana::Vec3{.x = 0.0F, .y = 0.5F, .z = 0.0F},
+    });
+    controller.movement.rows.push_back(mirakana::PhysicsCharacterDynamicPolicy3DRow{
+        .kind = mirakana::PhysicsCharacterDynamicPolicy3DRowKind::ground_probe,
+        .body = mirakana::PhysicsBody3DId{},
+        .position = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .normal = mirakana::Vec3{.x = 0.0F, .y = 1.0F, .z = 0.0F},
+        .distance = 0.0F,
+        .initial_overlap = false,
+        .grounded = true,
+        .walkable_slope = true,
+        .suggested_displacement = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+    });
+    controller.moving_platform_rows.push_back(mirakana::PhysicsMovingPlatform3DRow{
+        .source_index = 0U,
+        .body = mirakana::PhysicsBody3DId{},
+        .grounded_body = mirakana::PhysicsBody3DId{},
+        .applied_displacement = mirakana::Vec3{.x = 0.25F, .y = 0.0F, .z = 0.0F},
+        .diagnostic = mirakana::PhysicsAdvancedController3DDiagnostic::none,
+        .applied = true,
+    });
+    controller.constraints.status = mirakana::PhysicsJoint3DStatus::solved;
+    controller.constraints.rows.push_back(mirakana::PhysicsJointSolve3DRow{});
+    controller.replay_before = mirakana::PhysicsReplaySignature3D{.value = 1U, .body_count = 4U};
+    controller.replay_after = mirakana::PhysicsReplaySignature3D{.value = 2U, .body_count = 4U};
+
+    mirakana::PhysicsCharacterDynamics3DReadinessConfig config;
+    config.require_dynamic_push = true;
+    config.require_step_up = true;
+    config.require_walkable_slope = true;
+    config.require_ground_probe = true;
+    config.require_moving_platform = true;
+    config.require_constraint = true;
+    config.require_replay_change = true;
+
+    const auto ready = mirakana::evaluate_physics_character_dynamics_readiness_3d(controller, config);
+
+    MK_REQUIRE(ready.status == mirakana::PhysicsCharacterDynamics3DReadinessStatus::ready);
+    MK_REQUIRE(ready.diagnostic == mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::none);
+    MK_REQUIRE(ready.diagnostics.empty());
+    MK_REQUIRE(ready.movement_rows == 3U);
+    MK_REQUIRE(ready.dynamic_push_rows == 1U);
+    MK_REQUIRE(ready.step_up_rows == 1U);
+    MK_REQUIRE(ready.walkable_slope_rows == 1U);
+    MK_REQUIRE(ready.ground_probe_rows == 1U);
+    MK_REQUIRE(ready.moving_platform_rows == 1U);
+    MK_REQUIRE(ready.applied_moving_platform_rows == 1U);
+    MK_REQUIRE(ready.constraint_rows == 1U);
+    MK_REQUIRE(ready.replay_changed);
+
+    controller.movement.rows.pop_back();
+    controller.movement.rows.pop_back();
+    const auto missing = mirakana::evaluate_physics_character_dynamics_readiness_3d(controller, config);
+
+    MK_REQUIRE(missing.status == mirakana::PhysicsCharacterDynamics3DReadinessStatus::diagnostics);
+    MK_REQUIRE(missing.diagnostic == mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_step_up);
+    MK_REQUIRE(missing.diagnostics.size() == 3U);
+    MK_REQUIRE(missing.diagnostics[0] == mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_step_up);
+    MK_REQUIRE(missing.diagnostics[1] ==
+               mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_walkable_slope);
+    MK_REQUIRE(missing.diagnostics[2] == mirakana::PhysicsCharacterDynamics3DReadinessDiagnostic::missing_ground_probe);
 }
 
 MK_TEST("3d physics authored collision scene builds deterministic world") {

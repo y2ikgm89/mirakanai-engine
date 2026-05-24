@@ -1150,6 +1150,18 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_advanced_controller_replay_changed",
             "gameplay_systems_advanced_controller_replay_before_bodies",
             "gameplay_systems_advanced_controller_replay_after_bodies",
+            "gameplay_systems_character_dynamics_status",
+            "gameplay_systems_character_dynamics_diagnostic",
+            "gameplay_systems_character_dynamics_movement_rows",
+            "gameplay_systems_character_dynamics_dynamic_pushes",
+            "gameplay_systems_character_dynamics_step_ups",
+            "gameplay_systems_character_dynamics_walkable_slope_rows",
+            "gameplay_systems_character_dynamics_ground_probes",
+            "gameplay_systems_character_dynamics_moving_platform_rows",
+            "gameplay_systems_character_dynamics_applied_platform_rows",
+            "gameplay_systems_character_dynamics_constraint_rows",
+            "gameplay_systems_character_dynamics_replay_changed",
+            "gameplay_systems_character_dynamics_diagnostics",
             "gameplay_systems_physics_constraints_status",
             "gameplay_systems_physics_constraints_diagnostic",
             "gameplay_systems_physics_constraints_rows",
@@ -1324,7 +1336,7 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_diagnostic=none\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean advanced controller diagnostics."
     }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_movement_rows=3\b") {
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_movement_rows=5\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller movement rows."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_platform_rows=1\b") {
@@ -1339,11 +1351,47 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_changed=1\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove changed advanced controller replay signature."
     }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_before_bodies=5\b") {
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_before_bodies=6\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller replay-before body count."
     }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_after_bodies=5\b") {
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_advanced_controller_replay_after_bodies=6\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact advanced controller replay-after body count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_status=ready\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready character dynamics status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean character dynamics diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_movement_rows=5\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact character dynamics movement rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_dynamic_pushes=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove character dynamics dynamic push evidence."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_step_ups=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove character dynamics step-up evidence."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_walkable_slope_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove character dynamics walkable-slope evidence."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_ground_probes=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove character dynamics ground-probe evidence."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_moving_platform_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove character dynamics moving-platform rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_applied_platform_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove character dynamics applied platform evidence."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_constraint_rows=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove character dynamics constraint rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_replay_changed=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove character dynamics replay change."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_character_dynamics_diagnostics=0\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove zero character dynamics diagnostics."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_physics_constraints_status=solved\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove solved physics constraints status."
