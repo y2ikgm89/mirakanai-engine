@@ -9116,6 +9116,138 @@ MK_TEST("3d physics shape sweep batch preserves source order filters and diagnos
     MK_REQUIRE(over_budget.rows.empty());
 }
 
+MK_TEST("3d physics collision query readiness summarizes batch evidence and diagnostics") {
+    mirakana::PhysicsWorld3D world;
+    constexpr std::uint32_t terrain_layer = 1U << 1U;
+    constexpr std::uint32_t trigger_layer = 1U << 2U;
+
+    const auto terrain = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 4.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = terrain_layer,
+        .collision_mask = 0xFFFF'FFFFU,
+    });
+    const auto trigger = world.create_body(mirakana::PhysicsBody3DDesc{
+        .position = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 0.0F},
+        .velocity = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+        .mass = 0.0F,
+        .linear_damping = 0.0F,
+        .dynamic = false,
+        .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+        .collision_enabled = true,
+        .shape = mirakana::PhysicsShape3DKind::aabb,
+        .radius = 0.5F,
+        .collision_layer = trigger_layer,
+        .collision_mask = 0xFFFF'FFFFU,
+        .half_height = 0.5F,
+        .trigger = true,
+    });
+
+    const auto raycasts = world
+                              .raycast_batch(
+                                  mirakana::PhysicsRaycastBatch3DDesc{
+                                      .queries =
+                                          {
+                                              mirakana::PhysicsRaycast3DDesc{
+                                                  .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                  .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                  .max_distance = 10.0F,
+                                                  .collision_mask = terrain_layer,
+                                              },
+                                              mirakana::PhysicsRaycast3DDesc{
+                                                  .origin = mirakana::Vec3{.x = 0.0F, .y = 3.0F, .z = 0.0F},
+                                                  .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                  .max_distance = 10.0F,
+                                                  .collision_mask = terrain_layer,
+                                              },
+                                              mirakana::PhysicsRaycast3DDesc{
+                                                  .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                  .direction = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                  .max_distance = 10.0F,
+                                                  .collision_mask = terrain_layer,
+                                              },
+                                          },
+                                      .max_queries = 3U,
+                                  });
+    const auto sweeps = world
+                            .shape_sweep_batch(
+                                mirakana::PhysicsShapeSweepBatch3DDesc{
+                                    .queries =
+                                        {
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.5F,
+                                                .collision_mask = trigger_layer,
+                                                .ignored_body = mirakana::null_physics_body_3d,
+                                                .include_triggers = true,
+                                            },
+                                            mirakana::PhysicsShapeSweep3DDesc{
+                                                .origin = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                                                .direction = mirakana::Vec3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                                                .max_distance = 10.0F,
+                                                .shape = mirakana::PhysicsShape3DKind::aabb,
+                                                .half_extents = mirakana::Vec3{.x = 0.5F, .y = 0.5F, .z = 0.5F},
+                                                .radius = 0.5F,
+                                                .half_height = 0.5F,
+                                                .collision_mask = trigger_layer,
+                                                .ignored_body = trigger,
+                                                .include_triggers = true,
+                                            },
+                                        },
+                                    .max_queries = 2U,
+                                });
+
+    MK_REQUIRE(terrain != mirakana::null_physics_body_3d);
+    MK_REQUIRE(trigger != mirakana::null_physics_body_3d);
+
+    mirakana::PhysicsCollisionQuery3DReadinessConfig config;
+    config.require_raycast_hit = true;
+    config.require_shape_sweep_hit = true;
+    config.require_no_hit = true;
+    config.require_invalid_request = true;
+    config.require_budget_rejection = true;
+    config.require_source_order = true;
+    config.max_total_rows = 5U;
+
+    const auto ready = mirakana::evaluate_physics_collision_query_readiness_3d(raycasts, sweeps, 2U, config);
+    MK_REQUIRE(ready.status == mirakana::PhysicsCollisionQuery3DReadinessStatus::ready);
+    MK_REQUIRE(ready.diagnostic == mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::none);
+    MK_REQUIRE(ready.raycast_rows == 3U);
+    MK_REQUIRE(ready.shape_sweep_rows == 2U);
+    MK_REQUIRE(ready.total_rows == 5U);
+    MK_REQUIRE(ready.raycast_hit_rows == 1U);
+    MK_REQUIRE(ready.shape_sweep_hit_rows == 1U);
+    MK_REQUIRE(ready.hit_rows == 2U);
+    MK_REQUIRE(ready.no_hit_rows == 2U);
+    MK_REQUIRE(ready.invalid_request_rows == 1U);
+    MK_REQUIRE(ready.budget_rejections == 2U);
+    MK_REQUIRE(ready.source_order_ready);
+    MK_REQUIRE(ready.diagnostics.empty());
+
+    auto out_of_order = raycasts;
+    out_of_order.rows[1].source_index = 7U;
+    const auto missing = mirakana::evaluate_physics_collision_query_readiness_3d(out_of_order, sweeps, 0U, config);
+    MK_REQUIRE(missing.status == mirakana::PhysicsCollisionQuery3DReadinessStatus::diagnostics);
+    MK_REQUIRE(missing.diagnostic == mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::missing_budget_rejection);
+    MK_REQUIRE(!missing.source_order_ready);
+    MK_REQUIRE(missing.diagnostics.size() == 2U);
+    MK_REQUIRE(missing.diagnostics[0] ==
+               mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::missing_budget_rejection);
+    MK_REQUIRE(missing.diagnostics[1] == mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::source_order_mismatch);
+}
+
 MK_TEST("3d physics exact sphere cast hits sphere surface without bounds inflation") {
     mirakana::PhysicsWorld3D world;
     const auto target = world.create_body(mirakana::PhysicsBody3DDesc{

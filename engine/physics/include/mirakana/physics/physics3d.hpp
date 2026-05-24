@@ -178,6 +178,47 @@ struct PhysicsShapeSweepBatch3DResult {
     std::vector<PhysicsShapeSweepBatch3DRow> rows;
 };
 
+enum class PhysicsCollisionQuery3DReadinessStatus : std::uint8_t { ready, diagnostics, invalid_request };
+
+enum class PhysicsCollisionQuery3DReadinessDiagnostic : std::uint8_t {
+    none,
+    invalid_raycast_batch,
+    invalid_shape_sweep_batch,
+    missing_raycast_hit,
+    missing_shape_sweep_hit,
+    missing_no_hit,
+    missing_invalid_request,
+    missing_budget_rejection,
+    source_order_mismatch,
+    row_budget_exceeded,
+};
+
+struct PhysicsCollisionQuery3DReadinessConfig {
+    bool require_raycast_hit{false};
+    bool require_shape_sweep_hit{false};
+    bool require_no_hit{false};
+    bool require_invalid_request{false};
+    bool require_budget_rejection{false};
+    bool require_source_order{false};
+    std::size_t max_total_rows{std::numeric_limits<std::size_t>::max()};
+};
+
+struct PhysicsCollisionQuery3DReadinessReport {
+    PhysicsCollisionQuery3DReadinessStatus status{PhysicsCollisionQuery3DReadinessStatus::invalid_request};
+    PhysicsCollisionQuery3DReadinessDiagnostic diagnostic{PhysicsCollisionQuery3DReadinessDiagnostic::none};
+    std::size_t raycast_rows{0};
+    std::size_t shape_sweep_rows{0};
+    std::size_t total_rows{0};
+    std::size_t raycast_hit_rows{0};
+    std::size_t shape_sweep_hit_rows{0};
+    std::size_t hit_rows{0};
+    std::size_t no_hit_rows{0};
+    std::size_t invalid_request_rows{0};
+    std::size_t budget_rejections{0};
+    bool source_order_ready{false};
+    std::vector<PhysicsCollisionQuery3DReadinessDiagnostic> diagnostics;
+};
+
 class PhysicsShape3DDesc {
   public:
     constexpr PhysicsShape3DDesc() noexcept = default;
@@ -860,6 +901,10 @@ plan_physics_advanced_controller_3d(const PhysicsWorld3D& world, const PhysicsAd
 [[nodiscard]] PhysicsCharacterDynamics3DReadinessReport
 evaluate_physics_character_dynamics_readiness_3d(const PhysicsAdvancedController3DResult& controller,
                                                  const PhysicsCharacterDynamics3DReadinessConfig& config = {});
+
+[[nodiscard]] PhysicsCollisionQuery3DReadinessReport evaluate_physics_collision_query_readiness_3d(
+    const PhysicsRaycastBatch3DResult& raycasts, const PhysicsShapeSweepBatch3DResult& shape_sweeps,
+    std::size_t budget_rejections, const PhysicsCollisionQuery3DReadinessConfig& config = {});
 
 [[nodiscard]] PhysicsDeterminismGate3DResult
 evaluate_physics_determinism_gate_3d(const PhysicsWorld3D& world, const PhysicsDeterminismGate3DConfig& config = {});
