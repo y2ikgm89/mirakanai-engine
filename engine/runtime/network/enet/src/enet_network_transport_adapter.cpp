@@ -243,12 +243,13 @@ class EnetNetworkTransportAdapter final : public IRuntimeNetworkTransportAdapter
         result.adapter_id = "enet";
 
         std::uint16_t selected_port{0U};
-        auto server = create_server_host(request.port, request.peer_count, request.channel_count, selected_port);
-        if (!server) {
+        auto maybe_server = create_server_host(request.port, request.peer_count, request.channel_count, selected_port);
+        if (!maybe_server) {
             add_diagnostic(result, RuntimeNetworkTransportDiagnosticCode::adapter_exception,
                            "ENet server host creation failed");
             return result;
         }
+        auto server = std::move(*maybe_server);
 
         auto client = create_client_host(1U, request.channel_count);
         if (client == nullptr) {
