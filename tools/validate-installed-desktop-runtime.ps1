@@ -1661,7 +1661,13 @@ if ($requiresSpriteAnimation) {
             "sprite_flipbook_frames_sampled",
             "sprite_flipbook_frames_applied",
             "sprite_flipbook_selected_frame_sum",
-            "sprite_flipbook_diagnostics"
+            "sprite_flipbook_diagnostics",
+            "sprite_flipbook_direction_sets",
+            "sprite_flipbook_event_rows",
+            "sprite_flipbook_playback_modes",
+            "sprite_flipbook_gameplay_state_rows",
+            "sprite_flipbook_events_sampled",
+            "sprite_flipbook_playback_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed desktop runtime smoke status line did not include sprite animation field: $field"
@@ -1673,7 +1679,12 @@ if ($requiresSpriteAnimation) {
             "sprite_animation_selected_frame_sum",
             "sprite_flipbook_frames_sampled",
             "sprite_flipbook_frames_applied",
-            "sprite_flipbook_selected_frame_sum"
+            "sprite_flipbook_selected_frame_sum",
+            "sprite_flipbook_direction_sets",
+            "sprite_flipbook_event_rows",
+            "sprite_flipbook_playback_modes",
+            "sprite_flipbook_gameplay_state_rows",
+            "sprite_flipbook_events_sampled"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove sprite animation count: $field"
@@ -1687,6 +1698,24 @@ if ($requiresSpriteAnimation) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_diagnostics=0\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove clean sprite flipbook diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_playback_diagnostics=0\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove clean sprite flipbook playback diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_direction_sets=2\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove sprite flipbook direction-set rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_event_rows=2\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove sprite flipbook event rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_playback_modes=2\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove sprite flipbook playback mode rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_gameplay_state_rows=2\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove sprite flipbook gameplay-state rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_flipbook_events_sampled=$expectedSmokeFrames\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove frame-exact sprite flipbook events."
     }
 }
 if ($requiresTilemapRuntimeUx) {

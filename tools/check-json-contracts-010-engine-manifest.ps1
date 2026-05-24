@@ -130,10 +130,15 @@ foreach ($needle in @(
     "RuntimeSpriteFlipbookClipDesc",
     "RuntimeSpriteFlipbookState",
     "RuntimeSpriteFlipbookSampleResult",
+    "RuntimeSpriteFlipbookDirectionSetRow",
+    "RuntimeSpriteFlipbookPlaybackRequest",
     "advance_runtime_sprite_flipbook",
+    "advance_runtime_sprite_flipbook_playback",
     "RuntimeSpriteAnimationFrame",
     "sprite_flipbook_frames_sampled",
     "sprite_flipbook_frames_applied",
+    "sprite_flipbook_direction_sets",
+    "sprite_flipbook_events_sampled",
     "package-visible flipbook counters"
 )) {
     if (-not ([string]$engine.gameCodeGuidance.currentSpriteAnimationFlipbook).Contains($needle)) {

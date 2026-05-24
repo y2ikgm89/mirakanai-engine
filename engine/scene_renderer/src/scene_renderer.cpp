@@ -112,6 +112,17 @@ select_runtime_sprite_animation_frame(const runtime::RuntimeSpriteAnimationPaylo
            name.find('\0') == std::string_view::npos;
 }
 
+[[nodiscard]] const RuntimeSpriteFlipbookDirectionSetRow*
+find_runtime_sprite_flipbook_direction_set(std::span<const RuntimeSpriteFlipbookDirectionSetRow> rows,
+                                           std::string_view gameplay_state, std::string_view direction) noexcept {
+    for (const auto& row : rows) {
+        if (row.gameplay_state == gameplay_state && row.direction == direction) {
+            return &row;
+        }
+    }
+    return nullptr;
+}
+
 [[nodiscard]] const RuntimeSpriteFlipbookClipDesc*
 find_runtime_sprite_flipbook_clip(std::span<const RuntimeSpriteFlipbookClipDesc> clips,
                                   std::string_view name) noexcept {
@@ -141,6 +152,31 @@ find_runtime_sprite_flipbook_clip(std::span<const RuntimeSpriteFlipbookClipDesc>
         duration_seconds += frame.duration_seconds;
     }
     return duration_seconds > 0.0F;
+}
+
+[[nodiscard]] bool runtime_sprite_flipbook_event_rows_valid(const RuntimeSpriteFlipbookDesc& desc,
+                                                            std::span<const RuntimeSpriteFlipbookEventDesc> events,
+                                                            std::string& diagnostic) {
+    for (const auto& event : events) {
+        if (!valid_sprite_flipbook_clip_name(event.name)) {
+            diagnostic = "runtime sprite flipbook event name is invalid";
+            return false;
+        }
+        if (!valid_sprite_flipbook_clip_name(event.clip_name)) {
+            diagnostic = "runtime sprite flipbook event clip name is invalid";
+            return false;
+        }
+        const auto* clip = find_runtime_sprite_flipbook_clip(desc.clips, event.clip_name);
+        if (clip == nullptr) {
+            diagnostic = "runtime sprite flipbook event clip was not found";
+            return false;
+        }
+        if (!runtime_sprite_flipbook_clip_frame_range_valid(desc, *clip) || event.frame_index >= clip->frame_count) {
+            diagnostic = "runtime sprite flipbook event frame index is invalid";
+            return false;
+        }
+    }
+    return true;
 }
 
 [[nodiscard]] const runtime::RuntimeSpriteAnimationFrame*
@@ -1412,6 +1448,93 @@ RuntimeSpriteFlipbookSampleResult advance_runtime_sprite_flipbook(RuntimeSpriteF
     result.clip_duration_seconds = clip_duration_seconds;
     result.clamped_to_end = clamped_to_end;
     result.frame = *frame;
+    return result;
+}
+
+RuntimeSpriteFlipbookPlaybackResult
+advance_runtime_sprite_flipbook_playback(RuntimeSpriteFlipbookState& state, const RuntimeSpriteFlipbookDesc& desc,
+                                         const RuntimeSpriteFlipbookPlaybackRequest& request) {
+    RuntimeSpriteFlipbookPlaybackResult result;
+    result.gameplay_state = request.gameplay_state;
+    result.direction = request.direction;
+    result.direction_set_count = request.direction_sets.size();
+    result.event_count = request.events.size();
+
+    if (!valid_sprite_flipbook_clip_name(request.gameplay_state)) {
+        result.diagnostic = "runtime sprite flipbook gameplay state is invalid";
+        return result;
+    }
+    if (!valid_sprite_flipbook_clip_name(request.direction)) {
+        result.diagnostic = "runtime sprite flipbook direction is invalid";
+        return result;
+    }
+
+    const auto* direction_set =
+        find_runtime_sprite_flipbook_direction_set(request.direction_sets, request.gameplay_state, request.direction);
+    if (direction_set == nullptr) {
+        result.diagnostic = "runtime sprite flipbook direction set was not found";
+        return result;
+    }
+    if (!valid_sprite_flipbook_clip_name(direction_set->clip_name)) {
+        result.diagnostic = "runtime sprite flipbook direction set clip name is invalid";
+        return result;
+    }
+
+    const auto* clip = find_runtime_sprite_flipbook_clip(desc.clips, direction_set->clip_name);
+    if (clip == nullptr) {
+        result.diagnostic = "runtime sprite flipbook direction set clip was not found";
+        return result;
+    }
+
+    std::string event_diagnostic;
+    if (!runtime_sprite_flipbook_event_rows_valid(desc, request.events, event_diagnostic)) {
+        result.diagnostic = std::move(event_diagnostic);
+        return result;
+    }
+
+    RuntimeSpriteFlipbookClipDesc playback_clip = *clip;
+    switch (direction_set->playback_mode) {
+    case RuntimeSpriteFlipbookPlaybackMode::use_clip_loop:
+        break;
+    case RuntimeSpriteFlipbookPlaybackMode::loop:
+        playback_clip.loop = true;
+        break;
+    case RuntimeSpriteFlipbookPlaybackMode::clamp_to_end:
+        playback_clip.loop = false;
+        break;
+    }
+
+    result.playback_mode = direction_set->playback_mode;
+    result.clip_name = playback_clip.name;
+    result.clip_changed = state.clip_name != playback_clip.name;
+    if (result.clip_changed) {
+        state.clip_name = playback_clip.name;
+        state.elapsed_seconds = 0.0F;
+    }
+
+    const std::array<RuntimeSpriteFlipbookClipDesc, 1> playback_clips{playback_clip};
+    const RuntimeSpriteFlipbookDesc playback_desc{
+        .frames = desc.frames,
+        .clips = std::span<const RuntimeSpriteFlipbookClipDesc>{playback_clips},
+    };
+    result.sample = advance_runtime_sprite_flipbook(state, playback_desc, request.delta_seconds);
+    if (!result.sample.succeeded) {
+        result.diagnostic = result.sample.diagnostic;
+        return result;
+    }
+
+    const auto local_frame_index = result.sample.selected_frame_index - playback_clip.first_frame_index;
+    for (const auto& event : request.events) {
+        if (event.clip_name == playback_clip.name && event.frame_index == local_frame_index) {
+            result.events.push_back(RuntimeSpriteFlipbookEventSample{
+                .clip_name = event.clip_name,
+                .frame_index = event.frame_index,
+                .name = event.name,
+            });
+        }
+    }
+
+    result.succeeded = true;
     return result;
 }
 
