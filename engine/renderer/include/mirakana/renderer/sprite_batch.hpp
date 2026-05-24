@@ -60,7 +60,69 @@ struct SpriteBatchPlan {
     }
 };
 
+enum class SpriteBatchBudgetLane : std::uint8_t { world, ui, effects };
+
+enum class SpriteBatchBudgetProfileStatus : std::uint8_t {
+    ready,
+    invalid_request,
+    diagnostics,
+    budget_exceeded,
+};
+
+enum class SpriteBatchBudgetDiagnosticCode : std::uint8_t {
+    none,
+    missing_plan,
+    invalid_budget,
+    plan_diagnostics,
+    sprite_budget_exceeded,
+    draw_budget_exceeded,
+    texture_bind_budget_exceeded,
+};
+
+struct SpriteBatchBudgetDesc {
+    std::uint64_t max_sprites{0};
+    std::uint64_t max_draws{0};
+    std::uint64_t max_texture_binds{0};
+};
+
+struct SpriteBatchBudgetLanePlanDesc {
+    SpriteBatchBudgetLane lane{SpriteBatchBudgetLane::world};
+    const SpriteBatchPlan* plan{nullptr};
+    SpriteBatchBudgetDesc budget;
+};
+
+struct SpriteBatchBudgetRow {
+    SpriteBatchBudgetLane lane{SpriteBatchBudgetLane::world};
+    std::uint64_t sprite_count{0};
+    std::uint64_t draw_count{0};
+    std::uint64_t texture_bind_count{0};
+    std::uint64_t max_sprites{0};
+    std::uint64_t max_draws{0};
+    std::uint64_t max_texture_binds{0};
+    bool within_budget{false};
+};
+
+struct SpriteBatchBudgetDiagnostic {
+    SpriteBatchBudgetDiagnosticCode code{SpriteBatchBudgetDiagnosticCode::none};
+    SpriteBatchBudgetLane lane{SpriteBatchBudgetLane::world};
+};
+
+struct SpriteBatchBudgetProfile {
+    SpriteBatchBudgetProfileStatus status{SpriteBatchBudgetProfileStatus::invalid_request};
+    std::vector<SpriteBatchBudgetRow> rows;
+    std::vector<SpriteBatchBudgetDiagnostic> diagnostics;
+    std::uint64_t total_sprites{0};
+    std::uint64_t total_draws{0};
+    std::uint64_t total_texture_binds{0};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return status == SpriteBatchBudgetProfileStatus::ready && diagnostics.empty();
+    }
+};
+
 [[nodiscard]] SpriteBatchPlan plan_sprite_batches(std::span<const SpriteCommand> sprites);
 [[nodiscard]] SpriteBatchPlan plan_sprite_batches(const SpriteBatchPlanDesc& desc);
+[[nodiscard]] SpriteBatchBudgetProfile
+plan_sprite_batch_budget_profile(std::span<const SpriteBatchBudgetLanePlanDesc> lanes);
 
 } // namespace mirakana

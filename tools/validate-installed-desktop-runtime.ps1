@@ -741,6 +741,62 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_batch_plan_diagnostics=0\b") {
         Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean sprite batch planning diagnostics."
     }
+    foreach ($field in @(
+            "sprite_batch_budget_status",
+            "sprite_batch_budget_profiles_ready",
+            "sprite_batch_budget_rows",
+            "sprite_batch_budget_diagnostics",
+            "sprite_batch_budget_total_sprites",
+            "sprite_batch_budget_total_draws",
+            "sprite_batch_budget_total_texture_binds",
+            "sprite_batch_budget_world_ready",
+            "sprite_batch_budget_world_max_sprites",
+            "sprite_batch_budget_world_max_draws",
+            "sprite_batch_budget_world_max_texture_binds",
+            "sprite_batch_budget_ui_ready",
+            "sprite_batch_budget_ui_max_sprites",
+            "sprite_batch_budget_ui_max_draws",
+            "sprite_batch_budget_ui_max_texture_binds",
+            "sprite_batch_budget_effects_ready",
+            "sprite_batch_budget_effects_max_sprites",
+            "sprite_batch_budget_effects_max_draws",
+            "sprite_batch_budget_effects_max_texture_binds"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include sprite batch budget field: $field"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_batch_budget_status=ready\b") {
+        Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready sprite batch budget status."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_batch_budget_diagnostics=0\b") {
+        Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean sprite batch budget diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_batch_budget_ui_max_texture_binds=0\b") {
+        Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove the UI lane zero-texture-bind budget."
+    }
+    foreach ($field in @(
+            "sprite_batch_budget_profiles_ready",
+            "sprite_batch_budget_rows",
+            "sprite_batch_budget_total_sprites",
+            "sprite_batch_budget_total_draws",
+            "sprite_batch_budget_total_texture_binds",
+            "sprite_batch_budget_world_ready",
+            "sprite_batch_budget_world_max_sprites",
+            "sprite_batch_budget_world_max_draws",
+            "sprite_batch_budget_world_max_texture_binds",
+            "sprite_batch_budget_ui_ready",
+            "sprite_batch_budget_ui_max_sprites",
+            "sprite_batch_budget_ui_max_draws",
+            "sprite_batch_budget_effects_ready",
+            "sprite_batch_budget_effects_max_sprites",
+            "sprite_batch_budget_effects_max_draws",
+            "sprite_batch_budget_effects_max_texture_binds"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove positive sprite batch budget field: $field"
+        }
+    }
     if ($requiresGameplaySystems) {
         foreach ($field in @(
                 "gameplay_systems_status",

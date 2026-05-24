@@ -825,12 +825,12 @@ foreach ($needle in @(
     "SpriteBatchPlanOptions",
     "SpriteBatchRange",
     "SpriteBatchDiagnosticCode",
-    "atlas_backed_batch_count",
-    "repeated_atlas_batch_count",
-    "repeated_atlas_sprite_count",
-    "unsupported_reordering_policy",
-    "untextured_sprite_disallowed",
-    "plan_sprite_batches"
+    "SpriteBatchBudgetLane", "SpriteBatchBudgetProfileStatus", "SpriteBatchBudgetDiagnosticCode",
+    "SpriteBatchBudgetDesc", "SpriteBatchBudgetLanePlanDesc", "SpriteBatchBudgetProfile",
+    "atlas_backed_batch_count", "repeated_atlas_batch_count", "repeated_atlas_sprite_count",
+    "unsupported_reordering_policy", "untextured_sprite_disallowed",
+    "plan_sprite_batches",
+    "plan_sprite_batch_budget_profile"
 )) {
     Assert-ContainsText $spriteBatchHeader $needle "2D sprite batch planning header"
 }
@@ -1087,11 +1087,11 @@ foreach ($needle in @(
     "2d-sprite-batch-planning-contract",
     "2d-sprite-batch-package-telemetry",
     "Sprite Batching Renderer v1",
-    "plan_sprite_batches",
-    "SpriteBatchPlanDesc",
+    "plan_sprite_batches", "SpriteBatchPlanDesc",
     "atlas_backed_batch_count",
     "unsupported_reordering_policy",
     "plan_scene_sprite_batches",
+    "SpriteBatchBudgetProfile", "plan_sprite_batch_budget_profile", "sprite_batch_budget_status",
     "production sprite batching readiness",
     "native_sprite_batches_executed"
 )) {

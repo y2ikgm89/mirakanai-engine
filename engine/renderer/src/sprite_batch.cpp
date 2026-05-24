@@ -73,6 +73,18 @@ void append_or_extend_batch(SpriteBatchPlan& plan, SpriteBatchKey key, std::uint
     });
 }
 
+[[nodiscard]] bool budget_desc_valid(SpriteBatchBudgetDesc budget) noexcept {
+    return budget.max_sprites != 0 && budget.max_draws != 0;
+}
+
+void add_budget_diagnostic(SpriteBatchBudgetProfile& profile, SpriteBatchBudgetLane lane,
+                           SpriteBatchBudgetDiagnosticCode code) {
+    profile.diagnostics.push_back(SpriteBatchBudgetDiagnostic{
+        .code = code,
+        .lane = lane,
+    });
+}
+
 } // namespace
 
 SpriteBatchPlan plan_sprite_batches(std::span<const SpriteCommand> sprites) {
@@ -111,6 +123,77 @@ SpriteBatchPlan plan_sprite_batches(const SpriteBatchPlanDesc& desc) {
     }
 
     return plan;
+}
+
+SpriteBatchBudgetProfile plan_sprite_batch_budget_profile(std::span<const SpriteBatchBudgetLanePlanDesc> lanes) {
+    SpriteBatchBudgetProfile profile;
+    profile.rows.reserve(lanes.size());
+    if (lanes.empty()) {
+        profile.status = SpriteBatchBudgetProfileStatus::invalid_request;
+        return profile;
+    }
+
+    bool has_invalid_request = false;
+    bool has_plan_diagnostics = false;
+    bool has_budget_exceeded = false;
+    for (const auto& lane : lanes) {
+        if (lane.plan == nullptr) {
+            has_invalid_request = true;
+            add_budget_diagnostic(profile, lane.lane, SpriteBatchBudgetDiagnosticCode::missing_plan);
+            continue;
+        }
+        if (!budget_desc_valid(lane.budget)) {
+            has_invalid_request = true;
+            add_budget_diagnostic(profile, lane.lane, SpriteBatchBudgetDiagnosticCode::invalid_budget);
+            continue;
+        }
+
+        const auto& plan = *lane.plan;
+        const bool within_budget = plan.sprite_count <= lane.budget.max_sprites &&
+                                   plan.draw_count <= lane.budget.max_draws &&
+                                   plan.texture_bind_count <= lane.budget.max_texture_binds && plan.diagnostics.empty();
+        profile.rows.push_back(SpriteBatchBudgetRow{
+            .lane = lane.lane,
+            .sprite_count = plan.sprite_count,
+            .draw_count = plan.draw_count,
+            .texture_bind_count = plan.texture_bind_count,
+            .max_sprites = lane.budget.max_sprites,
+            .max_draws = lane.budget.max_draws,
+            .max_texture_binds = lane.budget.max_texture_binds,
+            .within_budget = within_budget,
+        });
+        profile.total_sprites += plan.sprite_count;
+        profile.total_draws += plan.draw_count;
+        profile.total_texture_binds += plan.texture_bind_count;
+
+        if (!plan.diagnostics.empty()) {
+            has_plan_diagnostics = true;
+            add_budget_diagnostic(profile, lane.lane, SpriteBatchBudgetDiagnosticCode::plan_diagnostics);
+        }
+        if (plan.sprite_count > lane.budget.max_sprites) {
+            has_budget_exceeded = true;
+            add_budget_diagnostic(profile, lane.lane, SpriteBatchBudgetDiagnosticCode::sprite_budget_exceeded);
+        }
+        if (plan.draw_count > lane.budget.max_draws) {
+            has_budget_exceeded = true;
+            add_budget_diagnostic(profile, lane.lane, SpriteBatchBudgetDiagnosticCode::draw_budget_exceeded);
+        }
+        if (plan.texture_bind_count > lane.budget.max_texture_binds) {
+            has_budget_exceeded = true;
+            add_budget_diagnostic(profile, lane.lane, SpriteBatchBudgetDiagnosticCode::texture_bind_budget_exceeded);
+        }
+    }
+
+    if (has_invalid_request) {
+        profile.status = SpriteBatchBudgetProfileStatus::invalid_request;
+    } else if (has_plan_diagnostics) {
+        profile.status = SpriteBatchBudgetProfileStatus::diagnostics;
+    } else if (has_budget_exceeded) {
+        profile.status = SpriteBatchBudgetProfileStatus::budget_exceeded;
+    } else {
+        profile.status = SpriteBatchBudgetProfileStatus::ready;
+    }
+    return profile;
 }
 
 } // namespace mirakana
