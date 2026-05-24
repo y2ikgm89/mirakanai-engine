@@ -1166,6 +1166,42 @@ navigation_navmesh_path_diagnostic_name(mirakana::NavigationNavmeshPathDiagnosti
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+navigation_navmesh_readiness_status_name(mirakana::NavigationNavmeshReadinessStatus status) noexcept {
+    switch (status) {
+    case mirakana::NavigationNavmeshReadinessStatus::ready:
+        return "ready";
+    case mirakana::NavigationNavmeshReadinessStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::NavigationNavmeshReadinessStatus::invalid_result:
+        return "invalid_result";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+navigation_navmesh_readiness_diagnostic_name(mirakana::NavigationNavmeshReadinessDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::NavigationNavmeshReadinessDiagnostic::none:
+        return "none";
+    case mirakana::NavigationNavmeshReadinessDiagnostic::invalid_path_result:
+        return "invalid_path_result";
+    case mirakana::NavigationNavmeshReadinessDiagnostic::missing_scene_refs:
+        return "missing_scene_refs";
+    case mirakana::NavigationNavmeshReadinessDiagnostic::scene_ref_count_mismatch:
+        return "scene_ref_count_mismatch";
+    case mirakana::NavigationNavmeshReadinessDiagnostic::missing_dynamic_obstacle_route:
+        return "missing_dynamic_obstacle_route";
+    case mirakana::NavigationNavmeshReadinessDiagnostic::insufficient_polygon_path:
+        return "insufficient_polygon_path";
+    case mirakana::NavigationNavmeshReadinessDiagnostic::insufficient_visited_polygons:
+        return "insufficient_visited_polygons";
+    case mirakana::NavigationNavmeshReadinessDiagnostic::total_cost_exceeded:
+        return "total_cost_exceeded";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::string_view navigation_crowd_plan_status_name(mirakana::NavigationCrowdPlanStatus status) noexcept {
     switch (status) {
     case mirakana::NavigationCrowdPlanStatus::success:
@@ -1648,6 +1684,13 @@ class GeneratedGameplaySystemsProbe final {
                navigation_navmesh_result_.diagnostic == mirakana::NavigationNavmeshPathDiagnostic::none &&
                navigation_navmesh_result_.polygon_path.size() == 3U &&
                navigation_navmesh_result_.dynamic_obstacle_count == 1U &&
+               navigation_navmesh_readiness_.status == mirakana::NavigationNavmeshReadinessStatus::ready &&
+               navigation_navmesh_readiness_.diagnostic == mirakana::NavigationNavmeshReadinessDiagnostic::none &&
+               navigation_navmesh_readiness_.diagnostics.empty() &&
+               navigation_navmesh_readiness_.scene_ref_rows == 3U &&
+               navigation_navmesh_readiness_.point_path_rows == 3U &&
+               navigation_navmesh_readiness_.visited_polygon_count == 3U &&
+               navigation_navmesh_readiness_.total_cost == 5U &&
                navigation_crowd_result_.status == mirakana::NavigationCrowdPlanStatus::success &&
                navigation_crowd_result_.diagnostic == mirakana::NavigationCrowdPlanDiagnostic::none &&
                navigation_crowd_result_.rows.size() == 2U && navigation_crowd_source_order_ready() &&
@@ -1747,6 +1790,13 @@ class GeneratedGameplaySystemsProbe final {
             navigation_navmesh_result_.diagnostic == mirakana::NavigationNavmeshPathDiagnostic::none,
             navigation_navmesh_result_.polygon_path.size() == 3U,
             navigation_navmesh_result_.dynamic_obstacle_count == 1U,
+            navigation_navmesh_readiness_.status == mirakana::NavigationNavmeshReadinessStatus::ready,
+            navigation_navmesh_readiness_.diagnostic == mirakana::NavigationNavmeshReadinessDiagnostic::none,
+            navigation_navmesh_readiness_.diagnostics.empty(),
+            navigation_navmesh_readiness_.scene_ref_rows == 3U,
+            navigation_navmesh_readiness_.point_path_rows == 3U,
+            navigation_navmesh_readiness_.visited_polygon_count == 3U,
+            navigation_navmesh_readiness_.total_cost == 5U,
             navigation_crowd_result_.status == mirakana::NavigationCrowdPlanStatus::success,
             navigation_crowd_result_.diagnostic == mirakana::NavigationCrowdPlanDiagnostic::none,
             navigation_crowd_result_.rows.size() == 2U,
@@ -1904,6 +1954,31 @@ class GeneratedGameplaySystemsProbe final {
 
     [[nodiscard]] std::uint32_t navigation_navmesh_total_cost() const noexcept {
         return navigation_navmesh_result_.total_cost;
+    }
+
+    [[nodiscard]] mirakana::NavigationNavmeshReadinessStatus navigation_navmesh_readiness_status() const noexcept {
+        return navigation_navmesh_readiness_.status;
+    }
+
+    [[nodiscard]] mirakana::NavigationNavmeshReadinessDiagnostic
+    navigation_navmesh_readiness_diagnostic() const noexcept {
+        return navigation_navmesh_readiness_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t navigation_navmesh_readiness_diagnostics_count() const noexcept {
+        return navigation_navmesh_readiness_.diagnostics.size();
+    }
+
+    [[nodiscard]] std::size_t navigation_navmesh_scene_ref_count() const noexcept {
+        return navigation_navmesh_readiness_.scene_ref_rows;
+    }
+
+    [[nodiscard]] std::size_t navigation_navmesh_point_path_count() const noexcept {
+        return navigation_navmesh_readiness_.point_path_rows;
+    }
+
+    [[nodiscard]] std::size_t navigation_navmesh_visited_polygon_count() const noexcept {
+        return navigation_navmesh_readiness_.visited_polygon_count;
     }
 
     [[nodiscard]] mirakana::NavigationCrowdPlanStatus navigation_crowd_status() const noexcept {
@@ -2653,6 +2728,15 @@ class GeneratedGameplaySystemsProbe final {
             .start = 1U,
             .goal = 3U,
         });
+
+        mirakana::NavigationNavmeshReadinessConfig readiness_config;
+        readiness_config.require_scene_refs = true;
+        readiness_config.require_dynamic_obstacle_route = true;
+        readiness_config.min_polygon_path_rows = 3U;
+        readiness_config.min_visited_polygons = 3U;
+        readiness_config.max_total_cost = 5U;
+        navigation_navmesh_readiness_ =
+            mirakana::evaluate_navigation_navmesh_readiness(navigation_navmesh_result_, readiness_config);
     }
 
     void build_navigation_crowd_probe() {
@@ -3320,6 +3404,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::ui::RuntimeMenuHudPlan runtime_menu_hud_plan_;
     AudioGameplayMixerProbeResult audio_gameplay_mixer_;
     mirakana::NavigationNavmeshPathResult navigation_navmesh_result_;
+    mirakana::NavigationNavmeshReadinessReport navigation_navmesh_readiness_;
     mirakana::NavigationCrowdPlanResult navigation_crowd_result_;
     mirakana::NavigationAgentState navigation_agent_;
     mirakana::BehaviorTreeTickResult last_tree_result_;
@@ -3786,6 +3871,32 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::uint32_t gameplay_systems_navigation_navmesh_total_cost() const noexcept {
         return gameplay_systems_.navigation_navmesh_total_cost();
+    }
+
+    [[nodiscard]] mirakana::NavigationNavmeshReadinessStatus
+    gameplay_systems_navigation_navmesh_readiness_status() const noexcept {
+        return gameplay_systems_.navigation_navmesh_readiness_status();
+    }
+
+    [[nodiscard]] mirakana::NavigationNavmeshReadinessDiagnostic
+    gameplay_systems_navigation_navmesh_readiness_diagnostic() const noexcept {
+        return gameplay_systems_.navigation_navmesh_readiness_diagnostic();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_navigation_navmesh_readiness_diagnostics() const noexcept {
+        return gameplay_systems_.navigation_navmesh_readiness_diagnostics_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_navigation_navmesh_scene_refs() const noexcept {
+        return gameplay_systems_.navigation_navmesh_scene_ref_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_navigation_navmesh_points() const noexcept {
+        return gameplay_systems_.navigation_navmesh_point_path_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_navigation_navmesh_visited_polygons() const noexcept {
+        return gameplay_systems_.navigation_navmesh_visited_polygon_count();
     }
 
     [[nodiscard]] mirakana::NavigationCrowdPlanStatus gameplay_systems_navigation_crowd_status() const noexcept {
@@ -7095,7 +7206,16 @@ int main(int argc, char** argv) {
         << " gameplay_systems_navigation_navmesh_dynamic_obstacles="
         << game.gameplay_systems_navigation_navmesh_dynamic_obstacles()
         << " gameplay_systems_navigation_navmesh_total_cost=" << game.gameplay_systems_navigation_navmesh_total_cost()
-        << " gameplay_systems_navigation_crowd_status="
+        << " gameplay_systems_navigation_navmesh_readiness_status="
+        << navigation_navmesh_readiness_status_name(game.gameplay_systems_navigation_navmesh_readiness_status())
+        << " gameplay_systems_navigation_navmesh_readiness_diagnostic="
+        << navigation_navmesh_readiness_diagnostic_name(game.gameplay_systems_navigation_navmesh_readiness_diagnostic())
+        << " gameplay_systems_navigation_navmesh_readiness_diagnostics="
+        << game.gameplay_systems_navigation_navmesh_readiness_diagnostics()
+        << " gameplay_systems_navigation_navmesh_scene_refs=" << game.gameplay_systems_navigation_navmesh_scene_refs()
+        << " gameplay_systems_navigation_navmesh_points=" << game.gameplay_systems_navigation_navmesh_points()
+        << " gameplay_systems_navigation_navmesh_visited_polygons="
+        << game.gameplay_systems_navigation_navmesh_visited_polygons() << " gameplay_systems_navigation_crowd_status="
         << navigation_crowd_plan_status_name(game.gameplay_systems_navigation_crowd_status())
         << " gameplay_systems_navigation_crowd_diagnostic="
         << navigation_crowd_plan_diagnostic_name(game.gameplay_systems_navigation_crowd_diagnostic())

@@ -2085,6 +2085,8 @@ foreach ($needle in @(
     "gameplay_systems_navigation_plan_status=",
     "gameplay_systems_navigation_navmesh_status=",
     "gameplay_systems_navigation_navmesh_dynamic_obstacles=",
+    "gameplay_systems_navigation_navmesh_readiness_status=", "gameplay_systems_navigation_navmesh_scene_refs=",
+    "gameplay_systems_navigation_navmesh_visited_polygons=",
     "gameplay_systems_navigation_crowd_status=",
     "gameplay_systems_navigation_crowd_source_order_ready=",
     "gameplay_systems_navigation_crowd_applied_neighbors=",

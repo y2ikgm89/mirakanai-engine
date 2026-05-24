@@ -450,6 +450,75 @@ MK_TEST("navigation navmesh reports deterministic diagnostics for invalid scene 
     MK_REQUIRE(blocked_start.failing_polygon == 1U);
 }
 
+MK_TEST("navigation navmesh readiness summarizes scene refs dynamic obstacles and cost budgets") {
+    const std::vector<mirakana::NavigationNavmeshPolygon> polygons{
+        mirakana::NavigationNavmeshPolygon{.id = 1U,
+                                           .scene_ref = "scene.start",
+                                           .center = mirakana::NavigationPoint2{.x = 0.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 2U,
+                                           .scene_ref = "scene.direct",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 3U,
+                                           .scene_ref = "scene.goal",
+                                           .center = mirakana::NavigationPoint2{.x = 2.0F, .y = 0.0F},
+                                           .traversal_cost = 1U},
+        mirakana::NavigationNavmeshPolygon{.id = 4U,
+                                           .scene_ref = "scene.detour",
+                                           .center = mirakana::NavigationPoint2{.x = 1.0F, .y = 1.0F},
+                                           .traversal_cost = 1U},
+    };
+    const std::vector<mirakana::NavigationNavmeshPortal> portals{
+        mirakana::NavigationNavmeshPortal{.from = 1U, .to = 2U, .cost = 1U, .bidirectional = true},
+        mirakana::NavigationNavmeshPortal{.from = 2U, .to = 3U, .cost = 1U, .bidirectional = true},
+        mirakana::NavigationNavmeshPortal{.from = 1U, .to = 4U, .cost = 1U, .bidirectional = true},
+        mirakana::NavigationNavmeshPortal{.from = 4U, .to = 3U, .cost = 1U, .bidirectional = true},
+    };
+    const std::vector<mirakana::NavigationNavmeshDynamicObstacle> obstacles{
+        mirakana::NavigationNavmeshDynamicObstacle{
+            .id = 77U, .blocked_polygon = 2U, .scene_ref = "scene.crate", .enabled = true},
+    };
+    const auto route = mirakana::plan_navigation_navmesh_path(mirakana::NavigationNavmeshPathRequest{
+        .polygons = polygons,
+        .portals = portals,
+        .dynamic_obstacles = obstacles,
+        .start = 1U,
+        .goal = 3U,
+    });
+
+    mirakana::NavigationNavmeshReadinessConfig config;
+    config.require_scene_refs = true;
+    config.require_dynamic_obstacle_route = true;
+    config.min_polygon_path_rows = 3U;
+    config.min_visited_polygons = 3U;
+    config.max_total_cost = 4U;
+
+    const auto ready = mirakana::evaluate_navigation_navmesh_readiness(route, config);
+    MK_REQUIRE(ready.status == mirakana::NavigationNavmeshReadinessStatus::ready);
+    MK_REQUIRE(ready.diagnostic == mirakana::NavigationNavmeshReadinessDiagnostic::none);
+    MK_REQUIRE(ready.polygon_path_rows == 3U);
+    MK_REQUIRE(ready.scene_ref_rows == 3U);
+    MK_REQUIRE(ready.point_path_rows == 3U);
+    MK_REQUIRE(ready.dynamic_obstacle_count == 1U);
+    MK_REQUIRE(ready.visited_polygon_count == 3U);
+    MK_REQUIRE(ready.total_cost == 4U);
+    MK_REQUIRE(ready.diagnostics.empty());
+
+    auto degraded = route;
+    degraded.scene_refs.pop_back();
+    degraded.dynamic_obstacle_count = 0U;
+    degraded.total_cost = 9U;
+    const auto missing = mirakana::evaluate_navigation_navmesh_readiness(degraded, config);
+    MK_REQUIRE(missing.status == mirakana::NavigationNavmeshReadinessStatus::diagnostics);
+    MK_REQUIRE(missing.diagnostic == mirakana::NavigationNavmeshReadinessDiagnostic::scene_ref_count_mismatch);
+    MK_REQUIRE(missing.diagnostics.size() == 3U);
+    MK_REQUIRE(missing.diagnostics[0] == mirakana::NavigationNavmeshReadinessDiagnostic::scene_ref_count_mismatch);
+    MK_REQUIRE(missing.diagnostics[1] ==
+               mirakana::NavigationNavmeshReadinessDiagnostic::missing_dynamic_obstacle_route);
+    MK_REQUIRE(missing.diagnostics[2] == mirakana::NavigationNavmeshReadinessDiagnostic::total_cost_exceeded);
+}
+
 MK_TEST("navigation hierarchical world plans deterministic region portal paths") {
     const std::vector<mirakana::NavigationHierarchicalWorldRegion> regions{
         mirakana::NavigationHierarchicalWorldRegion{

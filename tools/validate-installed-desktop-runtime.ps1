@@ -1122,6 +1122,12 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_navigation_navmesh_polygons",
             "gameplay_systems_navigation_navmesh_dynamic_obstacles",
             "gameplay_systems_navigation_navmesh_total_cost",
+            "gameplay_systems_navigation_navmesh_readiness_status",
+            "gameplay_systems_navigation_navmesh_readiness_diagnostic",
+            "gameplay_systems_navigation_navmesh_readiness_diagnostics",
+            "gameplay_systems_navigation_navmesh_scene_refs",
+            "gameplay_systems_navigation_navmesh_points",
+            "gameplay_systems_navigation_navmesh_visited_polygons",
             "gameplay_systems_navigation_crowd_status",
             "gameplay_systems_navigation_crowd_diagnostic",
             "gameplay_systems_navigation_crowd_rows",
@@ -1272,6 +1278,24 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_total_cost=[1-9]\d*\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh non-zero cost."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_readiness_status=ready\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready gameplay navmesh readiness."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_readiness_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay navmesh readiness diagnostic."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_readiness_diagnostics=0\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay navmesh readiness diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_scene_refs=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact gameplay navmesh scene-ref count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_points=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact gameplay navmesh point path count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_visited_polygons=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact gameplay navmesh visited polygon count."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_status=success\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove successful gameplay navmesh crowd plan."

@@ -105,6 +105,14 @@ struct NavmeshEdge {
     return edges;
 }
 
+void append_readiness_diagnostic(NavigationNavmeshReadinessReport& report,
+                                 NavigationNavmeshReadinessDiagnostic diagnostic) {
+    if (report.diagnostics.empty()) {
+        report.diagnostic = diagnostic;
+    }
+    report.diagnostics.push_back(diagnostic);
+}
+
 } // namespace
 
 NavigationNavmeshPathResult plan_navigation_navmesh_path(const NavigationNavmeshPathRequest& request) {
@@ -265,6 +273,48 @@ NavigationNavmeshPathResult plan_navigation_navmesh_path(const NavigationNavmesh
     result.diagnostic = NavigationNavmeshPathDiagnostic::none;
     result.total_cost = static_cast<std::uint32_t>(distances[*goal]);
     return result;
+}
+
+NavigationNavmeshReadinessReport evaluate_navigation_navmesh_readiness(const NavigationNavmeshPathResult& route,
+                                                                       const NavigationNavmeshReadinessConfig& config) {
+    NavigationNavmeshReadinessReport report;
+    report.polygon_path_rows = route.polygon_path.size();
+    report.scene_ref_rows = route.scene_refs.size();
+    report.point_path_rows = route.point_path.size();
+    report.dynamic_obstacle_count = route.dynamic_obstacle_count;
+    report.visited_polygon_count = route.visited_polygon_count;
+    report.total_cost = route.total_cost;
+
+    if (route.status != NavigationNavmeshPathStatus::success ||
+        route.diagnostic != NavigationNavmeshPathDiagnostic::none) {
+        append_readiness_diagnostic(report, NavigationNavmeshReadinessDiagnostic::invalid_path_result);
+        report.status = NavigationNavmeshReadinessStatus::invalid_result;
+        return report;
+    }
+
+    if (config.require_scene_refs && route.scene_refs.empty()) {
+        append_readiness_diagnostic(report, NavigationNavmeshReadinessDiagnostic::missing_scene_refs);
+    }
+    if (config.require_scene_refs && (route.scene_refs.size() != route.polygon_path.size() ||
+                                      route.point_path.size() != route.polygon_path.size())) {
+        append_readiness_diagnostic(report, NavigationNavmeshReadinessDiagnostic::scene_ref_count_mismatch);
+    }
+    if (config.require_dynamic_obstacle_route && route.dynamic_obstacle_count == 0U) {
+        append_readiness_diagnostic(report, NavigationNavmeshReadinessDiagnostic::missing_dynamic_obstacle_route);
+    }
+    if (route.polygon_path.size() < config.min_polygon_path_rows) {
+        append_readiness_diagnostic(report, NavigationNavmeshReadinessDiagnostic::insufficient_polygon_path);
+    }
+    if (route.visited_polygon_count < config.min_visited_polygons) {
+        append_readiness_diagnostic(report, NavigationNavmeshReadinessDiagnostic::insufficient_visited_polygons);
+    }
+    if (route.total_cost > config.max_total_cost) {
+        append_readiness_diagnostic(report, NavigationNavmeshReadinessDiagnostic::total_cost_exceeded);
+    }
+
+    report.status = report.diagnostics.empty() ? NavigationNavmeshReadinessStatus::ready
+                                               : NavigationNavmeshReadinessStatus::diagnostics;
+    return report;
 }
 
 } // namespace mirakana
