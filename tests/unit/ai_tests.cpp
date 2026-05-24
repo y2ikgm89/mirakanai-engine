@@ -1013,6 +1013,144 @@ MK_TEST("behavior authoring document validates supported actions blackboard keys
     MK_REQUIRE(first.trace[2].node_id == 3U);
 }
 
+MK_TEST("behavior authoring readiness summarizes validation trace and authoring budgets") {
+    const mirakana::BehaviorAuthoringDocument document{
+        .behaviors =
+            std::vector<mirakana::BehaviorAuthoringBehaviorDesc>{
+                mirakana::BehaviorAuthoringBehaviorDesc{
+                    .id = "enemy_patrol",
+                    .tree =
+                        mirakana::BehaviorTreeDesc{
+                            .root_id = 1,
+                            .nodes =
+                                std::vector<mirakana::BehaviorTreeNodeDesc>{
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 1, .kind = mirakana::BehaviorTreeNodeKind::sequence, .children = {2, 3}},
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 2, .kind = mirakana::BehaviorTreeNodeKind::condition, .children = {}},
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 3, .kind = mirakana::BehaviorTreeNodeKind::action, .children = {}},
+                                },
+                        },
+                    .blackboard_conditions =
+                        std::vector<mirakana::BehaviorTreeBlackboardCondition>{
+                            mirakana::BehaviorTreeBlackboardCondition{
+                                .node_id = 2,
+                                .key = "perception.has_target",
+                                .comparison = mirakana::BehaviorTreeBlackboardComparison::equal,
+                                .expected = mirakana::make_behavior_tree_blackboard_bool(true)},
+                        },
+                    .actions =
+                        std::vector<mirakana::BehaviorAuthoringActionBinding>{
+                            mirakana::BehaviorAuthoringActionBinding{.node_id = 3, .action_id = "move_to_target"},
+                        },
+                },
+            },
+    };
+    const std::vector<std::string> blackboard_keys{"perception.has_target"};
+    const std::vector<std::string> action_ids{"move_to_target"};
+
+    const auto report = mirakana::evaluate_behavior_authoring_readiness(
+        document,
+        mirakana::BehaviorAuthoringValidationContext{
+            .blackboard_keys = std::span<const std::string>{blackboard_keys},
+            .supported_actions = std::span<const std::string>{action_ids},
+        },
+        mirakana::BehaviorAuthoringReadinessConfig{
+            .min_behaviors = 1,
+            .min_trace_nodes = 3,
+            .min_action_bindings = 1,
+            .min_blackboard_conditions = 1,
+            .max_validation_diagnostics = 0,
+            .max_behaviors = 2,
+            .max_trace_nodes = 4,
+        });
+
+    MK_REQUIRE(report.status == mirakana::BehaviorAuthoringReadinessStatus::ready);
+    MK_REQUIRE(report.primary_diagnostic == mirakana::BehaviorAuthoringReadinessDiagnostic::none);
+    MK_REQUIRE(report.diagnostics.empty());
+    MK_REQUIRE(report.validation_succeeded);
+    MK_REQUIRE(report.deterministic_trace_ready);
+    MK_REQUIRE(report.behavior_count == 1U);
+    MK_REQUIRE(report.validation_diagnostic_count == 0U);
+    MK_REQUIRE(report.trace_node_count == 3U);
+    MK_REQUIRE(report.action_binding_count == 1U);
+    MK_REQUIRE(report.blackboard_condition_count == 1U);
+}
+
+MK_TEST("behavior authoring readiness reports validation and evidence gaps deterministically") {
+    const mirakana::BehaviorAuthoringDocument document{
+        .behaviors =
+            std::vector<mirakana::BehaviorAuthoringBehaviorDesc>{
+                mirakana::BehaviorAuthoringBehaviorDesc{
+                    .id = "enemy_chase",
+                    .tree =
+                        mirakana::BehaviorTreeDesc{
+                            .root_id = 1,
+                            .nodes =
+                                std::vector<mirakana::BehaviorTreeNodeDesc>{
+                                    mirakana::BehaviorTreeNodeDesc{
+                                        .id = 1, .kind = mirakana::BehaviorTreeNodeKind::action, .children = {}},
+                                },
+                        },
+                    .blackboard_conditions = {},
+                    .actions =
+                        std::vector<mirakana::BehaviorAuthoringActionBinding>{
+                            mirakana::BehaviorAuthoringActionBinding{.node_id = 1, .action_id = "teleport_to_target"},
+                        },
+                },
+            },
+    };
+    const std::vector<std::string> action_ids{"move_to_target"};
+
+    const auto first = mirakana::evaluate_behavior_authoring_readiness(
+        document,
+        mirakana::BehaviorAuthoringValidationContext{
+            .blackboard_keys = {},
+            .supported_actions = std::span<const std::string>{action_ids},
+        },
+        mirakana::BehaviorAuthoringReadinessConfig{
+            .min_behaviors = 1,
+            .min_trace_nodes = 2,
+            .min_action_bindings = 1,
+            .min_blackboard_conditions = 1,
+            .max_validation_diagnostics = 0,
+            .max_behaviors = 1,
+            .max_trace_nodes = 1,
+        });
+    const auto second = mirakana::evaluate_behavior_authoring_readiness(
+        document,
+        mirakana::BehaviorAuthoringValidationContext{
+            .blackboard_keys = {},
+            .supported_actions = std::span<const std::string>{action_ids},
+        },
+        mirakana::BehaviorAuthoringReadinessConfig{
+            .min_behaviors = 1,
+            .min_trace_nodes = 2,
+            .min_action_bindings = 1,
+            .min_blackboard_conditions = 1,
+            .max_validation_diagnostics = 0,
+            .max_behaviors = 1,
+            .max_trace_nodes = 1,
+        });
+
+    MK_REQUIRE(first.status == mirakana::BehaviorAuthoringReadinessStatus::diagnostics);
+    MK_REQUIRE(first.primary_diagnostic == mirakana::BehaviorAuthoringReadinessDiagnostic::validation_diagnostics);
+    MK_REQUIRE(first.diagnostics == second.diagnostics);
+    MK_REQUIRE(first.diagnostics.size() == 3U);
+    MK_REQUIRE(first.diagnostics[0] == mirakana::BehaviorAuthoringReadinessDiagnostic::validation_diagnostics);
+    MK_REQUIRE(first.diagnostics[1] == mirakana::BehaviorAuthoringReadinessDiagnostic::insufficient_trace_nodes);
+    MK_REQUIRE(first.diagnostics[2] ==
+               mirakana::BehaviorAuthoringReadinessDiagnostic::insufficient_blackboard_conditions);
+    MK_REQUIRE(!first.validation_succeeded);
+    MK_REQUIRE(first.deterministic_trace_ready);
+    MK_REQUIRE(first.behavior_count == 1U);
+    MK_REQUIRE(first.validation_diagnostic_count == 1U);
+    MK_REQUIRE(first.trace_node_count == 1U);
+    MK_REQUIRE(first.action_binding_count == 1U);
+    MK_REQUIRE(first.blackboard_condition_count == 0U);
+}
+
 MK_TEST("behavior authoring document reports invalid node keys and unsupported actions deterministically") {
     const mirakana::BehaviorAuthoringDocument document{
         .behaviors =
