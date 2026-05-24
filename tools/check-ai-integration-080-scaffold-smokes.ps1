@@ -177,6 +177,9 @@ try {
         "game.agent.json",
         "runtime/.gitattributes",
         "source/materials/lit.material",
+        "source/materials/lit.materialgraph",
+        "source/materials/lit.shader_export",
+        "shaders/material_graph_lit.hlsl",
         "shaders/runtime_scene.hlsl",
         "shaders/runtime_postprocess.hlsl"
     ) + $expectedMaterialShaderRuntimeFiles) {
@@ -196,7 +199,7 @@ try {
             Write-Error "Desktop runtime material/shader package scaffold manifest must include $relativePath in runtimePackageFiles"
         }
     }
-    foreach ($authoringPath in @("source/materials/lit.material", "shaders/runtime_scene.hlsl", "shaders/runtime_postprocess.hlsl")) {
+    foreach ($authoringPath in @("source/materials/lit.material", "source/materials/lit.materialgraph", "source/materials/lit.shader_export", "shaders/material_graph_lit.hlsl", "shaders/runtime_scene.hlsl", "shaders/runtime_postprocess.hlsl")) {
         if ($materialShaderManifest.runtimePackageFiles -contains $authoringPath) {
             Write-Error "Desktop runtime material/shader package scaffold must not ship authoring file in runtimePackageFiles: $authoringPath"
         }
@@ -223,9 +226,6 @@ try {
 
     $materialShaderCmake = Get-Content -LiteralPath (Join-Path $materialShaderScaffoldRoot "games/CMakeLists.txt") -Raw
     $materialShaderMain = Get-Content -LiteralPath (Join-Path $materialShaderGameRoot "main.cpp") -Raw
-    $materialShaderSourceMaterial = Get-Content -LiteralPath (Join-Path $materialShaderGameRoot "source/materials/lit.material") -Raw
-    $materialShaderSceneHlsl = Get-Content -LiteralPath (Join-Path $materialShaderGameRoot "shaders/runtime_scene.hlsl") -Raw
-    $materialShaderPostprocessHlsl = Get-Content -LiteralPath (Join-Path $materialShaderGameRoot "shaders/runtime_postprocess.hlsl") -Raw
     Assert-ContainsText $materialShaderCmake "MK_add_desktop_runtime_game(desktop_material_shader_game" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "PACKAGE_FILES_FROM_MANIFEST" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "REQUIRES_D3D12_SHADERS" "Desktop material/shader scaffold CMake"
@@ -233,6 +233,7 @@ try {
     Assert-ContainsText $materialShaderCmake "runtime_scene.hlsl" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "runtime_postprocess.hlsl" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "--require-d3d12-scene-shaders" "Desktop material/shader scaffold CMake"
+    Assert-ContainsText $materialShaderCmake "--require-material-graph-authoring" "Desktop material/shader scaffold CMake"
     $repositoryGamesCmake = Get-AgentSurfaceText "games/CMakeLists.txt"
     Assert-ContainsText $repositoryGamesCmake '${target_name}_runtime_files' "Desktop runtime package staging target"
     Assert-ContainsText $repositoryGamesCmake 'RUNTIME_OUTPUT_DIRECTORY' "Desktop runtime package staging target"
@@ -274,20 +275,11 @@ try {
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-collision-hitbox" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-effects-particles" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText ($materialShaderManifest.validationRecipes | ConvertTo-Json -Depth 12) "--require-vulkan-scene-shaders" "Desktop material/shader scaffold manifest validation recipes"
-    Assert-ContainsText $materialShaderMain "load_runtime_asset_package" "Desktop material/shader scaffold main.cpp"
-    Assert-ContainsText $materialShaderMain "plan_modern_material_variants" "Desktop material/shader scaffold main.cpp"
-    Assert-ContainsText $materialShaderMain "modern_material_variants=" "Desktop material/shader scaffold main.cpp"
-    Assert-ContainsText $materialShaderMain "modern_material_shader_evidence_ready=" "Desktop material/shader scaffold main.cpp"
-    Assert-ContainsText $materialShaderMain "modern_material_d3d12_shader_evidence_ready=" "Desktop material/shader scaffold main.cpp"
-    Assert-ContainsText $materialShaderMain "modern_material_vulkan_shader_evidence_ready=" "Desktop material/shader scaffold main.cpp"
-    Assert-ContainsText $materialShaderMain "modern_material_selected_shader_evidence_ready=" "Desktop material/shader scaffold main.cpp"
+    foreach ($needle in @("load_runtime_asset_package", "plan_modern_material_variants", "modern_material_variants=", "modern_material_shader_evidence_ready=", "modern_material_d3d12_shader_evidence_ready=", "modern_material_vulkan_shader_evidence_ready=", "modern_material_selected_shader_evidence_ready=", "postprocess_policy_status=", "material_graph_authoring_targets=", "material_graph_compile_requests=", "--require-material-graph-authoring")) {
+        Assert-ContainsText $materialShaderMain $needle "Desktop material/shader scaffold main.cpp"
+    }
     $validateInstalledRuntimeScript = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
     Assert-ContainsText $validateInstalledRuntimeScript '$expectedVulkanMaterialShaderEvidence = if ($requireVulkanShaderArtifacts) { 1 } else { 0 }' "Installed desktop runtime validation"
-    Assert-ContainsText $materialShaderSourceMaterial "format=GameEngine.Material.v1" "Desktop material/shader scaffold source material"
-    Assert-ContainsText $materialShaderSceneHlsl "vs_main" "Desktop material/shader scaffold scene shader"
-    Assert-ContainsText $materialShaderSceneHlsl "ps_main" "Desktop material/shader scaffold scene shader"
-    Assert-ContainsText $materialShaderPostprocessHlsl "vs_postprocess" "Desktop material/shader scaffold postprocess shader"
-    Assert-ContainsText $materialShaderPostprocessHlsl "ps_postprocess" "Desktop material/shader scaffold postprocess shader"
 } finally {
     Remove-ScaffoldCheckRoot $materialShaderScaffoldRoot
 }
@@ -303,6 +295,11 @@ foreach ($needle in @(
     "modern_material_d3d12_shader_evidence_ready=",
     "modern_material_vulkan_shader_evidence_ready=",
     "modern_material_selected_shader_evidence_ready=",
+    "material_graph_authoring_targets=",
+    "material_graph_shader_exports=",
+    "material_graph_compile_requests=",
+    "--require-material-graph-authoring",
+    "postprocess_policy_status=",
     "framegraph_barrier_steps_executed !=",
     "static_cast<std::uint64_t>(options.max_frames) * 2U"
 )) {

@@ -302,6 +302,49 @@ function Assert-MaterialShaderAuthoringTarget($manifest, [string]$label, [string
             Write-Error "$label materialShaderAuthoringTargets '$id' runtime file must be in runtimePackageFiles: $runtimeFile"
         }
     }
+    if ($targets[0].PSObject.Properties.Name.Contains("sourceMaterialGraphPath")) {
+        if ($targets[0].sourceMaterialGraphPath -ne "source/materials/lit.materialgraph") {
+            Write-Error "$label materialShaderAuthoringTargets '$id' sourceMaterialGraphPath must be source/materials/lit.materialgraph"
+        }
+        if ($targets[0].shaderExportPath -ne "source/materials/lit.shader_export") {
+            Write-Error "$label materialShaderAuthoringTargets '$id' shaderExportPath must be source/materials/lit.shader_export"
+        }
+        if ($targets[0].reviewedHlslSourcePath -ne "shaders/material_graph_lit.hlsl") {
+            Write-Error "$label materialShaderAuthoringTargets '$id' reviewedHlslSourcePath must be shaders/material_graph_lit.hlsl"
+        }
+        if (@($targets[0].shaderSourcePaths) -notcontains "shaders/material_graph_lit.hlsl") {
+            Write-Error "$label materialShaderAuthoringTargets '$id' shaderSourcePaths missing shaders/material_graph_lit.hlsl"
+        }
+        foreach ($authoringPath in @("source/materials/lit.materialgraph", "source/materials/lit.shader_export", "shaders/material_graph_lit.hlsl")) {
+            if (@($manifest.runtimePackageFiles) -contains $authoringPath) {
+                Write-Error "$label materialShaderAuthoringTargets '$id' graph authoring file must not be in runtimePackageFiles: $authoringPath"
+            }
+        }
+        foreach ($compileTarget in @("d3d12-dxil", "vulkan-spirv")) {
+            if (@($targets[0].compileRequestTargets) -notcontains $compileTarget) {
+                Write-Error "$label materialShaderAuthoringTargets '$id' compileRequestTargets missing $compileTarget"
+            }
+        }
+        foreach ($unsupportedBoundary in @("shader-graph-execution", "live-shader-generation", "renderer-rhi-residency", "package-streaming")) {
+            if (@($targets[0].unsupportedBoundaries) -notcontains $unsupportedBoundary) {
+                Write-Error "$label materialShaderAuthoringTargets '$id' unsupportedBoundaries missing $unsupportedBoundary"
+            }
+        }
+        foreach ($artifactPath in @(
+                "shaders/material_shader_package_scene.vs.dxil",
+                "shaders/material_shader_package_scene.ps.dxil",
+                "shaders/material_shader_package_postprocess.vs.dxil",
+                "shaders/material_shader_package_postprocess.ps.dxil",
+                "shaders/material_shader_package_scene.vs.spv",
+                "shaders/material_shader_package_scene.ps.spv",
+                "shaders/material_shader_package_postprocess.vs.spv",
+                "shaders/material_shader_package_postprocess.ps.spv"
+            )) {
+            if (@($targets[0].d3d12ShaderArtifactPaths + $targets[0].vulkanShaderArtifactPaths) -notcontains $artifactPath) {
+                Write-Error "$label materialShaderAuthoringTargets '$id' graph authoring artifacts missing short path: $artifactPath"
+            }
+        }
+    }
     foreach ($artifactPath in @($targets[0].d3d12ShaderArtifactPaths)) {
         if (-not ([string]$artifactPath).EndsWith(".dxil")) {
             Write-Error "$label materialShaderAuthoringTargets '$id' D3D12 artifact must end in .dxil: $artifactPath"

@@ -6,9 +6,11 @@
 #include "mirakana/assets/shader_metadata.hpp"
 #include "mirakana/assets/shader_pipeline.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace mirakana {
 namespace {
@@ -165,6 +167,118 @@ MaterialGraphShaderPipelinePlan plan_material_graph_shader_pipeline(const IFileS
 
     plan.ok = true;
     return plan;
+}
+
+MaterialGraphProductionAuthoringResult
+plan_material_graph_production_authoring(const MaterialGraphProductionAuthoringDesc& desc,
+                                         const ShaderToolDescriptor& dxc_tool) {
+    MaterialGraphProductionAuthoringResult result;
+
+    const auto add_failure = [&result](std::string diagnostic) {
+        result.failures.push_back(MaterialInstancePackageUpdateFailure{std::move(diagnostic)});
+    };
+
+    if (desc.shader_graph_execution != "unsupported") {
+        add_failure("shader graph execution is not supported by material graph production authoring");
+    }
+    if (desc.live_shader_generation != "unsupported") {
+        add_failure("live shader generation is not supported by material graph production authoring");
+    }
+    if (desc.renderer_rhi_residency != "unsupported") {
+        add_failure("renderer/RHI residency is not supported by material graph production authoring");
+    }
+    if (desc.package_streaming != "unsupported") {
+        add_failure("package streaming is not supported by material graph production authoring");
+    }
+    if (!result.failures.empty()) {
+        return result;
+    }
+
+    const auto package_update = plan_material_graph_package_update(MaterialGraphPackageUpdateDesc{
+        .package_index_path = desc.package_index_path,
+        .package_index_content = desc.package_index_content,
+        .material_graph_content = desc.material_graph_content,
+        .output_path = desc.material_output_path,
+        .source_revision = desc.source_revision,
+        .shader_graph = desc.shader_graph_execution,
+        .live_shader_generation = desc.live_shader_generation,
+        .renderer_rhi_residency = desc.renderer_rhi_residency,
+        .package_streaming = desc.package_streaming,
+    });
+    if (!package_update.succeeded()) {
+        result.failures = package_update.failures;
+        return result;
+    }
+
+    MaterialGraphDesc graph;
+    try {
+        graph = deserialize_material_graph(desc.material_graph_content);
+        result.hlsl_content = emit_material_graph_reviewed_hlsl_v0(graph);
+    } catch (const std::exception& error) {
+        add_failure(std::string("material graph HLSL emission failed: ") + error.what());
+        return result;
+    }
+
+    MaterialGraphShaderExportDesc export_desc;
+    export_desc.export_id = desc.export_id;
+    export_desc.export_name = desc.export_name;
+    export_desc.material_graph_path = desc.material_graph_path;
+    export_desc.hlsl_source_path = desc.hlsl_output_path;
+    export_desc.vertex_entry = desc.vertex_entry;
+    export_desc.fragment_entry = desc.fragment_entry;
+
+    try {
+        result.shader_export_content = serialize_material_graph_shader_export(export_desc);
+    } catch (const std::exception& error) {
+        add_failure(std::string("material graph shader export is invalid: ") + error.what());
+        return result;
+    }
+
+    if (desc.shader_export_output_path.empty() || is_absolute_or_parent_relative(desc.shader_export_output_path) ||
+        !valid_token(desc.shader_export_output_path)) {
+        add_failure("shader export output path must be a safe non-empty relative path");
+        return result;
+    }
+
+    MemoryFileSystem planned_files;
+    planned_files.write_text(desc.hlsl_output_path, result.hlsl_content);
+    const auto shader_plan = plan_material_graph_shader_pipeline(planned_files, export_desc, desc.artifact_output_root,
+                                                                 desc.shader_cache_index_relative, dxc_tool);
+    if (!shader_plan.ok) {
+        for (const auto& diagnostic : shader_plan.diagnostics) {
+            add_failure(diagnostic.field + ": " + diagnostic.message);
+        }
+        if (shader_plan.diagnostics.empty()) {
+            add_failure("material graph shader pipeline planning failed");
+        }
+        return result;
+    }
+
+    result.material_content = package_update.material_content;
+    result.package_index_content = package_update.package_index_content;
+    result.changed_files = package_update.changed_files;
+    result.changed_files.push_back(MaterialInstancePackageChangedFile{
+        .path = desc.hlsl_output_path,
+        .content = result.hlsl_content,
+        .content_hash = hash_asset_cooked_content(result.hlsl_content),
+    });
+    result.changed_files.push_back(MaterialInstancePackageChangedFile{
+        .path = desc.shader_export_output_path,
+        .content = result.shader_export_content,
+        .content_hash = hash_asset_cooked_content(result.shader_export_content),
+    });
+    result.execution_requests = shader_plan.execution_requests;
+    result.lowered_material_count = 1;
+    result.shader_export_count = 1;
+    result.d3d12_compile_request_count =
+        static_cast<std::size_t>(std::ranges::count_if(result.execution_requests, [](const auto& request) {
+            return request.compile_request.target == ShaderCompileTarget::d3d12_dxil;
+        }));
+    result.vulkan_compile_request_count =
+        static_cast<std::size_t>(std::ranges::count_if(result.execution_requests, [](const auto& request) {
+            return request.compile_request.target == ShaderCompileTarget::vulkan_spirv;
+        }));
+    return result;
 }
 
 } // namespace mirakana

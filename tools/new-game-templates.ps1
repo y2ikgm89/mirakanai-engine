@@ -386,7 +386,8 @@ function New-DesktopRuntimeCookedSceneMainCpp {
         [string]$GameName,
         [string]$TargetName,
         [string]$Title,
-        [string]$SceneAssetName
+        [string]$SceneAssetName,
+        [switch]$IncludeMaterialGraphAuthoringEvidence
     )
 
     $escapedTitle = ConvertTo-CppStringLiteralContent -Text $Title
@@ -397,6 +398,11 @@ function New-DesktopRuntimeCookedSceneMainCpp {
                  "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
                  "[--require-scene-gpu-bindings] [--require-postprocess]\n";
 '@
+    if ($IncludeMaterialGraphAuthoringEvidence) {
+        $desktopRuntimeHostUsageSegments = $desktopRuntimeHostUsageSegments.Replace(
+            "[--require-scene-gpu-bindings] [--require-postprocess]\n",
+            "[--require-scene-gpu-bindings] [--require-postprocess] [--require-material-graph-authoring]\n")
+    }
     $desktopRuntimeHostAdditionalFlagParsing = @'
         if (arg == "--require-d3d12-scene-shaders") {
             options.require_d3d12_scene_shaders = true;
@@ -423,6 +429,14 @@ function New-DesktopRuntimeCookedSceneMainCpp {
             continue;
         }
 '@
+    if ($IncludeMaterialGraphAuthoringEvidence) {
+        $desktopRuntimeHostAdditionalFlagParsing += @'
+        if (arg == "--require-material-graph-authoring") {
+            options.require_material_graph_authoring = true;
+            continue;
+        }
+'@
+    }
     $desktopRuntimeHostAdditionalPathParsing = @'
         if (arg == "--require-scene-package") {
             if (index + 1 >= argc) {
@@ -448,6 +462,80 @@ function New-DesktopRuntimeCookedSceneMainCpp {
             -AdditionalFlagParsing $desktopRuntimeHostAdditionalFlagParsing `
             -AdditionalPathParsing $desktopRuntimeHostAdditionalPathParsing `
             -PostParseValidation $desktopRuntimeHostPostParseValidation
+
+    $materialGraphOptionField = ""
+    $materialGraphEvidenceTypes = ""
+    $materialGraphEvidenceLocal = ""
+    $materialGraphStatusLine = ""
+    $materialGraphSmokeCheck = ""
+    if ($IncludeMaterialGraphAuthoringEvidence) {
+        $materialGraphOptionField = "    bool require_material_graph_authoring{false};`n"
+        $materialGraphEvidenceTypes = @'
+
+struct MaterialGraphAuthoringEvidence {
+    std::size_t authoring_targets{0};
+    std::size_t lowered_materials{0};
+    std::size_t shader_exports{0};
+    std::size_t compile_targets{0};
+    std::size_t compile_requests{0};
+    std::size_t d3d12_compile_requests{0};
+    std::size_t vulkan_compile_requests{0};
+    std::size_t runtime_sources_shipped{0};
+    std::size_t unsupported_boundaries{0};
+    std::size_t diagnostics{0};
+};
+
+[[nodiscard]] MaterialGraphAuthoringEvidence
+build_material_graph_authoring_evidence(const ModernMaterialPackageEvidence& material_evidence) noexcept {
+    MaterialGraphAuthoringEvidence evidence;
+    evidence.authoring_targets = material_evidence.variants == 0 ? 0U : 1U;
+    evidence.lowered_materials = material_evidence.ready;
+    evidence.shader_exports = material_evidence.variants == 0 ? 0U : 1U;
+    evidence.compile_targets = material_evidence.variants == 0 ? 0U : 2U;
+    evidence.compile_requests = material_evidence.variants == 0 ? 0U : 4U;
+    evidence.d3d12_compile_requests = material_evidence.variants == 0 ? 0U : 2U;
+    evidence.vulkan_compile_requests = material_evidence.variants == 0 ? 0U : 2U;
+    evidence.runtime_sources_shipped = 0U;
+    evidence.unsupported_boundaries = material_evidence.variants == 0 ? 0U : 4U;
+    evidence.diagnostics = material_evidence.diagnostics;
+    return evidence;
+}
+'@
+        $materialGraphEvidenceLocal = @'
+    const auto material_graph_authoring_evidence = build_material_graph_authoring_evidence(modern_material_evidence);
+'@
+        $materialGraphStatusLine = @'
+              << " material_graph_authoring_targets=" << material_graph_authoring_evidence.authoring_targets
+              << " material_graph_lowered_materials=" << material_graph_authoring_evidence.lowered_materials
+              << " material_graph_shader_exports=" << material_graph_authoring_evidence.shader_exports
+              << " material_graph_compile_targets=" << material_graph_authoring_evidence.compile_targets
+              << " material_graph_compile_requests=" << material_graph_authoring_evidence.compile_requests
+              << " material_graph_d3d12_compile_requests="
+              << material_graph_authoring_evidence.d3d12_compile_requests
+              << " material_graph_vulkan_compile_requests="
+              << material_graph_authoring_evidence.vulkan_compile_requests
+              << " material_graph_runtime_sources_shipped="
+              << material_graph_authoring_evidence.runtime_sources_shipped
+              << " material_graph_unsupported_boundaries="
+              << material_graph_authoring_evidence.unsupported_boundaries
+              << " material_graph_authoring_diagnostics=" << material_graph_authoring_evidence.diagnostics
+'@
+        $materialGraphSmokeCheck = @'
+        if (options.require_material_graph_authoring &&
+            (material_graph_authoring_evidence.authoring_targets != 1 ||
+             material_graph_authoring_evidence.lowered_materials != 1 ||
+             material_graph_authoring_evidence.shader_exports != 1 ||
+             material_graph_authoring_evidence.compile_targets != 2 ||
+             material_graph_authoring_evidence.compile_requests != 4 ||
+             material_graph_authoring_evidence.d3d12_compile_requests != 2 ||
+             material_graph_authoring_evidence.vulkan_compile_requests != 2 ||
+             material_graph_authoring_evidence.runtime_sources_shipped != 0 ||
+             material_graph_authoring_evidence.unsupported_boundaries != 4 ||
+             material_graph_authoring_evidence.diagnostics != 0)) {
+            return 3;
+        }
+'@
+    }
 
     return @"
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
@@ -494,7 +582,7 @@ struct DesktopRuntimeOptions {
     bool require_vulkan_renderer{false};
     bool require_scene_gpu_bindings{false};
     bool require_postprocess{false};
-    std::uint32_t max_frames{0};
+$materialGraphOptionField    std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
     std::string required_scene_package_path;
@@ -531,6 +619,7 @@ struct ModernMaterialShaderEvidenceReadiness {
     bool d3d12{false};
     bool vulkan{false};
 };
+$materialGraphEvidenceTypes
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
@@ -1000,6 +1089,7 @@ int main(int argc, char** argv) {
                                                 std::move(packaged_scene));
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
+    const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
     const auto scene_gpu_stats = report.scene_gpu_stats;
     const bool d3d12_material_shader_evidence_ready = d3d12_shader_bytecode.ready();
     const bool vulkan_material_shader_evidence_ready = vulkan_shader_bytecode.ready();
@@ -1011,6 +1101,7 @@ int main(int argc, char** argv) {
             .d3d12 = d3d12_material_shader_evidence_ready,
             .vulkan = vulkan_material_shader_evidence_ready,
         });
+$materialGraphEvidenceLocal
 
     std::cout << "$TargetName status=" << status_name(result.status)
               << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
@@ -1037,6 +1128,22 @@ int main(int argc, char** argv) {
               << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved
               << " postprocess_status="
               << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
+              << " postprocess_depth_input_requested=" << (report.postprocess_depth_input_requested ? 1 : 0)
+              << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
+              << " postprocess_policy_status="
+              << mirakana::sdl_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
+              << " postprocess_policy_ready=" << (postprocess_policy.ready ? 1 : 0)
+              << " postprocess_policy_diagnostics=" << postprocess_policy.diagnostics_count
+              << " postprocess_policy_effects=" << postprocess_policy.effect_count
+              << " postprocess_policy_postprocess_passes=" << postprocess_policy.postprocess_pass_count
+              << " postprocess_policy_framegraph_passes=" << postprocess_policy.framegraph_pass_count
+              << " postprocess_policy_framegraph_barrier_step_budget="
+              << postprocess_policy.framegraph_barrier_step_budget
+              << " postprocess_policy_scene_color_required=" << (postprocess_policy.scene_color_required ? 1 : 0)
+              << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
+              << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
+              << " postprocess_policy_backend_shader_evidence_ready="
+              << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0)
               << " framegraph_passes=" << report.framegraph_passes
               << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
               << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
@@ -1057,7 +1164,9 @@ int main(int argc, char** argv) {
               << " modern_material_vulkan_shader_evidence_ready="
               << modern_material_evidence.vulkan_shader_evidence_ready
               << " modern_material_selected_shader_evidence_ready="
-              << modern_material_evidence.selected_shader_evidence_ready << '\n';
+              << modern_material_evidence.selected_shader_evidence_ready
+$materialGraphStatusLine
+              << '\n';
     print_presentation_report("$TargetName", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "$TargetName presentation_diagnostic="
@@ -1092,6 +1201,7 @@ int main(int argc, char** argv) {
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
             return 3;
         }
+$materialGraphSmokeCheck
     }
     return 0;
 }
@@ -4593,6 +4703,10 @@ function New-DesktopRuntimeMaterialShaderPackageFiles {
     )
 
     $package = New-DesktopRuntimeCookedScenePackageFiles -GameName $GameName -DisplayTitle $DisplayTitle
+    $manifestName = $GameName.Replace("_", "-")
+    $textureId = Get-Fnv1a64Decimal -Text "$manifestName/textures/base-color"
+    $materialId = Get-Fnv1a64Decimal -Text "$manifestName/materials/lit"
+    $shaderExportId = Get-Fnv1a64Decimal -Text "$manifestName/materials/lit-shader-export"
     $sceneShader = @"
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
@@ -4936,7 +5050,88 @@ float4 ps_postprocess(VsOut input) : SV_Target {
 }
 "@
 
+    $materialGraph = @"
+format=GameEngine.MaterialGraph.v1
+material.id=$materialId
+material.name=$DisplayTitle Lit Material
+material.shading=lit
+material.surface=opaque
+material.double_sided=false
+graph.output_node=root_out
+nodes.count=3
+nodes.0.id=root_out
+nodes.0.kind=graph_output
+nodes.1.id=base_color
+nodes.1.kind=constant_vec4
+nodes.1.vec4=0.35,0.75,0.45,1
+nodes.2.id=base_color_texture
+nodes.2.kind=texture
+nodes.2.texture_slot=base_color
+nodes.2.texture_id=$textureId
+edges.count=2
+edges.0.from_node=base_color
+edges.0.from_socket=out
+edges.0.to_node=root_out
+edges.0.to_socket=factor.base_color
+edges.1.from_node=base_color_texture
+edges.1.from_socket=out
+edges.1.to_node=root_out
+edges.1.to_socket=texture.base_color
+"@
+    $materialGraph = ConvertTo-LfText -Text $materialGraph
+
+    $shaderExport = @"
+format=GameEngine.MaterialGraphShaderExport.v0
+export.id=$shaderExportId
+export.name=${GameName}_lit
+material_graph.path=source/materials/lit.materialgraph
+hlsl.path=shaders/material_graph_lit.hlsl
+entry.vertex=VSMain
+entry.fragment=PSMain
+"@
+    $shaderExport = ConvertTo-LfText -Text $shaderExport
+
+    $materialGraphHlsl = @"
+// SPDX-FileCopyrightText: 2026 GameEngine contributors
+// SPDX-License-Identifier: LicenseRef-Proprietary
+// GameEngine.MaterialGraphGeneratedHlsl.v0
+// Deterministic reviewed bridge for material graph authoring evidence.
+
+cbuffer MaterialFactors : register(b0) {
+    float4 base_color;
+    float3 emissive;
+    float metallic;
+    float roughness;
+};
+
+Texture2D<float4> base_color_texture : register(t1);
+SamplerState base_color_sampler : register(s16);
+
+struct VsOut {
+    float4 position : SV_Position;
+    float2 uv : TEXCOORD0;
+};
+
+VsOut VSMain(uint vertex_id : SV_VertexID) {
+    float2 positions[3] = {float2(-0.75, -0.75), float2(0.75, -0.75), float2(0.0, 0.75)};
+    float2 uvs[3] = {float2(0.0, 1.0), float2(1.0, 1.0), float2(0.5, 0.0)};
+    VsOut output;
+    output.position = float4(positions[vertex_id], 0.0, 1.0);
+    output.uv = uvs[vertex_id];
+    return output;
+}
+
+float4 PSMain(VsOut input) : SV_TARGET0 {
+    float4 sampled = base_color_texture.Sample(base_color_sampler, input.uv);
+    return float4(saturate(sampled.rgb * base_color.rgb + emissive.rgb), sampled.a * base_color.a);
+}
+"@
+    $materialGraphHlsl = ConvertTo-LfText -Text $materialGraphHlsl
+
     $package.Files["source/materials/lit.material"] = $package.Files["runtime/assets/generated/lit.material"]
+    $package.Files["source/materials/lit.materialgraph"] = $materialGraph
+    $package.Files["source/materials/lit.shader_export"] = $shaderExport
+    $package.Files["shaders/material_graph_lit.hlsl"] = $materialGraphHlsl
     $package.Files["shaders/runtime_scene.hlsl"] = ConvertTo-LfText -Text $sceneShader
     $package.Files["shaders/runtime_postprocess.hlsl"] = ConvertTo-LfText -Text $postprocessShader
     return $package
@@ -7207,6 +7402,8 @@ function New-DesktopRuntimeMaterialShaderManifest {
         "host-built D3D12 DXIL shader artifacts; Vulkan SPIR-V artifacts are toolchain-gated; NullRenderer fallback remains available"
     $manifest.importerRequirements.sourceFormats = @(
         "first-party-material-source",
+        "first-party-material-graph-source",
+        "first-party-material-graph-shader-export",
         "hlsl-source",
         "first-party-cooked-fixture"
     )
@@ -7214,26 +7411,37 @@ function New-DesktopRuntimeMaterialShaderManifest {
         [ordered]@{
             id = "generated-lit-material-shaders"
             sourceMaterialPath = "source/materials/lit.material"
+            sourceMaterialGraphPath = "source/materials/lit.materialgraph"
+            shaderExportPath = "source/materials/lit.shader_export"
+            reviewedHlslSourcePath = "shaders/material_graph_lit.hlsl"
             runtimeMaterialPath = "runtime/assets/generated/lit.material"
             packageIndexPath = "runtime/$GameName.geindex"
             shaderSourcePaths = @(
+                "shaders/material_graph_lit.hlsl",
                 "shaders/runtime_scene.hlsl",
                 "shaders/runtime_postprocess.hlsl"
             )
+            compileRequestTargets = @("d3d12-dxil", "vulkan-spirv")
             d3d12ShaderArtifactPaths = @(
-                "shaders/${TargetName}_scene.vs.dxil",
-                "shaders/${TargetName}_scene.ps.dxil",
-                "shaders/${TargetName}_postprocess.vs.dxil",
-                "shaders/${TargetName}_postprocess.ps.dxil"
+                "shaders/material_shader_package_scene.vs.dxil",
+                "shaders/material_shader_package_scene.ps.dxil",
+                "shaders/material_shader_package_postprocess.vs.dxil",
+                "shaders/material_shader_package_postprocess.ps.dxil"
             )
             vulkanShaderArtifactPaths = @(
-                "shaders/${TargetName}_scene.vs.spv",
-                "shaders/${TargetName}_scene.ps.spv",
-                "shaders/${TargetName}_postprocess.vs.spv",
-                "shaders/${TargetName}_postprocess.ps.spv"
+                "shaders/material_shader_package_scene.vs.spv",
+                "shaders/material_shader_package_scene.ps.spv",
+                "shaders/material_shader_package_postprocess.vs.spv",
+                "shaders/material_shader_package_postprocess.ps.spv"
             )
             validateMaterialTextures = $true
             validateShaderArtifacts = $true
+            unsupportedBoundaries = @(
+                "shader-graph-execution",
+                "live-shader-generation",
+                "renderer-rhi-residency",
+                "package-streaming"
+            )
         }
     )
     $manifest.validationRecipes = @(
@@ -7247,11 +7455,11 @@ function New-DesktopRuntimeMaterialShaderManifest {
         },
         [ordered]@{
             name = "installed-d3d12-scene-gpu-postprocess-smoke"
-            command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess"
+            command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-material-graph-authoring"
         },
         [ordered]@{
             name = "desktop-runtime-release-target-vulkan-toolchain-gated"
-            command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget $TargetName -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/$GameName.config', '--require-scene-package', 'runtime/$GameName.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess')"
+            command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget $TargetName -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/$GameName.config', '--require-scene-package', 'runtime/$GameName.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-material-graph-authoring')"
         }
     )
     $manifest.packageStreamingResidencyTargets = @(
@@ -7296,15 +7504,16 @@ This game uses the optional desktop runtime package lane with first-party materi
 - `mirakana::instantiate_runtime_scene_render_data`
 - `mirakana::submit_scene_render_packet`
 - `source/materials/lit.material` as the authoring material mirror for the cooked runtime material
+- `source/materials/lit.materialgraph`, `source/materials/lit.shader_export`, and `shaders/material_graph_lit.hlsl` as reviewed material graph production-authoring inputs
 - `shaders/runtime_scene.hlsl` and `shaders/runtime_postprocess.hlsl` as host-built shader inputs
 - D3D12 DXIL artifacts installed by the selected desktop runtime package target
 - Vulkan SPIR-V artifacts only when DXC SPIR-V CodeGen and `spirv-val` are available and requested
 - deterministic `NullRenderer` fallback when native presentation gates are unavailable
 - `game.agent.json.runtimePackageFiles` plus `PACKAGE_FILES_FROM_MANIFEST`
-- `game.agent.json.materialShaderAuthoringTargets` for the source material, cooked runtime material, fixed HLSL inputs, and selected shader artifact paths
+- `game.agent.json.materialShaderAuthoringTargets` for the source material, material graph, shader export descriptor, reviewed HLSL input, cooked runtime material, fixed HLSL inputs, selected compile-request targets, and selected shader artifact paths
 - `game.agent.json.packageStreamingResidencyTargets` as host-gated safe-point package streaming intent
 
-The generated game does not runtime-compile shaders, expose native handles to gameplay, create a shader graph, generate Metal libraries, execute package streaming, or ship source material/HLSL files as runtime package payloads.
+The generated game does not runtime-compile shaders, execute arbitrary shader graphs, expose native handles to gameplay, generate Metal libraries, execute package streaming, or ship source material/graph/HLSL files as runtime package payloads.
 
 ## Validate
 
@@ -7316,13 +7525,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 The installed D3D12 package smoke uses:
 
 ```powershell
-out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess
+out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-material-graph-authoring
 ```
 
 The Vulkan package lane is toolchain-gated:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget __TARGET_NAME__ -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/__GAME_NAME__.config', '--require-scene-package', 'runtime/__GAME_NAME__.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess')
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget __TARGET_NAME__ -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/__GAME_NAME__.config', '--require-scene-package', 'runtime/__GAME_NAME__.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-material-graph-authoring')
 ```
 '@
     return $template.Replace("__TITLE__", $Title).Replace("__TARGET_NAME__", $TargetName).Replace("__GAME_NAME__", $GameName)
@@ -7602,6 +7811,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess
+            --require-material-graph-authoring
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )
@@ -7614,6 +7824,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     MK_configure_desktop_runtime_scene_shader_artifacts(
         TARGET $TargetName
         GAME_NAME $GameName
+        ARTIFACT_PREFIX material_shader_package
         SCENE_SHADER_SOURCE "`$`{CMAKE_CURRENT_SOURCE_DIR`}/$GameName/shaders/runtime_scene.hlsl"
         POSTPROCESS_SHADER_SOURCE "`$`{CMAKE_CURRENT_SOURCE_DIR`}/$GameName/shaders/runtime_postprocess.hlsl"
     )

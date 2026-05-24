@@ -293,7 +293,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
 
     function(MK_configure_desktop_runtime_scene_shader_artifacts)
-        cmake_parse_arguments(MK_SCENE_SHADER "" "TARGET;GAME_NAME;SCENE_SHADER_SOURCE;POSTPROCESS_SHADER_SOURCE;MORPH_VERTEX_ENTRY;COMPUTE_MORPH_VERTEX_ENTRY;COMPUTE_MORPH_ENTRY;COMPUTE_MORPH_TANGENT_VERTEX_ENTRY;COMPUTE_MORPH_TANGENT_ENTRY;COMPUTE_MORPH_SKINNED_VERTEX_ENTRY;COMPUTE_MORPH_SKINNED_ENTRY;SHADOW_SHADER_SOURCE;SHADOW_RECEIVER_ENTRY;SHADOW_VERTEX_ENTRY;SHADOW_FRAGMENT_ENTRY;UI_OVERLAY_SHADER_SOURCE" "" ${ARGN})
+        cmake_parse_arguments(MK_SCENE_SHADER "" "TARGET;GAME_NAME;ARTIFACT_PREFIX;SCENE_SHADER_SOURCE;POSTPROCESS_SHADER_SOURCE;MORPH_VERTEX_ENTRY;COMPUTE_MORPH_VERTEX_ENTRY;COMPUTE_MORPH_ENTRY;COMPUTE_MORPH_TANGENT_VERTEX_ENTRY;COMPUTE_MORPH_TANGENT_ENTRY;COMPUTE_MORPH_SKINNED_VERTEX_ENTRY;COMPUTE_MORPH_SKINNED_ENTRY;SHADOW_SHADER_SOURCE;SHADOW_RECEIVER_ENTRY;SHADOW_VERTEX_ENTRY;SHADOW_FRAGMENT_ENTRY;UI_OVERLAY_SHADER_SOURCE" "" ${ARGN})
         foreach(MK_SCENE_SHADER_REQUIRED_ARG IN ITEMS TARGET GAME_NAME SCENE_SHADER_SOURCE POSTPROCESS_SHADER_SOURCE)
             if(NOT MK_SCENE_SHADER_${MK_SCENE_SHADER_REQUIRED_ARG})
                 message(FATAL_ERROR "MK_configure_desktop_runtime_scene_shader_artifacts requires ${MK_SCENE_SHADER_REQUIRED_ARG}")
@@ -301,6 +301,12 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endforeach()
         if(NOT TARGET ${MK_SCENE_SHADER_TARGET})
             message(FATAL_ERROR "MK_configure_desktop_runtime_scene_shader_artifacts TARGET does not exist: ${MK_SCENE_SHADER_TARGET}")
+        endif()
+        if(NOT MK_SCENE_SHADER_ARTIFACT_PREFIX)
+            set(MK_SCENE_SHADER_ARTIFACT_PREFIX "${MK_SCENE_SHADER_TARGET}")
+        endif()
+        if(NOT MK_SCENE_SHADER_ARTIFACT_PREFIX MATCHES "^[A-Za-z0-9_]+$")
+            message(FATAL_ERROR "MK_configure_desktop_runtime_scene_shader_artifacts ARTIFACT_PREFIX must use ASCII letters, digits, and underscores for ${MK_SCENE_SHADER_TARGET}: ${MK_SCENE_SHADER_ARTIFACT_PREFIX}")
         endif()
         if(NOT EXISTS "${MK_SCENE_SHADER_SCENE_SHADER_SOURCE}")
             message(FATAL_ERROR "MK_configure_desktop_runtime_scene_shader_artifacts missing scene shader source for ${MK_SCENE_SHADER_TARGET}: ${MK_SCENE_SHADER_SCENE_SHADER_SOURCE}")
@@ -345,71 +351,71 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
 
         set(MK_SCENE_SHADER_D3D12_ARTIFACTS
-            "shaders/${MK_SCENE_SHADER_TARGET}_scene.vs.dxil;shaders/${MK_SCENE_SHADER_TARGET}_scene.ps.dxil;shaders/${MK_SCENE_SHADER_TARGET}_postprocess.vs.dxil;shaders/${MK_SCENE_SHADER_TARGET}_postprocess.ps.dxil"
+            "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene.vs.dxil;shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene.ps.dxil;shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_postprocess.vs.dxil;shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_postprocess.ps.dxil"
         )
         set(MK_SCENE_SHADER_VULKAN_ARTIFACTS
-            "shaders/${MK_SCENE_SHADER_TARGET}_scene.vs.spv;shaders/${MK_SCENE_SHADER_TARGET}_scene.ps.spv;shaders/${MK_SCENE_SHADER_TARGET}_postprocess.vs.spv;shaders/${MK_SCENE_SHADER_TARGET}_postprocess.ps.spv"
+            "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene.vs.spv;shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene.ps.spv;shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_postprocess.vs.spv;shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_postprocess.ps.spv"
         )
         if(MK_SCENE_SHADER_MORPH_VERTEX_ENTRY)
             list(APPEND MK_SCENE_SHADER_D3D12_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_morph.vs.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_morph.vs.dxil"
             )
             list(APPEND MK_SCENE_SHADER_VULKAN_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_morph.vs.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_morph.vs.spv"
             )
         endif()
         if(MK_SCENE_SHADER_COMPUTE_MORPH_ENTRY)
             list(APPEND MK_SCENE_SHADER_D3D12_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph.vs.dxil"
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph.cs.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph.vs.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph.cs.dxil"
             )
             list(APPEND MK_SCENE_SHADER_VULKAN_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph.vs.spv"
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph.cs.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph.vs.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph.cs.spv"
             )
         endif()
         if(MK_SCENE_SHADER_COMPUTE_MORPH_TANGENT_ENTRY)
             list(APPEND MK_SCENE_SHADER_D3D12_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_tangent_frame.vs.dxil"
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_tangent_frame.cs.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_tangent_frame.vs.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_tangent_frame.cs.dxil"
             )
             list(APPEND MK_SCENE_SHADER_VULKAN_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_tangent_frame.vs.spv"
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_tangent_frame.cs.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_tangent_frame.vs.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_tangent_frame.cs.spv"
             )
         endif()
         if(MK_SCENE_SHADER_COMPUTE_MORPH_SKINNED_ENTRY)
             list(APPEND MK_SCENE_SHADER_D3D12_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_skinned.vs.dxil"
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_skinned.cs.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_skinned.vs.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_skinned.cs.dxil"
             )
             list(APPEND MK_SCENE_SHADER_VULKAN_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_skinned.vs.spv"
-                "shaders/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_skinned.cs.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_skinned.vs.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_skinned.cs.spv"
             )
         endif()
         if(MK_SCENE_SHADER_HAS_SHADOW_ARTIFACTS)
             list(APPEND MK_SCENE_SHADER_D3D12_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_shadow_receiver.ps.dxil"
-                "shaders/${MK_SCENE_SHADER_TARGET}_shadow_receiver_shifted.ps.dxil"
-                "shaders/${MK_SCENE_SHADER_TARGET}_shadow.vs.dxil"
-                "shaders/${MK_SCENE_SHADER_TARGET}_shadow.ps.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow_receiver.ps.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow_receiver_shifted.ps.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow.vs.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow.ps.dxil"
             )
             list(APPEND MK_SCENE_SHADER_VULKAN_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_shadow_receiver.ps.spv"
-                "shaders/${MK_SCENE_SHADER_TARGET}_shadow_receiver_shifted.ps.spv"
-                "shaders/${MK_SCENE_SHADER_TARGET}_shadow.vs.spv"
-                "shaders/${MK_SCENE_SHADER_TARGET}_shadow.ps.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow_receiver.ps.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow_receiver_shifted.ps.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow.vs.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow.ps.spv"
             )
         endif()
         if(MK_SCENE_SHADER_HAS_UI_OVERLAY_ARTIFACTS)
             list(APPEND MK_SCENE_SHADER_D3D12_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_ui_overlay.vs.dxil"
-                "shaders/${MK_SCENE_SHADER_TARGET}_ui_overlay.ps.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_ui_overlay.vs.dxil"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_ui_overlay.ps.dxil"
             )
             list(APPEND MK_SCENE_SHADER_VULKAN_ARTIFACTS
-                "shaders/${MK_SCENE_SHADER_TARGET}_ui_overlay.vs.spv"
-                "shaders/${MK_SCENE_SHADER_TARGET}_ui_overlay.ps.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_ui_overlay.vs.spv"
+                "shaders/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_ui_overlay.ps.spv"
             )
         endif()
         set_property(TARGET ${MK_SCENE_SHADER_TARGET} PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
@@ -463,121 +469,121 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/${MK_SCENE_SHADER_TARGET}/shaders"
             )
             set(MK_SCENE_SHADER_VERTEX_SHADER_OUTPUT
-                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene.vs.dxil"
+                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene.vs.dxil"
             )
             set(MK_SCENE_SHADER_FRAGMENT_SHADER_OUTPUT
-                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene.ps.dxil"
+                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene.ps.dxil"
             )
             set(MK_SCENE_SHADER_POSTPROCESS_VERTEX_SHADER_OUTPUT
-                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_postprocess.vs.dxil"
+                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_postprocess.vs.dxil"
             )
             set(MK_SCENE_SHADER_POSTPROCESS_FRAGMENT_SHADER_OUTPUT
-                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_postprocess.ps.dxil"
+                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_postprocess.ps.dxil"
             )
             if(MK_SCENE_SHADER_HAS_UI_OVERLAY_ARTIFACTS)
                 set(MK_SCENE_SHADER_UI_OVERLAY_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_ui_overlay.vs.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_ui_overlay.vs.dxil"
                 )
                 set(MK_SCENE_SHADER_UI_OVERLAY_FRAGMENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_ui_overlay.ps.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_ui_overlay.ps.dxil"
                 )
             endif()
             if(MK_SCENE_SHADER_HAS_SHADOW_ARTIFACTS)
                 set(MK_SCENE_SHADER_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_shadow_receiver.ps.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow_receiver.ps.dxil"
                 )
                 set(MK_SCENE_SHADER_SHIFTED_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_shadow_receiver_shifted.ps.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow_receiver_shifted.ps.dxil"
                 )
                 set(MK_SCENE_SHADER_SHADOW_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_shadow.vs.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow.vs.dxil"
                 )
                 set(MK_SCENE_SHADER_SHADOW_FRAGMENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_shadow.ps.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow.ps.dxil"
                 )
             endif()
             set(MK_SCENE_SHADER_VULKAN_VERTEX_SHADER_OUTPUT
-                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene.vs.spv"
+                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene.vs.spv"
             )
             set(MK_SCENE_SHADER_VULKAN_FRAGMENT_SHADER_OUTPUT
-                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene.ps.spv"
+                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene.ps.spv"
             )
             set(MK_SCENE_SHADER_VULKAN_POSTPROCESS_VERTEX_SHADER_OUTPUT
-                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_postprocess.vs.spv"
+                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_postprocess.vs.spv"
             )
             set(MK_SCENE_SHADER_VULKAN_POSTPROCESS_FRAGMENT_SHADER_OUTPUT
-                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_postprocess.ps.spv"
+                "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_postprocess.ps.spv"
             )
             if(MK_SCENE_SHADER_HAS_UI_OVERLAY_ARTIFACTS)
                 set(MK_SCENE_SHADER_VULKAN_UI_OVERLAY_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_ui_overlay.vs.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_ui_overlay.vs.spv"
                 )
                 set(MK_SCENE_SHADER_VULKAN_UI_OVERLAY_FRAGMENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_ui_overlay.ps.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_ui_overlay.ps.spv"
                 )
             endif()
             if(MK_SCENE_SHADER_HAS_SHADOW_ARTIFACTS)
                 set(MK_SCENE_SHADER_VULKAN_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_shadow_receiver.ps.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow_receiver.ps.spv"
                 )
                 set(MK_SCENE_SHADER_VULKAN_SHIFTED_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_shadow_receiver_shifted.ps.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow_receiver_shifted.ps.spv"
                 )
                 set(MK_SCENE_SHADER_VULKAN_SHADOW_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_shadow.vs.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow.vs.spv"
                 )
                 set(MK_SCENE_SHADER_VULKAN_SHADOW_FRAGMENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_shadow.ps.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_shadow.ps.spv"
                 )
             endif()
             if(MK_SCENE_SHADER_MORPH_VERTEX_ENTRY)
                 set(MK_SCENE_SHADER_MORPH_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_morph.vs.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_morph.vs.dxil"
                 )
                 set(MK_SCENE_SHADER_VULKAN_MORPH_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_morph.vs.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_morph.vs.spv"
                 )
             endif()
             if(MK_SCENE_SHADER_COMPUTE_MORPH_ENTRY)
                 set(MK_SCENE_SHADER_COMPUTE_MORPH_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph.vs.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph.vs.dxil"
                 )
                 set(MK_SCENE_SHADER_COMPUTE_MORPH_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph.cs.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph.cs.dxil"
                 )
                 set(MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph.vs.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph.vs.spv"
                 )
                 set(MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph.cs.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph.cs.spv"
                 )
             endif()
             if(MK_SCENE_SHADER_COMPUTE_MORPH_TANGENT_ENTRY)
                 set(MK_SCENE_SHADER_COMPUTE_MORPH_TANGENT_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_tangent_frame.vs.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_tangent_frame.vs.dxil"
                 )
                 set(MK_SCENE_SHADER_COMPUTE_MORPH_TANGENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_tangent_frame.cs.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_tangent_frame.cs.dxil"
                 )
                 set(MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_TANGENT_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_tangent_frame.vs.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_tangent_frame.vs.spv"
                 )
                 set(MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_TANGENT_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_tangent_frame.cs.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_tangent_frame.cs.spv"
                 )
             endif()
             if(MK_SCENE_SHADER_COMPUTE_MORPH_SKINNED_ENTRY)
                 set(MK_SCENE_SHADER_COMPUTE_MORPH_SKINNED_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_skinned.vs.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_skinned.vs.dxil"
                 )
                 set(MK_SCENE_SHADER_COMPUTE_MORPH_SKINNED_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_skinned.cs.dxil"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_skinned.cs.dxil"
                 )
                 set(MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_SKINNED_VERTEX_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_skinned.vs.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_skinned.vs.spv"
                 )
                 set(MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_SKINNED_SHADER_OUTPUT
-                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_TARGET}_scene_compute_morph_skinned.cs.spv"
+                    "${MK_SCENE_SHADER_OUTPUT_DIR}/${MK_SCENE_SHADER_ARTIFACT_PREFIX}_scene_compute_morph_skinned.cs.spv"
                 )
             endif()
 
@@ -2221,6 +2227,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess
+            --require-material-graph-authoring
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )
@@ -2233,6 +2240,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     MK_configure_desktop_runtime_scene_shader_artifacts(
         TARGET sample_generated_desktop_runtime_material_shader_package
         GAME_NAME sample_generated_desktop_runtime_material_shader_package
+        ARTIFACT_PREFIX material_shader_package
         SCENE_SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/sample_generated_desktop_runtime_material_shader_package/shaders/runtime_scene.hlsl"
         POSTPROCESS_SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/sample_generated_desktop_runtime_material_shader_package/shaders/runtime_postprocess.hlsl"
     )
