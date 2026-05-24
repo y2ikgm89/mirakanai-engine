@@ -88,6 +88,7 @@ Large: this adds an optional third-party C++ dependency, an installable optional
 
 - Branch was fast-forwarded onto `origin/main` after PR #208 merged; the `tools/check-json-contracts-010-engine-manifest.ps1` index conflict was resolved by keeping both `removeMergedWorktree [-DeleteRemoteBranch]` and `validatePhysicsJolt`.
 - Candidate committed as `d3dc46c7eb5475ac706988486c963bda275e7ad0`, pushed to `codex/native-physics-middleware-adapter-v1`, and opened as PR #209: https://github.com/y2ikgm89/mirakanai-engine/pull/209.
+- PR #209 hosted Windows checks initially failed before validation because `actions/cache/restore` restored `external/vcpkg` through `restore-keys`, which leaves `cache-hit` non-`true`; the workflow then cloned into the existing directory. Fixed `.github/workflows/validate.yml` to guard clone by `Test-Path external/vcpkg/.git` and extended `tools/check-ci-matrix.ps1` to lock that contract.
 - Read-only agent-surface subagent audit after the main sync reported no findings for manifest fragments, compose output, static checks, dependency docs, and plan registry alignment.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` - passed; linked worktree, `external/vcpkg`, and `vcpkg_installed` were ready.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` - passed.
@@ -107,6 +108,7 @@ Large: this adds an optional third-party C++ dependency, an installable optional
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` - passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` - passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-vcpkg-environment.ps1` - passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1` - passed after the hosted Windows vcpkg restore-key clone guard fix.
 - `git diff --check` - passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` - blocked by this Codex session's command policy because approval was required while `AskForApproval=Never`; no configure-time dependency-install workaround was added.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` - passed; static checks, dev build, and 77/77 dev tests passed. Metal/iOS checks remained host-gated or diagnostic-only on this Windows host.

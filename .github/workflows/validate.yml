@@ -124,10 +124,16 @@ jobs:
             ${{ runner.os }}-vcpkg-tool-
 
       - name: Clone vcpkg tool checkout
-        if: ${{ steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
         shell: pwsh
         run: |
-          git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          if (Test-Path external/vcpkg/.git) {
+            Write-Information "external/vcpkg restored from cache" -InformationAction Continue
+          } else {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
 
       - name: Update vcpkg tool baseline
         shell: pwsh
@@ -292,10 +298,16 @@ jobs:
             ${{ runner.os }}-vcpkg-tool-
 
       - name: Clone vcpkg tool checkout
-        if: ${{ steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
         shell: pwsh
         run: |
-          git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          if (Test-Path external/vcpkg/.git) {
+            Write-Information "external/vcpkg restored from cache" -InformationAction Continue
+          } else {
+            if (Test-Path external/vcpkg) {
+              Remove-Item -Recurse -Force external/vcpkg
+            }
+            git clone --filter=blob:none --depth 1 https://github.com/microsoft/vcpkg.git external/vcpkg
+          }
 
       - name: Update vcpkg tool baseline
         shell: pwsh
