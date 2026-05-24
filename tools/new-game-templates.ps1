@@ -5520,6 +5520,8 @@ function New-AiPlaceholderAssetPipeline {
             ForEach-Object { ([string]$_.importedPath).Replace("\", "/").Substring($gameRoot.Length + 1) } |
             Sort-Object -Unique
     )
+    $plannedAssetCount = @($plannedAssets).Count
+    $handoffRuntimeFileCount = @($handoffRuntimeFiles).Count
 
     return [ordered]@{
         schemaVersion = 1
@@ -5545,9 +5547,22 @@ function New-AiPlaceholderAssetPipeline {
         packageHandoff = [ordered]@{
             mode = "reviewed-cook-package"
             sourceRevision = 1
+            plannedAssetCount = $plannedAssetCount
+            sourceDocumentCount = $plannedAssetCount
+            provenanceRowCount = $plannedAssetCount
+            runtimePackageFileCount = $handoffRuntimeFileCount
             runtimePackageFiles = $handoffRuntimeFiles
             validationRecipeIds = $recipeIds
             evidence = "Package handoff stays manifest-listed, first-party, and validation-recipe-backed before runtime use."
+        }
+        replacementWorkflow = [ordered]@{
+            mode = "reviewed-placeholder-replacement"
+            reviewedToolSurfaceIds = @("plan-placeholder-asset-bundle", "plan-placeholder-asset-cook-package")
+            allowedReplacementSources = @("first-party-placeholder-regeneration", "game-owned-source-document")
+            provenanceRequirements = @("stable-asset-key", "LicenseRef-Proprietary", "content-hash", "source-revision")
+            packageHandoffRequired = $true
+            validationRecipeIds = $recipeIds
+            evidence = "Placeholder replacement must keep the stable asset key, regenerate or review a game-owned source document, preserve provenance/license rows, and reroute through reviewed cook/package handoff before runtime use."
         }
         unsupportedClaims = @(
             "external-asset-download",

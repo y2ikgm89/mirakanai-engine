@@ -637,6 +637,10 @@
       "packageHandoff": {
         "mode": "reviewed-cook-package",
         "sourceRevision": 1,
+        "plannedAssetCount": 4,
+        "sourceDocumentCount": 4,
+        "provenanceRowCount": 4,
+        "runtimePackageFileCount": 3,
         "runtimePackageFiles": [
           "runtime/assets/desktop_runtime/hud.uiatlas",
           "runtime/assets/desktop_runtime/triangle.mesh",
@@ -649,6 +653,31 @@
           "installed-vulkan-scene-gpu-smoke"
         ],
         "evidence": "Package handoff stays manifest-listed, first-party, and validation-recipe-backed before runtime use."
+      },
+      "replacementWorkflow": {
+        "mode": "reviewed-placeholder-replacement",
+        "reviewedToolSurfaceIds": [
+          "plan-placeholder-asset-bundle",
+          "plan-placeholder-asset-cook-package"
+        ],
+        "allowedReplacementSources": [
+          "first-party-placeholder-regeneration",
+          "game-owned-source-document"
+        ],
+        "provenanceRequirements": [
+          "stable-asset-key",
+          "LicenseRef-Proprietary",
+          "content-hash",
+          "source-revision"
+        ],
+        "packageHandoffRequired": true,
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-d3d12-scene-gpu-smoke",
+          "installed-vulkan-scene-gpu-smoke"
+        ],
+        "evidence": "Placeholder replacement must keep the stable asset key, regenerate or review a game-owned source document, preserve provenance/license rows, and reroute through reviewed cook/package handoff before runtime use."
       },
       "unsupportedClaims": [
         "external-asset-download",

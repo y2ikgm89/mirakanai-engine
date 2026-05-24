@@ -631,6 +631,7 @@
             "reviewedToolSurfaces",
             "plannedAssets",
             "packageHandoff",
+            "replacementWorkflow",
             "unsupportedClaims"
           ],
           "properties": {
@@ -766,13 +767,39 @@
             "packageHandoff": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["mode", "sourceRevision", "runtimePackageFiles", "validationRecipeIds", "evidence"],
+              "required": [
+                "mode",
+                "sourceRevision",
+                "plannedAssetCount",
+                "sourceDocumentCount",
+                "provenanceRowCount",
+                "runtimePackageFileCount",
+                "runtimePackageFiles",
+                "validationRecipeIds",
+                "evidence"
+              ],
               "properties": {
                 "mode": {
                   "type": "string",
                   "const": "reviewed-cook-package"
                 },
                 "sourceRevision": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "plannedAssetCount": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "sourceDocumentCount": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "provenanceRowCount": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "runtimePackageFileCount": {
                   "type": "integer",
                   "minimum": 1
                 },
@@ -784,6 +811,69 @@
                     "type": "string",
                     "pattern": "^runtime/(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
                   }
+                },
+                "validationRecipeIds": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "evidence": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "replacementWorkflow": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mode",
+                "reviewedToolSurfaceIds",
+                "allowedReplacementSources",
+                "provenanceRequirements",
+                "packageHandoffRequired",
+                "validationRecipeIds",
+                "evidence"
+              ],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "const": "reviewed-placeholder-replacement"
+                },
+                "reviewedToolSurfaceIds": {
+                  "type": "array",
+                  "minItems": 2,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  }
+                },
+                "allowedReplacementSources": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": ["first-party-placeholder-regeneration", "game-owned-source-document"]
+                  }
+                },
+                "provenanceRequirements": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": ["stable-asset-key", "LicenseRef-Proprietary", "content-hash", "source-revision"]
+                  }
+                },
+                "packageHandoffRequired": {
+                  "type": "boolean",
+                  "const": true
                 },
                 "validationRecipeIds": {
                   "type": "array",

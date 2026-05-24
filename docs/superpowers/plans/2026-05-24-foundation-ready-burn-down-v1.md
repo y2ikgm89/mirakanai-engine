@@ -30,7 +30,7 @@ Large milestone: this spans runtime, tools, sprite/content, material/shader, phy
 
 **Goal:** Burn down every current `foundation-ready` backlog row into a narrow implemented 1.x foundation without reopening Engine 1.0 unsupported production gaps.
 
-**Context:** `unsupportedProductionGaps = []` remains the 1.0 truth. The milestone started with 15 post-1.0 / 1.x developer-owned capability foundations whose narrow basis existed but whose stronger productization evidence was not yet promoted. After the `engine-scene-gameplay-binding-v1` and `engine-input-action-contexts-v1` promotions, 13 `foundation-ready` rows remain in the canonical backlog.
+**Context:** `unsupportedProductionGaps = []` remains the 1.0 truth. The milestone started with 15 post-1.0 / 1.x developer-owned capability foundations whose narrow basis existed but whose stronger productization evidence was not yet promoted. After the `engine-scene-gameplay-binding-v1`, `engine-input-action-contexts-v1`, and `engine-asset-placeholder-generation-v1` promotions, 12 `foundation-ready` rows remain in the canonical backlog.
 
 **Constraints:**
 - No direct `main` commits.
@@ -197,7 +197,7 @@ Focused evidence completed:
 
 Promote `engine-input-action-contexts-v1` to `implemented-1x-foundation`, keep explicit non-goals for real glyph assets, keyboard-layout localization, device assignment, native handles, SDL3 input APIs, and full runtime/game rebinding panels, compose the manifest, and keep validation recipes/static checks aligned with the package-visible counters.
 
-- [ ] **Step 6: Validate, commit, push, and PR**
+- [x] **Step 6: Validate, commit, push, and PR**
 
 Run:
 
@@ -208,6 +208,55 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 Commit only task-owned files, push `codex/foundation-ready-input-contexts-v1`, open a PR with evidence, wait for applicable hosted checks, merge through the guarded flow, sync `main`, and remove the merged worktree with `tools/remove-merged-worktree.ps1`.
 
 Full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-05-24 with all 78 CTest tests passing; Metal/Apple checks remained diagnostic/host-gated on this Windows host.
+
+Closeout evidence completed through PR #213, merge commit `e0faf43aa4ccd3bb375044681bcc839bf429b5e8`. Hosted checks, including `PR Gate`, completed successfully before merge. `tools/remove-merged-worktree.ps1 -WorktreePath .worktrees/foundation-ready-input-contexts-v1 -DeleteLocalBranch -DeleteRemoteBranch` completed after merge and main sync.
+
+## Task 3: Select And Prove `engine-asset-placeholder-generation-v1`
+
+**Files:**
+- Modify: `tests/unit/tools_tests.cpp`
+- Modify: `schemas/game-agent.schema.json`
+- Modify: `tools/new-game-templates.ps1`
+- Modify: `tools/check-json-contracts-062-placeholder-asset-pipeline.ps1`
+- Modify: `games/sample_2d_desktop_runtime_package/game.agent.json`
+- Modify: `games/sample_generated_desktop_runtime_3d_package/game.agent.json`
+- Modify: `games/sample_desktop_runtime_game/game.agent.json`
+- Modify as needed: `docs/current-capabilities.md`, `docs/ai-game-development.md`, `docs/roadmap.md`
+- Modify: `docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Generate: `engine/agent/manifest.json`
+
+- [x] **Step 1: Record current evidence and final promotion boundary**
+
+Existing `MK_tools` already exposes placeholder texture, mesh, material, and audio planning plus registered source cook/package handoff. The promotion boundary is selected replacement recook evidence plus manifest/schema/static proof for broader placeholder roles, replacement workflow rows, and package handoff counters, not external asset downloads, arbitrary generation, runtime source parsing, renderer/RHI residency, package streaming, native handles, middleware contracts, or final art direction.
+
+- [x] **Step 2: Add replacement recook and manifest contract evidence**
+
+`MK_tools_tests` now proves `plan_placeholder_asset_cook_package` can recook a replacement through existing source registry and package index content while preserving stable asset keys, provenance/license rows, package mutations, updated content hashes, and source revision handoff. `game.agent.json.aiWorkflow.placeholderAssetPipeline` now requires `replacementWorkflow` rows plus planned/source/provenance/runtime package handoff counters, and scaffold templates emit the same shape for future generated games.
+
+- [x] **Step 3: Guard selected 2D/3D placeholder role and package handoff coverage**
+
+`tools/check-json-contracts-062-placeholder-asset-pipeline.ps1` now requires selected manifests to cover sprite, mesh, material, audio, UI, and scene-prop placeholder roles across committed package samples; validates replacement workflow reviewed tool surfaces, allowed replacement sources, provenance requirements, package handoff requirement, validation recipe ids, and count fields; and keeps unsupported claims explicit.
+
+- [ ] **Step 4: Validate, commit, push, and PR**
+
+Focused evidence completed:
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests` passed after the expected red compile failure exposed direct `AssetKeyV2` equality in the new test.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_tests` passed.
+- Full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-05-24 with all 78 CTest tests passing; Metal/Apple checks remained diagnostic/host-gated on this Windows host. Validation log: `out/validation-logs/validate-20260524-192149-50604`.
+
+Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+Commit only task-owned files, push `codex/foundation-ready-placeholder-generation-v1`, open a PR with evidence, wait for applicable hosted checks, merge through the guarded flow, sync `main`, and remove the merged worktree with `tools/remove-merged-worktree.ps1`.
 
 ## Remaining Candidate Loop
 
@@ -225,8 +274,8 @@ For each remaining candidate:
 | Candidate | PR | Merge SHA | Full validation | Notes |
 | --- | --- | --- | --- | --- |
 | `engine-scene-gameplay-binding-v1` | #212 | `23bac05348ca32867dfe7980bf265c9e537c5afa` | pass (`tools/validate.ps1`, 2026-05-24) | Package-visible binding evidence implemented; focused build, runtime-scene CTest, direct smokes, direct installed-layout validation, static checks, full validation, hosted checks, merge, main sync, and guarded worktree cleanup passed. |
-| `engine-input-action-contexts-v1` | pending | pending | pass (`tools/validate.ps1`, 2026-05-24) | Package-visible 2D/3D input context/rebinding evidence implemented; focused build, direct smokes, static checks, AI integration checks, and full validation passed. PR remains pending. |
-| `engine-asset-placeholder-generation-v1` | pending | pending | pending | Not started. |
+| `engine-input-action-contexts-v1` | #213 | `e0faf43aa4ccd3bb375044681bcc839bf429b5e8` | pass (`tools/validate.ps1`, 2026-05-24) | Package-visible 2D/3D input context/rebinding evidence implemented; focused build, direct smokes, static checks, AI integration checks, full validation, hosted checks, merge, main sync, and guarded worktree cleanup passed. |
+| `engine-asset-placeholder-generation-v1` | pending | pending | pass (`tools/validate.ps1`, 2026-05-24) | Replacement recook test, manifest replacement workflow rows, package handoff counters, schema/template/static-check coverage, focused build, focused CTest, json contracts, format checks, AI integration checks, and full validation passed. PR remains pending. |
 | `sprite-atlas-authoring-v1` | pending | pending | pending | Not started. |
 | `sprite-batching-renderer-v1` | pending | pending | pending | Not started. |
 | `sprite-animation-flipbook-v1` | pending | pending | pending | Not started. |
