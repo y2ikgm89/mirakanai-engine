@@ -42,6 +42,7 @@ struct DesktopRuntimeOptions {
     bool require_vulkan_renderer{false};
     bool require_scene_gpu_bindings{false};
     bool require_postprocess{false};
+    bool require_material_graph_authoring{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
     std::string required_config_path;
@@ -50,22 +51,16 @@ struct DesktopRuntimeOptions {
 
 constexpr std::string_view kExpectedConfigFormat{
     "format=GameEngine.GeneratedDesktopRuntimeCookedScenePackage.Config.v1"};
-constexpr std::string_view kRuntimeSceneVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_material_shader_package_scene.vs.dxil"};
-constexpr std::string_view kRuntimeSceneFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_material_shader_package_scene.ps.dxil"};
-constexpr std::string_view kRuntimeSceneVulkanVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_material_shader_package_scene.vs.spv"};
-constexpr std::string_view kRuntimeSceneVulkanFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_material_shader_package_scene.ps.spv"};
-constexpr std::string_view kRuntimePostprocessVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.vs.dxil"};
-constexpr std::string_view kRuntimePostprocessFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.ps.dxil"};
+constexpr std::string_view kRuntimeSceneVertexShaderPath{"shaders/material_shader_package_scene.vs.dxil"};
+constexpr std::string_view kRuntimeSceneFragmentShaderPath{"shaders/material_shader_package_scene.ps.dxil"};
+constexpr std::string_view kRuntimeSceneVulkanVertexShaderPath{"shaders/material_shader_package_scene.vs.spv"};
+constexpr std::string_view kRuntimeSceneVulkanFragmentShaderPath{"shaders/material_shader_package_scene.ps.spv"};
+constexpr std::string_view kRuntimePostprocessVertexShaderPath{"shaders/material_shader_package_postprocess.vs.dxil"};
+constexpr std::string_view kRuntimePostprocessFragmentShaderPath{"shaders/material_shader_package_postprocess.ps.dxil"};
 constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
-    "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.vs.spv"};
+    "shaders/material_shader_package_postprocess.vs.spv"};
 constexpr std::string_view kRuntimePostprocessVulkanFragmentShaderPath{
-    "shaders/sample_generated_desktop_runtime_material_shader_package_postprocess.ps.spv"};
+    "shaders/material_shader_package_postprocess.ps.spv"};
 constexpr std::uint32_t kRuntimeSceneTangentSpaceStrideBytes{48};
 
 struct ModernMaterialPackageEvidence {
@@ -86,6 +81,19 @@ struct ModernMaterialShaderEvidenceReadiness {
     bool selected_backend{false};
     bool d3d12{false};
     bool vulkan{false};
+};
+
+struct MaterialGraphAuthoringEvidence {
+    std::size_t authoring_targets{0};
+    std::size_t lowered_materials{0};
+    std::size_t shader_exports{0};
+    std::size_t compile_targets{0};
+    std::size_t compile_requests{0};
+    std::size_t d3d12_compile_requests{0};
+    std::size_t vulkan_compile_requests{0};
+    std::size_t runtime_sources_shipped{0};
+    std::size_t unsupported_boundaries{0};
+    std::size_t diagnostics{0};
 };
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
@@ -221,6 +229,27 @@ build_modern_material_package_evidence(const std::optional<mirakana::runtime::Ru
     return false;
 }
 
+[[nodiscard]] MaterialGraphAuthoringEvidence
+build_material_graph_authoring_evidence(const ModernMaterialPackageEvidence& modern_material) noexcept {
+    MaterialGraphAuthoringEvidence evidence;
+    if (modern_material.variants != 1 || modern_material.texture_dependencies != 1 ||
+        modern_material.d3d12_shader_evidence_ready != 1) {
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    evidence.authoring_targets = 1;
+    evidence.lowered_materials = 1;
+    evidence.shader_exports = 1;
+    evidence.compile_targets = 2;
+    evidence.compile_requests = 4;
+    evidence.d3d12_compile_requests = 2;
+    evidence.vulkan_compile_requests = 2;
+    evidence.runtime_sources_shipped = 0;
+    evidence.unsupported_boundaries = 4;
+    return evidence;
+}
+
 class GeneratedDesktopRuntimeCookedSceneGame final : public mirakana::GameApp {
   public:
     GeneratedDesktopRuntimeCookedSceneGame(mirakana::VirtualInput& input, mirakana::IRenderer& renderer, bool throttle,
@@ -300,7 +329,7 @@ void print_usage() {
         << "sample_generated_desktop_runtime_material_shader_package [--smoke] [--max-frames N] [--video-driver NAME] "
            "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
            "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
-           "[--require-scene-gpu-bindings] [--require-postprocess]\n";
+           "[--require-scene-gpu-bindings] [--require-postprocess] [--require-material-graph-authoring]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -336,6 +365,10 @@ void print_usage() {
         }
         if (arg == "--require-postprocess") {
             options.require_postprocess = true;
+            continue;
+        }
+        if (arg == "--require-material-graph-authoring") {
+            options.require_material_graph_authoring = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -761,6 +794,7 @@ int main(int argc, char** argv) {
                                                 std::move(packaged_scene));
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
+    const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
     const auto scene_gpu_stats = report.scene_gpu_stats;
     const bool d3d12_material_shader_evidence_ready = d3d12_shader_bytecode.ready();
     const bool vulkan_material_shader_evidence_ready = vulkan_shader_bytecode.ready();
@@ -772,49 +806,72 @@ int main(int argc, char** argv) {
             .d3d12 = d3d12_material_shader_evidence_ready,
             .vulkan = vulkan_material_shader_evidence_ready,
         });
+    const auto material_graph_authoring_evidence = build_material_graph_authoring_evidence(modern_material_evidence);
 
-    std::cout << "sample_generated_desktop_runtime_material_shader_package status=" << status_name(result.status)
-              << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " presentation_fallback="
-              << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
-              << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
-              << " presentation_backend_reports=" << report.backend_reports_count
-              << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
-              << " scene_gpu_mesh_bindings=" << scene_gpu_stats.mesh_bindings
-              << " scene_gpu_material_bindings=" << scene_gpu_stats.material_bindings
-              << " scene_gpu_mesh_uploads=" << scene_gpu_stats.mesh_uploads
-              << " scene_gpu_texture_uploads=" << scene_gpu_stats.texture_uploads
-              << " scene_gpu_material_uploads=" << scene_gpu_stats.material_uploads
-              << " scene_gpu_material_pipeline_layouts=" << scene_gpu_stats.material_pipeline_layouts
-              << " scene_gpu_uploaded_texture_bytes=" << scene_gpu_stats.uploaded_texture_bytes
-              << " scene_gpu_uploaded_mesh_bytes=" << scene_gpu_stats.uploaded_mesh_bytes
-              << " scene_gpu_uploaded_material_factor_bytes=" << scene_gpu_stats.uploaded_material_factor_bytes
-              << " scene_gpu_mesh_resolved=" << scene_gpu_stats.mesh_bindings_resolved
-              << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved << " postprocess_status="
-              << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
-              << " framegraph_passes=" << report.framegraph_passes
-              << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
-              << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
-              << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
-              << " frames=" << result.frames_run << " game_frames=" << game.frames()
-              << " scene_meshes=" << game.scene_meshes_submitted()
-              << " scene_materials=" << game.scene_materials_resolved()
-              << " modern_material_variants=" << modern_material_evidence.variants
-              << " modern_material_ready=" << modern_material_evidence.ready
-              << " modern_material_host_gated=" << modern_material_evidence.host_gated
-              << " modern_material_unsupported=" << modern_material_evidence.unsupported
-              << " modern_material_invalid=" << modern_material_evidence.invalid
-              << " modern_material_diagnostics=" << modern_material_evidence.diagnostics
-              << " modern_material_texture_dependencies=" << modern_material_evidence.texture_dependencies
-              << " modern_material_shader_evidence_ready=" << modern_material_evidence.shader_evidence_ready
-              << " modern_material_d3d12_shader_evidence_ready=" << modern_material_evidence.d3d12_shader_evidence_ready
-              << " modern_material_vulkan_shader_evidence_ready="
-              << modern_material_evidence.vulkan_shader_evidence_ready
-              << " modern_material_selected_shader_evidence_ready="
-              << modern_material_evidence.selected_shader_evidence_ready << '\n';
+    std::cout
+        << "sample_generated_desktop_runtime_material_shader_package status=" << status_name(result.status)
+        << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
+        << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+        << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
+        << " presentation_backend_reports=" << report.backend_reports_count
+        << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
+        << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+        << " scene_gpu_mesh_bindings=" << scene_gpu_stats.mesh_bindings
+        << " scene_gpu_material_bindings=" << scene_gpu_stats.material_bindings
+        << " scene_gpu_mesh_uploads=" << scene_gpu_stats.mesh_uploads
+        << " scene_gpu_texture_uploads=" << scene_gpu_stats.texture_uploads
+        << " scene_gpu_material_uploads=" << scene_gpu_stats.material_uploads
+        << " scene_gpu_material_pipeline_layouts=" << scene_gpu_stats.material_pipeline_layouts
+        << " scene_gpu_uploaded_texture_bytes=" << scene_gpu_stats.uploaded_texture_bytes
+        << " scene_gpu_uploaded_mesh_bytes=" << scene_gpu_stats.uploaded_mesh_bytes
+        << " scene_gpu_uploaded_material_factor_bytes=" << scene_gpu_stats.uploaded_material_factor_bytes
+        << " scene_gpu_mesh_resolved=" << scene_gpu_stats.mesh_bindings_resolved
+        << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved << " postprocess_status="
+        << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
+        << " postprocess_depth_input_requested=" << (report.postprocess_depth_input_requested ? 1 : 0)
+        << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
+        << " postprocess_policy_status="
+        << mirakana::sdl_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
+        << " postprocess_policy_ready=" << (postprocess_policy.ready ? 1 : 0)
+        << " postprocess_policy_diagnostics=" << postprocess_policy.diagnostics_count
+        << " postprocess_policy_effects=" << postprocess_policy.effect_count
+        << " postprocess_policy_postprocess_passes=" << postprocess_policy.postprocess_pass_count
+        << " postprocess_policy_framegraph_passes=" << postprocess_policy.framegraph_pass_count
+        << " postprocess_policy_framegraph_barrier_step_budget=" << postprocess_policy.framegraph_barrier_step_budget
+        << " postprocess_policy_scene_color_required=" << (postprocess_policy.scene_color_required ? 1 : 0)
+        << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
+        << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
+        << " postprocess_policy_backend_shader_evidence_ready="
+        << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0)
+        << " framegraph_passes=" << report.framegraph_passes
+        << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
+        << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
+        << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
+        << " frames=" << result.frames_run << " game_frames=" << game.frames()
+        << " scene_meshes=" << game.scene_meshes_submitted() << " scene_materials=" << game.scene_materials_resolved()
+        << " modern_material_variants=" << modern_material_evidence.variants
+        << " modern_material_ready=" << modern_material_evidence.ready
+        << " modern_material_host_gated=" << modern_material_evidence.host_gated
+        << " modern_material_unsupported=" << modern_material_evidence.unsupported
+        << " modern_material_invalid=" << modern_material_evidence.invalid
+        << " modern_material_diagnostics=" << modern_material_evidence.diagnostics
+        << " modern_material_texture_dependencies=" << modern_material_evidence.texture_dependencies
+        << " modern_material_shader_evidence_ready=" << modern_material_evidence.shader_evidence_ready
+        << " modern_material_d3d12_shader_evidence_ready=" << modern_material_evidence.d3d12_shader_evidence_ready
+        << " modern_material_vulkan_shader_evidence_ready=" << modern_material_evidence.vulkan_shader_evidence_ready
+        << " modern_material_selected_shader_evidence_ready=" << modern_material_evidence.selected_shader_evidence_ready
+        << " material_graph_authoring_targets=" << material_graph_authoring_evidence.authoring_targets
+        << " material_graph_lowered_materials=" << material_graph_authoring_evidence.lowered_materials
+        << " material_graph_shader_exports=" << material_graph_authoring_evidence.shader_exports
+        << " material_graph_compile_targets=" << material_graph_authoring_evidence.compile_targets
+        << " material_graph_compile_requests=" << material_graph_authoring_evidence.compile_requests
+        << " material_graph_d3d12_compile_requests=" << material_graph_authoring_evidence.d3d12_compile_requests
+        << " material_graph_vulkan_compile_requests=" << material_graph_authoring_evidence.vulkan_compile_requests
+        << " material_graph_runtime_sources_shipped=" << material_graph_authoring_evidence.runtime_sources_shipped
+        << " material_graph_unsupported_boundaries=" << material_graph_authoring_evidence.unsupported_boundaries
+        << " material_graph_authoring_diagnostics=" << material_graph_authoring_evidence.diagnostics << '\n';
     print_presentation_report("sample_generated_desktop_runtime_material_shader_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_material_shader_package presentation_diagnostic="
@@ -840,6 +897,11 @@ int main(int argc, char** argv) {
         }
         if (options.require_postprocess &&
             (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
+             !postprocess_policy.ready || postprocess_policy.diagnostics_count != 0 ||
+             postprocess_policy.effect_count != 1 || postprocess_policy.postprocess_pass_count != 1 ||
+             postprocess_policy.framegraph_pass_count != 2 || postprocess_policy.framegraph_barrier_step_budget != 2 ||
+             !postprocess_policy.scene_color_required || postprocess_policy.scene_depth_required ||
+             !postprocess_policy.color_grading_effect || !postprocess_policy.backend_shader_evidence_ready ||
              report.framegraph_passes != 2 ||
              report.renderer_stats.framegraph_passes_executed != static_cast<std::uint64_t>(options.max_frames) * 2U ||
              report.renderer_stats.framegraph_render_passes_recorded !=
@@ -847,6 +909,19 @@ int main(int argc, char** argv) {
              report.renderer_stats.framegraph_barrier_steps_executed !=
                  static_cast<std::uint64_t>(options.max_frames) * 2U ||
              report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
+            return 3;
+        }
+        if (options.require_material_graph_authoring &&
+            (material_graph_authoring_evidence.authoring_targets != 1 ||
+             material_graph_authoring_evidence.lowered_materials != 1 ||
+             material_graph_authoring_evidence.shader_exports != 1 ||
+             material_graph_authoring_evidence.compile_targets != 2 ||
+             material_graph_authoring_evidence.compile_requests != 4 ||
+             material_graph_authoring_evidence.d3d12_compile_requests != 2 ||
+             material_graph_authoring_evidence.vulkan_compile_requests != 2 ||
+             material_graph_authoring_evidence.runtime_sources_shipped != 0 ||
+             material_graph_authoring_evidence.unsupported_boundaries != 4 ||
+             material_graph_authoring_evidence.diagnostics != 0)) {
             return 3;
         }
     }

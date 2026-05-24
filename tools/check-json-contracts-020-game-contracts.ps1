@@ -98,6 +98,7 @@ if ($materialShaderAuthoringLoop.Count -ne 1) {
     $expectedMaterialShaderSteps = @(
         "review-source-material-authoring-inputs",
         "validate-source-material-and-texture-dependencies",
+        "review-material-graph-production-authoring",
         "review-fixed-shader-artifact-requests",
         "validate-shader-artifacts",
         "run-host-gated-material-shader-package-smoke"
@@ -114,12 +115,12 @@ if ($materialShaderAuthoringLoop.Count -ne 1) {
             Write-Error "engine manifest material-shader-authoring-review-loop requiredManifestFields missing: $field"
         }
     }
-    foreach ($field in @("id", "sourceMaterialPath", "runtimeMaterialPath", "packageIndexPath", "shaderSourcePaths", "d3d12ShaderArtifactPaths", "vulkanShaderArtifactPaths")) {
+    foreach ($field in @("id", "sourceMaterialPath", "runtimeMaterialPath", "packageIndexPath", "sourceMaterialGraphPath", "shaderExportPath", "reviewedHlslSourcePath", "compileRequestTargets", "unsupportedBoundaries", "shaderSourcePaths", "d3d12ShaderArtifactPaths", "vulkanShaderArtifactPaths")) {
         if (@($materialShaderAuthoringLoop[0].descriptorFields) -notcontains $field) {
             Write-Error "engine manifest material-shader-authoring-review-loop descriptorFields missing: $field"
         }
     }
-    foreach ($claim in @("shader graph", "material graph", "live shader generation", "package streaming", "public native/RHI handles", "Metal readiness", "general renderer quality")) {
+    foreach ($claim in @("shader graph execution", "live shader generation", "shader compiler execution", "package streaming", "public native/RHI handles", "Metal readiness", "general renderer quality")) {
         if (-not ((@($materialShaderAuthoringLoop[0].unsupportedClaims) -join " ").Contains($claim))) {
             Write-Error "engine manifest material-shader-authoring-review-loop unsupportedClaims missing: $claim"
         }

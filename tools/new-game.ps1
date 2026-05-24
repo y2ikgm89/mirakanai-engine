@@ -121,6 +121,13 @@ if ($Template -eq "DesktopRuntimeMaterialShaderPackage" -or $Template -eq "Deskt
         (Join-Path $gameDir "shaders/runtime_postprocess.hlsl")
     )
 }
+if ($Template -eq "DesktopRuntimeMaterialShaderPackage") {
+    $planned += @(
+        (Join-Path $gameDir "source/materials/lit.materialgraph"),
+        (Join-Path $gameDir "source/materials/lit.shader_export"),
+        (Join-Path $gameDir "shaders/material_graph_lit.hlsl")
+    )
+}
 if ($Template -eq "DesktopRuntime3DPackage") {
     $planned += @(
         (Join-Path $gameDir "shaders/runtime_shadow.hlsl"),
@@ -299,7 +306,12 @@ scenePackage=runtime/$Name.geindex
     New-Item -ItemType Directory -Path (Join-Path $gameDir "source/materials") -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $gameDir "shaders") -Force | Out-Null
     $materialShaderPackage = New-DesktopRuntimeMaterialShaderPackageFiles -GameName $Name -DisplayTitle $DisplayName
-    $mainCpp = New-DesktopRuntimeCookedSceneMainCpp -GameName $Name -TargetName $targetName -Title $DisplayName -SceneAssetName $materialShaderPackage.SceneAssetName
+    $mainCpp = New-DesktopRuntimeCookedSceneMainCpp `
+        -GameName $Name `
+        -TargetName $targetName `
+        -Title $DisplayName `
+        -SceneAssetName $materialShaderPackage.SceneAssetName `
+        -IncludeMaterialGraphAuthoringEvidence
     $readme = New-DesktopRuntimeMaterialShaderReadme -Title $DisplayName -TargetName $targetName -GameName $Name
     $manifest = New-DesktopRuntimeMaterialShaderManifest -GameName $Name -DisplayTitle $DisplayName -TargetName $targetName
     $registration = New-DesktopRuntimeMaterialShaderRegistration -GameName $Name -TargetName $targetName

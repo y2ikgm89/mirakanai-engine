@@ -71,7 +71,7 @@ if ($SmokeArgs.Count -eq 0) {
 $requireD3d12ShaderArtifacts = $RequireD3d12Shaders.IsPresent -or [bool]$gameMetadata.requiresD3d12Shaders
 $requireVulkanShaderArtifacts = $RequireVulkanShaders.IsPresent -or ($gameMetadata.PSObject.Properties.Name.Contains("requiresVulkanShaders") -and [bool]$gameMetadata.requiresVulkanShaders)
 
-Invoke-CheckedCommand $tools.CMake --build --preset desktop-runtime-release
+Invoke-CheckedCommand $tools.CMake --build --preset desktop-runtime-release --target MK_desktop_runtime_package_build
 Invoke-CheckedCommand $tools.CTest --preset desktop-runtime-release --output-on-failure -R $ctestPattern
 
 $installPrefix = Join-Path $root "out/install/desktop-runtime-release"

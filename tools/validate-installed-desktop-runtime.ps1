@@ -338,7 +338,17 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") 
             "modern_material_shader_evidence_ready",
             "modern_material_d3d12_shader_evidence_ready",
             "modern_material_vulkan_shader_evidence_ready",
-            "modern_material_selected_shader_evidence_ready"
+            "modern_material_selected_shader_evidence_ready",
+            "material_graph_authoring_targets",
+            "material_graph_lowered_materials",
+            "material_graph_shader_exports",
+            "material_graph_compile_targets",
+            "material_graph_compile_requests",
+            "material_graph_d3d12_compile_requests",
+            "material_graph_vulkan_compile_requests",
+            "material_graph_runtime_sources_shipped",
+            "material_graph_unsupported_boundaries",
+            "material_graph_authoring_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed material/shader package smoke status line did not include modern material field: $field"
@@ -367,6 +377,22 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") 
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmodern_material_selected_shader_evidence_ready=1\b") {
         Write-Error "Installed material/shader package smoke status line did not prove selected backend shader evidence readiness."
+    }
+    foreach ($expected in @{
+            "material_graph_authoring_targets" = "1"
+            "material_graph_lowered_materials" = "1"
+            "material_graph_shader_exports" = "1"
+            "material_graph_compile_targets" = "2"
+            "material_graph_compile_requests" = "4"
+            "material_graph_d3d12_compile_requests" = "2"
+            "material_graph_vulkan_compile_requests" = "2"
+            "material_graph_runtime_sources_shipped" = "0"
+            "material_graph_unsupported_boundaries" = "4"
+            "material_graph_authoring_diagnostics" = "0"
+        }.GetEnumerator()) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+            Write-Error "Installed material/shader package smoke status line did not prove $($expected.Key)=$($expected.Value)."
+        }
     }
 }
 if ($GameTarget -eq "sample_desktop_runtime_game") {

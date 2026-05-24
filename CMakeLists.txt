@@ -1043,6 +1043,21 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         "${MK_DESKTOP_RUNTIME_GAME_METADATA_FILE}"
         "${MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET}"
     )
+    add_custom_target(MK_desktop_runtime_package_build)
+    add_dependencies(MK_desktop_runtime_package_build
+        ${MK_LIBRARY_TARGETS}
+        ${MK_INSTALL_RUNTIME_TARGETS}
+    )
+    foreach(MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET IN ITEMS
+        MK_runtime_host_tests
+        MK_runtime_host_sdl3_tests
+        MK_sdl3_platform_tests
+        MK_sdl3_audio_tests
+    )
+        if(TARGET ${MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET})
+            add_dependencies(MK_desktop_runtime_package_build ${MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET})
+        endif()
+    endforeach()
 endif()
 
 # Install / export: MirakanaiTargets + MirakanaiConfig (see docs/building.md). Runtime executables are installed but not re-exported for find_package.

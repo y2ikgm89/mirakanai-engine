@@ -1,0 +1,7 @@
+format=GameEngine.MaterialGraphShaderExport.v0
+export.id=700
+export.name=sample_generated_desktop_runtime_material_shader_package_lit
+material_graph.path=source/materials/lit.materialgraph
+hlsl.path=shaders/material_graph_lit.hlsl
+entry.vertex=VSMain
+entry.fragment=PSMain

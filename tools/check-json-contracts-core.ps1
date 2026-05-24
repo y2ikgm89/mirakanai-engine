@@ -545,6 +545,57 @@ function Assert-MaterialShaderAuthoringTargets($game, [string]$relativePath, [bo
             }
         }
 
+        $hasGraphAuthoring = $target.PSObject.Properties.Name.Contains("sourceMaterialGraphPath") -or
+            $target.PSObject.Properties.Name.Contains("shaderExportPath") -or
+            $target.PSObject.Properties.Name.Contains("reviewedHlslSourcePath") -or
+            $target.PSObject.Properties.Name.Contains("compileRequestTargets") -or
+            $target.PSObject.Properties.Name.Contains("unsupportedBoundaries")
+        if ($hasGraphAuthoring) {
+            Assert-Properties $target @("sourceMaterialGraphPath", "shaderExportPath", "reviewedHlslSourcePath", "compileRequestTargets", "unsupportedBoundaries") "$relativePath materialShaderAuthoringTargets graph authoring target"
+            foreach ($pathRow in @(
+                    @{ Field = "sourceMaterialGraphPath"; Path = ConvertTo-RepoPath ([string]$target.sourceMaterialGraphPath); Extension = ".materialgraph" },
+                    @{ Field = "shaderExportPath"; Path = ConvertTo-RepoPath ([string]$target.shaderExportPath); Extension = ".shader_export" },
+                    @{ Field = "reviewedHlslSourcePath"; Path = ConvertTo-RepoPath ([string]$target.reviewedHlslSourcePath); Extension = ".hlsl" }
+                )) {
+                if (-not (Test-SafeGameRelativePath $pathRow.Path) -or -not $pathRow.Path.EndsWith($pathRow.Extension)) {
+                    Write-Error "$relativePath materialShaderAuthoringTargets $($pathRow.Field) must be a safe game-relative $($pathRow.Extension) path: $($pathRow.Path)"
+                }
+                if ($packageFileSet.ContainsKey($pathRow.Path)) {
+                    Write-Error "$relativePath materialShaderAuthoringTargets $($pathRow.Field) must not be declared in runtimePackageFiles: $($pathRow.Path)"
+                }
+                if (-not (Test-Path -LiteralPath (Join-Path $root "$gameDirectory/$($pathRow.Path)"))) {
+                    Write-Error "$relativePath materialShaderAuthoringTargets $($pathRow.Field) does not exist: $($pathRow.Path)"
+                }
+            }
+            if (@($target.shaderSourcePaths) -notcontains $target.reviewedHlslSourcePath) {
+                Write-Error "$relativePath materialShaderAuthoringTargets reviewedHlslSourcePath must also appear in shaderSourcePaths: $($target.reviewedHlslSourcePath)"
+            }
+            foreach ($compileTarget in @("d3d12-dxil", "vulkan-spirv")) {
+                if (@($target.compileRequestTargets) -notcontains $compileTarget) {
+                    Write-Error "$relativePath materialShaderAuthoringTargets compileRequestTargets missing $compileTarget"
+                }
+            }
+            foreach ($unsupportedBoundary in @("shader-graph-execution", "live-shader-generation", "renderer-rhi-residency", "package-streaming")) {
+                if (@($target.unsupportedBoundaries) -notcontains $unsupportedBoundary) {
+                    Write-Error "$relativePath materialShaderAuthoringTargets unsupportedBoundaries missing $unsupportedBoundary"
+                }
+            }
+            foreach ($artifactPath in @(
+                    "shaders/material_shader_package_scene.vs.dxil",
+                    "shaders/material_shader_package_scene.ps.dxil",
+                    "shaders/material_shader_package_postprocess.vs.dxil",
+                    "shaders/material_shader_package_postprocess.ps.dxil",
+                    "shaders/material_shader_package_scene.vs.spv",
+                    "shaders/material_shader_package_scene.ps.spv",
+                    "shaders/material_shader_package_postprocess.vs.spv",
+                    "shaders/material_shader_package_postprocess.ps.spv"
+                )) {
+                if (@($target.d3d12ShaderArtifactPaths + $target.vulkanShaderArtifactPaths) -notcontains $artifactPath) {
+                    Write-Error "$relativePath materialShaderAuthoringTargets graph authoring artifacts missing short path: $artifactPath"
+                }
+            }
+        }
+
         foreach ($artifactListName in @("d3d12ShaderArtifactPaths", "vulkanShaderArtifactPaths")) {
             if (-not $target.PSObject.Properties.Name.Contains($artifactListName)) {
                 continue

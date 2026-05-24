@@ -1658,6 +1658,88 @@ MK_TEST("material graph shader export serializes emits hlsl and plans shader com
     MK_REQUIRE(spirv_command.arguments[0] == "-spirv");
 }
 
+MK_TEST("material graph production authoring emits package rows shader export and compile requests") {
+    const auto graph = make_material_graph_package_graph();
+    const auto expected_material = mirakana::lower_material_graph_to_definition(graph);
+    const auto expected_material_content = mirakana::serialize_material_definition(expected_material);
+
+    mirakana::MaterialGraphProductionAuthoringDesc desc;
+    desc.package_index_path = "runtime/sample.geindex";
+    desc.package_index_content = material_graph_package_base_index_content();
+    desc.material_graph_path = "source/materials/graph.materialgraph";
+    desc.material_graph_content = mirakana::serialize_material_graph(graph);
+    desc.material_output_path = "runtime/assets/materials/graph.material";
+    desc.hlsl_output_path = "shaders/generated/graph.material_graph.hlsl";
+    desc.shader_export_output_path = "source/materials/graph.shader_export";
+    desc.source_revision = 17;
+    desc.export_id = mirakana::AssetId{700};
+    desc.export_name = "graph_shader_export";
+    desc.vertex_entry = "VSMain";
+    desc.fragment_entry = "PSMain";
+    desc.artifact_output_root = "out/material_graph_shader_exports";
+    desc.shader_cache_index_relative = "shader_cache/material_graph.gecache";
+
+    mirakana::ShaderToolDescriptor dxc_tool;
+    dxc_tool.kind = mirakana::ShaderToolKind::dxc;
+    dxc_tool.executable_path = "toolchains/dxc/dxc.exe";
+    dxc_tool.version = "test";
+    dxc_tool.supports_spirv_codegen = true;
+
+    const auto result = mirakana::plan_material_graph_production_authoring(desc, dxc_tool);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.failures.empty());
+    MK_REQUIRE(result.material_content == expected_material_content);
+    MK_REQUIRE(result.package_index_content.find("asset=400") != std::string::npos);
+    MK_REQUIRE(result.hlsl_content.find("GameEngine.MaterialGraphGeneratedHlsl.v0") != std::string::npos);
+    MK_REQUIRE(result.shader_export_content.find("format=GameEngine.MaterialGraphShaderExport.v0") !=
+               std::string::npos);
+    MK_REQUIRE(result.shader_export_content.find("material_graph.path=source/materials/graph.materialgraph") !=
+               std::string::npos);
+    MK_REQUIRE(result.changed_files.size() == 4);
+    MK_REQUIRE(result.changed_files[0].path == desc.material_output_path);
+    MK_REQUIRE(result.changed_files[1].path == desc.package_index_path);
+    MK_REQUIRE(result.changed_files[2].path == desc.hlsl_output_path);
+    MK_REQUIRE(result.changed_files[3].path == desc.shader_export_output_path);
+    MK_REQUIRE(result.execution_requests.size() == 4);
+    MK_REQUIRE(result.d3d12_compile_request_count == 2);
+    MK_REQUIRE(result.vulkan_compile_request_count == 2);
+    MK_REQUIRE(result.shader_export_count == 1);
+    MK_REQUIRE(result.lowered_material_count == 1);
+}
+
+MK_TEST("material graph production authoring rejects shader graph execution claims") {
+    mirakana::MaterialGraphProductionAuthoringDesc desc;
+    desc.package_index_path = "runtime/sample.geindex";
+    desc.package_index_content = material_graph_package_base_index_content();
+    desc.material_graph_path = "source/materials/graph.materialgraph";
+    desc.material_graph_content = mirakana::serialize_material_graph(make_material_graph_package_graph());
+    desc.material_output_path = "runtime/assets/materials/graph.material";
+    desc.hlsl_output_path = "shaders/generated/graph.material_graph.hlsl";
+    desc.shader_export_output_path = "source/materials/graph.shader_export";
+    desc.source_revision = 17;
+    desc.export_id = mirakana::AssetId{700};
+    desc.export_name = "graph_shader_export";
+    desc.vertex_entry = "VSMain";
+    desc.fragment_entry = "PSMain";
+    desc.artifact_output_root = "out/material_graph_shader_exports";
+    desc.shader_cache_index_relative = "shader_cache/material_graph.gecache";
+    desc.shader_graph_execution = "ready";
+
+    mirakana::ShaderToolDescriptor dxc_tool;
+    dxc_tool.kind = mirakana::ShaderToolKind::dxc;
+    dxc_tool.executable_path = "toolchains/dxc/dxc.exe";
+    dxc_tool.version = "test";
+    dxc_tool.supports_spirv_codegen = true;
+
+    const auto result = mirakana::plan_material_graph_production_authoring(desc, dxc_tool);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(failures_contain(result.failures, "shader graph execution is not supported"));
+    MK_REQUIRE(result.changed_files.empty());
+    MK_REQUIRE(result.execution_requests.empty());
+}
+
 MK_TEST("shader tool process runner maps commands and captures output") {
     CapturingProcessRunner process_runner;
     process_runner.next_result = mirakana::ProcessResult{
