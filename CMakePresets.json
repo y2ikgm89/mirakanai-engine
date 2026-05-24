@@ -393,6 +393,12 @@
       "configuration": "Debug"
     },
     {
+      "name": "network-enet",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "network-enet",
+      "configuration": "Debug"
+    },
+    {
       "name": "cpp23-desktop-gui-eval",
       "inherits": "normalized-build-environment",
       "configurePreset": "cpp23-desktop-gui-eval",
@@ -493,6 +499,14 @@
     {
       "name": "physics-jolt",
       "configurePreset": "physics-jolt",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "network-enet",
+      "configurePreset": "network-enet",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true
