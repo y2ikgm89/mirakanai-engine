@@ -1724,6 +1724,176 @@ MK_TEST("scene renderer rejects invalid runtime sprite flipbook clips before sam
     MK_REQUIRE(result.selected_frame_index == 0);
 }
 
+MK_TEST("scene renderer advances gameplay direction runtime sprite flipbook playback") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    auto payload = make_runtime_sprite_animation_payload(sprite, material);
+    const std::vector<mirakana::RuntimeSpriteFlipbookClipDesc> clips{
+        mirakana::RuntimeSpriteFlipbookClipDesc{
+            .name = "move.east",
+            .first_frame_index = 0,
+            .frame_count = payload.frames.size(),
+            .loop = true,
+        },
+        mirakana::RuntimeSpriteFlipbookClipDesc{
+            .name = "jump.east",
+            .first_frame_index = 0,
+            .frame_count = payload.frames.size(),
+            .loop = false,
+        },
+    };
+    const std::vector<mirakana::RuntimeSpriteFlipbookDirectionSetRow> direction_sets{
+        mirakana::RuntimeSpriteFlipbookDirectionSetRow{
+            .gameplay_state = "move",
+            .direction = "east",
+            .clip_name = "move.east",
+            .playback_mode = mirakana::RuntimeSpriteFlipbookPlaybackMode::loop,
+        },
+        mirakana::RuntimeSpriteFlipbookDirectionSetRow{
+            .gameplay_state = "jump",
+            .direction = "east",
+            .clip_name = "jump.east",
+            .playback_mode = mirakana::RuntimeSpriteFlipbookPlaybackMode::clamp_to_end,
+        },
+    };
+    const std::vector<mirakana::RuntimeSpriteFlipbookEventDesc> events{
+        mirakana::RuntimeSpriteFlipbookEventDesc{
+            .clip_name = "move.east",
+            .frame_index = 1,
+            .name = "footstep",
+        },
+        mirakana::RuntimeSpriteFlipbookEventDesc{
+            .clip_name = "jump.east",
+            .frame_index = 1,
+            .name = "landing",
+        },
+    };
+    mirakana::RuntimeSpriteFlipbookState state{
+        .clip_name = "idle",
+        .elapsed_seconds = 0.5F,
+    };
+    const mirakana::RuntimeSpriteFlipbookDesc desc{
+        .frames = std::span<const mirakana::runtime::RuntimeSpriteAnimationFrame>{payload.frames},
+        .clips = std::span<const mirakana::RuntimeSpriteFlipbookClipDesc>{clips},
+    };
+    const mirakana::RuntimeSpriteFlipbookPlaybackRequest request{
+        .gameplay_state = "move",
+        .direction = "east",
+        .delta_seconds = 0.25F,
+        .direction_sets = std::span<const mirakana::RuntimeSpriteFlipbookDirectionSetRow>{direction_sets},
+        .events = std::span<const mirakana::RuntimeSpriteFlipbookEventDesc>{events},
+    };
+
+    const auto result = mirakana::advance_runtime_sprite_flipbook_playback(state, desc, request);
+
+    MK_REQUIRE(result.succeeded);
+    MK_REQUIRE(result.diagnostic.empty());
+    MK_REQUIRE(result.gameplay_state == "move");
+    MK_REQUIRE(result.direction == "east");
+    MK_REQUIRE(result.clip_name == "move.east");
+    MK_REQUIRE(result.playback_mode == mirakana::RuntimeSpriteFlipbookPlaybackMode::loop);
+    MK_REQUIRE(result.clip_changed);
+    MK_REQUIRE(result.direction_set_count == 2);
+    MK_REQUIRE(result.event_count == 2);
+    MK_REQUIRE(result.sample.succeeded);
+    MK_REQUIRE(result.sample.selected_frame_index == 1);
+    MK_REQUIRE(result.events.size() == 1);
+    MK_REQUIRE(result.events[0].clip_name == "move.east");
+    MK_REQUIRE(result.events[0].frame_index == 1);
+    MK_REQUIRE(result.events[0].name == "footstep");
+    MK_REQUIRE(state.clip_name == "move.east");
+    MK_REQUIRE(std::abs(state.elapsed_seconds - 0.25F) < 0.0001F);
+}
+
+MK_TEST("scene renderer clamps runtime sprite flipbook playback modes") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    auto payload = make_runtime_sprite_animation_payload(sprite, material);
+    const std::vector<mirakana::RuntimeSpriteFlipbookClipDesc> clips{mirakana::RuntimeSpriteFlipbookClipDesc{
+        .name = "jump.east",
+        .first_frame_index = 0,
+        .frame_count = payload.frames.size(),
+        .loop = true,
+    }};
+    const std::vector<mirakana::RuntimeSpriteFlipbookDirectionSetRow> direction_sets{
+        mirakana::RuntimeSpriteFlipbookDirectionSetRow{
+            .gameplay_state = "jump",
+            .direction = "east",
+            .clip_name = "jump.east",
+            .playback_mode = mirakana::RuntimeSpriteFlipbookPlaybackMode::clamp_to_end,
+        },
+    };
+    mirakana::RuntimeSpriteFlipbookState state{
+        .clip_name = "jump.east",
+    };
+    const mirakana::RuntimeSpriteFlipbookDesc desc{
+        .frames = std::span<const mirakana::runtime::RuntimeSpriteAnimationFrame>{payload.frames},
+        .clips = std::span<const mirakana::RuntimeSpriteFlipbookClipDesc>{clips},
+    };
+    const mirakana::RuntimeSpriteFlipbookPlaybackRequest request{
+        .gameplay_state = "jump",
+        .direction = "east",
+        .delta_seconds = 4.0F,
+        .direction_sets = std::span<const mirakana::RuntimeSpriteFlipbookDirectionSetRow>{direction_sets},
+        .events = {},
+    };
+
+    const auto result = mirakana::advance_runtime_sprite_flipbook_playback(state, desc, request);
+
+    MK_REQUIRE(result.succeeded);
+    MK_REQUIRE(result.sample.succeeded);
+    MK_REQUIRE(result.playback_mode == mirakana::RuntimeSpriteFlipbookPlaybackMode::clamp_to_end);
+    MK_REQUIRE(result.sample.clamped_to_end);
+    MK_REQUIRE(result.sample.selected_frame_index == 1);
+    MK_REQUIRE(std::abs(state.elapsed_seconds - 0.5F) < 0.0001F);
+}
+
+MK_TEST("scene renderer rejects invalid runtime sprite flipbook playback rows") {
+    const auto sprite = mirakana::AssetId::from_name("textures/player");
+    const auto material = mirakana::AssetId::from_name("materials/player");
+    auto payload = make_runtime_sprite_animation_payload(sprite, material);
+    const std::vector<mirakana::RuntimeSpriteFlipbookClipDesc> clips{mirakana::RuntimeSpriteFlipbookClipDesc{
+        .name = "move.east",
+        .first_frame_index = 0,
+        .frame_count = payload.frames.size(),
+        .loop = true,
+    }};
+    const std::vector<mirakana::RuntimeSpriteFlipbookDirectionSetRow> direction_sets{
+        mirakana::RuntimeSpriteFlipbookDirectionSetRow{
+            .gameplay_state = "move",
+            .direction = "east",
+            .clip_name = "move.east",
+            .playback_mode = mirakana::RuntimeSpriteFlipbookPlaybackMode::loop,
+        },
+    };
+    const std::vector<mirakana::RuntimeSpriteFlipbookEventDesc> events{mirakana::RuntimeSpriteFlipbookEventDesc{
+        .clip_name = "move.east",
+        .frame_index = 7,
+        .name = "footstep",
+    }};
+    mirakana::RuntimeSpriteFlipbookState state{
+        .clip_name = "move.east",
+    };
+    const mirakana::RuntimeSpriteFlipbookDesc desc{
+        .frames = std::span<const mirakana::runtime::RuntimeSpriteAnimationFrame>{payload.frames},
+        .clips = std::span<const mirakana::RuntimeSpriteFlipbookClipDesc>{clips},
+    };
+    const mirakana::RuntimeSpriteFlipbookPlaybackRequest request{
+        .gameplay_state = "move",
+        .direction = "east",
+        .delta_seconds = 0.25F,
+        .direction_sets = std::span<const mirakana::RuntimeSpriteFlipbookDirectionSetRow>{direction_sets},
+        .events = std::span<const mirakana::RuntimeSpriteFlipbookEventDesc>{events},
+    };
+
+    const auto result = mirakana::advance_runtime_sprite_flipbook_playback(state, desc, request);
+
+    MK_REQUIRE(!result.succeeded);
+    MK_REQUIRE(result.diagnostic.find("event") != std::string::npos);
+    MK_REQUIRE(result.sample.sampled_frame_count == 0);
+    MK_REQUIRE(std::abs(state.elapsed_seconds) < 0.0001F);
+}
+
 MK_TEST("scene renderer reports missing scene for animation float clip application") {
     mirakana::RuntimeSceneRenderInstance instance;
 

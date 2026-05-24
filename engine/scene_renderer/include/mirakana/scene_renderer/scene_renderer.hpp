@@ -234,6 +234,53 @@ struct RuntimeSpriteFlipbookSampleResult {
     runtime::RuntimeSpriteAnimationFrame frame;
 };
 
+enum class RuntimeSpriteFlipbookPlaybackMode : std::uint8_t {
+    use_clip_loop,
+    loop,
+    clamp_to_end,
+};
+
+struct RuntimeSpriteFlipbookDirectionSetRow {
+    std::string gameplay_state;
+    std::string direction;
+    std::string clip_name;
+    RuntimeSpriteFlipbookPlaybackMode playback_mode{RuntimeSpriteFlipbookPlaybackMode::use_clip_loop};
+};
+
+struct RuntimeSpriteFlipbookEventDesc {
+    std::string clip_name;
+    std::size_t frame_index{0};
+    std::string name;
+};
+
+struct RuntimeSpriteFlipbookEventSample {
+    std::string clip_name;
+    std::size_t frame_index{0};
+    std::string name;
+};
+
+struct RuntimeSpriteFlipbookPlaybackRequest {
+    std::string gameplay_state;
+    std::string direction;
+    float delta_seconds{0.0F};
+    std::span<const RuntimeSpriteFlipbookDirectionSetRow> direction_sets;
+    std::span<const RuntimeSpriteFlipbookEventDesc> events;
+};
+
+struct RuntimeSpriteFlipbookPlaybackResult {
+    bool succeeded{false};
+    std::string diagnostic;
+    std::string gameplay_state;
+    std::string direction;
+    std::string clip_name;
+    RuntimeSpriteFlipbookPlaybackMode playback_mode{RuntimeSpriteFlipbookPlaybackMode::use_clip_loop};
+    bool clip_changed{false};
+    std::size_t direction_set_count{0};
+    std::size_t event_count{0};
+    RuntimeSpriteFlipbookSampleResult sample;
+    std::vector<RuntimeSpriteFlipbookEventSample> events;
+};
+
 struct RuntimeMorphMeshCpuAnimationSampleResult {
     bool succeeded{false};
     std::string diagnostic;
@@ -331,6 +378,9 @@ instantiate_runtime_scene_render_data(const runtime::RuntimeAssetPackage& packag
 [[nodiscard]] RuntimeSpriteFlipbookSampleResult advance_runtime_sprite_flipbook(RuntimeSpriteFlipbookState& state,
                                                                                 const RuntimeSpriteFlipbookDesc& desc,
                                                                                 float delta_seconds);
+[[nodiscard]] RuntimeSpriteFlipbookPlaybackResult
+advance_runtime_sprite_flipbook_playback(RuntimeSpriteFlipbookState& state, const RuntimeSpriteFlipbookDesc& desc,
+                                         const RuntimeSpriteFlipbookPlaybackRequest& request);
 [[nodiscard]] RuntimeMorphMeshCpuAnimationSampleResult
 sample_runtime_morph_mesh_cpu_animation_float_clip(const runtime::RuntimeMorphMeshCpuPayload& morph,
                                                    const AnimationFloatClipSourceDocument& clip,

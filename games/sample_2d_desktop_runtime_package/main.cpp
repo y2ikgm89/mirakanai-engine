@@ -3596,11 +3596,38 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
           audio_samples_(std::move(audio_samples)), sprite_animation_(std::move(sprite_animation)),
           tilemap_(std::move(tilemap)) {
         sprite_flipbook_clips_.push_back(
-            mirakana::RuntimeSpriteFlipbookClipDesc{.name = "idle",
+            mirakana::RuntimeSpriteFlipbookClipDesc{.name = "idle.east",
                                                     .first_frame_index = 0,
                                                     .frame_count = sprite_animation_.frames.size(),
                                                     .loop = sprite_animation_.loop});
-        sprite_flipbook_state_.clip_name = "idle";
+        sprite_flipbook_clips_.push_back(
+            mirakana::RuntimeSpriteFlipbookClipDesc{.name = "jump.east",
+                                                    .first_frame_index = 0,
+                                                    .frame_count = sprite_animation_.frames.size(),
+                                                    .loop = false});
+        sprite_flipbook_direction_sets_.push_back(mirakana::RuntimeSpriteFlipbookDirectionSetRow{
+            .gameplay_state = "idle",
+            .direction = "east",
+            .clip_name = "idle.east",
+            .playback_mode = mirakana::RuntimeSpriteFlipbookPlaybackMode::loop,
+        });
+        sprite_flipbook_direction_sets_.push_back(mirakana::RuntimeSpriteFlipbookDirectionSetRow{
+            .gameplay_state = "jump",
+            .direction = "east",
+            .clip_name = "jump.east",
+            .playback_mode = mirakana::RuntimeSpriteFlipbookPlaybackMode::clamp_to_end,
+        });
+        sprite_flipbook_events_.push_back(mirakana::RuntimeSpriteFlipbookEventDesc{
+            .clip_name = "idle.east",
+            .frame_index = 1,
+            .name = "footstep",
+        });
+        sprite_flipbook_events_.push_back(mirakana::RuntimeSpriteFlipbookEventDesc{
+            .clip_name = "jump.east",
+            .frame_index = 1,
+            .name = "landing",
+        });
+        sprite_flipbook_state_.clip_name = "idle.east";
     }
 
     void on_start(mirakana::EngineContext&) override {
@@ -3686,8 +3713,10 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
             return false;
         }
 
-        player->transform.position.x += actions_.axis_value("move_x", input_state);
-        if (jump_voice_ == mirakana::null_audio_voice && actions_.action_down("jump", input_state)) {
+        const auto move_x = actions_.axis_value("move_x", input_state);
+        const auto jump_requested = actions_.action_down("jump", input_state);
+        player->transform.position.x += move_x;
+        if (jump_voice_ == mirakana::null_audio_voice && jump_requested) {
             jump_voice_ = mixer_.play(
                 mirakana::AudioVoiceDesc{.clip = audio_samples_.clip, .bus = "master", .gain = 1.0F, .looping = false});
         }
@@ -3696,13 +3725,25 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
             .frames = std::span<const mirakana::runtime::RuntimeSpriteAnimationFrame>{sprite_animation_.frames},
             .clips = std::span<const mirakana::RuntimeSpriteFlipbookClipDesc>{sprite_flipbook_clips_},
         };
-        const auto flipbook_result =
-            mirakana::advance_runtime_sprite_flipbook(sprite_flipbook_state_, flipbook_desc, 0.25F);
+        const std::string gameplay_state = jump_requested ? "jump" : "idle";
+        const std::string direction = move_x >= 0.0F ? "east" : "west";
+        const mirakana::RuntimeSpriteFlipbookPlaybackRequest playback_request{
+            .gameplay_state = gameplay_state,
+            .direction = direction,
+            .delta_seconds = 0.25F,
+            .direction_sets =
+                std::span<const mirakana::RuntimeSpriteFlipbookDirectionSetRow>{sprite_flipbook_direction_sets_},
+            .events = std::span<const mirakana::RuntimeSpriteFlipbookEventDesc>{sprite_flipbook_events_},
+        };
+        const auto playback_result =
+            mirakana::advance_runtime_sprite_flipbook_playback(sprite_flipbook_state_, flipbook_desc, playback_request);
+        const auto& flipbook_result = playback_result.sample;
         ++sprite_flipbook_ticks_;
-        sprite_flipbook_ok_ = sprite_flipbook_ok_ && flipbook_result.succeeded;
+        sprite_flipbook_ok_ = sprite_flipbook_ok_ && playback_result.succeeded && flipbook_result.succeeded;
         sprite_flipbook_frames_sampled_ += flipbook_result.sampled_frame_count;
         sprite_flipbook_selected_frame_sum_ += flipbook_result.selected_frame_index;
-        if (!flipbook_result.succeeded) {
+        sprite_flipbook_events_sampled_ += playback_result.events.size();
+        if (!playback_result.succeeded || !flipbook_result.succeeded) {
             sprite_animation_ok_ = false;
             ++sprite_flipbook_diagnostics_;
             ++sprite_animation_diagnostics_;
@@ -3840,11 +3881,14 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
                sprite_animation_selected_frame_sum_ > 0 && sprite_flipbook_ok_ &&
                sprite_flipbook_ticks_ == expected_frames && sprite_flipbook_frames_sampled_ == expected_frames &&
                sprite_flipbook_frames_applied_ == expected_frames && sprite_flipbook_selected_frame_sum_ > 0 &&
-               sprite_flipbook_diagnostics_ == 0 && audio_commands_ == 1 && audio_underruns_ == 0 &&
-               package_scene_sprites_ == 2 && tilemap_runtime_ok_ && tilemap_layers_ == 1 &&
-               tilemap_visible_layers_ == 1 && tilemap_tiles_ == 2 && tilemap_non_empty_cells_ == 3 &&
-               tilemap_sampled_cells_ == 3 && tilemap_diagnostics_ == 0 && sprite_effect_particles_ready() &&
-               scene_gameplay_bindings_.ready && gameplay_systems_.passed(expected_frames);
+               sprite_flipbook_events_sampled_ == expected_frames && sprite_flipbook_direction_sets() == 2U &&
+               sprite_flipbook_event_rows() == 2U && sprite_flipbook_playback_modes() == 2U &&
+               sprite_flipbook_gameplay_state_rows() == 2U && sprite_flipbook_diagnostics_ == 0 &&
+               audio_commands_ == 1 && audio_underruns_ == 0 && package_scene_sprites_ == 2 && tilemap_runtime_ok_ &&
+               tilemap_layers_ == 1 && tilemap_visible_layers_ == 1 && tilemap_tiles_ == 2 &&
+               tilemap_non_empty_cells_ == 3 && tilemap_sampled_cells_ == 3 && tilemap_diagnostics_ == 0 &&
+               sprite_effect_particles_ready() && scene_gameplay_bindings_.ready &&
+               gameplay_systems_.passed(expected_frames);
     }
 
     [[nodiscard]] std::uint32_t frames() const noexcept {
@@ -3992,6 +4036,61 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     }
 
     [[nodiscard]] std::size_t sprite_flipbook_diagnostics() const noexcept {
+        return sprite_flipbook_diagnostics_;
+    }
+
+    [[nodiscard]] std::size_t sprite_flipbook_direction_sets() const noexcept {
+        return sprite_flipbook_direction_sets_.size();
+    }
+
+    [[nodiscard]] std::size_t sprite_flipbook_event_rows() const noexcept {
+        return sprite_flipbook_events_.size();
+    }
+
+    [[nodiscard]] std::size_t sprite_flipbook_playback_modes() const noexcept {
+        bool has_clip_loop = false;
+        bool has_loop = false;
+        bool has_clamp = false;
+        for (const auto& row : sprite_flipbook_direction_sets_) {
+            switch (row.playback_mode) {
+            case mirakana::RuntimeSpriteFlipbookPlaybackMode::use_clip_loop:
+                has_clip_loop = true;
+                break;
+            case mirakana::RuntimeSpriteFlipbookPlaybackMode::loop:
+                has_loop = true;
+                break;
+            case mirakana::RuntimeSpriteFlipbookPlaybackMode::clamp_to_end:
+                has_clamp = true;
+                break;
+            }
+        }
+        return static_cast<std::size_t>(has_clip_loop) + static_cast<std::size_t>(has_loop) +
+               static_cast<std::size_t>(has_clamp);
+    }
+
+    [[nodiscard]] std::size_t sprite_flipbook_gameplay_state_rows() const noexcept {
+        std::size_t count = 0;
+        for (std::size_t index = 0; index < sprite_flipbook_direction_sets_.size(); ++index) {
+            bool previously_seen = false;
+            for (std::size_t previous = 0; previous < index; ++previous) {
+                if (sprite_flipbook_direction_sets_[previous].gameplay_state ==
+                    sprite_flipbook_direction_sets_[index].gameplay_state) {
+                    previously_seen = true;
+                    break;
+                }
+            }
+            if (!previously_seen) {
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_flipbook_events_sampled() const noexcept {
+        return sprite_flipbook_events_sampled_;
+    }
+
+    [[nodiscard]] std::size_t sprite_flipbook_playback_diagnostics() const noexcept {
         return sprite_flipbook_diagnostics_;
     }
 
@@ -4641,6 +4740,8 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     AudioGameplayMixerProbeResult audio_gameplay_mixer_;
     mirakana::runtime::RuntimeSpriteAnimationPayload sprite_animation_;
     std::vector<mirakana::RuntimeSpriteFlipbookClipDesc> sprite_flipbook_clips_;
+    std::vector<mirakana::RuntimeSpriteFlipbookDirectionSetRow> sprite_flipbook_direction_sets_;
+    std::vector<mirakana::RuntimeSpriteFlipbookEventDesc> sprite_flipbook_events_;
     mirakana::RuntimeSpriteFlipbookState sprite_flipbook_state_;
     mirakana::runtime::RuntimeTilemapPayload tilemap_;
     std::vector<mirakana::runtime::RuntimeSpriteEffectParticleState> sprite_effect_particles_;
@@ -4682,6 +4783,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     std::uint64_t sprite_flipbook_frames_sampled_{0};
     std::uint64_t sprite_flipbook_frames_applied_{0};
     std::uint64_t sprite_flipbook_selected_frame_sum_{0};
+    std::uint64_t sprite_flipbook_events_sampled_{0};
     std::size_t sprite_flipbook_diagnostics_{0};
     std::size_t sprite_effect_particles_spawn_events_{0};
     std::size_t sprite_effect_particles_spawned_particles_{0};
@@ -5581,6 +5683,12 @@ int main(int argc, char** argv) {
         << " sprite_flipbook_frames_applied=" << game.sprite_flipbook_frames_applied()
         << " sprite_flipbook_selected_frame_sum=" << game.sprite_flipbook_selected_frame_sum()
         << " sprite_flipbook_diagnostics=" << game.sprite_flipbook_diagnostics()
+        << " sprite_flipbook_direction_sets=" << game.sprite_flipbook_direction_sets()
+        << " sprite_flipbook_event_rows=" << game.sprite_flipbook_event_rows()
+        << " sprite_flipbook_playback_modes=" << game.sprite_flipbook_playback_modes()
+        << " sprite_flipbook_gameplay_state_rows=" << game.sprite_flipbook_gameplay_state_rows()
+        << " sprite_flipbook_events_sampled=" << game.sprite_flipbook_events_sampled()
+        << " sprite_flipbook_playback_diagnostics=" << game.sprite_flipbook_playback_diagnostics()
         << " tilemap_layers=" << game.tilemap_layers() << " tilemap_visible_layers=" << game.tilemap_visible_layers()
         << " tilemap_tiles=" << game.tilemap_tiles() << " tilemap_non_empty_cells=" << game.tilemap_non_empty_cells()
         << " tilemap_cells_sampled=" << game.tilemap_sampled_cells()
@@ -5892,6 +6000,9 @@ int main(int argc, char** argv) {
          game.sprite_animation_selected_frame_sum() == 0 || game.sprite_animation_diagnostics() != 0 ||
          game.sprite_flipbook_ticks() == 0 || game.sprite_flipbook_frames_sampled() == 0 ||
          game.sprite_flipbook_frames_applied() == 0 || game.sprite_flipbook_selected_frame_sum() == 0 ||
+         game.sprite_flipbook_direction_sets() != 2U || game.sprite_flipbook_event_rows() != 2U ||
+         game.sprite_flipbook_playback_modes() != 2U || game.sprite_flipbook_gameplay_state_rows() != 2U ||
+         game.sprite_flipbook_events_sampled() == 0 || game.sprite_flipbook_playback_diagnostics() != 0 ||
          game.sprite_flipbook_diagnostics() != 0)) {
         std::cout << "sample_2d_desktop_runtime_package required_sprite_animation_unavailable"
                   << " sprite_animation_frames_sampled=" << game.sprite_animation_frames_sampled()
@@ -5900,7 +6011,13 @@ int main(int argc, char** argv) {
                   << " sprite_flipbook_ticks=" << game.sprite_flipbook_ticks()
                   << " sprite_flipbook_frames_sampled=" << game.sprite_flipbook_frames_sampled()
                   << " sprite_flipbook_frames_applied=" << game.sprite_flipbook_frames_applied()
-                  << " sprite_flipbook_diagnostics=" << game.sprite_flipbook_diagnostics() << '\n';
+                  << " sprite_flipbook_diagnostics=" << game.sprite_flipbook_diagnostics()
+                  << " sprite_flipbook_direction_sets=" << game.sprite_flipbook_direction_sets()
+                  << " sprite_flipbook_event_rows=" << game.sprite_flipbook_event_rows()
+                  << " sprite_flipbook_playback_modes=" << game.sprite_flipbook_playback_modes()
+                  << " sprite_flipbook_gameplay_state_rows=" << game.sprite_flipbook_gameplay_state_rows()
+                  << " sprite_flipbook_events_sampled=" << game.sprite_flipbook_events_sampled()
+                  << " sprite_flipbook_playback_diagnostics=" << game.sprite_flipbook_playback_diagnostics() << '\n';
         return 10;
     }
 
