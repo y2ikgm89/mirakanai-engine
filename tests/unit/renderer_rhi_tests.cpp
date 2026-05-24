@@ -5263,6 +5263,131 @@ MK_TEST("sprite batch planner rejects unsupported atlas batching policies") {
     MK_REQUIRE(require_atlas.diagnostics[0].sprite_index == 1);
 }
 
+MK_TEST("sprite batch budget profile evaluates world ui and effects lanes") {
+    const auto world_atlas = mirakana::AssetId::from_name("textures/world-atlas");
+    const auto effects_atlas = mirakana::AssetId::from_name("textures/effects-atlas");
+    const auto textured_sprite = [](mirakana::AssetId atlas) {
+        return mirakana::SpriteCommand{
+            .transform = mirakana::Transform2D{},
+            .color = mirakana::Color{},
+            .texture =
+                mirakana::SpriteTextureRegion{
+                    .enabled = true,
+                    .atlas_page = atlas,
+                    .uv_rect = mirakana::SpriteUvRect{.u0 = 0.0F, .v0 = 0.0F, .u1 = 1.0F, .v1 = 1.0F}},
+        };
+    };
+
+    const std::vector<mirakana::SpriteCommand> world_sprites{
+        textured_sprite(world_atlas),
+        textured_sprite(world_atlas),
+        textured_sprite(world_atlas),
+    };
+    const std::vector<mirakana::SpriteCommand> ui_sprites{
+        mirakana::SpriteCommand{.transform = mirakana::Transform2D{}, .color = mirakana::Color{}},
+        mirakana::SpriteCommand{.transform = mirakana::Transform2D{}, .color = mirakana::Color{}},
+    };
+    const std::vector<mirakana::SpriteCommand> effect_sprites{
+        textured_sprite(effects_atlas),
+        textured_sprite(effects_atlas),
+    };
+    const auto world_plan = mirakana::plan_sprite_batches(world_sprites);
+    const auto ui_plan = mirakana::plan_sprite_batches(ui_sprites);
+    const auto effects_plan = mirakana::plan_sprite_batches(effect_sprites);
+    const std::array<mirakana::SpriteBatchBudgetLanePlanDesc, 3> lanes{
+        mirakana::SpriteBatchBudgetLanePlanDesc{
+            .lane = mirakana::SpriteBatchBudgetLane::world,
+            .plan = &world_plan,
+            .budget =
+                mirakana::SpriteBatchBudgetDesc{
+                    .max_sprites = 64,
+                    .max_draws = 8,
+                    .max_texture_binds = 4,
+                },
+        },
+        mirakana::SpriteBatchBudgetLanePlanDesc{
+            .lane = mirakana::SpriteBatchBudgetLane::ui,
+            .plan = &ui_plan,
+            .budget =
+                mirakana::SpriteBatchBudgetDesc{
+                    .max_sprites = 16,
+                    .max_draws = 4,
+                    .max_texture_binds = 1,
+                },
+        },
+        mirakana::SpriteBatchBudgetLanePlanDesc{
+            .lane = mirakana::SpriteBatchBudgetLane::effects,
+            .plan = &effects_plan,
+            .budget =
+                mirakana::SpriteBatchBudgetDesc{
+                    .max_sprites = 16,
+                    .max_draws = 4,
+                    .max_texture_binds = 4,
+                },
+        },
+    };
+
+    const auto profile = mirakana::plan_sprite_batch_budget_profile(lanes);
+
+    MK_REQUIRE(profile.succeeded());
+    MK_REQUIRE(profile.status == mirakana::SpriteBatchBudgetProfileStatus::ready);
+    MK_REQUIRE(profile.rows.size() == 3);
+    MK_REQUIRE(profile.total_sprites == 7);
+    MK_REQUIRE(profile.total_draws == 3);
+    MK_REQUIRE(profile.total_texture_binds == 2);
+    MK_REQUIRE(profile.rows[0].lane == mirakana::SpriteBatchBudgetLane::world);
+    MK_REQUIRE(profile.rows[0].sprite_count == 3);
+    MK_REQUIRE(profile.rows[0].draw_count == 1);
+    MK_REQUIRE(profile.rows[0].within_budget);
+    MK_REQUIRE(profile.rows[1].lane == mirakana::SpriteBatchBudgetLane::ui);
+    MK_REQUIRE(profile.rows[1].sprite_count == 2);
+    MK_REQUIRE(profile.rows[1].texture_bind_count == 0);
+    MK_REQUIRE(profile.rows[1].within_budget);
+    MK_REQUIRE(profile.rows[2].lane == mirakana::SpriteBatchBudgetLane::effects);
+    MK_REQUIRE(profile.rows[2].draw_count == 1);
+    MK_REQUIRE(profile.rows[2].texture_bind_count == 1);
+    MK_REQUIRE(profile.rows[2].within_budget);
+}
+
+MK_TEST("sprite batch budget profile fails closed when a lane exceeds draw budget") {
+    const auto atlas = mirakana::AssetId::from_name("textures/effects-atlas");
+    const std::vector<mirakana::SpriteCommand> sprites{
+        mirakana::SpriteCommand{
+            .transform = mirakana::Transform2D{},
+            .color = mirakana::Color{},
+            .texture =
+                mirakana::SpriteTextureRegion{
+                    .enabled = true,
+                    .atlas_page = atlas,
+                    .uv_rect = mirakana::SpriteUvRect{.u0 = 0.0F, .v0 = 0.0F, .u1 = 1.0F, .v1 = 1.0F}},
+        },
+        mirakana::SpriteCommand{.transform = mirakana::Transform2D{}, .color = mirakana::Color{}},
+    };
+    const auto plan = mirakana::plan_sprite_batches(sprites);
+    const std::array<mirakana::SpriteBatchBudgetLanePlanDesc, 1> lanes{
+        mirakana::SpriteBatchBudgetLanePlanDesc{
+            .lane = mirakana::SpriteBatchBudgetLane::effects,
+            .plan = &plan,
+            .budget =
+                mirakana::SpriteBatchBudgetDesc{
+                    .max_sprites = 8,
+                    .max_draws = 1,
+                    .max_texture_binds = 4,
+                },
+        },
+    };
+
+    const auto profile = mirakana::plan_sprite_batch_budget_profile(lanes);
+
+    MK_REQUIRE(!profile.succeeded());
+    MK_REQUIRE(profile.status == mirakana::SpriteBatchBudgetProfileStatus::budget_exceeded);
+    MK_REQUIRE(profile.rows.size() == 1);
+    MK_REQUIRE(!profile.rows[0].within_budget);
+    MK_REQUIRE(profile.diagnostics.size() == 1);
+    MK_REQUIRE(profile.diagnostics[0].lane == mirakana::SpriteBatchBudgetLane::effects);
+    MK_REQUIRE(profile.diagnostics[0].code == mirakana::SpriteBatchBudgetDiagnosticCode::draw_budget_exceeded);
+}
+
 MK_TEST("sprite batch planner diagnoses invalid texture metadata as untextured fallback") {
     const auto atlas = mirakana::AssetId::from_name("textures/atlas");
     const std::vector<mirakana::SpriteCommand> sprites{

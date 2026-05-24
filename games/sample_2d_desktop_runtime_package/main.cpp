@@ -41,6 +41,7 @@
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <chrono>
 #include <cmath>
@@ -120,6 +121,15 @@ constexpr const char* kGameplay2dTargetDistanceKey{"sample2d.target_distance"};
 constexpr const char* kGameplay2dVisibleTargetsKey{"sample2d.visible_targets"};
 constexpr const char* kGameplay2dAudibleTargetsKey{"sample2d.audible_targets"};
 constexpr const char* kGameplay2dTargetStateKey{"sample2d.target_state"};
+constexpr std::uint64_t kSpriteBatchWorldMaxSprites{512U};
+constexpr std::uint64_t kSpriteBatchWorldMaxDraws{64U};
+constexpr std::uint64_t kSpriteBatchWorldMaxTextureBinds{64U};
+constexpr std::uint64_t kSpriteBatchUiMaxSprites{128U};
+constexpr std::uint64_t kSpriteBatchUiMaxDraws{32U};
+constexpr std::uint64_t kSpriteBatchUiMaxTextureBinds{0U};
+constexpr std::uint64_t kSpriteBatchEffectsMaxSprites{256U};
+constexpr std::uint64_t kSpriteBatchEffectsMaxDraws{64U};
+constexpr std::uint64_t kSpriteBatchEffectsMaxTextureBinds{64U};
 
 enum class Gameplay2DSystemsStatus : std::uint8_t {
     not_started,
@@ -246,6 +256,21 @@ struct GameplayAuthoringReviewProbeResult {
         return "ready";
     case Gameplay2DSystemsStatus::diagnostics:
         return "diagnostics";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+sprite_batch_budget_profile_status_name(mirakana::SpriteBatchBudgetProfileStatus status) noexcept {
+    switch (status) {
+    case mirakana::SpriteBatchBudgetProfileStatus::ready:
+        return "ready";
+    case mirakana::SpriteBatchBudgetProfileStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::SpriteBatchBudgetProfileStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::SpriteBatchBudgetProfileStatus::budget_exceeded:
+        return "budget_exceeded";
     }
     return "unknown";
 }
@@ -3743,16 +3768,25 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         sprite_batch_plan_repeated_atlas_sprites_ += batch_plan.repeated_atlas_sprite_count;
         primary_camera_seen_ = primary_camera_seen_ || scene_submit.has_primary_camera;
 
-        update_sprite_effect_particles();
+        const auto effect_batch_plan = update_sprite_effect_particles();
 
         update_hud_text();
         const auto layout =
             mirakana::ui::solve_layout(hud_, mirakana::ui::ElementId{"hud.root"},
                                        mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 320.0F, .height = 180.0F});
         const auto submission = mirakana::ui::build_renderer_submission(hud_, layout);
-        const auto hud_submit = mirakana::submit_ui_renderer_submission(renderer_, submission,
-                                                                        mirakana::UiRenderSubmitDesc{.theme = &theme_});
+        const auto ui_submit_desc = mirakana::UiRenderSubmitDesc{.theme = &theme_};
+        std::vector<mirakana::SpriteCommand> ui_batch_sprites;
+        ui_batch_sprites.reserve(submission.boxes.size());
+        for (const auto& box : submission.boxes) {
+            if (!box.background_token.empty()) {
+                ui_batch_sprites.push_back(mirakana::make_ui_box_sprite_command(box, ui_submit_desc));
+            }
+        }
+        const auto ui_batch_plan = mirakana::plan_sprite_batches(ui_batch_sprites);
+        const auto hud_submit = mirakana::submit_ui_renderer_submission(renderer_, submission, ui_submit_desc);
         hud_boxes_submitted_ += hud_submit.boxes_submitted;
+        record_sprite_batch_budget_profile(batch_plan, ui_batch_plan, effect_batch_plan);
         renderer_.end_frame();
 
         const auto audio = mixer_.render_interleaved_float(
@@ -3795,6 +3829,12 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
                sprite_batch_plan_texture_binds_ == expected_frames &&
                sprite_batch_plan_atlas_backed_batches_ == expected_frames &&
                sprite_batch_plan_repeated_atlas_batches_ == expected_frames && sprite_batch_plan_diagnostics_ == 0 &&
+               sprite_batch_budget_ok_ && sprite_batch_budget_profiles_ready_ == expected_frames &&
+               sprite_batch_budget_rows_ == (static_cast<std::uint64_t>(expected_frames) * 3U) &&
+               sprite_batch_budget_diagnostics_ == 0 && sprite_batch_budget_world_ready_ == expected_frames &&
+               sprite_batch_budget_ui_ready_ == expected_frames &&
+               sprite_batch_budget_effects_ready_ == expected_frames && sprite_batch_budget_total_sprites_ > 0U &&
+               sprite_batch_budget_total_draws_ > 0U && sprite_batch_budget_total_texture_binds_ > 0U &&
                sprite_animation_ok_ && sprite_animation_frames_sampled_ == expected_frames &&
                sprite_animation_frames_applied_ == expected_frames && sprite_animation_diagnostics_ == 0 &&
                sprite_animation_selected_frame_sum_ > 0 && sprite_flipbook_ok_ &&
@@ -3869,6 +3909,46 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t sprite_batch_plan_diagnostics() const noexcept {
         return sprite_batch_plan_diagnostics_;
+    }
+
+    [[nodiscard]] mirakana::SpriteBatchBudgetProfileStatus sprite_batch_budget_status() const noexcept {
+        return sprite_batch_budget_status_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_budget_profiles_ready() const noexcept {
+        return sprite_batch_budget_profiles_ready_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_budget_rows() const noexcept {
+        return sprite_batch_budget_rows_;
+    }
+
+    [[nodiscard]] std::size_t sprite_batch_budget_diagnostics() const noexcept {
+        return sprite_batch_budget_diagnostics_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_budget_total_sprites() const noexcept {
+        return sprite_batch_budget_total_sprites_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_budget_total_draws() const noexcept {
+        return sprite_batch_budget_total_draws_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_budget_total_texture_binds() const noexcept {
+        return sprite_batch_budget_total_texture_binds_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_budget_world_ready() const noexcept {
+        return sprite_batch_budget_world_ready_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_budget_ui_ready() const noexcept {
+        return sprite_batch_budget_ui_ready_;
+    }
+
+    [[nodiscard]] std::uint64_t sprite_batch_budget_effects_ready() const noexcept {
+        return sprite_batch_budget_effects_ready_;
     }
 
     [[nodiscard]] std::uint64_t sprite_sort_layers_applied() const noexcept {
@@ -4446,7 +4526,71 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         };
     }
 
-    void update_sprite_effect_particles() {
+    void record_sprite_batch_budget_profile(const mirakana::SpriteBatchPlan& world_plan,
+                                            const mirakana::SpriteBatchPlan& ui_plan,
+                                            const mirakana::SpriteBatchPlan& effects_plan) {
+        const std::array<mirakana::SpriteBatchBudgetLanePlanDesc, 3> lanes{
+            mirakana::SpriteBatchBudgetLanePlanDesc{
+                .lane = mirakana::SpriteBatchBudgetLane::world,
+                .plan = &world_plan,
+                .budget =
+                    mirakana::SpriteBatchBudgetDesc{
+                        .max_sprites = kSpriteBatchWorldMaxSprites,
+                        .max_draws = kSpriteBatchWorldMaxDraws,
+                        .max_texture_binds = kSpriteBatchWorldMaxTextureBinds,
+                    },
+            },
+            mirakana::SpriteBatchBudgetLanePlanDesc{
+                .lane = mirakana::SpriteBatchBudgetLane::ui,
+                .plan = &ui_plan,
+                .budget =
+                    mirakana::SpriteBatchBudgetDesc{
+                        .max_sprites = kSpriteBatchUiMaxSprites,
+                        .max_draws = kSpriteBatchUiMaxDraws,
+                        .max_texture_binds = kSpriteBatchUiMaxTextureBinds,
+                    },
+            },
+            mirakana::SpriteBatchBudgetLanePlanDesc{
+                .lane = mirakana::SpriteBatchBudgetLane::effects,
+                .plan = &effects_plan,
+                .budget =
+                    mirakana::SpriteBatchBudgetDesc{
+                        .max_sprites = kSpriteBatchEffectsMaxSprites,
+                        .max_draws = kSpriteBatchEffectsMaxDraws,
+                        .max_texture_binds = kSpriteBatchEffectsMaxTextureBinds,
+                    },
+            },
+        };
+        const auto profile = mirakana::plan_sprite_batch_budget_profile(lanes);
+        sprite_batch_budget_status_ = profile.status;
+        sprite_batch_budget_ok_ = sprite_batch_budget_ok_ && profile.succeeded();
+        if (profile.succeeded()) {
+            ++sprite_batch_budget_profiles_ready_;
+        }
+        sprite_batch_budget_rows_ += profile.rows.size();
+        sprite_batch_budget_diagnostics_ += profile.diagnostics.size();
+        sprite_batch_budget_total_sprites_ += profile.total_sprites;
+        sprite_batch_budget_total_draws_ += profile.total_draws;
+        sprite_batch_budget_total_texture_binds_ += profile.total_texture_binds;
+        for (const auto& row : profile.rows) {
+            if (!row.within_budget) {
+                continue;
+            }
+            switch (row.lane) {
+            case mirakana::SpriteBatchBudgetLane::world:
+                ++sprite_batch_budget_world_ready_;
+                break;
+            case mirakana::SpriteBatchBudgetLane::ui:
+                ++sprite_batch_budget_ui_ready_;
+                break;
+            case mirakana::SpriteBatchBudgetLane::effects:
+                ++sprite_batch_budget_effects_ready_;
+                break;
+            }
+        }
+    }
+
+    [[nodiscard]] mirakana::SpriteBatchPlan update_sprite_effect_particles() {
         auto request = mirakana::runtime::RuntimeSpriteEffectParticleRequest{
             .templates = sprite_effect_particle_templates(),
             .active_particles = sprite_effect_particles_,
@@ -4468,7 +4612,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         sprite_effect_particles_ = plan.next_active_particles;
         if (!plan.succeeded()) {
             sprite_effect_particles_ok_ = false;
-            return;
+            return {};
         }
 
         std::vector<mirakana::SpriteCommand> commands;
@@ -4481,6 +4625,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         sprite_effect_particles_draws_ += batch_plan.draw_count;
         sprite_effect_particles_submitted_ +=
             mirakana::submit_runtime_sprite_effect_particle_rows(renderer_, plan.render_rows);
+        return batch_plan;
     }
 
     mirakana::VirtualInput& input_;
@@ -4517,6 +4662,17 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     std::uint64_t sprite_batch_plan_repeated_atlas_batches_{0};
     std::uint64_t sprite_batch_plan_repeated_atlas_sprites_{0};
     std::size_t sprite_batch_plan_diagnostics_{0};
+    mirakana::SpriteBatchBudgetProfileStatus sprite_batch_budget_status_{
+        mirakana::SpriteBatchBudgetProfileStatus::invalid_request};
+    std::uint64_t sprite_batch_budget_profiles_ready_{0};
+    std::uint64_t sprite_batch_budget_rows_{0};
+    std::size_t sprite_batch_budget_diagnostics_{0};
+    std::uint64_t sprite_batch_budget_total_sprites_{0};
+    std::uint64_t sprite_batch_budget_total_draws_{0};
+    std::uint64_t sprite_batch_budget_total_texture_binds_{0};
+    std::uint64_t sprite_batch_budget_world_ready_{0};
+    std::uint64_t sprite_batch_budget_ui_ready_{0};
+    std::uint64_t sprite_batch_budget_effects_ready_{0};
     std::uint64_t sprite_sort_layers_applied_{0};
     std::uint64_t sprite_sorted_draws_{0};
     std::uint64_t sprite_animation_frames_sampled_{0};
@@ -4551,6 +4707,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     bool audio_clip_registered_{false};
     bool primary_camera_seen_{false};
     bool sprite_batch_plan_ok_{true};
+    bool sprite_batch_budget_ok_{true};
     bool sprite_animation_ok_{true};
     bool sprite_flipbook_ok_{true};
     bool sprite_effect_particles_ok_{true};
@@ -5394,6 +5551,25 @@ int main(int argc, char** argv) {
         << " sprite_batch_plan_repeated_atlas_batches=" << game.sprite_batch_plan_repeated_atlas_batches()
         << " sprite_batch_plan_repeated_atlas_sprites=" << game.sprite_batch_plan_repeated_atlas_sprites()
         << " sprite_batch_plan_diagnostics=" << game.sprite_batch_plan_diagnostics()
+        << " sprite_batch_budget_status=" << sprite_batch_budget_profile_status_name(game.sprite_batch_budget_status())
+        << " sprite_batch_budget_profiles_ready=" << game.sprite_batch_budget_profiles_ready()
+        << " sprite_batch_budget_rows=" << game.sprite_batch_budget_rows()
+        << " sprite_batch_budget_diagnostics=" << game.sprite_batch_budget_diagnostics()
+        << " sprite_batch_budget_total_sprites=" << game.sprite_batch_budget_total_sprites()
+        << " sprite_batch_budget_total_draws=" << game.sprite_batch_budget_total_draws()
+        << " sprite_batch_budget_total_texture_binds=" << game.sprite_batch_budget_total_texture_binds()
+        << " sprite_batch_budget_world_ready=" << game.sprite_batch_budget_world_ready()
+        << " sprite_batch_budget_world_max_sprites=" << kSpriteBatchWorldMaxSprites
+        << " sprite_batch_budget_world_max_draws=" << kSpriteBatchWorldMaxDraws
+        << " sprite_batch_budget_world_max_texture_binds=" << kSpriteBatchWorldMaxTextureBinds
+        << " sprite_batch_budget_ui_ready=" << game.sprite_batch_budget_ui_ready()
+        << " sprite_batch_budget_ui_max_sprites=" << kSpriteBatchUiMaxSprites
+        << " sprite_batch_budget_ui_max_draws=" << kSpriteBatchUiMaxDraws
+        << " sprite_batch_budget_ui_max_texture_binds=" << kSpriteBatchUiMaxTextureBinds
+        << " sprite_batch_budget_effects_ready=" << game.sprite_batch_budget_effects_ready()
+        << " sprite_batch_budget_effects_max_sprites=" << kSpriteBatchEffectsMaxSprites
+        << " sprite_batch_budget_effects_max_draws=" << kSpriteBatchEffectsMaxDraws
+        << " sprite_batch_budget_effects_max_texture_binds=" << kSpriteBatchEffectsMaxTextureBinds
         << " sprite_sort_layers_applied=" << game.sprite_sort_layers_applied()
         << " sprite_sorted_draws=" << game.sprite_sorted_draws()
         << " sprite_animation_frames_sampled=" << game.sprite_animation_frames_sampled()
