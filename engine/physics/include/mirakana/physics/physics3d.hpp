@@ -677,6 +677,47 @@ struct PhysicsAdvancedController3DResult {
     PhysicsReplaySignature3D replay_after{};
 };
 
+enum class PhysicsCharacterDynamics3DReadinessStatus : std::uint8_t { ready, diagnostics, invalid_request };
+
+enum class PhysicsCharacterDynamics3DReadinessDiagnostic : std::uint8_t {
+    none,
+    invalid_controller,
+    missing_dynamic_push,
+    missing_step_up,
+    missing_walkable_slope,
+    missing_ground_probe,
+    missing_moving_platform,
+    missing_constraint,
+    replay_signature_unchanged,
+    movement_row_budget_exceeded,
+};
+
+struct PhysicsCharacterDynamics3DReadinessConfig {
+    bool require_dynamic_push{false};
+    bool require_step_up{false};
+    bool require_walkable_slope{false};
+    bool require_ground_probe{false};
+    bool require_moving_platform{false};
+    bool require_constraint{false};
+    bool require_replay_change{false};
+    std::size_t max_movement_rows{std::numeric_limits<std::size_t>::max()};
+};
+
+struct PhysicsCharacterDynamics3DReadinessReport {
+    PhysicsCharacterDynamics3DReadinessStatus status{PhysicsCharacterDynamics3DReadinessStatus::invalid_request};
+    PhysicsCharacterDynamics3DReadinessDiagnostic diagnostic{PhysicsCharacterDynamics3DReadinessDiagnostic::none};
+    std::size_t movement_rows{0};
+    std::size_t dynamic_push_rows{0};
+    std::size_t step_up_rows{0};
+    std::size_t walkable_slope_rows{0};
+    std::size_t ground_probe_rows{0};
+    std::size_t moving_platform_rows{0};
+    std::size_t applied_moving_platform_rows{0};
+    std::size_t constraint_rows{0};
+    bool replay_changed{false};
+    std::vector<PhysicsCharacterDynamics3DReadinessDiagnostic> diagnostics;
+};
+
 enum class PhysicsDeterminismGate3DStatus : std::uint8_t { passed, budget_exceeded, invalid_request };
 
 enum class PhysicsDeterminismGate3DDiagnostic : std::uint8_t {
@@ -815,6 +856,10 @@ evaluate_physics_character_dynamic_policy_3d(const PhysicsWorld3D& world,
 
 [[nodiscard]] PhysicsAdvancedController3DResult
 plan_physics_advanced_controller_3d(const PhysicsWorld3D& world, const PhysicsAdvancedController3DDesc& desc);
+
+[[nodiscard]] PhysicsCharacterDynamics3DReadinessReport
+evaluate_physics_character_dynamics_readiness_3d(const PhysicsAdvancedController3DResult& controller,
+                                                 const PhysicsCharacterDynamics3DReadinessConfig& config = {});
 
 [[nodiscard]] PhysicsDeterminismGate3DResult
 evaluate_physics_determinism_gate_3d(const PhysicsWorld3D& world, const PhysicsDeterminismGate3DConfig& config = {});

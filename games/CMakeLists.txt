@@ -2317,6 +2317,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     MK_configure_desktop_runtime_scene_shader_artifacts(
         TARGET sample_generated_desktop_runtime_3d_package
         GAME_NAME sample_generated_desktop_runtime_3d_package
+        ARTIFACT_PREFIX generated_3d_package
         SCENE_SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/sample_generated_desktop_runtime_3d_package/shaders/runtime_scene.hlsl"
         POSTPROCESS_SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/sample_generated_desktop_runtime_3d_package/shaders/runtime_postprocess.hlsl"
         UI_OVERLAY_SHADER_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/sample_generated_desktop_runtime_3d_package/shaders/runtime_ui_overlay.hlsl"

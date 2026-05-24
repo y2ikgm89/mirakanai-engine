@@ -91,7 +91,7 @@ These rows are not 1.0 blockers while `engine/agent/manifest.json.aiOperableProd
 
 | Capability id | Tier | Status | Ready boundary | Evidence before promotion |
 | --- | --- | --- | --- | --- |
-| `physics-character-dynamics-v1` | `gameplay-family-enabler` | `foundation-ready` | Conservative character/controller movement, movement-policy diagnostics, and package counters. | Slope/step/platform polish, richer push/slide policies, and full production controller tuning remain 1.x work. |
+| `physics-character-dynamics-v1` | `gameplay-family-enabler` | `implemented-1x-foundation` | Character dynamics readiness diagnostics, step/slope/platform/constraint/replay counters, and selected 3D package evidence. | Full production controller tuning, richer slide/push policy authoring, and native middleware controllers remain separate work. |
 | `physics-collision-query-v1` | `gameplay-family-enabler` | `foundation-ready` | Ray, shape, sweep, trigger, layer, and deterministic query foundations. | Oriented boxes, mesh/convex casts, editor visualization, and middleware-native query exposure remain separate. |
 | `physics-constraints-and-joints-v1` | `gameplay-family-enabler` | `implemented-1x-foundation` | Distance/fixed/linear-axis constraint rows, budgets, and package counters. | Full ragdolls, soft bodies, destructive physics, and persistent joint assets remain separate. |
 | `physics-vehicles-and-kinematics-v1` | `gameplay-family-enabler` | `implemented-1x-foundation` | Kinematic motion planning plus public simple vehicle policy and package-visible counters. | Broad vehicle dynamics, tire models, suspension tooling, and persistent vehicle simulation remain separate. |
