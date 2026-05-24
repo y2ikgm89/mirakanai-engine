@@ -33,6 +33,7 @@
 #include "mirakana/runtime_host/shader_bytecode.hpp"
 #include "mirakana/runtime_rhi/package_streaming_frame_graph.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
+#include "mirakana/runtime_scene/runtime_scene.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
@@ -762,6 +763,19 @@ runtime_gameplay_session_state_name(mirakana::runtime::RuntimeGameplaySessionSta
 }
 
 [[nodiscard]] std::string_view
+runtime_scene_gameplay_session_state_name(mirakana::runtime_scene::RuntimeSceneGameplaySessionState state) noexcept {
+    switch (state) {
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running:
+        return "running";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won:
+        return "won";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::lost:
+        return "lost";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
 runtime_session_profile_resume_status_name(mirakana::runtime::RuntimeSessionProfileResumeStatus status) noexcept {
     switch (status) {
     case mirakana::runtime::RuntimeSessionProfileResumeStatus::ready:
@@ -770,6 +784,110 @@ runtime_session_profile_resume_status_name(mirakana::runtime::RuntimeSessionProf
         return "blocked";
     }
     return "unknown";
+}
+
+struct SceneGameplayBindingProbeResult {
+    std::size_t source_rows{0U};
+    std::size_t binding_rows{0U};
+    std::size_t gameplay_systems{0U};
+    std::size_t component_rows{0U};
+    std::size_t binding_diagnostics{0U};
+    std::size_t interaction_rows{0U};
+    std::size_t interaction_diagnostics{0U};
+    mirakana::runtime_scene::RuntimeSceneGameplaySessionState final_session_state{
+        mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running};
+    bool ready{false};
+};
+
+[[nodiscard]] std::size_t count_scene_gameplay_binding_systems(
+    std::span<const mirakana::runtime_scene::RuntimeSceneGameplayBindingRow> bindings) {
+    std::vector<std::string> systems;
+    systems.reserve(bindings.size());
+    for (const auto& binding : bindings) {
+        if (!std::ranges::contains(systems, binding.gameplay_system_id)) {
+            systems.push_back(binding.gameplay_system_id);
+        }
+    }
+    return systems.size();
+}
+
+[[nodiscard]] SceneGameplayBindingProbeResult
+validate_generated_3d_scene_gameplay_bindings(const mirakana::Scene& scene) {
+    using namespace mirakana::runtime_scene;
+
+    RuntimeSceneInstance instance{
+        .scene_asset = packaged_scene_asset_id(),
+        .handle = mirakana::runtime::RuntimeAssetHandle{},
+        .scene = scene,
+        .references = {},
+    };
+    const std::vector<RuntimeSceneGameplayBindingSourceRow> source_rows{
+        {
+            .binding_id = "mesh.actor",
+            .gameplay_system_id = "generated_3d_controller",
+            .slot_id = "actor",
+            .node_name = "PackagedMesh",
+            .required_component = RuntimeSceneGameplayBindingComponentKind::mesh_renderer,
+        },
+        {
+            .binding_id = "light.key",
+            .gameplay_system_id = "generated_3d_feedback",
+            .slot_id = "light",
+            .node_name = "KeyLight",
+            .required_component = RuntimeSceneGameplayBindingComponentKind::light,
+        },
+        {
+            .binding_id = "camera.primary",
+            .gameplay_system_id = "generated_3d_camera",
+            .slot_id = "camera",
+            .node_name = "PrimaryCamera",
+            .required_component = RuntimeSceneGameplayBindingComponentKind::camera,
+        },
+    };
+    const auto bindings = resolve_runtime_scene_gameplay_bindings(instance, source_rows);
+    const std::vector<RuntimeSceneGameplayInteractionSourceRow> interactions{
+        {
+            .action_id = "mesh.light.trigger",
+            .kind = RuntimeSceneGameplayInteractionKind::trigger,
+            .source_binding_id = "mesh.actor",
+            .target_binding_id = "light.key",
+        },
+        {
+            .action_id = "camera.objective",
+            .kind = RuntimeSceneGameplayInteractionKind::objective_progress,
+            .source_binding_id = "camera.primary",
+            .objective_id = "inspect_mesh",
+            .amount = 1,
+        },
+        {
+            .action_id = "camera.win",
+            .kind = RuntimeSceneGameplayInteractionKind::win,
+            .source_binding_id = "camera.primary",
+        },
+    };
+    const auto plan = plan_runtime_scene_gameplay_interactions(
+        bindings.bindings, interactions,
+        RuntimeSceneGameplayInteractionPlanRequest{.session_state = RuntimeSceneGameplaySessionState::running});
+
+    SceneGameplayBindingProbeResult result{
+        .source_rows = source_rows.size(),
+        .binding_rows = bindings.bindings.size(),
+        .gameplay_systems = count_scene_gameplay_binding_systems(bindings.bindings),
+        .component_rows = static_cast<std::size_t>(
+            std::count_if(bindings.bindings.begin(), bindings.bindings.end(),
+                          [](const RuntimeSceneGameplayBindingRow& binding) {
+                              return binding.required_component != RuntimeSceneGameplayBindingComponentKind::none;
+                          })),
+        .binding_diagnostics = bindings.diagnostics.size(),
+        .interaction_rows = plan.rows.size(),
+        .interaction_diagnostics = plan.diagnostics.size(),
+        .final_session_state = plan.final_session_state,
+    };
+    result.ready = bindings.succeeded() && plan.succeeded() && result.source_rows == 3U && result.binding_rows == 3U &&
+                   result.gameplay_systems == 3U && result.component_rows == 3U && result.binding_diagnostics == 0U &&
+                   result.interaction_rows == 3U && result.interaction_diagnostics == 0U &&
+                   result.final_session_state == RuntimeSceneGameplaySessionState::won;
+    return result;
 }
 
 [[nodiscard]] bool gameplay_systems_near(float value, float expected, float epsilon = 0.001F) noexcept {
@@ -2970,6 +3088,9 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
         renderer_.set_clear_color(mirakana::Color{.r = 0.025F, .g = 0.035F, .b = 0.045F, .a = 1.0F});
         input_.press(mirakana::Key::right);
         gameplay_systems_.start();
+        if (scene_.has_value() && scene_->scene.has_value()) {
+            scene_gameplay_bindings_ = validate_generated_3d_scene_gameplay_bindings(*scene_->scene);
+        }
         ui_ok_ = build_hud();
         theme_.add(mirakana::UiThemeColor{.token = "hud.panel",
                                           .color = mirakana::Color{.r = 0.06F, .g = 0.08F, .b = 0.09F, .a = 1.0F}});
@@ -3681,6 +3802,43 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
         return gameplay_systems_.interaction_final_session_state();
     }
 
+    [[nodiscard]] bool gameplay_systems_scene_binding_ready() const noexcept {
+        return scene_gameplay_bindings_.ready;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_source_rows() const noexcept {
+        return scene_gameplay_bindings_.source_rows;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_rows() const noexcept {
+        return scene_gameplay_bindings_.binding_rows;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_systems() const noexcept {
+        return scene_gameplay_bindings_.gameplay_systems;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_component_rows() const noexcept {
+        return scene_gameplay_bindings_.component_rows;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_diagnostics() const noexcept {
+        return scene_gameplay_bindings_.binding_diagnostics;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_interaction_rows() const noexcept {
+        return scene_gameplay_bindings_.interaction_rows;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_interaction_diagnostics() const noexcept {
+        return scene_gameplay_bindings_.interaction_diagnostics;
+    }
+
+    [[nodiscard]] mirakana::runtime_scene::RuntimeSceneGameplaySessionState
+    gameplay_systems_scene_interaction_final_session_state() const noexcept {
+        return scene_gameplay_bindings_.final_session_state;
+    }
+
     [[nodiscard]] bool gameplay_systems_runtime_profile_resume_ready() const noexcept {
         return gameplay_systems_.runtime_profile_resume_ready();
     }
@@ -3827,6 +3985,7 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
     mirakana::UiRendererImagePalette image_palette_;
     mirakana::UiRendererGlyphAtlasPalette glyph_atlas_;
     GeneratedGameplaySystemsProbe gameplay_systems_;
+    SceneGameplayBindingProbeResult scene_gameplay_bindings_;
     std::uint32_t frames_{0};
     std::size_t scene_meshes_submitted_{0};
     std::size_t scene_materials_resolved_{0};
@@ -6258,8 +6417,12 @@ int main(int argc, char** argv) {
         evaluate_playable_3d_slice(options, result, game, package_streaming_result,
                                    runtime_package ? runtime_package->records().size() : 0U, report, renderer_quality);
     const auto gameplay_systems_status = game.gameplay_systems_status(options.max_frames);
-    const auto gameplay_systems_ready = game.gameplay_systems_passed(options.max_frames);
-    const auto gameplay_systems_diagnostics = game.gameplay_systems_diagnostics_count(options.max_frames);
+    const auto gameplay_systems_core_ready = game.gameplay_systems_passed(options.max_frames);
+    const auto gameplay_systems_ready = gameplay_systems_core_ready && (!options.require_gameplay_systems ||
+                                                                        game.gameplay_systems_scene_binding_ready());
+    const auto gameplay_systems_diagnostics =
+        game.gameplay_systems_diagnostics_count(options.max_frames) +
+        ((options.require_gameplay_systems && !game.gameplay_systems_scene_binding_ready()) ? 1U : 0U);
     const auto visible_3d = evaluate_visible_3d_production_proof(options, result, report, renderer_quality, playable_3d,
                                                                  gameplay_systems_ready);
     const auto entity_scale_culling_probe = options.require_entity_scale_culling
@@ -6643,6 +6806,16 @@ int main(int argc, char** argv) {
         << " gameplay_systems_interaction_feedback_rows=" << game.gameplay_systems_interaction_feedback_rows()
         << " gameplay_systems_interaction_final_session_state="
         << runtime_gameplay_session_state_name(game.gameplay_systems_interaction_final_session_state())
+        << " gameplay_systems_scene_binding_ready=" << (game.gameplay_systems_scene_binding_ready() ? 1 : 0)
+        << " gameplay_systems_scene_binding_source_rows=" << game.gameplay_systems_scene_binding_source_rows()
+        << " gameplay_systems_scene_binding_rows=" << game.gameplay_systems_scene_binding_rows()
+        << " gameplay_systems_scene_binding_systems=" << game.gameplay_systems_scene_binding_systems()
+        << " gameplay_systems_scene_binding_component_rows=" << game.gameplay_systems_scene_binding_component_rows()
+        << " gameplay_systems_scene_binding_diagnostics=" << game.gameplay_systems_scene_binding_diagnostics()
+        << " gameplay_systems_scene_interaction_rows=" << game.gameplay_systems_scene_interaction_rows()
+        << " gameplay_systems_scene_interaction_diagnostics=" << game.gameplay_systems_scene_interaction_diagnostics()
+        << " gameplay_systems_scene_interaction_final_session_state="
+        << runtime_scene_gameplay_session_state_name(game.gameplay_systems_scene_interaction_final_session_state())
         << " runtime_profile_resume_status="
         << runtime_session_profile_resume_status_name(game.gameplay_systems_runtime_profile_resume_status())
         << " runtime_profile_resume_ready=" << (game.gameplay_systems_runtime_profile_resume_ready() ? 1 : 0)

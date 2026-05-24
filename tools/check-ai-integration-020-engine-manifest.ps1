@@ -1575,6 +1575,7 @@ if (-not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("RuntimeSc
     -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("resolve_runtime_scene_gameplay_bindings") -or
     -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("duplicate binding ids") -or
     -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("missing required components") -or
+    -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("gameplay_systems_scene_binding_ready") -or
     -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("gameplay system scheduler") -or
     -not ([string]$gameplayBindingAuthoringSurface[0].notes).Contains("package format change")) {
     Write-Error "engine/agent/manifest.json runtime-scene-gameplay-binding-v1 authoring surface must keep binding contract and non-goals explicit"

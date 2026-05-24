@@ -785,6 +785,15 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "gameplay_systems_inventory_items_completed_rows",
                 "gameplay_systems_inventory_items_final_stacks",
                 "gameplay_systems_inventory_items_final_workbench_quantity",
+                "gameplay_systems_scene_binding_ready",
+                "gameplay_systems_scene_binding_source_rows",
+                "gameplay_systems_scene_binding_rows",
+                "gameplay_systems_scene_binding_systems",
+                "gameplay_systems_scene_binding_component_rows",
+                "gameplay_systems_scene_binding_diagnostics",
+                "gameplay_systems_scene_interaction_rows",
+                "gameplay_systems_scene_interaction_diagnostics",
+                "gameplay_systems_scene_interaction_final_session_state",
                 "gameplay_systems_construction_placement_ready",
                 "gameplay_systems_construction_placement_diagnostics",
                 "gameplay_systems_construction_placement_validation_rows",
@@ -800,6 +809,33 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_ready=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready scene gameplay bindings."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_source_rows=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact scene gameplay binding source rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_rows=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact resolved scene gameplay binding rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_systems=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact scene gameplay binding system count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_component_rows=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact component-backed scene gameplay binding rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean scene gameplay binding diagnostics."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_interaction_rows=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact scene gameplay interaction rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_interaction_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean scene gameplay interaction diagnostics."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_interaction_final_session_state=won\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove scene gameplay interaction win state."
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_status=ready\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems status."
@@ -925,6 +961,15 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_status",
             "gameplay_systems_ready",
             "gameplay_systems_diagnostics",
+            "gameplay_systems_scene_binding_ready",
+            "gameplay_systems_scene_binding_source_rows",
+            "gameplay_systems_scene_binding_rows",
+            "gameplay_systems_scene_binding_systems",
+            "gameplay_systems_scene_binding_component_rows",
+            "gameplay_systems_scene_binding_diagnostics",
+            "gameplay_systems_scene_interaction_rows",
+            "gameplay_systems_scene_interaction_diagnostics",
+            "gameplay_systems_scene_interaction_final_session_state",
             "gameplay_systems_navigation_navmesh_status",
             "gameplay_systems_navigation_navmesh_diagnostic",
             "gameplay_systems_navigation_navmesh_polygons",
@@ -987,6 +1032,33 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_diagnostics=0\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay systems diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_ready=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready scene gameplay bindings."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_source_rows=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene gameplay binding source rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_rows=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact resolved scene gameplay binding rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_systems=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene gameplay binding system count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_component_rows=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact component-backed scene gameplay binding rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_diagnostics=0\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean scene gameplay binding diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_interaction_rows=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene gameplay interaction rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_interaction_diagnostics=0\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean scene gameplay interaction diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_interaction_final_session_state=won\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove scene gameplay interaction win state."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_status=success\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove successful gameplay navmesh path."
