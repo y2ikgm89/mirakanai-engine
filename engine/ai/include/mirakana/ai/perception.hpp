@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <string>
 #include <vector>
@@ -34,6 +35,12 @@ enum class AiPerceptionBlackboardStatus : std::uint8_t {
     blackboard_write_failed,
 };
 
+enum class AiPerceptionReadinessStatus : std::uint8_t {
+    ready,
+    diagnostics,
+    invalid_snapshot,
+};
+
 enum class AiPerceptionDiagnostic : std::uint8_t {
     none,
     invalid_agent_id,
@@ -51,6 +58,18 @@ enum class AiPerceptionDiagnostic : std::uint8_t {
     snapshot_not_ready,
     invalid_blackboard_key,
     blackboard_set_failed,
+};
+
+enum class AiPerceptionReadinessDiagnostic : std::uint8_t {
+    none,
+    invalid_snapshot,
+    blackboard_projection_failed,
+    unstable_primary_target,
+    insufficient_targets,
+    missing_primary_target,
+    missing_visible_target,
+    missing_audible_target,
+    target_budget_exceeded,
 };
 
 struct AiPerceptionAgent2D {
@@ -109,10 +128,44 @@ struct AiPerceptionBlackboardResult {
     AiPerceptionDiagnostic diagnostic{AiPerceptionDiagnostic::none};
 };
 
+struct AiPerceptionReadinessConfig {
+    bool require_stable_primary_target{true};
+    bool require_blackboard_projection{true};
+    bool require_primary_target{true};
+    bool require_visible_target{false};
+    bool require_audible_target{false};
+    std::size_t min_targets{1};
+    std::size_t max_targets{std::numeric_limits<std::size_t>::max()};
+};
+
+struct AiPerceptionReadinessReport {
+    AiPerceptionReadinessStatus status{AiPerceptionReadinessStatus::invalid_snapshot};
+    AiPerceptionReadinessDiagnostic diagnostic{AiPerceptionReadinessDiagnostic::none};
+    std::vector<AiPerceptionReadinessDiagnostic> diagnostics;
+    AiPerceptionStatus snapshot_status{AiPerceptionStatus::invalid_agent};
+    AiPerceptionDiagnostic snapshot_diagnostic{AiPerceptionDiagnostic::none};
+    AiPerceptionBlackboardStatus blackboard_status{AiPerceptionBlackboardStatus::invalid_snapshot};
+    AiPerceptionDiagnostic blackboard_diagnostic{AiPerceptionDiagnostic::none};
+    bool stable_primary_target_ready{false};
+    bool blackboard_projection_ready{false};
+    std::size_t target_count{0U};
+    std::size_t visible_count{0U};
+    std::size_t audible_count{0U};
+    bool has_primary_target{false};
+    AiPerceptionEntityId primary_target_id{};
+    float primary_target_distance{0.0F};
+    bool primary_target_visible{false};
+    bool primary_target_audible{false};
+};
+
 [[nodiscard]] AiPerceptionSnapshot2D build_ai_perception_snapshot_2d(AiPerceptionRequest2D request);
 
 [[nodiscard]] AiPerceptionBlackboardResult write_ai_perception_blackboard(const AiPerceptionSnapshot2D& snapshot,
                                                                           const AiPerceptionBlackboardKeys& keys,
                                                                           BehaviorTreeBlackboard& blackboard);
+
+[[nodiscard]] AiPerceptionReadinessReport
+evaluate_ai_perception_readiness_2d(AiPerceptionRequest2D request, const AiPerceptionBlackboardKeys& keys = {},
+                                    const AiPerceptionReadinessConfig& config = {});
 
 } // namespace mirakana

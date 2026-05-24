@@ -804,6 +804,44 @@ ai_perception_blackboard_status_name(mirakana::AiPerceptionBlackboardStatus stat
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+ai_perception_readiness_status_name(mirakana::AiPerceptionReadinessStatus status) noexcept {
+    switch (status) {
+    case mirakana::AiPerceptionReadinessStatus::ready:
+        return "ready";
+    case mirakana::AiPerceptionReadinessStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::AiPerceptionReadinessStatus::invalid_snapshot:
+        return "invalid_snapshot";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+ai_perception_readiness_diagnostic_name(mirakana::AiPerceptionReadinessDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::AiPerceptionReadinessDiagnostic::none:
+        return "none";
+    case mirakana::AiPerceptionReadinessDiagnostic::invalid_snapshot:
+        return "invalid_snapshot";
+    case mirakana::AiPerceptionReadinessDiagnostic::blackboard_projection_failed:
+        return "blackboard_projection_failed";
+    case mirakana::AiPerceptionReadinessDiagnostic::unstable_primary_target:
+        return "unstable_primary_target";
+    case mirakana::AiPerceptionReadinessDiagnostic::insufficient_targets:
+        return "insufficient_targets";
+    case mirakana::AiPerceptionReadinessDiagnostic::missing_primary_target:
+        return "missing_primary_target";
+    case mirakana::AiPerceptionReadinessDiagnostic::missing_visible_target:
+        return "missing_visible_target";
+    case mirakana::AiPerceptionReadinessDiagnostic::missing_audible_target:
+        return "missing_audible_target";
+    case mirakana::AiPerceptionReadinessDiagnostic::target_budget_exceeded:
+        return "target_budget_exceeded";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::string_view behavior_tree_status_name(mirakana::BehaviorTreeStatus status) noexcept {
     switch (status) {
     case mirakana::BehaviorTreeStatus::success:
@@ -3123,7 +3161,12 @@ class Gameplay2DSystemsProbe final {
                gameplay_2d_near(navigation_agent_.position.x, 1.5F) &&
                gameplay_2d_near(navigation_agent_.position.y, 0.5F) &&
                last_perception_status_ == mirakana::AiPerceptionStatus::ready && last_perception_has_primary_target_ &&
-               last_perception_target_count_ == 1U && last_perception_visible_count_ == 1U &&
+               last_perception_target_count_ == 2U && last_perception_visible_count_ == 1U &&
+               last_perception_audible_count_ == 1U &&
+               perception_readiness_status_ == mirakana::AiPerceptionReadinessStatus::ready &&
+               perception_readiness_diagnostic_ == mirakana::AiPerceptionReadinessDiagnostic::none &&
+               perception_readiness_diagnostics_ == 0U && perception_stable_primary_target_ready_ &&
+               perception_blackboard_projection_ready_ &&
                last_blackboard_status_ == mirakana::AiPerceptionBlackboardStatus::ready && blackboard_has_target_ &&
                blackboard_needs_move_ && last_tree_result_.status == mirakana::BehaviorTreeStatus::success &&
                last_tree_result_.visited_nodes.size() == 4U && behavior_authoring_ready_ &&
@@ -3223,6 +3266,30 @@ class Gameplay2DSystemsProbe final {
 
     [[nodiscard]] std::size_t perception_visible_count() const noexcept {
         return last_perception_visible_count_;
+    }
+
+    [[nodiscard]] std::size_t perception_audible_count() const noexcept {
+        return last_perception_audible_count_;
+    }
+
+    [[nodiscard]] mirakana::AiPerceptionReadinessStatus perception_readiness_status() const noexcept {
+        return perception_readiness_status_;
+    }
+
+    [[nodiscard]] mirakana::AiPerceptionReadinessDiagnostic perception_readiness_diagnostic() const noexcept {
+        return perception_readiness_diagnostic_;
+    }
+
+    [[nodiscard]] std::size_t perception_readiness_diagnostics() const noexcept {
+        return perception_readiness_diagnostics_;
+    }
+
+    [[nodiscard]] bool perception_stable_primary_target_ready() const noexcept {
+        return perception_stable_primary_target_ready_;
+    }
+
+    [[nodiscard]] bool perception_blackboard_projection_ready() const noexcept {
+        return perception_blackboard_projection_ready_;
     }
 
     [[nodiscard]] mirakana::AiPerceptionBlackboardStatus blackboard_status() const noexcept {
@@ -3535,8 +3602,17 @@ class Gameplay2DSystemsProbe final {
                 .hearing_enabled = false,
                 .sound_radius = 0.0F,
             },
+            mirakana::AiPerceptionTarget2D{
+                .id = 2U,
+                .position = mirakana::AiPerceptionPoint2{.x = navigation_agent_.path.back().x + 3.0F,
+                                                         .y = navigation_agent_.path.back().y},
+                .radius = 0.0F,
+                .sight_enabled = false,
+                .hearing_enabled = true,
+                .sound_radius = 1.0F,
+            },
         };
-        const auto perception = mirakana::build_ai_perception_snapshot_2d(mirakana::AiPerceptionRequest2D{
+        const auto perception_request = mirakana::AiPerceptionRequest2D{
             .agent = mirakana::AiPerceptionAgent2D{.id = 100U,
                                                    .position =
                                                        mirakana::AiPerceptionPoint2{.x = navigation_agent_.position.x,
@@ -3544,26 +3620,40 @@ class Gameplay2DSystemsProbe final {
                                                    .forward = mirakana::AiPerceptionPoint2{.x = 1.0F, .y = 0.0F},
                                                    .sight_range = 4.0F,
                                                    .field_of_view_radians = 6.28318530718F,
-                                                   .hearing_range = 0.0F},
+                                                   .hearing_range = 4.0F},
             .targets = std::span<const mirakana::AiPerceptionTarget2D>{route_targets},
-        });
+        };
+        const auto perception_keys = mirakana::AiPerceptionBlackboardKeys{
+            .has_target_key = kGameplay2dHasTargetKey,
+            .target_id_key = kGameplay2dTargetIdKey,
+            .target_distance_key = kGameplay2dTargetDistanceKey,
+            .visible_count_key = kGameplay2dVisibleTargetsKey,
+            .audible_count_key = kGameplay2dAudibleTargetsKey,
+            .target_state_key = kGameplay2dTargetStateKey,
+        };
+        const auto perception = mirakana::build_ai_perception_snapshot_2d(perception_request);
+        const auto perception_readiness =
+            mirakana::evaluate_ai_perception_readiness_2d(perception_request, perception_keys,
+                                                          mirakana::AiPerceptionReadinessConfig{
+                                                              .require_visible_target = true,
+                                                              .require_audible_target = true,
+                                                              .min_targets = 2U,
+                                                              .max_targets = 2U,
+                                                          });
         last_perception_status_ = perception.status;
         last_perception_target_count_ = perception.targets.size();
         last_perception_has_primary_target_ = perception.has_primary_target;
         last_perception_visible_count_ = perception.visible_count;
+        last_perception_audible_count_ = perception.audible_count;
+        perception_readiness_status_ = perception_readiness.status;
+        perception_readiness_diagnostic_ = perception_readiness.diagnostic;
+        perception_readiness_diagnostics_ = perception_readiness.diagnostics.size();
+        perception_stable_primary_target_ready_ = perception_readiness.stable_primary_target_ready;
+        perception_blackboard_projection_ready_ = perception_readiness.blackboard_projection_ready;
 
         mirakana::BehaviorTreeBlackboard blackboard;
         const auto blackboard_result =
-            mirakana::write_ai_perception_blackboard(perception,
-                                                     mirakana::AiPerceptionBlackboardKeys{
-                                                         .has_target_key = kGameplay2dHasTargetKey,
-                                                         .target_id_key = kGameplay2dTargetIdKey,
-                                                         .target_distance_key = kGameplay2dTargetDistanceKey,
-                                                         .visible_count_key = kGameplay2dVisibleTargetsKey,
-                                                         .audible_count_key = kGameplay2dAudibleTargetsKey,
-                                                         .target_state_key = kGameplay2dTargetStateKey,
-                                                     },
-                                                     blackboard);
+            mirakana::write_ai_perception_blackboard(perception, perception_keys, blackboard);
         last_blackboard_status_ = blackboard_result.status;
         if (blackboard_result.status != mirakana::AiPerceptionBlackboardStatus::ready ||
             !blackboard.set(kGameplay2dNeedsMoveKey, mirakana::make_behavior_tree_blackboard_bool(true))) {
@@ -3625,6 +3715,10 @@ class Gameplay2DSystemsProbe final {
     mirakana::AiPerceptionStatus last_perception_status_{mirakana::AiPerceptionStatus::invalid_agent};
     mirakana::AiPerceptionBlackboardStatus last_blackboard_status_{
         mirakana::AiPerceptionBlackboardStatus::invalid_snapshot};
+    mirakana::AiPerceptionReadinessStatus perception_readiness_status_{
+        mirakana::AiPerceptionReadinessStatus::invalid_snapshot};
+    mirakana::AiPerceptionReadinessDiagnostic perception_readiness_diagnostic_{
+        mirakana::AiPerceptionReadinessDiagnostic::none};
     mirakana::BehaviorAuthoringReadinessStatus behavior_authoring_readiness_status_{
         mirakana::BehaviorAuthoringReadinessStatus::diagnostics};
     mirakana::BehaviorAuthoringReadinessDiagnostic behavior_authoring_readiness_diagnostic_{
@@ -3634,6 +3728,8 @@ class Gameplay2DSystemsProbe final {
     std::size_t navigation_path_point_count_{0U};
     std::size_t last_perception_target_count_{0U};
     std::size_t last_perception_visible_count_{0U};
+    std::size_t last_perception_audible_count_{0U};
+    std::size_t perception_readiness_diagnostics_{0U};
     std::size_t behavior_authoring_diagnostics_{0U};
     std::size_t behavior_authoring_readiness_diagnostics_{0U};
     std::size_t behavior_authoring_trace_nodes_{0U};
@@ -3695,6 +3791,8 @@ class Gameplay2DSystemsProbe final {
     std::uint32_t ticks_{0U};
     std::uint32_t physics_ticks_{0U};
     bool last_perception_has_primary_target_{false};
+    bool perception_stable_primary_target_ready_{false};
+    bool perception_blackboard_projection_ready_{false};
     bool blackboard_has_target_{false};
     bool blackboard_needs_move_{false};
     bool behavior_authoring_ready_{false};
@@ -4322,6 +4420,31 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t gameplay_systems_perception_visible_count() const noexcept {
         return gameplay_systems_.perception_visible_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_perception_audible_count() const noexcept {
+        return gameplay_systems_.perception_audible_count();
+    }
+
+    [[nodiscard]] mirakana::AiPerceptionReadinessStatus gameplay_systems_perception_readiness_status() const noexcept {
+        return gameplay_systems_.perception_readiness_status();
+    }
+
+    [[nodiscard]] mirakana::AiPerceptionReadinessDiagnostic
+    gameplay_systems_perception_readiness_diagnostic() const noexcept {
+        return gameplay_systems_.perception_readiness_diagnostic();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_perception_readiness_diagnostics() const noexcept {
+        return gameplay_systems_.perception_readiness_diagnostics();
+    }
+
+    [[nodiscard]] bool gameplay_systems_perception_stable_primary_target_ready() const noexcept {
+        return gameplay_systems_.perception_stable_primary_target_ready();
+    }
+
+    [[nodiscard]] bool gameplay_systems_perception_blackboard_projection_ready() const noexcept {
+        return gameplay_systems_.perception_blackboard_projection_ready();
     }
 
     [[nodiscard]] mirakana::AiPerceptionBlackboardStatus gameplay_systems_blackboard_status() const noexcept {
@@ -5870,6 +5993,17 @@ int main(int argc, char** argv) {
         << " gameplay_systems_perception_has_primary_target="
         << (game.gameplay_systems_perception_has_primary_target() ? 1 : 0)
         << " gameplay_systems_perception_visible_count=" << game.gameplay_systems_perception_visible_count()
+        << " gameplay_systems_perception_audible_count=" << game.gameplay_systems_perception_audible_count()
+        << " gameplay_systems_perception_readiness_status="
+        << ai_perception_readiness_status_name(game.gameplay_systems_perception_readiness_status())
+        << " gameplay_systems_perception_readiness_diagnostic="
+        << ai_perception_readiness_diagnostic_name(game.gameplay_systems_perception_readiness_diagnostic())
+        << " gameplay_systems_perception_readiness_diagnostics="
+        << game.gameplay_systems_perception_readiness_diagnostics()
+        << " gameplay_systems_perception_stable_primary_target_ready="
+        << (game.gameplay_systems_perception_stable_primary_target_ready() ? 1 : 0)
+        << " gameplay_systems_perception_blackboard_projection_ready="
+        << (game.gameplay_systems_perception_blackboard_projection_ready() ? 1 : 0)
         << " gameplay_systems_blackboard_status="
         << ai_perception_blackboard_status_name(game.gameplay_systems_blackboard_status())
         << " gameplay_systems_blackboard_has_target=" << (game.gameplay_systems_blackboard_has_target() ? 1 : 0)

@@ -1614,7 +1614,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "BehaviorTree
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "AiPerceptionAgent2D" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "AiPerceptionTarget2D" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "build_ai_perception_snapshot_2d" "AI game guidance"
-Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "write_ai_perception_blackboard" "AI game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "write_ai_perception_blackboard" "AI game guidance"; Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "evaluate_ai_perception_readiness_2d" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "BehaviorAuthoringDocument" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "BehaviorAuthoringValidationContext" "AI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAi) "validate_behavior_authoring_document" "AI game guidance"

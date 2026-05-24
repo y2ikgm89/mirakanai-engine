@@ -189,6 +189,44 @@ constexpr float k_distance_epsilon = 0.000001F;
     return AiPerceptionBlackboardResult{.status = status, .diagnostic = diagnostic};
 }
 
+void append_readiness_diagnostic(AiPerceptionReadinessReport& report,
+                                 const AiPerceptionReadinessDiagnostic diagnostic) {
+    if (diagnostic == AiPerceptionReadinessDiagnostic::none) {
+        return;
+    }
+    if (report.diagnostics.empty()) {
+        report.diagnostic = diagnostic;
+    }
+    report.diagnostics.push_back(diagnostic);
+}
+
+[[nodiscard]] bool point_matches(const AiPerceptionPoint2 lhs, const AiPerceptionPoint2 rhs) noexcept {
+    return lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
+[[nodiscard]] bool perceived_target_matches(const AiPerceivedTarget2D& lhs, const AiPerceivedTarget2D& rhs) noexcept {
+    return lhs.id == rhs.id && point_matches(lhs.position, rhs.position) && lhs.distance == rhs.distance &&
+           lhs.visible == rhs.visible && lhs.audible == rhs.audible;
+}
+
+[[nodiscard]] bool snapshot_matches(const AiPerceptionSnapshot2D& lhs, const AiPerceptionSnapshot2D& rhs) noexcept {
+    if (lhs.status != rhs.status || lhs.diagnostic != rhs.diagnostic ||
+        lhs.diagnostic_target_id != rhs.diagnostic_target_id || lhs.has_primary_target != rhs.has_primary_target ||
+        lhs.visible_count != rhs.visible_count || lhs.audible_count != rhs.audible_count ||
+        lhs.targets.size() != rhs.targets.size()) {
+        return false;
+    }
+    if (lhs.has_primary_target && !perceived_target_matches(lhs.primary_target, rhs.primary_target)) {
+        return false;
+    }
+    for (std::size_t index = 0U; index < lhs.targets.size(); ++index) {
+        if (!perceived_target_matches(lhs.targets[index], rhs.targets[index])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 AiPerceptionSnapshot2D build_ai_perception_snapshot_2d(const AiPerceptionRequest2D request) {
@@ -306,6 +344,73 @@ AiPerceptionBlackboardResult write_ai_perception_blackboard(const AiPerceptionSn
     }
 
     return make_blackboard_result(AiPerceptionBlackboardStatus::ready, AiPerceptionDiagnostic::none);
+}
+
+AiPerceptionReadinessReport evaluate_ai_perception_readiness_2d(const AiPerceptionRequest2D request,
+                                                                const AiPerceptionBlackboardKeys& keys,
+                                                                const AiPerceptionReadinessConfig& config) {
+    const auto first_snapshot = build_ai_perception_snapshot_2d(request);
+    const auto second_snapshot = build_ai_perception_snapshot_2d(request);
+
+    AiPerceptionReadinessReport report{
+        .status = AiPerceptionReadinessStatus::diagnostics,
+        .diagnostic = AiPerceptionReadinessDiagnostic::none,
+        .diagnostics = {},
+        .snapshot_status = first_snapshot.status,
+        .snapshot_diagnostic = first_snapshot.diagnostic,
+        .blackboard_status = AiPerceptionBlackboardStatus::invalid_snapshot,
+        .blackboard_diagnostic = AiPerceptionDiagnostic::none,
+        .stable_primary_target_ready = snapshot_matches(first_snapshot, second_snapshot),
+        .blackboard_projection_ready = false,
+        .target_count = first_snapshot.targets.size(),
+        .visible_count = first_snapshot.visible_count,
+        .audible_count = first_snapshot.audible_count,
+        .has_primary_target = first_snapshot.has_primary_target,
+        .primary_target_id = first_snapshot.has_primary_target ? first_snapshot.primary_target.id : 0U,
+        .primary_target_distance = first_snapshot.has_primary_target ? first_snapshot.primary_target.distance : 0.0F,
+        .primary_target_visible = first_snapshot.has_primary_target && first_snapshot.primary_target.visible,
+        .primary_target_audible = first_snapshot.has_primary_target && first_snapshot.primary_target.audible,
+    };
+
+    if (first_snapshot.status != AiPerceptionStatus::ready ||
+        first_snapshot.diagnostic != AiPerceptionDiagnostic::none) {
+        append_readiness_diagnostic(report, AiPerceptionReadinessDiagnostic::invalid_snapshot);
+        report.status = AiPerceptionReadinessStatus::invalid_snapshot;
+        return report;
+    }
+
+    BehaviorTreeBlackboard blackboard;
+    const auto blackboard_result = write_ai_perception_blackboard(first_snapshot, keys, blackboard);
+    report.blackboard_status = blackboard_result.status;
+    report.blackboard_diagnostic = blackboard_result.diagnostic;
+    report.blackboard_projection_ready = blackboard_result.status == AiPerceptionBlackboardStatus::ready &&
+                                         blackboard_result.diagnostic == AiPerceptionDiagnostic::none;
+
+    if (config.require_blackboard_projection && !report.blackboard_projection_ready) {
+        append_readiness_diagnostic(report, AiPerceptionReadinessDiagnostic::blackboard_projection_failed);
+    }
+    if (config.require_stable_primary_target && !report.stable_primary_target_ready) {
+        append_readiness_diagnostic(report, AiPerceptionReadinessDiagnostic::unstable_primary_target);
+    }
+    if (report.target_count < config.min_targets) {
+        append_readiness_diagnostic(report, AiPerceptionReadinessDiagnostic::insufficient_targets);
+    }
+    if (config.require_primary_target && !report.has_primary_target) {
+        append_readiness_diagnostic(report, AiPerceptionReadinessDiagnostic::missing_primary_target);
+    }
+    if (config.require_visible_target && report.visible_count == 0U) {
+        append_readiness_diagnostic(report, AiPerceptionReadinessDiagnostic::missing_visible_target);
+    }
+    if (config.require_audible_target && report.audible_count == 0U) {
+        append_readiness_diagnostic(report, AiPerceptionReadinessDiagnostic::missing_audible_target);
+    }
+    if (report.target_count > config.max_targets) {
+        append_readiness_diagnostic(report, AiPerceptionReadinessDiagnostic::target_budget_exceeded);
+    }
+
+    report.status =
+        report.diagnostics.empty() ? AiPerceptionReadinessStatus::ready : AiPerceptionReadinessStatus::diagnostics;
+    return report;
 }
 
 } // namespace mirakana

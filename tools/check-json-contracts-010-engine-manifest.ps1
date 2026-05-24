@@ -103,6 +103,11 @@ Assert-Properties $engine.gameCodeGuidance @("currentEditorRuntimeScenePackageVa
 Assert-Properties $engine.gameCodeGuidance @("currentSpriteAnimationFlipbook") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPackageSmoke") "engine manifest gameCodeGuidance"
 foreach ($needle in @(
+    "evaluate_ai_perception_readiness_2d",
+    "gameplay_systems_perception_readiness_status=ready",
+    "gameplay_systems_perception_readiness_diagnostics=0",
+    "gameplay_systems_perception_stable_primary_target_ready=1",
+    "gameplay_systems_perception_blackboard_projection_ready=1",
     "plan_physics_advanced_controller_3d",
     "gameplay_systems_advanced_controller_status=moved",
     "gameplay_systems_advanced_controller_platform_applied=1",

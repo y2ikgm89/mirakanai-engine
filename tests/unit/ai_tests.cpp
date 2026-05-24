@@ -955,6 +955,122 @@ MK_TEST("ai perception blackboard projection rejects invalid snapshots and keys"
     MK_REQUIRE(duplicate_key.diagnostic == mirakana::AiPerceptionDiagnostic::invalid_blackboard_key);
 }
 
+MK_TEST("ai perception readiness summarizes sight hearing stable primary and blackboard projection") {
+    const std::vector<mirakana::AiPerceptionTarget2D> targets{
+        mirakana::AiPerceptionTarget2D{.id = 10,
+                                       .position = mirakana::AiPerceptionPoint2{.x = 5.0F, .y = 0.0F},
+                                       .radius = 0.0F,
+                                       .sight_enabled = true,
+                                       .hearing_enabled = false,
+                                       .sound_radius = 0.0F},
+        mirakana::AiPerceptionTarget2D{.id = 11,
+                                       .position = mirakana::AiPerceptionPoint2{.x = 7.0F, .y = 0.0F},
+                                       .radius = 0.0F,
+                                       .sight_enabled = false,
+                                       .hearing_enabled = true,
+                                       .sound_radius = 2.0F},
+    };
+
+    const auto report = mirakana::evaluate_ai_perception_readiness_2d(
+        mirakana::AiPerceptionRequest2D{
+            .agent = mirakana::AiPerceptionAgent2D{.id = 1,
+                                                   .position = mirakana::AiPerceptionPoint2{.x = 0.0F, .y = 0.0F},
+                                                   .forward = mirakana::AiPerceptionPoint2{.x = 1.0F, .y = 0.0F},
+                                                   .sight_range = 6.0F,
+                                                   .field_of_view_radians = 1.57079632679F,
+                                                   .hearing_range = 5.0F},
+            .targets = std::span<const mirakana::AiPerceptionTarget2D>{targets},
+        },
+        mirakana::AiPerceptionBlackboardKeys{},
+        mirakana::AiPerceptionReadinessConfig{
+            .require_visible_target = true,
+            .require_audible_target = true,
+            .min_targets = 2,
+            .max_targets = 2,
+        });
+
+    MK_REQUIRE(report.status == mirakana::AiPerceptionReadinessStatus::ready);
+    MK_REQUIRE(report.diagnostic == mirakana::AiPerceptionReadinessDiagnostic::none);
+    MK_REQUIRE(report.snapshot_status == mirakana::AiPerceptionStatus::ready);
+    MK_REQUIRE(report.blackboard_status == mirakana::AiPerceptionBlackboardStatus::ready);
+    MK_REQUIRE(report.stable_primary_target_ready);
+    MK_REQUIRE(report.blackboard_projection_ready);
+    MK_REQUIRE(report.target_count == 2U);
+    MK_REQUIRE(report.visible_count == 1U);
+    MK_REQUIRE(report.audible_count == 1U);
+    MK_REQUIRE(report.has_primary_target);
+    MK_REQUIRE(report.primary_target_id == 10U);
+    MK_REQUIRE(report.primary_target_visible);
+    MK_REQUIRE(!report.primary_target_audible);
+    MK_REQUIRE(report.diagnostics.empty());
+}
+
+MK_TEST("ai perception readiness reports invalid snapshots projection failures and evidence gaps") {
+    const std::vector<mirakana::AiPerceptionTarget2D> hidden_targets{
+        mirakana::AiPerceptionTarget2D{.id = 12,
+                                       .position = mirakana::AiPerceptionPoint2{.x = 20.0F, .y = 0.0F},
+                                       .radius = 0.0F,
+                                       .sight_enabled = true,
+                                       .hearing_enabled = true,
+                                       .sound_radius = 0.0F},
+    };
+    const auto missing_evidence = mirakana::evaluate_ai_perception_readiness_2d(
+        mirakana::AiPerceptionRequest2D{
+            .agent = mirakana::AiPerceptionAgent2D{.id = 1,
+                                                   .position = mirakana::AiPerceptionPoint2{.x = 0.0F, .y = 0.0F},
+                                                   .forward = mirakana::AiPerceptionPoint2{.x = 1.0F, .y = 0.0F},
+                                                   .sight_range = 1.0F,
+                                                   .field_of_view_radians = 1.57079632679F,
+                                                   .hearing_range = 1.0F},
+            .targets = std::span<const mirakana::AiPerceptionTarget2D>{hidden_targets},
+        },
+        mirakana::AiPerceptionBlackboardKeys{},
+        mirakana::AiPerceptionReadinessConfig{.require_visible_target = true, .require_audible_target = true});
+
+    MK_REQUIRE(missing_evidence.status == mirakana::AiPerceptionReadinessStatus::diagnostics);
+    MK_REQUIRE(missing_evidence.diagnostic == mirakana::AiPerceptionReadinessDiagnostic::insufficient_targets);
+    MK_REQUIRE(
+        (missing_evidence.diagnostics == std::vector<mirakana::AiPerceptionReadinessDiagnostic>{
+                                             mirakana::AiPerceptionReadinessDiagnostic::insufficient_targets,
+                                             mirakana::AiPerceptionReadinessDiagnostic::missing_primary_target,
+                                             mirakana::AiPerceptionReadinessDiagnostic::missing_visible_target,
+                                             mirakana::AiPerceptionReadinessDiagnostic::missing_audible_target}));
+
+    const auto invalid_snapshot = mirakana::evaluate_ai_perception_readiness_2d(mirakana::AiPerceptionRequest2D{
+        .agent = mirakana::AiPerceptionAgent2D{.id = 0,
+                                               .position = mirakana::AiPerceptionPoint2{.x = 0.0F, .y = 0.0F},
+                                               .forward = mirakana::AiPerceptionPoint2{.x = 1.0F, .y = 0.0F},
+                                               .sight_range = 1.0F,
+                                               .field_of_view_radians = 1.57079632679F,
+                                               .hearing_range = 1.0F},
+        .targets = std::span<const mirakana::AiPerceptionTarget2D>{hidden_targets},
+    });
+    MK_REQUIRE(invalid_snapshot.status == mirakana::AiPerceptionReadinessStatus::invalid_snapshot);
+    MK_REQUIRE(invalid_snapshot.diagnostic == mirakana::AiPerceptionReadinessDiagnostic::invalid_snapshot);
+    MK_REQUIRE(invalid_snapshot.snapshot_diagnostic == mirakana::AiPerceptionDiagnostic::invalid_agent_id);
+
+    const auto bad_projection = mirakana::evaluate_ai_perception_readiness_2d(
+        mirakana::AiPerceptionRequest2D{
+            .agent = mirakana::AiPerceptionAgent2D{.id = 1,
+                                                   .position = mirakana::AiPerceptionPoint2{.x = 0.0F, .y = 0.0F},
+                                                   .forward = mirakana::AiPerceptionPoint2{.x = 1.0F, .y = 0.0F},
+                                                   .sight_range = 25.0F,
+                                                   .field_of_view_radians = 6.28318530718F,
+                                                   .hearing_range = 25.0F},
+            .targets = std::span<const mirakana::AiPerceptionTarget2D>{hidden_targets},
+        },
+        mirakana::AiPerceptionBlackboardKeys{.has_target_key = "perception.has_target",
+                                             .target_id_key = "perception.has_target",
+                                             .target_distance_key = "perception.target_distance",
+                                             .visible_count_key = "perception.visible_count",
+                                             .audible_count_key = "perception.audible_count",
+                                             .target_state_key = "perception.target_state"});
+    MK_REQUIRE(bad_projection.status == mirakana::AiPerceptionReadinessStatus::diagnostics);
+    MK_REQUIRE(bad_projection.diagnostic == mirakana::AiPerceptionReadinessDiagnostic::blackboard_projection_failed);
+    MK_REQUIRE(!bad_projection.blackboard_projection_ready);
+    MK_REQUIRE(bad_projection.blackboard_status == mirakana::AiPerceptionBlackboardStatus::invalid_key);
+}
+
 MK_TEST("behavior authoring document validates supported actions blackboard keys and trace order") {
     const mirakana::BehaviorAuthoringDocument document{
         .behaviors =
