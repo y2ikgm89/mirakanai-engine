@@ -357,6 +357,17 @@ Assert-ValidationTierSelection `
     -ExpectedMacos $false
 
 Assert-ValidationTierSelection `
+    -Label "optional ENet validation wrapper PR" `
+    -ChangedPath @("tools/validate-network-enet.ps1") `
+    -ExpectedWindows $true `
+    -ExpectedLinux $false `
+    -ExpectedLinuxSanitizers $false `
+    -ExpectedLinuxCoverage $false `
+    -ExpectedStaticAnalysis $false `
+    -ExpectedWindowsCpp23 $false `
+    -ExpectedMacos $false
+
+Assert-ValidationTierSelection `
     -Label "non-PR run" `
     -RunAll `
     -ExpectedWindows $true `
@@ -477,6 +488,7 @@ Assert-ContainsAll $windowsJob @(
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke",
+    "run: ./tools/validate-network-enet.ps1",
     "Save vcpkg package cache",
     "Save vcpkg installed cache",
     "steps.restore-vcpkg-package.outputs.cache-hit != 'true'",

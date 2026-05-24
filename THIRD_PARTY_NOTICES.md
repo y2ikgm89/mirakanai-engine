@@ -2,7 +2,7 @@
 
 No third-party source code, binary libraries, fonts, images, audio, models, shaders, or other distributable assets are included in the default headless build.
 
-Optional GUI/editor, asset-importer, desktop-runtime, and native physics adapter dependencies are declared in `vcpkg.json`, installed through vcpkg manifest mode, and excluded from source control. They are used only by explicit optional build lanes such as `tools/build-gui.ps1`, `tools/build-asset-importers.ps1`, desktop runtime validation/package scripts, and `tools/validate-physics-jolt.ps1`.
+Optional GUI/editor, asset-importer, desktop-runtime, native physics adapter, and network adapter dependencies are declared in `vcpkg.json`, installed through vcpkg manifest mode, and excluded from source control. They are used only by explicit optional build lanes such as `tools/build-gui.ps1`, `tools/build-asset-importers.ps1`, desktop runtime validation/package scripts, `tools/validate-physics-jolt.ps1`, and `tools/validate-network-enet.ps1`.
 
 | Name | Source | Retrieved | Version | Copyright holder | License | Modified | Distribution target |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -14,6 +14,7 @@ Optional GUI/editor, asset-importer, desktop-runtime, and native physics adapter
 | simdjson | https://github.com/simdjson/simdjson | 2026-04-27 | 4.6.3 via vcpkg baseline `3909e67a639d426ea939d9bff77bfe1d10443476` | simdjson contributors | Apache-2.0 OR MIT | No first-party modifications | Optional `asset-importers` `mirakana_tools` adapter build output through fastgltf |
 | miniaudio | https://github.com/mackron/miniaudio | 2026-04-27 | 0.11.25 via vcpkg baseline `3909e67a639d426ea939d9bff77bfe1d10443476` | David Reid and miniaudio contributors | Unlicense OR MIT-0 | No first-party modifications | Optional `asset-importers` `mirakana_tools` adapter build output |
 | Jolt Physics | https://github.com/jrouwe/JoltPhysics | 2026-05-24 | 5.5.0 via vcpkg baseline `3909e67a639d426ea939d9bff77bfe1d10443476` | Jorrit Rouwe and contributors | MIT | No first-party modifications | Optional `physics-jolt` `mirakana_physics_jolt` adapter build output |
+| ENet | https://github.com/lsalzman/enet | 2026-05-24 | 1.3.18 via vcpkg baseline `3909e67a639d426ea939d9bff77bfe1d10443476` | Lee Salzman | MIT | No first-party modifications | Optional `network-enet` `mirakana_runtime_network_enet` adapter build output |
 | Android Gradle Plugin | https://developer.android.com/build/releases/gradle-plugin | 2026-04-27 | 9.1.0 from Google Maven through the Android package template | Google LLC and Android Open Source Project contributors | Apache-2.0 | No first-party modifications | Toolchain-gated Android package build only |
 | AndroidX AppCompat | https://developer.android.com/jetpack/androidx/releases/appcompat | 2026-04-27 | 1.7.1 from Google Maven through the Android package template | Android Open Source Project contributors | Apache-2.0 | No first-party modifications | Toolchain-gated Android GameActivity package build only |
 | AndroidX Core | https://developer.android.com/jetpack/androidx/releases/core | 2026-04-27 | 1.18.0 from Google Maven through the Android package template | Android Open Source Project contributors | Apache-2.0 | No first-party modifications | Toolchain-gated Android package build only |

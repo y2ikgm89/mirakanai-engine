@@ -13,6 +13,7 @@ $publicRoots = @(
     "engine/platform/include",
     "engine/platform/sdl3/include",
     "engine/runtime/include",
+    "engine/runtime/network/enet/include",
     "engine/runtime_host/include",
     "engine/runtime_host/sdl3/include",
     "engine/runtime_rhi/include",
@@ -86,6 +87,14 @@ $forbiddenPatterns = @(
     @{
         Pattern = '\bJPH::'
         Label = "Jolt Physics public symbol"
+    },
+    @{
+        Pattern = '#\s*include\s*[<"]enet/'
+        Label = "ENet header include"
+    },
+    @{
+        Pattern = '\b(?:ENet[A-Za-z0-9_]*|enet_[A-Za-z0-9_]+)\b'
+        Label = "ENet public symbol"
     }
 )
 

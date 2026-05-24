@@ -24,7 +24,7 @@ On Windows, the default validation build uses Windows SDK system libraries for t
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, desktop GUI/editor, asset importer, and native physics middleware adapter builds use vcpkg manifest features so SDL3, GUI, importer, and Jolt dependencies remain isolated from the default build and from system-wide package locations.
+The optional desktop runtime, desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter builds use vcpkg manifest features so SDL3, GUI, importer, Jolt, and ENet dependencies remain isolated from the default build and from system-wide package locations.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -34,7 +34,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 
 The repository PowerShell wrappers configure vcpkg through official process environment variables before optional dependency steps. `VCPKG_DOWNLOADS` points at `out/vcpkg/downloads`, `VCPKG_DEFAULT_BINARY_CACHE` points at `out/vcpkg/binary-cache`, and `VCPKG_BINARY_SOURCES` is set to a file provider over that binary cache. This keeps optional dependency downloads and binary packages out of user-global locations and avoids relying on sandbox-inherited cache state.
 
-`bootstrap-deps` is the only wrapper that runs `vcpkg install`. It installs the `desktop-runtime`, `desktop-gui`, `asset-importers`, and `physics-jolt` manifest features into the repository root `vcpkg_installed` tree. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
+`bootstrap-deps` is the only wrapper that runs `vcpkg install`. It installs the `desktop-runtime`, `desktop-gui`, `asset-importers`, `physics-jolt`, and `network-enet` manifest features into the repository root `vcpkg_installed` tree. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
 
 GitHub Actions restores the gitignored `external/vcpkg` tool checkout before calling `bootstrap-deps`, then checks out the `vcpkg.json` `builtin-baseline` commit. Local hosts must still provide or restore `external/vcpkg` before running optional vcpkg-backed lanes.
 
@@ -117,6 +117,18 @@ Validate the optional Jolt lane with:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1
 ```
 
+`network-enet` in `vcpkg.json` declares:
+
+- `enet` with `default-features` disabled
+
+This feature builds the optional `MK_runtime_network_enet` adapter when `MK_ENABLE_NETWORK_ENET=ON`. The public facade stays in `MK_runtime`; ENet headers, `ENet*` symbols, socket handles, and native transport handles remain private to `engine/runtime/network/enet`. Installed SDKs built with this option advertise `Mirakanai_HAS_NETWORK_ENET` in `MirakanaiConfig.cmake` and resolve `unofficial-enet CONFIG` before loading exported Mirakanai targets. The adapter currently supports one local loopback client peer with reliable and unreliable packet rows through the first-party `IRuntimeNetworkTransportAdapter` facade. It is not external network readiness, encryption/authentication, matchmaking, NAT traversal, replication, rollback, or broad multiplayer readiness.
+
+Validate the optional ENet lane with:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1
+```
+
 ## Mobile Packaging Tooling
 
 Mobile packaging templates are present but toolchain-gated. They are not used by the default headless build.
@@ -168,6 +180,7 @@ Validated local package versions:
 | fastgltf | vcpkg baseline selected | Optional `MK_tools` glTF 2.0 source importer |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |
 | Jolt Physics | 5.5.0 | Optional `MK_physics_jolt` native physics middleware adapter |
+| ENet | 1.3.18 | Optional `MK_runtime_network_enet` loopback network transport adapter |
 | Android Gradle Plugin | 9.1.0 | Toolchain-gated Android package template |
 | Android NDK platform libraries | 28.2.13676358 | Toolchain-gated Android Vulkan surface and AAudio output adapters |
 | Android Emulator | 36.5.11 | Local Android package install/launch smoke |
@@ -177,7 +190,7 @@ Validated local package versions:
 | vcpkg-cmake | 2024-04-23 | vcpkg CMake helper |
 | vcpkg-cmake-config | 2024-05-23 | vcpkg CMake config helper |
 
-`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `desktop-gui`, `asset-importers`, and `physics-jolt` features keep their dependency shapes, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` remains the dedicated optional Jolt adapter build/test/install wrapper.
+`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `desktop-gui`, `asset-importers`, `physics-jolt`, and `network-enet` features keep their dependency shapes, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
 
 ## Official References
 
@@ -193,6 +206,8 @@ Validated local package versions:
 - miniaudio: https://miniaud.io/
 - Jolt Physics: https://github.com/jrouwe/JoltPhysics
 - Jolt Physics documentation: https://jrouwe.github.io/JoltPhysics/
+- ENet: https://github.com/lsalzman/enet
+- ENet tutorial: https://github.com/lsalzman/enet/blob/master/docs/tutorial.dox
 - Android Gradle Plugin: https://developer.android.com/build/releases/gradle-plugin
 - GameActivity: https://developer.android.com/games/agdk/game-activity/get-started
 - Android NDK AAudio: https://developer.android.com/ndk/guides/audio/aaudio/aaudio
@@ -224,6 +239,7 @@ Validated local package versions:
 - fastgltf is MIT and currently pulls `simdjson` through vcpkg.
 - miniaudio is public domain or MIT No Attribution.
 - Jolt Physics is MIT licensed and isolated to the optional `physics-jolt` adapter lane.
+- ENet is MIT licensed and isolated to the optional `network-enet` adapter lane.
 - Android Gradle Plugin, AndroidX AppCompat, AndroidX Core, and AndroidX Games Activity are Apache-2.0 licensed Android toolchain/template dependencies and are not part of the default build.
 - Apple SDK frameworks are official platform SDK dependencies and are not redistributed by this repository.
 - Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit are official Microsoft host diagnostics tools and are not redistributed by this repository.

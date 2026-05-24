@@ -29,6 +29,11 @@ if(Mirakanai_HAS_PHYSICS_JOLT)
     find_dependency(Jolt CONFIG)
 endif()
 
+set(Mirakanai_HAS_NETWORK_ENET @MK_PACKAGE_HAS_NETWORK_ENET@)
+if(Mirakanai_HAS_NETWORK_ENET)
+    find_dependency(unofficial-enet CONFIG)
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/MirakanaiTargets.cmake")
 
 check_required_components(Mirakanai)

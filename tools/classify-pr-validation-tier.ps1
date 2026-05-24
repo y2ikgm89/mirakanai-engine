@@ -42,6 +42,14 @@ function Test-RuntimeOrBuildPath {
     )
 }
 
+function Test-WindowsOnlyValidationPath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    return (
+        $Path -eq "tools/validate-network-enet.ps1"
+    )
+}
+
 function Test-SourceCodePath {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -120,6 +128,7 @@ function New-ValidationTierSelection {
     $sanitizerRelevant = $false
     $coverageRelevant = $false
     $cpp23Relevant = $false
+    $windowsOnlyValidation = $false
 
     $expandedInputPath = foreach ($rawPath in $InputPath) {
         if ($rawPath.Contains(",")) {
@@ -150,6 +159,9 @@ function New-ValidationTierSelection {
         if (Test-Cpp23RelevantPath -Path $path) {
             $cpp23Relevant = $true
         }
+        if (Test-WindowsOnlyValidationPath -Path $path) {
+            $windowsOnlyValidation = $true
+        }
         if (Test-StaticPolicyPath -Path $path) {
             $staticPolicy = $true
         }
@@ -158,7 +170,7 @@ function New-ValidationTierSelection {
     $heavyBuildLane = $ciOrWorkflow -or $runtimeOrBuild
 
     return [pscustomobject][ordered]@{
-        windows = $heavyBuildLane
+        windows = ($heavyBuildLane -or $windowsOnlyValidation)
         linux = $heavyBuildLane
         linux_sanitizers = ($ciOrWorkflow -or $sanitizerRelevant)
         linux_coverage = $coverageRelevant

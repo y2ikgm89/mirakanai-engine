@@ -290,7 +290,7 @@ foreach ($needle in @(
         Write-Error "engine manifest gameCodeGuidance.currentEditorContentBrowserImportDiagnostics missing: $needle"
     }
 }
-Assert-Properties $engine.commands @("validate", "prepareWorktree", "removeMergedWorktree", "toolchainCheck", "directToolchainCheck", "bootstrapDeps", "build", "buildGui", "buildAssetImporters", "validatePhysicsJolt", "test", "dependencyCheck", "cppStandardCheck", "evaluateCpp23", "shaderToolchainCheck", "agentContext", "agentCheck", "newGame", "ciMatrixCheck", "classifyPrValidationTier") "engine manifest commands"
+Assert-Properties $engine.commands @("validate", "prepareWorktree", "removeMergedWorktree", "toolchainCheck", "directToolchainCheck", "bootstrapDeps", "build", "buildGui", "buildAssetImporters", "validatePhysicsJolt", "validateNetworkEnet", "test", "dependencyCheck", "cppStandardCheck", "evaluateCpp23", "shaderToolchainCheck", "agentContext", "agentCheck", "newGame", "ciMatrixCheck", "classifyPrValidationTier") "engine manifest commands"
 if ($engine.commands.removeMergedWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch] [-DeleteRemoteBranch]") {
     Write-Error "engine manifest commands.removeMergedWorktree must expose the guarded post-merge worktree cleanup command"
 }
@@ -302,6 +302,23 @@ if ($engine.commands.classifyPrValidationTier -ne "pwsh -NoProfile -ExecutionPol
 }
 if ($engine.commands.validatePhysicsJolt -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1") {
     Write-Error "engine manifest commands.validatePhysicsJolt must expose pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1"
+}
+if ($engine.commands.validateNetworkEnet -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1") {
+    Write-Error "engine manifest commands.validateNetworkEnet must expose pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1"
+}
+Assert-Properties $engine.gameCodeGuidance @("currentNetworkTransportAdapter") "engine manifest gameCodeGuidance"
+$networkTransportAdapterGuidance = [string]$engine.gameCodeGuidance.currentNetworkTransportAdapter
+foreach ($networkTransportNeedle in @(
+    "RuntimeNetworkLoopbackExchangeRequest",
+    "IRuntimeNetworkTransportAdapter",
+    "execute_runtime_network_loopback_exchange",
+    "MK_runtime_network_enet",
+    "network-enet",
+    "loopback-only",
+    "native handles",
+    "broad multiplayer"
+)) {
+    Assert-ContainsText $networkTransportAdapterGuidance $networkTransportNeedle "engine manifest gameCodeGuidance.currentNetworkTransportAdapter"
 }
 if (-not $engine.commands.newGame.Contains("DesktopRuntime2DPackage")) {
     Write-Error "engine manifest commands.newGame must expose DesktopRuntime2DPackage"
@@ -327,7 +344,7 @@ foreach ($docEntrypoint in @(
     }
 }
 Assert-Properties $engine.sourcePolicy @("vcpkgManifest", "vcpkgBaseline", "vcpkgBootstrapCommand", "vcpkgConfigurePolicy", "dependencyPolicy") "engine manifest sourcePolicy"
-Assert-Properties $engine.runtimeBackendReadiness @("graphics", "audio", "ui", "physics", "platform") "engine manifest runtimeBackendReadiness"
+Assert-Properties $engine.runtimeBackendReadiness @("graphics", "audio", "ui", "physics", "network", "platform") "engine manifest runtimeBackendReadiness"
 Assert-Properties $engine.importerCapabilities @("runtimePolicy", "defaultSourceDocuments", "cookedArtifacts", "optionalDependencyFeature", "plannedExternalImporters") "engine manifest importerCapabilities"
 if ($engine.commands.bootstrapDeps -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1" -or $engine.sourcePolicy.vcpkgBootstrapCommand -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1") {
     Write-Error "engine manifest must expose pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1 as the vcpkg bootstrap command"

@@ -161,6 +161,25 @@
       }
     },
     {
+      "name": "network-enet",
+      "displayName": "ENet network transport adapter build",
+      "binaryDir": "${sourceDir}/out/build/network-enet",
+      "inherits": "normalized-configure-environment",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_ENABLE_NETWORK_ENET": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
       "name": "cpp23-desktop-gui-eval",
       "displayName": "C++23 desktop GUI verification build",
       "binaryDir": "${sourceDir}/out/build/cpp23-desktop-gui-eval",

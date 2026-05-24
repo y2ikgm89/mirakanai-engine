@@ -224,6 +224,10 @@ jobs:
         shell: pwsh
         run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke
 
+      - name: Validate optional ENet network adapter
+        shell: pwsh
+        run: ./tools/validate-network-enet.ps1
+
       - name: Save vcpkg tool checkout cache
         if: ${{ success() && !cancelled() && steps.restore-vcpkg-tool.outcome == 'success' && steps.restore-vcpkg-tool.outputs.cache-hit != 'true' }}
         continue-on-error: true
