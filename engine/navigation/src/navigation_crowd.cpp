@@ -192,6 +192,41 @@ void set_result_failure(NavigationCrowdPlanResult& result, NavigationCrowdPlanSt
     };
 }
 
+void append_readiness_diagnostic(NavigationCrowdReadinessReport& report,
+                                 NavigationCrowdReadinessDiagnostic diagnostic) {
+    if (diagnostic == NavigationCrowdReadinessDiagnostic::none) {
+        return;
+    }
+    if (report.diagnostics.empty()) {
+        report.diagnostic = diagnostic;
+    }
+    report.diagnostics.push_back(diagnostic);
+}
+
+[[nodiscard]] bool source_order_ready(std::span<const NavigationCrowdAgentPlanRow> rows) noexcept {
+    if (rows.empty()) {
+        return false;
+    }
+
+    NavigationLocalAvoidanceAgentId previous_agent_id{0};
+    for (std::size_t row_index = 0U; row_index < rows.size(); ++row_index) {
+        const auto& row = rows[row_index];
+        if (row.agent_id == 0U) {
+            return false;
+        }
+        if (row_index > 0U && row.agent_id <= previous_agent_id) {
+            return false;
+        }
+        previous_agent_id = row.agent_id;
+        for (std::size_t previous_index = 0U; previous_index < row_index; ++previous_index) {
+            if (rows[previous_index].source_index == row.source_index) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 NavigationCrowdPlanResult plan_navigation_navmesh_crowd(const NavigationCrowdPlanRequest& request) {
@@ -311,6 +346,57 @@ NavigationCrowdPlanResult plan_navigation_navmesh_crowd(const NavigationCrowdPla
     }
 
     return result;
+}
+
+NavigationCrowdReadinessReport evaluate_navigation_crowd_readiness(const NavigationCrowdPlanResult& result,
+                                                                   const NavigationCrowdReadinessConfig& config) {
+    NavigationCrowdReadinessReport report{
+        .status = NavigationCrowdReadinessStatus::diagnostics,
+        .diagnostic = NavigationCrowdReadinessDiagnostic::none,
+        .row_count = result.rows.size(),
+        .planned_agent_count = result.planned_agent_count,
+        .route_success_count = result.route_success_count,
+        .avoidance_success_count = result.avoidance_success_count,
+        .applied_neighbor_count = result.applied_neighbor_count,
+        .dynamic_obstacle_count = result.dynamic_obstacle_count,
+        .source_order_ready = source_order_ready(result.rows),
+        .diagnostics = {},
+    };
+
+    if (result.status != NavigationCrowdPlanStatus::success ||
+        result.diagnostic != NavigationCrowdPlanDiagnostic::none) {
+        append_readiness_diagnostic(report, NavigationCrowdReadinessDiagnostic::invalid_crowd_result);
+        report.status = NavigationCrowdReadinessStatus::invalid_result;
+        return report;
+    }
+    if (result.rows.empty()) {
+        append_readiness_diagnostic(report, NavigationCrowdReadinessDiagnostic::missing_rows);
+    }
+    if (config.require_source_order && !report.source_order_ready) {
+        append_readiness_diagnostic(report, NavigationCrowdReadinessDiagnostic::source_order_mismatch);
+    }
+    if (config.require_route_success && report.route_success_count == 0U) {
+        append_readiness_diagnostic(report, NavigationCrowdReadinessDiagnostic::missing_route_success);
+    }
+    if (config.require_avoidance_success && report.avoidance_success_count == 0U) {
+        append_readiness_diagnostic(report, NavigationCrowdReadinessDiagnostic::missing_avoidance_success);
+    }
+    if (config.require_applied_neighbors && report.applied_neighbor_count == 0U) {
+        append_readiness_diagnostic(report, NavigationCrowdReadinessDiagnostic::missing_applied_neighbors);
+    }
+    if (config.require_dynamic_obstacles && report.dynamic_obstacle_count == 0U) {
+        append_readiness_diagnostic(report, NavigationCrowdReadinessDiagnostic::missing_dynamic_obstacles);
+    }
+    if (report.planned_agent_count < config.min_planned_agents) {
+        append_readiness_diagnostic(report, NavigationCrowdReadinessDiagnostic::insufficient_planned_agents);
+    }
+    if (report.row_count > config.max_rows) {
+        append_readiness_diagnostic(report, NavigationCrowdReadinessDiagnostic::row_budget_exceeded);
+    }
+
+    report.status = report.diagnostics.empty() ? NavigationCrowdReadinessStatus::ready
+                                               : NavigationCrowdReadinessStatus::diagnostics;
+    return report;
 }
 
 } // namespace mirakana

@@ -2090,6 +2090,8 @@ foreach ($needle in @(
     "gameplay_systems_navigation_crowd_status=",
     "gameplay_systems_navigation_crowd_source_order_ready=",
     "gameplay_systems_navigation_crowd_applied_neighbors=",
+    "gameplay_systems_navigation_crowd_readiness_status=", "gameplay_systems_navigation_crowd_readiness_source_order_ready=",
+    "gameplay_systems_navigation_crowd_readiness_applied_neighbors=",
     "gameplay_systems_local_avoidance_status=",
     "gameplay_systems_local_avoidance_applied_neighbors=",
     "gameplay_systems_physics_policy_status=",

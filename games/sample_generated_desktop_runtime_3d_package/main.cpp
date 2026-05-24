@@ -1256,6 +1256,46 @@ navigation_crowd_plan_diagnostic_name(mirakana::NavigationCrowdPlanDiagnostic di
 }
 
 [[nodiscard]] std::string_view
+navigation_crowd_readiness_status_name(mirakana::NavigationCrowdReadinessStatus status) noexcept {
+    switch (status) {
+    case mirakana::NavigationCrowdReadinessStatus::ready:
+        return "ready";
+    case mirakana::NavigationCrowdReadinessStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::NavigationCrowdReadinessStatus::invalid_result:
+        return "invalid_result";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+navigation_crowd_readiness_diagnostic_name(mirakana::NavigationCrowdReadinessDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::NavigationCrowdReadinessDiagnostic::none:
+        return "none";
+    case mirakana::NavigationCrowdReadinessDiagnostic::invalid_crowd_result:
+        return "invalid_crowd_result";
+    case mirakana::NavigationCrowdReadinessDiagnostic::missing_rows:
+        return "missing_rows";
+    case mirakana::NavigationCrowdReadinessDiagnostic::source_order_mismatch:
+        return "source_order_mismatch";
+    case mirakana::NavigationCrowdReadinessDiagnostic::missing_route_success:
+        return "missing_route_success";
+    case mirakana::NavigationCrowdReadinessDiagnostic::missing_avoidance_success:
+        return "missing_avoidance_success";
+    case mirakana::NavigationCrowdReadinessDiagnostic::missing_applied_neighbors:
+        return "missing_applied_neighbors";
+    case mirakana::NavigationCrowdReadinessDiagnostic::missing_dynamic_obstacles:
+        return "missing_dynamic_obstacles";
+    case mirakana::NavigationCrowdReadinessDiagnostic::insufficient_planned_agents:
+        return "insufficient_planned_agents";
+    case mirakana::NavigationCrowdReadinessDiagnostic::row_budget_exceeded:
+        return "row_budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
 navigation_local_avoidance_status_name(mirakana::NavigationLocalAvoidanceStatus status) noexcept {
     switch (status) {
     case mirakana::NavigationLocalAvoidanceStatus::success:
@@ -1699,6 +1739,15 @@ class GeneratedGameplaySystemsProbe final {
                navigation_crowd_result_.avoidance_success_count == 2U &&
                navigation_crowd_result_.applied_neighbor_count == 2U &&
                navigation_crowd_result_.dynamic_obstacle_count == 2U &&
+               navigation_crowd_readiness_.status == mirakana::NavigationCrowdReadinessStatus::ready &&
+               navigation_crowd_readiness_.diagnostic == mirakana::NavigationCrowdReadinessDiagnostic::none &&
+               navigation_crowd_readiness_.diagnostics.empty() && navigation_crowd_readiness_.row_count == 2U &&
+               navigation_crowd_readiness_.planned_agent_count == 2U &&
+               navigation_crowd_readiness_.route_success_count == 2U &&
+               navigation_crowd_readiness_.avoidance_success_count == 2U &&
+               navigation_crowd_readiness_.applied_neighbor_count == 2U &&
+               navigation_crowd_readiness_.dynamic_obstacle_count == 2U &&
+               navigation_crowd_readiness_.source_order_ready &&
                local_avoidance_status_ == mirakana::NavigationLocalAvoidanceStatus::success &&
                local_avoidance_diagnostic_ == mirakana::NavigationLocalAvoidanceDiagnostic::none &&
                local_avoidance_steps_ == expected_ticks && local_avoidance_applied_neighbor_count_ == expected_ticks &&
@@ -1806,6 +1855,16 @@ class GeneratedGameplaySystemsProbe final {
             navigation_crowd_result_.avoidance_success_count == 2U,
             navigation_crowd_result_.applied_neighbor_count == 2U,
             navigation_crowd_result_.dynamic_obstacle_count == 2U,
+            navigation_crowd_readiness_.status == mirakana::NavigationCrowdReadinessStatus::ready,
+            navigation_crowd_readiness_.diagnostic == mirakana::NavigationCrowdReadinessDiagnostic::none,
+            navigation_crowd_readiness_.diagnostics.empty(),
+            navigation_crowd_readiness_.row_count == 2U,
+            navigation_crowd_readiness_.planned_agent_count == 2U,
+            navigation_crowd_readiness_.route_success_count == 2U,
+            navigation_crowd_readiness_.avoidance_success_count == 2U,
+            navigation_crowd_readiness_.applied_neighbor_count == 2U,
+            navigation_crowd_readiness_.dynamic_obstacle_count == 2U,
+            navigation_crowd_readiness_.source_order_ready,
             local_avoidance_status_ == mirakana::NavigationLocalAvoidanceStatus::success,
             local_avoidance_diagnostic_ == mirakana::NavigationLocalAvoidanceDiagnostic::none,
             local_avoidance_steps_ == expected_ticks,
@@ -2017,6 +2076,34 @@ class GeneratedGameplaySystemsProbe final {
 
     [[nodiscard]] std::size_t navigation_crowd_dynamic_obstacle_count() const noexcept {
         return navigation_crowd_result_.dynamic_obstacle_count;
+    }
+
+    [[nodiscard]] mirakana::NavigationCrowdReadinessStatus navigation_crowd_readiness_status() const noexcept {
+        return navigation_crowd_readiness_.status;
+    }
+
+    [[nodiscard]] mirakana::NavigationCrowdReadinessDiagnostic navigation_crowd_readiness_diagnostic() const noexcept {
+        return navigation_crowd_readiness_.diagnostic;
+    }
+
+    [[nodiscard]] std::size_t navigation_crowd_readiness_diagnostics_count() const noexcept {
+        return navigation_crowd_readiness_.diagnostics.size();
+    }
+
+    [[nodiscard]] std::size_t navigation_crowd_readiness_row_count() const noexcept {
+        return navigation_crowd_readiness_.row_count;
+    }
+
+    [[nodiscard]] bool navigation_crowd_readiness_source_order_ready() const noexcept {
+        return navigation_crowd_readiness_.source_order_ready;
+    }
+
+    [[nodiscard]] std::size_t navigation_crowd_readiness_applied_neighbor_count() const noexcept {
+        return navigation_crowd_readiness_.applied_neighbor_count;
+    }
+
+    [[nodiscard]] std::size_t navigation_crowd_readiness_dynamic_obstacle_count() const noexcept {
+        return navigation_crowd_readiness_.dynamic_obstacle_count;
     }
 
     [[nodiscard]] mirakana::NavigationLocalAvoidanceStatus local_avoidance_status() const noexcept {
@@ -2796,6 +2883,17 @@ class GeneratedGameplaySystemsProbe final {
             .separation_weight = 2.0F,
             .prediction_time_seconds = 0.0F,
         });
+
+        mirakana::NavigationCrowdReadinessConfig readiness_config;
+        readiness_config.require_source_order = true;
+        readiness_config.require_route_success = true;
+        readiness_config.require_avoidance_success = true;
+        readiness_config.require_applied_neighbors = true;
+        readiness_config.require_dynamic_obstacles = true;
+        readiness_config.min_planned_agents = 2U;
+        readiness_config.max_rows = 2U;
+        navigation_crowd_readiness_ =
+            mirakana::evaluate_navigation_crowd_readiness(navigation_crowd_result_, readiness_config);
     }
 
     void build_physics_movement_policy_probe() {
@@ -3406,6 +3504,7 @@ class GeneratedGameplaySystemsProbe final {
     mirakana::NavigationNavmeshPathResult navigation_navmesh_result_;
     mirakana::NavigationNavmeshReadinessReport navigation_navmesh_readiness_;
     mirakana::NavigationCrowdPlanResult navigation_crowd_result_;
+    mirakana::NavigationCrowdReadinessReport navigation_crowd_readiness_;
     mirakana::NavigationAgentState navigation_agent_;
     mirakana::BehaviorTreeTickResult last_tree_result_;
     mirakana::PhysicsBody3DId floor_body_{mirakana::null_physics_body_3d};
@@ -3934,6 +4033,36 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t gameplay_systems_navigation_crowd_dynamic_obstacles() const noexcept {
         return gameplay_systems_.navigation_crowd_dynamic_obstacle_count();
+    }
+
+    [[nodiscard]] mirakana::NavigationCrowdReadinessStatus
+    gameplay_systems_navigation_crowd_readiness_status() const noexcept {
+        return gameplay_systems_.navigation_crowd_readiness_status();
+    }
+
+    [[nodiscard]] mirakana::NavigationCrowdReadinessDiagnostic
+    gameplay_systems_navigation_crowd_readiness_diagnostic() const noexcept {
+        return gameplay_systems_.navigation_crowd_readiness_diagnostic();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_navigation_crowd_readiness_diagnostics() const noexcept {
+        return gameplay_systems_.navigation_crowd_readiness_diagnostics_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_navigation_crowd_readiness_rows() const noexcept {
+        return gameplay_systems_.navigation_crowd_readiness_row_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_navigation_crowd_readiness_source_order_ready() const noexcept {
+        return gameplay_systems_.navigation_crowd_readiness_source_order_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_navigation_crowd_readiness_applied_neighbors() const noexcept {
+        return gameplay_systems_.navigation_crowd_readiness_applied_neighbor_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_navigation_crowd_readiness_dynamic_obstacles() const noexcept {
+        return gameplay_systems_.navigation_crowd_readiness_dynamic_obstacle_count();
     }
 
     [[nodiscard]] mirakana::NavigationLocalAvoidanceStatus gameplay_systems_local_avoidance_status() const noexcept {
@@ -7230,7 +7359,22 @@ int main(int argc, char** argv) {
         << " gameplay_systems_navigation_crowd_applied_neighbors="
         << game.gameplay_systems_navigation_crowd_applied_neighbors()
         << " gameplay_systems_navigation_crowd_dynamic_obstacles="
-        << game.gameplay_systems_navigation_crowd_dynamic_obstacles() << " gameplay_systems_local_avoidance_status="
+        << game.gameplay_systems_navigation_crowd_dynamic_obstacles()
+        << " gameplay_systems_navigation_crowd_readiness_status="
+        << navigation_crowd_readiness_status_name(game.gameplay_systems_navigation_crowd_readiness_status())
+        << " gameplay_systems_navigation_crowd_readiness_diagnostic="
+        << navigation_crowd_readiness_diagnostic_name(game.gameplay_systems_navigation_crowd_readiness_diagnostic())
+        << " gameplay_systems_navigation_crowd_readiness_diagnostics="
+        << game.gameplay_systems_navigation_crowd_readiness_diagnostics()
+        << " gameplay_systems_navigation_crowd_readiness_rows="
+        << game.gameplay_systems_navigation_crowd_readiness_rows()
+        << " gameplay_systems_navigation_crowd_readiness_source_order_ready="
+        << (game.gameplay_systems_navigation_crowd_readiness_source_order_ready() ? 1 : 0)
+        << " gameplay_systems_navigation_crowd_readiness_applied_neighbors="
+        << game.gameplay_systems_navigation_crowd_readiness_applied_neighbors()
+        << " gameplay_systems_navigation_crowd_readiness_dynamic_obstacles="
+        << game.gameplay_systems_navigation_crowd_readiness_dynamic_obstacles()
+        << " gameplay_systems_local_avoidance_status="
         << navigation_local_avoidance_status_name(game.gameplay_systems_local_avoidance_status())
         << " gameplay_systems_local_avoidance_diagnostic="
         << navigation_local_avoidance_diagnostic_name(game.gameplay_systems_local_avoidance_diagnostic())

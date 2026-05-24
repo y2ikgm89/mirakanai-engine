@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <vector>
 
@@ -94,6 +95,51 @@ struct NavigationCrowdPlanResult {
     std::size_t failing_source_index{0};
 };
 
+enum class NavigationCrowdReadinessStatus : std::uint8_t {
+    ready,
+    diagnostics,
+    invalid_result,
+};
+
+enum class NavigationCrowdReadinessDiagnostic : std::uint8_t {
+    none,
+    invalid_crowd_result,
+    missing_rows,
+    source_order_mismatch,
+    missing_route_success,
+    missing_avoidance_success,
+    missing_applied_neighbors,
+    missing_dynamic_obstacles,
+    insufficient_planned_agents,
+    row_budget_exceeded,
+};
+
+struct NavigationCrowdReadinessConfig {
+    bool require_source_order{false};
+    bool require_route_success{false};
+    bool require_avoidance_success{false};
+    bool require_applied_neighbors{false};
+    bool require_dynamic_obstacles{false};
+    std::size_t min_planned_agents{0};
+    std::size_t max_rows{std::numeric_limits<std::size_t>::max()};
+};
+
+struct NavigationCrowdReadinessReport {
+    NavigationCrowdReadinessStatus status{NavigationCrowdReadinessStatus::invalid_result};
+    NavigationCrowdReadinessDiagnostic diagnostic{NavigationCrowdReadinessDiagnostic::none};
+    std::size_t row_count{0};
+    std::size_t planned_agent_count{0};
+    std::size_t route_success_count{0};
+    std::size_t avoidance_success_count{0};
+    std::size_t applied_neighbor_count{0};
+    std::size_t dynamic_obstacle_count{0};
+    bool source_order_ready{false};
+    std::vector<NavigationCrowdReadinessDiagnostic> diagnostics;
+};
+
 [[nodiscard]] NavigationCrowdPlanResult plan_navigation_navmesh_crowd(const NavigationCrowdPlanRequest& request);
+[[nodiscard]] NavigationCrowdReadinessReport
+evaluate_navigation_crowd_readiness(const NavigationCrowdPlanResult& result,
+                                    const NavigationCrowdReadinessConfig& config = {});
 
 } // namespace mirakana

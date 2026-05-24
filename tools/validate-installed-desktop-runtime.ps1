@@ -1137,6 +1137,13 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_navigation_crowd_avoidance_successes",
             "gameplay_systems_navigation_crowd_applied_neighbors",
             "gameplay_systems_navigation_crowd_dynamic_obstacles",
+            "gameplay_systems_navigation_crowd_readiness_status",
+            "gameplay_systems_navigation_crowd_readiness_diagnostic",
+            "gameplay_systems_navigation_crowd_readiness_diagnostics",
+            "gameplay_systems_navigation_crowd_readiness_rows",
+            "gameplay_systems_navigation_crowd_readiness_source_order_ready",
+            "gameplay_systems_navigation_crowd_readiness_applied_neighbors",
+            "gameplay_systems_navigation_crowd_readiness_dynamic_obstacles",
             "gameplay_systems_local_avoidance_status",
             "gameplay_systems_local_avoidance_diagnostic",
             "gameplay_systems_local_avoidance_steps",
@@ -1323,6 +1330,27 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_dynamic_obstacles=2\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh crowd dynamic obstacle propagation."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_readiness_status=ready\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready gameplay navmesh crowd readiness."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_readiness_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay navmesh crowd readiness diagnostic."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_readiness_diagnostics=0\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay navmesh crowd readiness diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_readiness_rows=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact gameplay navmesh crowd readiness row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_readiness_source_order_ready=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove deterministic gameplay navmesh crowd readiness ordering."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_readiness_applied_neighbors=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh crowd readiness applied neighbors."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_crowd_readiness_dynamic_obstacles=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay navmesh crowd readiness dynamic obstacle propagation."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_local_avoidance_status=success\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove successful gameplay local avoidance."
