@@ -61,7 +61,8 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Status | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [Networking And Multiplayer v1](2026-05-24-networking-and-multiplayer-v1.md) | Selected optional-adapter candidate row; first-party runtime network transport facade, optional `network-enet` dependency lane, ENet-backed `MK_runtime_network_enet` loopback adapter proof, dependency/legal records, docs/manifest/static synchronization, and PR evidence are in progress while `unsupportedProductionGaps = []`. |
+| Active slice (`currentActivePlan`) | [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md) | No child slice is selected. `unsupportedProductionGaps = []`, `recommendedNextPlan.id = next-production-gap-selection`, and the selected optional-adapter candidate sequence is complete. |
+| Completed slice | [Networking And Multiplayer v1](2026-05-24-networking-and-multiplayer-v1.md) | Completed selected optional network transport adapter facade and ENet loopback proof through PR #210 / merge commit `e63799b64716ad1cccb6841850edd7c5aac9d8ef`; `MK_runtime_network_enet` remains optional behind the `network-enet` vcpkg feature and does not expand generated-game multiplayer readiness. |
 | Completed slice | [Native Physics Middleware Adapter v1](2026-05-24-native-physics-middleware-adapter-v1.md) | Completed selected optional native physics middleware adapter through PR #209 / merge commit `ccce45701ff3a361977d6286affd46f0ebc16f0d`; `MK_physics_jolt` remains optional behind the `physics-jolt` vcpkg feature and does not expand the default/generated-game Physics 1.0 ready surface. |
 | Completed slice | [Scripting And Mod Sandbox v1](2026-05-24-scripting-and-mod-sandbox-v1.md) | Completed selected optional-adapter scripting facade through PR #206 / merge commit `f77bd630b6bc2eea5b0ce4c7bdd01931f114743a`; runtime execution remained dependency-free and denied filesystem/network/process/native-plugin access by default. |
 | Completed milestone | [Candidate Backlog Burn-down v1](2026-05-23-candidate-backlog-burn-down-v1.md) | Completed all seven canonical post-1.0 candidate rows through PR #204 / merge commit `971cee3f6c5b42965721c06974bc506f1b35508c`. |
@@ -81,6 +82,7 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 | AI validation remediation recipes implementation evidence | [AI Validation Remediation Recipes v1](2026-05-23-ai-validation-remediation-recipes-v1.md) |
 | AI generated game quality rubric implementation evidence | [AI Generated Game Quality Rubric v1](2026-05-23-ai-generated-game-quality-rubric-v1.md) |
 | AI Codex/Claude/Cursor agent surface implementation evidence | [AI Codex/Claude/Cursor Agent Surface v1](2026-05-23-ai-codex-claude-agent-surface-v1.md) |
+| Runtime network transport adapter implementation evidence | [Networking And Multiplayer v1](2026-05-24-networking-and-multiplayer-v1.md) |
 | Runtime scripting sandbox implementation evidence | [Scripting And Mod Sandbox v1](2026-05-24-scripting-and-mod-sandbox-v1.md) |
 | Engine gameplay interaction framework implementation evidence | [Engine Gameplay Interaction Framework v1](2026-05-23-engine-gameplay-interaction-framework-v1.md) |
 | Historical Physics 1.0 Jolt exclusion evidence (`physics-jolt-adapter-gate-v1`) | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |

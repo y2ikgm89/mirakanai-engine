@@ -6,7 +6,7 @@
 
 **Plan ID:** `networking-and-multiplayer-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Gap:** `networking-and-multiplayer-v1`
 
@@ -64,7 +64,7 @@ Large: this adds an optional third-party C++ dependency, install/export wiring, 
 - [x] Add `network-enet` vcpkg feature, `MK_ENABLE_NETWORK_ENET`, `network-enet` CMake preset, and optional `MK_runtime_network_enet` target.
 - [x] Add focused ENet tests for capabilities and reliable/unreliable loopback exchange.
 - [x] Implement ENet library lifetime, server/client host creation, loopback connection, packet send/receive, flush, disconnect cleanup, and packet destruction through private ENet implementation code.
-- [ ] Run `tools/validate-network-enet.ps1` on a dependency-ready host or hosted Windows CI.
+- [x] Run `tools/validate-network-enet.ps1` on a dependency-ready host or hosted Windows CI.
 
 ## Task 3: Dependency / Install / Boundary Surface
 
@@ -84,10 +84,10 @@ Large: this adds an optional third-party C++ dependency, install/export wiring, 
 - [x] RED evidence: new facade tests failed before validation fixes for unsupported multi-peer requests and facade payload ceiling enforcement.
 - [x] GREEN evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_network_transport_adapter_tests`.
 - [x] GREEN evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_network_transport_adapter_tests`.
-- [ ] Focused static checks listed in this plan pass.
-- [ ] `tools/validate-network-enet.ps1` either passes on a dependency-ready host/CI or records the exact local dependency-bootstrap blocker.
-- [ ] `tools/validate.ps1` passes for the coherent runtime/build/public-contract slice or records a concrete blocker.
-- [ ] Candidate branch is committed, pushed, and opened as a PR with validation evidence.
+- [x] Focused static checks listed in this plan pass.
+- [x] `tools/validate-network-enet.ps1` either passes on a dependency-ready host/CI or records the exact local dependency-bootstrap blocker.
+- [x] `tools/validate.ps1` passes for the coherent runtime/build/public-contract slice or records a concrete blocker.
+- [x] Candidate branch is committed, pushed, and opened as a PR with validation evidence.
 
 ## Validation Evidence
 
@@ -97,3 +97,7 @@ Large: this adds an optional third-party C++ dependency, install/export wiring, 
 - Local `tools/validate-network-enet.ps1` therefore failed at CMake configure with missing `unofficial-enet`; hosted Windows CI now runs the wrapper after `tools/bootstrap-deps.ps1`.
 - `cpp-reviewer` found two facade issues: multi-peer public request shape was not fail-closed, and payload validation used only adapter capability. Both were fixed with regression tests.
 - `agent-surface-auditor` found missing dependency/legal/plan/manifest/static sync; those surfaces are updated in this slice.
+- Focused static checks passed before PR publication: `tools/check-dependency-policy.ps1`, `tools/check-validation-recipe-runner.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, and `git diff --check`.
+- Full local validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, log `out/validation-logs/validate-20260524-141930-36696`, with 78/78 CTest tests passed.
+- Hosted PR #210 evidence passed at head `0dc4d2a84857f2698d29b0b3ed21133d04c6688d`: PR Gate, Windows MSVC, Windows C++23 Release Evaluation, Agent Static Guards, Linux CMake, Linux Clang ASan/UBSan, Linux Coverage, Full Repository Static Analysis shards, macOS Metal CMake, iOS Simulator smoke, and CodeQL. The Windows MSVC lane ran `tools/validate-network-enet.ps1` after dependency bootstrap and validated the optional ENet adapter.
+- PR #210 merged into `main` as merge commit `e63799b64716ad1cccb6841850edd7c5aac9d8ef`; `git log origin/main..0dc4d2a84857f2698d29b0b3ed21133d04c6688d` was empty after fetch, proving the PR head is contained in `origin/main`.
