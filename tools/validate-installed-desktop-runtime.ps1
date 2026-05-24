@@ -221,6 +221,7 @@ $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
 $requiresD3d12Renderer = @($SmokeArgs) -contains "--require-d3d12-renderer"
 $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
+$requiresProceduralGeneration = @($SmokeArgs) -contains "--require-procedural-generation"
 $requiresWorldRegionStreaming = @($SmokeArgs) -contains "--require-world-region-streaming"
 $requiresEntityScaleCulling = @($SmokeArgs) -contains "--require-entity-scale-culling"
 $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-sandbox-policy"
@@ -907,13 +908,23 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "gameplay_systems_construction_placement_validation_rows",
                 "gameplay_systems_construction_placement_intent_rows",
                 "gameplay_systems_construction_placement_intent_accepted_rows",
-                "gameplay_systems_construction_placement_intent_occupied_cells"
+                "gameplay_systems_construction_placement_intent_occupied_cells",
+                "gameplay_systems_procedural_generation_ready",
+                "gameplay_systems_procedural_generation_diagnostics",
+                "gameplay_systems_procedural_generation_rows",
+                "gameplay_systems_procedural_generation_object_rows",
+                "gameplay_systems_procedural_generation_encounter_rows",
+                "gameplay_systems_procedural_generation_loot_rows",
+                "gameplay_systems_procedural_generation_replay_hash",
+                "gameplay_systems_procedural_generation_package_visible_rows",
+                "gameplay_systems_procedural_generation_placement_intent_rows",
+                "gameplay_systems_procedural_generation_placement_intent_accepted_rows"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
             }
         }
-        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready")) {
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready", "gameplay_systems_procedural_generation_ready")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
@@ -1136,6 +1147,26 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_construction_placement_intent_occupied_cells=2\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact construction placement occupied cells."
+        }
+    }
+    if ($requiresProceduralGeneration) {
+        foreach ($expected in @{
+                "gameplay_systems_procedural_generation_ready" = "1"
+                "gameplay_systems_procedural_generation_diagnostics" = "0"
+                "gameplay_systems_procedural_generation_rows" = "3"
+                "gameplay_systems_procedural_generation_object_rows" = "1"
+                "gameplay_systems_procedural_generation_encounter_rows" = "1"
+                "gameplay_systems_procedural_generation_loot_rows" = "1"
+                "gameplay_systems_procedural_generation_package_visible_rows" = "1"
+                "gameplay_systems_procedural_generation_placement_intent_rows" = "1"
+                "gameplay_systems_procedural_generation_placement_intent_accepted_rows" = "1"
+            }.GetEnumerator()) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+                Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact procedural generation field: $($expected.Key)=$($expected.Value)."
+            }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_procedural_generation_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact procedural generation replay hash evidence."
         }
     }
 }

@@ -1932,3 +1932,18 @@ foreach ($check in $worldStreamingLargeSceneSurfaceChecks) {
         Assert-ContainsText $fileText $needle "$($check.Path) world streaming large scene contract"
     }
 }
+
+$proceduralGenerationSurfaceChecks = @(
+    @{ Path = "docs/current-capabilities.md"; Needles = @("Runtime Procedural Generation Seed/Plan Contract v1", "plan_runtime_procedural_generation", "gameplay_systems_procedural_generation_placement_intent_accepted_rows", "content-quality claims") },
+    @{ Path = "docs/ai-game-development.md"; Needles = @("plan_runtime_procedural_generation", "gameplay_systems_procedural_generation_package_visible_rows", "gameplay_systems_procedural_generation_placement_intent_accepted_rows", "content-quality claims") },
+    @{ Path = ".agents/skills/gameengine-game-development/SKILL.md"; Needles = @("plan_runtime_procedural_generation", "gameplay_systems_procedural_generation_rows", "content quality") },
+    @{ Path = ".claude/skills/gameengine-game-development/SKILL.md"; Needles = @("plan_runtime_procedural_generation", "gameplay_systems_procedural_generation_rows", "content quality") },
+    @{ Path = ".cursor/skills/gameengine-game-development/SKILL.md"; Needles = @("plan_runtime_procedural_generation", "gameplay_systems_procedural_generation_rows", "content quality") },
+    @{ Path = "tools/validate-installed-desktop-runtime.ps1"; Needles = @("requiresProceduralGeneration", "gameplay_systems_procedural_generation_placement_intent_accepted_rows", "exact procedural generation") }
+)
+foreach ($check in $proceduralGenerationSurfaceChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $fileText $needle "$($check.Path) procedural generation package evidence contract"
+    }
+}
