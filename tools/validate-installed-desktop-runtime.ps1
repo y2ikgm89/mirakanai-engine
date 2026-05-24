@@ -841,6 +841,12 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "gameplay_systems_perception_targets",
                 "gameplay_systems_perception_has_primary_target",
                 "gameplay_systems_perception_visible_count",
+                "gameplay_systems_perception_audible_count",
+                "gameplay_systems_perception_readiness_status",
+                "gameplay_systems_perception_readiness_diagnostic",
+                "gameplay_systems_perception_readiness_diagnostics",
+                "gameplay_systems_perception_stable_primary_target_ready",
+                "gameplay_systems_perception_blackboard_projection_ready",
                 "gameplay_systems_blackboard_status",
                 "gameplay_systems_blackboard_has_target",
                 "gameplay_systems_blackboard_needs_move",
@@ -1011,11 +1017,29 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_status=ready\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay perception status."
         }
-        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_targets=1\b") {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_targets=2\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay perception target count."
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_visible_count=1\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay visible target count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_audible_count=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay audible target count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_readiness_status=ready\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay perception readiness status."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_readiness_diagnostic=none\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean gameplay perception readiness diagnostic."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_readiness_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove zero gameplay perception readiness diagnostics."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_stable_primary_target_ready=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove stable gameplay perception primary target."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_perception_blackboard_projection_ready=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay perception blackboard projection."
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_blackboard_status=ready\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay blackboard status."
