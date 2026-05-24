@@ -6,7 +6,7 @@
 
 **Plan ID:** `scripting-and-mod-sandbox-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Gap:** `scripting-and-mod-sandbox-v1`
 

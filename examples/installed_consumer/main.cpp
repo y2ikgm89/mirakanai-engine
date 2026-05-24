@@ -7,6 +7,10 @@
 #include "mirakana/tools/asset_import_adapters.hpp"
 #include "mirakana/ui/ui.hpp"
 
+#if defined(MIRAKANAI_INSTALLED_CONSUMER_HAS_PHYSICS_JOLT)
+#include "mirakana/physics/jolt/jolt_physics_adapter.hpp"
+#endif
+
 #include <iostream>
 
 class InstalledConsumerApp final : public mirakana::GameApp {
@@ -36,10 +40,21 @@ int main() {
 
     const auto result = runner.run(app, mirakana::RunConfig{1, 1.0 / 60.0});
     constexpr auto version = mirakana::engine_version();
+#if defined(MIRAKANAI_INSTALLED_CONSUMER_HAS_PHYSICS_JOLT)
+    const auto physics_capabilities = mirakana::jolt_physics_3d_adapter_capabilities();
+    const bool physics_jolt_ready = physics_capabilities.available && !physics_capabilities.exposes_native_handles;
+#else
+    const bool physics_jolt_ready = true;
+#endif
     std::cout << version.name << " installed-consumer frames=" << result.frames_run
               << " ui_elements=" << document.size()
               << " external_importers=" << (mirakana::external_asset_importers_available() ? "available" : "disabled")
+#if defined(MIRAKANAI_INSTALLED_CONSUMER_HAS_PHYSICS_JOLT)
+              << " physics_jolt=" << (physics_jolt_ready ? "available" : "invalid")
+#else
+              << " physics_jolt=disabled"
+#endif
               << '\n';
 
-    return added_root && result.frames_run == 1 && document.size() == 1 ? 0 : 1;
+    return added_root && result.frames_run == 1 && document.size() == 1 && physics_jolt_ready ? 0 : 1;
 }

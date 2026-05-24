@@ -671,6 +671,11 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("directToolchainCh
 } elseif ($manifest.commands.directToolchainCheck -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake") {
     Write-Error "engine/agent/manifest.json commands.directToolchainCheck must be pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake"
 }
+if (-not $manifest.commands.PSObject.Properties.Name.Contains("validatePhysicsJolt")) {
+    Write-Error "engine/agent/manifest.json commands missing required command: validatePhysicsJolt"
+} elseif ($manifest.commands.validatePhysicsJolt -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1") {
+    Write-Error "engine/agent/manifest.json commands.validatePhysicsJolt must expose tools/validate-physics-jolt.ps1"
+}
 Assert-ContainsText $manifestRaw "VCPKG_MANIFEST_INSTALL=OFF" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "CMakeCache.txt" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "officialAiToolDocs" "engine/agent/manifest.json"
@@ -928,7 +933,7 @@ Assert-ContainsText ([string]$physicsBackendAdapterDecision[0].status) "excluded
 Assert-ContainsText ([string]$physicsBackendAdapterDecision[0].decision) "first-party MK_physics only" "engine/agent/manifest.json aiOperableProductionLoop physicsBackendAdapterDecisions"
 Assert-ContainsText ([string]$physicsBackendAdapterDecision[0].futureGate) "vcpkg manifest feature" "engine/agent/manifest.json aiOperableProductionLoop physicsBackendAdapterDecisions"
 Assert-ContainsText ([string]$physicsBackendAdapterDecision[0].futureGate) "fail-closed capability negotiation" "engine/agent/manifest.json aiOperableProductionLoop physicsBackendAdapterDecisions"
-foreach ($claim in @("Jolt runtime integration", "native physics handles in public gameplay APIs", "middleware type exposure")) {
+foreach ($claim in @("Jolt runtime integration in the default/generated-game 1.0 ready surface", "native physics handles in public gameplay APIs", "middleware type exposure")) {
     if (@($physicsBackendAdapterDecision[0].unsupportedClaims) -notcontains $claim) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop physicsBackendAdapterDecisions unsupportedClaims missing: $claim"
     }

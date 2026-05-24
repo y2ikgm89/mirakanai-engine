@@ -10,6 +10,7 @@
     "buildGui": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
     "desktopGameRuntime": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
     "buildAssetImporters": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
+    "validatePhysicsJolt": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1",
     "package": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1",
     "packageDesktopRuntime": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1",
     "registerRuntimePackageFiles": "tools/register-runtime-package-files.ps1 -GameManifest games/\u003Cgame_name\u003E/game.agent.json -RuntimePackageFile \u003Cgame-relative-file\u003E",

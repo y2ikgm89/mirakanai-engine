@@ -21,6 +21,15 @@
         "sdl3"
       ]
     },
+    "physics-jolt": {
+      "description": "Optional native 3D physics middleware adapter dependency for Jolt Physics.",
+      "dependencies": [
+        {
+          "name": "joltphysics",
+          "default-features": false
+        }
+      ]
+    },
     "desktop-gui": {
       "description": "Desktop window/editor dependencies for SDL3 and Dear ImGui integration.",
       "dependencies": [

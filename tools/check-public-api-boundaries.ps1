@@ -27,6 +27,7 @@ $publicRoots = @(
     "engine/assets/include",
     "engine/audio/include",
     "engine/physics/include",
+    "engine/physics/jolt/include",
     "engine/navigation/include",
     "engine/animation/include",
     "engine/tools/include",
@@ -77,6 +78,14 @@ $forbiddenPatterns = @(
     @{
         Pattern = '\b(?:ANativeWindow|JNIEnv|jobject|AAudio[A-Za-z0-9_]*)\b'
         Label = "native Android symbol"
+    },
+    @{
+        Pattern = '#\s*include\s*[<"]Jolt/'
+        Label = "Jolt Physics header include"
+    },
+    @{
+        Pattern = '\bJPH::'
+        Label = "Jolt Physics public symbol"
     }
 )
 
