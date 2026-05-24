@@ -1746,6 +1746,46 @@ void append_character_dynamics_readiness_diagnostic(PhysicsCharacterDynamics3DRe
     }
 }
 
+void append_collision_query_readiness_diagnostic(PhysicsCollisionQuery3DReadinessReport& report,
+                                                 PhysicsCollisionQuery3DReadinessDiagnostic diagnostic) {
+    report.diagnostics.push_back(diagnostic);
+    if (report.diagnostic == PhysicsCollisionQuery3DReadinessDiagnostic::none) {
+        report.diagnostic = diagnostic;
+    }
+}
+
+template <typename Row> [[nodiscard]] bool collision_query_rows_preserve_source_order(const std::vector<Row>& rows) {
+    for (std::size_t index = 0; index < rows.size(); ++index) {
+        if (rows[index].source_index != index) {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <typename Row>
+void accumulate_collision_query_readiness_rows(const std::vector<Row>& rows,
+                                               PhysicsCollisionQuery3DReadinessReport& report, bool raycast_rows) {
+    for (const auto& row : rows) {
+        switch (row.status) {
+        case PhysicsCollisionQueryRowStatus::hit:
+            ++report.hit_rows;
+            if (raycast_rows) {
+                ++report.raycast_hit_rows;
+            } else {
+                ++report.shape_sweep_hit_rows;
+            }
+            break;
+        case PhysicsCollisionQueryRowStatus::no_hit:
+            ++report.no_hit_rows;
+            break;
+        case PhysicsCollisionQueryRowStatus::invalid_request:
+            ++report.invalid_request_rows;
+            break;
+        }
+    }
+}
+
 [[nodiscard]] bool
 has_invalid_advanced_controller_result(const PhysicsAdvancedController3DResult& controller) noexcept {
     return controller.status == PhysicsAdvancedController3DStatus::invalid_request ||
@@ -2223,6 +2263,68 @@ PhysicsShapeSweepBatch3DResult PhysicsWorld3D::shape_sweep_batch(const PhysicsSh
     }
 
     return result;
+}
+
+PhysicsCollisionQuery3DReadinessReport evaluate_physics_collision_query_readiness_3d(
+    const PhysicsRaycastBatch3DResult& raycasts, const PhysicsShapeSweepBatch3DResult& shape_sweeps,
+    std::size_t budget_rejections, const PhysicsCollisionQuery3DReadinessConfig& config) {
+    PhysicsCollisionQuery3DReadinessReport report;
+    report.raycast_rows = raycasts.rows.size();
+    report.shape_sweep_rows = shape_sweeps.rows.size();
+    report.total_rows = report.raycast_rows + report.shape_sweep_rows;
+    report.budget_rejections = budget_rejections;
+    report.source_order_ready = collision_query_rows_preserve_source_order(raycasts.rows) &&
+                                collision_query_rows_preserve_source_order(shape_sweeps.rows);
+
+    accumulate_collision_query_readiness_rows(raycasts.rows, report, true);
+    accumulate_collision_query_readiness_rows(shape_sweeps.rows, report, false);
+
+    if (raycasts.status != PhysicsCollisionQueryBatchStatus::completed ||
+        raycasts.diagnostic != PhysicsCollisionQueryBatchDiagnostic::none) {
+        append_collision_query_readiness_diagnostic(report,
+                                                    PhysicsCollisionQuery3DReadinessDiagnostic::invalid_raycast_batch);
+    }
+    if (shape_sweeps.status != PhysicsCollisionQueryBatchStatus::completed ||
+        shape_sweeps.diagnostic != PhysicsCollisionQueryBatchDiagnostic::none) {
+        append_collision_query_readiness_diagnostic(
+            report, PhysicsCollisionQuery3DReadinessDiagnostic::invalid_shape_sweep_batch);
+    }
+    if (!report.diagnostics.empty()) {
+        report.status = PhysicsCollisionQuery3DReadinessStatus::invalid_request;
+        return report;
+    }
+
+    if (config.require_raycast_hit && report.raycast_hit_rows == 0U) {
+        append_collision_query_readiness_diagnostic(report,
+                                                    PhysicsCollisionQuery3DReadinessDiagnostic::missing_raycast_hit);
+    }
+    if (config.require_shape_sweep_hit && report.shape_sweep_hit_rows == 0U) {
+        append_collision_query_readiness_diagnostic(
+            report, PhysicsCollisionQuery3DReadinessDiagnostic::missing_shape_sweep_hit);
+    }
+    if (config.require_no_hit && report.no_hit_rows == 0U) {
+        append_collision_query_readiness_diagnostic(report, PhysicsCollisionQuery3DReadinessDiagnostic::missing_no_hit);
+    }
+    if (config.require_invalid_request && report.invalid_request_rows == 0U) {
+        append_collision_query_readiness_diagnostic(
+            report, PhysicsCollisionQuery3DReadinessDiagnostic::missing_invalid_request);
+    }
+    if (config.require_budget_rejection && report.budget_rejections == 0U) {
+        append_collision_query_readiness_diagnostic(
+            report, PhysicsCollisionQuery3DReadinessDiagnostic::missing_budget_rejection);
+    }
+    if (config.require_source_order && !report.source_order_ready) {
+        append_collision_query_readiness_diagnostic(report,
+                                                    PhysicsCollisionQuery3DReadinessDiagnostic::source_order_mismatch);
+    }
+    if (report.total_rows > config.max_total_rows) {
+        append_collision_query_readiness_diagnostic(report,
+                                                    PhysicsCollisionQuery3DReadinessDiagnostic::row_budget_exceeded);
+    }
+
+    report.status = report.diagnostics.empty() ? PhysicsCollisionQuery3DReadinessStatus::ready
+                                               : PhysicsCollisionQuery3DReadinessStatus::diagnostics;
+    return report;
 }
 
 PhysicsExactShapeSweep3DResult PhysicsWorld3D::exact_shape_sweep(PhysicsExactShapeSweep3DDesc desc) const {

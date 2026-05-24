@@ -1457,9 +1457,7 @@ try {
     Assert-ContainsText $desktop3dMain "mirakana/runtime/physics_collision_runtime.hpp" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "packaged_collision_scene_asset_id" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "runtime_physics_collision_scene_3d_payload" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "collision_package_status=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "collision_package_bodies=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "collision_package_trigger_overlaps=" "Desktop 3D scaffold main.cpp"
+    foreach ($needle in @("collision_package_status=", "collision_package_bodies=", "collision_package_trigger_overlaps=", "collision_query_readiness_status=", "collision_query_readiness_diagnostic=", "collision_query_readiness_diagnostics=")) { Assert-ContainsText $desktop3dMain $needle "Desktop 3D scaffold main.cpp" }
     Assert-ContainsText $desktop3dMain "gameplay_systems_collision_package_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "mirakana/ui/ui.hpp" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "mirakana/ui_renderer/ui_renderer.hpp" "Desktop 3D scaffold main.cpp"
@@ -2142,9 +2140,8 @@ foreach ($needle in @(
     "visible_3d_presented_frames=",
     "visible_3d_d3d12_selected=",
     "visible_3d_vulkan_selected=",
-    "collision_package_status=",
-    "collision_package_bodies=",
-    "collision_package_trigger_overlaps=",
+    "collision_package_status=", "collision_package_bodies=", "collision_package_trigger_overlaps=",
+    "collision_query_readiness_status=", "collision_query_readiness_diagnostic=", "collision_query_readiness_diagnostics=",
     "gameplay_systems_collision_package_ready=",
     "load_packaged_d3d12_native_ui_overlay_shaders",
     "load_packaged_vulkan_native_ui_overlay_shaders",

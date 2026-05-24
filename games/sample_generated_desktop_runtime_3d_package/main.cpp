@@ -5091,6 +5091,46 @@ enum class CollisionPackageStatus : std::uint8_t {
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+physics_collision_query_readiness_status_name(mirakana::PhysicsCollisionQuery3DReadinessStatus status) noexcept {
+    switch (status) {
+    case mirakana::PhysicsCollisionQuery3DReadinessStatus::ready:
+        return "ready";
+    case mirakana::PhysicsCollisionQuery3DReadinessStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::PhysicsCollisionQuery3DReadinessStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view physics_collision_query_readiness_diagnostic_name(
+    mirakana::PhysicsCollisionQuery3DReadinessDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::none:
+        return "none";
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::invalid_raycast_batch:
+        return "invalid_raycast_batch";
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::invalid_shape_sweep_batch:
+        return "invalid_shape_sweep_batch";
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::missing_raycast_hit:
+        return "missing_raycast_hit";
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::missing_shape_sweep_hit:
+        return "missing_shape_sweep_hit";
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::missing_no_hit:
+        return "missing_no_hit";
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::missing_invalid_request:
+        return "missing_invalid_request";
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::missing_budget_rejection:
+        return "missing_budget_rejection";
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::source_order_mismatch:
+        return "source_order_mismatch";
+    case mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::row_budget_exceeded:
+        return "row_budget_exceeded";
+    }
+    return "unknown";
+}
+
 struct CollisionPackageReport {
     CollisionPackageStatus status{CollisionPackageStatus::not_requested};
     bool ready{false};
@@ -5102,39 +5142,17 @@ struct CollisionPackageReport {
     bool world_ready{false};
     bool query_batch_ready{false};
     bool query_batch_source_order_ready{false};
+    mirakana::PhysicsCollisionQuery3DReadinessStatus query_readiness_status{
+        mirakana::PhysicsCollisionQuery3DReadinessStatus::invalid_request};
+    mirakana::PhysicsCollisionQuery3DReadinessDiagnostic query_readiness_diagnostic{
+        mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::none};
+    std::size_t query_readiness_diagnostics{0};
     std::size_t query_batch_rows{0};
     std::size_t query_batch_hits{0};
     std::size_t query_batch_no_hits{0};
     std::size_t query_batch_invalid_requests{0};
     std::size_t query_batch_budget_rejections{0};
 };
-
-template <typename Row> [[nodiscard]] bool collision_query_source_order_ready(const std::vector<Row>& rows) noexcept {
-    for (std::size_t index = 0; index < rows.size(); ++index) {
-        if (rows[index].source_index != index) {
-            return false;
-        }
-    }
-    return true;
-}
-
-template <typename Row>
-void accumulate_collision_query_rows(const std::vector<Row>& rows, CollisionPackageReport& report) noexcept {
-    report.query_batch_rows += rows.size();
-    for (const auto& row : rows) {
-        switch (row.status) {
-        case mirakana::PhysicsCollisionQueryRowStatus::hit:
-            ++report.query_batch_hits;
-            break;
-        case mirakana::PhysicsCollisionQueryRowStatus::no_hit:
-            ++report.query_batch_no_hits;
-            break;
-        case mirakana::PhysicsCollisionQueryRowStatus::invalid_request:
-            ++report.query_batch_invalid_requests;
-            break;
-        }
-    }
-}
 
 [[nodiscard]] bool
 package_streaming_smoke_ready(const mirakana::runtime::RuntimePackageStreamingExecutionResult& package_streaming_result,
@@ -5274,8 +5292,6 @@ evaluate_scene_collision_package(const DesktopRuntimeOptions& options,
         .queries = {mirakana::PhysicsShapeSweep3DDesc{}, mirakana::PhysicsShapeSweep3DDesc{}},
         .max_queries = 1U,
     });
-    accumulate_collision_query_rows(raycast_batch.rows, report);
-    accumulate_collision_query_rows(sweep_batch.rows, report);
     if (raycast_over_budget.status == mirakana::PhysicsCollisionQueryBatchStatus::invalid_request &&
         raycast_over_budget.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::query_budget_exceeded &&
         raycast_over_budget.rows.empty()) {
@@ -5287,15 +5303,30 @@ evaluate_scene_collision_package(const DesktopRuntimeOptions& options,
         ++report.query_batch_budget_rejections;
     }
 
-    report.query_batch_source_order_ready =
-        collision_query_source_order_ready(raycast_batch.rows) && collision_query_source_order_ready(sweep_batch.rows);
-    report.query_batch_ready = raycast_batch.status == mirakana::PhysicsCollisionQueryBatchStatus::completed &&
-                               sweep_batch.status == mirakana::PhysicsCollisionQueryBatchStatus::completed &&
-                               raycast_batch.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none &&
-                               sweep_batch.diagnostic == mirakana::PhysicsCollisionQueryBatchDiagnostic::none &&
-                               report.query_batch_source_order_ready && report.query_batch_rows == 6U &&
-                               report.query_batch_hits == 2U && report.query_batch_no_hits == 2U &&
-                               report.query_batch_invalid_requests == 2U && report.query_batch_budget_rejections == 2U;
+    mirakana::PhysicsCollisionQuery3DReadinessConfig query_config;
+    query_config.require_raycast_hit = true;
+    query_config.require_shape_sweep_hit = true;
+    query_config.require_no_hit = true;
+    query_config.require_invalid_request = true;
+    query_config.require_budget_rejection = true;
+    query_config.require_source_order = true;
+    query_config.max_total_rows = 6U;
+    const auto query_readiness = mirakana::evaluate_physics_collision_query_readiness_3d(
+        raycast_batch, sweep_batch, report.query_batch_budget_rejections, query_config);
+
+    report.query_readiness_status = query_readiness.status;
+    report.query_readiness_diagnostic = query_readiness.diagnostic;
+    report.query_readiness_diagnostics = query_readiness.diagnostics.size();
+    report.query_batch_source_order_ready = query_readiness.source_order_ready;
+    report.query_batch_rows = query_readiness.total_rows;
+    report.query_batch_hits = query_readiness.hit_rows;
+    report.query_batch_no_hits = query_readiness.no_hit_rows;
+    report.query_batch_invalid_requests = query_readiness.invalid_request_rows;
+    report.query_batch_ready =
+        query_readiness.status == mirakana::PhysicsCollisionQuery3DReadinessStatus::ready &&
+        query_readiness.diagnostic == mirakana::PhysicsCollisionQuery3DReadinessDiagnostic::none &&
+        report.query_batch_rows == 6U && report.query_batch_hits == 2U && report.query_batch_no_hits == 2U &&
+        report.query_batch_invalid_requests == 2U && report.query_batch_budget_rejections == 2U;
     report.ready = report.world_ready && report.query_batch_ready;
     report.status = report.ready ? CollisionPackageStatus::ready : CollisionPackageStatus::diagnostics;
     report.diagnostics_count = report.ready ? 0U : 1U;
@@ -5308,6 +5339,11 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
               << " world_ready=" << (report.world_ready ? 1 : 0)
               << " query_batch_ready=" << (report.query_batch_ready ? 1 : 0)
               << " query_batch_source_order_ready=" << (report.query_batch_source_order_ready ? 1 : 0)
+              << " query_readiness_status="
+              << physics_collision_query_readiness_status_name(report.query_readiness_status)
+              << " query_readiness_diagnostic="
+              << physics_collision_query_readiness_diagnostic_name(report.query_readiness_diagnostic)
+              << " query_readiness_diagnostics=" << report.query_readiness_diagnostics
               << " query_batch_rows=" << report.query_batch_rows << " query_batch_hits=" << report.query_batch_hits
               << " query_batch_no_hits=" << report.query_batch_no_hits
               << " query_batch_invalid_requests=" << report.query_batch_invalid_requests
@@ -6946,6 +6982,11 @@ int main(int argc, char** argv) {
         << " collision_package_world_ready=" << (collision_package.world_ready ? 1 : 0)
         << " collision_query_batch_ready=" << (collision_package.query_batch_ready ? 1 : 0)
         << " collision_query_batch_source_order_ready=" << (collision_package.query_batch_source_order_ready ? 1 : 0)
+        << " collision_query_readiness_status="
+        << physics_collision_query_readiness_status_name(collision_package.query_readiness_status)
+        << " collision_query_readiness_diagnostic="
+        << physics_collision_query_readiness_diagnostic_name(collision_package.query_readiness_diagnostic)
+        << " collision_query_readiness_diagnostics=" << collision_package.query_readiness_diagnostics
         << " collision_query_batch_rows=" << collision_package.query_batch_rows
         << " collision_query_batch_hits=" << collision_package.query_batch_hits
         << " collision_query_batch_no_hits=" << collision_package.query_batch_no_hits

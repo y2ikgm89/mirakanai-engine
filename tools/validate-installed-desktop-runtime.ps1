@@ -1609,6 +1609,9 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "collision_package_world_ready",
             "collision_query_batch_ready",
             "collision_query_batch_source_order_ready",
+            "collision_query_readiness_status",
+            "collision_query_readiness_diagnostic",
+            "collision_query_readiness_diagnostics",
             "collision_query_batch_rows",
             "collision_query_batch_hits",
             "collision_query_batch_no_hits",
@@ -1636,6 +1639,15 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_package_diagnostics=0\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean scene collision package diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_readiness_status=ready\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready scene collision query readiness."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_readiness_diagnostic=none\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean scene collision query readiness diagnostic."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_query_readiness_diagnostics=0\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean scene collision query readiness diagnostics."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcollision_package_bodies=3\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact scene collision body count."
