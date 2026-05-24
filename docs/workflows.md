@@ -135,6 +135,19 @@ Use GitHub's official GitHub Flow for agent publishing: make a separate topic br
 
 Treat publishing as a slice-closing gate, not an optional epilogue. Unless the user explicitly asks for local-only/no-PR work, do not report a task complete while task-owned changes only exist locally after validation. Complete branch creation, task-owned staging, commit, non-forced push, and PR creation/update with validation evidence in the same turn; if any step is blocked by permissions, authentication, command policy, branch protection, or dirty unrelated files that prevent safe staging, report that exact blocker. If the preferred `codex/<topic>` branch form conflicts with existing ref namespaces, use a conservative non-default fallback such as `codex-<topic>`.
 
+Publication-capable Codex sessions: before promising commit/push/PR/merge, confirm the current session can reach every official GitHub Flow surface. Linked worktrees store per-worktree Git metadata such as `HEAD` and `index` under the parent repository's `.git/worktrees/<name>` directory, so a session that can edit the worktree files but cannot create the Git `index.lock` there is not publication-capable. Use a trusted local/full-access session with network enabled and host-local Git/GitHub authentication available for publication. If a sandboxed or approval-free session cannot write Git metadata, read GitHub CLI configuration, or reach the remote, stop with that blocker after local validation evidence and continue publication in an approval-capable or full-access session; do not bypass GitHub Flow by hand-writing GitHub REST/MCP blobs, commits, trees, or PR state as the normal path.
+
+Recommended preflight before staging or publishing from a Codex-controlled worktree:
+
+```powershell
+git status --short --branch
+git rev-parse --path-format=absolute --git-path index.lock
+git ls-remote --heads origin <branch>
+gh auth status
+```
+
+For linked worktrees, also verify the `git rev-parse --git-path index.lock` parent directory is writable by the current process before `git add`; if it is not, switch session mode or host context instead of changing repository permissions ad hoc.
+
 Checkpoint guidance:
 
 | Situation | Commit when | Push when |
@@ -278,7 +291,7 @@ git credential-manager --version
 
 On Git for Windows, the current Git Credential Manager helper is `manager`. Remove stale user-level helper entries such as `manager-core` only after confirming `manager` is still configured by system or user Git config. Do not commit repository-level `credential.helper` overrides, token requirements, or checked-in credential state to hide host configuration drift.
 
-These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, `core.excludesFile`, and [`git worktree remove` / `git worktree prune`](https://git-scm.com/docs/git-worktree), and GitHub documentation for pull requests, [draft PR stage changes](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request), [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches), [auto-merge](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request), [`gh pr ready`](https://cli.github.com/manual/gh_pr_ready), and [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge). For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html).
+These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclude`, `core.excludesFile`, and [`git worktree remove` / `git worktree prune`](https://git-scm.com/docs/git-worktree), and GitHub documentation for pull requests, [draft PR stage changes](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/changing-the-stage-of-a-pull-request), [protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches), [auto-merge](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request), [`gh pr ready`](https://cli.github.com/manual/gh_pr_ready), and [`gh pr merge`](https://cli.github.com/manual/gh_pr_merge). For linked worktree metadata, see Git's [`git worktree`](https://git-scm.com/docs/git-worktree) and [repository layout](https://git-scm.com/docs/gitrepository-layout) documentation. For the branch plus PR workflow, see GitHub's official [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow). For credential helpers, see GitHub's [credential caching guidance](https://docs.github.com/en/get-started/git-basics/caching-your-github-credentials-in-git?platform=windows) and the Git [gitcredentials documentation](https://git-scm.com/docs/gitcredentials.html). For Codex approval modes, use OpenAI's official Codex guidance: Full Auto is sandboxed and network-disabled, so publication requires a mode/session whose filesystem, network, and host authentication cover the publishing path.
 
 ## Windows Diagnostics Toolchain
 
