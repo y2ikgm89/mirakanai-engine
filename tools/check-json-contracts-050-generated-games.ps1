@@ -1454,6 +1454,7 @@ if ($null -eq $generated3dPackageManifestEntry) {
     Assert-ContainsText $newGameScaffoldText "runtime/assets/3d/hud_text.uiatlas" "tools/new-game scaffolding"
     Assert-ContainsText $newGameScaffoldText "resident_catalog_refresh_failed" "tools/new-game scaffolding"
     Assert-ContainsText $newGameScaffoldText "resident_eviction_plan_failed" "tools/new-game scaffolding"
+    foreach ($needle in @("pagePolicy = [ordered]@{", "single-page-tight-rgba8-texture-source", "pivot = [ordered]@{", "sliceBorder = [ordered]@{")) { Assert-ContainsText $newGameScaffoldText $needle "tools/new-game 2D sprite atlas source authoring scaffolding" }
     foreach ($needle in @(
         "--require-shadow-morph-composition",
         "require_shadow_morph_composition",

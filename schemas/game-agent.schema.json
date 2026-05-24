@@ -1863,6 +1863,7 @@
           "atlasAssetKey",
           "packageIndexPath",
           "maxSide",
+          "pagePolicy",
           "sourceDecoding",
           "atlasPacking",
           "runtimeSourceImageDecoding",
@@ -1918,6 +1919,29 @@
             "minimum": 1,
             "maximum": 16384
           },
+          "pagePolicy": {
+            "type": "object",
+            "required": ["mode", "pageId", "pageCount", "paddingPixels"],
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string",
+                "const": "single-page-tight-rgba8-texture-source"
+              },
+              "pageId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_/-]*$"
+              },
+              "pageCount": {
+                "type": "integer",
+                "const": 1
+              },
+              "paddingPixels": {
+                "type": "integer",
+                "const": 0
+              }
+            }
+          },
           "sourceDecoding": {
             "type": "string",
             "const": "provided-rgba8-texture-source"
@@ -1956,7 +1980,16 @@
             "uniqueItems": true,
             "items": {
               "type": "object",
-              "required": ["id", "sourcePath", "width", "height", "pixelFormat"],
+              "required": [
+                "id",
+                "sourcePath",
+                "pageId",
+                "width",
+                "height",
+                "pixelFormat",
+                "pivot",
+                "sliceBorder"
+              ],
               "additionalProperties": false,
               "properties": {
                 "id": {
@@ -1967,6 +2000,10 @@
                   "type": "string",
                   "minLength": 1,
                   "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+$"
+                },
+                "pageId": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_/-]*$"
                 },
                 "width": {
                   "type": "integer",
@@ -1979,6 +2016,50 @@
                 "pixelFormat": {
                   "type": "string",
                   "const": "rgba8_unorm"
+                },
+                "pivot": {
+                  "type": "object",
+                  "required": ["x", "y"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  }
+                },
+                "sliceBorder": {
+                  "type": "object",
+                  "required": ["left", "bottom", "right", "top"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "left": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "bottom": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "right": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "top": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    }
+                  }
                 }
               }
             }

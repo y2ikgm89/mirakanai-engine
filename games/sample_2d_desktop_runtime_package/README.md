@@ -5,7 +5,7 @@ This sample is the host-gated desktop/package proof for the `2d-desktop-runtime-
 - Runtime host: `mirakana::SdlDesktopGameHost`
 - Gameplay contract: `mirakana::GameApp`, `mirakana_scene`, `mirakana_ui`, `mirakana_audio`, `MK_physics`, `MK_navigation`, `MK_ai`, and public `mirakana::IRenderer`
 - Package files: manifest-derived `runtimePackageFiles`, including deterministic data-only tilemap metadata
-- Source atlas authoring: `spriteAtlasSourceAuthoringTargets` records reviewed RGBA8 frame rows for `plan_sprite_atlas_source_authoring`; `source/assets/package.geassets` and `source/sprites/player_atlas.texture_source` stay outside `runtimePackageFiles`
+- Source atlas authoring: `spriteAtlasSourceAuthoringTargets` records reviewed RGBA8 frame rows plus selected page policy, pivot, and slice-border metadata for `plan_sprite_atlas_source_authoring`; `source/assets/package.geassets` and `source/sprites/player_atlas.texture_source` stay outside `runtimePackageFiles`
 - Native presentation: owned by runtime host adapters, not game code
 - D3D12 package window smoke: packaged `sample_2d_desktop_runtime_package_sprite.vs.dxil` and `sample_2d_desktop_runtime_package_sprite.ps.dxil` loaded through `mirakana::load_desktop_shader_bytecode_pair`, then required with `--require-d3d12-shaders --video-driver windows --require-d3d12-renderer`
 - Native 2D sprite package proof: packaged `sample_2d_desktop_runtime_package_native_sprite_overlay.vs.dxil` and `sample_2d_desktop_runtime_package_native_sprite_overlay.ps.dxil` let the host-owned D3D12 RHI path upload the cooked sprite texture and draw scene/HUD sprites with `--require-native-2d-sprites`, including renderer-owned native sprite batch execution counters such as `native_2d_sprite_batches_executed`
