@@ -11,6 +11,10 @@
 #include "mirakana/physics/jolt/jolt_physics_adapter.hpp"
 #endif
 
+#if defined(MIRAKANAI_INSTALLED_CONSUMER_HAS_NETWORK_ENET)
+#include "mirakana/runtime/network/enet/enet_network_transport_adapter.hpp"
+#endif
+
 #include <iostream>
 
 class InstalledConsumerApp final : public mirakana::GameApp {
@@ -46,6 +50,14 @@ int main() {
 #else
     const bool physics_jolt_ready = true;
 #endif
+#if defined(MIRAKANAI_INSTALLED_CONSUMER_HAS_NETWORK_ENET)
+    const auto network_adapter = mirakana::runtime::make_enet_network_transport_adapter();
+    const auto network_capabilities = network_adapter->capabilities();
+    const bool network_enet_ready = network_capabilities.available && network_capabilities.supports_loopback_exchange &&
+                                    !network_capabilities.exposes_native_handles;
+#else
+    const bool network_enet_ready = true;
+#endif
     std::cout << version.name << " installed-consumer frames=" << result.frames_run
               << " ui_elements=" << document.size()
               << " external_importers=" << (mirakana::external_asset_importers_available() ? "available" : "disabled")
@@ -54,7 +66,13 @@ int main() {
 #else
               << " physics_jolt=disabled"
 #endif
+#if defined(MIRAKANAI_INSTALLED_CONSUMER_HAS_NETWORK_ENET)
+              << " network_enet=" << (network_enet_ready ? "available" : "invalid")
+#else
+              << " network_enet=disabled"
+#endif
               << '\n';
 
-    return added_root && result.frames_run == 1 && document.size() == 1 && physics_jolt_ready ? 0 : 1;
+    return added_root && result.frames_run == 1 && document.size() == 1 && physics_jolt_ready && network_enet_ready ? 0
+                                                                                                                    : 1;
 }

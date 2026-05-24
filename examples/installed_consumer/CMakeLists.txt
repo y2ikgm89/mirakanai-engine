@@ -26,6 +26,10 @@ if(Mirakanai_HAS_PHYSICS_JOLT)
     target_link_libraries(gameengine_installed_consumer PRIVATE mirakana::physics_jolt)
     target_compile_definitions(gameengine_installed_consumer PRIVATE MIRAKANAI_INSTALLED_CONSUMER_HAS_PHYSICS_JOLT=1)
 endif()
+if(Mirakanai_HAS_NETWORK_ENET)
+    target_link_libraries(gameengine_installed_consumer PRIVATE mirakana::runtime_network_enet)
+    target_compile_definitions(gameengine_installed_consumer PRIVATE MIRAKANAI_INSTALLED_CONSUMER_HAS_NETWORK_ENET=1)
+endif()
 target_compile_features(gameengine_installed_consumer PRIVATE cxx_std_23)
 set_target_properties(gameengine_installed_consumer PROPERTIES
     CXX_EXTENSIONS OFF

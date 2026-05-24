@@ -30,6 +30,15 @@
         }
       ]
     },
+    "network-enet": {
+      "description": "Optional ENet loopback network transport adapter dependency.",
+      "dependencies": [
+        {
+          "name": "enet",
+          "default-features": false
+        }
+      ]
+    },
     "desktop-gui": {
       "description": "Desktop window/editor dependencies for SDL3 and Dear ImGui integration.",
       "dependencies": [

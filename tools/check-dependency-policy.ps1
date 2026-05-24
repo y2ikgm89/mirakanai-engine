@@ -74,6 +74,11 @@ if (-not $physicsJolt) {
     Write-Error "vcpkg manifest must keep optional physics-jolt feature"
 }
 
+$networkEnet = $manifest.features.'network-enet'
+if (-not $networkEnet) {
+    Write-Error "vcpkg manifest must keep optional network-enet feature"
+}
+
 $desktopRuntimeDependencyNames = @()
 foreach ($dependency in $desktopRuntime.dependencies) {
     if ($dependency -is [string]) {
@@ -152,19 +157,50 @@ if ($joltPhysicsDefaultFeatures -ne $false) {
     Write-Error "physics-jolt joltphysics dependency must set default-features to false"
 }
 
+$networkEnetDependencyNames = @()
+$enetDefaultFeatures = $null
+foreach ($dependency in $networkEnet.dependencies) {
+    if ($dependency -is [string]) {
+        $networkEnetDependencyNames += $dependency
+    } else {
+        $networkEnetDependencyNames += $dependency.name
+        if ($dependency.name -eq "enet" -and (Test-JsonProperty -Object $dependency -Property "default-features")) {
+            $enetDefaultFeatures = Get-JsonPropertyValue -Object $dependency -Property "default-features"
+        }
+    }
+}
+
+if ($networkEnetDependencyNames -notcontains "enet") {
+    Write-Error "network-enet feature must declare dependency: enet"
+}
+
+if ($enetDefaultFeatures -ne $false) {
+    Write-Error "network-enet enet dependency must set default-features to false"
+}
+
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| SDL3 \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Dear ImGui \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Jolt Physics \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| ENet \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "Foundation" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "physics-jolt" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "network-enet" "dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Foundation" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Jolt Physics" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "ENet" "legal dependency docs"
 Assert-TextContains "CMakePresets.json" "desktop-runtime" "CMake presets"
 Assert-TextContains "CMakePresets.json" "asset-importers" "CMake presets"
 Assert-TextContains "CMakePresets.json" "physics-jolt" "CMake presets"
+Assert-TextContains "CMakePresets.json" "network-enet" "CMake presets"
 Assert-TextContains "tools/validate-physics-jolt.ps1" "physics-jolt" "Jolt validation wrapper"
 Assert-TextContains "tools/validate-physics-jolt.ps1" "validate-installed-sdk.ps1" "Jolt validation wrapper"
+Assert-TextContains "tools/validate-network-enet.ps1" "network-enet" "ENet validation wrapper"
+Assert-TextContains "tools/validate-network-enet.ps1" "validate-installed-sdk.ps1" "ENet validation wrapper"
+Assert-TextContains "tools/validate-network-enet.ps1" "mirakana_rhi_d3d12" "ENet validation wrapper install target closure"
+Assert-TextContains "tools/validate-network-enet.ps1" "MK_editor_core" "ENet validation wrapper install target closure"
+Assert-TextContains "engine/runtime/network/enet/CMakeLists.txt" "winmm" "ENet Windows SDK link closure"
+Assert-TextContains "engine/runtime/network/enet/CMakeLists.txt" "ws2_32" "ENet Windows SDK link closure"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" 'find_library\(MK_APPLE_FOUNDATION_FRAMEWORK Foundation REQUIRED\)' "Metal Apple SDK linkage"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" '\$\{MK_APPLE_FOUNDATION_FRAMEWORK\}' "Metal Apple SDK linkage"
 
@@ -189,13 +225,17 @@ Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=desktop-runtime" "bo
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=desktop-gui" "bootstrap dependencies"
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=asset-importers" "bootstrap dependencies"
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=physics-jolt" "bootstrap dependencies"
+Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=network-enet" "bootstrap dependencies"
 
 Assert-TextContains "engine/agent/manifest.json" "buildAssetImporters" "engine manifest commands"
 Assert-TextContains "engine/agent/manifest.json" "validatePhysicsJolt" "engine manifest commands"
+Assert-TextContains "engine/agent/manifest.json" "validateNetworkEnet" "engine manifest commands"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_ASSET_IMPORTERS" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(SPNG CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(fastgltf CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_PHYSICS_JOLT" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(Jolt CONFIG\)" "Mirakanai package config"
+Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_NETWORK_ENET" "Mirakanai package config"
+Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(unofficial-enet CONFIG\)" "Mirakanai package config"
 
 Write-Host "dependency-policy-check: ok"

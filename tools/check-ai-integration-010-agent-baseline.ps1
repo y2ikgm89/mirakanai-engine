@@ -676,6 +676,11 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("validatePhysicsJo
 } elseif ($manifest.commands.validatePhysicsJolt -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1") {
     Write-Error "engine/agent/manifest.json commands.validatePhysicsJolt must expose tools/validate-physics-jolt.ps1"
 }
+if (-not $manifest.commands.PSObject.Properties.Name.Contains("validateNetworkEnet")) {
+    Write-Error "engine/agent/manifest.json commands missing required command: validateNetworkEnet"
+} elseif ($manifest.commands.validateNetworkEnet -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1") {
+    Write-Error "engine/agent/manifest.json commands.validateNetworkEnet must expose tools/validate-network-enet.ps1"
+}
 Assert-ContainsText $manifestRaw "VCPKG_MANIFEST_INSTALL=OFF" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "CMakeCache.txt" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "officialAiToolDocs" "engine/agent/manifest.json"

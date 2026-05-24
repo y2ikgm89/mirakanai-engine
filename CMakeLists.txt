@@ -17,6 +17,7 @@ option(MK_ENABLE_CXX_MODULE_SCANNING "Enable CMake C++ module dependency scannin
 option(MK_ENABLE_IMPORT_STD "Enable CMake-managed import std support when the active toolchain and generator support it" ON)
 option(MK_ENABLE_ASSET_IMPORTERS "Build optional libspng/fastgltf/miniaudio source asset importer adapters" OFF)
 option(MK_ENABLE_PHYSICS_JOLT "Build optional Jolt Physics native middleware adapter" OFF)
+option(MK_ENABLE_NETWORK_ENET "Build optional ENet loopback network transport adapter" OFF)
 option(MK_REQUIRE_DESKTOP_RUNTIME_DXIL "Require sample_desktop_runtime_shell DXIL artifacts when packaging the desktop runtime shell" OFF)
 option(MK_REQUIRE_DESKTOP_RUNTIME_SPIRV "Require Vulkan SPIR-V artifacts when packaging desktop runtime targets" OFF)
 set(MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET "" CACHE STRING "Registered desktop runtime game target to install for the desktop runtime package lane")
@@ -152,6 +153,9 @@ add_subdirectory(engine/animation)
 add_subdirectory(engine/audio)
 add_subdirectory(engine/platform)
 add_subdirectory(engine/runtime)
+if(MK_ENABLE_NETWORK_ENET)
+    add_subdirectory(engine/runtime/network/enet)
+endif()
 add_subdirectory(engine/physics)
 if(MK_ENABLE_PHYSICS_JOLT)
     add_subdirectory(engine/physics/jolt)
@@ -351,6 +355,24 @@ if(BUILD_TESTING)
     target_include_directories(MK_runtime_networking_foundation_tests PRIVATE tests)
     MK_apply_common_target_options(MK_runtime_networking_foundation_tests)
     add_test(NAME MK_runtime_networking_foundation_tests COMMAND MK_runtime_networking_foundation_tests)
+
+    add_executable(MK_runtime_network_transport_adapter_tests
+        tests/unit/runtime_network_transport_adapter_tests.cpp
+    )
+    target_link_libraries(MK_runtime_network_transport_adapter_tests PRIVATE MK_runtime)
+    target_include_directories(MK_runtime_network_transport_adapter_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_network_transport_adapter_tests)
+    add_test(NAME MK_runtime_network_transport_adapter_tests COMMAND MK_runtime_network_transport_adapter_tests)
+
+    if(TARGET MK_runtime_network_enet)
+        add_executable(MK_runtime_network_enet_tests
+            tests/unit/runtime_network_enet_tests.cpp
+        )
+        target_link_libraries(MK_runtime_network_enet_tests PRIVATE MK_runtime_network_enet)
+        target_include_directories(MK_runtime_network_enet_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_runtime_network_enet_tests)
+        add_test(NAME MK_runtime_network_enet_tests COMMAND MK_runtime_network_enet_tests)
+    endif()
 
     add_executable(MK_runtime_simulation_orchestration_tests
         tests/unit/runtime_simulation_orchestration_tests.cpp
@@ -793,6 +815,7 @@ MK_set_export_name(MK_audio audio)
 MK_set_export_name(MK_core core)
 MK_set_export_name(MK_math math)
 MK_set_export_name(MK_navigation navigation)
+MK_set_export_name(MK_runtime_network_enet runtime_network_enet)
 MK_set_export_name(MK_physics physics)
 MK_set_export_name(MK_physics_jolt physics_jolt)
 MK_set_export_name(MK_platform platform)
@@ -854,7 +877,7 @@ set(MK_RUNTIME_TARGETS
 )
 
 foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_sdl3 mirakana_platform_sdl3 MK_runtime_host_sdl3
-        MK_runtime_host_sdl3_presentation MK_editor_core mirakana_physics_jolt)
+        MK_runtime_host_sdl3_presentation MK_editor_core mirakana_physics_jolt mirakana_runtime_network_enet)
     if(TARGET ${optional_target})
         list(APPEND MK_LIBRARY_TARGETS ${optional_target})
     endif()
@@ -1058,6 +1081,11 @@ if(TARGET MK_physics_jolt)
     set(MK_PACKAGE_HAS_PHYSICS_JOLT ON)
 endif()
 
+set(MK_PACKAGE_HAS_NETWORK_ENET OFF)
+if(TARGET MK_runtime_network_enet)
+    set(MK_PACKAGE_HAS_NETWORK_ENET ON)
+endif()
+
 configure_package_config_file(
     cmake/MirakanaiConfig.cmake.in
     "${CMAKE_CURRENT_BINARY_DIR}/MirakanaiConfig.cmake"
@@ -1126,6 +1154,10 @@ endif()
 
 if(TARGET MK_physics_jolt)
     install(DIRECTORY engine/physics/jolt/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+endif()
+
+if(TARGET MK_runtime_network_enet)
+    install(DIRECTORY engine/runtime/network/enet/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
 if(TARGET MK_editor_core)

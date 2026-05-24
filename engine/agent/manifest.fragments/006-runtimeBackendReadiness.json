@@ -123,6 +123,31 @@
         "notes": "2D/3D broadphase, circle/sphere/capsule contacts, layers/masks, collision-bounds raycasts, trigger overlaps, conservative bounds-based shape sweeps, exact 3D AABB/sphere/vertical-capsule shape sweeps against current AABB/sphere/capsule targets through PhysicsWorld3D::exact_shape_sweep, exact sphere convenience casts, deterministic contact manifolds through PhysicsContactPoint3D, PhysicsContactManifold3D, and PhysicsWorld3D::contact_manifolds with stable feature ids, warm-start-safe point rows, trigger/disabled exclusion, and solver consumption for current AABB/sphere/vertical-capsule contacts, conservative 3D capsule character-controller movement, first-party in-memory and package-authored collision rows, iterative solver configuration, stacked-body coverage, replay tests, host-independent PhysicsReplaySignature3D rows, and count-based PhysicsDeterminismGate3DResult budget diagnostics through make_physics_replay_signature_3d and evaluate_physics_determinism_gate_3d plus opt-in deterministic PhysicsWorld3D::step_continuous CCD rows, pure generated-game character/dynamic policy rows through PhysicsCharacterDynamicPolicy3DDesc, PhysicsCharacterDynamicPolicy3DRow, PhysicsCharacterDynamicPolicy3DResult, and evaluate_physics_character_dynamic_policy_3d, and explicit distance-joint solving through PhysicsJointSolve3DDesc, PhysicsJointSolve3DResult, and solve_physics_joints_3d define the validated first-party Physics 1.0 ready surface; opt-in distance/fixed/linear-axis positional constraint solving through PhysicsConstraintSolve3DDesc, PhysicsConstraintSolve3DResult, and solve_physics_constraints_3d is a post-1.0 first-party expansion; dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, vehicles, ragdolls, Jolt/native backends outside the 1.0 ready surface, middleware, oriented boxes, mesh/convex casts, timing benchmarks, and broad physics beyond the first-party Physics 1.0 ready surface are future work."
       }
     ],
+    "network": [
+      {
+        "name": "first-party-loopback-facade",
+        "module": "MK_runtime",
+        "status": "validated-headless-loopback-contract",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
+        "notes": "Runtime Network Transport Adapter Facade v1 validates one loopback-only caller-owned adapter exchange through RuntimeNetworkLoopbackExchangeRequest, IRuntimeNetworkTransportAdapter, and execute_runtime_network_loopback_exchange. The facade fails closed before dispatch for missing or unavailable adapters, unsupported loopback/reliable/unreliable capabilities, native-handle requests, peer_count != 1, invalid channel counts/channels, payloads above the first-party ceiling, invalid service budgets, and adapter exceptions. MK_runtime does not open sockets, own native handles, implement encryption/authentication, matchmaking, NAT traversal, replication, rollback, or claim broad multiplayer readiness."
+      },
+      {
+        "name": "enet-loopback",
+        "module": "MK_runtime_network_enet",
+        "status": "optional-host-gated-loopback-adapter",
+        "hosts": [
+          "windows",
+          "vcpkg network-enet"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1",
+        "notes": "Optional ENet adapter lane behind MK_ENABLE_NETWORK_ENET and the vcpkg network-enet feature. It keeps ENet private to engine/runtime/network/enet implementation sources, supports one local loopback client peer with reliable and unreliable packet rows, validates install/export through Mirakanai_HAS_NETWORK_ENET, and is not external network readiness, secure transport, matchmaking, NAT traversal, replication, rollback, or broad multiplayer readiness."
+      }
+    ],
     "platform": [
       {
         "name": "headless",

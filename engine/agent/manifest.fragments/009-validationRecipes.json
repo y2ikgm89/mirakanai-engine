@@ -166,6 +166,11 @@
       "purpose": "Validate the optional Jolt Physics adapter lane behind MK_physics_jolt, including physics-jolt configure/build/CTest, install/export, and an installed SDK consumer that links mirakana::physics_jolt when Mirakanai_HAS_PHYSICS_JOLT is true."
     },
     {
+      "name": "network-enet",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1",
+      "purpose": "Validate the optional ENet network adapter lane behind MK_runtime_network_enet, including network-enet configure/build/CTest, install/export, and an installed SDK consumer that links mirakana::runtime_network_enet when Mirakanai_HAS_NETWORK_ENET is true."
+    },
+    {
       "name": "release-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1",
       "purpose": "Build Release, run Release tests, validate installed SDK metadata, validate an installed SDK consumer project, create the CPack package artifact, validate the current ZIP SHA-256 sidecar, and inspect archived SDK metadata/tool/doc/license entries."
