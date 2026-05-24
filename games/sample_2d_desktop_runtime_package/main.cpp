@@ -300,6 +300,24 @@ struct SceneGameplayBindingProbeResult {
     bool ready{false};
 };
 
+struct InputContextRebindingProbeResult {
+    std::size_t requested_layers{0U};
+    std::size_t active_contexts{0U};
+    bool capture_context_active{false};
+    bool gameplay_input_consumed{false};
+    std::size_t profile_overlays_applied{0U};
+    mirakana::runtime::RuntimeInputRebindingCaptureStatus action_capture_status{
+        mirakana::runtime::RuntimeInputRebindingCaptureStatus::waiting};
+    mirakana::runtime::RuntimeInputRebindingCaptureStatus axis_capture_status{
+        mirakana::runtime::RuntimeInputRebindingCaptureStatus::waiting};
+    bool focus_gameplay_consumed{false};
+    bool focus_retained{false};
+    std::size_t presentation_rows{0U};
+    std::size_t glyph_lookup_keys{0U};
+    std::size_t diagnostics{0U};
+    bool ready{false};
+};
+
 [[nodiscard]] std::size_t count_scene_gameplay_binding_systems(
     std::span<const mirakana::runtime_scene::RuntimeSceneGameplayBindingRow> bindings) {
     std::vector<std::string> systems;
@@ -310,6 +328,167 @@ struct SceneGameplayBindingProbeResult {
         }
     }
     return systems.size();
+}
+
+[[nodiscard]] std::string_view
+runtime_input_rebinding_capture_status_name(mirakana::runtime::RuntimeInputRebindingCaptureStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeInputRebindingCaptureStatus::waiting:
+        return "waiting";
+    case mirakana::runtime::RuntimeInputRebindingCaptureStatus::captured:
+        return "captured";
+    case mirakana::runtime::RuntimeInputRebindingCaptureStatus::blocked:
+        return "blocked";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeInputActionTrigger
+make_input_rebinding_gamepad_button_trigger(mirakana::GamepadId gamepad_id, mirakana::GamepadButton button) {
+    return mirakana::runtime::RuntimeInputActionTrigger{
+        .kind = mirakana::runtime::RuntimeInputActionTriggerKind::gamepad_button,
+        .key = mirakana::Key::unknown,
+        .pointer_id = mirakana::PointerId{0},
+        .gamepad_id = gamepad_id,
+        .gamepad_button = button,
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeInputAxisSource
+make_input_rebinding_gamepad_axis_source(mirakana::GamepadId gamepad_id, mirakana::GamepadAxis axis, float scale,
+                                         float deadzone) {
+    return mirakana::runtime::RuntimeInputAxisSource{
+        .kind = mirakana::runtime::RuntimeInputAxisSourceKind::gamepad_axis,
+        .negative_key = mirakana::Key::unknown,
+        .positive_key = mirakana::Key::unknown,
+        .gamepad_id = gamepad_id,
+        .gamepad_axis = axis,
+        .scale = scale,
+        .deadzone = deadzone,
+    };
+}
+
+[[nodiscard]] std::size_t
+count_input_rebinding_glyph_lookup_keys(const mirakana::runtime::RuntimeInputRebindingPresentationModel& model) {
+    std::size_t count = 0U;
+    const auto count_tokens = [&count](
+                                  std::span<const mirakana::runtime::RuntimeInputRebindingPresentationToken> tokens) {
+        count += static_cast<std::size_t>(std::count_if(
+            tokens.begin(), tokens.end(), [](const mirakana::runtime::RuntimeInputRebindingPresentationToken& token) {
+                return !token.glyph_lookup_key.empty();
+            }));
+    };
+    for (const auto& row : model.rows) {
+        count_tokens(row.base_tokens);
+        count_tokens(row.profile_tokens);
+    }
+    return count;
+}
+
+[[nodiscard]] InputContextRebindingProbeResult validate_sample_input_context_rebinding() {
+    mirakana::runtime::RuntimeInputContextStackRequest context_request;
+    context_request.layers = {
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "rebinding_confirm",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::rebinding,
+            .active = true,
+            .blocks_lower_priority = true,
+            .consumes_gameplay_input = true,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "hud",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::overlay,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+        mirakana::runtime::RuntimeInputContextLayerDesc{
+            .context = "gameplay",
+            .kind = mirakana::runtime::RuntimeInputContextLayerKind::gameplay,
+            .active = true,
+            .blocks_lower_priority = false,
+            .consumes_gameplay_input = false,
+        },
+    };
+    const auto context_plan = mirakana::runtime::plan_runtime_input_context_stack(context_request);
+
+    mirakana::runtime::RuntimeInputActionMap base;
+    base.bind_key_in_context("gameplay", "confirm", mirakana::Key::space);
+    base.bind_pointer_in_context("gameplay", "confirm", mirakana::primary_pointer_id);
+    base.bind_key_axis_in_context("gameplay", "move_x", mirakana::Key::left, mirakana::Key::right);
+
+    mirakana::runtime::RuntimeInputRebindingProfile profile;
+    profile.profile_id = "player_one";
+    profile.action_overrides.push_back(mirakana::runtime::RuntimeInputRebindingActionOverride{
+        .context = "gameplay",
+        .action = "confirm",
+        .triggers = {make_input_rebinding_gamepad_button_trigger(mirakana::GamepadId{1},
+                                                                 mirakana::GamepadButton::south)},
+    });
+    profile.axis_overrides.push_back(mirakana::runtime::RuntimeInputRebindingAxisOverride{
+        .context = "gameplay",
+        .action = "move_x",
+        .sources = {make_input_rebinding_gamepad_axis_source(mirakana::GamepadId{1}, mirakana::GamepadAxis::left_x,
+                                                             1.0F, 0.25F)},
+    });
+
+    const auto applied = mirakana::runtime::apply_runtime_input_rebinding_profile(base, profile);
+
+    mirakana::VirtualInput keyboard;
+    keyboard.press(mirakana::Key::up);
+    mirakana::runtime::RuntimeInputRebindingCaptureRequest action_request;
+    action_request.context = "gameplay";
+    action_request.action = "confirm";
+    action_request.state.keyboard = &keyboard;
+    const auto action_capture =
+        mirakana::runtime::capture_runtime_input_rebinding_action(base, profile, action_request);
+
+    mirakana::VirtualGamepadInput gamepad;
+    gamepad.set_axis(mirakana::GamepadId{1}, mirakana::GamepadAxis::right_y, 0.9F);
+    mirakana::runtime::RuntimeInputRebindingAxisCaptureRequest axis_request;
+    axis_request.context = "gameplay";
+    axis_request.action = "move_x";
+    axis_request.state.gamepad = &gamepad;
+    const auto axis_capture = mirakana::runtime::capture_runtime_input_rebinding_axis(base, profile, axis_request);
+
+    mirakana::VirtualInput focus_keyboard;
+    mirakana::runtime::RuntimeInputRebindingFocusCaptureRequest focus_request;
+    focus_request.capture.context = "gameplay";
+    focus_request.capture.action = "confirm";
+    focus_request.capture.state.keyboard = &focus_keyboard;
+    focus_request.capture_id = "rebinding_confirm";
+    focus_request.focused_id = "rebinding_confirm";
+    focus_request.modal_layer_id = "rebinding_confirm";
+    focus_request.armed = true;
+    focus_request.consume_gameplay_input = true;
+    const auto focus_capture =
+        mirakana::runtime::capture_runtime_input_rebinding_action_with_focus(base, profile, focus_request);
+
+    const auto presentation = mirakana::runtime::make_runtime_input_rebinding_presentation(base, profile);
+
+    InputContextRebindingProbeResult result{
+        .requested_layers = context_request.layers.size(),
+        .active_contexts = context_plan.stack.active_contexts.size(),
+        .capture_context_active = context_plan.capture_context_active,
+        .gameplay_input_consumed = context_plan.gameplay_input_consumed,
+        .profile_overlays_applied = applied.action_overrides_applied + applied.axis_overrides_applied,
+        .action_capture_status = action_capture.status,
+        .axis_capture_status = axis_capture.status,
+        .focus_gameplay_consumed = focus_capture.gameplay_input_consumed,
+        .focus_retained = focus_capture.focus_retained,
+        .presentation_rows = presentation.rows.size(),
+        .glyph_lookup_keys = count_input_rebinding_glyph_lookup_keys(presentation),
+        .diagnostics = context_plan.diagnostics.size() + applied.diagnostics.size() +
+                       action_capture.diagnostics.size() + axis_capture.diagnostics.size() +
+                       focus_capture.diagnostics.size() + presentation.diagnostics.size(),
+    };
+    result.ready = context_plan.succeeded() && applied.succeeded() && action_capture.captured() &&
+                   axis_capture.captured() && focus_capture.waiting() && presentation.ready() &&
+                   result.requested_layers == 3U && result.active_contexts == 1U && result.capture_context_active &&
+                   result.gameplay_input_consumed && result.profile_overlays_applied == 2U &&
+                   result.focus_gameplay_consumed && result.focus_retained && result.presentation_rows == 2U &&
+                   result.glyph_lookup_keys == 5U && result.diagnostics == 0U;
+    return result;
 }
 
 [[nodiscard]] SceneGameplayBindingProbeResult validate_sample_2d_scene_gameplay_bindings(const mirakana::Scene& scene) {
@@ -5174,6 +5353,7 @@ int main(int argc, char** argv) {
     const auto report = host.presentation_report();
 
     const auto& audio_gameplay_mixer = game.audio_gameplay_mixer_probe();
+    const auto input_context_rebinding = validate_sample_input_context_rebinding();
     const auto package_records = runtime_package.has_value() ? runtime_package->records().size() : 0U;
     std::cout
         << "sample_2d_desktop_runtime_package status=" << status_name(result.status)
@@ -5297,6 +5477,21 @@ int main(int argc, char** argv) {
         << " gameplay_systems_scene_interaction_diagnostics=" << game.gameplay_systems_scene_interaction_diagnostics()
         << " gameplay_systems_scene_interaction_final_session_state="
         << runtime_scene_gameplay_session_state_name(game.gameplay_systems_scene_interaction_final_session_state())
+        << " input_context_rebinding_ready=" << (input_context_rebinding.ready ? 1 : 0)
+        << " input_context_rebinding_layers=" << input_context_rebinding.requested_layers
+        << " input_context_rebinding_active_contexts=" << input_context_rebinding.active_contexts
+        << " input_context_rebinding_capture_active=" << (input_context_rebinding.capture_context_active ? 1 : 0)
+        << " input_context_rebinding_gameplay_consumed=" << (input_context_rebinding.gameplay_input_consumed ? 1 : 0)
+        << " input_rebinding_profile_overlays_applied=" << input_context_rebinding.profile_overlays_applied
+        << " input_rebinding_action_capture_status="
+        << runtime_input_rebinding_capture_status_name(input_context_rebinding.action_capture_status)
+        << " input_rebinding_axis_capture_status="
+        << runtime_input_rebinding_capture_status_name(input_context_rebinding.axis_capture_status)
+        << " input_rebinding_focus_consumed=" << (input_context_rebinding.focus_gameplay_consumed ? 1 : 0)
+        << " input_rebinding_focus_retained=" << (input_context_rebinding.focus_retained ? 1 : 0)
+        << " input_rebinding_presentation_rows=" << input_context_rebinding.presentation_rows
+        << " input_rebinding_glyph_lookup_keys=" << input_context_rebinding.glyph_lookup_keys
+        << " input_rebinding_diagnostics=" << input_context_rebinding.diagnostics
         << " sprite_collision_hitbox_ready=" << (game.sprite_collision_hitbox_ready() ? 1 : 0)
         << " sprite_collision_hitbox_hits=" << game.sprite_collision_hitbox_hits()
         << " sprite_collision_hitbox_gameplay_events=" << game.sprite_collision_hitbox_gameplay_events()
@@ -5614,7 +5809,8 @@ int main(int argc, char** argv) {
     }
 
     if (options.require_gameplay_systems &&
-        (!game.gameplay_systems_passed(options.max_frames) || !game.gameplay_systems_scene_binding_ready())) {
+        (!game.gameplay_systems_passed(options.max_frames) || !game.gameplay_systems_scene_binding_ready() ||
+         !input_context_rebinding.ready)) {
         std::cout
             << "sample_2d_desktop_runtime_package required_gameplay_systems_unavailable"
             << " gameplay_systems_status="
@@ -5655,6 +5851,22 @@ int main(int argc, char** argv) {
             << game.gameplay_systems_scene_interaction_diagnostics()
             << " gameplay_systems_scene_interaction_final_session_state="
             << runtime_scene_gameplay_session_state_name(game.gameplay_systems_scene_interaction_final_session_state())
+            << " input_context_rebinding_ready=" << (input_context_rebinding.ready ? 1 : 0)
+            << " input_context_rebinding_layers=" << input_context_rebinding.requested_layers
+            << " input_context_rebinding_active_contexts=" << input_context_rebinding.active_contexts
+            << " input_context_rebinding_capture_active=" << (input_context_rebinding.capture_context_active ? 1 : 0)
+            << " input_context_rebinding_gameplay_consumed="
+            << (input_context_rebinding.gameplay_input_consumed ? 1 : 0)
+            << " input_rebinding_profile_overlays_applied=" << input_context_rebinding.profile_overlays_applied
+            << " input_rebinding_action_capture_status="
+            << runtime_input_rebinding_capture_status_name(input_context_rebinding.action_capture_status)
+            << " input_rebinding_axis_capture_status="
+            << runtime_input_rebinding_capture_status_name(input_context_rebinding.axis_capture_status)
+            << " input_rebinding_focus_consumed=" << (input_context_rebinding.focus_gameplay_consumed ? 1 : 0)
+            << " input_rebinding_focus_retained=" << (input_context_rebinding.focus_retained ? 1 : 0)
+            << " input_rebinding_presentation_rows=" << input_context_rebinding.presentation_rows
+            << " input_rebinding_glyph_lookup_keys=" << input_context_rebinding.glyph_lookup_keys
+            << " input_rebinding_diagnostics=" << input_context_rebinding.diagnostics
             << " sprite_collision_hitbox_ready=" << (game.sprite_collision_hitbox_ready() ? 1 : 0)
             << " sprite_collision_hitbox_hits=" << game.sprite_collision_hitbox_hits()
             << " sprite_collision_hitbox_gameplay_events=" << game.sprite_collision_hitbox_gameplay_events()
