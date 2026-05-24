@@ -1449,8 +1449,8 @@ foreach ($worldRegionNavigationHeaderNeedle in @(
     "RuntimeWorldRegionNavigationPathCacheReviewRequest",
     "RuntimeWorldRegionNavigationPathCacheReviewResult",
     "review_runtime_world_region_navigation_refs",
-    "review_runtime_world_region_navigation_path_cache",
-    "catalog_cache_not_ready"
+    "review_runtime_world_region_navigation_path_cache", "catalog_cache_not_ready",
+    "RuntimeWorldStreamingLargeSceneReadinessRequest", "RuntimeWorldStreamingLargeSceneReadinessReport", "evaluate_runtime_world_streaming_large_scene_readiness"
 )) {
     Assert-ContainsText $worldRegionStreamingHeader $worldRegionNavigationHeaderNeedle "world_region_streaming.hpp"
 }

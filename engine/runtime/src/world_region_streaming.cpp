@@ -328,6 +328,34 @@ void append_package_failure_diagnostic(RuntimeWorldRegionStreamingSafePointResul
                    std::move(message));
 }
 
+void append_large_scene_diagnostic(RuntimeWorldStreamingLargeSceneReadinessReport& report,
+                                   RuntimeWorldStreamingLargeSceneReadinessDiagnostic diagnostic) {
+    if (diagnostic == RuntimeWorldStreamingLargeSceneReadinessDiagnostic::none) {
+        return;
+    }
+    if (report.diagnostics.empty()) {
+        report.diagnostic = diagnostic;
+    }
+    report.diagnostics.push_back(diagnostic);
+}
+
+[[nodiscard]] std::size_t count_plan_diagnostics(const RuntimeWorldRegionStreamingPlan& plan,
+                                                 RuntimeWorldRegionStreamingDiagnosticCode code) noexcept {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] bool failed_only_for_missing_regions(const RuntimeWorldRegionStreamingPlan& plan,
+                                                   std::size_t missing_region_diagnostics) noexcept {
+    return !plan.succeeded() && missing_region_diagnostics > 0U &&
+           missing_region_diagnostics == plan.diagnostics.size();
+}
+
 void validate_safe_point_plan(RuntimeWorldRegionStreamingSafePointResult& result,
                               const RuntimeWorldRegionStreamingSafePointDesc& desc) {
     if (!desc.plan.succeeded()) {
@@ -660,6 +688,158 @@ execute_runtime_world_region_streaming_safe_point(IFileSystem& filesystem, Runti
     result.committed = result.committed_count > 0U;
     result.status = RuntimeWorldRegionStreamingSafePointStatus::completed;
     return result;
+}
+
+RuntimeWorldStreamingLargeSceneReadinessReport
+evaluate_runtime_world_streaming_large_scene_readiness(const RuntimeWorldStreamingLargeSceneReadinessRequest& request,
+                                                       const RuntimeWorldStreamingLargeSceneReadinessConfig& config) {
+    RuntimeWorldStreamingLargeSceneReadinessReport report{
+        .status = RuntimeWorldStreamingLargeSceneReadinessStatus::diagnostics,
+        .diagnostic = RuntimeWorldStreamingLargeSceneReadinessDiagnostic::none,
+        .diagnostics = {},
+        .first_plan_status = request.streaming_plans.empty() ? RuntimeWorldRegionStreamingPlanStatus::invalid_request
+                                                             : request.streaming_plans.front().status,
+        .first_safe_point_status = request.safe_points.empty()
+                                       ? RuntimeWorldRegionStreamingSafePointStatus::invalid_plan
+                                       : request.safe_points.front().status,
+        .navigation_refs_status = request.navigation_refs == nullptr
+                                      ? RuntimeWorldRegionNavigationReviewStatus::invalid_request
+                                      : request.navigation_refs->status,
+        .navigation_path_cache_status = request.navigation_path_cache == nullptr
+                                            ? RuntimeWorldRegionNavigationReviewStatus::invalid_request
+                                            : request.navigation_path_cache->status,
+        .plan_rows = 0U,
+        .load_rows = 0U,
+        .keep_rows = 0U,
+        .unload_rows = 0U,
+        .safe_point_rows = 0U,
+        .committed_rows = 0U,
+        .reviewed_package_adoptions = 0U,
+        .projected_resident_regions = 0U,
+        .projected_resident_bytes = 0U,
+        .max_projected_resident_regions = config.max_projected_resident_regions,
+        .max_projected_resident_bytes = config.max_projected_resident_bytes,
+        .missing_region_diagnostics = 0U,
+        .safe_point_diagnostics = 0U,
+        .navigation_resident_regions =
+            request.navigation_refs == nullptr ? 0U : request.navigation_refs->resident_region_count,
+        .navigation_missing_resident_regions =
+            request.navigation_refs == nullptr ? 0U : request.navigation_refs->missing_resident_region_count,
+        .navigation_path_cache_ready =
+            request.navigation_path_cache != nullptr && request.navigation_path_cache->cache_ready,
+    };
+
+    if (request.streaming_plans.empty()) {
+        append_large_scene_diagnostic(report,
+                                      RuntimeWorldStreamingLargeSceneReadinessDiagnostic::invalid_streaming_plan);
+    }
+
+    for (const auto& plan : request.streaming_plans) {
+        if (!plan.succeeded()) {
+            append_large_scene_diagnostic(report,
+                                          RuntimeWorldStreamingLargeSceneReadinessDiagnostic::invalid_streaming_plan);
+        }
+        report.plan_rows += plan.rows.size();
+        report.load_rows += plan.load_count;
+        report.keep_rows += plan.keep_count;
+        report.unload_rows += plan.unload_count;
+        report.projected_resident_regions =
+            std::max(report.projected_resident_regions, plan.projected_resident_region_count);
+        report.projected_resident_bytes = std::max(report.projected_resident_bytes, plan.projected_resident_bytes);
+        report.missing_region_diagnostics +=
+            count_plan_diagnostics(plan, RuntimeWorldRegionStreamingDiagnosticCode::missing_desired_region);
+    }
+
+    if (request.missing_region_probe != nullptr) {
+        const auto missing_region_diagnostics = count_plan_diagnostics(
+            *request.missing_region_probe, RuntimeWorldRegionStreamingDiagnosticCode::missing_desired_region);
+        report.missing_region_diagnostics += missing_region_diagnostics;
+        if (!request.missing_region_probe->succeeded() &&
+            !failed_only_for_missing_regions(*request.missing_region_probe, missing_region_diagnostics)) {
+            append_large_scene_diagnostic(report,
+                                          RuntimeWorldStreamingLargeSceneReadinessDiagnostic::invalid_streaming_plan);
+        }
+    }
+
+    for (const auto& safe_point : request.safe_points) {
+        if (!safe_point.succeeded()) {
+            append_large_scene_diagnostic(
+                report, RuntimeWorldStreamingLargeSceneReadinessDiagnostic::streaming_safe_point_failed);
+        }
+        report.safe_point_rows += safe_point.rows.size();
+        report.committed_rows += safe_point.committed_count;
+        report.safe_point_diagnostics += safe_point.diagnostics.size();
+        for (const auto& row : safe_point.rows) {
+            if (row.action == RuntimeWorldRegionStreamingActionKind::load_region && row.committed) {
+                ++report.reviewed_package_adoptions;
+            }
+        }
+    }
+
+    if (report.plan_rows < config.min_plan_rows) {
+        append_large_scene_diagnostic(report,
+                                      RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_plan_rows);
+    }
+    if (report.load_rows < config.min_load_rows) {
+        append_large_scene_diagnostic(report,
+                                      RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_load_rows);
+    }
+    if (report.keep_rows < config.min_keep_rows) {
+        append_large_scene_diagnostic(report,
+                                      RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_keep_rows);
+    }
+    if (report.unload_rows < config.min_unload_rows) {
+        append_large_scene_diagnostic(report,
+                                      RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_unload_rows);
+    }
+    if (report.safe_point_rows < config.min_safe_point_rows) {
+        append_large_scene_diagnostic(report,
+                                      RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_safe_point_rows);
+    }
+    if (report.committed_rows < config.min_committed_rows) {
+        append_large_scene_diagnostic(report,
+                                      RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_committed_rows);
+    }
+    if (report.reviewed_package_adoptions < config.min_reviewed_package_adoptions) {
+        append_large_scene_diagnostic(
+            report, RuntimeWorldStreamingLargeSceneReadinessDiagnostic::missing_reviewed_package_adoption);
+    }
+    if (config.require_missing_region_diagnostic && report.missing_region_diagnostics == 0U) {
+        append_large_scene_diagnostic(
+            report, RuntimeWorldStreamingLargeSceneReadinessDiagnostic::missing_region_diagnostic_absent);
+    }
+    if (report.safe_point_diagnostics > config.max_safe_point_diagnostics) {
+        append_large_scene_diagnostic(
+            report, RuntimeWorldStreamingLargeSceneReadinessDiagnostic::safe_point_diagnostics_present);
+    }
+    if (report.projected_resident_regions > config.max_projected_resident_regions) {
+        append_large_scene_diagnostic(
+            report, RuntimeWorldStreamingLargeSceneReadinessDiagnostic::projected_region_budget_exceeded);
+    }
+    if (report.projected_resident_bytes > config.max_projected_resident_bytes) {
+        append_large_scene_diagnostic(
+            report, RuntimeWorldStreamingLargeSceneReadinessDiagnostic::projected_byte_budget_exceeded);
+    }
+    if (config.require_navigation_refs_ready &&
+        (request.navigation_refs == nullptr || !request.navigation_refs->succeeded())) {
+        append_large_scene_diagnostic(report,
+                                      RuntimeWorldStreamingLargeSceneReadinessDiagnostic::navigation_refs_not_ready);
+    }
+    if (config.require_navigation_path_cache_ready &&
+        (request.navigation_path_cache == nullptr || !request.navigation_path_cache->succeeded() ||
+         !request.navigation_path_cache->cache_ready)) {
+        append_large_scene_diagnostic(
+            report, RuntimeWorldStreamingLargeSceneReadinessDiagnostic::navigation_path_cache_not_ready);
+    }
+
+    if (report.diagnostics.empty()) {
+        report.status = RuntimeWorldStreamingLargeSceneReadinessStatus::ready;
+    } else if (report.diagnostic == RuntimeWorldStreamingLargeSceneReadinessDiagnostic::invalid_streaming_plan) {
+        report.status = RuntimeWorldStreamingLargeSceneReadinessStatus::invalid_evidence;
+    } else {
+        report.status = RuntimeWorldStreamingLargeSceneReadinessStatus::diagnostics;
+    }
+    return report;
 }
 
 } // namespace mirakana::runtime

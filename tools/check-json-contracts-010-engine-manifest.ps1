@@ -95,6 +95,13 @@ foreach ($needle in @("RuntimeWorldRegionNavigationRefReviewRequest", "RuntimeWo
         Write-Error "engine manifest world-region navigation review surface missing $needle"
     }
 }
+Assert-Properties $engine.gameCodeGuidance @("currentWorldRegionStreaming") "engine manifest gameCodeGuidance"
+$worldRegionStreamingText = (([string]$engine.gameCodeGuidance.currentWorldRegionStreaming), ((@($geRuntimeModuleForNavigation[0].recentEvidence) -join " "))) -join " "
+foreach ($needle in @("RuntimeWorldStreamingLargeSceneReadinessRequest", "RuntimeWorldStreamingLargeSceneReadinessReport", "evaluate_runtime_world_streaming_large_scene_readiness", "world_region_streaming_large_scene_readiness_status", "world_region_streaming_navigation_path_cache_ready")) {
+    if (-not $worldRegionStreamingText.Contains($needle)) {
+        Write-Error "engine manifest world-region streaming large-scene surface missing $needle"
+    }
+}
 Assert-Properties $engine.gameCodeGuidance @("currentEditorContentBrowserImportDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorPrefabInstanceSourceLinks") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost") "engine manifest gameCodeGuidance"

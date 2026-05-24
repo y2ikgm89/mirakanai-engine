@@ -1916,3 +1916,19 @@ foreach ($check in $editorResourceCaptureRequestChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor resource capture request contract: $($missingNeedles -join ', ')"
     }
 }
+
+$worldStreamingLargeSceneSurfaceChecks = @(
+    @{ Path = "docs/current-capabilities.md"; Needles = @("World Streaming Large Scene Readiness v1", "RuntimeWorldStreamingLargeSceneReadinessRequest", "world_region_streaming_navigation_path_cache_ready=1", "background streaming") },
+    @{ Path = "docs/ai-game-development.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "evaluate_runtime_world_streaming_large_scene_readiness", "optional path-cache readiness", "streaming execution") },
+    @{ Path = ".agents/skills/gameengine-game-development/SKILL.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "world_region_streaming_large_scene_readiness_status", "background streaming") },
+    @{ Path = ".claude/skills/gameengine-game-development/SKILL.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "world_region_streaming_large_scene_readiness_status", "background streaming") },
+    @{ Path = ".cursor/skills/gameengine-game-development/SKILL.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "world_region_streaming_navigation_path_cache_ready", "background streaming") },
+    @{ Path = ".agents/skills/gameengine-game-development/references/full-guidance.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "navigation path-cache readiness", "automatic eviction policy") },
+    @{ Path = ".claude/skills/gameengine-game-development/references/full-guidance.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "navigation path-cache readiness", "automatic eviction policy") }
+)
+foreach ($check in $worldStreamingLargeSceneSurfaceChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    foreach ($needle in $check.Needles) {
+        Assert-ContainsText $fileText $needle "$($check.Path) world streaming large scene contract"
+    }
+}

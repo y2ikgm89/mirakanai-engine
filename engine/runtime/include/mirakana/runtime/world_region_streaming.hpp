@@ -8,6 +8,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -253,5 +255,92 @@ struct RuntimeWorldRegionStreamingSafePointResult {
 execute_runtime_world_region_streaming_safe_point(IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set,
                                                   RuntimeResidentCatalogCacheV2& catalog_cache,
                                                   const RuntimeWorldRegionStreamingSafePointDesc& desc);
+
+enum class RuntimeWorldStreamingLargeSceneReadinessStatus : std::uint8_t {
+    ready = 0,
+    diagnostics,
+    invalid_evidence,
+};
+
+enum class RuntimeWorldStreamingLargeSceneReadinessDiagnostic : std::uint8_t {
+    none = 0,
+    invalid_streaming_plan,
+    streaming_safe_point_failed,
+    insufficient_plan_rows,
+    insufficient_load_rows,
+    insufficient_keep_rows,
+    insufficient_unload_rows,
+    insufficient_safe_point_rows,
+    insufficient_committed_rows,
+    missing_reviewed_package_adoption,
+    missing_region_diagnostic_absent,
+    safe_point_diagnostics_present,
+    projected_region_budget_exceeded,
+    projected_byte_budget_exceeded,
+    navigation_refs_not_ready,
+    navigation_path_cache_not_ready,
+};
+
+struct RuntimeWorldStreamingLargeSceneReadinessConfig {
+    bool require_missing_region_diagnostic{false};
+    bool require_navigation_refs_ready{false};
+    bool require_navigation_path_cache_ready{false};
+    std::size_t min_plan_rows{1U};
+    std::size_t min_load_rows{1U};
+    std::size_t min_keep_rows{0U};
+    std::size_t min_unload_rows{0U};
+    std::size_t min_safe_point_rows{1U};
+    std::size_t min_committed_rows{1U};
+    std::size_t min_reviewed_package_adoptions{1U};
+    std::size_t max_safe_point_diagnostics{0U};
+    std::size_t max_projected_resident_regions{std::numeric_limits<std::size_t>::max()};
+    std::uint64_t max_projected_resident_bytes{std::numeric_limits<std::uint64_t>::max()};
+};
+
+struct RuntimeWorldStreamingLargeSceneReadinessRequest {
+    std::span<const RuntimeWorldRegionStreamingPlan> streaming_plans;
+    std::span<const RuntimeWorldRegionStreamingSafePointResult> safe_points;
+    const RuntimeWorldRegionStreamingPlan* missing_region_probe{nullptr};
+    const RuntimeWorldRegionNavigationRefReviewResult* navigation_refs{nullptr};
+    const RuntimeWorldRegionNavigationPathCacheReviewResult* navigation_path_cache{nullptr};
+};
+
+struct RuntimeWorldStreamingLargeSceneReadinessReport {
+    RuntimeWorldStreamingLargeSceneReadinessStatus status{
+        RuntimeWorldStreamingLargeSceneReadinessStatus::invalid_evidence};
+    RuntimeWorldStreamingLargeSceneReadinessDiagnostic diagnostic{
+        RuntimeWorldStreamingLargeSceneReadinessDiagnostic::none};
+    std::vector<RuntimeWorldStreamingLargeSceneReadinessDiagnostic> diagnostics;
+    RuntimeWorldRegionStreamingPlanStatus first_plan_status{RuntimeWorldRegionStreamingPlanStatus::invalid_request};
+    RuntimeWorldRegionStreamingSafePointStatus first_safe_point_status{
+        RuntimeWorldRegionStreamingSafePointStatus::invalid_plan};
+    RuntimeWorldRegionNavigationReviewStatus navigation_refs_status{
+        RuntimeWorldRegionNavigationReviewStatus::invalid_request};
+    RuntimeWorldRegionNavigationReviewStatus navigation_path_cache_status{
+        RuntimeWorldRegionNavigationReviewStatus::invalid_request};
+    std::size_t plan_rows{0U};
+    std::size_t load_rows{0U};
+    std::size_t keep_rows{0U};
+    std::size_t unload_rows{0U};
+    std::size_t safe_point_rows{0U};
+    std::size_t committed_rows{0U};
+    std::size_t reviewed_package_adoptions{0U};
+    std::size_t projected_resident_regions{0U};
+    std::uint64_t projected_resident_bytes{0U};
+    std::size_t max_projected_resident_regions{0U};
+    std::uint64_t max_projected_resident_bytes{0U};
+    std::size_t missing_region_diagnostics{0U};
+    std::size_t safe_point_diagnostics{0U};
+    std::size_t navigation_resident_regions{0U};
+    std::size_t navigation_missing_resident_regions{0U};
+    bool navigation_path_cache_ready{false};
+};
+
+/// Summarizes reviewed world-region streaming, package safe-point, missing-region, and optional navigation-cache
+/// evidence for a large-scene foundation claim. This helper only consumes caller-supplied value evidence; it does not
+/// read packages, execute streaming, refresh catalogs, start background jobs, or touch renderer/RHI/native handles.
+[[nodiscard]] RuntimeWorldStreamingLargeSceneReadinessReport evaluate_runtime_world_streaming_large_scene_readiness(
+    const RuntimeWorldStreamingLargeSceneReadinessRequest& request,
+    const RuntimeWorldStreamingLargeSceneReadinessConfig& config = {});
 
 } // namespace mirakana::runtime

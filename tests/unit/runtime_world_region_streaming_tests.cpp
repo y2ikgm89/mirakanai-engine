@@ -762,6 +762,198 @@ MK_TEST("runtime world region navigation path cache review fails closed on stale
     MK_REQUIRE(ready.resident_region_count == 2U);
 }
 
+MK_TEST("runtime world streaming large scene readiness summarizes plan safe point package and navigation evidence") {
+    using Status = mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus;
+
+    CountingFileSystem filesystem;
+    const auto town_scene = mirakana::AssetId::from_name("town/scene");
+    const auto forest_scene = mirakana::AssetId::from_name("forest/scene");
+    write_region_package(filesystem, "forest", forest_scene, mirakana::AssetKind::scene, "regions/forest/scene.scene",
+                         "forest scene");
+
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                .label = "town",
+                .package = make_package(make_record(town_scene, mirakana::AssetKind::scene,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1U}, "town scene")),
+            })
+            .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+
+    const auto request = streaming_request();
+    const auto load_plan = mirakana::runtime::plan_runtime_world_region_streaming(request);
+    auto load_desc = make_safe_point_desc(load_plan, request.regions);
+    const auto load_result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(
+        filesystem, mount_set, catalog_cache, load_desc);
+
+    const auto navigation_refs = mirakana::runtime::review_runtime_world_region_navigation_refs(
+        mount_set, mirakana::runtime::RuntimeWorldRegionNavigationRefReviewRequest{
+                       .regions = request.regions,
+                       .route_region_ids = {"town", "forest"},
+                   });
+    const mirakana::runtime::RuntimeWorldRegionNavigationPathCacheEntry cache{
+        .region_path = {"town", "forest"},
+        .portal_path = {"road"},
+        .mount_generation = mount_set.generation(),
+        .catalog_generation = catalog_cache.catalog().generation(),
+    };
+    const auto path_cache = mirakana::runtime::review_runtime_world_region_navigation_path_cache(
+        mount_set, catalog_cache,
+        mirakana::runtime::RuntimeWorldRegionNavigationPathCacheReviewRequest{
+            .regions = request.regions,
+            .route_region_ids = {"town", "forest"},
+            .route_portal_ids = {"road"},
+            .cache = cache,
+        });
+
+    auto unload_request = streaming_request();
+    unload_request.active_region_ids = {"forest", "town"};
+    unload_request.desired_region_ids = {"forest"};
+    unload_request.protected_region_ids = {"forest"};
+    const auto unload_plan = mirakana::runtime::plan_runtime_world_region_streaming(unload_request);
+    auto unload_desc = make_safe_point_desc(unload_plan, unload_request.regions);
+    unload_desc.protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2U}};
+    const auto unload_result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(
+        filesystem, mount_set, catalog_cache, unload_desc);
+
+    auto missing_request = streaming_request();
+    missing_request.desired_region_ids.push_back("missing");
+    const auto missing_plan = mirakana::runtime::plan_runtime_world_region_streaming(missing_request);
+
+    const mirakana::runtime::RuntimeWorldRegionStreamingPlan plans[]{load_plan, unload_plan};
+    const mirakana::runtime::RuntimeWorldRegionStreamingSafePointResult safe_points[]{load_result, unload_result};
+    const auto report = mirakana::runtime::evaluate_runtime_world_streaming_large_scene_readiness(
+        mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessRequest{
+            .streaming_plans = std::span<const mirakana::runtime::RuntimeWorldRegionStreamingPlan>{plans},
+            .safe_points = std::span<const mirakana::runtime::RuntimeWorldRegionStreamingSafePointResult>{safe_points},
+            .missing_region_probe = &missing_plan,
+            .navigation_refs = &navigation_refs,
+            .navigation_path_cache = &path_cache,
+        },
+        mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessConfig{
+            .require_missing_region_diagnostic = true,
+            .require_navigation_refs_ready = true,
+            .require_navigation_path_cache_ready = true,
+            .min_keep_rows = 1U,
+            .min_unload_rows = 1U,
+            .max_projected_resident_regions = 2U,
+            .max_projected_resident_bytes = 96U,
+        });
+
+    MK_REQUIRE(report.status == Status::ready);
+    MK_REQUIRE(report.diagnostic == mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::none);
+    MK_REQUIRE(report.plan_rows == 4U);
+    MK_REQUIRE(report.load_rows == 1U);
+    MK_REQUIRE(report.keep_rows == 2U);
+    MK_REQUIRE(report.unload_rows == 1U);
+    MK_REQUIRE(report.safe_point_rows == 4U);
+    MK_REQUIRE(report.committed_rows == 2U);
+    MK_REQUIRE(report.reviewed_package_adoptions == 1U);
+    MK_REQUIRE(report.projected_resident_regions == 2U);
+    MK_REQUIRE(report.projected_resident_bytes == 80U);
+    MK_REQUIRE(report.max_projected_resident_regions == 2U);
+    MK_REQUIRE(report.max_projected_resident_bytes == 96U);
+    MK_REQUIRE(report.missing_region_diagnostics == 1U);
+    MK_REQUIRE(report.safe_point_diagnostics == 0U);
+    MK_REQUIRE(report.navigation_resident_regions == 2U);
+    MK_REQUIRE(report.navigation_missing_resident_regions == 0U);
+    MK_REQUIRE(report.navigation_path_cache_ready);
+    MK_REQUIRE(report.diagnostics.empty());
+}
+
+MK_TEST("runtime world streaming large scene readiness reports missing evidence and budgets") {
+    using Diagnostic = mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic;
+    using Status = mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus;
+
+    const auto request = streaming_request();
+    const auto load_plan = mirakana::runtime::plan_runtime_world_region_streaming(request);
+    const auto empty_safe_point = mirakana::runtime::RuntimeWorldRegionStreamingSafePointResult{};
+    const auto report = mirakana::runtime::evaluate_runtime_world_streaming_large_scene_readiness(
+        mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessRequest{
+            .streaming_plans = std::span<const mirakana::runtime::RuntimeWorldRegionStreamingPlan>{&load_plan, 1U},
+            .safe_points =
+                std::span<const mirakana::runtime::RuntimeWorldRegionStreamingSafePointResult>{&empty_safe_point, 1U},
+        },
+        mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessConfig{
+            .require_missing_region_diagnostic = true,
+            .require_navigation_refs_ready = true,
+            .require_navigation_path_cache_ready = true,
+            .min_keep_rows = 2U,
+            .min_unload_rows = 1U,
+            .max_projected_resident_regions = 1U,
+            .max_projected_resident_bytes = 64U,
+        });
+
+    MK_REQUIRE(report.status == Status::diagnostics);
+    MK_REQUIRE(report.diagnostic == Diagnostic::streaming_safe_point_failed);
+    MK_REQUIRE((report.diagnostics ==
+                std::vector<Diagnostic>{
+                    Diagnostic::streaming_safe_point_failed, Diagnostic::insufficient_keep_rows,
+                    Diagnostic::insufficient_unload_rows, Diagnostic::insufficient_safe_point_rows,
+                    Diagnostic::insufficient_committed_rows, Diagnostic::missing_reviewed_package_adoption,
+                    Diagnostic::missing_region_diagnostic_absent, Diagnostic::projected_region_budget_exceeded,
+                    Diagnostic::projected_byte_budget_exceeded, Diagnostic::navigation_refs_not_ready,
+                    Diagnostic::navigation_path_cache_not_ready}));
+}
+
+MK_TEST("runtime world streaming large scene readiness rejects malformed missing-region probe evidence") {
+    using Diagnostic = mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic;
+    using Status = mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus;
+
+    CountingFileSystem filesystem;
+    const auto town_scene = mirakana::AssetId::from_name("town/scene");
+    const auto forest_scene = mirakana::AssetId::from_name("forest/scene");
+    write_region_package(filesystem, "forest", forest_scene, mirakana::AssetKind::scene, "regions/forest/scene.scene",
+                         "forest scene");
+
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    MK_REQUIRE(
+        mount_set
+            .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+                .label = "town",
+                .package = make_package(make_record(town_scene, mirakana::AssetKind::scene,
+                                                    mirakana::runtime::RuntimeAssetHandle{.value = 1U}, "town scene")),
+            })
+            .succeeded());
+    auto catalog_cache = make_refreshed_cache(mount_set);
+
+    const auto request = streaming_request();
+    const auto load_plan = mirakana::runtime::plan_runtime_world_region_streaming(request);
+    auto load_desc = make_safe_point_desc(load_plan, request.regions);
+    const auto load_result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(
+        filesystem, mount_set, catalog_cache, load_desc);
+
+    auto malformed_probe_request = streaming_request();
+    malformed_probe_request.desired_region_ids.push_back("missing");
+    malformed_probe_request.regions.push_back(malformed_probe_request.regions.front());
+    const auto malformed_probe = mirakana::runtime::plan_runtime_world_region_streaming(malformed_probe_request);
+
+    const mirakana::runtime::RuntimeWorldRegionStreamingPlan plans[]{load_plan};
+    const mirakana::runtime::RuntimeWorldRegionStreamingSafePointResult safe_points[]{load_result};
+    const auto report = mirakana::runtime::evaluate_runtime_world_streaming_large_scene_readiness(
+        mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessRequest{
+            .streaming_plans = std::span<const mirakana::runtime::RuntimeWorldRegionStreamingPlan>{plans},
+            .safe_points = std::span<const mirakana::runtime::RuntimeWorldRegionStreamingSafePointResult>{safe_points},
+            .missing_region_probe = &malformed_probe,
+        },
+        mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessConfig{
+            .require_missing_region_diagnostic = true,
+            .min_keep_rows = 1U,
+            .min_unload_rows = 0U,
+            .max_projected_resident_regions = 2U,
+            .max_projected_resident_bytes = 96U,
+        });
+
+    MK_REQUIRE(report.status == Status::invalid_evidence);
+    MK_REQUIRE(report.diagnostic == Diagnostic::invalid_streaming_plan);
+    MK_REQUIRE(report.missing_region_diagnostics == 1U);
+    MK_REQUIRE((report.diagnostics == std::vector<Diagnostic>{Diagnostic::invalid_streaming_plan}));
+}
+
 int main() {
     return mirakana::test::run_all();
 }

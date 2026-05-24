@@ -140,6 +140,10 @@ enum class Gameplay2DSystemsStatus : std::uint8_t {
 struct WorldRegionStreamingProbeResult {
     mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus status{
         mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::invalid_plan};
+    mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus large_scene_readiness_status{
+        mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus::invalid_evidence};
+    mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic large_scene_readiness_diagnostic{
+        mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::none};
     std::size_t plan_rows{0U};
     std::size_t load_rows{0U};
     std::size_t keep_rows{0U};
@@ -152,6 +156,10 @@ struct WorldRegionStreamingProbeResult {
     std::uint64_t budget_bytes{0U};
     std::size_t missing_region_diagnostics{0U};
     std::size_t safe_point_diagnostics{0U};
+    std::size_t large_scene_readiness_diagnostics{0U};
+    std::size_t navigation_resident_regions{0U};
+    std::size_t navigation_missing_resident_regions{0U};
+    bool navigation_path_cache_ready{false};
     bool ready{false};
 };
 
@@ -611,6 +619,58 @@ world_region_streaming_status_name(mirakana::runtime::RuntimeWorldRegionStreamin
         return "failed";
     case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::completed:
         return "completed";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view world_streaming_large_scene_readiness_status_name(
+    mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus::invalid_evidence:
+        return "invalid_evidence";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view world_streaming_large_scene_readiness_diagnostic_name(
+    mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::none:
+        return "none";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::invalid_streaming_plan:
+        return "invalid_streaming_plan";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::streaming_safe_point_failed:
+        return "streaming_safe_point_failed";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_plan_rows:
+        return "insufficient_plan_rows";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_load_rows:
+        return "insufficient_load_rows";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_keep_rows:
+        return "insufficient_keep_rows";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_unload_rows:
+        return "insufficient_unload_rows";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_safe_point_rows:
+        return "insufficient_safe_point_rows";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::insufficient_committed_rows:
+        return "insufficient_committed_rows";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::missing_reviewed_package_adoption:
+        return "missing_reviewed_package_adoption";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::missing_region_diagnostic_absent:
+        return "missing_region_diagnostic_absent";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::safe_point_diagnostics_present:
+        return "safe_point_diagnostics_present";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::projected_region_budget_exceeded:
+        return "projected_region_budget_exceeded";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::projected_byte_budget_exceeded:
+        return "projected_byte_budget_exceeded";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::navigation_refs_not_ready:
+        return "navigation_refs_not_ready";
+    case mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessDiagnostic::navigation_path_cache_not_ready:
+        return "navigation_path_cache_not_ready";
     }
     return "unknown";
 }
@@ -5526,6 +5586,29 @@ run_world_region_streaming_probe(const char* executable_path, std::string_view p
         const auto load_result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(
             filesystem, mount_set, catalog_cache, load_desc);
 
+        auto navigation_regions = regions;
+        navigation_regions[0].candidate.package_index_path = "runtime/regions/town.geindex";
+        navigation_regions[1].candidate.package_index_path = "runtime/regions/field.geindex";
+        const auto navigation_refs = mirakana::runtime::review_runtime_world_region_navigation_refs(
+            mount_set, mirakana::runtime::RuntimeWorldRegionNavigationRefReviewRequest{
+                           .regions = navigation_regions,
+                           .route_region_ids = {"town", "field"},
+                       });
+        const mirakana::runtime::RuntimeWorldRegionNavigationPathCacheEntry navigation_cache{
+            .region_path = {"town", "field"},
+            .portal_path = {"town-field"},
+            .mount_generation = mount_set.generation(),
+            .catalog_generation = catalog_cache.catalog().generation(),
+        };
+        const auto navigation_path_cache = mirakana::runtime::review_runtime_world_region_navigation_path_cache(
+            mount_set, catalog_cache,
+            mirakana::runtime::RuntimeWorldRegionNavigationPathCacheReviewRequest{
+                .regions = navigation_regions,
+                .route_region_ids = {"town", "field"},
+                .route_portal_ids = {"town-field"},
+                .cache = navigation_cache,
+            });
+
         const mirakana::runtime::RuntimeWorldRegionStreamingPlanRequest unload_request{
             .regions = regions,
             .active_region_ids = {"field", "town"},
@@ -5551,9 +5634,34 @@ run_world_region_streaming_probe(const char* executable_path, std::string_view p
         const auto unload_result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(
             filesystem, mount_set, catalog_cache, unload_desc);
 
+        const mirakana::runtime::RuntimeWorldRegionStreamingPlan readiness_plans[]{load_plan, unload_plan};
+        const mirakana::runtime::RuntimeWorldRegionStreamingSafePointResult readiness_safe_points[]{load_result,
+                                                                                                    unload_result};
+        const auto large_scene_readiness = mirakana::runtime::evaluate_runtime_world_streaming_large_scene_readiness(
+            mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessRequest{
+                .streaming_plans = std::span<const mirakana::runtime::RuntimeWorldRegionStreamingPlan>{readiness_plans},
+                .safe_points =
+                    std::span<const mirakana::runtime::RuntimeWorldRegionStreamingSafePointResult>{
+                        readiness_safe_points},
+                .missing_region_probe = &missing_plan,
+                .navigation_refs = &navigation_refs,
+                .navigation_path_cache = &navigation_path_cache,
+            },
+            mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessConfig{
+                .require_missing_region_diagnostic = true,
+                .require_navigation_refs_ready = true,
+                .require_navigation_path_cache_ready = true,
+                .min_keep_rows = 1U,
+                .min_unload_rows = 1U,
+                .max_projected_resident_regions = 2U,
+                .max_projected_resident_bytes = budget_bytes,
+            });
+
         probe.status = load_result.succeeded() && unload_result.succeeded()
                            ? mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::completed
                            : mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::failed;
+        probe.large_scene_readiness_status = large_scene_readiness.status;
+        probe.large_scene_readiness_diagnostic = large_scene_readiness.diagnostic;
         probe.plan_rows = load_plan.rows.size() + unload_plan.rows.size();
         probe.load_rows = load_plan.load_count + unload_plan.load_count;
         probe.keep_rows = load_plan.keep_count + unload_plan.keep_count;
@@ -5564,10 +5672,15 @@ run_world_region_streaming_probe(const char* executable_path, std::string_view p
         probe.projected_regions = load_plan.projected_resident_region_count;
         probe.projected_bytes = load_plan.projected_resident_bytes;
         probe.safe_point_diagnostics = load_result.diagnostics.size() + unload_result.diagnostics.size();
-        probe.ready = load_plan.succeeded() && unload_plan.succeeded() && load_result.succeeded() &&
-                      unload_result.succeeded() && probe.load_rows == 1U && probe.unload_rows == 1U &&
-                      probe.reviewed_package_adoptions > 0U && probe.missing_region_diagnostics > 0U &&
-                      probe.safe_point_diagnostics == 0U;
+        probe.large_scene_readiness_diagnostics = large_scene_readiness.diagnostics.size();
+        probe.navigation_resident_regions = large_scene_readiness.navigation_resident_regions;
+        probe.navigation_missing_resident_regions = large_scene_readiness.navigation_missing_resident_regions;
+        probe.navigation_path_cache_ready = large_scene_readiness.navigation_path_cache_ready;
+        probe.ready =
+            load_plan.succeeded() && unload_plan.succeeded() && load_result.succeeded() && unload_result.succeeded() &&
+            probe.load_rows == 1U && probe.unload_rows == 1U && probe.reviewed_package_adoptions > 0U &&
+            probe.missing_region_diagnostics > 0U && probe.safe_point_diagnostics == 0U &&
+            large_scene_readiness.status == mirakana::runtime::RuntimeWorldStreamingLargeSceneReadinessStatus::ready;
     } catch (const std::exception&) {
         probe.status = mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::failed;
         probe.ready = false;
@@ -6163,6 +6276,19 @@ int main(int argc, char** argv) {
         << " world_region_streaming_missing_region_diagnostics="
         << world_region_streaming_probe.missing_region_diagnostics
         << " world_region_streaming_safe_point_diagnostics=" << world_region_streaming_probe.safe_point_diagnostics
+        << " world_region_streaming_large_scene_readiness_status="
+        << world_streaming_large_scene_readiness_status_name(world_region_streaming_probe.large_scene_readiness_status)
+        << " world_region_streaming_large_scene_readiness_diagnostic="
+        << world_streaming_large_scene_readiness_diagnostic_name(
+               world_region_streaming_probe.large_scene_readiness_diagnostic)
+        << " world_region_streaming_large_scene_readiness_diagnostics="
+        << world_region_streaming_probe.large_scene_readiness_diagnostics
+        << " world_region_streaming_navigation_resident_regions="
+        << world_region_streaming_probe.navigation_resident_regions
+        << " world_region_streaming_navigation_missing_resident_regions="
+        << world_region_streaming_probe.navigation_missing_resident_regions
+        << " world_region_streaming_navigation_path_cache_ready="
+        << (world_region_streaming_probe.navigation_path_cache_ready ? 1 : 0)
         << " entity_scale_culling_status=" << entity_scale_culling_status_name(entity_scale_culling_probe.status)
         << " entity_scale_culling_ready=" << (entity_scale_culling_probe.ready ? 1 : 0)
         << " entity_scale_culling_rows=" << entity_scale_culling_probe.rows
@@ -6563,13 +6689,28 @@ int main(int argc, char** argv) {
                   << world_region_streaming_status_name(world_region_streaming_probe.status)
                   << " world_region_streaming_plan_rows=" << world_region_streaming_probe.plan_rows
                   << " world_region_streaming_load_rows=" << world_region_streaming_probe.load_rows
+                  << " world_region_streaming_keep_rows=" << world_region_streaming_probe.keep_rows
                   << " world_region_streaming_unload_rows=" << world_region_streaming_probe.unload_rows
                   << " world_region_streaming_reviewed_package_adoptions="
                   << world_region_streaming_probe.reviewed_package_adoptions
                   << " world_region_streaming_missing_region_diagnostics="
                   << world_region_streaming_probe.missing_region_diagnostics
                   << " world_region_streaming_safe_point_diagnostics="
-                  << world_region_streaming_probe.safe_point_diagnostics << '\n';
+                  << world_region_streaming_probe.safe_point_diagnostics
+                  << " world_region_streaming_large_scene_readiness_status="
+                  << world_streaming_large_scene_readiness_status_name(
+                         world_region_streaming_probe.large_scene_readiness_status)
+                  << " world_region_streaming_large_scene_readiness_diagnostic="
+                  << world_streaming_large_scene_readiness_diagnostic_name(
+                         world_region_streaming_probe.large_scene_readiness_diagnostic)
+                  << " world_region_streaming_large_scene_readiness_diagnostics="
+                  << world_region_streaming_probe.large_scene_readiness_diagnostics
+                  << " world_region_streaming_navigation_resident_regions="
+                  << world_region_streaming_probe.navigation_resident_regions
+                  << " world_region_streaming_navigation_missing_resident_regions="
+                  << world_region_streaming_probe.navigation_missing_resident_regions
+                  << " world_region_streaming_navigation_path_cache_ready="
+                  << (world_region_streaming_probe.navigation_path_cache_ready ? 1 : 0) << '\n';
         return 14;
     }
 

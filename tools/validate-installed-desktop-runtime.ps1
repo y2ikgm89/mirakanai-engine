@@ -1979,7 +1979,13 @@ if ($requiresWorldRegionStreaming) {
             "world_region_streaming_projected_bytes",
             "world_region_streaming_budget_bytes",
             "world_region_streaming_missing_region_diagnostics",
-            "world_region_streaming_safe_point_diagnostics"
+            "world_region_streaming_safe_point_diagnostics",
+            "world_region_streaming_large_scene_readiness_status",
+            "world_region_streaming_large_scene_readiness_diagnostic",
+            "world_region_streaming_large_scene_readiness_diagnostics",
+            "world_region_streaming_navigation_resident_regions",
+            "world_region_streaming_navigation_missing_resident_regions",
+            "world_region_streaming_navigation_path_cache_ready"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed desktop runtime smoke status line did not include world-region streaming field: $field"
@@ -1994,7 +2000,8 @@ if ($requiresWorldRegionStreaming) {
             "world_region_streaming_projected_regions",
             "world_region_streaming_projected_bytes",
             "world_region_streaming_budget_bytes",
-            "world_region_streaming_missing_region_diagnostics"
+            "world_region_streaming_missing_region_diagnostics",
+            "world_region_streaming_navigation_resident_regions"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove positive world-region streaming field: $field"
@@ -2006,11 +2013,50 @@ if ($requiresWorldRegionStreaming) {
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_load_rows=1\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove exact world-region load row count."
     }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_keep_rows=2\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove exact world-region keep row count."
+    }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_unload_rows=1\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove exact world-region unload row count."
     }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_safe_point_rows=4\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove exact world-region safe-point row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_committed=1\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove committed world-region streaming evidence."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_committed_rows=2\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove exact world-region committed row count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_reviewed_package_adoptions=1\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove exact world-region package adoption count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_projected_regions=2\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove exact world-region projected region count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_missing_region_diagnostics=1\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove exact world-region missing-region diagnostics."
+    }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_safe_point_diagnostics=0\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove clean world-region streaming safe-point diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_large_scene_readiness_status=ready\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove ready world-region large-scene readiness."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_large_scene_readiness_diagnostic=none\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove clean world-region large-scene readiness diagnostic."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_large_scene_readiness_diagnostics=0\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove zero world-region large-scene readiness diagnostics."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_navigation_resident_regions=2\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove exact world-region navigation residency count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_navigation_missing_resident_regions=0\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove clean world-region navigation missing-residency count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bworld_region_streaming_navigation_path_cache_ready=1\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove ready world-region navigation path cache evidence."
     }
 }
 if ($requiresEntityScaleCulling) {
