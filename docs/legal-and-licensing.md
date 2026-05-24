@@ -43,7 +43,7 @@ Do not add these without an explicit licensing review note:
 
 Every external dependency or asset must be recorded in `THIRD_PARTY_NOTICES.md` before it is distributed with the engine, editor, tools, examples, or sample games.
 
-Optional package-manager declarations in `vcpkg.json` must also be mirrored in `THIRD_PARTY_NOTICES.md` as planned dependencies before integration work starts.
+Optional package-manager declarations in `vcpkg.json` must also be mirrored in `THIRD_PARTY_NOTICES.md` as planned dependencies before integration work starts. The `physics-jolt` feature is the current native physics middleware adapter example: Jolt Physics is optional, MIT licensed, recorded in notices, and must remain isolated behind `MK_physics_jolt` without leaking third-party types into public gameplay APIs.
 
 Mobile template dependencies declared through Gradle or official platform SDK tooling must also be recorded before package builds are distributed. Official Android SDK, Android NDK, Google Maven artifacts, Xcode, UIKit, Foundation, Metal, and related Apple SDK frameworks are toolchain/platform dependencies; do not vendor their binaries into the repository. Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit are official Microsoft host diagnostics; do not vendor their binaries, installers, symbol caches, or captured traces into the repository.
 

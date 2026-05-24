@@ -128,6 +128,7 @@ if ([string]::IsNullOrWhiteSpace(`$pathValue) -or
             "validate-desktop-game-runtime.ps1",
             "package-desktop-runtime.ps1",
             "build-asset-importers.ps1",
+            "validate-physics-jolt.ps1",
             "evaluate-cpp23.ps1"
         )) {
         $content = Get-Content -LiteralPath (Join-Path $PSScriptRoot $script) -Raw
@@ -141,6 +142,7 @@ if ([string]::IsNullOrWhiteSpace(`$pathValue) -or
             "validate-desktop-game-runtime.ps1",
             "package-desktop-runtime.ps1",
             "build-asset-importers.ps1",
+            "validate-physics-jolt.ps1",
             "evaluate-cpp23.ps1"
         )) {
         $content = Get-Content -LiteralPath (Join-Path $PSScriptRoot $script) -Raw

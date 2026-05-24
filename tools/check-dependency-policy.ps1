@@ -69,6 +69,11 @@ if (-not $assetImporters) {
     Write-Error "vcpkg manifest must keep optional asset-importers feature"
 }
 
+$physicsJolt = $manifest.features.'physics-jolt'
+if (-not $physicsJolt) {
+    Write-Error "vcpkg manifest must keep optional physics-jolt feature"
+}
+
 $desktopRuntimeDependencyNames = @()
 foreach ($dependency in $desktopRuntime.dependencies) {
     if ($dependency -is [string]) {
@@ -126,13 +131,40 @@ foreach ($dependencyName in @("libspng", "fastgltf", "miniaudio")) {
     }
 }
 
+$physicsJoltDependencyNames = @()
+$joltPhysicsDefaultFeatures = $null
+foreach ($dependency in $physicsJolt.dependencies) {
+    if ($dependency -is [string]) {
+        $physicsJoltDependencyNames += $dependency
+    } else {
+        $physicsJoltDependencyNames += $dependency.name
+        if ($dependency.name -eq "joltphysics" -and (Test-JsonProperty -Object $dependency -Property "default-features")) {
+            $joltPhysicsDefaultFeatures = Get-JsonPropertyValue -Object $dependency -Property "default-features"
+        }
+    }
+}
+
+if ($physicsJoltDependencyNames -notcontains "joltphysics") {
+    Write-Error "physics-jolt feature must declare dependency: joltphysics"
+}
+
+if ($joltPhysicsDefaultFeatures -ne $false) {
+    Write-Error "physics-jolt joltphysics dependency must set default-features to false"
+}
+
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| SDL3 \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Dear ImGui \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Jolt Physics \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "Foundation" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "physics-jolt" "dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Foundation" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "Jolt Physics" "legal dependency docs"
 Assert-TextContains "CMakePresets.json" "desktop-runtime" "CMake presets"
 Assert-TextContains "CMakePresets.json" "asset-importers" "CMake presets"
+Assert-TextContains "CMakePresets.json" "physics-jolt" "CMake presets"
+Assert-TextContains "tools/validate-physics-jolt.ps1" "physics-jolt" "Jolt validation wrapper"
+Assert-TextContains "tools/validate-physics-jolt.ps1" "validate-installed-sdk.ps1" "Jolt validation wrapper"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" 'find_library\(MK_APPLE_FOUNDATION_FRAMEWORK Foundation REQUIRED\)' "Metal Apple SDK linkage"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" '\$\{MK_APPLE_FOUNDATION_FRAMEWORK\}' "Metal Apple SDK linkage"
 
@@ -156,10 +188,14 @@ foreach ($preset in $vcpkgPresets) {
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=desktop-runtime" "bootstrap dependencies"
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=desktop-gui" "bootstrap dependencies"
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=asset-importers" "bootstrap dependencies"
+Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=physics-jolt" "bootstrap dependencies"
 
 Assert-TextContains "engine/agent/manifest.json" "buildAssetImporters" "engine manifest commands"
+Assert-TextContains "engine/agent/manifest.json" "validatePhysicsJolt" "engine manifest commands"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_ASSET_IMPORTERS" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(SPNG CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(fastgltf CONFIG\)" "Mirakanai package config"
+Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_PHYSICS_JOLT" "Mirakanai package config"
+Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(Jolt CONFIG\)" "Mirakanai package config"
 
 Write-Host "dependency-policy-check: ok"

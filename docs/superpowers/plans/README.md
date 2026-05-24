@@ -61,7 +61,8 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 
 | Status | Plan | Notes |
 | --- | --- | --- |
-| Active slice (`currentActivePlan`) | [Scripting And Mod Sandbox v1](2026-05-24-scripting-and-mod-sandbox-v1.md) | Selected optional-adapter candidate row; first-party runtime execution facade, deny-by-default adapter dispatch, replay evidence, package counters, docs/manifest/static synchronization, and PR evidence are in progress while `unsupportedProductionGaps = []`. |
+| Active slice (`currentActivePlan`) | [Native Physics Middleware Adapter v1](2026-05-24-native-physics-middleware-adapter-v1.md) | Selected optional-adapter candidate row; optional `physics-jolt` dependency lane, first-party native physics adapter facade, Jolt-backed `MK_physics_jolt` target, dependency/legal records, docs/manifest/static synchronization, and PR evidence are in progress while `unsupportedProductionGaps = []`. |
+| Completed slice | [Scripting And Mod Sandbox v1](2026-05-24-scripting-and-mod-sandbox-v1.md) | Completed selected optional-adapter scripting facade through PR #206 / merge commit `f77bd630b6bc2eea5b0ce4c7bdd01931f114743a`; runtime execution remained dependency-free and denied filesystem/network/process/native-plugin access by default. |
 | Completed milestone | [Candidate Backlog Burn-down v1](2026-05-23-candidate-backlog-burn-down-v1.md) | Completed all seven canonical post-1.0 candidate rows through PR #204 / merge commit `971cee3f6c5b42965721c06974bc506f1b35508c`. |
 
 ## Current Evidence Pointers
@@ -79,7 +80,9 @@ For `production-completion-master-plan-v1`, drive from `engine/agent/manifest.js
 | AI validation remediation recipes implementation evidence | [AI Validation Remediation Recipes v1](2026-05-23-ai-validation-remediation-recipes-v1.md) |
 | AI generated game quality rubric implementation evidence | [AI Generated Game Quality Rubric v1](2026-05-23-ai-generated-game-quality-rubric-v1.md) |
 | AI Codex/Claude/Cursor agent surface implementation evidence | [AI Codex/Claude/Cursor Agent Surface v1](2026-05-23-ai-codex-claude-agent-surface-v1.md) |
+| Runtime scripting sandbox implementation evidence | [Scripting And Mod Sandbox v1](2026-05-24-scripting-and-mod-sandbox-v1.md) |
 | Engine gameplay interaction framework implementation evidence | [Engine Gameplay Interaction Framework v1](2026-05-23-engine-gameplay-interaction-framework-v1.md) |
+| Historical Physics 1.0 Jolt exclusion evidence (`physics-jolt-adapter-gate-v1`) | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
 | Engine save settings profile implementation evidence | [Engine Save Settings Profile v1](2026-05-23-engine-save-settings-profile-v1.md) |
 | Engine UI game menu HUD implementation evidence | [Engine UI Game Menu HUD v1](2026-05-23-engine-ui-game-menu-hud-v1.md) |
 | Engine audio gameplay mixer implementation evidence | [Engine Audio Gameplay Mixer v1](2026-05-23-engine-audio-gameplay-mixer-v1.md) |

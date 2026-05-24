@@ -1,4 +1,5 @@
 add_library(mirakana_physics
+    src/native_adapter.cpp
     src/physics2d.cpp
     src/physics3d.cpp
 )
