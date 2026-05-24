@@ -6,7 +6,7 @@
 
 **Plan ID:** `native-physics-middleware-adapter-v1`
 
-**Status:** Active.
+**Status:** Active; PR opened.
 
 **Gap:** `native-physics-middleware-adapter-v1`
 
@@ -82,11 +82,12 @@ Large: this adds an optional third-party C++ dependency, an installable optional
 - [x] Run focused C++ tests and static checks.
 - [x] Run `tools/check-dependency-policy.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, and `tools/check-ai-integration.ps1`.
 - [x] Run `tools/validate.ps1`.
-- [ ] Commit, push, and open PR with validation evidence.
+- [x] Commit, push, and open PR with validation evidence.
 
 ## Validation Evidence
 
 - Branch was fast-forwarded onto `origin/main` after PR #208 merged; the `tools/check-json-contracts-010-engine-manifest.ps1` index conflict was resolved by keeping both `removeMergedWorktree [-DeleteRemoteBranch]` and `validatePhysicsJolt`.
+- Candidate committed as `d3dc46c7eb5475ac706988486c963bda275e7ad0`, pushed to `codex/native-physics-middleware-adapter-v1`, and opened as PR #209: https://github.com/y2ikgm89/mirakanai-engine/pull/209.
 - Read-only agent-surface subagent audit after the main sync reported no findings for manifest fragments, compose output, static checks, dependency docs, and plan registry alignment.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` - passed; linked worktree, `external/vcpkg`, and `vcpkg_installed` were ready.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` - passed.
