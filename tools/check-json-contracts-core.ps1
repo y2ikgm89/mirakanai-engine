@@ -712,7 +712,7 @@ function Assert-SpriteAtlasSourceAuthoringTargets($game, [string]$relativePath, 
 
     $seenIds = @{}
     foreach ($target in @($game.spriteAtlasSourceAuthoringTargets)) {
-        Assert-Properties $target @("id", "mode", "planner", "sourceRegistryPath", "atlasSourcePath", "atlasImportedPath", "atlasAssetKey", "packageIndexPath", "maxSide", "sourceDecoding", "atlasPacking", "runtimeSourceImageDecoding", "rendererRhiResidency", "packageStreaming", "animationSemantics", "editorProductization", "freeFormEdit", "frameRows", "preflightRecipeIds") "$relativePath spriteAtlasSourceAuthoringTargets"
+        Assert-Properties $target @("id", "mode", "planner", "sourceRegistryPath", "atlasSourcePath", "atlasImportedPath", "atlasAssetKey", "packageIndexPath", "maxSide", "pagePolicy", "sourceDecoding", "atlasPacking", "runtimeSourceImageDecoding", "rendererRhiResidency", "packageStreaming", "animationSemantics", "editorProductization", "freeFormEdit", "frameRows", "preflightRecipeIds") "$relativePath spriteAtlasSourceAuthoringTargets"
 
         $id = [string]$target.id
         $sourceRegistryPath = ConvertTo-RepoPath ([string]$target.sourceRegistryPath)
@@ -767,6 +767,16 @@ function Assert-SpriteAtlasSourceAuthoringTargets($game, [string]$relativePath, 
         if (-not ($target.maxSide -is [int] -or $target.maxSide -is [long]) -or $target.maxSide -lt 1) {
             Write-Error "$relativePath spriteAtlasSourceAuthoringTargets maxSide must be a positive integer"
         }
+        Assert-Properties $target.pagePolicy @("mode", "pageId", "pageCount", "paddingPixels") "$relativePath spriteAtlasSourceAuthoringTargets pagePolicy"
+        if ([string]$target.pagePolicy.mode -ne "single-page-tight-rgba8-texture-source") {
+            Write-Error "$relativePath spriteAtlasSourceAuthoringTargets pagePolicy mode must be single-page-tight-rgba8-texture-source"
+        }
+        if ([string]$target.pagePolicy.pageId -notmatch "^[a-z][a-z0-9_/-]*$") {
+            Write-Error "$relativePath spriteAtlasSourceAuthoringTargets pagePolicy pageId must be a safe page id: $($target.pagePolicy.pageId)"
+        }
+        if ($target.pagePolicy.pageCount -ne 1 -or $target.pagePolicy.paddingPixels -ne 0) {
+            Write-Error "$relativePath spriteAtlasSourceAuthoringTargets pagePolicy must declare one tight page with zero padding"
+        }
         foreach ($field in @("runtimeSourceImageDecoding", "rendererRhiResidency", "packageStreaming", "animationSemantics", "editorProductization", "freeFormEdit")) {
             if ([string]$target.$field -ne "unsupported") {
                 Write-Error "$relativePath spriteAtlasSourceAuthoringTargets $field must remain unsupported"
@@ -804,7 +814,7 @@ function Assert-SpriteAtlasSourceAuthoringTargets($game, [string]$relativePath, 
         }
         $seenFrameIds = @{}
         foreach ($frameRow in @($target.frameRows)) {
-            Assert-Properties $frameRow @("id", "sourcePath", "width", "height", "pixelFormat") "$relativePath spriteAtlasSourceAuthoringTargets frameRows"
+            Assert-Properties $frameRow @("id", "sourcePath", "pageId", "width", "height", "pixelFormat", "pivot", "sliceBorder") "$relativePath spriteAtlasSourceAuthoringTargets frameRows"
             $frameId = [string]$frameRow.id
             if ($frameId -notmatch "^[a-z][a-z0-9_/-]*$") {
                 Write-Error "$relativePath spriteAtlasSourceAuthoringTargets frameRows id must be safe slash-separated text: $frameId"
@@ -817,6 +827,9 @@ function Assert-SpriteAtlasSourceAuthoringTargets($game, [string]$relativePath, 
             if (-not (Test-SafeGameRelativePath $frameSourcePath)) {
                 Write-Error "$relativePath spriteAtlasSourceAuthoringTargets frameRows sourcePath must be safe and game-relative: $frameSourcePath"
             }
+            if ([string]$frameRow.pageId -ne [string]$target.pagePolicy.pageId) {
+                Write-Error "$relativePath spriteAtlasSourceAuthoringTargets frameRows pageId must match pagePolicy pageId"
+            }
             if ([string]$frameRow.pixelFormat -ne "rgba8_unorm") {
                 Write-Error "$relativePath spriteAtlasSourceAuthoringTargets frameRows pixelFormat must be rgba8_unorm"
             }
@@ -825,6 +838,26 @@ function Assert-SpriteAtlasSourceAuthoringTargets($game, [string]$relativePath, 
                 $frameRow.width -lt 1 -or $frameRow.height -lt 1 -or
                 $frameRow.width -gt $target.maxSide -or $frameRow.height -gt $target.maxSide) {
                 Write-Error "$relativePath spriteAtlasSourceAuthoringTargets frameRows dimensions must be positive and within maxSide"
+            }
+            Assert-Properties $frameRow.pivot @("x", "y") "$relativePath spriteAtlasSourceAuthoringTargets frameRows pivot"
+            foreach ($axis in @("x", "y")) {
+                $value = [double]$frameRow.pivot.$axis
+                if ($value -lt 0.0 -or $value -gt 1.0) {
+                    Write-Error "$relativePath spriteAtlasSourceAuthoringTargets frameRows pivot $axis must be normalized"
+                }
+            }
+            Assert-Properties $frameRow.sliceBorder @("left", "bottom", "right", "top") "$relativePath spriteAtlasSourceAuthoringTargets frameRows sliceBorder"
+            $left = [double]$frameRow.sliceBorder.left
+            $bottom = [double]$frameRow.sliceBorder.bottom
+            $right = [double]$frameRow.sliceBorder.right
+            $top = [double]$frameRow.sliceBorder.top
+            foreach ($borderValue in @($left, $bottom, $right, $top)) {
+                if ($borderValue -lt 0.0 -or $borderValue -gt 1.0) {
+                    Write-Error "$relativePath spriteAtlasSourceAuthoringTargets frameRows sliceBorder values must be normalized"
+                }
+            }
+            if ($left + $right -ge 0.98 -or $bottom + $top -ge 0.98) {
+                Write-Error "$relativePath spriteAtlasSourceAuthoringTargets frameRows sliceBorder must leave a center region"
             }
         }
 

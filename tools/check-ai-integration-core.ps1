@@ -380,7 +380,7 @@ function Assert-SpriteAtlasSourceAuthoringTarget($manifest, [string]$label, [str
         Write-Error "$label spriteAtlasSourceAuthoringTargets must contain exactly one '$id' row"
     }
     $target = $targets[0]
-    Assert-JsonProperty $target @("id", "mode", "planner", "sourceRegistryPath", "atlasSourcePath", "atlasImportedPath", "atlasAssetKey", "packageIndexPath", "maxSide", "sourceDecoding", "atlasPacking", "runtimeSourceImageDecoding", "rendererRhiResidency", "packageStreaming", "animationSemantics", "editorProductization", "freeFormEdit", "frameRows", "preflightRecipeIds") "$label spriteAtlasSourceAuthoringTargets '$id'"
+    Assert-JsonProperty $target @("id", "mode", "planner", "sourceRegistryPath", "atlasSourcePath", "atlasImportedPath", "atlasAssetKey", "packageIndexPath", "maxSide", "pagePolicy", "sourceDecoding", "atlasPacking", "runtimeSourceImageDecoding", "rendererRhiResidency", "packageStreaming", "animationSemantics", "editorProductization", "freeFormEdit", "frameRows", "preflightRecipeIds") "$label spriteAtlasSourceAuthoringTargets '$id'"
     if ($target.mode -ne "reviewed-rgba8-source-frames") {
         Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' mode must be reviewed-rgba8-source-frames"
     }
@@ -416,6 +416,16 @@ function Assert-SpriteAtlasSourceAuthoringTarget($manifest, [string]$label, [str
     if ($target.maxSide -ne 1024) {
         Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' maxSide must be 1024"
     }
+    Assert-JsonProperty $target.pagePolicy @("mode", "pageId", "pageCount", "paddingPixels") "$label spriteAtlasSourceAuthoringTargets '$id' pagePolicy"
+    if ($target.pagePolicy.mode -ne "single-page-tight-rgba8-texture-source") {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' pagePolicy mode must be single-page-tight-rgba8-texture-source"
+    }
+    if ($target.pagePolicy.pageId -notmatch "^[a-z][a-z0-9_/-]*$") {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' pagePolicy pageId must be safe: $($target.pagePolicy.pageId)"
+    }
+    if ($target.pagePolicy.pageCount -ne 1 -or $target.pagePolicy.paddingPixels -ne 0) {
+        Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' pagePolicy must be one tight page with zero padding"
+    }
     if ($target.sourceDecoding -ne "provided-rgba8-texture-source") {
         Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' sourceDecoding must be provided-rgba8-texture-source"
     }
@@ -431,18 +441,41 @@ function Assert-SpriteAtlasSourceAuthoringTarget($manifest, [string]$label, [str
         Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows must be a non-empty array"
     }
     foreach ($frameRow in @($target.frameRows)) {
-        Assert-JsonProperty $frameRow @("id", "sourcePath", "width", "height", "pixelFormat") "$label spriteAtlasSourceAuthoringTargets '$id' frameRows"
+        Assert-JsonProperty $frameRow @("id", "sourcePath", "pageId", "width", "height", "pixelFormat", "pivot", "sliceBorder") "$label spriteAtlasSourceAuthoringTargets '$id' frameRows"
         if ($frameRow.id -notmatch "^[a-z][a-z0-9_/-]*$") {
             Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows id must be a safe slash-separated id: $($frameRow.id)"
         }
         if ($frameRow.sourcePath -match "(^/|^[A-Za-z]:|(^|[\\/])\.\.($|[\\/])|;)" -or [string]::IsNullOrWhiteSpace([string]$frameRow.sourcePath)) {
             Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows sourcePath must be safe and game-relative: $($frameRow.sourcePath)"
         }
+        if ($frameRow.pageId -ne $target.pagePolicy.pageId) {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows pageId must match pagePolicy pageId"
+        }
         if ($frameRow.pixelFormat -ne "rgba8_unorm") {
             Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows pixelFormat must be rgba8_unorm"
         }
         if ($frameRow.width -lt 1 -or $frameRow.height -lt 1 -or $frameRow.width -gt $target.maxSide -or $frameRow.height -gt $target.maxSide) {
             Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows dimensions must be within maxSide"
+        }
+        Assert-JsonProperty $frameRow.pivot @("x", "y") "$label spriteAtlasSourceAuthoringTargets '$id' frameRows pivot"
+        foreach ($axis in @("x", "y")) {
+            $value = [double]$frameRow.pivot.$axis
+            if ($value -lt 0.0 -or $value -gt 1.0) {
+                Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows pivot $axis must be normalized"
+            }
+        }
+        Assert-JsonProperty $frameRow.sliceBorder @("left", "bottom", "right", "top") "$label spriteAtlasSourceAuthoringTargets '$id' frameRows sliceBorder"
+        $left = [double]$frameRow.sliceBorder.left
+        $bottom = [double]$frameRow.sliceBorder.bottom
+        $right = [double]$frameRow.sliceBorder.right
+        $top = [double]$frameRow.sliceBorder.top
+        foreach ($borderValue in @($left, $bottom, $right, $top)) {
+            if ($borderValue -lt 0.0 -or $borderValue -gt 1.0) {
+                Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows sliceBorder values must be normalized"
+            }
+        }
+        if ($left + $right -ge 0.98 -or $bottom + $top -ge 0.98) {
+            Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' frameRows sliceBorder must leave a center region"
         }
     }
     foreach ($recipeId in @($target.preflightRecipeIds)) {

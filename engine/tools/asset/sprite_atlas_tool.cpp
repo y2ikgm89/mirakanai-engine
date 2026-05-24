@@ -4,6 +4,7 @@
 #include "mirakana/tools/sprite_atlas_tool.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -19,6 +20,7 @@ namespace {
 
 constexpr std::string_view sprite_atlas_source_decoding = "provided-rgba8-texture-source";
 constexpr std::string_view sprite_atlas_packing = "deterministic-sprite-atlas-rgba8-max-side";
+constexpr std::string_view sprite_atlas_page_policy = "single-page-tight-rgba8-texture-source";
 
 [[nodiscard]] bool has_control_character(std::string_view value) noexcept {
     return std::ranges::any_of(value, [](char character) {
@@ -119,6 +121,19 @@ void sort_diagnostics(std::vector<SpriteAtlasSourceAuthoringDiagnostic>& diagnos
     return expected_rgba8_byte_count(image) == image.bytes.size();
 }
 
+[[nodiscard]] bool valid_normalized(float value) noexcept {
+    return std::isfinite(value) && value >= 0.0F && value <= 1.0F;
+}
+
+[[nodiscard]] bool valid_frame_pivot(const SpriteAtlasSourcePivot& pivot) noexcept {
+    return valid_normalized(pivot.x) && valid_normalized(pivot.y);
+}
+
+[[nodiscard]] bool valid_frame_slice_border(const SpriteAtlasSourceSliceBorder& border) noexcept {
+    return valid_normalized(border.left) && valid_normalized(border.bottom) && valid_normalized(border.right) &&
+           valid_normalized(border.top) && border.left + border.right < 0.98F && border.bottom + border.top < 0.98F;
+}
+
 void validate_request_shape(std::vector<SpriteAtlasSourceAuthoringDiagnostic>& diagnostics,
                             const SpriteAtlasSourceAuthoringDesc& desc) {
     if (!is_safe_repository_path(desc.source_registry_path) || !ends_with(desc.source_registry_path, ".geassets")) {
@@ -139,6 +154,16 @@ void validate_request_shape(std::vector<SpriteAtlasSourceAuthoringDiagnostic>& d
     if (desc.max_side == 0 || desc.max_side > sprite_atlas_packing_max_side) {
         add_diagnostic(diagnostics, "invalid_max_side", "sprite atlas max_side must be non-zero and bounded",
                        desc.atlas_source_path, {}, desc.atlas_asset_key);
+    }
+    if (desc.page_policy.mode != sprite_atlas_page_policy || desc.page_policy.page_count != 1 ||
+        desc.page_policy.padding_pixels != 0) {
+        add_diagnostic(diagnostics, "unsupported_page_policy",
+                       "sprite atlas authoring supports only single-page tight RGBA8 texture source pages",
+                       desc.atlas_source_path, desc.page_policy.page_id, desc.atlas_asset_key);
+    }
+    if (!valid_frame_id(desc.page_policy.page_id)) {
+        add_diagnostic(diagnostics, "invalid_page_id", "sprite atlas page id must be a safe identifier",
+                       desc.atlas_source_path, desc.page_policy.page_id, desc.atlas_asset_key);
     }
     if (desc.source_decoding != sprite_atlas_source_decoding) {
         add_diagnostic(diagnostics, "unsupported_source_decoding",
@@ -200,6 +225,16 @@ void validate_request_shape(std::vector<SpriteAtlasSourceAuthoringDiagnostic>& d
             add_diagnostic(diagnostics, "invalid_pixel_byte_count",
                            "sprite atlas frame pixel byte count must equal width * height * 4", frame.source_path,
                            frame.frame_id, desc.atlas_asset_key);
+        }
+        if (!valid_frame_pivot(frame.pivot)) {
+            add_diagnostic(diagnostics, "invalid_frame_pivot",
+                           "sprite atlas frame pivot must be finite normalized coordinates", frame.source_path,
+                           frame.frame_id, desc.atlas_asset_key);
+        }
+        if (!valid_frame_slice_border(frame.slice_border)) {
+            add_diagnostic(diagnostics, "invalid_frame_slice_border",
+                           "sprite atlas frame slice border must be normalized and leave a center region",
+                           frame.source_path, frame.frame_id, desc.atlas_asset_key);
         }
     }
 }
@@ -336,6 +371,8 @@ void append_frame_rows(SpriteAtlasSourceAuthoringPlan& plan, const SpriteAtlasSo
             .atlas_asset = atlas_asset,
             .atlas_source_path = desc.atlas_source_path,
             .atlas_imported_path = desc.atlas_imported_path,
+            .page_index = 0,
+            .page_id = desc.page_policy.page_id,
             .x = placement.x,
             .y = placement.y,
             .width = placement.width,
@@ -344,6 +381,12 @@ void append_frame_rows(SpriteAtlasSourceAuthoringPlan& plan, const SpriteAtlasSo
             .v0 = static_cast<float>(placement.y) / static_cast<float>(plan.atlas_texture.height),
             .u1 = static_cast<float>(placement.x + placement.width) / static_cast<float>(plan.atlas_texture.width),
             .v1 = static_cast<float>(placement.y + placement.height) / static_cast<float>(plan.atlas_texture.height),
+            .pivot_x = frame.pivot.x,
+            .pivot_y = frame.pivot.y,
+            .slice_border_left = frame.slice_border.left,
+            .slice_border_bottom = frame.slice_border.bottom,
+            .slice_border_right = frame.slice_border.right,
+            .slice_border_top = frame.slice_border.top,
             .source_content_hash = hash_asset_cooked_content(source_content),
         });
     }

@@ -416,11 +416,15 @@ void append_le_f32(std::string& output, float value) {
             .frame_id = "hero/walk",
             .source_path = "source/sprites/hero_walk.png",
             .image = make_sprite_atlas_frame(0x00, 0x00, 0xFF),
+            .pivot = {},
+            .slice_border = {},
         },
         mirakana::SpriteAtlasSourceFrameDesc{
             .frame_id = "hero/idle",
             .source_path = "source/sprites/hero_idle.png",
             .image = make_sprite_atlas_frame(0xFF, 0x00, 0x00),
+            .pivot = {},
+            .slice_border = {},
         },
     };
     return desc;
@@ -3255,6 +3259,57 @@ MK_TEST("sprite atlas source authoring packs deterministic texture source and re
     MK_REQUIRE(plan.changed_files[0].document_kind == "GameEngine.TextureSource.v1");
     MK_REQUIRE(plan.changed_files[1].path == desc.source_registry_path);
     MK_REQUIRE(plan.changed_files[1].document_kind == mirakana::source_asset_registry_format_v1());
+}
+
+MK_TEST("sprite atlas source authoring records page policy pivots and slice borders") {
+    auto desc = make_sprite_atlas_source_authoring_desc();
+    desc.page_policy.page_id = "player-atlas-page-0";
+    desc.frames[0].pivot = mirakana::SpriteAtlasSourcePivot{.x = 0.25F, .y = 0.75F};
+    desc.frames[0].slice_border = mirakana::SpriteAtlasSourceSliceBorder{
+        .left = 0.10F,
+        .bottom = 0.20F,
+        .right = 0.30F,
+        .top = 0.40F,
+    };
+
+    const auto plan = mirakana::plan_sprite_atlas_source_authoring(desc);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.frame_rows.size() == 2);
+    MK_REQUIRE(plan.frame_rows[0].page_index == 0);
+    MK_REQUIRE(plan.frame_rows[0].page_id == "player-atlas-page-0");
+    MK_REQUIRE(plan.frame_rows[0].pivot_x == 0.5F);
+    MK_REQUIRE(plan.frame_rows[0].pivot_y == 0.5F);
+    MK_REQUIRE(plan.frame_rows[1].page_index == 0);
+    MK_REQUIRE(plan.frame_rows[1].page_id == "player-atlas-page-0");
+    MK_REQUIRE(plan.frame_rows[1].pivot_x == 0.25F);
+    MK_REQUIRE(plan.frame_rows[1].pivot_y == 0.75F);
+    MK_REQUIRE(plan.frame_rows[1].slice_border_left == 0.10F);
+    MK_REQUIRE(plan.frame_rows[1].slice_border_bottom == 0.20F);
+    MK_REQUIRE(plan.frame_rows[1].slice_border_right == 0.30F);
+    MK_REQUIRE(plan.frame_rows[1].slice_border_top == 0.40F);
+}
+
+MK_TEST("sprite atlas source authoring rejects unsupported page policy and invalid frame metadata") {
+    auto multi_page = make_sprite_atlas_source_authoring_desc();
+    multi_page.page_policy.mode = "multi-page-packed-rgba8";
+    multi_page.page_policy.page_count = 2;
+    const auto multi_page_result = mirakana::plan_sprite_atlas_source_authoring(multi_page);
+    MK_REQUIRE(!multi_page_result.succeeded());
+    MK_REQUIRE(failures_contain(multi_page_result.diagnostics, "unsupported_page_policy"));
+
+    auto invalid_pivot = make_sprite_atlas_source_authoring_desc();
+    invalid_pivot.frames[0].pivot.x = -0.01F;
+    const auto invalid_pivot_result = mirakana::plan_sprite_atlas_source_authoring(invalid_pivot);
+    MK_REQUIRE(!invalid_pivot_result.succeeded());
+    MK_REQUIRE(failures_contain(invalid_pivot_result.diagnostics, "invalid_frame_pivot"));
+
+    auto invalid_border = make_sprite_atlas_source_authoring_desc();
+    invalid_border.frames[0].slice_border.left = 0.60F;
+    invalid_border.frames[0].slice_border.right = 0.60F;
+    const auto invalid_border_result = mirakana::plan_sprite_atlas_source_authoring(invalid_border);
+    MK_REQUIRE(!invalid_border_result.succeeded());
+    MK_REQUIRE(failures_contain(invalid_border_result.diagnostics, "invalid_frame_slice_border"));
 }
 
 MK_TEST("sprite atlas source authoring rejects duplicate and invalid frame ids") {

@@ -30,7 +30,7 @@ Large milestone: this spans runtime, tools, sprite/content, material/shader, phy
 
 **Goal:** Burn down every current `foundation-ready` backlog row into a narrow implemented 1.x foundation without reopening Engine 1.0 unsupported production gaps.
 
-**Context:** `unsupportedProductionGaps = []` remains the 1.0 truth. The milestone started with 15 post-1.0 / 1.x developer-owned capability foundations whose narrow basis existed but whose stronger productization evidence was not yet promoted. After the `engine-scene-gameplay-binding-v1`, `engine-input-action-contexts-v1`, and `engine-asset-placeholder-generation-v1` promotions, 12 `foundation-ready` rows remain in the canonical backlog.
+**Context:** `unsupportedProductionGaps = []` remains the 1.0 truth. The milestone started with 15 post-1.0 / 1.x developer-owned capability foundations whose narrow basis existed but whose stronger productization evidence was not yet promoted. After the `engine-scene-gameplay-binding-v1`, `engine-input-action-contexts-v1`, `engine-asset-placeholder-generation-v1`, and `sprite-atlas-authoring-v1` promotions, 11 `foundation-ready` rows remain in the canonical backlog.
 
 **Constraints:**
 - No direct `main` commits.
@@ -275,8 +275,8 @@ For each remaining candidate:
 | --- | --- | --- | --- | --- |
 | `engine-scene-gameplay-binding-v1` | #212 | `23bac05348ca32867dfe7980bf265c9e537c5afa` | pass (`tools/validate.ps1`, 2026-05-24) | Package-visible binding evidence implemented; focused build, runtime-scene CTest, direct smokes, direct installed-layout validation, static checks, full validation, hosted checks, merge, main sync, and guarded worktree cleanup passed. |
 | `engine-input-action-contexts-v1` | #213 | `e0faf43aa4ccd3bb375044681bcc839bf429b5e8` | pass (`tools/validate.ps1`, 2026-05-24) | Package-visible 2D/3D input context/rebinding evidence implemented; focused build, direct smokes, static checks, AI integration checks, full validation, hosted checks, merge, main sync, and guarded worktree cleanup passed. |
-| `engine-asset-placeholder-generation-v1` | pending | pending | pass (`tools/validate.ps1`, 2026-05-24) | Replacement recook test, manifest replacement workflow rows, package handoff counters, schema/template/static-check coverage, focused build, focused CTest, json contracts, format checks, AI integration checks, and full validation passed. PR remains pending. |
-| `sprite-atlas-authoring-v1` | pending | pending | pending | Not started. |
+| `engine-asset-placeholder-generation-v1` | #214 | `e5ad8f8fe1066c07d6a575b10dd9169e54726afc` | pass (`tools/validate.ps1`, 2026-05-24) | Replacement recook test, manifest replacement workflow rows, package handoff counters, schema/template/static-check coverage, focused build, focused CTest, json contracts, format checks, AI integration checks, full validation, hosted checks, merge, main sync, and guarded worktree cleanup passed. |
+| `sprite-atlas-authoring-v1` | pending | pending | pass (`tools/validate.ps1`, 2026-05-24) | Page policy, pivot, and slice-border metadata/diagnostics implemented; focused build, focused CTest, scoped tidy, public API boundary check, schema/template/static-check coverage, AI integration checks, and full validation passed. PR remains pending. |
 | `sprite-batching-renderer-v1` | pending | pending | pending | Not started. |
 | `sprite-animation-flipbook-v1` | pending | pending | pending | Not started. |
 | `material-shader-graph-production-v1` | pending | pending | pending | Not started. |

@@ -930,12 +930,17 @@ if ($spriteAtlasAuthoringSurface.Count -ne 1 -or $spriteAtlasAuthoringSurface[0]
     Write-Error "engine manifest aiOperableProductionLoop authoring surface sprite-atlas-authoring-v1 must be ready as an MK_tools surface"
 }
 if (-not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceFrameDesc") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourcePagePolicyDesc") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourcePivot") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceSliceBorder") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringDesc") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringPlan") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("plan_sprite_atlas_source_authoring") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("sprite_atlas_tool.hpp") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.TextureSource.v1") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("single-page-tight-rgba8-texture-source") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("slice-border") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("renderer/RHI residency") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("package streaming") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("animation semantics")) {
