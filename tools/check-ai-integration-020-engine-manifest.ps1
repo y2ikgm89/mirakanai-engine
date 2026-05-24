@@ -2178,6 +2178,9 @@ if (-not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_pla
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetProvenanceRow") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetDiagnostic") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("replacement recooks") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("placeholderAssetPipeline replacementWorkflow") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("package handoff counters") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("external asset downloader") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("renderer/RHI residency")) {
     Write-Error "engine/agent/manifest.json asset-placeholder-generation-v1 authoring surface must keep placeholder contract and non-goals explicit"

@@ -709,6 +709,10 @@
       "packageHandoff": {
         "mode": "reviewed-cook-package",
         "sourceRevision": 1,
+        "plannedAssetCount": 3,
+        "sourceDocumentCount": 3,
+        "provenanceRowCount": 3,
+        "runtimePackageFileCount": 3,
         "runtimePackageFiles": [
           "runtime/assets/2d/jump.audio.geasset",
           "runtime/assets/2d/player.material",
@@ -732,6 +736,42 @@
           "installed-vulkan-window-smoke"
         ],
         "evidence": "Package handoff stays manifest-listed, first-party, and validation-recipe-backed before runtime use."
+      },
+      "replacementWorkflow": {
+        "mode": "reviewed-placeholder-replacement",
+        "reviewedToolSurfaceIds": [
+          "plan-placeholder-asset-bundle",
+          "plan-placeholder-asset-cook-package"
+        ],
+        "allowedReplacementSources": [
+          "first-party-placeholder-regeneration",
+          "game-owned-source-document"
+        ],
+        "provenanceRequirements": [
+          "stable-asset-key",
+          "LicenseRef-Proprietary",
+          "content-hash",
+          "source-revision"
+        ],
+        "packageHandoffRequired": true,
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-2d-package-smoke",
+          "installed-2d-sprite-animation-smoke",
+          "installed-2d-tilemap-runtime-ux-smoke",
+          "installed-2d-gameplay-systems-smoke",
+          "installed-2d-world-region-streaming-smoke",
+          "installed-2d-entity-scale-culling-smoke",
+          "installed-2d-scripting-sandbox-policy-smoke",
+          "installed-2d-networking-foundation-policy-smoke",
+          "installed-2d-simulation-orchestration-smoke",
+          "installed-2d-gameplay-authoring-review-smoke",
+          "installed-d3d12-window-smoke",
+          "installed-native-2d-sprite-smoke",
+          "installed-vulkan-window-smoke"
+        ],
+        "evidence": "Placeholder replacement must keep the stable asset key, regenerate or review a game-owned source document, preserve provenance/license rows, and reroute through reviewed cook/package handoff before runtime use."
       },
       "unsupportedClaims": [
         "external-asset-download",

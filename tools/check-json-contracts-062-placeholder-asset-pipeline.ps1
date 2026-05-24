@@ -91,6 +91,7 @@ function Assert-JsonPlaceholderPipeline {
         "reviewedToolSurfaces",
         "plannedAssets",
         "packageHandoff",
+        "replacementWorkflow",
         "unsupportedClaims"
     ) "$Label aiWorkflow.placeholderAssetPipeline"
 
@@ -218,12 +219,24 @@ function Assert-JsonPlaceholderPipeline {
         }
     }
 
-    Assert-Properties $pipeline.packageHandoff @("mode", "sourceRevision", "runtimePackageFiles", "validationRecipeIds", "evidence") "$Label aiWorkflow.placeholderAssetPipeline.packageHandoff"
+    Assert-Properties $pipeline.packageHandoff @("mode", "sourceRevision", "plannedAssetCount", "sourceDocumentCount", "provenanceRowCount", "runtimePackageFileCount", "runtimePackageFiles", "validationRecipeIds", "evidence") "$Label aiWorkflow.placeholderAssetPipeline.packageHandoff"
     if ([string]$pipeline.packageHandoff.mode -ne "reviewed-cook-package") {
         Write-Error "$Label aiWorkflow.placeholderAssetPipeline packageHandoff.mode must be reviewed-cook-package"
     }
     if ([int]$pipeline.packageHandoff.sourceRevision -lt 1) {
         Write-Error "$Label aiWorkflow.placeholderAssetPipeline packageHandoff.sourceRevision must be positive"
+    }
+    if ([int]$pipeline.packageHandoff.plannedAssetCount -ne @($pipeline.plannedAssets).Count) {
+        Write-Error "$Label aiWorkflow.placeholderAssetPipeline packageHandoff.plannedAssetCount must match plannedAssets count"
+    }
+    if ([int]$pipeline.packageHandoff.sourceDocumentCount -ne @($pipeline.plannedAssets).Count) {
+        Write-Error "$Label aiWorkflow.placeholderAssetPipeline packageHandoff.sourceDocumentCount must match plannedAssets count"
+    }
+    if ([int]$pipeline.packageHandoff.provenanceRowCount -ne @($pipeline.plannedAssets).Count) {
+        Write-Error "$Label aiWorkflow.placeholderAssetPipeline packageHandoff.provenanceRowCount must match plannedAssets count"
+    }
+    if ([int]$pipeline.packageHandoff.runtimePackageFileCount -ne @($pipeline.packageHandoff.runtimePackageFiles).Count) {
+        Write-Error "$Label aiWorkflow.placeholderAssetPipeline packageHandoff.runtimePackageFileCount must match runtimePackageFiles count"
     }
     foreach ($runtimeFile in @($pipeline.packageHandoff.runtimePackageFiles)) {
         Assert-JsonPlaceholderPipelineString $runtimeFile "$Label packageHandoff.runtimePackageFiles"
@@ -237,6 +250,40 @@ function Assert-JsonPlaceholderPipeline {
         }
     }
     Assert-JsonPlaceholderPipelineString $pipeline.packageHandoff.evidence "$Label packageHandoff.evidence"
+
+    Assert-Properties $pipeline.replacementWorkflow @("mode", "reviewedToolSurfaceIds", "allowedReplacementSources", "provenanceRequirements", "packageHandoffRequired", "validationRecipeIds", "evidence") "$Label aiWorkflow.placeholderAssetPipeline.replacementWorkflow"
+    if ([string]$pipeline.replacementWorkflow.mode -ne "reviewed-placeholder-replacement") {
+        Write-Error "$Label aiWorkflow.placeholderAssetPipeline replacementWorkflow.mode must be reviewed-placeholder-replacement"
+    }
+    foreach ($requiredToolId in @("plan-placeholder-asset-bundle", "plan-placeholder-asset-cook-package")) {
+        if (@($pipeline.replacementWorkflow.reviewedToolSurfaceIds) -notcontains $requiredToolId) {
+            Write-Error "$Label aiWorkflow.placeholderAssetPipeline replacementWorkflow.reviewedToolSurfaceIds missing $requiredToolId"
+        }
+    }
+    foreach ($toolSurfaceId in @($pipeline.replacementWorkflow.reviewedToolSurfaceIds)) {
+        if (-not $toolSurfaceIds.ContainsKey([string]$toolSurfaceId)) {
+            Write-Error "$Label replacementWorkflow references unknown reviewedToolSurfaceId: $toolSurfaceId"
+        }
+    }
+    foreach ($source in @("first-party-placeholder-regeneration", "game-owned-source-document")) {
+        if (@($pipeline.replacementWorkflow.allowedReplacementSources) -notcontains $source) {
+            Write-Error "$Label aiWorkflow.placeholderAssetPipeline replacementWorkflow.allowedReplacementSources missing $source"
+        }
+    }
+    foreach ($requirement in @("stable-asset-key", "LicenseRef-Proprietary", "content-hash", "source-revision")) {
+        if (@($pipeline.replacementWorkflow.provenanceRequirements) -notcontains $requirement) {
+            Write-Error "$Label aiWorkflow.placeholderAssetPipeline replacementWorkflow.provenanceRequirements missing $requirement"
+        }
+    }
+    if (-not [bool]$pipeline.replacementWorkflow.packageHandoffRequired) {
+        Write-Error "$Label aiWorkflow.placeholderAssetPipeline replacementWorkflow.packageHandoffRequired must be true"
+    }
+    foreach ($recipeId in @($pipeline.replacementWorkflow.validationRecipeIds)) {
+        if (-not $recipeNames.ContainsKey([string]$recipeId)) {
+            Write-Error "$Label replacementWorkflow references undeclared validation recipe: $recipeId"
+        }
+    }
+    Assert-JsonPlaceholderPipelineString $pipeline.replacementWorkflow.evidence "$Label replacementWorkflow.evidence"
 
     foreach ($unsupportedClaim in @(
             "external-asset-download",
@@ -259,4 +306,20 @@ foreach ($gameManifestEntry in Get-GameAgentManifests) {
     $game = $gameManifestEntry.Game
     $requiresPlaceholderPipeline = @("2d-desktop-runtime-package", "3d-playable-desktop-package") -contains $game.gameplayContract.productionRecipe
     Assert-JsonPlaceholderPipeline $game $relative $requiresPlaceholderPipeline
+}
+
+$selectedPipelineRoles = @{}
+foreach ($gameManifestEntry in Get-GameAgentManifests) {
+    $pipeline = Get-JsonPlaceholderPipelinePropertyValue $gameManifestEntry.Game.aiWorkflow "placeholderAssetPipeline"
+    if ($null -eq $pipeline) {
+        continue
+    }
+    foreach ($asset in @($pipeline.plannedAssets)) {
+        $selectedPipelineRoles[[string]$asset.placeholderRole] = $true
+    }
+}
+foreach ($requiredRole in @("sprite", "mesh", "material", "audio", "ui", "scene-prop")) {
+    if (-not $selectedPipelineRoles.ContainsKey($requiredRole)) {
+        Write-Error "AI placeholder asset pipeline selected manifests must include $requiredRole placeholder coverage"
+    }
 }

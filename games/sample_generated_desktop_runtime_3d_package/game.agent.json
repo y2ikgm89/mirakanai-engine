@@ -898,6 +898,10 @@
       "packageHandoff": {
         "mode": "reviewed-cook-package",
         "sourceRevision": 1,
+        "plannedAssetCount": 4,
+        "sourceDocumentCount": 4,
+        "provenanceRowCount": 4,
+        "runtimePackageFileCount": 5,
         "runtimePackageFiles": [
           "runtime/assets/3d/gameplay_systems.audio.geasset",
           "runtime/assets/3d/hud.uiatlas",
@@ -923,6 +927,42 @@
           "desktop-runtime-release-target-vulkan-skin-toolchain-gated"
         ],
         "evidence": "Package handoff stays manifest-listed, first-party, and validation-recipe-backed before runtime use."
+      },
+      "replacementWorkflow": {
+        "mode": "reviewed-placeholder-replacement",
+        "reviewedToolSurfaceIds": [
+          "plan-placeholder-asset-bundle",
+          "plan-placeholder-asset-cook-package"
+        ],
+        "allowedReplacementSources": [
+          "first-party-placeholder-regeneration",
+          "game-owned-source-document"
+        ],
+        "provenanceRequirements": [
+          "stable-asset-key",
+          "LicenseRef-Proprietary",
+          "content-hash",
+          "source-revision"
+        ],
+        "packageHandoffRequired": true,
+        "validationRecipeIds": [
+          "desktop-game-runtime",
+          "desktop-runtime-release-target",
+          "installed-d3d12-3d-package-smoke",
+          "installed-d3d12-3d-native-ui-overlay-smoke",
+          "installed-d3d12-3d-visible-production-proof-smoke",
+          "desktop-runtime-release-target-vulkan-visible-production-proof-toolchain-gated",
+          "installed-d3d12-3d-entity-scale-culling-smoke",
+          "installed-d3d12-3d-scene-collision-package-smoke",
+          "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke",
+          "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke",
+          "installed-d3d12-3d-directional-shadow-smoke",
+          "installed-d3d12-3d-shadow-morph-composition-smoke",
+          "desktop-runtime-release-target-vulkan-toolchain-gated",
+          "desktop-runtime-release-target-vulkan-directional-shadow-toolchain-gated",
+          "desktop-runtime-release-target-vulkan-skin-toolchain-gated"
+        ],
+        "evidence": "Placeholder replacement must keep the stable asset key, regenerate or review a game-owned source document, preserve provenance/license rows, and reroute through reviewed cook/package handoff before runtime use."
       },
       "unsupportedClaims": [
         "external-asset-download",

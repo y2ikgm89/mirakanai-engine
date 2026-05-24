@@ -4276,6 +4276,85 @@ MK_TEST("placeholder asset cook package routes generated source documents throug
                          "runtime/assets/placeholders/debug_texture.texture"));
 }
 
+MK_TEST("placeholder asset cook package supports reviewed replacement recooks through existing package index") {
+    mirakana::PlaceholderAssetCookPackageRequest request;
+    request.placeholder_assets.source_registry_path = "source/assets/game.geassets";
+    request.placeholder_assets.assets = {
+        mirakana::PlaceholderAssetRequest{
+            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/debug_texture"},
+            .asset_kind = mirakana::AssetKind::texture,
+            .source_path = "source/placeholders/debug_texture.texture_source",
+            .imported_path = "runtime/assets/placeholders/debug_texture.texture",
+            .seed = 13,
+            .texture_width = 4,
+            .texture_height = 4,
+        },
+    };
+    request.package_index_path = "runtime/game.geindex";
+    request.package_index_content = empty_package_index_content();
+    request.source_revision = 43;
+
+    const auto initial = mirakana::plan_placeholder_asset_cook_package(request);
+    MK_REQUIRE(initial.succeeded());
+
+    auto replacement = request;
+    replacement.placeholder_assets.source_registry_content = initial.placeholder_plan.source_registry_content;
+    replacement.placeholder_assets.assets[0].seed = 97;
+    replacement.package_index_content = initial.package_plan.package_index_content;
+    replacement.source_revision = 44;
+
+    const auto recook = mirakana::plan_placeholder_asset_cook_package(replacement);
+    const auto find_placeholder_file = [](const mirakana::PlaceholderAssetBundlePlan& plan,
+                                          std::string_view path) -> const mirakana::PlaceholderAssetChangedFile* {
+        const auto it =
+            std::ranges::find_if(plan.changed_files, [path](const mirakana::PlaceholderAssetChangedFile& file) {
+                return file.path == path;
+            });
+        return it == plan.changed_files.end() ? nullptr : &*it;
+    };
+    const auto find_cooked_file =
+        [](const mirakana::RegisteredSourceAssetCookPackageResult& plan,
+           std::string_view path) -> const mirakana::RegisteredSourceAssetCookPackageChangedFile* {
+        const auto it = std::ranges::find_if(
+            plan.changed_files,
+            [path](const mirakana::RegisteredSourceAssetCookPackageChangedFile& file) { return file.path == path; });
+        return it == plan.changed_files.end() ? nullptr : &*it;
+    };
+
+    MK_REQUIRE(recook.succeeded());
+    MK_REQUIRE(recook.placeholder_plan.provenance_rows.size() == 1);
+    MK_REQUIRE(recook.placeholder_plan.provenance_rows[0].asset_key.value == "assets/placeholders/debug_texture");
+    MK_REQUIRE(recook.placeholder_plan.provenance_rows[0].license == "LicenseRef-Proprietary");
+    MK_REQUIRE(recook.package_plan.model_mutations.size() == 1);
+    MK_REQUIRE(recook.package_plan.model_mutations[0].source_registry_path ==
+               replacement.placeholder_assets.source_registry_path);
+    MK_REQUIRE(recook.package_plan.model_mutations[0].package_index_path == replacement.package_index_path);
+    MK_REQUIRE(recook.package_plan.model_mutations[0].target_path ==
+               "runtime/assets/placeholders/debug_texture.texture");
+
+    const auto* initial_source =
+        find_placeholder_file(initial.placeholder_plan, "source/placeholders/debug_texture.texture_source");
+    const auto* replacement_source =
+        find_placeholder_file(recook.placeholder_plan, "source/placeholders/debug_texture.texture_source");
+    const auto* initial_texture =
+        find_cooked_file(initial.package_plan, "runtime/assets/placeholders/debug_texture.texture");
+    const auto* replacement_texture =
+        find_cooked_file(recook.package_plan, "runtime/assets/placeholders/debug_texture.texture");
+    MK_REQUIRE(initial_source != nullptr);
+    MK_REQUIRE(replacement_source != nullptr);
+    MK_REQUIRE(initial_texture != nullptr);
+    MK_REQUIRE(replacement_texture != nullptr);
+    MK_REQUIRE(initial_source->content_hash != replacement_source->content_hash);
+    MK_REQUIRE(initial_texture->content_hash != replacement_texture->content_hash);
+
+    const auto index = mirakana::deserialize_asset_cooked_package_index(recook.package_plan.package_index_content);
+    MK_REQUIRE(index.entries.size() == 1);
+    MK_REQUIRE(index.entries[0].asset ==
+               mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/placeholders/debug_texture"}));
+    MK_REQUIRE(index.entries[0].path == "runtime/assets/placeholders/debug_texture.texture");
+    MK_REQUIRE(index.entries[0].source_revision == 44);
+}
+
 MK_TEST("source asset registration validates dependency targets and canonical dry-run rows") {
     mirakana::SourceAssetRegistryDocumentV1 base_registry;
     base_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
