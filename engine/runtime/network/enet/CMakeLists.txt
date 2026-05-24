@@ -17,6 +17,14 @@ target_link_libraries(mirakana_runtime_network_enet
         unofficial::enet::enet
 )
 
+if(WIN32)
+    target_link_libraries(mirakana_runtime_network_enet
+        PRIVATE
+            winmm
+            ws2_32
+    )
+endif()
+
 mirakana_apply_common_target_options(mirakana_runtime_network_enet)
 
 if(NOT TARGET MK_runtime_network_enet)

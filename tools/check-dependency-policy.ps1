@@ -197,6 +197,8 @@ Assert-TextContains "tools/validate-physics-jolt.ps1" "physics-jolt" "Jolt valid
 Assert-TextContains "tools/validate-physics-jolt.ps1" "validate-installed-sdk.ps1" "Jolt validation wrapper"
 Assert-TextContains "tools/validate-network-enet.ps1" "network-enet" "ENet validation wrapper"
 Assert-TextContains "tools/validate-network-enet.ps1" "validate-installed-sdk.ps1" "ENet validation wrapper"
+Assert-TextContains "engine/runtime/network/enet/CMakeLists.txt" "winmm" "ENet Windows SDK link closure"
+Assert-TextContains "engine/runtime/network/enet/CMakeLists.txt" "ws2_32" "ENet Windows SDK link closure"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" 'find_library\(MK_APPLE_FOUNDATION_FRAMEWORK Foundation REQUIRED\)' "Metal Apple SDK linkage"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" '\$\{MK_APPLE_FOUNDATION_FRAMEWORK\}' "Metal Apple SDK linkage"
 
