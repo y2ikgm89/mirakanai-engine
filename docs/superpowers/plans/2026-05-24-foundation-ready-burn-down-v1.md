@@ -30,7 +30,7 @@ Large milestone: this spans runtime, tools, sprite/content, material/shader, phy
 
 **Goal:** Burn down every current `foundation-ready` backlog row into a narrow implemented 1.x foundation without reopening Engine 1.0 unsupported production gaps.
 
-**Context:** `unsupportedProductionGaps = []` remains the 1.0 truth. The milestone started with 15 post-1.0 / 1.x developer-owned capability foundations whose narrow basis existed but whose stronger productization evidence was not yet promoted. After the `engine-scene-gameplay-binding-v1` promotion, 14 `foundation-ready` rows remain in the canonical backlog.
+**Context:** `unsupportedProductionGaps = []` remains the 1.0 truth. The milestone started with 15 post-1.0 / 1.x developer-owned capability foundations whose narrow basis existed but whose stronger productization evidence was not yet promoted. After the `engine-scene-gameplay-binding-v1` and `engine-input-action-contexts-v1` promotions, 13 `foundation-ready` rows remain in the canonical backlog.
 
 **Constraints:**
 - No direct `main` commits.
@@ -53,7 +53,7 @@ Large milestone: this spans runtime, tools, sprite/content, material/shader, phy
 | # | Candidate | PR grouping | Primary modules | Promotion evidence |
 | --- | --- | --- | --- | --- |
 | 1 | `engine-scene-gameplay-binding-v1` | independent | `MK_runtime_scene`, sample 2D/3D packages | Scene validation tests, missing/duplicate binding diagnostics, 2D/3D package counters. |
-| 2 | `engine-input-action-contexts-v1` | independent | `MK_runtime`, `MK_ui`, editor/game samples | UI capture/rebinding panel evidence, glyph/localization descriptor rows, device assignment diagnostics. |
+| 2 | `engine-input-action-contexts-v1` | independent | `MK_runtime`, `MK_ui`, editor/game samples | Package-visible input context stack, profile overlay, action/axis capture, focused capture, and presentation/glyph-key counters. |
 | 3 | `engine-asset-placeholder-generation-v1` | independent | `MK_tools`, generated-game manifests | Broader placeholder families, replacement workflow rows, package handoff counters. |
 | 4 | `sprite-atlas-authoring-v1` | can pair with #5 only if package evidence is inseparable | `MK_tools`, `MK_assets`, 2D package sample | Decode/import breadth boundary, atlas page policy, pivots/borders diagnostics, editor/package evidence. |
 | 5 | `sprite-batching-renderer-v1` | can pair with #4 only if package evidence is inseparable | `MK_scene_renderer`, `MK_renderer`, 2D package sample | High-density world/UI/effects batching budgets, per-backend gated counters. |
@@ -144,7 +144,7 @@ The full `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtim
 
 Promote `engine-scene-gameplay-binding-v1` to `implemented-1x-foundation`, record exact validation evidence, compose the manifest, and add or update static checks when the new counters become AI-operable contract literals.
 
-- [ ] **Step 6: Validate, commit, push, and PR**
+- [x] **Step 6: Validate, commit, push, and PR**
 
 Run focused checks, then:
 
@@ -153,6 +153,61 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 Commit only task-owned files, push `codex/foundation-ready-burndown-v1`, open a PR with evidence, wait for applicable hosted checks, merge through the guarded flow, sync `main`, and remove the merged worktree with `tools/remove-merged-worktree.ps1`.
+
+Closeout evidence completed through PR #212, merge commit `23bac05348ca32867dfe7980bf265c9e537c5afa`. Hosted checks, including `PR Gate`, completed successfully before merge. `tools/remove-merged-worktree.ps1 -WorktreePath .worktrees/foundation-ready-burndown-v1 -DeleteLocalBranch -DeleteRemoteBranch` completed after merge and main sync.
+
+## Task 2: Select And Prove `engine-input-action-contexts-v1`
+
+**Files:**
+- Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
+- Modify: `games/sample_generated_desktop_runtime_3d_package/main.cpp`
+- Modify: `games/sample_2d_desktop_runtime_package/game.agent.json`
+- Modify: `games/sample_generated_desktop_runtime_3d_package/game.agent.json`
+- Modify: `tools/validate-installed-desktop-runtime.ps1`
+- Modify: `tools/check-json-contracts-050-generated-games.ps1`
+- Modify as needed: `docs/current-capabilities.md`, `docs/ai-game-development.md`, `docs/roadmap.md`, `docs/specs/generated-game-validation-scenarios.md`
+- Modify: `docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Generate: `engine/agent/manifest.json`
+
+- [x] **Step 1: Record current evidence and final promotion boundary**
+
+Existing runtime/editor contracts already cover context stacks, rebinding profiles, action capture, axis capture, focused capture consumption, and presentation rows. The promotion boundary is selected package-visible evidence, not a new input API, real platform glyph rendering, keyboard-layout localization, multiplayer device assignment, native input handles, SDL3 input APIs, or full runtime/game rebinding panels.
+
+- [x] **Step 2: Add package-visible 2D/3D input context and rebinding counters**
+
+Extend selected `--require-gameplay-systems` paths to report `input_context_rebinding_*` and `input_rebinding_*` counters for a 3-layer rebinding/HUD/gameplay stack, profile overlays, action capture, axis capture, focused capture consumption/retention, presentation rows, glyph lookup keys, and clean diagnostics.
+
+- [x] **Step 3: Guard source and installed package evidence**
+
+`tools/check-json-contracts.ps1` now requires the 2D manifest/main/installed-validation literals for `inputContextRebinding` and the new smoke fields. `tools/validate-installed-desktop-runtime.ps1` now requires exact 2D/3D installed package values when `--require-gameplay-systems` is selected.
+
+- [x] **Step 4: Verify focused package evidence**
+
+Focused evidence completed:
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package` passed.
+- Direct source-tree smokes for `sample_2d_desktop_runtime_package --require-gameplay-systems --require-procedural-generation` and `sample_generated_desktop_runtime_3d_package --require-gameplay-systems` passed with `input_context_rebinding_ready=1`, 3 requested layers, 1 active modal rebinding context, `input_context_rebinding_capture_active=1`, gameplay input consumed, 2 applied profile overlays, captured action/axis candidates, retained focused waiting capture, 2 presentation rows, 5 glyph lookup keys, and `input_rebinding_diagnostics=0`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
+
+- [x] **Step 5: Sync docs, manifest, backlog, and static checks**
+
+Promote `engine-input-action-contexts-v1` to `implemented-1x-foundation`, keep explicit non-goals for real glyph assets, keyboard-layout localization, device assignment, native handles, SDL3 input APIs, and full runtime/game rebinding panels, compose the manifest, and keep validation recipes/static checks aligned with the package-visible counters.
+
+- [ ] **Step 6: Validate, commit, push, and PR**
+
+Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+Commit only task-owned files, push `codex/foundation-ready-input-contexts-v1`, open a PR with evidence, wait for applicable hosted checks, merge through the guarded flow, sync `main`, and remove the merged worktree with `tools/remove-merged-worktree.ps1`.
+
+Full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-05-24 with all 78 CTest tests passing; Metal/Apple checks remained diagnostic/host-gated on this Windows host.
 
 ## Remaining Candidate Loop
 
@@ -169,8 +224,8 @@ For each remaining candidate:
 
 | Candidate | PR | Merge SHA | Full validation | Notes |
 | --- | --- | --- | --- | --- |
-| `engine-scene-gameplay-binding-v1` | pending | pending | pass (`tools/validate.ps1`, 2026-05-24) | Package-visible binding evidence implemented; focused build, runtime-scene CTest, direct smokes, direct installed-layout validation, static checks, and full validation passed. PR remains pending. |
-| `engine-input-action-contexts-v1` | pending | pending | pending | Not started. |
+| `engine-scene-gameplay-binding-v1` | #212 | `23bac05348ca32867dfe7980bf265c9e537c5afa` | pass (`tools/validate.ps1`, 2026-05-24) | Package-visible binding evidence implemented; focused build, runtime-scene CTest, direct smokes, direct installed-layout validation, static checks, full validation, hosted checks, merge, main sync, and guarded worktree cleanup passed. |
+| `engine-input-action-contexts-v1` | pending | pending | pass (`tools/validate.ps1`, 2026-05-24) | Package-visible 2D/3D input context/rebinding evidence implemented; focused build, direct smokes, static checks, AI integration checks, and full validation passed. PR remains pending. |
 | `engine-asset-placeholder-generation-v1` | pending | pending | pending | Not started. |
 | `sprite-atlas-authoring-v1` | pending | pending | pending | Not started. |
 | `sprite-batching-renderer-v1` | pending | pending | pending | Not started. |

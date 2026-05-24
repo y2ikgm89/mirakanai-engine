@@ -794,6 +794,19 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "gameplay_systems_scene_interaction_rows",
                 "gameplay_systems_scene_interaction_diagnostics",
                 "gameplay_systems_scene_interaction_final_session_state",
+                "input_context_rebinding_ready",
+                "input_context_rebinding_layers",
+                "input_context_rebinding_active_contexts",
+                "input_context_rebinding_capture_active",
+                "input_context_rebinding_gameplay_consumed",
+                "input_rebinding_profile_overlays_applied",
+                "input_rebinding_action_capture_status",
+                "input_rebinding_axis_capture_status",
+                "input_rebinding_focus_consumed",
+                "input_rebinding_focus_retained",
+                "input_rebinding_presentation_rows",
+                "input_rebinding_glyph_lookup_keys",
+                "input_rebinding_diagnostics",
                 "gameplay_systems_construction_placement_ready",
                 "gameplay_systems_construction_placement_diagnostics",
                 "gameplay_systems_construction_placement_validation_rows",
@@ -836,6 +849,45 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_interaction_final_session_state=won\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove scene gameplay interaction win state."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_ready=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready input context rebinding."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_layers=3\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact input context layer count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_active_contexts=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact active input context count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_capture_active=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove active capture context."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_gameplay_consumed=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove gameplay input consumption."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_profile_overlays_applied=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact input rebinding overlay count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_action_capture_status=captured\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove captured action rebinding input."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_axis_capture_status=captured\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove captured axis rebinding input."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_focus_consumed=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove focused capture consumption."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_focus_retained=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove retained focused capture."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_presentation_rows=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact input rebinding presentation rows."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_glyph_lookup_keys=5\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact symbolic glyph lookup key count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean input rebinding diagnostics."
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_status=ready\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems status."
@@ -970,6 +1022,19 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_scene_interaction_rows",
             "gameplay_systems_scene_interaction_diagnostics",
             "gameplay_systems_scene_interaction_final_session_state",
+            "input_context_rebinding_ready",
+            "input_context_rebinding_layers",
+            "input_context_rebinding_active_contexts",
+            "input_context_rebinding_capture_active",
+            "input_context_rebinding_gameplay_consumed",
+            "input_rebinding_profile_overlays_applied",
+            "input_rebinding_action_capture_status",
+            "input_rebinding_axis_capture_status",
+            "input_rebinding_focus_consumed",
+            "input_rebinding_focus_retained",
+            "input_rebinding_presentation_rows",
+            "input_rebinding_glyph_lookup_keys",
+            "input_rebinding_diagnostics",
             "gameplay_systems_navigation_navmesh_status",
             "gameplay_systems_navigation_navmesh_diagnostic",
             "gameplay_systems_navigation_navmesh_polygons",
@@ -1059,6 +1124,45 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_interaction_final_session_state=won\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove scene gameplay interaction win state."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_ready=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready input context rebinding."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_layers=3\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact input context layer count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_active_contexts=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact active input context count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_capture_active=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove active capture context."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_context_rebinding_gameplay_consumed=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay input consumption."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_profile_overlays_applied=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact input rebinding overlay count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_action_capture_status=captured\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove captured action rebinding input."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_axis_capture_status=captured\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove captured axis rebinding input."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_focus_consumed=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove focused capture consumption."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_focus_retained=1\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove retained focused capture."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_presentation_rows=2\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact input rebinding presentation rows."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_glyph_lookup_keys=5\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove exact symbolic glyph lookup key count."
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\binput_rebinding_diagnostics=0\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean input rebinding diagnostics."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_navigation_navmesh_status=success\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove successful gameplay navmesh path."
