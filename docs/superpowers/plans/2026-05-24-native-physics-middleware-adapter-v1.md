@@ -6,7 +6,7 @@
 
 **Plan ID:** `native-physics-middleware-adapter-v1`
 
-**Status:** Active; PR opened.
+**Status:** Active.
 
 **Gap:** `native-physics-middleware-adapter-v1`
 
