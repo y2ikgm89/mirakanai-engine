@@ -15,9 +15,9 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: this master plan index is selected again after the selected optional-adapter candidate sequence completed with Scripting And Mod Sandbox v1 through PR #206, Native Physics Middleware Adapter v1 through PR #209, and Networking And Multiplayer v1 through PR #210 / merge commit `e63799b64716ad1cccb6841850edd7c5aac9d8ef`; completed child evidence is recorded in the plan registry.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = next-production-gap-selection` after sprite sorting, 9-slice/tiled, sprite collision hitbox, sprite effects/particles, sprite editor preview diagnostics, navigation hierarchical world, simulation persistence, and the selected optional-adapter candidates completed. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
-- Current gap cluster: none selected; choose the next production gap or developer-owned backlog row through a new dated plan before implementation.
+- Current active plan: [Foundation Ready Burn-down v1](../plans/2026-05-24-foundation-ready-burn-down-v1.md) is selected to promote the canonical `foundation-ready` rows through candidate-sized, evidence-backed PRs. It started from 15 rows; after `engine-scene-gameplay-binding-v1`, 14 canonical `foundation-ready` rows remain. Completed optional-adapter child evidence remains recorded in the plan registry.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = foundation-ready-burn-down-v1` while the post-1.0 foundation-ready burn-down milestone is active. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
+- Current gap cluster: no Engine 1.0 unsupported gap is selected. The active developer-owned milestone starts with `engine-scene-gameplay-binding-v1`.
 
 ## Plan map
 

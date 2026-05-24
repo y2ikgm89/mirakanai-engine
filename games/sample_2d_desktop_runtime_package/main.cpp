@@ -264,6 +264,19 @@ runtime_gameplay_session_state_name(mirakana::runtime::RuntimeGameplaySessionSta
 }
 
 [[nodiscard]] std::string_view
+runtime_scene_gameplay_session_state_name(mirakana::runtime_scene::RuntimeSceneGameplaySessionState state) noexcept {
+    switch (state) {
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running:
+        return "running";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::won:
+        return "won";
+    case mirakana::runtime_scene::RuntimeSceneGameplaySessionState::lost:
+        return "lost";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
 runtime_session_profile_resume_status_name(mirakana::runtime::RuntimeSessionProfileResumeStatus status) noexcept {
     switch (status) {
     case mirakana::runtime::RuntimeSessionProfileResumeStatus::ready:
@@ -272,6 +285,110 @@ runtime_session_profile_resume_status_name(mirakana::runtime::RuntimeSessionProf
         return "blocked";
     }
     return "unknown";
+}
+
+struct SceneGameplayBindingProbeResult {
+    std::size_t source_rows{0U};
+    std::size_t binding_rows{0U};
+    std::size_t gameplay_systems{0U};
+    std::size_t component_rows{0U};
+    std::size_t binding_diagnostics{0U};
+    std::size_t interaction_rows{0U};
+    std::size_t interaction_diagnostics{0U};
+    mirakana::runtime_scene::RuntimeSceneGameplaySessionState final_session_state{
+        mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running};
+    bool ready{false};
+};
+
+[[nodiscard]] std::size_t count_scene_gameplay_binding_systems(
+    std::span<const mirakana::runtime_scene::RuntimeSceneGameplayBindingRow> bindings) {
+    std::vector<std::string> systems;
+    systems.reserve(bindings.size());
+    for (const auto& binding : bindings) {
+        if (!std::ranges::contains(systems, binding.gameplay_system_id)) {
+            systems.push_back(binding.gameplay_system_id);
+        }
+    }
+    return systems.size();
+}
+
+[[nodiscard]] SceneGameplayBindingProbeResult validate_sample_2d_scene_gameplay_bindings(const mirakana::Scene& scene) {
+    using namespace mirakana::runtime_scene;
+
+    RuntimeSceneInstance instance{
+        .scene_asset = mirakana::AssetId{},
+        .handle = mirakana::runtime::RuntimeAssetHandle{},
+        .scene = scene,
+        .references = {},
+    };
+    const std::vector<RuntimeSceneGameplayBindingSourceRow> source_rows{
+        {
+            .binding_id = "player.actor",
+            .gameplay_system_id = "sample_2d_controller",
+            .slot_id = "actor",
+            .node_name = "Player",
+            .required_component = RuntimeSceneGameplayBindingComponentKind::sprite_renderer,
+        },
+        {
+            .binding_id = "player.echo",
+            .gameplay_system_id = "sample_2d_feedback",
+            .slot_id = "pickup",
+            .node_name = "Player Echo",
+            .required_component = RuntimeSceneGameplayBindingComponentKind::sprite_renderer,
+        },
+        {
+            .binding_id = "camera.primary",
+            .gameplay_system_id = "sample_2d_camera",
+            .slot_id = "camera",
+            .node_name = "Main Camera",
+            .required_component = RuntimeSceneGameplayBindingComponentKind::camera,
+        },
+    };
+    const auto bindings = resolve_runtime_scene_gameplay_bindings(instance, source_rows);
+    const std::vector<RuntimeSceneGameplayInteractionSourceRow> interactions{
+        {
+            .action_id = "player.echo.pickup",
+            .kind = RuntimeSceneGameplayInteractionKind::pickup,
+            .source_binding_id = "player.actor",
+            .target_binding_id = "player.echo",
+            .amount = 1,
+        },
+        {
+            .action_id = "camera.objective",
+            .kind = RuntimeSceneGameplayInteractionKind::objective_progress,
+            .source_binding_id = "camera.primary",
+            .objective_id = "frame_player",
+            .amount = 1,
+        },
+        {
+            .action_id = "camera.win",
+            .kind = RuntimeSceneGameplayInteractionKind::win,
+            .source_binding_id = "camera.primary",
+        },
+    };
+    const auto plan = plan_runtime_scene_gameplay_interactions(
+        bindings.bindings, interactions,
+        RuntimeSceneGameplayInteractionPlanRequest{.session_state = RuntimeSceneGameplaySessionState::running});
+
+    SceneGameplayBindingProbeResult result{
+        .source_rows = source_rows.size(),
+        .binding_rows = bindings.bindings.size(),
+        .gameplay_systems = count_scene_gameplay_binding_systems(bindings.bindings),
+        .component_rows = static_cast<std::size_t>(
+            std::count_if(bindings.bindings.begin(), bindings.bindings.end(),
+                          [](const RuntimeSceneGameplayBindingRow& binding) {
+                              return binding.required_component != RuntimeSceneGameplayBindingComponentKind::none;
+                          })),
+        .binding_diagnostics = bindings.diagnostics.size(),
+        .interaction_rows = plan.rows.size(),
+        .interaction_diagnostics = plan.diagnostics.size(),
+        .final_session_state = plan.final_session_state,
+    };
+    result.ready = bindings.succeeded() && plan.succeeded() && result.source_rows == 3U && result.binding_rows == 3U &&
+                   result.gameplay_systems == 3U && result.component_rows == 3U && result.binding_diagnostics == 0U &&
+                   result.interaction_rows == 3U && result.interaction_diagnostics == 0U &&
+                   result.final_session_state == RuntimeSceneGameplaySessionState::won;
+    return result;
 }
 
 [[nodiscard]] std::string_view
@@ -3293,6 +3410,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
             const auto validation = mirakana::validate_playable_2d_scene(*scene_.scene);
             validation_ok_ = validation.succeeded();
             package_scene_sprites_ = validation.visible_sprite_count;
+            scene_gameplay_bindings_ = validate_sample_2d_scene_gameplay_bindings(*scene_.scene);
 
             std::int32_t next_sorting_layer = 0;
             std::size_t slice_config_index = 0;
@@ -3507,7 +3625,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
                package_scene_sprites_ == 2 && tilemap_runtime_ok_ && tilemap_layers_ == 1 &&
                tilemap_visible_layers_ == 1 && tilemap_tiles_ == 2 && tilemap_non_empty_cells_ == 3 &&
                tilemap_sampled_cells_ == 3 && tilemap_diagnostics_ == 0 && sprite_effect_particles_ready() &&
-               gameplay_systems_.passed(expected_frames);
+               scene_gameplay_bindings_.ready && gameplay_systems_.passed(expected_frames);
     }
 
     [[nodiscard]] std::uint32_t frames() const noexcept {
@@ -3848,6 +3966,43 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         return gameplay_systems_.interaction_final_session_state();
     }
 
+    [[nodiscard]] bool gameplay_systems_scene_binding_ready() const noexcept {
+        return scene_gameplay_bindings_.ready;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_source_rows() const noexcept {
+        return scene_gameplay_bindings_.source_rows;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_rows() const noexcept {
+        return scene_gameplay_bindings_.binding_rows;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_systems() const noexcept {
+        return scene_gameplay_bindings_.gameplay_systems;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_component_rows() const noexcept {
+        return scene_gameplay_bindings_.component_rows;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_binding_diagnostics() const noexcept {
+        return scene_gameplay_bindings_.binding_diagnostics;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_interaction_rows() const noexcept {
+        return scene_gameplay_bindings_.interaction_rows;
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_scene_interaction_diagnostics() const noexcept {
+        return scene_gameplay_bindings_.interaction_diagnostics;
+    }
+
+    [[nodiscard]] mirakana::runtime_scene::RuntimeSceneGameplaySessionState
+    gameplay_systems_scene_interaction_final_session_state() const noexcept {
+        return scene_gameplay_bindings_.final_session_state;
+    }
+
     [[nodiscard]] bool sprite_collision_hitbox_ready() const noexcept {
         return gameplay_systems_.sprite_collision_hitbox_ready();
     }
@@ -4157,6 +4312,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     mirakana::UiRendererTheme theme_;
     mirakana::AudioMixer mixer_;
     Gameplay2DSystemsProbe gameplay_systems_;
+    SceneGameplayBindingProbeResult scene_gameplay_bindings_;
     mirakana::AudioClipSampleData audio_samples_;
     AudioGameplayMixerProbeResult audio_gameplay_mixer_;
     mirakana::runtime::RuntimeSpriteAnimationPayload sprite_animation_;
@@ -5074,7 +5230,8 @@ int main(int argc, char** argv) {
         << " tilemap_cells_sampled=" << game.tilemap_sampled_cells()
         << " tilemap_diagnostics=" << game.tilemap_diagnostics() << " gameplay_systems_status="
         << gameplay_2d_systems_status_name(game.gameplay_systems_status(options.max_frames))
-        << " gameplay_systems_ready=" << (game.gameplay_systems_passed(options.max_frames) ? 1 : 0)
+        << " gameplay_systems_ready="
+        << ((game.gameplay_systems_passed(options.max_frames) && game.gameplay_systems_scene_binding_ready()) ? 1 : 0)
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
         << " gameplay_systems_physics_bodies=" << game.gameplay_systems_physics_bodies()
@@ -5130,6 +5287,16 @@ int main(int argc, char** argv) {
         << " gameplay_systems_interaction_feedback_rows=" << game.gameplay_systems_interaction_feedback_rows()
         << " gameplay_systems_interaction_final_session_state="
         << runtime_gameplay_session_state_name(game.gameplay_systems_interaction_final_session_state())
+        << " gameplay_systems_scene_binding_ready=" << (game.gameplay_systems_scene_binding_ready() ? 1 : 0)
+        << " gameplay_systems_scene_binding_source_rows=" << game.gameplay_systems_scene_binding_source_rows()
+        << " gameplay_systems_scene_binding_rows=" << game.gameplay_systems_scene_binding_rows()
+        << " gameplay_systems_scene_binding_systems=" << game.gameplay_systems_scene_binding_systems()
+        << " gameplay_systems_scene_binding_component_rows=" << game.gameplay_systems_scene_binding_component_rows()
+        << " gameplay_systems_scene_binding_diagnostics=" << game.gameplay_systems_scene_binding_diagnostics()
+        << " gameplay_systems_scene_interaction_rows=" << game.gameplay_systems_scene_interaction_rows()
+        << " gameplay_systems_scene_interaction_diagnostics=" << game.gameplay_systems_scene_interaction_diagnostics()
+        << " gameplay_systems_scene_interaction_final_session_state="
+        << runtime_scene_gameplay_session_state_name(game.gameplay_systems_scene_interaction_final_session_state())
         << " sprite_collision_hitbox_ready=" << (game.sprite_collision_hitbox_ready() ? 1 : 0)
         << " sprite_collision_hitbox_hits=" << game.sprite_collision_hitbox_hits()
         << " sprite_collision_hitbox_gameplay_events=" << game.sprite_collision_hitbox_gameplay_events()
@@ -5446,7 +5613,8 @@ int main(int argc, char** argv) {
         return 13;
     }
 
-    if (options.require_gameplay_systems && !game.gameplay_systems_passed(options.max_frames)) {
+    if (options.require_gameplay_systems &&
+        (!game.gameplay_systems_passed(options.max_frames) || !game.gameplay_systems_scene_binding_ready())) {
         std::cout
             << "sample_2d_desktop_runtime_package required_gameplay_systems_unavailable"
             << " gameplay_systems_status="
@@ -5476,6 +5644,17 @@ int main(int argc, char** argv) {
             << " gameplay_systems_interaction_feedback_rows=" << game.gameplay_systems_interaction_feedback_rows()
             << " gameplay_systems_interaction_final_session_state="
             << runtime_gameplay_session_state_name(game.gameplay_systems_interaction_final_session_state())
+            << " gameplay_systems_scene_binding_ready=" << (game.gameplay_systems_scene_binding_ready() ? 1 : 0)
+            << " gameplay_systems_scene_binding_source_rows=" << game.gameplay_systems_scene_binding_source_rows()
+            << " gameplay_systems_scene_binding_rows=" << game.gameplay_systems_scene_binding_rows()
+            << " gameplay_systems_scene_binding_systems=" << game.gameplay_systems_scene_binding_systems()
+            << " gameplay_systems_scene_binding_component_rows=" << game.gameplay_systems_scene_binding_component_rows()
+            << " gameplay_systems_scene_binding_diagnostics=" << game.gameplay_systems_scene_binding_diagnostics()
+            << " gameplay_systems_scene_interaction_rows=" << game.gameplay_systems_scene_interaction_rows()
+            << " gameplay_systems_scene_interaction_diagnostics="
+            << game.gameplay_systems_scene_interaction_diagnostics()
+            << " gameplay_systems_scene_interaction_final_session_state="
+            << runtime_scene_gameplay_session_state_name(game.gameplay_systems_scene_interaction_final_session_state())
             << " sprite_collision_hitbox_ready=" << (game.sprite_collision_hitbox_ready() ? 1 : 0)
             << " sprite_collision_hitbox_hits=" << game.sprite_collision_hitbox_hits()
             << " sprite_collision_hitbox_gameplay_events=" << game.sprite_collision_hitbox_gameplay_events()

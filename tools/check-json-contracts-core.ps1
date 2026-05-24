@@ -119,9 +119,9 @@ function Assert-ActiveProductionPlanDrift($productionLoop) {
     $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
     $planRegistryPath = "docs/superpowers/plans/README.md"
     $planRegistryText = Get-Content -LiteralPath (Join-Path $root $planRegistryPath) -Raw
-    $activeSliceRow = [regex]::Match($planRegistryText, '(?m)^\| Active slice \(`currentActivePlan`\) \|.*$')
+    $activeSliceRow = [regex]::Match($planRegistryText, '(?m)^\| Active (slice|milestone) \(`currentActivePlan`\) \|.*$')
     if (-not $activeSliceRow.Success) {
-        Write-Error "$planRegistryPath must contain an Active slice currentActivePlan row"
+        Write-Error "$planRegistryPath must contain an Active slice or milestone currentActivePlan row"
     }
 
     $activeChildPlans = @(Get-ActiveChildProductionPlans)
@@ -136,7 +136,7 @@ function Assert-ActiveProductionPlanDrift($productionLoop) {
         }
         if (-not $activeSliceRow.Value.Contains($activePlan.fileName) -and
             ([string]::IsNullOrWhiteSpace($activePlan.planId) -or -not $activeSliceRow.Value.Contains($activePlan.planId))) {
-            Write-Error "$planRegistryPath Active slice row must mention active child plan id or path: $($activePlan.path)"
+            Write-Error "$planRegistryPath Active slice or milestone row must mention active child plan id or path: $($activePlan.path)"
         }
         if ($activePlan.planId -eq "physics-1-0-collision-system-closeout-v1") {
             $physicsJointsPlanPath = Join-Path $root "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"

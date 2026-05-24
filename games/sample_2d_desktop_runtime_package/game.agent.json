@@ -1615,6 +1615,7 @@
     "runner": "mirakana::SdlDesktopGameHost",
     "input": "mirakana::runtime::RuntimeInputActionMap over mirakana::VirtualInput",
     "scene": "GameEngine.Scene.v1 loaded from a cooked package and validated by mirakana::validate_playable_2d_scene",
+    "sceneGameplayBinding": "mirakana::runtime_scene::resolve_runtime_scene_gameplay_bindings plus mirakana::runtime_scene::plan_runtime_scene_gameplay_interactions under --require-gameplay-systems; selected smoke requires gameplay_systems_scene_binding_ready=1, 3 source rows, 3 resolved rows, 3 gameplay systems, 3 component-backed rows, clean diagnostics, 3 scene interaction rows, and gameplay_systems_scene_interaction_final_session_state=won",
     "sceneRenderer": "mirakana::submit_scene_render_packet",
     "ui": "mirakana::ui::UiDocument through mirakana::submit_ui_renderer_submission",
     "audio": "mirakana::AudioMixer using a cooked audio payload",

@@ -429,6 +429,9 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "scripting sandbox policy proof",
         "networking foundation policy proof",
         "simulation orchestration package proof",
+        "sceneGameplayBinding",
+        "gameplay_systems_scene_binding_ready=1",
+        "gameplay_systems_scene_interaction_final_session_state",
         "installed-2d-entity-scale-culling-smoke",
         "installed-2d-scripting-sandbox-policy-smoke",
         "installed-2d-networking-foundation-policy-smoke",
@@ -500,6 +503,15 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "gameplay_systems_behavior_authoring_ready=",
         "gameplay_systems_behavior_authoring_diagnostics=",
         "gameplay_systems_behavior_authoring_trace_nodes=",
+        "gameplay_systems_scene_binding_ready=",
+        "gameplay_systems_scene_binding_source_rows=",
+        "gameplay_systems_scene_binding_rows=",
+        "gameplay_systems_scene_binding_systems=",
+        "gameplay_systems_scene_binding_component_rows=",
+        "gameplay_systems_scene_binding_diagnostics=",
+        "gameplay_systems_scene_interaction_rows=",
+        "gameplay_systems_scene_interaction_diagnostics=",
+        "gameplay_systems_scene_interaction_final_session_state=",
         "world_region_streaming_status=",
         "world_region_streaming_load_rows=",
         "world_region_streaming_unload_rows=",
@@ -612,6 +624,15 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "gameplay_systems_behavior_authoring_ready",
         "gameplay_systems_behavior_authoring_diagnostics",
         "gameplay_systems_behavior_authoring_trace_nodes",
+        "gameplay_systems_scene_binding_ready",
+        "gameplay_systems_scene_binding_source_rows",
+        "gameplay_systems_scene_binding_rows",
+        "gameplay_systems_scene_binding_systems",
+        "gameplay_systems_scene_binding_component_rows",
+        "gameplay_systems_scene_binding_diagnostics",
+        "gameplay_systems_scene_interaction_rows",
+        "gameplay_systems_scene_interaction_diagnostics",
+        "gameplay_systems_scene_interaction_final_session_state",
         "world_region_streaming_status",
         "world_region_streaming_load_rows",
         "world_region_streaming_unload_rows",
@@ -1309,7 +1330,16 @@ if ($null -eq $sample3dManifestEntry) {
         "ui_overlay_status",
         "ui_overlay_ready",
         "ui_overlay_sprites_submitted",
-        "ui_overlay_draws"
+        "ui_overlay_draws",
+        "gameplay_systems_scene_binding_ready",
+        "gameplay_systems_scene_binding_source_rows",
+        "gameplay_systems_scene_binding_rows",
+        "gameplay_systems_scene_binding_systems",
+        "gameplay_systems_scene_binding_component_rows",
+        "gameplay_systems_scene_binding_diagnostics",
+        "gameplay_systems_scene_interaction_rows",
+        "gameplay_systems_scene_interaction_diagnostics",
+        "gameplay_systems_scene_interaction_final_session_state"
     )) {
         if (-not $installedDesktopRuntimeValidationText.Contains($field)) {
             Write-Error "tools/validate-installed-desktop-runtime.ps1 missing 3D scene mesh package telemetry validation field: $field"
@@ -1384,6 +1414,9 @@ if ($null -eq $generated3dPackageManifestEntry) {
     Assert-ContainsText $generated3dPackageManifestText "--require-native-ui-textured-sprite-atlas" $generated3dPackageManifestPath
     Assert-ContainsText $generated3dPackageManifestText "--require-native-ui-text-glyph-atlas" $generated3dPackageManifestPath
     Assert-ContainsText $generated3dPackageManifestText "--require-gameplay-systems" $generated3dPackageManifestPath
+    Assert-ContainsText $generated3dPackageManifestText "sceneGameplayBinding" $generated3dPackageManifestPath
+    Assert-ContainsText $generated3dPackageManifestText "gameplay_systems_scene_binding_ready=1" $generated3dPackageManifestPath
+    Assert-ContainsText $generated3dPackageManifestText "gameplay_systems_scene_interaction_final_session_state" $generated3dPackageManifestPath
     Assert-ContainsText $generated3dPackageReadmeText "--require-shadow-morph-composition" "games/sample_generated_desktop_runtime_3d_package/README.md"
     Assert-ContainsText $generated3dPackageReadmeText "--require-native-ui-overlay" "games/sample_generated_desktop_runtime_3d_package/README.md"
     Assert-ContainsText $generated3dPackageReadmeText "--require-visible-3d-production-proof" "games/sample_generated_desktop_runtime_3d_package/README.md"
@@ -1435,6 +1468,15 @@ if ($null -eq $generated3dPackageManifestEntry) {
         "solve_physics_constraints_3d", "PhysicsFixedConstraint3DDesc", "PhysicsLinearAxisConstraint3DDesc", "gameplay_systems_physics_constraints_status=", "gameplay_systems_physics_constraints_diagnostic=", "gameplay_systems_physics_constraints_rows=", "gameplay_systems_physics_constraints_fixed_rows=", "gameplay_systems_physics_constraints_linear_axis_rows=", "gameplay_systems_physics_constraints_axis_limit_clamped=", "plan_physics_simple_vehicle_3d", "PhysicsSimpleVehicle3DDesc", "gameplay_systems_vehicle_status=", "gameplay_systems_vehicle_diagnostic=", "gameplay_systems_vehicle_wheel_rows=", "gameplay_systems_vehicle_grounded_wheels=", "gameplay_systems_vehicle_wheel_probe_hits=",
         "gameplay_systems_blackboard_status=",
         "gameplay_systems_behavior_status=",
+        "gameplay_systems_scene_binding_ready=",
+        "gameplay_systems_scene_binding_source_rows=",
+        "gameplay_systems_scene_binding_rows=",
+        "gameplay_systems_scene_binding_systems=",
+        "gameplay_systems_scene_binding_component_rows=",
+        "gameplay_systems_scene_binding_diagnostics=",
+        "gameplay_systems_scene_interaction_rows=",
+        "gameplay_systems_scene_interaction_diagnostics=",
+        "gameplay_systems_scene_interaction_final_session_state=",
         "gameplay_systems_audio_status=", "gameplay_systems_audio_first_sample=",
         "--require-native-ui-overlay",
         "--require-visible-3d-production-proof",
