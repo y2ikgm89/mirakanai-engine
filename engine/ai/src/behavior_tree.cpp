@@ -183,6 +183,30 @@ void append_behavior_authoring_diagnostic(std::vector<BehaviorAuthoringDiagnosti
                                                       .action_id = std::move(action_id)});
 }
 
+void append_behavior_authoring_readiness_diagnostic(std::vector<BehaviorAuthoringReadinessDiagnostic>& diagnostics,
+                                                    const BehaviorAuthoringReadinessDiagnostic diagnostic) {
+    if (diagnostic != BehaviorAuthoringReadinessDiagnostic::none) {
+        diagnostics.push_back(diagnostic);
+    }
+}
+
+[[nodiscard]] std::size_t count_behavior_authoring_actions(const BehaviorAuthoringDocument& document) noexcept {
+    std::size_t count = 0;
+    for (const auto& behavior : document.behaviors) {
+        count += behavior.actions.size();
+    }
+    return count;
+}
+
+[[nodiscard]] std::size_t
+count_behavior_authoring_blackboard_conditions(const BehaviorAuthoringDocument& document) noexcept {
+    std::size_t count = 0;
+    for (const auto& behavior : document.behaviors) {
+        count += behavior.blackboard_conditions.size();
+    }
+    return count;
+}
+
 [[nodiscard]] bool behavior_tree_has_cycle(const BehaviorTreeDesc& tree, const BehaviorTreeNodeId root_id,
                                            BehaviorTreeNodeId& cycle_node_id) {
     const auto* const root = find_node(tree, root_id);
@@ -807,6 +831,66 @@ validate_behavior_authoring_document(const BehaviorAuthoringDocument& document,
 
     result.succeeded = result.diagnostics.empty();
     return result;
+}
+
+BehaviorAuthoringReadinessReport evaluate_behavior_authoring_readiness(const BehaviorAuthoringDocument& document,
+                                                                       const BehaviorAuthoringValidationContext context,
+                                                                       const BehaviorAuthoringReadinessConfig& config) {
+    const auto first_validation = validate_behavior_authoring_document(document, context);
+    const auto second_validation = validate_behavior_authoring_document(document, context);
+
+    BehaviorAuthoringReadinessReport report;
+    report.validation_succeeded = first_validation.succeeded;
+    report.deterministic_trace_ready = first_validation.succeeded == second_validation.succeeded &&
+                                       first_validation.diagnostics == second_validation.diagnostics &&
+                                       first_validation.trace == second_validation.trace;
+    report.behavior_count = document.behaviors.size();
+    report.validation_diagnostic_count = first_validation.diagnostics.size();
+    report.trace_node_count = first_validation.trace.size();
+    report.action_binding_count = count_behavior_authoring_actions(document);
+    report.blackboard_condition_count = count_behavior_authoring_blackboard_conditions(document);
+
+    if (!report.validation_succeeded) {
+        append_behavior_authoring_readiness_diagnostic(report.diagnostics,
+                                                       BehaviorAuthoringReadinessDiagnostic::validation_diagnostics);
+    } else if (report.validation_diagnostic_count > config.max_validation_diagnostics) {
+        append_behavior_authoring_readiness_diagnostic(
+            report.diagnostics, BehaviorAuthoringReadinessDiagnostic::diagnostic_budget_exceeded);
+    }
+    if (!report.deterministic_trace_ready) {
+        append_behavior_authoring_readiness_diagnostic(
+            report.diagnostics, BehaviorAuthoringReadinessDiagnostic::nondeterministic_validation);
+    }
+    if (report.behavior_count < config.min_behaviors) {
+        append_behavior_authoring_readiness_diagnostic(report.diagnostics,
+                                                       BehaviorAuthoringReadinessDiagnostic::insufficient_behaviors);
+    }
+    if (report.trace_node_count < config.min_trace_nodes) {
+        append_behavior_authoring_readiness_diagnostic(report.diagnostics,
+                                                       BehaviorAuthoringReadinessDiagnostic::insufficient_trace_nodes);
+    }
+    if (report.action_binding_count < config.min_action_bindings) {
+        append_behavior_authoring_readiness_diagnostic(
+            report.diagnostics, BehaviorAuthoringReadinessDiagnostic::insufficient_action_bindings);
+    }
+    if (report.blackboard_condition_count < config.min_blackboard_conditions) {
+        append_behavior_authoring_readiness_diagnostic(
+            report.diagnostics, BehaviorAuthoringReadinessDiagnostic::insufficient_blackboard_conditions);
+    }
+    if (report.behavior_count > config.max_behaviors) {
+        append_behavior_authoring_readiness_diagnostic(report.diagnostics,
+                                                       BehaviorAuthoringReadinessDiagnostic::behavior_budget_exceeded);
+    }
+    if (report.trace_node_count > config.max_trace_nodes) {
+        append_behavior_authoring_readiness_diagnostic(report.diagnostics,
+                                                       BehaviorAuthoringReadinessDiagnostic::trace_budget_exceeded);
+    }
+
+    report.status = report.diagnostics.empty() ? BehaviorAuthoringReadinessStatus::ready
+                                               : BehaviorAuthoringReadinessStatus::diagnostics;
+    report.primary_diagnostic =
+        report.diagnostics.empty() ? BehaviorAuthoringReadinessDiagnostic::none : report.diagnostics.front();
+    return report;
 }
 
 BehaviorTreeTickResult evaluate_behavior_tree(const BehaviorTreeDesc& tree,

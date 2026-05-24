@@ -847,8 +847,15 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "gameplay_systems_behavior_status",
                 "gameplay_systems_behavior_nodes",
                 "gameplay_systems_behavior_authoring_ready",
+                "gameplay_systems_behavior_authoring_readiness_status",
+                "gameplay_systems_behavior_authoring_readiness_diagnostic",
                 "gameplay_systems_behavior_authoring_diagnostics",
+                "gameplay_systems_behavior_authoring_readiness_diagnostics",
                 "gameplay_systems_behavior_authoring_trace_nodes",
+                "gameplay_systems_behavior_authoring_deterministic_trace_ready",
+                "gameplay_systems_behavior_authoring_behaviors",
+                "gameplay_systems_behavior_authoring_action_bindings",
+                "gameplay_systems_behavior_authoring_blackboard_conditions",
                 "gameplay_systems_quest_dialogue_ready",
                 "gameplay_systems_quest_dialogue_diagnostics",
                 "gameplay_systems_quest_dialogue_transition_rows",
@@ -900,7 +907,7 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
             }
         }
-        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready")) {
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
@@ -1019,11 +1026,29 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_nodes=4\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay behavior node visit count."
         }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_readiness_status=ready\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready behavior authoring readiness status."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_readiness_diagnostic=none\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean behavior authoring readiness diagnostic."
+        }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_diagnostics=0\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean gameplay behavior authoring diagnostics."
         }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_readiness_diagnostics=0\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean behavior authoring readiness diagnostics."
+        }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_trace_nodes=4\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact gameplay behavior authoring trace nodes."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_behaviors=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact behavior authoring behavior count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_action_bindings=1\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact behavior authoring action binding count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_behavior_authoring_blackboard_conditions=2\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact behavior authoring blackboard condition count."
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_quest_dialogue_diagnostics=0\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean quest dialogue diagnostics."

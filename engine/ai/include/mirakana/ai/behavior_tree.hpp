@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
+#include <limits>
 #include <span>
 #include <string>
 #include <string_view>
@@ -203,9 +204,55 @@ struct BehaviorAuthoringValidationResult {
     std::vector<BehaviorAuthoringTraceRow> trace;
 };
 
+enum class BehaviorAuthoringReadinessStatus : std::uint8_t {
+    ready,
+    diagnostics,
+};
+
+enum class BehaviorAuthoringReadinessDiagnostic : std::uint8_t {
+    none,
+    validation_diagnostics,
+    nondeterministic_validation,
+    insufficient_behaviors,
+    insufficient_trace_nodes,
+    insufficient_action_bindings,
+    insufficient_blackboard_conditions,
+    behavior_budget_exceeded,
+    diagnostic_budget_exceeded,
+    trace_budget_exceeded,
+};
+
+struct BehaviorAuthoringReadinessConfig {
+    std::size_t min_behaviors{1};
+    std::size_t min_trace_nodes{1};
+    std::size_t min_action_bindings{0};
+    std::size_t min_blackboard_conditions{0};
+    std::size_t max_validation_diagnostics{0};
+    std::size_t max_behaviors{std::numeric_limits<std::size_t>::max()};
+    std::size_t max_trace_nodes{std::numeric_limits<std::size_t>::max()};
+};
+
+struct BehaviorAuthoringReadinessReport {
+    BehaviorAuthoringReadinessStatus status{BehaviorAuthoringReadinessStatus::diagnostics};
+    BehaviorAuthoringReadinessDiagnostic primary_diagnostic{BehaviorAuthoringReadinessDiagnostic::none};
+    std::vector<BehaviorAuthoringReadinessDiagnostic> diagnostics;
+    bool validation_succeeded{false};
+    bool deterministic_trace_ready{false};
+    std::size_t behavior_count{};
+    std::size_t validation_diagnostic_count{};
+    std::size_t trace_node_count{};
+    std::size_t action_binding_count{};
+    std::size_t blackboard_condition_count{};
+};
+
 [[nodiscard]] BehaviorAuthoringValidationResult
 validate_behavior_authoring_document(const BehaviorAuthoringDocument& document,
                                      BehaviorAuthoringValidationContext context);
+
+[[nodiscard]] BehaviorAuthoringReadinessReport
+evaluate_behavior_authoring_readiness(const BehaviorAuthoringDocument& document,
+                                      BehaviorAuthoringValidationContext context,
+                                      const BehaviorAuthoringReadinessConfig& config = {});
 
 [[nodiscard]] BehaviorTreeTickResult evaluate_behavior_tree(const BehaviorTreeDesc& tree,
                                                             BehaviorTreeEvaluationContext context);

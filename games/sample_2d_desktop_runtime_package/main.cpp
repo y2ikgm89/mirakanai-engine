@@ -822,6 +822,44 @@ ai_perception_blackboard_status_name(mirakana::AiPerceptionBlackboardStatus stat
     return "unknown";
 }
 
+[[nodiscard]] std::string_view
+behavior_authoring_readiness_status_name(mirakana::BehaviorAuthoringReadinessStatus status) noexcept {
+    switch (status) {
+    case mirakana::BehaviorAuthoringReadinessStatus::ready:
+        return "ready";
+    case mirakana::BehaviorAuthoringReadinessStatus::diagnostics:
+        return "diagnostics";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+behavior_authoring_readiness_diagnostic_name(mirakana::BehaviorAuthoringReadinessDiagnostic diagnostic) noexcept {
+    switch (diagnostic) {
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::none:
+        return "none";
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::validation_diagnostics:
+        return "validation_diagnostics";
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::nondeterministic_validation:
+        return "nondeterministic_validation";
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::insufficient_behaviors:
+        return "insufficient_behaviors";
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::insufficient_trace_nodes:
+        return "insufficient_trace_nodes";
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::insufficient_action_bindings:
+        return "insufficient_action_bindings";
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::insufficient_blackboard_conditions:
+        return "insufficient_blackboard_conditions";
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::behavior_budget_exceeded:
+        return "behavior_budget_exceeded";
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::diagnostic_budget_exceeded:
+        return "diagnostic_budget_exceeded";
+    case mirakana::BehaviorAuthoringReadinessDiagnostic::trace_budget_exceeded:
+        return "trace_budget_exceeded";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] mirakana::BehaviorTreeDesc gameplay_2d_behavior_tree_desc() {
     return mirakana::BehaviorTreeDesc{
         .root_id = kGameplay2dRootNode,
@@ -878,6 +916,43 @@ ai_perception_blackboard_status_name(mirakana::AiPerceptionBlackboardStatus stat
                       .blackboard_keys = std::span<const std::string>{blackboard_keys},
                       .supported_actions = std::span<const std::string>{supported_actions},
                   });
+}
+
+[[nodiscard]] mirakana::BehaviorAuthoringReadinessReport evaluate_gameplay_2d_behavior_authoring_readiness() {
+    const std::vector<std::string> blackboard_keys{kGameplay2dHasTargetKey, kGameplay2dNeedsMoveKey};
+    const std::vector<std::string> supported_actions{kGameplay2dMoveActionId};
+    const auto conditions = gameplay_2d_behavior_conditions();
+    const mirakana::BehaviorAuthoringDocument document{
+        .behaviors =
+            std::vector<mirakana::BehaviorAuthoringBehaviorDesc>{
+                mirakana::BehaviorAuthoringBehaviorDesc{
+                    .id = kGameplay2dBehaviorId,
+                    .tree = gameplay_2d_behavior_tree_desc(),
+                    .blackboard_conditions = conditions,
+                    .actions =
+                        std::vector<mirakana::BehaviorAuthoringActionBinding>{
+                            mirakana::BehaviorAuthoringActionBinding{.node_id = kGameplay2dMoveActionNode,
+                                                                     .action_id = kGameplay2dMoveActionId},
+                        },
+                },
+            },
+    };
+
+    return mirakana::evaluate_behavior_authoring_readiness(
+        document,
+        mirakana::BehaviorAuthoringValidationContext{
+            .blackboard_keys = std::span<const std::string>{blackboard_keys},
+            .supported_actions = std::span<const std::string>{supported_actions},
+        },
+        mirakana::BehaviorAuthoringReadinessConfig{
+            .min_behaviors = 1,
+            .min_trace_nodes = 4,
+            .min_action_bindings = 1,
+            .min_blackboard_conditions = 2,
+            .max_validation_diagnostics = 0,
+            .max_behaviors = 1,
+            .max_trace_nodes = 8,
+        });
 }
 
 struct Gameplay2DQuestDialogueProbeResult {
@@ -2928,10 +3003,17 @@ class Gameplay2DSystemsProbe final {
             navigation_goal_ = navigation_agent_.path.back();
         }
 
-        const auto behavior_authoring = validate_gameplay_2d_behavior_authoring();
-        behavior_authoring_ready_ = behavior_authoring.succeeded;
-        behavior_authoring_diagnostics_ = behavior_authoring.diagnostics.size();
-        behavior_authoring_trace_nodes_ = behavior_authoring.trace.size();
+        const auto behavior_authoring = evaluate_gameplay_2d_behavior_authoring_readiness();
+        behavior_authoring_readiness_status_ = behavior_authoring.status;
+        behavior_authoring_readiness_diagnostic_ = behavior_authoring.primary_diagnostic;
+        behavior_authoring_ready_ = behavior_authoring.status == mirakana::BehaviorAuthoringReadinessStatus::ready;
+        behavior_authoring_diagnostics_ = behavior_authoring.validation_diagnostic_count;
+        behavior_authoring_readiness_diagnostics_ = behavior_authoring.diagnostics.size();
+        behavior_authoring_trace_nodes_ = behavior_authoring.trace_node_count;
+        behavior_authoring_deterministic_trace_ready_ = behavior_authoring.deterministic_trace_ready;
+        behavior_authoring_behavior_count_ = behavior_authoring.behavior_count;
+        behavior_authoring_action_bindings_ = behavior_authoring.action_binding_count;
+        behavior_authoring_blackboard_conditions_ = behavior_authoring.blackboard_condition_count;
 
         const auto quest_dialogue = validate_gameplay_2d_quest_dialogue();
         quest_dialogue_ready_ = quest_dialogue.ready;
@@ -3045,8 +3127,13 @@ class Gameplay2DSystemsProbe final {
                last_blackboard_status_ == mirakana::AiPerceptionBlackboardStatus::ready && blackboard_has_target_ &&
                blackboard_needs_move_ && last_tree_result_.status == mirakana::BehaviorTreeStatus::success &&
                last_tree_result_.visited_nodes.size() == 4U && behavior_authoring_ready_ &&
-               behavior_authoring_diagnostics_ == 0U && behavior_authoring_trace_nodes_ == 4U &&
-               quest_dialogue_ready_ && quest_dialogue_diagnostics_ == 0U && quest_dialogue_transition_rows_ == 3U &&
+               behavior_authoring_readiness_status_ == mirakana::BehaviorAuthoringReadinessStatus::ready &&
+               behavior_authoring_readiness_diagnostic_ == mirakana::BehaviorAuthoringReadinessDiagnostic::none &&
+               behavior_authoring_diagnostics_ == 0U && behavior_authoring_readiness_diagnostics_ == 0U &&
+               behavior_authoring_trace_nodes_ == 4U && behavior_authoring_deterministic_trace_ready_ &&
+               behavior_authoring_behavior_count_ == 1U && behavior_authoring_action_bindings_ == 1U &&
+               behavior_authoring_blackboard_conditions_ == 2U && quest_dialogue_ready_ &&
+               quest_dialogue_diagnostics_ == 0U && quest_dialogue_transition_rows_ == 3U &&
                quest_dialogue_completed_objectives_ == 1U && quest_dialogue_flags_ == 1U &&
                quest_dialogue_dialogue_nodes_ == 1U && quest_dialogue_action_ids_ == 2U &&
                quest_dialogue_reward_ids_ == 2U && quest_dialogue_state_rows_ == 3U && inventory_items_ready_ &&
@@ -3162,12 +3249,41 @@ class Gameplay2DSystemsProbe final {
         return behavior_authoring_ready_;
     }
 
+    [[nodiscard]] mirakana::BehaviorAuthoringReadinessStatus behavior_authoring_readiness_status() const noexcept {
+        return behavior_authoring_readiness_status_;
+    }
+
+    [[nodiscard]] mirakana::BehaviorAuthoringReadinessDiagnostic
+    behavior_authoring_readiness_diagnostic() const noexcept {
+        return behavior_authoring_readiness_diagnostic_;
+    }
+
     [[nodiscard]] std::size_t behavior_authoring_diagnostic_count() const noexcept {
         return behavior_authoring_diagnostics_;
     }
 
+    [[nodiscard]] std::size_t behavior_authoring_readiness_diagnostic_count() const noexcept {
+        return behavior_authoring_readiness_diagnostics_;
+    }
+
     [[nodiscard]] std::size_t behavior_authoring_trace_node_count() const noexcept {
         return behavior_authoring_trace_nodes_;
+    }
+
+    [[nodiscard]] bool behavior_authoring_deterministic_trace_ready() const noexcept {
+        return behavior_authoring_deterministic_trace_ready_;
+    }
+
+    [[nodiscard]] std::size_t behavior_authoring_behavior_count() const noexcept {
+        return behavior_authoring_behavior_count_;
+    }
+
+    [[nodiscard]] std::size_t behavior_authoring_action_binding_count() const noexcept {
+        return behavior_authoring_action_bindings_;
+    }
+
+    [[nodiscard]] std::size_t behavior_authoring_blackboard_condition_count() const noexcept {
+        return behavior_authoring_blackboard_conditions_;
     }
 
     [[nodiscard]] bool quest_dialogue_ready() const noexcept {
@@ -3509,13 +3625,21 @@ class Gameplay2DSystemsProbe final {
     mirakana::AiPerceptionStatus last_perception_status_{mirakana::AiPerceptionStatus::invalid_agent};
     mirakana::AiPerceptionBlackboardStatus last_blackboard_status_{
         mirakana::AiPerceptionBlackboardStatus::invalid_snapshot};
+    mirakana::BehaviorAuthoringReadinessStatus behavior_authoring_readiness_status_{
+        mirakana::BehaviorAuthoringReadinessStatus::diagnostics};
+    mirakana::BehaviorAuthoringReadinessDiagnostic behavior_authoring_readiness_diagnostic_{
+        mirakana::BehaviorAuthoringReadinessDiagnostic::none};
     std::size_t physics_contact_count_{0U};
     std::size_t physics_trigger_overlap_count_{0U};
     std::size_t navigation_path_point_count_{0U};
     std::size_t last_perception_target_count_{0U};
     std::size_t last_perception_visible_count_{0U};
     std::size_t behavior_authoring_diagnostics_{0U};
+    std::size_t behavior_authoring_readiness_diagnostics_{0U};
     std::size_t behavior_authoring_trace_nodes_{0U};
+    std::size_t behavior_authoring_behavior_count_{0U};
+    std::size_t behavior_authoring_action_bindings_{0U};
+    std::size_t behavior_authoring_blackboard_conditions_{0U};
     std::size_t quest_dialogue_diagnostics_{0U};
     std::size_t quest_dialogue_transition_rows_{0U};
     std::size_t quest_dialogue_completed_objectives_{0U};
@@ -3574,6 +3698,7 @@ class Gameplay2DSystemsProbe final {
     bool blackboard_has_target_{false};
     bool blackboard_needs_move_{false};
     bool behavior_authoring_ready_{false};
+    bool behavior_authoring_deterministic_trace_ready_{false};
     bool quest_dialogue_ready_{false};
     bool inventory_items_ready_{false};
     bool interaction_ready_{false};
@@ -4223,12 +4348,42 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         return gameplay_systems_.behavior_authoring_ready();
     }
 
+    [[nodiscard]] mirakana::BehaviorAuthoringReadinessStatus
+    gameplay_systems_behavior_authoring_readiness_status() const noexcept {
+        return gameplay_systems_.behavior_authoring_readiness_status();
+    }
+
+    [[nodiscard]] mirakana::BehaviorAuthoringReadinessDiagnostic
+    gameplay_systems_behavior_authoring_readiness_diagnostic() const noexcept {
+        return gameplay_systems_.behavior_authoring_readiness_diagnostic();
+    }
+
     [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_diagnostics() const noexcept {
         return gameplay_systems_.behavior_authoring_diagnostic_count();
     }
 
+    [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_readiness_diagnostics() const noexcept {
+        return gameplay_systems_.behavior_authoring_readiness_diagnostic_count();
+    }
+
     [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_trace_nodes() const noexcept {
         return gameplay_systems_.behavior_authoring_trace_node_count();
+    }
+
+    [[nodiscard]] bool gameplay_systems_behavior_authoring_deterministic_trace_ready() const noexcept {
+        return gameplay_systems_.behavior_authoring_deterministic_trace_ready();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_behaviors() const noexcept {
+        return gameplay_systems_.behavior_authoring_behavior_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_action_bindings() const noexcept {
+        return gameplay_systems_.behavior_authoring_action_binding_count();
+    }
+
+    [[nodiscard]] std::size_t gameplay_systems_behavior_authoring_blackboard_conditions() const noexcept {
+        return gameplay_systems_.behavior_authoring_blackboard_condition_count();
     }
 
     [[nodiscard]] bool gameplay_systems_quest_dialogue_ready() const noexcept {
@@ -5722,8 +5877,21 @@ int main(int argc, char** argv) {
         << " gameplay_systems_behavior_status=" << behavior_tree_status_name(game.gameplay_systems_behavior_status())
         << " gameplay_systems_behavior_nodes=" << game.gameplay_systems_behavior_nodes()
         << " gameplay_systems_behavior_authoring_ready=" << (game.gameplay_systems_behavior_authoring_ready() ? 1 : 0)
+        << " gameplay_systems_behavior_authoring_readiness_status="
+        << behavior_authoring_readiness_status_name(game.gameplay_systems_behavior_authoring_readiness_status())
+        << " gameplay_systems_behavior_authoring_readiness_diagnostic="
+        << behavior_authoring_readiness_diagnostic_name(game.gameplay_systems_behavior_authoring_readiness_diagnostic())
         << " gameplay_systems_behavior_authoring_diagnostics=" << game.gameplay_systems_behavior_authoring_diagnostics()
+        << " gameplay_systems_behavior_authoring_readiness_diagnostics="
+        << game.gameplay_systems_behavior_authoring_readiness_diagnostics()
         << " gameplay_systems_behavior_authoring_trace_nodes=" << game.gameplay_systems_behavior_authoring_trace_nodes()
+        << " gameplay_systems_behavior_authoring_deterministic_trace_ready="
+        << (game.gameplay_systems_behavior_authoring_deterministic_trace_ready() ? 1 : 0)
+        << " gameplay_systems_behavior_authoring_behaviors=" << game.gameplay_systems_behavior_authoring_behaviors()
+        << " gameplay_systems_behavior_authoring_action_bindings="
+        << game.gameplay_systems_behavior_authoring_action_bindings()
+        << " gameplay_systems_behavior_authoring_blackboard_conditions="
+        << game.gameplay_systems_behavior_authoring_blackboard_conditions()
         << " gameplay_systems_quest_dialogue_ready=" << (game.gameplay_systems_quest_dialogue_ready() ? 1 : 0)
         << " gameplay_systems_quest_dialogue_diagnostics=" << game.gameplay_systems_quest_dialogue_diagnostics()
         << " gameplay_systems_quest_dialogue_transition_rows=" << game.gameplay_systems_quest_dialogue_transition_rows()
@@ -6115,10 +6283,19 @@ int main(int argc, char** argv) {
             << behavior_tree_status_name(game.gameplay_systems_behavior_status())
             << " gameplay_systems_behavior_authoring_ready="
             << (game.gameplay_systems_behavior_authoring_ready() ? 1 : 0)
+            << " gameplay_systems_behavior_authoring_readiness_status="
+            << behavior_authoring_readiness_status_name(game.gameplay_systems_behavior_authoring_readiness_status())
+            << " gameplay_systems_behavior_authoring_readiness_diagnostic="
+            << behavior_authoring_readiness_diagnostic_name(
+                   game.gameplay_systems_behavior_authoring_readiness_diagnostic())
             << " gameplay_systems_behavior_authoring_diagnostics="
             << game.gameplay_systems_behavior_authoring_diagnostics()
+            << " gameplay_systems_behavior_authoring_readiness_diagnostics="
+            << game.gameplay_systems_behavior_authoring_readiness_diagnostics()
             << " gameplay_systems_behavior_authoring_trace_nodes="
             << game.gameplay_systems_behavior_authoring_trace_nodes()
+            << " gameplay_systems_behavior_authoring_deterministic_trace_ready="
+            << (game.gameplay_systems_behavior_authoring_deterministic_trace_ready() ? 1 : 0)
             << " gameplay_systems_quest_dialogue_ready=" << (game.gameplay_systems_quest_dialogue_ready() ? 1 : 0)
             << " gameplay_systems_quest_dialogue_diagnostics=" << game.gameplay_systems_quest_dialogue_diagnostics()
             << " gameplay_systems_quest_dialogue_transition_rows="
