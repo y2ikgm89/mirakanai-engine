@@ -181,13 +181,14 @@
 
 ## AI-Driven Game Development
 
-- Games, manifests, scaffolding, desktop runtime, and Android lanes live in [docs/agent-operational-reference.md](docs/agent-operational-reference.md#ai-driven-game-development-expanded).
-- Games live under `games/<game_name>/`; `game_name` and `tools/new-game.ps1 -Name <game_name>` values match `^[a-z][a-z0-9_]*$`. Source-tree directories and `runtimePackageFiles` path segments stay lowercase snake_case; JSON manifest IDs may use kebab-case.
-- Every game has `game.agent.json` with backend readiness, importer requirements, packaging targets, runtime package files, runtime scene validation targets, and validation recipes. Use `tools/new-game.ps1`, `tools/new-game-helpers.ps1`, and `tools/new-game-templates.ps1`, then register with `MK_add_game` or `MK_add_desktop_runtime_game`.
-- Most sample games are headless validation executables; only `sample_desktop_runtime_shell` and `sample_desktop_runtime_game` are optional windowed SDL3 runtime samples. Use `mirakana_editor` for broader visible editor smoke.
-- For `desktop-game-runtime`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`; package targets with `tools/package-desktop-runtime.ps1 -GameTarget <target>` or the default `tools/package-desktop-runtime.ps1`. New text cooked/runtime extensions in `runtimePackageFiles` need matching `runtime/.gitattributes` `text eol=lf` coverage and static checks.
+- Games, manifests, scaffolding, desktop runtime, Android lanes, and procedures live in [docs/agent-operational-reference.md](docs/agent-operational-reference.md#ai-driven-game-development-expanded).
+- Games live under `games/<game_name>/`; game names match `^[a-z][a-z0-9_]*$`; source/runtime package path segments stay lowercase snake_case; JSON manifest IDs may use kebab-case.
+- Every game has `game.agent.json` with backend readiness, importer requirements, packaging targets, runtime package files, runtime scene validation targets, and validation recipes. Scaffold with `tools/new-game.ps1`, `tools/new-game-helpers.ps1`, and `tools/new-game-templates.ps1`, then register with `MK_add_game` or `MK_add_desktop_runtime_game`.
+- Generated Game Studio v1 is the reviewed read-only 2D/3D agent loop. Use `EditorAiGeneratedGameStudioV1Model` / `generated_game_studio` rows as evidence, route missing engine capability through `ai-engine-capability-handoff-v1`, and do not execute recipes, mutate manifests, edit internals, expose native handles, or claim renderer/RHI/Metal/broad editor readiness.
+- Sample games are usually headless; only `sample_desktop_runtime_shell` and `sample_desktop_runtime_game` are optional windowed SDL3 runtime samples. Use `mirakana_editor` for broader visible editor smoke.
+- For `desktop-game-runtime`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`; package with `tools/package-desktop-runtime.ps1 [-GameTarget <target>]`. New text cooked/runtime extensions need matching `runtime/.gitattributes` `text eol=lf` coverage and static checks.
 - For `android-gameactivity`, run `tools/check-mobile-packaging.ps1` first; Android-ready hosts may run build/release/smoke scripts. Never store Android keystores, passwords, SDKs, Gradle caches, or AVD images in the repo.
-- Game code should include only public engine headers unless implementing engine internals.
+- Game code includes only public engine headers unless implementing internals.
 
 ## Done Definition
 
