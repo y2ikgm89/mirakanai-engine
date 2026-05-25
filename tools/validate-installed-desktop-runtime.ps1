@@ -1186,6 +1186,25 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_runtime_scheduler_budget_limited",
             "gameplay_runtime_scheduler_replay_hash",
             "gameplay_runtime_scheduler_diagnostics",
+            "world_entity_model_status",
+            "world_entity_model_ready",
+            "world_entity_model_entities",
+            "world_entity_model_components",
+            "world_entity_model_region_ownership_rows",
+            "world_entity_model_lifecycle_rows",
+            "world_entity_model_persistence_rows",
+            "world_entity_model_streaming_region_rows",
+            "world_entity_model_spawn_rows",
+            "world_entity_model_move_rows",
+            "world_entity_model_despawn_rows",
+            "world_entity_model_duplicate_entity_diagnostics",
+            "world_entity_model_bridge_rejection_status",
+            "world_entity_model_bridge_rejection_diagnostics",
+            "world_entity_model_bridge_rejection_persistence_rows",
+            "world_entity_model_bridge_rejection_streaming_region_rows",
+            "world_entity_model_bridge_rejection_streaming_diagnostics_present",
+            "world_entity_model_bridge_rejection_fail_closed",
+            "world_entity_model_diagnostics",
             "gameplay_systems_scene_binding_ready",
             "gameplay_systems_scene_binding_source_rows",
             "gameplay_systems_scene_binding_rows",
@@ -1316,6 +1335,33 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_runtime_scheduler_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove positive gameplay runtime scheduler replay hash."
+    }
+    $expectedWorldEntityModelFields = @{
+        "world_entity_model_status" = "ready"
+        "world_entity_model_ready" = "1"
+        "world_entity_model_entities" = "3"
+        "world_entity_model_components" = "4"
+        "world_entity_model_region_ownership_rows" = "3"
+        "world_entity_model_lifecycle_rows" = "3"
+        "world_entity_model_persistence_rows" = "1"
+        "world_entity_model_streaming_region_rows" = "1"
+        "world_entity_model_spawn_rows" = "1"
+        "world_entity_model_move_rows" = "1"
+        "world_entity_model_despawn_rows" = "1"
+        "world_entity_model_duplicate_entity_diagnostics" = "1"
+        "world_entity_model_bridge_rejection_status" = "invalid_request"
+        "world_entity_model_bridge_rejection_diagnostics" = "5"
+        "world_entity_model_bridge_rejection_persistence_rows" = "0"
+        "world_entity_model_bridge_rejection_streaming_region_rows" = "0"
+        "world_entity_model_bridge_rejection_streaming_diagnostics_present" = "1"
+        "world_entity_model_bridge_rejection_fail_closed" = "1"
+        "world_entity_model_diagnostics" = "0"
+    }
+    foreach ($field in $expectedWorldEntityModelFields.Keys) {
+        $expectedValue = $expectedWorldEntityModelFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove world entity model field $field=$expectedValue."
+        }
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_ready=1\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready scene gameplay bindings."
@@ -2295,7 +2341,26 @@ if ($requiresSimulationOrchestration) {
             "gameplay_runtime_scheduler_remaining_time_us",
             "gameplay_runtime_scheduler_budget_limited",
             "gameplay_runtime_scheduler_replay_hash",
-            "gameplay_runtime_scheduler_diagnostics"
+            "gameplay_runtime_scheduler_diagnostics",
+            "world_entity_model_status",
+            "world_entity_model_ready",
+            "world_entity_model_entities",
+            "world_entity_model_components",
+            "world_entity_model_region_ownership_rows",
+            "world_entity_model_lifecycle_rows",
+            "world_entity_model_persistence_rows",
+            "world_entity_model_streaming_region_rows",
+            "world_entity_model_spawn_rows",
+            "world_entity_model_move_rows",
+            "world_entity_model_despawn_rows",
+            "world_entity_model_duplicate_entity_diagnostics",
+            "world_entity_model_bridge_rejection_status",
+            "world_entity_model_bridge_rejection_diagnostics",
+            "world_entity_model_bridge_rejection_persistence_rows",
+            "world_entity_model_bridge_rejection_streaming_region_rows",
+            "world_entity_model_bridge_rejection_streaming_diagnostics_present",
+            "world_entity_model_bridge_rejection_fail_closed",
+            "world_entity_model_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed desktop runtime smoke status line did not include simulation orchestration field: $field"
@@ -2344,6 +2409,33 @@ if ($requiresSimulationOrchestration) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_runtime_scheduler_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove positive gameplay runtime scheduler replay hash."
+    }
+    $expectedWorldEntityModelFields = @{
+        "world_entity_model_status" = "ready"
+        "world_entity_model_ready" = "1"
+        "world_entity_model_entities" = "3"
+        "world_entity_model_components" = "4"
+        "world_entity_model_region_ownership_rows" = "3"
+        "world_entity_model_lifecycle_rows" = "3"
+        "world_entity_model_persistence_rows" = "1"
+        "world_entity_model_streaming_region_rows" = "1"
+        "world_entity_model_spawn_rows" = "1"
+        "world_entity_model_move_rows" = "1"
+        "world_entity_model_despawn_rows" = "1"
+        "world_entity_model_duplicate_entity_diagnostics" = "1"
+        "world_entity_model_bridge_rejection_status" = "invalid_request"
+        "world_entity_model_bridge_rejection_diagnostics" = "5"
+        "world_entity_model_bridge_rejection_persistence_rows" = "0"
+        "world_entity_model_bridge_rejection_streaming_region_rows" = "0"
+        "world_entity_model_bridge_rejection_streaming_diagnostics_present" = "1"
+        "world_entity_model_bridge_rejection_fail_closed" = "1"
+        "world_entity_model_diagnostics" = "0"
+    }
+    foreach ($field in $expectedWorldEntityModelFields.Keys) {
+        $expectedValue = $expectedWorldEntityModelFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove world entity model field $field=$expectedValue."
+        }
     }
 }
 if ($requiresGameplayAuthoringReview) {

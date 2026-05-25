@@ -17,6 +17,7 @@ add_library(mirakana_runtime
     src/simulation_orchestration.cpp
     src/sprite_collision_hitbox.cpp
     src/sprite_effect_particles.cpp
+    src/world_entity_model.cpp
     src/world_region_streaming.cpp
 )
 
