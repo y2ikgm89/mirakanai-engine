@@ -41,6 +41,7 @@
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 #include "mirakana/tools/gameplay_authoring_tool.hpp"
 #include "mirakana/tools/production_authoring_workflows.hpp"
+#include "mirakana/ui/runtime_ui_workbench.hpp"
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
@@ -91,6 +92,7 @@ struct DesktopRuntimeOptions {
     bool require_production_authoring_workflows{false};
     bool require_runtime_profile_resume{false};
     bool require_runtime_menu_hud{false};
+    bool require_runtime_ui_workbench{false};
     bool require_audio_gameplay_mixer{false};
     std::uint32_t max_frames{0};
     std::string video_driver_hint;
@@ -696,6 +698,17 @@ production_authoring_workflow_status_name(const ProductionAuthoringWorkflowProbe
 }
 
 [[nodiscard]] std::string_view
+runtime_ui_workbench_status_name(mirakana::ui::RuntimeUiWorkbenchStatus status) noexcept {
+    switch (status) {
+    case mirakana::ui::RuntimeUiWorkbenchStatus::ready:
+        return "ready";
+    case mirakana::ui::RuntimeUiWorkbenchStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
 world_region_streaming_status_name(mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus status) noexcept {
     switch (status) {
     case mirakana::runtime::RuntimeWorldRegionStreamingSafePointStatus::invalid_plan:
@@ -1245,6 +1258,34 @@ struct RuntimeMenuHudProbeResult {
     std::size_t command_rows{0U};
     std::size_t dialogue_rows{0U};
     std::size_t input_binding_prompt_rows{0U};
+};
+
+struct RuntimeUiWorkbenchProbeResult {
+    bool ready{false};
+    mirakana::ui::RuntimeUiWorkbenchStatus status{mirakana::ui::RuntimeUiWorkbenchStatus::invalid_request};
+    std::size_t panels{0U};
+    std::size_t table_columns{0U};
+    std::size_t table_rows{0U};
+    std::size_t graph_series{0U};
+    std::size_t item_rows{0U};
+    std::size_t inventory_rows{0U};
+    std::size_t equipment_rows{0U};
+    std::size_t shop_rows{0U};
+    std::size_t text_inputs{0U};
+    std::size_t platform_text_input_requests{0U};
+    std::size_t focus_edges{0U};
+    std::size_t localization_refs{0U};
+    bool localization_identity_ready{false};
+    std::size_t accessibility_refs{0U};
+    bool accessibility_identity_ready{false};
+    std::size_t diagnostics{0U};
+    bool renderer_submission{false};
+    bool text_shaping{false};
+    bool font_rasterization{false};
+    bool ime_sessions{false};
+    bool accessibility_bridge{false};
+    bool image_decoding{false};
+    bool native_platform{false};
 };
 
 struct AudioGameplayMixerProbeResult {
@@ -1931,6 +1972,278 @@ struct Gameplay2DProceduralGenerationProbeResult {
     }
     result.ready = result.ready && result.display_rows == 6U && result.command_rows == 2U &&
                    result.dialogue_rows == 1U && result.input_binding_prompt_rows == 1U;
+    return result;
+}
+
+[[nodiscard]] bool
+has_runtime_ui_workbench_localization_ref(const std::vector<mirakana::ui::RuntimeUiWorkbenchLocalizationRef>& refs,
+                                          std::string_view owner_id, std::string_view key) {
+    return std::ranges::any_of(refs,
+                               [owner_id, key](const auto& ref) { return ref.owner_id == owner_id && ref.key == key; });
+}
+
+[[nodiscard]] bool
+has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::RuntimeUiWorkbenchAccessibilityRef>& refs,
+                                           std::string_view owner_id, std::string_view label) {
+    return std::ranges::any_of(
+        refs, [owner_id, label](const auto& ref) { return ref.owner_id == owner_id && ref.label == label; });
+}
+
+[[nodiscard]] RuntimeUiWorkbenchProbeResult validate_gameplay_2d_runtime_ui_workbench() {
+    mirakana::ui::RuntimeUiWorkbenchDocument document;
+    document.id = "sample.production.runtime_ui_workbench";
+    document.title_localization_key = "ui.workbench.title";
+    document.panels = {
+        mirakana::ui::RuntimeUiWorkbenchPanelRow{
+            .id = "menu.pause",
+            .kind = mirakana::ui::RuntimeUiWorkbenchPanelKind::menu,
+            .title_localization_key = "ui.menu.pause.title",
+            .accessibility_label = "Pause menu",
+            .enabled = true,
+        },
+        mirakana::ui::RuntimeUiWorkbenchPanelRow{
+            .id = "inventory.pack",
+            .kind = mirakana::ui::RuntimeUiWorkbenchPanelKind::inventory,
+            .title_localization_key = "ui.inventory.title",
+            .accessibility_label = "Inventory",
+            .enabled = true,
+        },
+        mirakana::ui::RuntimeUiWorkbenchPanelRow{
+            .id = "equipment.paperdoll",
+            .kind = mirakana::ui::RuntimeUiWorkbenchPanelKind::equipment,
+            .title_localization_key = "ui.equipment.title",
+            .accessibility_label = "Equipment",
+            .enabled = true,
+        },
+        mirakana::ui::RuntimeUiWorkbenchPanelRow{
+            .id = "shop.vendor",
+            .kind = mirakana::ui::RuntimeUiWorkbenchPanelKind::shop,
+            .title_localization_key = "ui.shop.title",
+            .accessibility_label = "Shop",
+            .enabled = true,
+        },
+        mirakana::ui::RuntimeUiWorkbenchPanelRow{
+            .id = "dashboard.colony",
+            .kind = mirakana::ui::RuntimeUiWorkbenchPanelKind::simulation_dashboard,
+            .title_localization_key = "ui.dashboard.title",
+            .accessibility_label = "Simulation dashboard",
+            .enabled = true,
+        },
+    };
+    document.table_columns = {
+        mirakana::ui::RuntimeUiWorkbenchTableColumn{
+            .panel_id = "dashboard.colony",
+            .id = "resource",
+            .localization_key = "ui.table.resource",
+        },
+        mirakana::ui::RuntimeUiWorkbenchTableColumn{
+            .panel_id = "dashboard.colony",
+            .id = "stored",
+            .localization_key = "ui.table.stored",
+        },
+        mirakana::ui::RuntimeUiWorkbenchTableColumn{
+            .panel_id = "dashboard.colony",
+            .id = "delta",
+            .localization_key = "ui.table.delta",
+        },
+    };
+    document.table_rows = {
+        mirakana::ui::RuntimeUiWorkbenchTableRow{
+            .id = "dashboard.food",
+            .panel_id = "dashboard.colony",
+            .cells = {mirakana::ui::RuntimeUiWorkbenchTableCell{
+                          .column_id = "resource",
+                          .text = {},
+                          .localization_key = "ui.resource.food",
+                      },
+                      mirakana::ui::RuntimeUiWorkbenchTableCell{
+                          .column_id = "stored",
+                          .text = "124",
+                          .localization_key = {},
+                      },
+                      mirakana::ui::RuntimeUiWorkbenchTableCell{
+                          .column_id = "delta",
+                          .text = "+8",
+                          .localization_key = {},
+                      }},
+        },
+        mirakana::ui::RuntimeUiWorkbenchTableRow{
+            .id = "dashboard.power",
+            .panel_id = "dashboard.colony",
+            .cells = {mirakana::ui::RuntimeUiWorkbenchTableCell{
+                          .column_id = "resource",
+                          .text = {},
+                          .localization_key = "ui.resource.power",
+                      },
+                      mirakana::ui::RuntimeUiWorkbenchTableCell{
+                          .column_id = "stored",
+                          .text = "72",
+                          .localization_key = {},
+                      },
+                      mirakana::ui::RuntimeUiWorkbenchTableCell{
+                          .column_id = "delta",
+                          .text = "-3",
+                          .localization_key = {},
+                      }},
+        },
+    };
+    document.graph_series = {
+        mirakana::ui::RuntimeUiWorkbenchGraphSeries{
+            .id = "graph.food",
+            .panel_id = "dashboard.colony",
+            .localization_key = "ui.graph.food",
+            .accessibility_label = "Food trend",
+            .points = {mirakana::ui::RuntimeUiWorkbenchGraphPoint{.x = 0.0, .y = 100.0},
+                       mirakana::ui::RuntimeUiWorkbenchGraphPoint{.x = 1.0, .y = 108.0}},
+        },
+        mirakana::ui::RuntimeUiWorkbenchGraphSeries{
+            .id = "graph.power",
+            .panel_id = "dashboard.colony",
+            .localization_key = "ui.graph.power",
+            .accessibility_label = "Power trend",
+            .points = {mirakana::ui::RuntimeUiWorkbenchGraphPoint{.x = 0.0, .y = 75.0},
+                       mirakana::ui::RuntimeUiWorkbenchGraphPoint{.x = 1.0, .y = 72.0}},
+        },
+    };
+    document.item_rows = {
+        mirakana::ui::RuntimeUiWorkbenchItemRow{
+            .id = "inventory.potion",
+            .panel_id = "inventory.pack",
+            .kind = mirakana::ui::RuntimeUiWorkbenchItemRowKind::inventory,
+            .item_id = "item.potion",
+            .slot_id = {},
+            .quantity = 3,
+            .price = 0,
+            .localization_key = "ui.item.potion",
+            .accessibility_label = "Potion",
+        },
+        mirakana::ui::RuntimeUiWorkbenchItemRow{
+            .id = "equipment.weapon",
+            .panel_id = "equipment.paperdoll",
+            .kind = mirakana::ui::RuntimeUiWorkbenchItemRowKind::equipment,
+            .item_id = "item.sword",
+            .slot_id = "slot.weapon",
+            .quantity = 1,
+            .price = 0,
+            .localization_key = "ui.item.sword",
+            .accessibility_label = "Equipped weapon",
+        },
+        mirakana::ui::RuntimeUiWorkbenchItemRow{
+            .id = "shop.elixir",
+            .panel_id = "shop.vendor",
+            .kind = mirakana::ui::RuntimeUiWorkbenchItemRowKind::shop,
+            .item_id = "item.elixir",
+            .slot_id = {},
+            .quantity = 4,
+            .price = 25,
+            .localization_key = "ui.item.elixir",
+            .accessibility_label = "Elixir for sale",
+        },
+    };
+    document.text_inputs = {
+        mirakana::ui::RuntimeUiWorkbenchTextInputFieldRow{
+            .id = "input.search",
+            .panel_id = "inventory.pack",
+            .target = mirakana::ui::ElementId{"inventory.search"},
+            .text_bounds = mirakana::ui::Rect{.x = 8.0F, .y = 8.0F, .width = 220.0F, .height = 32.0F},
+            .placeholder_localization_key = "ui.inventory.search.placeholder",
+            .accessibility_label = "Search inventory",
+            .max_code_units = 64U,
+        },
+    };
+    document.initial_focus_id = "inventory.potion";
+    document.focus_edges = {
+        mirakana::ui::RuntimeUiWorkbenchFocusEdge{
+            .id = "inventory.potion",
+            .next = "equipment.weapon",
+            .previous = {},
+            .up = {},
+            .down = "input.search",
+            .left = {},
+            .right = "equipment.weapon",
+        },
+        mirakana::ui::RuntimeUiWorkbenchFocusEdge{
+            .id = "equipment.weapon",
+            .next = "shop.elixir",
+            .previous = "inventory.potion",
+            .up = {},
+            .down = {},
+            .left = {},
+            .right = "shop.elixir",
+        },
+        mirakana::ui::RuntimeUiWorkbenchFocusEdge{
+            .id = "shop.elixir",
+            .next = "input.search",
+            .previous = "equipment.weapon",
+            .up = {},
+            .down = {},
+            .left = "equipment.weapon",
+            .right = {},
+        },
+        mirakana::ui::RuntimeUiWorkbenchFocusEdge{
+            .id = "input.search",
+            .next = "inventory.potion",
+            .previous = "shop.elixir",
+            .up = "inventory.potion",
+            .down = {},
+            .left = {},
+            .right = {},
+        },
+    };
+
+    const auto plan = mirakana::ui::plan_runtime_ui_workbench(document);
+    RuntimeUiWorkbenchProbeResult result{
+        .ready = plan.succeeded(),
+        .status = plan.status,
+        .panels = plan.panels.size(),
+        .table_columns = plan.table_columns.size(),
+        .table_rows = plan.table_rows.size(),
+        .graph_series = plan.graph_series.size(),
+        .item_rows = plan.item_rows.size(),
+        .inventory_rows = 0U,
+        .equipment_rows = 0U,
+        .shop_rows = 0U,
+        .text_inputs = plan.text_inputs.size(),
+        .platform_text_input_requests = plan.platform_text_input_requests.size(),
+        .focus_edges = plan.focus_plan.edges.size(),
+        .localization_refs = plan.localization_references.size(),
+        .localization_identity_ready =
+            has_runtime_ui_workbench_localization_ref(plan.localization_references, "dashboard.colony:resource",
+                                                      "ui.table.resource") &&
+            has_runtime_ui_workbench_localization_ref(plan.localization_references, "dashboard.food:resource",
+                                                      "ui.resource.food"),
+        .accessibility_refs = plan.accessibility_references.size(),
+        .accessibility_identity_ready =
+            has_runtime_ui_workbench_accessibility_ref(plan.accessibility_references, "inventory.potion", "Potion") &&
+            has_runtime_ui_workbench_accessibility_ref(plan.accessibility_references, "input.search",
+                                                       "Search inventory"),
+        .diagnostics = plan.diagnostics.size(),
+        .renderer_submission = plan.invoked_renderer_submission,
+        .text_shaping = plan.invoked_text_shaping,
+        .font_rasterization = plan.invoked_font_rasterization,
+        .ime_sessions = plan.invoked_ime,
+        .accessibility_bridge = plan.invoked_accessibility_bridge,
+        .image_decoding = plan.invoked_image_decoding,
+        .native_platform = plan.invoked_native_platform};
+    for (const auto& row : plan.item_rows) {
+        if (row.kind == mirakana::ui::RuntimeUiWorkbenchItemRowKind::inventory) {
+            ++result.inventory_rows;
+        }
+        if (row.kind == mirakana::ui::RuntimeUiWorkbenchItemRowKind::equipment) {
+            ++result.equipment_rows;
+        }
+        if (row.kind == mirakana::ui::RuntimeUiWorkbenchItemRowKind::shop) {
+            ++result.shop_rows;
+        }
+    }
+    result.ready =
+        result.ready && result.panels == 5U && result.table_columns == 3U && result.table_rows == 2U &&
+        result.graph_series == 2U && result.item_rows == 3U && result.inventory_rows == 1U &&
+        result.equipment_rows == 1U && result.shop_rows == 1U && result.text_inputs == 1U &&
+        result.platform_text_input_requests == 1U && result.focus_edges == 4U && result.localization_refs == 17U &&
+        result.localization_identity_ready && result.accessibility_refs == 11U && result.accessibility_identity_ready &&
+        result.diagnostics == 0U && !result.renderer_submission && !result.text_shaping && !result.font_rasterization &&
+        !result.ime_sessions && !result.accessibility_bridge && !result.image_decoding && !result.native_platform;
     return result;
 }
 
@@ -5869,7 +6182,8 @@ void print_usage() {
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
                  "[--require-gameplay-authoring-review] [--require-production-authoring-workflows] "
-                 "[--require-runtime-profile-resume] [--require-runtime-menu-hud] [--require-audio-gameplay-mixer]\n";
+                 "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
+                 "[--require-runtime-ui-workbench] [--require-audio-gameplay-mixer]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -5971,6 +6285,10 @@ void print_usage() {
         }
         if (arg == "--require-runtime-menu-hud") {
             options.require_runtime_menu_hud = true;
+            continue;
+        }
+        if (arg == "--require-runtime-ui-workbench") {
+            options.require_runtime_ui_workbench = true;
             continue;
         }
         if (arg == "--require-audio-gameplay-mixer") {
@@ -6581,6 +6899,9 @@ int main(int argc, char** argv) {
     const auto production_authoring_workflow_probe = options.require_production_authoring_workflows
                                                          ? validate_production_authoring_workflow_package_evidence()
                                                          : ProductionAuthoringWorkflowProbeResult{};
+    const auto runtime_ui_workbench_probe = options.require_runtime_ui_workbench
+                                                ? validate_gameplay_2d_runtime_ui_workbench()
+                                                : RuntimeUiWorkbenchProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -7161,6 +7482,34 @@ int main(int argc, char** argv) {
         << " production_authoring_workflow_invoked_command_execution="
         << (production_authoring_workflow_probe.invoked_command_execution ? 1 : 0)
         << " production_authoring_workflow_diagnostics=" << production_authoring_workflow_probe.diagnostics
+        << " runtime_ui_workbench_status=" << runtime_ui_workbench_status_name(runtime_ui_workbench_probe.status)
+        << " runtime_ui_workbench_ready=" << (runtime_ui_workbench_probe.ready ? 1 : 0)
+        << " runtime_ui_workbench_panels=" << runtime_ui_workbench_probe.panels
+        << " runtime_ui_workbench_table_columns=" << runtime_ui_workbench_probe.table_columns
+        << " runtime_ui_workbench_table_rows=" << runtime_ui_workbench_probe.table_rows
+        << " runtime_ui_workbench_graph_series=" << runtime_ui_workbench_probe.graph_series
+        << " runtime_ui_workbench_item_rows=" << runtime_ui_workbench_probe.item_rows
+        << " runtime_ui_workbench_inventory_rows=" << runtime_ui_workbench_probe.inventory_rows
+        << " runtime_ui_workbench_equipment_rows=" << runtime_ui_workbench_probe.equipment_rows
+        << " runtime_ui_workbench_shop_rows=" << runtime_ui_workbench_probe.shop_rows
+        << " runtime_ui_workbench_text_inputs=" << runtime_ui_workbench_probe.text_inputs
+        << " runtime_ui_workbench_platform_text_input_requests="
+        << runtime_ui_workbench_probe.platform_text_input_requests
+        << " runtime_ui_workbench_focus_edges=" << runtime_ui_workbench_probe.focus_edges
+        << " runtime_ui_workbench_localization_refs=" << runtime_ui_workbench_probe.localization_refs
+        << " runtime_ui_workbench_localization_identity_ready="
+        << (runtime_ui_workbench_probe.localization_identity_ready ? 1 : 0)
+        << " runtime_ui_workbench_accessibility_refs=" << runtime_ui_workbench_probe.accessibility_refs
+        << " runtime_ui_workbench_accessibility_identity_ready="
+        << (runtime_ui_workbench_probe.accessibility_identity_ready ? 1 : 0)
+        << " runtime_ui_workbench_renderer_submission=" << (runtime_ui_workbench_probe.renderer_submission ? 1 : 0)
+        << " runtime_ui_workbench_text_shaping=" << (runtime_ui_workbench_probe.text_shaping ? 1 : 0)
+        << " runtime_ui_workbench_font_rasterization=" << (runtime_ui_workbench_probe.font_rasterization ? 1 : 0)
+        << " runtime_ui_workbench_ime_sessions=" << (runtime_ui_workbench_probe.ime_sessions ? 1 : 0)
+        << " runtime_ui_workbench_accessibility_bridge=" << (runtime_ui_workbench_probe.accessibility_bridge ? 1 : 0)
+        << " runtime_ui_workbench_image_decoding=" << (runtime_ui_workbench_probe.image_decoding ? 1 : 0)
+        << " runtime_ui_workbench_native_platform=" << (runtime_ui_workbench_probe.native_platform ? 1 : 0)
+        << " runtime_ui_workbench_diagnostics=" << runtime_ui_workbench_probe.diagnostics
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns()
         << " audio_gameplay_mixer_ready=" << (audio_gameplay_mixer.ready ? 1 : 0)
@@ -7675,6 +8024,22 @@ int main(int argc, char** argv) {
                   << " production_authoring_workflow_diagnostics=" << production_authoring_workflow_probe.diagnostics
                   << '\n';
         return 20;
+    }
+
+    if (options.require_runtime_ui_workbench && !runtime_ui_workbench_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_workbench_unavailable"
+                  << " runtime_ui_workbench_status="
+                  << runtime_ui_workbench_status_name(runtime_ui_workbench_probe.status)
+                  << " runtime_ui_workbench_panels=" << runtime_ui_workbench_probe.panels
+                  << " runtime_ui_workbench_table_rows=" << runtime_ui_workbench_probe.table_rows
+                  << " runtime_ui_workbench_graph_series=" << runtime_ui_workbench_probe.graph_series
+                  << " runtime_ui_workbench_item_rows=" << runtime_ui_workbench_probe.item_rows
+                  << " runtime_ui_workbench_text_inputs=" << runtime_ui_workbench_probe.text_inputs
+                  << " runtime_ui_workbench_focus_edges=" << runtime_ui_workbench_probe.focus_edges
+                  << " runtime_ui_workbench_localization_refs=" << runtime_ui_workbench_probe.localization_refs
+                  << " runtime_ui_workbench_accessibility_refs=" << runtime_ui_workbench_probe.accessibility_refs
+                  << " runtime_ui_workbench_diagnostics=" << runtime_ui_workbench_probe.diagnostics << '\n';
+        return 27;
     }
 
     if (options.smoke &&

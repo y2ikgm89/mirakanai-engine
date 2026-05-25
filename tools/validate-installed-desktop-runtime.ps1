@@ -229,6 +229,7 @@ $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-network
 $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation-orchestration"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
+$requiresRuntimeUiWorkbench = @($SmokeArgs) -contains "--require-runtime-ui-workbench"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
@@ -2596,6 +2597,72 @@ if ($requiresProductionAuthoringWorkflows) {
         $expectedValue = $expectedProductionAuthoringWorkflowFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove production authoring workflow field $field=$expectedValue."
+        }
+    }
+}
+if ($requiresRuntimeUiWorkbench) {
+    foreach ($field in @(
+            "runtime_ui_workbench_status",
+            "runtime_ui_workbench_ready",
+            "runtime_ui_workbench_panels",
+            "runtime_ui_workbench_table_columns",
+            "runtime_ui_workbench_table_rows",
+            "runtime_ui_workbench_graph_series",
+            "runtime_ui_workbench_item_rows",
+            "runtime_ui_workbench_inventory_rows",
+            "runtime_ui_workbench_equipment_rows",
+            "runtime_ui_workbench_shop_rows",
+            "runtime_ui_workbench_text_inputs",
+            "runtime_ui_workbench_platform_text_input_requests",
+            "runtime_ui_workbench_focus_edges",
+            "runtime_ui_workbench_localization_refs",
+            "runtime_ui_workbench_localization_identity_ready",
+            "runtime_ui_workbench_accessibility_refs",
+            "runtime_ui_workbench_accessibility_identity_ready",
+            "runtime_ui_workbench_renderer_submission",
+            "runtime_ui_workbench_text_shaping",
+            "runtime_ui_workbench_font_rasterization",
+            "runtime_ui_workbench_ime_sessions",
+            "runtime_ui_workbench_accessibility_bridge",
+            "runtime_ui_workbench_image_decoding",
+            "runtime_ui_workbench_native_platform",
+            "runtime_ui_workbench_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include runtime UI workbench field: $field"
+        }
+    }
+    $expectedRuntimeUiWorkbenchFields = @{
+        "runtime_ui_workbench_status" = "ready"
+        "runtime_ui_workbench_ready" = "1"
+        "runtime_ui_workbench_panels" = "5"
+        "runtime_ui_workbench_table_columns" = "3"
+        "runtime_ui_workbench_table_rows" = "2"
+        "runtime_ui_workbench_graph_series" = "2"
+        "runtime_ui_workbench_item_rows" = "3"
+        "runtime_ui_workbench_inventory_rows" = "1"
+        "runtime_ui_workbench_equipment_rows" = "1"
+        "runtime_ui_workbench_shop_rows" = "1"
+        "runtime_ui_workbench_text_inputs" = "1"
+        "runtime_ui_workbench_platform_text_input_requests" = "1"
+        "runtime_ui_workbench_focus_edges" = "4"
+        "runtime_ui_workbench_localization_refs" = "17"
+        "runtime_ui_workbench_localization_identity_ready" = "1"
+        "runtime_ui_workbench_accessibility_refs" = "11"
+        "runtime_ui_workbench_accessibility_identity_ready" = "1"
+        "runtime_ui_workbench_renderer_submission" = "0"
+        "runtime_ui_workbench_text_shaping" = "0"
+        "runtime_ui_workbench_font_rasterization" = "0"
+        "runtime_ui_workbench_ime_sessions" = "0"
+        "runtime_ui_workbench_accessibility_bridge" = "0"
+        "runtime_ui_workbench_image_decoding" = "0"
+        "runtime_ui_workbench_native_platform" = "0"
+        "runtime_ui_workbench_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRuntimeUiWorkbenchFields.Keys) {
+        $expectedValue = $expectedRuntimeUiWorkbenchFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove runtime UI workbench field $field=$expectedValue."
         }
     }
 }
