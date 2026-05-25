@@ -108,4 +108,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
   - PR: https://github.com/y2ikgm89/mirakanai-engine/pull/239
   - Branch: `codex/generated-game-studio-v1`
   - Initial commit: `3eaead43` (`Add Generated Game Studio v1`)
-  - Hosted checks and merge evidence: pending.
+  - Closeout evidence commit: `b1620769` (`Record Generated Game Studio PR evidence`)
+  - Hosted PR Gate: passed, https://github.com/y2ikgm89/mirakanai-engine/actions/runs/26412257019/job/77750252570
+  - Hosted selected checks passed for Agent Static Guards, Windows MSVC, Linux CMake, Linux Coverage, Linux Clang ASan/UBSan, Full Repository Static Analysis shards, macOS Metal CMake, iOS Simulator smoke, and CodeQL.
+  - Merge commit: `b4bc09733106855ce71213a7235eccc053199e7c`
+  - Main sync verification: after `git fetch origin --prune`, `git log --oneline origin/main..b16207690459423ae28e8978ca4ec417463df666` produced no commits.
